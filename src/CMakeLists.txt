@@ -121,18 +121,7 @@ elseif(NOT _use_shared_lib AND NOT USE_MUSL)
     # Used on Linux Release non-musl (static FFmpeg .a can't go into .so)
     # and Windows Release (fully static binary with all deps compiled in)
     add_dependencies(ascii-chat generate_version)
-    target_link_libraries(ascii-chat PRIVATE
-        ascii-chat-util
-        ascii-chat-data-structures
-        ascii-chat-crypto
-        ascii-chat-simd
-        ascii-chat-video
-        ascii-chat-audio
-        ascii-chat-network
-        ascii-chat-core
-        ascii-chat-panic
-        ascii-chat-platform
-    )
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-runtime-objects)
     get_core_deps_libraries(CORE_LIBS)
     target_link_libraries(ascii-chat PRIVATE ${CORE_LIBS} ${BEARSSL_LIBRARIES})
     if(FFMPEG_LIBRARIES)
@@ -420,18 +409,7 @@ if(USE_MUSL)
     # Link internal modules directly (OBJECT libraries avoid shared library dependency)
     # These are the same modules that make up ascii-chat-shared
     # Note: Session files are part of ascii-chat-core, not a separate module
-    target_link_libraries(ascii-chat PRIVATE
-        ascii-chat-util
-        ascii-chat-data-structures
-        ascii-chat-platform
-        ascii-chat-crypto
-        ascii-chat-simd
-        ascii-chat-video
-        ascii-chat-audio
-        ascii-chat-network
-        ascii-chat-core
-        ascii-chat-panic
-    )
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-runtime-objects)
 
     # Link external dependencies (LTO + dead code elimination removes unused code)
     target_link_libraries(ascii-chat PRIVATE

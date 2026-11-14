@@ -1,0 +1,383 @@
+#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/audio/format.h>
+#include <ascii-chat/audio/opus.h>
+#include <ascii-chat/audio/processor.h>
+#include <ascii-chat/audio/mixer.h>
+#include <ascii-chat/audio/recording.h>
+#include <ascii-chat/audio/wav_writer.h>
+#include <ascii-chat/media/ffmpeg_decoder.h>
+#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/audio/client_pipeline.h>
+#include "../../../src/common/session/audio.h"
+#include <ascii-chat/options/rcu.h>
+#include <ascii-chat/tests/logging.h>
+#include <ascii-chat/util/fnv1a.h>
+#include <math.h>
+#include <string.h>
+
+static void setup(void) {
+  log_init(NULL, LOG_FATAL, false, false);
+  ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
+}
+static void cleanup(void) {
+  options_state_destroy();
+  log_destroy();
+}
+TEST_CASE("stereo/routes_interface_inputs_without_mixing_unrelated_channels", "[stereo]") {
+  const float input[] = {0.1f, 0.3f, -0.7f, 0.9f, 0.2f, 0.4f, -0.6f, 0.8f};
+  float output[4];
+  ASCIICHAT_REQUIRE_EQ(audio_route_capture(input, 2, 4, 1, 2, output), ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_FLOAT_EQ(output[0], 0.3f, 1e-6);
+  ASCIICHAT_REQUIRE_FLOAT_EQ(output[1], -0.7f, 1e-6);
+  ASCIICHAT_REQUIRE_FLOAT_EQ(output[2], 0.4f, 1e-6);
+  ASCIICHAT_REQUIRE_FLOAT_EQ(output[3], -0.6f, 1e-6);
+  ASCIICHAT_REQUIRE_EQ(audio_route_capture(input, 2, 4, 2, 1, output), ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_FLOAT_EQ(output[0], -0.7f, 1e-6);
+  ASCIICHAT_REQUIRE_EQ(output[0], output[1]);
+  ASCIICHAT_REQUIRE_EQ(output[2], output[3]);
+  ASCIICHAT_REQUIRE_EQ(audio_route_capture(input, 2, 4, -1, 1, output), ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_FLOAT_EQ(output[0], 0.15f, 1e-6);
+  ASCIICHAT_REQUIRE_EQ(audio_route_capture(input, 2, 4, 3, 2, output), ERROR_INVALID_PARAM);
+  ASCIICHAT_REQUIRE_EQ(audio_route_capture(input, 2, 0, 0, 1, output), ERROR_INVALID_PARAM);
+}
+
+TEST_CASE("stereo/mono_conversion_preserves_center_and_cancels_opposite_phase", "[stereo]") {
+  float pcm[8] = {0.2f, -0.4f, 0.6f, -0.8f};
+  ASCIICHAT_REQUIRE_EQ(audio_convert_channels(pcm, 4, 1, pcm, 2), ASCIICHAT_OK);
+  for (size_t i = 0; i < 4; i++)
+    ASCIICHAT_REQUIRE_EQ(pcm[i * 2], pcm[i * 2 + 1]);
+  ASCIICHAT_REQUIRE_EQ(audio_convert_channels(pcm, 4, 2, pcm, 1), ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_FLOAT_EQ(pcm[3], -0.8f, 1e-6);
+  const float opposite[] = {0.5f, -0.5f};
+  ASCIICHAT_REQUIRE_EQ(audio_convert_channels(opposite, 1, 2, pcm, 1), ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(pcm[0], 0);
+}
+
+TEST_CASE("stereo/resampling_preserves_channels_and_is_independent_of_callback_partition", "[stereo]") {
+  float input[2000], whole[2400], split[2400];
+  for (size_t i = 0; i < 1000; i++) {
+    input[i * 2] = sinf((float)i * 0.04f) * 0.25f;
+    input[i * 2 + 1] = -0.5f;
+  }
+  audio_resampler_t a = {0}, b = {0};
+  size_t expected = audio_resample_stereo(&a, input, 1000, 44100, whole, 1200, 48000);
+  size_t total = 0;
+  for (size_t offset = 0; offset < 1000;) {
+    size_t frames = 1000 - offset > 37 ? 37 : 1000 - offset;
+    total += audio_resample_stereo(&b, input + offset * 2, frames, 44100, split + total * 2, 1200 - total, 48000);
+    offset += frames;
+  }
+  ASCIICHAT_REQUIRE_EQ(total, expected);
+  ASCIICHAT_REQUIRE_GE(total, 1087);
+  for (size_t i = 0; i < total; i++) {
+    ASCIICHAT_REQUIRE_FLOAT_EQ(split[i * 2], whole[i * 2], 1e-5);
+    ASCIICHAT_REQUIRE_FLOAT_EQ(split[i * 2 + 1], -0.5f, 1e-6);
+  }
+  audio_resampler_t before = b;
+  float sentinel[] = {42, 42};
+  ASCIICHAT_REQUIRE_EQ(audio_resample_stereo(&b, input, 1000, 44100, sentinel, 1, 48000), 0);
+  ASCIICHAT_REQUIRE_EQ(memcmp(&b, &before, sizeof(b)), 0);
+  ASCIICHAT_REQUIRE_EQ(sentinel[0], 42);
+}
+
+TEST_CASE("stereo/invalid_resampler_arguments_set_errno_without_mutating_state_or_output", "[stereo]") {
+  audio_resampler_t state = {.phase = 0.25, .previous = {0.2f, 0.3f}, .has_previous = true};
+  audio_resampler_t before = state;
+  const float input[] = {0.1f, 0.2f, 0.3f, 0.4f};
+  float output[] = {42, 43, 44, 45};
+  const float expected[] = {42, 43, 44, 45};
+  const struct {
+    audio_resampler_t *state;
+    const float *input;
+    float *output;
+    size_t frames;
+    double input_rate, output_rate;
+  } cases[] = {
+      {NULL, input, output, 2, 48000, 48000},  {&state, NULL, output, 2, 48000, 48000},
+      {&state, input, NULL, 2, 48000, 48000},  {&state, input, output, 0, 48000, 48000},
+      {&state, input, output, 2, NAN, 48000},  {&state, input, output, 2, INFINITY, 48000},
+      {&state, input, output, 2, 7999, 48000}, {&state, input, output, 2, 192001, 48000},
+      {&state, input, output, 2, 48000, NAN},  {&state, input, output, 2, 48000, INFINITY},
+      {&state, input, output, 2, 48000, 7999}, {&state, input, output, 2, 48000, 192001},
+  };
+  for (size_t i = 0; i < ARRAY_SIZE(cases); i++) {
+    CLEAR_ERRNO_ALL();
+    ASCIICHAT_REQUIRE_EQ(audio_resample_stereo(cases[i].state, cases[i].input, cases[i].frames, cases[i].input_rate,
+                                       cases[i].output, ARRAY_SIZE(output) / 2, cases[i].output_rate),
+                 0);
+    asciichat_error_context_t error;
+    ASCIICHAT_REQUIRE(HAS_ERRNO(&error), "Missing resampler error for case %zu", i);
+    ASCIICHAT_REQUIRE_EQ(error.code, ERROR_INVALID_PARAM);
+    ASCIICHAT_REQUIRE_NOT_NULL(strstr(error.context_message, "stereo resampling"));
+    ASCIICHAT_REQUIRE_ARRAY_EQ(&state, &before, sizeof(state));
+    ASCIICHAT_REQUIRE_ARRAY_EQ(output, expected, sizeof(output));
+  }
+  CLEAR_ERRNO_ALL();
+}
+
+TEST_CASE("stereo/opus_preserves_distinct_tones_and_explicit_mono_decoder_downmix", "[stereo]") {
+  opus_codec_t *encoder = opus_codec_create_encoder(OPUS_APPLICATION_AUDIO, 48000, 160000);
+  opus_codec_t *decoder = opus_codec_create_decoder(48000);
+  opus_codec_t *mono_decoder = opus_codec_create_decoder_channels(48000, 1);
+  ASCIICHAT_REQUIRE_NOT_NULL(encoder);
+  ASCIICHAT_REQUIRE_NOT_NULL(decoder);
+  ASCIICHAT_REQUIRE_NOT_NULL(mono_decoder);
+  ASCIICHAT_REQUIRE_EQ(encoder->channels, 2);
+  ASCIICHAT_REQUIRE_EQ(decoder->channels, 2);
+  float input[1920], output[1920], mono[960];
+  uint8_t packet[4000];
+  double left440 = 0, left880 = 0, right440 = 0, right880 = 0;
+  for (int block = 0; block < 40; block++) {
+    for (int i = 0; i < 960; i++) {
+      double t = (block * 960 + i) / 48000.0;
+      input[i * 2] = 0.25f * sinf((float)(2 * M_PI * 440 * t));
+      input[i * 2 + 1] = 0.25f * sinf((float)(2 * M_PI * 880 * t));
+    }
+    size_t bytes = opus_codec_encode(encoder, input, 1920, packet, sizeof(packet));
+    ASCIICHAT_REQUIRE_GT(bytes, 0);
+    ASCIICHAT_REQUIRE_EQ(opus_codec_decode(decoder, packet, bytes, output, 1920), 1920);
+    ASCIICHAT_REQUIRE_EQ(opus_codec_decode(mono_decoder, packet, bytes, mono, 960), 960);
+    if (block >= 10)
+      for (int i = 0; i < 960; i++) {
+        double t = (block * 960 + i) / 48000.0;
+        left440 += output[i * 2] * cos(2 * M_PI * 440 * t);
+        left880 += output[i * 2] * cos(2 * M_PI * 880 * t);
+        right440 += output[i * 2 + 1] * cos(2 * M_PI * 440 * t);
+        right880 += output[i * 2 + 1] * cos(2 * M_PI * 880 * t);
+        ASCIICHAT_REQUIRE(isfinite(mono[i]));
+      }
+  }
+  ASCIICHAT_REQUIRE_GT(fabs(left440), fabs(left880) * 8);
+  ASCIICHAT_REQUIRE_GT(fabs(right880), fabs(right440) * 8);
+  opus_codec_destroy(encoder);
+  opus_codec_destroy(decoder);
+  opus_codec_destroy(mono_decoder);
+}
+
+TEST_CASE("stereo/jitter_drift_and_fades_do_not_swap_or_mix_channels", "[stereo]") {
+  audio_ring_buffer_t *rb = audio_ring_buffer_create_format(2, false);
+  ASCIICHAT_REQUIRE_NOT_NULL(rb);
+  float input[8000], output[960];
+  for (size_t i = 0; i < 4000; i++) {
+    input[i * 2] = 0.25f;
+    input[i * 2 + 1] = -0.5f;
+  }
+  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_write(rb, input, 8000), ASCIICHAT_OK);
+  rb->jitter_drift_phase = 1;
+  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_read(rb, output, 960), 960);
+  for (size_t i = 0; i < 480; i++) {
+    ASCIICHAT_REQUIRE_GE(output[i * 2], 0);
+    ASCIICHAT_REQUIRE_FLOAT_EQ(output[i * 2 + 1], output[i * 2] * -2, 1e-6);
+  }
+  ASCIICHAT_REQUIRE_EQ(atomic_load_u64(&rb->read_index) % 2, 0);
+  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_read(rb, output, 959), 0);
+  audio_ring_buffer_destroy(rb);
+}
+
+TEST_CASE("stereo/processor_filters_do_not_leak_and_dynamics_share_gain", "[stereo]") {
+  audio_processor_config_t config = audio_processor_default_config(48000);
+  config.channels = 2;
+  config.spectral_enabled = false;
+  config.flags = (audio_processor_flags_t){.agc = true, .compressor = true, .highpass = true};
+  audio_processor_t *processor = NULL;
+  ASCIICHAT_REQUIRE_EQ(audio_processor_create(&config, &processor), ASCIICHAT_OK);
+  float samples[1920];
+  for (int block = 0; block < 30; block++) {
+    for (size_t i = 0; i < 960; i++) {
+      samples[i * 2] = 0.05f * sinf((float)(block * 960 + i) * 0.1f);
+      samples[i * 2 + 1] = samples[i * 2] * 0.5f;
+    }
+    ASCIICHAT_REQUIRE_EQ(audio_processor_process(processor, samples, samples, 1920), ASCIICHAT_OK);
+    for (size_t i = 0; i < 960; i++)
+      ASCIICHAT_REQUIRE_FLOAT_EQ(samples[i * 2 + 1], samples[i * 2] * 0.5f, 1e-6);
+  }
+  audio_processor_reset(processor);
+  memset(samples, 0, sizeof(samples));
+  samples[0] = 1;
+  ASCIICHAT_REQUIRE_EQ(audio_processor_process(processor, samples, samples, 1920), ASCIICHAT_OK);
+  for (size_t i = 0; i < 960; i++)
+    ASCIICHAT_REQUIRE_EQ(samples[i * 2 + 1], 0);
+  audio_processor_destroy(processor);
+}
+
+TEST_CASE("stereo/recording_keeps_channel_alignment_after_partial_submission", "[stereo]") {
+  audio_recording_t *recording = NULL;
+  ASCIICHAT_REQUIRE_EQ(audio_recording_create_channels(&recording, 2), ASCIICHAT_OK);
+  audio_recording_start(recording, 1000000000ULL);
+  const float first[] = {0.25f};
+  const float next[] = {0.5f, -0.5f};
+  float output[4];
+  audio_recording_submit(AUDIO_RECORDING_MIC, first, 1, 1000000000ULL);
+  audio_recording_submit(AUDIO_RECORDING_MIC, next, 2, 1000000001ULL);
+  audio_recording_read(recording, output, 4);
+  ASCIICHAT_REQUIRE_FLOAT_EQ(output[0], 0.25f, 1e-6f);
+  ASCIICHAT_REQUIRE_FLOAT_EQ(output[1], 0.0f, 1e-6f);
+  ASCIICHAT_REQUIRE_FLOAT_EQ(output[2], 0.5f, 1e-6f);
+  ASCIICHAT_REQUIRE_FLOAT_EQ(output[3], -0.5f, 1e-6f);
+  audio_recording_destroy(recording);
+}
+
+TEST_CASE("stereo/recording_preserves_channels_and_uses_frame_timestamps", "[stereo]") {
+  audio_recording_t *recording = NULL;
+  ASCIICHAT_REQUIRE_EQ(audio_recording_create_channels(&recording, 2), ASCIICHAT_OK);
+  audio_recording_start(recording, 1000000000ULL);
+  float input[1920], output[3840];
+  for (size_t i = 0; i < 960; i++) {
+    input[i * 2] = 0.25f;
+    input[i * 2 + 1] = -0.5f;
+  }
+  audio_recording_submit(AUDIO_RECORDING_MIC, input, 1920, 1000000000ULL);
+  audio_recording_submit(AUDIO_RECORDING_MIC, input, 1920, 1020000000ULL);
+  audio_recording_read(recording, output, 3840);
+  for (size_t i = 0; i < 1920; i++) {
+    ASCIICHAT_REQUIRE_EQ(output[i * 2], 0.25f);
+    ASCIICHAT_REQUIRE_EQ(output[i * 2 + 1], -0.5f);
+  }
+  audio_recording_destroy(recording);
+}
+
+TEST_CASE("stereo/server_mix_minus_excludes_self_without_leaking_left_into_right", "[stereo]") {
+  mixer_t *mixer = mixer_create_channels(3, 48000, 2);
+  audio_ring_buffer_t *self = audio_ring_buffer_create_format(2, true);
+  audio_ring_buffer_t *remote = audio_ring_buffer_create_format(2, true);
+  ASCIICHAT_REQUIRE_NOT_NULL(mixer);
+  ASCIICHAT_REQUIRE_NOT_NULL(self);
+  ASCIICHAT_REQUIRE_NOT_NULL(remote);
+  ASCIICHAT_REQUIRE_GE(mixer_add_source(mixer, "self", self), 0);
+  ASCIICHAT_REQUIRE_GE(mixer_add_source(mixer, "remote", remote), 0);
+  float centered[1920], left[1920], output[1920];
+  for (size_t i = 0; i < 960; i++) {
+    centered[i * 2] = centered[i * 2 + 1] = 0.6f;
+    left[i * 2] = 0.1f;
+    left[i * 2 + 1] = 0;
+  }
+  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_write(self, centered, 1920), ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_write(remote, left, 1920), ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(mixer_process_excluding_source(mixer, output, 1920, fnv1a_hash_string("self")), 1920);
+  double energy = 0;
+  for (size_t i = 0; i < 960; i++) {
+    energy += output[i * 2] * output[i * 2];
+    ASCIICHAT_REQUIRE_EQ(output[i * 2 + 1], 0);
+  }
+  ASCIICHAT_REQUIRE_GT(energy, 1);
+  ASCIICHAT_REQUIRE_EQ(mixer_process_excluding_source(mixer, output, 1920, fnv1a_hash_string("remote")), 1920);
+  for (size_t i = 0; i < 960; i++)
+    ASCIICHAT_REQUIRE_EQ(output[i * 2], output[i * 2 + 1]);
+  mixer_destroy(mixer);
+  audio_ring_buffer_destroy(self);
+  audio_ring_buffer_destroy(remote);
+}
+
+TEST_CASE("stereo/stereo_aec_and_codec_process_complete_ten_and_twenty_millisecond_frames", "[stereo]") {
+  client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
+  config.channels = config.encoder_channels = 2;
+  config.processor.spectral_enabled = false;
+  config.flags = CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL;
+  config.flags.echo_cancel = true;
+  client_audio_pipeline_t *pipeline = client_audio_pipeline_create(&config);
+  ASCIICHAT_REQUIRE_NOT_NULL(pipeline);
+  float capture[1920], render[1920] = {0}, processed[1920], decoded[1920];
+  uint8_t packet[4000];
+  for (int block = 0; block < 30; block++) {
+    for (size_t frame = 0; frame < 960; frame++) {
+      capture[frame * 2] = 0.1f * sinf((float)(block * 960 + frame) * 0.07f);
+      capture[frame * 2 + 1] = 0.1f * sinf((float)(block * 960 + frame) * 0.13f);
+    }
+    client_audio_pipeline_process_duplex(pipeline, render, 1920, capture, 1920, processed);
+    int bytes = client_audio_pipeline_capture(pipeline, processed, 1920, packet, sizeof(packet));
+    ASCIICHAT_REQUIRE_GT(bytes, 0);
+    ASCIICHAT_REQUIRE_EQ(client_audio_pipeline_playback(pipeline, packet, bytes, decoded, 1920), 1920);
+    for (size_t i = 0; i < 1920; i++)
+      ASCIICHAT_REQUIRE(isfinite(decoded[i]));
+  }
+  client_audio_pipeline_destroy(pipeline);
+}
+
+TEST_CASE("stereo/stereo_media_resampling_and_eof_preserve_duration_and_independent_channels", "[stereo]") {
+  char path[1024];
+  int fd = -1;
+  ASCIICHAT_REQUIRE_EQ(platform_create_temp_file(path, sizeof(path), "stereo-media", &fd), 0);
+  platform_close(fd);
+  wav_writer_t *writer = wav_writer_open(path, 32000, 2);
+  ASCIICHAT_REQUIRE_NOT_NULL(writer);
+  float input[640];
+  for (size_t block = 0; block < 100; block++) {
+    for (size_t frame = 0; frame < 320; frame++) {
+      double t = (double)(block * 320 + frame) / 32000;
+      input[frame * 2] = 0.25f * sinf((float)(2 * M_PI * 1000 * t));
+      input[frame * 2 + 1] = 0;
+    }
+    ASCIICHAT_REQUIRE_EQ(wav_writer_write(writer, input, 640), 0);
+  }
+  wav_writer_close(writer);
+  ffmpeg_decoder_t *decoder = ffmpeg_decoder_create(path);
+  ASCIICHAT_REQUIRE_NOT_NULL(decoder);
+  float pcm[255];
+  ASCIICHAT_REQUIRE_EQ(ffmpeg_decoder_read_audio_samples(decoder, pcm, 1), 0);
+  pcm[254] = 42;
+  size_t total = 0, count;
+  double energy = 0;
+  while ((count = ffmpeg_decoder_read_audio_samples(decoder, pcm, 255)) > 0) {
+    ASCIICHAT_REQUIRE_EQ(count % 2, 0);
+    ASCIICHAT_REQUIRE_EQ(pcm[254], 42);
+    for (size_t frame = 0; frame < count / 2; frame++) {
+      energy += pcm[frame * 2] * pcm[frame * 2];
+      ASCIICHAT_REQUIRE_FLOAT_EQ(pcm[frame * 2 + 1], 0, 1e-7);
+    }
+    total += count / 2;
+    ASCIICHAT_REQUIRE_LE(total, 48000);
+  }
+  ASCIICHAT_REQUIRE_EQ(total, 48000);
+  ASCIICHAT_REQUIRE_GT(energy / total, 0.02);
+  ffmpeg_decoder_destroy(decoder);
+  platform_delete_temp_file(path);
+}
+
+TEST_CASE("stereo/session_source_queues_keep_complete_stereo_frames", "[stereo]") {
+  session_audio_ctx_t *session = session_audio_create(true);
+  ASCIICHAT_REQUIRE_NOT_NULL(session);
+  ASCIICHAT_REQUIRE_EQ(session_audio_add_source(session, 1), ASCIICHAT_OK);
+  float samples[8000], mixed[960];
+  for (size_t i = 0; i < ARRAY_SIZE(samples) / 2; i++) {
+    samples[i * 2] = 0.25f;
+    samples[i * 2 + 1] = -0.5f;
+  }
+  ASCIICHAT_REQUIRE_EQ(session_audio_write_source(session, 1, samples, 3), ERROR_INVALID_PARAM);
+  CLEAR_ERRNO_ALL();
+  ASCIICHAT_REQUIRE_EQ(session_audio_write_source(session, 1, samples, ARRAY_SIZE(samples)), ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(session_audio_mix_excluding(session, 99, mixed, ARRAY_SIZE(mixed)), ARRAY_SIZE(mixed));
+  for (size_t i = 0; i < ARRAY_SIZE(mixed) / 2; i++) {
+    ASCIICHAT_REQUIRE_GE(mixed[i * 2], 0);
+    ASCIICHAT_REQUIRE_FLOAT_EQ(mixed[i * 2 + 1], -2 * mixed[i * 2], 1e-6);
+  }
+  session_audio_destroy(session);
+}
+
+TEST_CASE("stereo/capture_and_transmission_layouts_are_independent", "[stereo]") {
+  client_audio_pipeline_config_t defaults = client_audio_pipeline_default_config();
+  ASCIICHAT_REQUIRE_EQ(defaults.channels, 2);
+  ASCIICHAT_REQUIRE_EQ(defaults.encoder_channels, 2);
+  for (int channels = 1; channels <= 2; channels++) {
+    for (int encoded_channels = 1; encoded_channels <= 2; encoded_channels++) {
+      client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
+      config.channels = channels;
+      config.encoder_channels = encoded_channels;
+      config.flags = CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL;
+      config.processor.spectral_enabled = false;
+      client_audio_pipeline_t *pipeline = client_audio_pipeline_create(&config);
+      ASCIICHAT_REQUIRE_NOT_NULL(pipeline);
+      float input[1920], output[1920];
+      for (int i = 0; i < 960; i++)
+        for (int channel = 0; channel < channels; channel++)
+          input[i * channels + channel] = 0.25f * sinf((float)i * 0.1f);
+      uint8_t packet[4000];
+      int bytes = client_audio_pipeline_capture(pipeline, input, 960 * channels, packet, sizeof(packet));
+      ASCIICHAT_REQUIRE_GT(bytes, 0);
+      ASCIICHAT_REQUIRE_EQ(client_audio_pipeline_playback(pipeline, packet, bytes, output, 960 * channels), 960 * channels);
+      for (int i = 0; i < 960 * channels; i++)
+        ASCIICHAT_REQUIRE(isfinite(output[i]));
+      client_audio_pipeline_destroy(pipeline);
+    }
+  }
+}

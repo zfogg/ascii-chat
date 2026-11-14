@@ -83,6 +83,10 @@
 
 #include "../common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Check whether a module belongs to ascii-chat
  * @param module_name Module basename or path
@@ -279,3 +283,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size, const char *con
 void symbol_cache_free_symbols(char **symbols);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

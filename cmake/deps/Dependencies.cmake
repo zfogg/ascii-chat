@@ -24,7 +24,7 @@
 #   3. Libsodium.cmake - libsodium cryptography library
 #   4. Portaudio.cmake - portaudio audio I/O library
 #   5. BearSSL.cmake - BearSSL SSL/TLS library
-#   6. Criterion.cmake - Criterion test framework (Unix only)
+#   6. Catch2.cmake - Catch2 v3 test framework
 #   7. WindowsSDK.cmake - Windows SDK detection (Windows + Clang only)
 #   8. PlatformLibraries.cmake - Platform-specific system libraries
 # =============================================================================
@@ -130,8 +130,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Libvterm.cmake)
 # =============================================================================
 # Test Dependencies
 # =============================================================================
-# Criterion test framework and related dependencies (Unix only)
-include(${CMAKE_SOURCE_DIR}/cmake/deps/Criterion.cmake)
+# Catch2 v3 test framework
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Catch2.cmake)
 
 # =============================================================================
 # Platform-Specific Configuration (LATE)

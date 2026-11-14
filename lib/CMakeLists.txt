@@ -26,6 +26,7 @@ target_include_directories(asciichat-project-includes INTERFACE
 set(CORE_SRCS
     ${LIB_DIR}/event.c
     ${LIB_DIR}/util/utf8.c
+    ${LIB_DIR}/util/symbols.c
     ${LIB_DIR}/media/input.c
     ${LIB_DIR}/media/playlist.c
     ${LIB_DIR}/common.c
@@ -179,10 +180,12 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/session/keyboard_handler.c
     ${CMAKE_SOURCE_DIR}/src/common/session/session_log_buffer.c
     ${CMAKE_SOURCE_DIR}/src/common/session/server_like.c
+    ${CMAKE_SOURCE_DIR}/src/common/http_renderer.c
     ${CMAKE_SOURCE_DIR}/src/common/session/quic_listeners.c
     # Terminal FD reader/writer
     ${CMAKE_SOURCE_DIR}/lib/terminal/fd/reader.c
     ${CMAKE_SOURCE_DIR}/lib/terminal/fd/writer.c
+    ${CMAKE_SOURCE_DIR}/lib/tooling/query/query.c
     # Third-party: tomlc17
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
 )
@@ -231,6 +234,62 @@ add_subdirectory(${LIB_DIR}/network ${CMAKE_BINARY_DIR}/lib/network)
 add_subdirectory(${LIB_DIR}/tooling ${CMAKE_BINARY_DIR}/lib/tooling)
 
 # Now include the Libraries configuration (moved from cmake/targets/Libraries.cmake)
+# =============================================================================
+# Shared production object graph
+# =============================================================================
+# Keep the CLI and test executables on the same object-library graph.  Linking
+# an OBJECT library through this interface reuses its already-built .obj/.o
+# files; it does not create a second compilation of the production sources.
+add_library(ascii-chat-runtime-objects INTERFACE)
+target_sources(ascii-chat-runtime-objects INTERFACE
+    $<TARGET_OBJECTS:ascii-chat-util>
+    $<TARGET_OBJECTS:ascii-chat-data-structures>
+    $<TARGET_OBJECTS:ascii-chat-crypto>
+    $<TARGET_OBJECTS:ascii-chat-simd>
+    $<TARGET_OBJECTS:ascii-chat-video>
+    $<TARGET_OBJECTS:ascii-chat-audio>
+    $<TARGET_OBJECTS:ascii-chat-network>
+    $<TARGET_OBJECTS:ascii-chat-core>
+    $<TARGET_OBJECTS:ascii-chat-panic>)
+target_link_libraries(ascii-chat-runtime-objects INTERFACE
+    ascii-chat-util
+    ascii-chat-data-structures
+    ascii-chat-crypto
+    ascii-chat-simd
+    ascii-chat-video
+    ascii-chat-audio
+    ascii-chat-network
+    ascii-chat-core
+    ascii-chat-panic
+    ascii-chat-platform)
+
+add_library(ascii-chat-runtime-deps INTERFACE)
+target_link_libraries(ascii-chat-runtime-deps INTERFACE
+    ascii-chat-util
+    ascii-chat-data-structures
+    ascii-chat-crypto
+    ascii-chat-simd
+    ascii-chat-video
+    ascii-chat-audio
+    ascii-chat-network
+    ascii-chat-core
+    ascii-chat-panic
+    ascii-chat-platform)
+
+add_library(ascii-chat-runtime STATIC EXCLUDE_FROM_ALL)
+target_sources(ascii-chat-runtime PRIVATE
+    $<TARGET_OBJECTS:ascii-chat-util>
+    $<TARGET_OBJECTS:ascii-chat-data-structures>
+    $<TARGET_OBJECTS:ascii-chat-crypto>
+    $<TARGET_OBJECTS:ascii-chat-simd>
+    $<TARGET_OBJECTS:ascii-chat-video>
+    $<TARGET_OBJECTS:ascii-chat-audio>
+    $<TARGET_OBJECTS:ascii-chat-network>
+    $<TARGET_OBJECTS:ascii-chat-core>
+    $<TARGET_OBJECTS:ascii-chat-panic>)
+target_link_libraries(ascii-chat-runtime PUBLIC ascii-chat-runtime-deps)
+
+# Unified Library Targets (OPTIONAL - not built by default)
 # =============================================================================
 # Libraries Module
 # =============================================================================
@@ -878,6 +937,11 @@ endif()
 # libraries on the final link line.
 if(ASCIICHAT_LIBUV_TARGET)
     target_link_libraries(ascii-chat-network PRIVATE ${ASCIICHAT_LIBUV_TARGET})
+endif()
+# The object graph is also consumed by static test executables.  Keep the
+# nghttp2 ABI consistent with gotel's static nghttp2 archive on Windows.
+if(WIN32)
+    target_compile_definitions(ascii-chat-network PRIVATE NGHTTP2_STATICLIB)
 endif()
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-network PRIVATE asciichat-quic)

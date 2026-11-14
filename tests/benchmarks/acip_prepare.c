@@ -3,17 +3,14 @@
  * Compile the production helper with local instrumentation, leaving release code
  * and the timed crypto implementation untouched.
  */
+#include <ascii-chat/tests/catch2_test_helpers.hpp>
 #include <ascii-chat/network/acip/prepare.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
 
-#define CHECK(expr)                                                                                                    \
-  do {                                                                                                                 \
-    if (!(expr))                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "%s", #expr);                                                                      \
-  } while (0)
+#define CHECK(expr) REQUIRE(expr)
 static size_t allocations, copies;
 static void *measured_alloc(buffer_domain_t *domain, size_t size) {
   ++allocations;
@@ -84,7 +81,7 @@ static void prepare(crypto_context_t *crypto, const socket_buffer_t *slices, siz
   buffer_release(storage);
 }
 
-int main(void) {
+TEST_CASE("acip_prepare/legacy_and_planned_paths", "[benchmark][acip_prepare]") {
   log_init(NULL, LOG_WARN, false, false);
   errno_suppress(true);
   crypto_context_t crypto;
@@ -98,6 +95,7 @@ int main(void) {
   memcpy(packet, &header, sizeof(header));
   socket_buffer_t slices[] = {{packet, sizeof(header)}, {packet + sizeof(header), size - sizeof(header)}};
   socket_buffer_t contiguous = {packet, size};
+  BENCHMARK("prepare paths") {
   for (int repeat = 0; repeat < 3; ++repeat) {
     for (int transport = 0; transport < 3; ++transport) {
       for (int vector = 0; vector < (transport == 2 ? 1 : 2); ++vector) {
@@ -119,10 +117,11 @@ int main(void) {
       }
     }
   }
+  return 0;
+  };
   buffer_release(packet);
   crypto_destroy(&crypto);
   buffer_system_cleanup();
-  CHECK(buffer_process_reserved() == 0);
+  REQUIRE(buffer_process_reserved() == 0);
   log_destroy();
-  return 0;
 }

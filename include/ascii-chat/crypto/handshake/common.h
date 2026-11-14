@@ -19,6 +19,10 @@
 #include "../../crypto/keys.h"
 #include "../../network/packet/packet.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct acip_transport;
 
 /**
@@ -199,5 +203,9 @@ bool crypto_handshake_is_ready(const crypto_handshake_context_t *ctx);
  * @return Pointer to crypto context, or NULL if ctx is NULL
  */
 const crypto_context_t *crypto_handshake_get_context(const crypto_handshake_context_t *ctx);
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */

@@ -183,7 +183,7 @@
         "USE_CPACK": "OFF",
         "CMAKE_C_STANDARD": "23",
         "CMAKE_C_FLAGS": "-std=c2x",
-        "ASCIICHAT_FORCE_CRITERION_TESTS": "ON",
+        "ASCIICHAT_FORCE_CATCH2_TESTS": "ON",
         "ASCIICHAT_ENABLE_COVERAGE": "ON",
         "ASCIICHAT_ENABLE_ANALYZERS": "OFF"
       }
@@ -198,7 +198,7 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_TESTS": "ON",
         "USE_CPACK": "OFF",
-        "ASCIICHAT_FORCE_CRITERION_TESTS": "ON",
+        "ASCIICHAT_FORCE_CATCH2_TESTS": "ON",
         "CMAKE_CXX_STANDARD": "20"
       }
     },

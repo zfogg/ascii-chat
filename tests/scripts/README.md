@@ -82,7 +82,7 @@ docker-compose -f tests/docker-compose.yml build --no-cache
 
 ## CI Integration
 
-Tests are run automatically via GitHub Actions using ctest with JUnit XML output from Criterion:
+Tests are run automatically via GitHub Actions using CTest with Catch2 JUnit XML:
 
 ```yaml
 - name: Run Tests
@@ -96,5 +96,7 @@ Tests are run automatically via GitHub Actions using ctest with JUnit XML output
 - **Parallel Execution**: `--parallel 0` auto-detects CPU cores
 - **Label Filtering**: Use `--label-regex` to filter by test category
 - **Name Filtering**: Use `-R` to filter by test name pattern
-- **XML Output**: Criterion generates XML in `build/Testing/criterion-xml/`
+- **XML Output**: Catch2 generates XML in `build/Testing/catch2-xml/`; CTest writes `Testing/ctest-results.xml`
+- **Catch2 Tags**: Run a focused suite directly with a Catch2 tag/spec, such as `unit_tests "[network]"`.
+- **Benchmarks**: Run benchmark labels separately and serially with `ctest --test-dir build -L benchmark --parallel 1`.
 - **Docker Support**: Consistent test environment via Docker

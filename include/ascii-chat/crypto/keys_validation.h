@@ -29,6 +29,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name Key Validation
  * @{
@@ -343,3 +347,7 @@ asciichat_error_t check_key_fingerprint(const public_key_t *key, const uint8_t *
 asciichat_error_t generate_key_fingerprint(const public_key_t *key, uint8_t *fingerprint_out, size_t fingerprint_size);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

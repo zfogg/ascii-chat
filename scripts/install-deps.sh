@@ -132,7 +132,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   # Install packages - completely ignore all errors since many are already installed
   # GitHub runners have pre-installed packages with version conflicts that can't be resolved
   brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool go \
-    ninja mimalloc zstd libsodium portaudio opus fftw criterion doxygen sqlite3 \
+    ninja mimalloc zstd libsodium portaudio opus fftw doxygen sqlite3 \
     miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets libuv icu4c openssl@3 yyjson \
     libvterm freetype fontconfig expat pcre2 \
     >/dev/null 2>&1 || true
@@ -213,7 +213,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       musl-tools musl-dev \
       nasm \
       libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev libfftw3-dev libsystemd-dev \
-      libcriterion-dev libffi-dev libsqlite3-dev libpcre2-dev \
+      libffi-dev libsqlite3-dev libpcre2-dev \
       libssl-dev \
       libminiupnpc-dev \
       libprotobuf-c-dev \
@@ -392,7 +392,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       nasm \
       libx264-devel libx265-devel \
       mimalloc-devel libzstd-devel zlib-devel libsodium-devel portaudio-devel opus-devel fftw-devel \
-      criterion-devel libffi-devel sqlite-devel \
+      libffi-devel sqlite-devel \
       openssl-devel \
       miniupnpc-devel \
       protobuf-c-devel \
@@ -430,7 +430,6 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       x264 x265 \
       openssl \
       abseil-cpp \
-      criterion \
       doxygen \
       dpkg rpm-tools \
       yt-dlp \
@@ -455,8 +454,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo >&2 "  - opus (library and development headers, for audio codec)"
     echo >&2 "  - sqlite3 (library and development headers, for discovery service database)"
     echo >&2 "  - ffmpeg (library and development headers, for media file streaming)"
-    echo >&2 "  - criterion (testing framework, library and development headers)"
-    echo >&2 "  - libffi (foreign function interface, required by criterion)"
+    echo >&2 "  - Catch2 v3 (testing framework, provided by vcpkg or CMake FetchContent)"
+    echo >&2 "  - libffi (foreign function interface)"
     echo >&2 "  - yt-dlp (for YouTube URL support)"
     exit 1
   fi

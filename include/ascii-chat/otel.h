@@ -93,6 +93,6 @@ int ascii_otel_sqlite_prepare(sqlite3 *db, const char *sql, sqlite3_stmt **state
 #endif
 
 // Test executables may link the ordinary library; never initialize its exporter.
-#if !defined(ASCIICHAT_OTEL_IMPLEMENTATION) && (defined(TESTING) || defined(CRITERION_TEST) || defined(__CRITERION__))
+#if !defined(ASCIICHAT_OTEL_IMPLEMENTATION) && defined(TESTING)
 #define ascii_otel_init(mode, argc, argv) ((void)(mode), (void)(argc), (void)(argv), ASCIICHAT_OK)
 #endif

@@ -268,7 +268,7 @@ cloc:
 	@printf $(Purple)"\n\nbuild configuration:\n"$(Reset)
 	@cloc $(CLOC_ARGS) cmake/
 	@printf $(Purple)"\n\ntests:\n"$(Reset)
-	@cloc $(CLOC_ARGS) --include-lang='C,C/C++ Header,Bash,Bourne Shell,PowerShell,Dockerfile,YAML' tests/unit tests/performance tests/integration
+	@cloc $(CLOC_ARGS) --include-lang='C,C/C++ Header,Bash,Bourne Shell,PowerShell,Dockerfile,YAML' tests/unit tests/benchmarks tests/integration
 	@printf $(Purple)"\n\nlibasciichat:\n"$(Reset)
 	@cloc $(CLOC_ARGS) --include-lang='C,C/C++ Header,Objective-C' "$(LIB_DIR)"
 	@printf $(Purple)"\n\nascii-chat executable:\n"$(Reset)
@@ -279,7 +279,7 @@ cloc:
 cloc-all-code:
 	@printf $(Purple)"All of ascii-chat repo's code (only code and real code, no TODOs or cmake config):\n"$(Reset)
 	@cloc $(CLOC_ARGS) \
-		tests/unit tests/performance tests/integration \
+		tests/unit tests/benchmarks tests/integration \
 		"$(LIB_DIR)" \
  		"$(SRC_DIR)" \
  		./web/*/src

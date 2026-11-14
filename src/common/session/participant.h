@@ -60,7 +60,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <ascii-chat/asciichat_errno.h>
-#include "session/settings.h"
+#include "settings.h"
 
 /* ============================================================================
  * Session Participant Types

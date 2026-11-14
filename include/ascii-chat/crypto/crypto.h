@@ -35,7 +35,7 @@
  *       OR packet count threshold (1 million), whichever comes first. Test mode
  *       uses reduced thresholds (30 seconds / 1000 packets).
  *
- * @note Test Environment: Automatically detects test environment via CRITERION_TEST
+ * @note Test Environment: Automatically detects test environment via TESTING
  *       or TESTING environment variables and adjusts thresholds accordingly.
  *
  * @note Byte Order: Client must convert network byte order to host byte order for
@@ -71,6 +71,10 @@
 #include "key_types.h"    // For private_key_t
 #include "../common.h"    // For asciichat_error_t
 #include "../util/time.h" // For NS_PER_SEC_INT
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @name Encryption Size Limits
@@ -1094,7 +1098,7 @@ void crypto_extract_auth_data(const uint8_t *combined_data, uint8_t *hmac_out, u
  * Rekeys after time threshold (default: 1 hour) OR packet count threshold (default: 1 million),
  * whichever comes first.
  *
- * @note Test environment detection: If CRITERION_TEST or TESTING environment variable is set,
+ * @note Test environment detection: If TESTING environment variable is set,
  *       rekey thresholds are reduced to 30 seconds / 1000 packets for faster testing.
  *
  * @note Rekeying flow:
@@ -1134,7 +1138,7 @@ void crypto_extract_auth_data(const uint8_t *combined_data, uint8_t *hmac_out, u
  *
  * @note Should be called after each packet encryption.
  *
- * @note Test environment: Automatically uses test thresholds if CRITERION_TEST or TESTING env var is set.
+ * @note Test environment: Automatically uses test thresholds if TESTING is set.
  *
  * @note DDoS protection: Requires at least REKEY_MIN_REQUEST_INTERVAL seconds between requests.
  *
@@ -1247,6 +1251,10 @@ void crypto_rekey_abort(crypto_context_t *ctx);
  * @ingroup crypto
  */
 void crypto_get_rekey_status(const crypto_context_t *ctx, char *status_buffer, size_t buffer_size);
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */ /* Session Rekeying Protocol */
 

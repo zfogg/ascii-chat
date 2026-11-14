@@ -8,6 +8,10 @@
 
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief action args is intentionally a small, concrete record. Fields such as `output_path`, `shell_name` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
  * @brief Action type enumeration
@@ -221,3 +225,7 @@ void action_check_update_immediate(void);
 /** Return the registered callback for a no-argument action, or NULL. */
 typedef void (*option_action_fn)(void);
 option_action_fn options_action_callback(const char *name, bool immediate);
+
+#ifdef __cplusplus
+}
+#endif

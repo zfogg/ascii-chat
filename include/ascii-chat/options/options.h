@@ -569,6 +569,10 @@ typedef enum {
 /** @brief Default WebSocket port for server mode (integer) */
 #define OPT_WEBSOCKET_PORT_SERVER_DEFAULT 27226
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @brief Default WebSocket port for discovery-service mode (integer) */
 #define OPT_WEBSOCKET_PORT_ACDS_DEFAULT 27227
 
@@ -1333,13 +1337,19 @@ const terminal_options_t *options_terminal_settings_ptr(void);
  *
  * @ingroup options
  */
+#ifdef __cplusplus
+#define ASCIICHAT_OPTION_FIELD_TYPE(field) decltype(((options_t *)0)->field)
+#else
+#define ASCIICHAT_OPTION_FIELD_TYPE(field) typeof(((options_t *)0)->field)
+#endif
+
 #define GET_OPTION(field)                                                                                              \
   ({                                                                                                                   \
     const options_t *_opts = options_get();                                                                            \
     if (!_opts) {                                                                                                      \
       log_warn("GET_OPTION(" #field ") called but options not initialized");                                           \
     }                                                                                                                  \
-    static typeof(((options_t *)0)->field) _default = {0};                                                             \
+    static ASCIICHAT_OPTION_FIELD_TYPE(field) _default = {0};                                                         \
     (_opts ? (_opts->field) : _default);                                                                               \
   })
 
@@ -1894,3 +1904,7 @@ extern uint64_t g_snapshot_actual_duration_ms;      // Actual wall-clock duratio
 
 /** Resolve source defaults without turning them into a user selection. */
 void options_resolve_flip_x(options_t *opts);
+
+#ifdef __cplusplus
+}
+#endif

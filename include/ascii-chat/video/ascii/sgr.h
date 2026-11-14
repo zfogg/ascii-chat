@@ -9,6 +9,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // SGR cache initialization
 void prewarm_sgr256_fg_cache(void);
 void prewarm_sgr256_cache(void);
@@ -23,3 +27,7 @@ char *append_sgr_reset(char *dst);
 char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b);
 char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b);
 char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg, uint8_t bb);
+
+#ifdef __cplusplus
+}
+#endif

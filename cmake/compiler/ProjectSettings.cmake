@@ -44,7 +44,7 @@ function(asciichat_apply_project_settings directory)
             target_include_directories("${_target}" PRIVATE
                 "${PROJECT_SOURCE_DIR}/deps/defer/cpp/include")
             if(ASCIICHAT_ENABLE_IPO)
-                # Preserve target opt-outs, including Criterion test registration.
+                # Preserve target opt-outs, including Catch2 test registration.
                 get_property(_ipo_default_set TARGET "${_target}" PROPERTY INTERPROCEDURAL_OPTIMIZATION SET)
                 foreach(_config RELEASE RELWITHDEBINFO)
                     get_property(_ipo_config_set TARGET "${_target}"

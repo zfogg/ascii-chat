@@ -16,6 +16,10 @@
 #ifndef ASCIICHAT_NETWORKING_WEBRTC_TURN_CREDENTIALS_H
 #define ASCIICHAT_NETWORKING_WEBRTC_TURN_CREDENTIALS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define NETWORK_WEBRTC_TURN_CREDENTIALS_USERNAME_BUFFER_SIZE 128
 #define NETWORK_WEBRTC_TURN_CREDENTIALS_PASSWORD_BUFFER_SIZE 128
@@ -76,5 +80,9 @@ asciichat_error_t turn_generate_credentials(const char *session_id, const char *
  * @return true if expired, false if still valid
  */
 bool turn_credentials_expired(const turn_credentials_t *credentials);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // ASCIICHAT_NETWORKING_WEBRTC_TURN_CREDENTIALS_H

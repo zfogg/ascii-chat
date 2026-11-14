@@ -33,6 +33,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief The framing fields needed to locate and classify one OpenPGP packet body
  * @brief The parsed identity portion of an OpenPGP public-key packet
@@ -333,3 +337,7 @@ asciichat_error_t openpgp_base64_decode(const char *base64, size_t base64_len, u
 /** @} */
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

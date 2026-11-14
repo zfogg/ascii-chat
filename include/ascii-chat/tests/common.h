@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 /**
  * @file tests/common.h
  * @brief Common test utilities and environment detection
@@ -14,7 +18,7 @@
  * CORE FEATURES:
  * ==============
  * - Test environment detection (CI, Docker, WSL)
- * - Standard test framework includes (Criterion)
+ * - Standard test framework includes (Catch2)
  * - Common project headers and utilities
  * - Platform-specific includes (POSIX/Windows)
  * - Headless environment detection for webcam tests
@@ -22,7 +26,7 @@
  * TEST ENVIRONMENT:
  * ================
  * This header automatically includes:
- * - Criterion test framework
+ * - Catch2 test helpers
  * - Project common headers
  * - Test logging utilities
  * - Platform-specific system headers
@@ -58,8 +62,7 @@
 #endif
 #include <sys/stat.h> // For stat(), struct stat
 
-// Now include Criterion which will pull in system headers
-#include <criterion/criterion.h>
+// Catch2 is included by each test translation unit through catch2_compat.hpp.
 
 // Project headers - use relative paths from tests directory
 #include "../common.h"
@@ -95,7 +98,7 @@
  * @code
  * Test(my_suite, webcam_test) {
  *   if (test_is_in_headless_environment()) {
- *     cr_skip_test("Skipping webcam test in headless environment");
+ *     ASCIICHAT_SKIP("Skipping webcam test in headless environment");
  *   }
  *   // ... perform webcam test ...
  * }

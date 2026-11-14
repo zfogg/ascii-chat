@@ -247,6 +247,10 @@ bool escape_path_for_shell(const char *path, char *out_buffer, size_t out_buffer
 
 #include "../log/log.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Build a colored string for terminal output
  *
@@ -350,5 +354,9 @@ void truncate_with_ellipsis_mode(const char *input, char *output, size_t output_
  * @ingroup util
  */
 void strip_ansi_codes(const char *input, char *output, size_t output_size);
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */

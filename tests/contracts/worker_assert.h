@@ -1,15 +1,13 @@
 #pragma once
 
-#include <criterion/criterion.h>
 #include <libplatform/thread.h>
 #include <stdbool.h>
 
-// Fatal Criterion assertions unwind to the test thread's jump buffer. Worker
-// failures must report nonfatally, then exit their own thread instead.
-#define cr_assert_worker(condition)                                                                                    \
+// Catch2 assertions must remain on the test thread. A worker callback cannot
+// safely call REQUIRE/CHECK, so terminate the worker on failure; the owning
+// test must validate the resulting state after joining it.
+#define ASCIICHAT_WORKER_ASSERT(condition)                                                                                    \
   do {                                                                                                                 \
-    bool worker_check_passed = !!(condition);                                                                          \
-    cr_expect(worker_check_passed, "Worker assertion failed: %s", #condition);                                         \
-    if (!worker_check_passed)                                                                                          \
+    if (!(condition))                                                                                                  \
       thread_exit(NULL);                                                                                               \
   } while (0)

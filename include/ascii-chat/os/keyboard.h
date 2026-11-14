@@ -25,6 +25,7 @@
 #include <ascii-chat/common/buffer_sizes.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include "../common/error_codes.h"
 
 /* ============================================================================
@@ -50,7 +51,8 @@
  *
  * @ingroup platform
  */
-typedef enum {
+typedef uint32_t keyboard_key_t;
+enum {
   KEY_NONE = 0,               ///< No key pressed or no input available
   KEY_ESCAPE = 27,            ///< Escape key (ESC)
   KEY_SPACE = 32,             ///< Space bar
@@ -82,7 +84,7 @@ typedef enum {
   KEY_F = 'f',                ///< 'f' key - flip webcam
   KEY_QUESTION = '?',         ///< '?' key - show help screen
   KEY_BACKTICK = '`',         ///< '`' key - print lock state (debug builds)
-} keyboard_key_t;
+};
 
 /* ============================================================================
  * Keyboard Functions

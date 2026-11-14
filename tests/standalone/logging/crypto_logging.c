@@ -10,7 +10,7 @@
       FATAL(ERROR_ASSERTION_FAILED, "Logging regression failed at line %d: %s", __LINE__, #expr);                      \
   } while (0)
 
-// Exercise production crypto and logging without Criterion, including on Windows.
+// Exercise production crypto and logging without Catch2, including on Windows.
 int main(int argc, char **argv) {
   if (argc != 2)
     return 2;

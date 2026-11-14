@@ -1,14 +1,8 @@
-"""Require complete line/branch coverage of the shared keyboard Unicode adapter.
-
-The ordinary Criterion target runs with the project's sanitizers. This separate
-measurement reports only our Unicode adapter functions, without sanitizer-generated branches
-or vendored utf8proc internals. It runs the same Criterion source, not fixtures.
-"""
+"""Require complete line/branch coverage of the shared keyboard Unicode adapter."""
 import argparse
 import json
 from pathlib import Path
 import re
-import shlex
 import shutil
 import subprocess
 import sys
@@ -40,25 +34,15 @@ def main():
     cov_major = re.search(r"version (\d+)", run([llvm_cov, "--version"], root))
     if not clang_major or not cov_major or clang_major[1] != cov_major[1]:
         raise RuntimeError("Clang and llvm-cov versions must match")
-    # Keep this CFG separate from the sanitizer-instrumented counters that the
-    # normal gcovr report merges from the configured build directory.
-    output = build.with_name(build.name + "-keyboard-text-coverage")
+    executable = build / "bin" / ("unit_tests.exe" if sys.platform == "win32" else "unit_tests")
+    if not executable.exists():
+        raise RuntimeError(f"Build {executable} before measuring coverage")
+    output = build / "keyboard-text-coverage"
     output.mkdir(parents=True, exist_ok=True)
-    for name in ("keyboard.gcda", "keyboard_text_test.gcda"):
-        (output / name).unlink(missing_ok=True)
-    flags = ["-g", "-O0", "-ffunction-sections", "-fdata-sections", "-DUTF8PROC_STATIC", "-I" + str(root / "include"), "-I" + str(root / "deps"), "-I" + str(build / "generated")]
-    utf8proc = root / "deps/ascii-chat-deps/utf8proc/utf8proc.c"
-    run([clang, *flags, "-c", utf8proc, "-o", "utf8proc.o"], output)
-    criterion = shlex.split(run(["pkg-config", "--cflags", "criterion"], root))
-    for source in (root / "lib/platform/keyboard.c", root / "tests/unit/platform/keyboard_text_test.c"):
-        run([clang, *flags, *criterion, "--coverage", "-c", source, "-o", source.stem + ".o"], output)
-    libraries = shlex.split(run(["pkg-config", "--libs", "criterion"], root))
-    link_gc = "-Wl,-dead_strip" if sys.platform == "darwin" else "-Wl,--gc-sections"
-    run([clang, "--coverage", link_gc, "keyboard.o", "keyboard_text_test.o", "utf8proc.o",
-         *libraries, "-o", "keyboard-text-test"], output)
-    tests = run([output / "keyboard-text-test", "--jobs", "1"], output)
+    tests = run([executable, "*keyboard*"] , build)
     print(tests, end="")
-    report = run([llvm_cov, "gcov", "-b", "-c", "-o", "keyboard.gcno",
+    object_dir = build / "tests/CMakeFiles/unit_tests.dir/unit/platform"
+    report = run([llvm_cov, "gcov", "-b", "-c", "-o", object_dir,
                   root / "lib/platform/keyboard.c"], output)
     print(report, end="")
     functions = {"keyboard_text_decode", "keyboard_text_encode", "keyboard_text_utf16"}

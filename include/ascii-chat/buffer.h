@@ -6,6 +6,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Owned, aligned payloads for synchronous and asynchronous media pipelines.
  *
@@ -113,3 +117,7 @@ void buffer_system_cleanup(void);
 buffer_domain_t *buffer_default_domain(void);
 /** Small, bounded control messages may use the reserved process allowance. */
 buffer_domain_t *buffer_control_domain(void);
+
+#ifdef __cplusplus
+}
+#endif

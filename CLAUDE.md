@@ -924,7 +924,7 @@ ascii-chat/
 │   └── scripts/                # CMake-invoked scripts for build-time operations
 ├── include/                    # Public header files organized by module
 │   └── ascii-chat/             # Main header directory with subdirectories mirroring lib/ structure
-├── tests/                      # Criterion test suite with unit and integration tests for all modules
+├── tests/                      # Catch2 v3 test suite with unit, contract, integration, and benchmark tests
 │   └── unit/                   # Unit tests for individual modules organized by component
 ├── docs/                       # Protocol documentation, architecture guides, and usage examples
 ├── deploy/                     # Deployment configurations for ACDS, coturn, and cloud infrastructure
@@ -951,17 +951,15 @@ ctest --test-dir build --label-regex "^unit$" --output-on-failure
 ctest --test-dir build -R "crypto_handshake" --output-on-failure
 ```
 
-**Note**: On Intel macOS (not ARM), use Docker for Criterion tests:
+**Note**: Native Catch2 tests run on Intel and ARM macOS through the same CMake/CTest workflow:
 
 ```bash
 docker-compose -f ./tests/docker-compose.yml run --rm ascii-chat-tests bash -c 'build_docker/bin/test_unit_crypto_handshake'
 ```
 
 On Linux run the tests directly.
-On Windows Criterion isn't supported.
-
-When running Criterion test binaries, run individual tests inside of a test suite by using a filter like `--filter
-"*my_test_name_filter*"` (don't forget the asterisks).
+On Windows Catch2 v3 is supported by the native Clang build. Run individual
+cases with a Catch2 expression, for example `unit_tests "[crypto]~[slow]"`.
 
 ## Development Best Practices
 
@@ -1083,7 +1081,7 @@ Requirements vary by platform and build target:
   unavailable; follow its dependency module's platform-specific checks.
 - mimalloc is controlled by `USE_MIMALLOC` and is skipped on iOS.
 - libexecinfo supplies backtrace support for musl builds.
-- Criterion is a test dependency on supported Unix platforms, not Windows.
+- Catch2 v3 is a native test dependency on Windows, Linux, and macOS.
 - Platform libraries, source-build support libraries, and codec dependencies
   are selected by the corresponding CMake modules. Native, WASM, iOS,
   static, and shared builds do not all link the same libraries.

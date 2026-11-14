@@ -39,6 +39,11 @@
 #include "https_keys.h"
 #include "keys_validation.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 /**
  * @name Public Key Parsing
  * @{
@@ -541,3 +546,7 @@ asciichat_error_t validate_ssh_key_file(const char *key_path);
 // Forward declaration (full definition in handshake.h)
 // Note: This avoids circular includes (handshake.h includes keys.h)
 typedef struct crypto_handshake_context_t crypto_handshake_context_t;
+
+#ifdef __cplusplus
+}
+#endif

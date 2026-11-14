@@ -104,7 +104,7 @@ jobs:
       - run: uv sync --frozen
       - run: uv run --frozen python .github/scripts/test_generate_coverage.py
       - run: uv run --frozen python .github/scripts/test_prepare_coverage_upload.py
-      - run: uv run --frozen python .github/scripts/test_criterion_to_junit.py
+      - run: uv run --frozen python .github/scripts/test_catch2_junit.py
 
   unit-tests:
     needs: preflight
@@ -152,7 +152,7 @@ jobs:
       - name: Clean test executables and libraries only
         run: |
           rm -f build/coverage.xml build/Testing/ctest-results.xml
-          rm -rf build/Testing/criterion-xml
+          rm -rf build/Testing/catch2-xml
           # Only clean test executables and old libraries
           # Keep CMakeCache.txt and CMakeFiles to preserve configure cache across build type changes
           rm -rf build/bin/test_*
@@ -189,7 +189,7 @@ jobs:
             -DBUILD_TESTS=ON
             -DPython3_EXECUTABLE="${{ github.workspace }}//.venv/bin/python"
             -DUSE_MUSL=OFF
-            -DASCIICHAT_FORCE_CRITERION_TESTS=ON
+            -DASCIICHAT_FORCE_CATCH2_TESTS=ON
             -DASCIICHAT_ENABLE_ANALYZERS=OFF
             -DASCIICHAT_ENABLE_COVERAGE=${{ matrix.build_type == 'sanitizers' && 'OFF' || 'ON' }}
             -DASCIICHAT_ENABLE_SANITIZERS=${{ matrix.build_type == 'sanitizers' && 'ON' || 'OFF' }}
@@ -201,9 +201,8 @@ jobs:
 
           if [ "${BUILD_TYPE}" = "Release" ]; then
             cmake_args+=(-DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF)
-            # Force Criterion tests in Release mode for CI testing
-            # Must use ASCIICHAT_FORCE_CRITERION_TESTS (cache option) not BUILD_CRITERION_TESTS (regular variable)
-            cmake_args+=(-DASCIICHAT_FORCE_CRITERION_TESTS=ON)
+            # Force Catch2 tests in Release mode for CI testing.
+            cmake_args+=(-DASCIICHAT_FORCE_CATCH2_TESTS=ON)
             # Skip hardening validation (linker checks may fail in CI environment)
             cmake_args+=(-DASCIICHAT_SKIP_HARDENING_VALIDATION=ON)
           fi
@@ -235,7 +234,7 @@ jobs:
 
       - name: Build test suite
         run: |
-          cmake --build build --target all tests tests-criterion-build
+          cmake --build build --target all tests tests-catch2-build
 
           echo "Test executables built:"
           ls -la build/bin/test_* 2>/dev/null || echo "No test executables found in build/bin/"
@@ -318,7 +317,7 @@ jobs:
           test-type: unit
           os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
           build-type: ${{ matrix.build_type }}
-          criterion-xml-dir: build/Testing/criterion-xml
+          catch2-xml-dir: build/Testing/catch2-xml
           coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
           upload-coverage: "false"
@@ -333,7 +332,7 @@ jobs:
             build/coverage.xml
             build/Testing/ctest-results.xml
             build/Testing/python-*.xml
-            build/Testing/criterion-xml/*.xml
+            build/Testing/catch2-xml/*.xml
           retention-days: 7
 
   integration-tests:
@@ -380,7 +379,7 @@ jobs:
       - name: Clear stale integration executables and libraries
         run: |
           rm -f build/coverage.xml build/Testing/ctest-results.xml
-          rm -rf build/Testing/criterion-xml
+          rm -rf build/Testing/catch2-xml
           # macOS debug symbol bundles matching these paths are directories.
           rm -rf build/bin/test_* build/bin/ascii-chat build/bin/ascii-chat.dSYM build/lib/libasciichat*
 
@@ -416,7 +415,7 @@ jobs:
             -DASCIICHAT_ENABLE_COVERAGE=${{ matrix.instrumentation == 'coverage' && 'ON' || 'OFF' }} \
             -DASCIICHAT_ENABLE_SANITIZERS=${{ matrix.instrumentation == 'sanitizers' && 'ON' || 'OFF' }} \
             -DBUILD_TESTS=ON \
-            -DASCIICHAT_FORCE_CRITERION_TESTS=ON \
+            -DASCIICHAT_FORCE_CATCH2_TESTS=ON \
             -DUSE_MUSL=OFF \
             -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF \
             -DASCIICHAT_SHARED_DEPS=ON \
@@ -459,7 +458,7 @@ jobs:
 
       - name: Build and run integration tests
         run: |
-          cmake --build build --target all tests tests-criterion-build
+          cmake --build build --target all tests tests-catch2-build
           if [ "${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}" = "macos" ]; then
             export ASAN_SYMBOLIZER_PATH="$(brew --prefix llvm)/bin/llvm-symbolizer"
           fi
@@ -467,7 +466,7 @@ jobs:
           set -o pipefail
 
           # Run integration tests via ctest preset
-          # Criterion generates detailed XML in build/Testing/criterion-xml/
+          # Catch2 generates detailed XML in build/Testing/catch2-xml/
           # Keep Python WebRTC smoke tests available locally without running them in CI.
           ctest --test-dir build --label-regex "^integration$" --exclude-regex '^(discovery-webrtc|python-discovery-webrtc|discovery-stereo-audio|discovery-audio)$' --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee integration-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
@@ -507,7 +506,7 @@ jobs:
         with:
           test-type: integration
           os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
-          criterion-xml-dir: build/Testing/criterion-xml
+          catch2-xml-dir: build/Testing/catch2-xml
           coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
           upload-coverage: "false"
@@ -522,7 +521,7 @@ jobs:
             build/coverage.xml
             build/Testing/ctest-results.xml
             build/Testing/python-*.xml
-            build/Testing/criterion-xml/*.xml
+            build/Testing/catch2-xml/*.xml
             build/backpressure/
             build/Testing/mdns-terminal/
             build/mirror-lazy-audio/
@@ -566,7 +565,7 @@ jobs:
       - name: Clean test executables and libraries only
         run: |
           rm -f build/coverage.xml build/Testing/ctest-results.xml
-          rm -rf build/Testing/criterion-xml
+          rm -rf build/Testing/catch2-xml
           # Only clean test executables and old libraries
           # Keep CMakeCache.txt and CMakeFiles to preserve configure cache
           rm -rf build/bin/test_*
@@ -646,7 +645,7 @@ jobs:
           echo "Running performance tests..."
 
           # Run performance tests via ctest preset
-          # Criterion generates detailed XML in build/Testing/criterion-xml/
+          # Catch2 generates detailed XML in build/Testing/catch2-xml/
           set -o pipefail
           ctest --test-dir build --label-regex "^performance$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
@@ -682,7 +681,7 @@ jobs:
         with:
           test-type: performance
           os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
-          criterion-xml-dir: build/Testing/criterion-xml
+          catch2-xml-dir: build/Testing/catch2-xml
           coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
           upload-coverage: "false"
@@ -697,7 +696,7 @@ jobs:
             build/coverage.xml
             build/Testing/ctest-results.xml
             build/Testing/python-*.xml
-            build/Testing/criterion-xml/*.xml
+            build/Testing/catch2-xml/*.xml
           retention-days: 7
 
   coverage:
@@ -722,7 +721,7 @@ jobs:
           path: |
             coverage-reports/**/coverage.xml
             coverage-reports/**/ctest-results.xml
-            coverage-reports/**/criterion-xml/*.xml
+          coverage-reports/**/catch2-xml/*.xml
             coverage-reports/summary.json
           retention-days: 7
       - name: Install pinned Codecov CLI

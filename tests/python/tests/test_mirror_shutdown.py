@@ -68,7 +68,7 @@ def test_mirror_ctrl_c_cancels_unreachable_telemetry(
     ]
     environment = os.environ.copy()
     environment.pop("TESTING", None)
-    environment.pop("CRITERION_TEST", None)
+    environment.pop("TESTING", None)
     environment.update(
         ASCII_CHAT_OTEL_ENABLED_TELEMETRY="traces,logs,metrics",
         ASCII_CHAT_OTEL_ENDPOINT="http://192.0.2.1:9/v1/traces",

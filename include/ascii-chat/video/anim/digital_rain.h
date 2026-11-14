@@ -47,6 +47,10 @@
 #include "../../common.h"
 #include <libplatform/terminal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Types and Constants
  * ============================================================================ */
@@ -259,3 +263,7 @@ void digital_rain_set_color_from_filter(digital_rain_t *rain, color_filter_t fil
 int digital_rain_glyph_group(uint32_t codepoint);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

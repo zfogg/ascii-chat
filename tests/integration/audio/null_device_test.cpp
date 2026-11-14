@@ -1,0 +1,123 @@
+#include <ascii-chat/tests/catch2_test_helpers.hpp>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/audio/client_pipeline.h>
+#include <ascii-chat/platform/filesystem.h>
+#include <libplatform/system.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h>
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
+#include <math.h>
+#include <string.h>
+
+#ifdef __linux__
+static char config_path[256];
+static audio_context_t context;
+static client_audio_pipeline_t *pipeline;
+
+static void assert_audio_ok(asciichat_error_t result, const char *operation) {
+  if (result == ASCIICHAT_OK)
+    return;
+  asciichat_error_context_t error = {0};
+  (void)HAS_ERRNO(&error);
+  const PaHostErrorInfo *host = Pa_GetLastHostErrorInfo();
+  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "%s failed (%d): %s; host API %d code %ld: %s", operation, result,
+               error.context_message, host ? (int)host->hostApiType : -1, host ? host->errorCode : 0,
+               host && host->errorText ? host->errorText : "no host detail");
+}
+
+static void setup(void) {
+  int fd;
+  ASCIICHAT_REQUIRE_EQ(platform_create_temp_file(config_path, sizeof(config_path), "ascii-null-audio", &fd), 0);
+  const char config[] = "pcm.!default { type file slave.pcm { type null } infile \"/dev/zero\" "
+                        "file \"/dev/null\" format \"raw\" "
+                        "hint { show on description \"ascii-chat test zero PCM\" } }\n";
+  ASCIICHAT_REQUIRE_EQ(platform_write(fd, config, sizeof(config) - 1), (ssize_t)sizeof(config) - 1);
+  ASCIICHAT_REQUIRE_EQ(platform_close(fd), 0);
+  ASCIICHAT_REQUIRE_EQ(platform_setenv("ALSA_CONFIG_PATH", config_path), 0);
+  memset(&context, 0, sizeof(context));
+  ASCIICHAT_REQUIRE_EQ(audio_init(&context), ASCIICHAT_OK);
+}
+
+static void teardown(void) {
+  audio_destroy(&context);
+  client_audio_pipeline_destroy(pipeline);
+  pipeline = NULL;
+  audio_terminate_portaudio_final();
+  platform_unsetenv("ALSA_CONFIG_PATH");
+  platform_delete_temp_file(config_path);
+}
+TEST_CASE("null_device/duplex_callbacks_deliver_capture_and_stop_cleanly", "[null_device]") {
+  client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
+  config.flags = CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL;
+  config.processor.spectral_enabled = false;
+  pipeline = client_audio_pipeline_create(&config);
+  ASCIICHAT_REQUIRE_NOT_NULL(pipeline);
+  audio_set_pipeline(&context, pipeline);
+  assert_audio_ok(audio_start_duplex(&context), "start duplex");
+  ASCIICHAT_REQUIRE(context.running);
+  assert_audio_ok(audio_start_duplex(&context), "start duplex");
+  uint64_t deadline = platform_get_monotonic_time_us() + 3000000;
+  while (audio_ring_buffer_available_read(context.capture_buffer) < 480 && platform_get_monotonic_time_us() < deadline)
+    platform_sleep_ms(5);
+  ASCIICHAT_REQUIRE_GE(audio_ring_buffer_available_read(context.capture_buffer), 480);
+  float input[480], output[480];
+  for (int i = 0; i < 480; ++i)
+    input[i] = 0.1f * sinf(6.283185307f * 440 * i / 48000);
+  ASCIICHAT_REQUIRE_EQ(audio_write_samples(&context, input, 480), ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(audio_read_samples(&context, output, 480), ASCIICHAT_OK);
+  for (int i = 0; i < 480; ++i)
+    ASCIICHAT_REQUIRE(isfinite(output[i]));
+  audio_flush_playback_buffers(&context);
+  ASCIICHAT_REQUIRE_EQ(audio_stop_duplex(&context), ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_NOT(context.running);
+  ASCIICHAT_REQUIRE_NULL(context.duplex_stream);
+  ASCIICHAT_REQUIRE_EQ(audio_stop_duplex(&context), ASCIICHAT_OK);
+}
+
+TEST_CASE("null_device/playback_only_stream_consumes_queued_samples", "[null_device]") {
+  context.playback_only = true;
+  assert_audio_ok(audio_start_duplex(&context), "start duplex");
+  ASCIICHAT_REQUIRE_NOT_NULL(context.output_stream);
+  float input[9600] = {0.1f};
+  ASCIICHAT_REQUIRE_EQ(audio_write_samples(&context, input, 9600), ASCIICHAT_OK);
+  uint64_t deadline = platform_get_monotonic_time_us() + 3000000;
+  while (audio_ring_buffer_available_read(context.playback_buffer) > 0 && platform_get_monotonic_time_us() < deadline)
+    platform_sleep_ms(5);
+  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_available_read(context.playback_buffer), 0);
+  ASCIICHAT_REQUIRE_EQ(audio_stop_duplex(&context), ASCIICHAT_OK);
+}
+
+TEST_CASE("null_device/input_only_device_is_enumerated_and_normalized_to_the_pipeline_clock", "[null_device]") {
+  options_t *options = SAFE_MALLOC(sizeof(*options), options_t *);
+  *options = *options_get();
+  options->audio_no_playback = true;
+  options->audio_capture_source = AUDIO_CAPTURE_SOURCE_MIC;
+  ASCIICHAT_REQUIRE_EQ(options_state_set(options), ASCIICHAT_OK);
+  SAFE_FREE(options);
+  audio_device_info_t *devices = NULL;
+  unsigned int count = 0;
+  assert_audio_ok(audio_list_input_devices(&devices, &count), "list input devices");
+  ASCIICHAT_REQUIRE_GT(count, 0);
+  audio_free_device_list(devices);
+  assert_audio_ok(audio_list_output_devices(&devices, &count), "list output devices");
+  ASCIICHAT_REQUIRE_GT(count, 0);
+  audio_free_device_list(devices);
+  client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
+  pipeline = client_audio_pipeline_create(&config);
+  ASCIICHAT_REQUIRE_NOT_NULL(pipeline);
+  audio_set_pipeline(&context, pipeline);
+  assert_audio_ok(audio_start_duplex(&context), "start duplex");
+  ASCIICHAT_REQUIRE_NOT_NULL(context.input_stream);
+  ASCIICHAT_REQUIRE_NULL(context.output_stream);
+  uint64_t deadline = platform_get_monotonic_time_us() + 3000000;
+  while (audio_ring_buffer_available_read(context.capture_buffer) < 960 && platform_get_monotonic_time_us() < deadline)
+    platform_sleep_ms(5);
+  ASCIICHAT_REQUIRE_GE(audio_ring_buffer_available_read(context.capture_buffer), 960);
+  float captured[960] = {0};
+  ASCIICHAT_REQUIRE_EQ(audio_read_samples(&context, captured, 960), ASCIICHAT_OK);
+  for (int i = 0; i < 960; ++i)
+    ASCIICHAT_REQUIRE(isfinite(captured[i]));
+  ASCIICHAT_REQUIRE_EQ(audio_stop_duplex(&context), ASCIICHAT_OK);
+}
+#endif

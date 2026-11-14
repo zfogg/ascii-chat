@@ -171,7 +171,6 @@ const char *format_available_modes(option_mode_bitmask_t mode_bitmask);
  * }
  * @endcode
  */
-int strtoint_safe(const char *str);
 
 /**
  * @brief Standard option parsing error return
@@ -579,7 +578,6 @@ asciichat_error_t parse_log_level_option(const char *value_str, options_t *opts)
  * }
  * @endcode
  */
-void update_dimensions_for_full_height(options_t *opts);
 
 /**
  * @brief Update dimensions to current terminal size
@@ -602,7 +600,6 @@ void update_dimensions_for_full_height(options_t *opts);
  * log_info("Terminal dimensions: %dx%d", opt_width, opt_height);
  * @endcode
  */
-void update_dimensions_to_terminal_size(options_t *opts);
 
 /**
  * @brief Print project links with link emoji and colored styling

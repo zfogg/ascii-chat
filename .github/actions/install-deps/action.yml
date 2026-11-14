@@ -622,7 +622,7 @@ runs:
           export PATH="${BREW_PREFIX}/opt/llvm/bin:$PATH"
         fi
 
-        export PKG_CONFIG_LIBS="portaudio-2.0 criterion libzstd libsodium"
+        export PKG_CONFIG_LIBS="portaudio-2.0 libzstd libsodium"
         export PKG_CONFIG_PATH="${BREW_PREFIX}/lib/pkgconfig:${BREW_PREFIX}/share/pkgconfig"
         export CPPFLAGS="-I${BREW_PREFIX}/include"
         export LDFLAGS="-L${BREW_PREFIX}/lib"
@@ -644,7 +644,6 @@ runs:
             portaudio-2.0) echo "portaudio" ;;
             libzstd) echo "zstd" ;;
             libsodium) echo "libsodium" ;;
-            criterion) echo "criterion" ;;
             *) echo "$1" ;;
           esac
         }

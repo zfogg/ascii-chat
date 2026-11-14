@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file util/parsing.h
  * @brief 🔍 Safe Parsing Utilities
@@ -113,6 +117,10 @@ asciichat_error_t safe_parse_size_message(const char *message, unsigned int *wid
 asciichat_error_t safe_parse_audio_message(const char *message, unsigned int *num_samples);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
 
 /* ============================================================================
  * Integer Parsing Functions

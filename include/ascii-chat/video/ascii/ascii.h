@@ -86,6 +86,10 @@ extern char ascii_palette[];
 // Include image.h for image_t type definition
 #include <ascii-chat/video/rgba/image.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Subsystem Initialization Functions
  * @{
@@ -202,6 +206,7 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
                                           const bool stretch, const char *palette_chars, const bool contain);
 
 #include <ascii-chat/video/ascii/render.h>
+
 
 /** Caller owns the reusable resize image; calls using it must be serialized. */
 char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t width, const ssize_t height,
@@ -578,3 +583,7 @@ char *get_lum_palette(void);
 #define ascii_zzz() time_sleep_ns(ASCII_SLEEP_NS)
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

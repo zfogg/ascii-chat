@@ -1,4 +1,4 @@
-"""Exercise CLI video codecs against a fresh local server (no Criterion required).
+"""Exercise CLI video codecs against a fresh local server (no Catch2 required).
 
 Usage: uv run --frozen python tests/integration/cli_video_encoding.py build/bin/ascii-chat[.exe]
 Explicit encoders may be unavailable; failures must be actionable and never send raw.

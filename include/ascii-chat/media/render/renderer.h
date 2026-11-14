@@ -13,6 +13,10 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <libplatform/filesystem.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // ── Platform renderer ─────────────────────────────────────────────────────
 
 typedef struct terminal_renderer_s terminal_renderer_t;
@@ -83,3 +87,7 @@ void render_file_begin_drain(render_file_ctx_t *ctx, uint64_t total, bool total_
 
 // Flush encoder and close file.  Always frees *ctx regardless of error.
 asciichat_error_t render_file_destroy(render_file_ctx_t *ctx);
+
+#ifdef __cplusplus
+}
+#endif

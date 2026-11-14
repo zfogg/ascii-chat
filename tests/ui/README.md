@@ -16,7 +16,7 @@ uv run --frozen python -m pytest tests/python/tests/native/test_ui_probes.py --s
 ```
 
 On Linux/macOS, pass the built `libasciichat.so` or `libasciichat.dylib` instead.
-These tests do not require Criterion.
+These tests do not require Catch2.
 
 The Windows integration test uses ConPTY and a local discovery service. Install
 `pywinpty` and `pyte` in a test virtual environment, then run:
@@ -61,7 +61,7 @@ changing two-participant call grids for 15 seconds. Audio is disabled; both
 cameras use generated video. Plain and ANSI-colored captures are saved alongside
 logs in the output directory. Each test owns and cleans up its tmux server.
 
-Colored grid composition regressions are covered by the focused Criterion suite:
+Colored grid composition regressions are covered by the focused Catch2 suite:
 
 ```sh
 cmake --build build --target test_unit_video_ascii

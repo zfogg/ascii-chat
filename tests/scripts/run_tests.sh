@@ -378,17 +378,17 @@ function get_test_executables() {
     _discover_tests_in_dir "$PROJECT_ROOT/tests/integration" "$bin_dir" "$valid_targets"
     ;;
   performance)
-    if [[ ! -d "$PROJECT_ROOT/tests/performance" ]]; then
-      log_warning "Skipping performance tests: directory '$PROJECT_ROOT/tests/performance' not found"
+    if [[ ! -d "$PROJECT_ROOT/tests/benchmarks" ]]; then
+      log_warning "Skipping benchmark tests: directory '$PROJECT_ROOT/tests/benchmarks' not found"
       return
     fi
-    _discover_tests_in_dir "$PROJECT_ROOT/tests/performance" "$bin_dir" "$valid_targets"
+    _discover_tests_in_dir "$PROJECT_ROOT/tests/benchmarks" "$bin_dir" "$valid_targets"
     ;;
   all)
     # Discover from all test directories
     _discover_tests_in_dir "$PROJECT_ROOT/tests/unit" "$bin_dir" "$valid_targets"
     _discover_tests_in_dir "$PROJECT_ROOT/tests/integration" "$bin_dir" "$valid_targets"
-    _discover_tests_in_dir "$PROJECT_ROOT/tests/performance" "$bin_dir" "$valid_targets"
+    _discover_tests_in_dir "$PROJECT_ROOT/tests/benchmarks" "$bin_dir" "$valid_targets"
     ;;
   *)
     log_error "Unknown test category: $category"
@@ -700,16 +700,15 @@ function determine_test_failure() {
 # SIMPLIFIED TEST EXECUTION - SHARED SPAWNING + TWO EXECUTION MODES
 # =============================================================================
 
-# Merge Criterion's XML output into combined JUnit file
+# Merge Catch2's JUnit output into combined JUnit file
 # Args: test_name junit_file
-function merge_criterion_xml() {
+function merge_catch2_xml() {
   local test_name="$1"
   local junit_file="$2"
   local test_xml_file="/tmp/test_${test_name}_$$.xml"
 
   if [[ -n "$junit_file" ]] && [[ -f "$test_xml_file" ]]; then
-    # Extract only <testsuite> elements (not <testsuites> wrapper) from Criterion's XML
-    # Criterion wraps everything in <testsuites>, we want just the inner <testsuite> elements
+    # Extract only <testsuite> elements (not the outer <testsuites> wrapper).
     sed -n '/<testsuite name=/,/<\/testsuite>/p' "$test_xml_file" >> "$junit_file"
     rm -f "$test_xml_file"
   fi
@@ -720,25 +719,19 @@ function merge_criterion_xml() {
 function spawn_test() {
   local test_executable="$1"
   local background="$2"  # "sync" or "async"
-  local xml_output_file="${3:-}"  # Optional: path to write Criterion XML output
+  local xml_output_file="${3:-}"  # Optional: path to write Catch2 JUnit XML
 
   local test_name=$(basename "$test_executable")
 
-  # Use JOBS if specified, otherwise use 0 for auto-detection
-  local jobs_arg="0"
-  if [[ -n "$JOBS" ]] && [[ "$JOBS" -gt 0 ]]; then
-    jobs_arg="$JOBS"
-  fi
-
-  local test_args=("--jobs" "$jobs_arg" "--timeout" "$TEST_TIMEOUT" "--color=always" "--short-filename")
+  local test_args=("--reporter" "console" "--colour-mode" "ansi")
   if [[ -n "$VERBOSE" ]]; then
     test_args+=(--verbose)
     log_verbose "Adding --verbose flag to $test_name (VERBOSE=$VERBOSE)"
   fi
 
-  # If XML output requested, tell Criterion to generate it directly
+  # If XML output requested, use Catch2's JUnit reporter directly.
   if [[ -n "$xml_output_file" ]]; then
-    test_args+=("--xml=$xml_output_file")
+    test_args+=("--reporter" "junit::out=$xml_output_file")
   fi
 
   if [[ "$background" == "async" ]]; then
@@ -748,13 +741,13 @@ function spawn_test() {
     if [[ -n "$VERBOSE" ]]; then
       # In verbose mode, show output in real-time
       {
-        TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}"
+        TESTING=1 "$test_executable" "${test_args[@]}"
         echo "EXIT_CODE:$?" > /tmp/test_${test_name}_$$.exitcode
       } 2>&1 &
     else
       # In non-verbose mode, capture output to file
       {
-        TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}"
+        TESTING=1 "$test_executable" "${test_args[@]}"
         echo "EXIT_CODE:$?" > /tmp/test_${test_name}_$$.exitcode
       } > /tmp/test_${test_name}_$$.log 2>&1 &
     fi
@@ -766,7 +759,7 @@ function spawn_test() {
     # Always show output in real-time
     log_verbose "EXECUTING SYNC: $test_executable ${test_args[*]}"
     # Redirect test output to stderr so it's visible but not captured in the return value
-    TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log >&2
+    TESTING=1 "$test_executable" "${test_args[@]}" 2>&1 | tee /tmp/test_${test_name}_$$.log >&2
     local exit_code=${PIPESTATUS[0]}  # Get exit code of test, not tee
     echo $exit_code  # Return only the exit code to stdout
   fi
@@ -831,8 +824,8 @@ function run_tests_sequential() {
       failed_tests+=("$test_name")  # Track failed test name
     fi
 
-    # Merge Criterion's XML output into combined JUnit file
-    merge_criterion_xml "$test_name" "$junit_file"
+# Merge Catch2's XML output into combined JUnit file
+  merge_catch2_xml "$test_name" "$junit_file"
   done
 
   # Return results via global variables (no subshell needed)
@@ -944,8 +937,8 @@ function run_tests_parallel() {
           failed_tests+=("$test_name")  # Track failed test name
         fi
 
-        # Merge Criterion's XML output into combined JUnit file
-        merge_criterion_xml "$test_name" "$junit_file"
+        # Merge Catch2's XML output into combined JUnit file
+  merge_catch2_xml "$test_name" "$junit_file"
 
         # Clean up log file
         rm -f "$log_file_path"

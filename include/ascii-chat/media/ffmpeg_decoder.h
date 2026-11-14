@@ -44,6 +44,10 @@
 #include "../common.h"
 #include <ascii-chat/video/rgba/image.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * FFmpeg Decoder Handle
  * ============================================================================ */
@@ -388,3 +392,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*c
 ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, bool (*cancel)(void *), void *data,
                                                              const char *headers, const char *cookies,
                                                              const char *proxy);
+
+#ifdef __cplusplus
+}
+#endif

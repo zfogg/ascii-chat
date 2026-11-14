@@ -1,4 +1,4 @@
-"""Test real CRC/CPU sources without Criterion or other project dependencies.
+"""Test real CRC/CPU sources without the full application dependency graph.
 
 Usage: uv run --frozen python tests/benchmarks/crc32.py [--cc clang] [--sanitize] [--bench]
 Builds runtime dispatch, hardware-disabled, and simulated no-CRC CPU variants.

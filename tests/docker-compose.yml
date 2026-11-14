@@ -73,7 +73,7 @@ services:
 
       # Test configuration
       - TESTING=1
-      - CRITERION_TEST=1
+      - TESTING=1
 
       # Security: Skip known_hosts checking for integration tests
       - ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1
@@ -125,7 +125,7 @@ services:
       - CMAKE_GENERATOR=Ninja
       - CMAKE_BUILD_TYPE=Debug
       - TESTING=1
-      - CRITERION_TEST=1
+      - TESTING=1
       - ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1
       - ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
       - ASAN_OPTIONS=detect_leaks=1

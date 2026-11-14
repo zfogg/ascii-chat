@@ -1,5 +1,5 @@
 # Dockerfile for running ascii-chat tests on Windows via Docker
-# Uses Arch Linux for a lightweight container with full Criterion compatibility
+# Uses Arch Linux for a lightweight container with the full Catch2 test suite.
 
 FROM archlinux:latest
 
@@ -67,4 +67,4 @@ COPY --from=ghcr.io/astral-sh/uv:0.13.1 /uv /usr/local/bin/uv
 WORKDIR /app
 
 # Default command builds and runs tests with ctest
-CMD ["sh", "-c", "cmake --preset docker && cmake --build build_docker --target all tests-criterion-build && ctest --test-dir build_docker --output-on-failure --parallel 0"]
+CMD ["sh", "-c", "cmake --preset docker && cmake --build build_docker --target all tests-catch2-build && ctest --test-dir build_docker --output-on-failure --parallel 0"]

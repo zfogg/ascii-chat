@@ -17,6 +17,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Parse man page sections from a FILE handle
  *
@@ -101,3 +105,7 @@ const parsed_section_t *manpage_parser_find_section(const parsed_section_t *sect
                                                     const char *section_name);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

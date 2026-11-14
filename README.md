@@ -532,7 +532,7 @@ ascii-chat is built on operating system code and several libraries.
 - [**FreeType2**](https://freetype.org/) - Font rasterization for `--render-file` glyph rendering
 - [**fontconfig**](https://www.freedesktop.org/wiki/Software/fontconfig/) - Font resolution and configuration for `--render-file`
 - [**libexecinfo**](https://github.com/termux/libexecinfo) - Backtrace support for musl builds (musl only)
-- [**Criterion**](https://criterion.readthedocs.io/en/master/) - C test framework (Unix test builds only)
+- [**Catch2 v3**](https://catch2.github.io/) - Cross-platform C++ test framework and benchmark runner
 - [**ssh-agent**](https://linux.die.net/man/1/ssh-agent) - SSH key agent authentication (optional)
 - [**gpg-agent**](https://linux.die.net/man/1/gpg-agent) - GPG key agent authentication (optional)
 
@@ -592,25 +592,24 @@ The documentation is automatically generated from source code using Doxygen and 
 
 #### Testing Framework
 
-- **Framework**: [libcriterion](https://criterion.readthedocs.io/en/master/)
-- **Coverage**: CI publishes one Codecov upload after all seven Ubuntu and macOS unit, integration, and performance reports are present, with completed CTest results and nonzero Criterion cases. Download the `complete-coverage` artifact for the original reports and a summary of executed-line coverage. Completed runs contribute coverage even when assertions fail; those failures remain visible in the test checks. The badge uses Codecov's coverage metric, which counts partially covered branches as uncovered lines; it can be lower than gcovr's executed-line percentage.
+- **Framework**: [Catch2 v3](https://catch2.github.io/), with CTest discovery, tags, sections, generators, matchers, and benchmarks
+- **Coverage**: CI publishes Catch2 JUnit XML from `build/Testing/catch2-xml/`, CTest results, and the instrumented coverage data to Codecov. Completed runs contribute coverage even when assertions fail; those failures remain visible in the test checks. The badge uses Codecov's coverage metric, which counts partially covered branches as uncovered lines; it can be lower than gcovr's executed-line percentage.
 - **Performance**: SIMD performance tests with aggressive speedup expectations (1-4x)
 - **Memory Checking**: Comprehensive sanitizer support via `-b debug` for detecting memory issues, undefined behavior, and more
 
-Tests are run using CMake's ctest tool, which integrates with Criterion for parallel execution and XML output.
+Tests are run using CMake's CTest tool, which discovers Catch2 cases, schedules them in parallel, and collects JUnit XML.
 
 #### Quick Start
 
 - Have the dependencies installed.
 - Choose:
-  1. Linux or macOS: Use ctest directly
-  2. Windows: Use Docker: `./tests/scripts/run-docker-tests.ps1`
+  1. Windows, Linux, or macOS: Use the checked-in CMake preset and CTest directly
 
 #### Test Types
 
 - **Unit Tests**: Test individual components in isolation
 - **Integration Tests**: Test component interactions and full workflows
-- **Performance Tests**: Benchmark stuff like SIMD vs scalar implementations
+- **Benchmarks**: Catch2 benchmarks for SIMD and rendering performance under `tests/benchmarks/`
 
 #### Running Tests with ctest
 
@@ -636,9 +635,9 @@ ctest --test-dir build -R "buffer-ownership" --output-on-failure
 ctest --test-dir build -N
 ```
 
-#### Windows Docker Testing
+#### Windows Testing
 
-On Windows, since Criterion is POSIX-based, tests must be run in a Docker container. Use the PowerShell wrapper script:
+Catch2 v3 is supported by the native Windows Clang build. Use the same CTest labels as Linux and macOS:
 
 ```powershell
 # Run all tests

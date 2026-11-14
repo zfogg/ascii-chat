@@ -1,6 +1,10 @@
 #pragma once
 #include <ascii-chat/video/rgba/image.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct test_pattern test_pattern_t;
 
 /** Independent, reusable RGB renderer. Time is elapsed milliseconds, not frame count. */
@@ -11,3 +15,7 @@ asciichat_error_t test_pattern_render(test_pattern_t *pattern, int index, double
 const uint8_t *test_pattern_rgba(test_pattern_t *pattern);
 image_t *test_pattern_image(test_pattern_t *pattern);
 void test_pattern_destroy(test_pattern_t *pattern);
+
+#ifdef __cplusplus
+}
+#endif

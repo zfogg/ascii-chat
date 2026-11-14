@@ -5,6 +5,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Validate ASCII frame integrity
  *
@@ -32,3 +36,7 @@ bool frame_validate_integrity(const char *frame_data, size_t frame_size);
 size_t frame_get_valid_end(const char *frame_data, size_t frame_size);
 
 #endif // FRAME_VALIDATOR_H
+
+#ifdef __cplusplus
+}
+#endif

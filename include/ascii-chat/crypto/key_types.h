@@ -29,6 +29,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief The normalized public identity used by ascii-chat's crypto and key-management code
  * @name Key Type Definitions
@@ -109,5 +113,9 @@ typedef struct {
  * @brief Private identity-key material used for server authentication and signing
  */
 } private_key_t;
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */
