@@ -292,8 +292,7 @@ TEST_CASE("gpg_agent_wire/binary_nulls_and_percent_escapes_preserve_signature_by
     memset(actual, 0xa5, sizeof(actual));
     size_t signature_len = 999;
     const uint8_t message[] = "wire";
-    int result = gpg_agent_sign((int)wire_client, "0123456789012345678901234567890123456789", message, sizeof(message),
-                                actual, &signature_len);
+    int result = gpg_agent_sign((int)wire_client, "0123456789012345678901234567890123456789", message, sizeof(message), actual, &signature_len);
     if (malformed) {
       ASCIICHAT_REQUIRE_NE(result, 0);
       ASCIICHAT_REQUIRE_EQ(signature_len, 999);

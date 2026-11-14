@@ -18,7 +18,9 @@ typedef enum {
 #ifndef __EMSCRIPTEN__
 #include <gotel/gotel.h>
 /**
- * @brief ascii otel scope is intentionally a small, concrete record. Fields such as `scope`, `retained`, `previous` give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding subsystem—not independently managed.
+ * @brief ascii otel scope is intentionally a small, concrete record. Fields such as `scope`, `retained`, `previous`
+ * give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding
+ * subsystem—not independently managed.
  */
 typedef struct ascii_otel_scope {
   gotel_scope_t scope;
@@ -36,16 +38,13 @@ void ascii_otel_stats_attach(stats_scope_t *scope);
 ascii_otel_metric_t ascii_otel_stats_metric(stats_record_kind_t kind, unsigned id);
 void ascii_otel_ui_usage(const char *screen, const char *event, uint64_t duration_ns);
 void ascii_otel_call_session_used(const char *session_string);
-void ascii_otel_packet(ascii_otel_scope_t *scope, uint16_t type, size_t payload_size, const char *action,
-                       int transport);
+void ascii_otel_packet(ascii_otel_scope_t *scope, uint16_t type, size_t payload_size, const char *action, int transport);
 void ascii_otel_exit(int code);
-void ascii_otel_frame_rejected(const char *validator, const char *reason, size_t bytes, uint32_t width, uint32_t height,
-                               asciichat_error_t code);
+void ascii_otel_frame_rejected(const char *validator, const char *reason, size_t bytes, uint32_t width, uint32_t height, asciichat_error_t code);
 gotel_context_t ascii_otel_context(void);
 void ascii_otel_scope_int(ascii_otel_scope_t *scope, const char *key, int64_t value);
 void ascii_otel_scope_string(ascii_otel_scope_t *scope, const char *key, const char *value);
-void ascii_otel_scope_parent(ascii_otel_scope_t *scope, ascii_otel_operation_t operation,
-                             const gotel_context_t *parent);
+void ascii_otel_scope_parent(ascii_otel_scope_t *scope, ascii_otel_operation_t operation, const gotel_context_t *parent);
 void ascii_otel_scope_begin(ascii_otel_scope_t *scope, ascii_otel_operation_t operation);
 void ascii_otel_scope_end(ascii_otel_scope_t *scope);
 void ascii_otel_log(int level, const char *file, int line, const char *function, const char *format, va_list args);
@@ -68,18 +67,17 @@ int ascii_otel_sqlite_prepare(sqlite3 *db, const char *sql, sqlite3_stmt **state
 #define ASCII_OTEL_ATTR_STRING(key, value) ascii_otel_scope_string(&otel_scope, key, value)
 #define ASCII_OTEL_ATTR_INT(key, value) ascii_otel_scope_int(&otel_scope, key, value)
 #define ASCII_OTEL_PACKET(type, size, action, transport) ascii_otel_packet(&otel_scope, type, size, action, transport)
-#define ASCII_OTEL_SCOPE_PARENT(id, parent)                                                                            \
-  ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0};                                  \
+#define ASCII_OTEL_SCOPE_PARENT(id, parent)                                                                                                                                                            \
+  ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0};                                                                                                                  \
   ascii_otel_scope_parent(&otel_scope, ASCII_OTEL_##id, parent)
-#define ASCII_OTEL_SCOPE(id)                                                                                           \
-  ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0};                                  \
+#define ASCII_OTEL_SCOPE(id)                                                                                                                                                                           \
+  ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0};                                                                                                                  \
   ascii_otel_scope_begin(&otel_scope, ASCII_OTEL_##id)
 #else
 #define ASCII_OTEL_ATTR_STRING(key, value) ((void)(key), (void)(value))
 #define ASCII_OTEL_ATTR_INT(key, value) ((void)(key), (void)(value))
 #define ASCII_OTEL_PACKET(type, size, action, transport) ((void)0)
-#define ascii_otel_frame_rejected(validator, reason, bytes, width, height, code)                                       \
-  ((void)(validator), (void)(reason), (void)(bytes), (void)(width), (void)(height), (void)(code))
+#define ascii_otel_frame_rejected(validator, reason, bytes, width, height, code) ((void)(validator), (void)(reason), (void)(bytes), (void)(width), (void)(height), (void)(code))
 #define ascii_otel_pipeline_progress(stage, expected) ((void)(stage), (void)(expected))
 #define ascii_otel_ui_usage(screen, event, duration_ns) ((void)(screen), (void)(event), (void)(duration_ns))
 #define ascii_otel_sqlite_prepare(db, sql, statement) sqlite3_prepare_v2(db, sql, -1, statement, NULL)

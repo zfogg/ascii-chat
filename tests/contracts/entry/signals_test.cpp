@@ -58,6 +58,9 @@ int discovery_main(void) {
 int mcp_server_main(void) {
   return ASCIICHAT_OK;
 }
+int api_server_main(void) {
+  return ASCIICHAT_OK;
+}
 asciichat_error_t mcp_stdio_reserve(void) {
   return ASCIICHAT_OK;
 }
@@ -66,6 +69,12 @@ static void interrupted(void) {
   ++interrupts;
 }
 static void setup(void) {
+  atomic_store_bool(&g_should_exit, false);
+  help_active = false;
+  help_toggles = 0;
+  interrupts = 0;
+  forced_exit = 0;
+  signal_console[0] = '\0';
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);

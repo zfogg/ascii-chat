@@ -39,7 +39,10 @@ asciichat_error_t acip_client_receive_packet(acip_transport_t *transport, packet
   *out = (packet_envelope_t){0};
   if (!acip_transport_is_connected(transport) && !acip_transport_has_pending_data(transport))
     return SET_ERRNO(ERROR_NETWORK, "Transport not connected");
-  return packet_receive_via_transport(transport, &out->type, &out->data, &out->len, &out->allocated_buffer);
+  asciichat_error_t result = packet_receive_via_transport(transport, &out->type, &out->data, &out->len, &out->allocated_buffer);
+  if (result == ASCIICHAT_OK && out->allocated_buffer)
+    out->allocated_size = buffer_capacity(out->allocated_buffer);
+  return result;
 }
 
 asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport, const acip_client_callbacks_t *callbacks) {
@@ -49,9 +52,45 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport, 
   packet_envelope_t envelope = {0};
   asciichat_error_t result = acip_client_receive_packet(transport, &envelope);
   if (result == ASCIICHAT_OK)
-    result = acip_handle_client_packet(transport, envelope.type, envelope.data, envelope.len, callbacks);
-  if (envelope.allocated_buffer)
-    buffer_release(envelope.allocated_buffer);
+    result = acip_client_dispatch_packet(transport, envelope.type, envelope.data, envelope.len, callbacks);
+  packet_envelope_release(&envelope);
+  return result;
+}
+
+asciichat_error_t acip_client_dispatch_packet(acip_transport_t *transport, packet_type_t type, const void *payload, size_t length, const acip_client_callbacks_t *callbacks) {
+  if (!transport || !callbacks || (!payload && length))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client packet dispatch input");
+  return acip_handle_client_packet(transport, type, payload, length, callbacks);
+}
+
+void acip_client_session_init(acip_client_session_t *session, acip_transport_t *transport, const acip_client_callbacks_t *callbacks) {
+  if (!session)
+    return;
+  *session = (acip_client_session_t){.transport = transport};
+  if (callbacks)
+    session->callbacks = *callbacks;
+}
+
+asciichat_error_t acip_client_session_receive(acip_client_session_t *session) {
+  if (!session)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing ACIP client session");
+  return acip_client_receive_and_dispatch(session->transport, &session->callbacks);
+}
+
+asciichat_error_t acip_client_session_dispatch(acip_client_session_t *session, packet_type_t type, const void *payload, size_t length) {
+  if (!session)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing ACIP client session");
+  return acip_client_dispatch_packet(session->transport, type, payload, length, &session->callbacks);
+}
+
+asciichat_error_t acip_client_session_process_wire(acip_client_session_t *session, const void *wire, size_t length) {
+  if (!session || !wire)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid ACIP client wire packet");
+  packet_envelope_t envelope = {0};
+  asciichat_error_t result = packet_parse_envelope(wire, length, session->transport ? session->transport->crypto_ctx : NULL, &envelope);
+  if (result == ASCIICHAT_OK && !envelope.consumed)
+    result = acip_client_session_dispatch(session, envelope.type, envelope.data, envelope.len);
+  packet_envelope_release(&envelope);
   return result;
 }
 

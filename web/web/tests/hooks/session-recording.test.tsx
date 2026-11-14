@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, afterEach, expect, it, vi } from "vite-plus/test";
-import type { AsciiRendererHandle } from "@ascii-chat/shared/components/AsciiRenderer";
+import type { AsciiRendererHandle } from "ascii-chat/react";
 import type { AudioPipeline } from "../../src/audio/AudioPipeline";
 import { useSessionRecording } from "../../src/hooks/useSessionRecording";
 

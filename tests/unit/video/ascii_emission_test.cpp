@@ -5,7 +5,7 @@
 #include <catch2/catch_all.hpp>
 #endif
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/common.h>
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/ascii/sgr.h>
 #include <ascii-chat/video/ascii/simd/cells.h>
@@ -292,8 +292,7 @@ TEST_CASE("ascii_emission/simd_pixel_stages_and_tails", "[ascii_emission]") {
       }
     }
     // Cartesian color boundaries exercise exact nearest-palette ties.
-    const uint8_t edges[] = {0,   1,   47,  48,  63,  64,  95,  115, 116, 127, 128, 135,
-                             155, 156, 175, 192, 195, 196, 215, 235, 236, 254, 255};
+    const uint8_t edges[] = {0, 1, 47, 48, 63, 64, 95, 115, 116, 127, 128, 135, 155, 156, 175, 192, 195, 196, 215, 235, 236, 254, 255};
     size_t used = 0;
     for (size_t r = 0; r < sizeof(edges); ++r)
       for (size_t g = 0; g < sizeof(edges); ++g)
@@ -341,8 +340,7 @@ TEST_CASE("ascii_emission/all_simd_halfblock_modes", "[ascii_emission]") {
             terminal_cell_t cell = expected[(y / 2) * width + x];
             unsigned yt = (76u * top[0] + 150u * top[1] + 29u * top[2]) >> 8;
             unsigned yb = (76u * bottom[0] + 150u * bottom[1] + 29u * bottom[2]) >> 8;
-            bool padding = mode == ASCII_COLOR_NONE ? yt < 16 && yb < 16
-                                                    : !(top[0] | top[1] | top[2] | bottom[0] | bottom[1] | bottom[2]);
+            bool padding = mode == ASCII_COLOR_NONE ? yt < 16 && yb < 16 : !(top[0] | top[1] | top[2] | bottom[0] | bottom[1] | bottom[2]);
             if (padding) {
               ASCIICHAT_REQUIRE_EQ(cell.glyph[0], ' ');
               ASCIICHAT_REQUIRE_EQ(cell.fg, -1);
@@ -732,6 +730,7 @@ TEST_CASE("ascii_emission/optimized_glyph_scoring_matches_reference", "[ascii_em
       // The renderer averages each channel before computing luminance.
       int v = sums[i] / 4;
       luminance[i] = (77 * v + 150 * v + 29 * v) >> 8;
+      luminance[i] += (luminance[i] * (255 - luminance[i]) + 256) / 512;
     }
     int mean = 0;
     for (int i = 0; i < 16; ++i)
@@ -773,7 +772,7 @@ TEST_CASE("ascii_emission/optimized_luminance_matches_generic_hysteresis", "[asc
   for (unsigned old = 0; old < 256; old += 3) {
     for (unsigned current = 0; current < 256; current += 5) {
       unsigned old_bin = old >> 2, bin = current >> 2;
-      ascii_temporal_cell_t reference = {.glyph = frame.table[old_bin], .color = 0x646464, .valid = true};
+      ascii_temporal_cell_t reference = {.glyph = frame.table[old_bin], .color = 0x646464, .source_color = old * 0x010101u, .valid = true};
       memset(reference.samples, old, sizeof(reference.samples));
       state.cells[0] = reference;
       uint64_t best = UINT64_MAX, previous = UINT64_MAX;
@@ -788,8 +787,7 @@ TEST_CASE("ascii_emission/optimized_luminance_matches_generic_hysteresis", "[asc
       uint8_t samples[16];
       memset(samples, current, sizeof(samples));
       uint32_t expected_color;
-      uint32_t expected = ascii_stabilizer_choose(&reference, samples, frame.table[bin], best, previous,
-                                                  current * 0x010101u, state.elapsed_ns, &expected_color);
+      uint32_t expected = ascii_stabilizer_choose(&reference, samples, frame.table[bin], best, previous, current * 0x010101u, state.elapsed_ns, &expected_color);
       pixel = (rgb_pixel_t){current, current, current};
       char *output = ascii_render(&image, " .#@", ASCII_COLOR_TRUE, false, false, &simd_cells_scalar);
       ASCIICHAT_REQUIRE_NOT_NULL(output);
@@ -932,6 +930,20 @@ TEST_CASE("ascii_emission/glyph_matching_uses_shape_and_rejects_invalid_sizes", 
   ASCIICHAT_REQUIRE_STR_EQ(block_cells[0].glyph, "\xe2\x96\x80");
   ASCIICHAT_REQUIRE_STR_EQ(block_cells[1].glyph, "\xe2\x96\x84");
   SAFE_FREE(blocks);
+
+  // Equal-luminance colors still have a visible boundary whose orientation
+  // should influence the selected glyph.
+  for (int y = 0; y < 8; ++y)
+    for (int x = 0; x < 16; ++x) {
+      bool red = x < 8 ? y < 4 : x < 12;
+      pixels[y * 16 + x] = red ? (rgb_pixel_t){150, 0, 0} : (rgb_pixel_t){0, 77, 0};
+    }
+  char *chromatic = test_render_glyph(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x80\xe2\x96\x8c");
+  cr_assert_not_null(chromatic);
+  decode(chromatic, block_cells, 2, 1, true);
+  cr_assert_str_eq(block_cells[0].glyph, "\xe2\x96\x80");
+  cr_assert_str_eq(block_cells[1].glyph, "\xe2\x96\x8c");
+  SAFE_FREE(chromatic);
 
   memset(pixels, 0, sizeof(pixels));
   for (int y = 0; y < 8; ++y)

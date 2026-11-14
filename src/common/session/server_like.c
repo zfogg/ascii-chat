@@ -31,7 +31,7 @@
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <libplatform/systemd.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/util/ip.h>

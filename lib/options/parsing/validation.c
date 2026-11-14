@@ -19,7 +19,7 @@
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/video/ascii/palette.h>
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/render.h>
 #include <ascii-chat/options/options.h>
 
 asciichat_error_t validate_glyph_palette(const options_t *opts) {
@@ -29,7 +29,7 @@ asciichat_error_t validate_glyph_palette(const options_t *opts) {
     return ASCIICHAT_OK;
   const palette_def_t *builtin = get_builtin_palette(opts->palette_type);
   const char *palette = opts->palette_type == PALETTE_CUSTOM ? opts->palette_custom : builtin ? builtin->chars : NULL;
-  if (!ascii_glyph_palette_supported(palette))
+  if (!ascii_render_palette_supported(ASCII_RENDERER_GLYPH, palette))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette contains characters without glyph masks");
   return ASCIICHAT_OK;
 }

@@ -51,8 +51,8 @@ describe("browser error overlay", () => {
           {
             code: 17,
             message: "outer failure",
-            file: "src/web/client.c",
-            fullFile: "C:/src/ascii-chat/src/web/client.c",
+            file: "lib/network/browser/client.c",
+            fullFile: "C:/src/ascii-chat/lib/network/browser/client.c",
             function: "client_validate_frame",
             line: 1196,
           },
@@ -73,7 +73,7 @@ describe("browser error overlay", () => {
     expect(screen.getByTitle("Stack frame 1").textContent).toBe("1");
     expect(screen.getByText("checksum mismatch")).toBeTruthy();
     const outerPath = screen.getByRole("button", {
-      name: "Copy full path for src/web/client.c",
+      name: "Copy full path for lib/network/browser/client.c",
     });
     const outerMetadata = outerPath.parentElement!;
     const outerMessage = screen.getByText("outer failure");
@@ -82,10 +82,10 @@ describe("browser error overlay", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(outerMetadata.closest("li")?.className).toContain("border");
-    expect(outerPath.textContent).toBe("src/web/client.c:1196");
+    expect(outerPath.textContent).toBe("lib/network/browser/client.c:1196");
     expect(outerPath.className).toContain("underline");
     expect(outerPath.querySelector(".text-blue-400")?.textContent).toBe(
-      "src/web/client.c",
+      "lib/network/browser/client.c",
     );
     expect(outerPath.querySelector(".text-terminal-fg")?.textContent).toBe(":");
     expect(outerPath.querySelector(".text-purple-400")?.textContent).toBe(
@@ -93,7 +93,7 @@ describe("browser error overlay", () => {
     );
     fireEvent.click(outerPath);
     expect(writeText).toHaveBeenCalledWith(
-      "C:/src/ascii-chat/src/web/client.c",
+      "C:/src/ascii-chat/lib/network/browser/client.c",
     );
     expect(screen.getByText("client_validate_frame()").className).toContain(
       "text-orange-400",

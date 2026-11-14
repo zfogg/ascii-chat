@@ -14,7 +14,7 @@
 
 /** Unicode scalar encoding storage; text capacity includes NUL. */
 #define UTF8_MAX_BYTES 4
-#define UTF8_BUFFER_SIZE (UTF8_MAX_BYTES + 1)
+#define ASCII_CHAT_UTF8_BUFFER_SIZE (UTF8_MAX_BYTES + 1)
 
 /**
  * @brief Small buffer size (256 bytes)

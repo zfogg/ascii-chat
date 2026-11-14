@@ -1,7 +1,8 @@
 #include <ascii-chat/network/acip/settings.h>
+#include <ascii-chat/network/terminal_capabilities.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/video/ascii/palette.h>
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/render.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/common.h>
 #include <string.h>
@@ -54,7 +55,7 @@ asciichat_error_t acip_render_settings_prepare(acip_render_settings_t *candidate
     next.caps.capabilities &= ~(uint32_t)TERM_CAP_MATRIX_RAIN;
   if (initialize_client_palette(next.caps.palette_type, values->palette_custom, next.palette, &next.palette_length, next.luminance))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rendering palette");
-  if (values->renderer == ASCII_RENDERER_GLYPH && values->palette_explicit && !ascii_glyph_palette_supported(next.palette))
+  if (values->renderer == ASCII_RENDERER_GLYPH && values->palette_explicit && !ascii_render_palette_supported(ASCII_RENDERER_GLYPH, next.palette))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Glyph palette contains characters without glyph masks");
   if (values->renderer == ASCII_RENDERER_GLYPH && !values->palette_explicit) {
     SAFE_STRNCPY(next.palette, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~", sizeof(next.palette));
@@ -96,6 +97,10 @@ asciichat_error_t acip_render_settings_capabilities(acip_render_settings_t *stat
     values->palette_type = PALETTE_STANDARD;
   SAFE_STRNCPY(values->palette_custom, packet->palette_custom, sizeof(values->palette_custom));
   values->matrix_rain = (NET_TO_HOST_U32(packet->capabilities) & TERM_CAP_MATRIX_RAIN) != 0;
+  uint32_t flags = NET_TO_HOST_U32(packet->capabilities);
+  values->renderer = (flags & TERM_CAP_GLYPH_RENDERER) ? ASCII_RENDERER_GLYPH : ASCII_RENDERER_LUMINANCE;
+  values->palette_explicit = (flags & TERM_CAP_EXPLICIT_PALETTE) != 0;
+  values->stabilize = (flags & TERM_CAP_STABILIZE) != 0;
   acip_render_settings_t next = *state;
   next.caps.capabilities = NET_TO_HOST_U32(packet->capabilities);
   next.caps.utf8_support = NET_TO_HOST_U32(packet->utf8_support) != 0;

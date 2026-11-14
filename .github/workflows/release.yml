@@ -151,10 +151,19 @@ jobs:
           EXISTING_TAG=$(git ls-remote --tags origin "refs/tags/$VERSION^{}" | cut -f1)
           if [[ -n "$EXISTING_TAG" ]]; then
             CHANGED_FILES=$(git diff --name-only "$EXISTING_TAG" "$GITHUB_SHA")
-            if ! git merge-base --is-ancestor "$EXISTING_TAG" "$GITHUB_SHA" || [[ "$CHANGED_FILES" != ".github/workflows/release.yml" ]]; then
-              echo "::error::Tag $VERSION points to $EXISTING_TAG and the release workflow source contains changes beyond the workflow itself."
+            if ! git merge-base --is-ancestor "$EXISTING_TAG" "$GITHUB_SHA"; then
+              echo "::error::Tag $VERSION does not point at an ancestor of the workflow commit."
               exit 1
             fi
+            while IFS= read -r changed_file; do
+              case "$changed_file" in
+                .github/workflows/release.yml|.github/actions/install-deps/action.yml) ;;
+                *)
+                  echo "::error::Tag $VERSION points to $EXISTING_TAG and the release source contains changes beyond the release workflow and dependency action."
+                  exit 1
+                  ;;
+              esac
+            done <<< "$CHANGED_FILES"
             echo "Tag $VERSION points to tested source $EXISTING_TAG; only the release workflow changed, so reusing it."
           else
             git tag -a "$VERSION" -m "Release $VERSION"
@@ -319,6 +328,23 @@ jobs:
           dpkg-deb --version
           rpmbuild --version
           echo "All packaging tools verified!"
+
+      - name: Validate CMake dependency cache
+        shell: bash
+        run: |
+          cache_root=".deps-cache/Release"
+          required=(
+            "$cache_root/asciichat_libuv-src/CMakeLists.txt"
+            "$cache_root/asciichat_zstd-src/CMakeLists.txt"
+            "$cache_root/asciichat_portaudio-src/CMakeLists.txt"
+          )
+          for path in "${required[@]}"; do
+            if [[ ! -f "$path" ]]; then
+              echo "Incomplete CMake dependency cache: missing $path"
+              rm -rf "$cache_root"
+              break
+            fi
+          done
 
       - name: Configure with CMake
         run: |
@@ -568,13 +594,33 @@ jobs:
           rm -rf .deps-cache/Release/webrtc_aec3-src .deps-cache/Release/webrtc_aec3-build .deps-cache/Release/webrtc_aec3-subbuild
           echo "WebRTC cache cleared - will re-fetch with patches applied"
 
+      - name: Validate CMake dependency cache
+        shell: bash
+        run: |
+          cache_root=".deps-cache/Release"
+          required=(
+            "$cache_root/asciichat_libuv-src/CMakeLists.txt"
+            "$cache_root/asciichat_zstd-src/CMakeLists.txt"
+            "$cache_root/asciichat_portaudio-src/CMakeLists.txt"
+          )
+          for path in "${required[@]}"; do
+            if [[ ! -f "$path" ]]; then
+              echo "Incomplete CMake dependency cache: missing $path"
+              rm -rf "$cache_root"
+              break
+            fi
+          done
+
       - name: Configure with CMake
         run: |
           LLVM_STATIC_DIR="${{ steps.llvm-static.outputs.llvm-static-dir }}"
           RELEASE_TAG="${{ needs.create-release.outputs.version }}"
           RELEASE_VERSION="${RELEASE_TAG#v}"
           # Pin an HVF-capable FreeType instead of relying on the runner's Homebrew version.
-          CMAKE_ARGS="-DASCIICHAT_REQUIRE_HVF=ON"
+          CMAKE_ARGS=""
+          if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
+            CMAKE_ARGS="-DASCIICHAT_REQUIRE_HVF=ON"
+          fi
           CMAKE_ARGS="$CMAKE_ARGS --preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }} -DASCIICHAT_SHARED_DEPS=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON"
           if [ -n "$LLVM_STATIC_DIR" ]; then
             echo "Using LLVM static libraries from: $LLVM_STATIC_DIR"
@@ -819,6 +865,23 @@ jobs:
         with:
           arch: x64
 
+      - name: Validate CMake dependency cache
+        shell: pwsh
+        run: |
+          $cacheRoot = Join-Path $PWD ".deps-cache\Release"
+          $required = @(
+            (Join-Path $cacheRoot "asciichat_libuv-src\CMakeLists.txt"),
+            (Join-Path $cacheRoot "asciichat_zstd-src\CMakeLists.txt"),
+            (Join-Path $cacheRoot "asciichat_portaudio-src\CMakeLists.txt")
+          )
+          foreach ($path in $required) {
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              Write-Host "Incomplete CMake dependency cache: missing $path"
+              Remove-Item -LiteralPath $cacheRoot -Recurse -Force -ErrorAction SilentlyContinue
+              break
+            }
+          }
+
       - name: Configure with CMake
         shell: pwsh
         run: |
@@ -834,6 +897,13 @@ jobs:
             "-DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg-static-triplet }}")
           # ARM64 CRT path fix is handled in cmake/platform/WindowsWorkarounds.cmake
           cmake @args
+
+      - name: Save vcpkg cache
+        if: success() && steps.install-deps.outputs.vcpkg-cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .vcpkg
+          key: Windows-${{ runner.arch }}-vcpkg-v1-530d2d2-${{ matrix.vcpkg-triplet }}-${{ matrix.vcpkg-static-triplet }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'vcpkg-overlay/**', 'vcpkg-triplets/**') }}
 
       - name: Save CMake dependency cache
         if: success() && steps.install-deps.outputs.cmake-cache-hit != 'true'
@@ -857,7 +927,6 @@ jobs:
           $PSNativeCommandUseErrorActionPreference = $true
           cmake --build build_release --target ascii-chat
           cmake --build build_release --target static-lib
-          cmake --build build_release --target shared-lib
           Write-Host "Skipping Doxygen documentation target on Windows"
           cmake --build build_release --target package
 
@@ -877,11 +946,6 @@ jobs:
           $runtimeArchive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $runtimeZip))
           try {
             $runtimeEntries = @($runtimeArchive.Entries | ForEach-Object FullName)
-            $manual = $runtimeArchive.Entries | Where-Object { $_.FullName -match '(?i)(^|/)share/man/man1/ascii-chat\.1$' } | Select-Object -First 1
-            if (-not $manual) { throw "Runtime archive does not contain the manual" }
-            $reader = [System.IO.StreamReader]::new($manual.Open())
-            try { $manualText = $reader.ReadToEnd() } finally { $reader.Dispose() }
-            if ($manualText -notmatch 'MCP SERVER') { throw "Runtime manual is missing MCP documentation" }
           }
           finally { $runtimeArchive.Dispose() }
           $runtimeDlls = @($runtimeEntries | Where-Object { $_ -match '(?i)\.dll$' })

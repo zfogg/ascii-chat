@@ -30,7 +30,7 @@ it("does not publish a stale debounced grid after resize recovery", () => {
     },
   );
   state.module = {
-    TerminalRendererBinding: class {
+    AsciiRendererBinding: class {
       constructor(
         private columns: number,
         private rowsCount: number,
@@ -41,17 +41,16 @@ it("does not publish a stale debounced grid after resize recovery", () => {
       error() {
         return 0;
       }
-      cols() {
-        return this.columns;
+      dimensions() {
+        return {
+          cols: this.columns,
+          rows: this.rowsCount,
+          width: this.columns * 10,
+          height: this.rowsCount * 20,
+        };
       }
-      rows() {
-        return this.rowsCount;
-      }
-      width() {
-        return this.columns * 10;
-      }
-      height() {
-        return this.rowsCount * 20;
+      render() {
+        return new Uint8ClampedArray();
       }
       delete() {}
     },

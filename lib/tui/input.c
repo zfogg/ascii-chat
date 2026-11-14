@@ -31,8 +31,8 @@
 #include <ascii-chat/media/playlist.h>
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/tui/update_banner.h>
-#include <ascii-chat/os/question.h>
-#include <ascii-chat/os/clipboard.h>
+#include <libplatform/question.h>
+#include <libplatform/clipboard.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/utf8.h>
 #include <string.h>
@@ -100,7 +100,7 @@ keyboard_key_t tui_input_events_read(tui_input_events_t *s, keyboard_key_t (*rea
       s->ready = true;
       return KEY_PASTE;
     }
-    char text[UTF8_BUFFER_SIZE];
+    char text[ASCII_CHAT_UTF8_BUFFER_SIZE];
     size_t bytes = keyboard_text_encode(key, text);
     if (s->pasting) {
       // Paste payloads remain raw UTF-8 bytes until whole-paste validation.

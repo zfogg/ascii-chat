@@ -32,7 +32,7 @@
 
 #include <unistd.h>
 #ifdef _WIN32
-#include <ascii-chat/os/windows/getopt.h>
+#include <libplatform/windows/getopt.h>
 #else
 #include <getopt.h>
 #endif

@@ -108,7 +108,7 @@ summary={
 'src/common/session/display.c':'Native display context, terminal output, UI coordination, and rendering.',
 'src/common/session/host.c':'Reusable host session: client membership, incoming packets, and video rendering.',
 'src/web/mirror.c':'Browser-callable C entry points, including mirror_convert_frame: converts RGBA frames into ASCII output.',
-'src/web/client.c':'WASM client exports for initialization, cryptographic handshakes, and packet processing; transport callbacks cross into JavaScript.',
+'lib/network/browser/client.c':'WASM browser-client exports for initialization, cryptographic handshakes, and packet processing; browser transport callbacks cross into JavaScript.',
 'src/web/bindings/session_host.cpp':'Adapts browser transport callbacks to the shared C session host.',
 'lib/tui/session.c':'Nonblocking C UI state and rendering driven by host ticks and input.',
 'src/web/bindings/session_ui.cpp':'Binds owned C UI sessions, string inputs, and rendered frame output to JavaScript.',

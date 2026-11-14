@@ -18,7 +18,7 @@
  */
 
 #include "session/capture.h"
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 
 /* Forward declaration of opaque display context */
 typedef struct session_display_ctx session_display_ctx_t;

@@ -2,6 +2,55 @@
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
+test("renderer WASM does not embed oversized zero-filled buffers", () => {
+  const wasm = readFileSync("dist/renderer.wasm");
+  expect(wasm.indexOf(Buffer.alloc(64 * 1024))).toBe(-1);
+});
+
+test("rendering changes invalidate stabilization history", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const url = "/index.js";
+    const { createRenderer, ColorMode, RenderMode, TextRenderer } =
+      await import(url);
+    const renderer = await createRenderer();
+    try {
+      renderer.configure({
+        width: 40,
+        height: 20,
+        stabilize: true,
+        color_mode: ColorMode.None,
+        render_mode: RenderMode.Foreground,
+        renderer: TextRenderer.Luminance,
+      });
+      const frame = renderer.testPattern(160, 120, 1, 0);
+      const cases: boolean[] = [];
+      const check = (change: () => void) => {
+        renderer.render(frame, 160, 120);
+        change();
+        const automatic = renderer.render(frame, 160, 120);
+        renderer.reset();
+        const explicit = renderer.render(frame, 160, 120);
+        cases.push(automatic === explicit);
+      };
+      check(() => renderer.configure({ width: 32 }));
+      check(() => renderer.configure({ render_mode: RenderMode.Background }));
+      check(() => renderer.options.palette("custom", " .:-=+*#%@"));
+      check(() => renderer.options.palette("custom", " .oO@"));
+      renderer.render(frame, 160, 120, false, "camera-a");
+      const sourceChange = renderer.render(frame, 160, 120, false, "camera-b");
+      renderer.reset();
+      cases.push(
+        sourceChange === renderer.render(frame, 160, 120, false, "camera-b"),
+      );
+      return cases;
+    } finally {
+      renderer.dispose();
+    }
+  });
+  expect(result).toEqual([true, true, true, true, true]);
+});
+
 test("native audio visualizations honor palettes and color modes", async ({
   page,
 }) => {
@@ -158,6 +207,95 @@ test("standalone package renders modes, visualizations and canvas at 60 fps", as
   );
 });
 
+test("renderer render loop honors an FPS limit and pixel callback", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const url = "/index.js";
+    const { createRenderer } = await import(url);
+    const renderer = await createRenderer();
+    let calls = 0;
+    let text = "";
+    const loop = renderer.startRenderLoop({
+      fps: 20,
+      getFrame: (timeMs: number) => ({
+        pixels: renderer.testPattern(32, 24, calls, timeMs),
+        width: 32,
+        height: 24,
+      }),
+      onFrame: (frame: string) => {
+        calls++;
+        text = frame;
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 240));
+    loop.stop();
+    const stopped = calls;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    renderer.dispose();
+    return { calls: stopped, stable: calls === stopped, text: text.length > 0 };
+  });
+  expect(result.calls).toBeGreaterThanOrEqual(2);
+  expect(result.calls).toBeLessThanOrEqual(7);
+  expect(result.stable).toBe(true);
+  expect(result.text).toBe(true);
+});
+
+test("renderer render loop reports frame-source errors and stops", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const { createRenderer } = await import("/index.js");
+    const renderer = await createRenderer();
+    let message = "";
+    const loop = renderer.startRenderLoop({
+      getFrame: () => {
+        throw new Error("frame source failed");
+      },
+      onError: (error: unknown) => {
+        message = (error as Error).message;
+      },
+    });
+    await new Promise(requestAnimationFrame);
+    await new Promise(requestAnimationFrame);
+    const running = loop.running;
+    renderer.dispose();
+    return { message, running };
+  });
+  expect(result).toEqual({ message: "frame source failed", running: false });
+});
+
+test("explicit palette selection wins regardless of patch order", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const url = "/index.js";
+    const { createRenderer, TextRenderer } = await import(url);
+    const renderer = await createRenderer();
+    try {
+      renderer.configure({
+        renderer: TextRenderer.Glyph,
+        palette_explicit: false,
+        palette_custom: " .+#",
+        palette_type: 1,
+      });
+      const first = renderer.options.read().values.palette_explicit;
+      renderer.configure({
+        palette_type: 1,
+        palette_custom: " .+#",
+        palette_explicit: false,
+      });
+      return [first, renderer.options.read().values.palette_explicit];
+    } finally {
+      renderer.dispose();
+    }
+  });
+  expect(result).toEqual([false, false]);
+});
+
 test("Embind session owns native initialization and cleanup", async ({
   page,
 }) => {
@@ -174,7 +312,7 @@ test("Embind session owns native initialization and cleanup", async ({
     const second = duplicate.valid();
     const error = duplicate.error();
     duplicate.delete();
-    const stillActive = owner.valid() && module.readOptions() !== null;
+    const stillActive = owner.valid() && module.OptionsBinding.read() !== null;
     owner.delete();
     const replacement = new module.RendererSessionBinding();
     const restarted = replacement.valid();
@@ -213,23 +351,23 @@ test("object options patches commit atomically and respect revisions", async ({
     });
     const session = new module.RendererSessionBinding();
     try {
-      const before = module.readOptions();
-      const rejected = module.patchOptions(
+      const before = module.OptionsBinding.read();
+      const rejected = module.OptionsBinding.patch(
         { width: 45, height: 0 },
         before.revision,
       );
-      const afterRejected = module.readOptions();
-      const committed = module.patchOptions(
+      const afterRejected = module.OptionsBinding.read();
+      const committed = module.OptionsBinding.patch(
         { width: 45, height: 22 },
         before.revision,
       );
-      const afterCommit = module.readOptions();
-      const stale = module.patchOptions(
+      const afterCommit = module.OptionsBinding.read();
+      const stale = module.OptionsBinding.patch(
         { width: 46, height: 23 },
         before.revision,
       );
-      const afterStale = module.readOptions();
-      const badInput = module.patchOptions("not an object", -1);
+      const afterStale = module.OptionsBinding.read();
+      const badInput = module.OptionsBinding.patch("not an object", -1);
       return {
         before,
         rejected,
@@ -259,7 +397,7 @@ test("shared rendering constants match the native definitions", async ({
 }) => {
   const terminal = readFileSync(
     new URL(
-      "../../../../include/libplatform/terminal.h",
+      "../../../../deps/ascii-chat-deps/libplatform/include/libplatform/terminal.h",
       import.meta.url,
     ),
     "utf8",
@@ -276,6 +414,10 @@ test("shared rendering constants match the native definitions", async ({
       "../../../../include/ascii-chat/options/options.h",
       import.meta.url,
     ),
+    "utf8",
+  );
+  const render = readFileSync(
+    new URL("../../../../include/ascii-chat/video/ascii/render/render.h", import.meta.url),
     "utf8",
   );
   await page.goto("/");
@@ -327,7 +469,7 @@ test("shared rendering constants match the native definitions", async ({
     );
   for (const [key, value] of Object.entries(values.TextRenderer))
     expect(value).toBe(
-      nativeNumber(options, "ASCII_RENDERER_" + key.toUpperCase()),
+      nativeNumber(render, "ASCII_RENDERER_" + key.toUpperCase()),
     );
   const paletteLimit = options.match(
     /#define\s+OPTIONS_PALETTE_CUSTOM_BUFFER_SIZE\s+(\d+)/,

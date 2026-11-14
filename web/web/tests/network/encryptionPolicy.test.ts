@@ -4,14 +4,11 @@ import {
   ConnectionState,
   PacketType,
   configureClientCrypto,
-  encryptPacket,
   initClientWasm,
-  registerSendPacketCallback,
-  resolveCryptoPolicy,
+  processClientEvent,
 } from "../../src/wasm/client";
 
-const beginHandshake = vi.hoisted(() => vi.fn(() => 0));
-
+const beginHandshake = vi.hoisted(() => vi.fn((_mode?: unknown) => 0));
 const sockets = vi.hoisted(() => ({
   sent: [] as Uint8Array[],
   instances: [] as Array<{
@@ -49,22 +46,49 @@ vi.mock("../../src/wasm/client", async (importOriginal) => ({
   initClientWasm: vi.fn().mockResolvedValue(undefined),
   cleanupClientWasm: vi.fn(),
   configureClientCrypto: vi.fn().mockResolvedValue(undefined),
+  configureBrowserCapabilities: vi.fn(),
   generateKeypair: vi.fn().mockResolvedValue("public-key"),
-  setServerAddress: vi.fn(),
-  registerSendPacketCallback: vi.fn(),
-  getConnectionState: () => 3,
-  resolveCryptoPolicy: vi.fn(() => 1),
-  getClientModule: () => ({
-    client_acds_handshake_begin: beginHandshake,
-    client_handshake_begin: beginHandshake,
+  processClientEvent: vi.fn((event: Record<string, unknown>) => {
+    if (event["type"] === "begin-handshake") {
+      const code = beginHandshake(event["mode"]);
+      return { code, state: ConnectionState.HANDSHAKE };
+    }
+    if (event["type"] === "send-packet") {
+      const payload = event["payload"] as Uint8Array;
+      const bytes = new Uint8Array(22 + payload.length);
+      new DataView(bytes.buffer).setUint16(
+        8,
+        event["encrypt"]
+          ? PacketType.ENCRYPTED
+          : (event["packetType"] as number),
+        false,
+      );
+      bytes.set(payload, 22);
+      return { code: 0, state: ConnectionState.CONNECTED, bytes };
+    }
+    if (event["type"] === "crypt")
+      return {
+        code: 0,
+        state: ConnectionState.CONNECTED,
+        bytes: event["packet"],
+      };
+    if (event["type"] === "state")
+      return { code: 0, state: ConnectionState.CONNECTED };
+    if (event["type"] === "resolve-crypto-policy")
+      return {
+        code: 0,
+        state: ConnectionState.CONNECTED,
+        mode:
+          event["encryption"] === -1
+            ? event["wss"]
+              ? 0
+              : 1
+            : event["encryption"],
+      };
+    if (event["type"] === "set-server")
+      return { code: 0, state: ConnectionState.CONNECTED };
+    throw new Error(`Unexpected client event: ${String(event["type"])}`);
   }),
-  serializePacket: (type: number, payload: Uint8Array) => {
-    const bytes = new Uint8Array(22 + payload.length);
-    new DataView(bytes.buffer).setUint16(8, type, false);
-    bytes.set(payload, 22);
-    return bytes;
-  },
-  encryptPacket: vi.fn((bytes: Uint8Array) => bytes),
 }));
 
 describe("WebSocket encryption defaults", () => {
@@ -73,20 +97,25 @@ describe("WebSocket encryption defaults", () => {
     sockets.instances = [];
     vi.clearAllMocks();
     beginHandshake.mockReturnValue(0);
-    vi.mocked(resolveCryptoPolicy).mockReturnValue(1);
   });
   it.each([
     ["ws://localhost:27226", true],
     ["wss://example.com", false],
   ] as const)("%s uses the correct default", async (serverUrl, encrypted) => {
-    vi.mocked(resolveCryptoPolicy).mockReturnValue(encrypted ? 1 : 0);
     const connection = new ClientConnection({ serverUrl });
     const states: ConnectionState[] = [];
     connection.onStateChange((state) => states.push(state));
     await connection.connect();
     Object.assign(connection, { transportState: ConnectionState.CONNECTED });
     connection.sendPacket(PacketType.IMAGE_FRAME, new Uint8Array([1, 2, 3]));
-    expect(encryptPacket).toHaveBeenCalledTimes(encrypted ? 1 : 0);
+    expect(
+      vi
+        .mocked(processClientEvent)
+        .mock.calls.filter(
+          ([event]) =>
+            event["type"] === "send-packet" && event["encrypt"] === true,
+        ),
+    ).toHaveLength(encrypted ? 1 : 0);
     expect(new DataView(sockets.sent[0]!.buffer).getUint16(8, false)).toBe(
       encrypted ? PacketType.ENCRYPTED : PacketType.IMAGE_FRAME,
     );
@@ -101,7 +130,14 @@ describe("WebSocket encryption defaults", () => {
     await connection.connect();
     Object.assign(connection, { transportState: ConnectionState.CONNECTED });
     connection.sendPacket(PacketType.IMAGE_FRAME, new Uint8Array([1]));
-    expect(encryptPacket).toHaveBeenCalledOnce();
+    expect(
+      vi
+        .mocked(processClientEvent)
+        .mock.calls.filter(
+          ([event]) =>
+            event["type"] === "send-packet" && event["encrypt"] === true,
+        ),
+    ).toHaveLength(1);
     connection.disconnect();
   });
 
@@ -111,9 +147,6 @@ describe("WebSocket encryption defaults", () => {
   ] as const)(
     "%s starts the C discovery handshake with the encryption policy",
     async (serverUrl, supportsEncryption, expectedState) => {
-      vi.mocked(resolveCryptoPolicy).mockReturnValue(
-        supportsEncryption ? 1 : 0,
-      );
       const connection = new ClientConnection({
         serverUrl,
         discoveryHandshake: true,
@@ -160,12 +193,6 @@ describe("WebSocket encryption defaults", () => {
     await vi.waitFor(() => expect(beginHandshake).toHaveBeenCalledTimes(2));
     expect(configureClientCrypto).toHaveBeenCalledTimes(2);
     expect(beginHandshake).toHaveBeenLastCalledWith(1);
-    expect(
-      vi.mocked(registerSendPacketCallback).mock.invocationCallOrder[1],
-    ).toBeLessThan(beginHandshake.mock.invocationCallOrder[1]!);
-    const rawPacket = new Uint8Array([1, 2, 3]);
-    vi.mocked(registerSendPacketCallback).mock.calls[1]![0](rawPacket);
-    expect(sockets.sent).toEqual([rawPacket]);
     connection.disconnect();
   });
   it("waits for crypto configuration before opening the socket", async () => {
@@ -241,25 +268,34 @@ describe("WebSocket encryption defaults", () => {
 
 describe("authentication without payload encryption", () => {
   it("uses the C AUTH mode, blocks early media, then sends plaintext", async () => {
-    vi.mocked(resolveCryptoPolicy).mockReturnValue(2);
     beginHandshake.mockReturnValue(0);
-    vi.mocked(encryptPacket).mockClear();
+    vi.mocked(processClientEvent).mockClear();
     const connection = new ClientConnection({
       serverUrl: "wss://example.com",
       applicationEncryption: false,
       cryptoOptions: { identityPrivateKeyText: "identity" },
     });
     await connection.connect();
-    expect(resolveCryptoPolicy).toHaveBeenCalledWith(
-      "wss://example.com",
-      false,
+    expect(processClientEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "resolve-crypto-policy",
+        wss: true,
+        encryption: 0,
+      }),
     );
     expect(() =>
       connection.sendPacket(PacketType.IMAGE_FRAME, new Uint8Array([1])),
     ).toThrow("not complete");
     Object.assign(connection, { transportState: ConnectionState.CONNECTED });
     connection.sendPacket(PacketType.IMAGE_FRAME, new Uint8Array([1]));
-    expect(encryptPacket).not.toHaveBeenCalled();
+    expect(
+      vi
+        .mocked(processClientEvent)
+        .mock.calls.filter(
+          ([event]) =>
+            event["type"] === "send-packet" && event["encrypt"] === true,
+        ),
+    ).toHaveLength(0);
     connection.disconnect();
   });
 });

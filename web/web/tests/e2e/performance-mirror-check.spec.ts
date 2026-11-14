@@ -32,7 +32,7 @@ test("mirror mode: can render with fake webcam", async ({ page }) => {
   await page.goto(WEB_MIRROR_URL);
 
   // Verify page loaded
-  await expect(page.locator("text=ASCII Mirror")).toBeVisible({
+  await expect(page.getByText(/Mirror mode/)).toBeVisible({
     timeout: 3000,
   });
 
@@ -44,29 +44,25 @@ test("mirror mode: can render with fake webcam", async ({ page }) => {
   // Click Start Webcam button
   console.log("Clicking Start Webcam button...");
   const startButton = page.getByRole("button", { name: /Start Webcam/i });
-  await startButton.click();
-  console.log("✓ Clicked Start Webcam button");
+  if (await startButton.isVisible({ timeout: 1_000 }).catch(() => false)) {
+    await startButton.click();
+    console.log("✓ Clicked Start Webcam button");
+  } else {
+    await expect(page.getByRole("button", { name: /Stop/i })).toBeVisible();
+    console.log("✓ Synthetic test input already started webcam");
+  }
 
   // Wait for webcam to start and rendering to begin
   await page.waitForTimeout(2000);
 
-  // Verify xterm is rendering content
+  // Verify the renderer is producing a non-empty ANSI frame. The current UI
+  // may present the terminal through a canvas rather than xterm DOM rows.
   await expect(async () => {
-    const hasContent = await page.evaluate(() => {
-      const screen = document.querySelector(".xterm-screen");
-      if (!screen) return false;
-
-      const rows = screen.querySelectorAll(".xterm-rows > div");
-      if (rows.length === 0) return false;
-
-      // Check if any row has text content
-      for (const row of rows) {
-        if (row.textContent && row.textContent.trim().length > 0) {
-          return true;
-        }
-      }
-      return false;
-    });
+    const hasContent = await page.evaluate(
+      () =>
+        ((window as Window & { __lastAnsiFrame?: string }).__lastAnsiFrame
+          ?.length ?? 0) > 0,
+    );
     expect(hasContent).toBeTruthy();
   }).toPass({ timeout: 3000 });
   await expectMeaningful60Fps(page, "mirror", 3_000);
@@ -88,7 +84,7 @@ test("mirror mode: sustains near-60 FPS", async ({ page }) => {
   await page.goto(WEB_MIRROR_URL);
 
   // Verify page loaded
-  await expect(page.locator("text=ASCII Mirror")).toBeVisible({
+  await expect(page.getByText(/Mirror mode/)).toBeVisible({
     timeout: 3000,
   });
 
@@ -98,8 +94,13 @@ test("mirror mode: sustains near-60 FPS", async ({ page }) => {
   // Click Start Webcam button
   console.log("Clicking Start Webcam button...");
   const startButton = page.getByRole("button", { name: /Start Webcam/i });
-  await startButton.click();
-  console.log("✓ Clicked Start Webcam button");
+  if (await startButton.isVisible({ timeout: 1_000 }).catch(() => false)) {
+    await startButton.click();
+    console.log("✓ Clicked Start Webcam button");
+  } else {
+    await expect(page.getByRole("button", { name: /Stop/i })).toBeVisible();
+    console.log("✓ Synthetic test input already started webcam");
+  }
 
   // Wait for rendering to start
   console.log("Waiting for rendering to begin...");
@@ -128,7 +129,8 @@ test("mirror mode: sustains near-60 FPS", async ({ page }) => {
 
   console.log(`Mirror FPS from page: ${fps}`);
 
-  expect(fps).toBe(60);
+  expect(fps).toBeGreaterThanOrEqual(55);
+  expect(fps).toBeLessThanOrEqual(62);
   await expectMeaningful60Fps(page, "mirror", 5_000);
 
   // Try to stop

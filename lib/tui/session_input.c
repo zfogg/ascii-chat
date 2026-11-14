@@ -196,6 +196,15 @@ ui_session_action_t ui_session_key(keyboard_key_t key, double *saved_volume) {
     return UI_ACTION_SETTINGS;
   }
 
+  // ===== FRAME STABILIZATION CONTROL =====
+  case 'S': {
+    if (options_toggle("stabilize") != ASCIICHAT_OK)
+      log_warn("Could not toggle frame stabilization");
+    else
+      log_info("Frame stabilization: %s", GET_OPTION(stabilize) ? "enabled" : "disabled");
+    return UI_ACTION_SETTINGS;
+  }
+
   // ===== COLOR FILTER CONTROL =====
   case KEY_F:
   case 'F': {

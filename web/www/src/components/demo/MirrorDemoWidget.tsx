@@ -35,9 +35,9 @@ import {
 } from "@ascii-chat/shared/hooks";
 import {
   Heading,
-  AsciiCanvas,
   type AsciiRendererHandle,
 } from "@ascii-chat/shared/components";
+import { AsciiRenderer as AsciiCanvas } from "ascii-chat/react";
 import { MediaSourceType, type MediaSource } from "@ascii-chat/shared/utils";
 import { registerActiveDemo, unregisterActiveDemo } from "./activeDemo";
 import type { DemoOption } from "./types";

@@ -41,10 +41,26 @@ static int fixture_worker(platform_thread_t *thread, const char *name, void *(*f
   (void)data;
   return -1;
 }
+static asciichat_error_t fixture_job_start(http_renderer_job_t *job, const char *name, http_renderer_job_fn execute, void *context) {
+  (void)job;
+  (void)name;
+  (void)execute;
+  (void)context;
+  return ERROR_THREAD;
+}
 void http_renderer_process(http_renderer_process_request_t *request, atomic_t *cancelled, http_renderer_process_result_t *result) {
   (void)request;
   (void)cancelled;
   SAFE_STRNCPY(result->error, "No renderer requested by this contract", sizeof(result->error));
+}
+void http_renderer_process_result_destroy(http_renderer_process_result_t *result) {
+  if (!result)
+    return;
+  for (size_t i = 0; i < result->frame_count; ++i)
+    SAFE_FREE(result->frames[i].text);
+  SAFE_FREE(result->frames);
+  SAFE_FREE(result->text);
+  memset(result, 0, sizeof(*result));
 }
 void mcp_http_wake(mcp_server_t *server) {
   (void)server;
@@ -58,12 +74,14 @@ void mcp_stdio_send(mcp_server_t *server, yyjson_mut_doc *response) {
 #define webcam_free_device_list fixture_camera_free
 #define audio_free_device_list fixture_audio_free
 #define platform_thread_create fixture_worker
+#define http_renderer_job_start fixture_job_start
 #include "../../../src/mcp-server/protocol.c"
 #undef webcam_list_devices
 #undef audio_list_input_devices
 #undef webcam_free_device_list
 #undef audio_free_device_list
 #undef platform_thread_create
+#undef http_renderer_job_start
 static void setup(void) {
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
@@ -169,18 +187,16 @@ TEST_CASE("mcp_requests/accepted_sources_produce_bounded_cli_arguments_and_stage
       {MCP_FILE, "{\"data_base64\":\"AA==\",\"mime_type\":\"image/png\"}", "--audio-capture-source=media"},
       {MCP_FILE, "{\"options\":{\"test-audio\":true}}", "--waveform=true"},
       {MCP_FILE, "{\"options\":{\"test-pattern\":true},\"timeout_ms\":1000}", "--test-pattern=0"},
+      {MCP_FILE, "{\"options\":{\"test-pattern\":true,\"renderer\":\"glyph\"}}", "--renderer=glyph"},
+      {MCP_FILE, "{\"options\":{\"test-pattern\":true,\"fps\":0}}", "--fps=0"},
       {MCP_URL, "{\"url\":\"http://127.0.0.1/frame\"}", "--url=http://127.0.0.1/frame"},
       {MCP_URL, "{\"url\":\"https://localhost/frame\"}", "--url=https://localhost/frame"},
       {MCP_URL, "{\"url\":\"rtsp://localhost/frame\"}", "--url=rtsp://localhost/frame"},
       {MCP_URL, "{\"url\":\"rtmp://localhost/frame\"}", "--url=rtmp://localhost/frame"},
       {MCP_WEBCAM, "{\"video_device\":2,\"audio_device\":0,\"volume\":0.25}", "--webcam-index=2"},
-      {MCP_VISUALIZATION, "{\"visualization\":\"fft\",\"audio\":{\"type\":\"file\",\"data_base64\":\"AA==\"}}",
-       "--audio-capture-source=media"},
-      {MCP_VISUALIZATION,
-       "{\"visualization\":\"waveform\",\"audio\":{\"type\":\"url\",\"url\":\"http://localhost/audio\"}}",
-       "--url=http://localhost/audio"},
-      {MCP_VISUALIZATION, "{\"visualization\":\"fft\",\"audio_device\":-1,\"volume\":0.5}",
-       "--audio-capture-source=mic"},
+      {MCP_VISUALIZATION, "{\"visualization\":\"fft\",\"audio\":{\"type\":\"file\",\"data_base64\":\"AA==\"}}", "--audio-capture-source=media"},
+      {MCP_VISUALIZATION, "{\"visualization\":\"waveform\",\"audio\":{\"type\":\"url\",\"url\":\"http://localhost/audio\"}}", "--url=http://localhost/audio"},
+      {MCP_VISUALIZATION, "{\"visualization\":\"fft\",\"audio_device\":-1,\"volume\":0.5}", "--audio-capture-source=mic"},
       {MCP_VISUALIZATION, "{\"visualization\":\"fft\"}", "--test-audio=true"},
   };
   mcp_policy_t policy = {0};
@@ -281,8 +297,7 @@ TEST_CASE("mcp_requests/protocol_envelopes_reject_invalid_types_and_worker_start
   expect_rpc_error(&server, "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":null}", -32600);
   expect_rpc_error(&server, "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"params\":[],\"id\":1}", -32602);
   expect_rpc_error(&server, "{\"jsonrpc\":\"2.0\",\"method\":\"unknown\",\"id\":1}", -32601);
-  expect_rpc_error(
-      &server, "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"unknown\"},\"id\":1}", -32602);
+  expect_rpc_error(&server, "{\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"name\":\"unknown\"},\"id\":1}", -32602);
   expect_rpc_error(&server,
                    "{\"jsonrpc\":\"2.0\",\"method\":\"tools/"
                    "call\",\"params\":{\"name\":\"device_list\",\"arguments\":{\"unknown\":1}},\"id\":1}",
@@ -340,8 +355,7 @@ TEST_CASE("mcp_requests/hosted_download_names_are_strict_and_expiration_is_ancho
   mcp_policy_t policy = {.downloads_url_prefix = "https://example.test/"};
   SAFE_STRNCPY(policy.downloads_dir, directory, sizeof(policy.downloads_dir));
   yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
-  yyjson_mut_val *root = yyjson_mut_obj(doc), *result = yyjson_mut_obj(doc), *data = yyjson_mut_obj(doc),
-                 *files = yyjson_mut_arr(doc), *content = yyjson_mut_arr(doc), *item = yyjson_mut_obj(doc);
+  yyjson_mut_val *root = yyjson_mut_obj(doc), *result = yyjson_mut_obj(doc), *data = yyjson_mut_obj(doc), *files = yyjson_mut_arr(doc), *content = yyjson_mut_arr(doc), *item = yyjson_mut_obj(doc);
   yyjson_mut_doc_set_root(doc, root);
   yyjson_mut_obj_add_val(doc, root, "result", result);
   yyjson_mut_obj_add_val(doc, result, "structuredContent", data);
@@ -379,9 +393,8 @@ TEST_CASE("mcp_requests/hosted_profile_accepts_url_and_stages_requested_media_fo
   ASCIICHAT_REQUIRE_EQ(platform_mkdtemp(directory, sizeof(directory), "mcp-hosted-contract"), ASCIICHAT_OK);
   mcp_policy_t policy = {.hosted = true, .restricted = true};
   SAFE_STRNCPY(policy.downloads_dir, directory, sizeof(policy.downloads_dir));
-  yyjson_doc *doc =
-      read_json("{\"url\":\"https://example.test/"
-                "upload.mp4\",\"output_format\":\"mp4\",\"options\":{\"snapshot-delay\":2,\"audio\":true}}");
+  yyjson_doc *doc = read_json("{\"url\":\"https://example.test/"
+                              "upload.mp4\",\"output_format\":\"mp4\",\"options\":{\"snapshot-delay\":2,\"audio\":true}}");
   http_renderer_process_request_t request;
   ASCIICHAT_REQUIRE_EQ(mcp_request_parse(&policy, MCP_URL, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE(has_arg(&request, "--url=https://example.test/upload.mp4"));
@@ -398,9 +411,7 @@ TEST_CASE("mcp_requests/hosted_default_format_tracks_snapshot_mode", "[mcp_reque
   ASCIICHAT_REQUIRE_EQ(platform_mkdtemp(directory, sizeof(directory), "mcp-format-contract"), ASCIICHAT_OK);
   mcp_policy_t policy = {.hosted = true, .restricted = true};
   SAFE_STRNCPY(policy.downloads_dir, directory, sizeof(policy.downloads_dir));
-  const char *inputs[] = {"{\"options\":{\"test-pattern\":true}}",
-                          "{\"options\":{\"test-pattern\":true,\"snapshot\":false}}",
-                          "{\"options\":{\"test-pattern\":true,\"snapshot-delay\":2}}"};
+  const char *inputs[] = {"{\"options\":{\"test-pattern\":true}}", "{\"options\":{\"test-pattern\":true,\"snapshot\":false}}", "{\"options\":{\"test-pattern\":true,\"snapshot-delay\":2}}"};
   const char *extensions[] = {".png", ".mp4", ".mp4"};
   for (size_t i = 0; i < 3; ++i) {
     yyjson_doc *doc = read_json(inputs[i]);
@@ -418,10 +429,9 @@ TEST_CASE("mcp_requests/gif_media_defaults_to_animation_and_respects_snapshot_op
   ASCIICHAT_REQUIRE_EQ(platform_mkdtemp(directory, sizeof(directory), "mcp-gif-contract"), ASCIICHAT_OK);
   mcp_policy_t policy = {.hosted = true, .restricted = true};
   SAFE_STRNCPY(policy.downloads_dir, directory, sizeof(policy.downloads_dir));
-  const char *inputs[] = {
-      "{\"url\":\"https://example.test/video.mp4\",\"output_format\":\"gif\"}",
-      "{\"url\":\"https://example.test/video.mp4\",\"output_format\":\"gif\",\"options\":{\"snapshot\":true}}",
-      "{\"url\":\"https://example.test/video.mp4\",\"output_format\":\"gif\",\"options\":{\"snapshot-delay\":2}}"};
+  const char *inputs[] = {"{\"url\":\"https://example.test/video.mp4\",\"output_format\":\"gif\"}",
+                          "{\"url\":\"https://example.test/video.mp4\",\"output_format\":\"gif\",\"options\":{\"snapshot\":true}}",
+                          "{\"url\":\"https://example.test/video.mp4\",\"output_format\":\"gif\",\"options\":{\"snapshot-delay\":2}}"};
   for (size_t i = 0; i < 3; ++i) {
     yyjson_doc *doc = read_json(inputs[i]);
     http_renderer_process_request_t request;

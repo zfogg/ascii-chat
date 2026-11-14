@@ -97,13 +97,7 @@ TEST_CASE("path_contract/role_specific_rejections_clear_output_for_invalid_prote
   const asciichat_error_t errors[] = {ERROR_CONFIG, ERROR_LOGGING_INIT, ERROR_CRYPTO_KEY, ERROR_CRYPTO_KEY,
                                       ERROR_CRYPTO_KEY};
   for (size_t i = 0; i < 5; ++i) {
-    const char *invalid[] = {NULL,
-                             "",
-                             "/etc",
-                             "/etc/passwd",
-                             "/etc/../etc/shadow",
-                             "/var/lib/ascii-chat-policy-test",
-                             "/ascii-chat-outside-policy/file"};
+    const char *invalid[] = {NULL, "", "/etc", "/etc/passwd", "/etc/../etc/shadow", "/var/lib/ascii-chat-policy-test", "/ascii-chat-outside-policy/file"};
     for (size_t j = 0; j < sizeof(invalid) / sizeof(invalid[0]); ++j) {
       char *output = (char *)"must be cleared";
       ASCIICHAT_REQUIRE_EQ(path_validate_user_path(invalid[j], roles[i], &output), errors[i]);

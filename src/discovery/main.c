@@ -73,7 +73,7 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/audio/client_pipeline.h>

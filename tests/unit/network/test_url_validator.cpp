@@ -42,8 +42,7 @@ typedef struct {
  * Test Helpers
  * ============================================================================ */
 
-static void cleanup(void) {
-}
+static void cleanup(void) {}
 
 // Keep each category isolated without spawning a process for every table row.
 TEST_CASE("url_validator/diagnostic_redaction_hides_credentials_and_query_values", "[url_validator]") {

@@ -5,7 +5,7 @@
 
 #include <ascii-chat/network/tailscale.h>
 
-#include <ascii-chat/os/network.h>
+#include <ascii-chat/network/platform.h>
 #include <ascii-chat/util/ip.h>
 
 #include <string.h>

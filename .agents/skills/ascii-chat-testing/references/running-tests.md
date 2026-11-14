@@ -2,7 +2,7 @@
 
 ## Native Criterion
 
-macOS uses Homebrew LLVM and Criterion discovered through pkg-config; Linux uses Clang and distribution dependencies. Consult `.github/actions/install-deps/action.yml` and its scripts for maintained prerequisites. Criterion supports native Intel/ARM macOS and glibc Linux. Missing Criterion is an environment/configuration problem, not grounds to silently omit requested tests.
+macOS uses Homebrew LLVM and Criterion discovered through pkg-config; Linux uses Clang and distribution dependencies. Consult `.github/actions/install-deps/action.yml` and its scripts for maintained prerequisites. Criterion supports native Intel/ARM macOS, glibc Linux, and the repository's Arch WSL environment. On Windows, WSL is the preferred fast path for Linux-native Criterion tests. Missing Criterion is an environment/configuration problem, not grounds to silently omit requested tests.
 
 CMake flattens ordinary source paths and removes a trailing `_test`: `tests/unit/crypto/crypto_handshake_test.c` becomes `test_unit_crypto_crypto_handshake`. Explicit contracts use other names. Discover with `ctest --test-dir build -N -V` rather than guessing.
 
@@ -19,9 +19,17 @@ CTest normally supplies `TESTING`, `CRITERION_TEST`, and `BUILD_DIR`; retain the
 
 CTest uses all available cores across executables; Criterion uses one worker per executable to avoid multiplying pools. Pytest batches reserve the detected core count and use xdist logical cores. Many legacy integration/contracts use `RUN_SERIAL` for shared resources. Inspect effective commands and fixture isolation before changing serialization.
 
-## Windows Docker
+## Windows: WSL first, Docker fallback
 
-Native Windows supports selected CTest library/standalone/Python checks, but Criterion is disabled. Use Linux test containers for Criterion and native Windows harnesses for Windows-specific claims.
+Use the repository's Arch WSL environment first for ordinary Linux-native C and Criterion work. It avoids container startup and filesystem/volume overhead and is the preferred development path on Windows. Keep the source in or access it from the WSL-visible worktree, reuse the main worktree's `.deps-cache/`, and use a dedicated build directory when needed:
+
+```powershell
+wsl.exe -d Arch -- bash -lc 'cmake --preset tests -B /tmp/ascii-chat-tests -DBUILD_WEB=OFF -DBUILD_TESTS=ON'
+wsl.exe -d Arch -- bash -lc 'cmake --build /tmp/ascii-chat-tests --target tests'
+wsl.exe -d Arch -- bash -lc 'ctest --test-dir /tmp/ascii-chat-tests --no-tests=error --output-on-failure --parallel'
+```
+
+Use native Windows for Windows-specific claims. Use Docker only when WSL is unavailable, when container isolation is intentional, or when matching a CI/container architecture is the purpose of the run. Docker does not replace native Windows coverage.
 
 ```powershell
 ./tests/scripts/run-docker-tests.ps1 unit

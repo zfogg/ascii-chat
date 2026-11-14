@@ -135,8 +135,7 @@ TEST_CASE("log_persistence/recoloring_rejects_incomplete_headers_and_keeps_messa
   const char *levels[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "UNKNOWN"};
   for (size_t i = 0; i < sizeof(levels) / sizeof(levels[0]); ++i) {
     char input[256];
-    safe_snprintf(input, sizeof(input), "[12:34:56.123456] [%s] [tid:123] x.c:42 in function(): unique-message",
-                  levels[i]);
+    safe_snprintf(input, sizeof(input), "[12:34:56.123456] [%s] [tid:123] x.c:42 in function(): unique-message", levels[i]);
     size_t length = log_recolor_plain_entry(input, output, sizeof(output));
     ASCIICHAT_REQUIRE_GT(length, 0);
     ASCIICHAT_REQUIRE_EQ(length, strlen(output));

@@ -35,9 +35,14 @@
     },
     "./renderer.wasm": "./dist/renderer.wasm",
     "./renderer.js": "./dist/renderer.js",
+    "./renderer-manifest.json": "./dist/renderer-manifest.json",
     "./options": {
       "types": "./dist/options.d.ts",
       "import": "./dist/options.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
     },
     "./http/node": {
       "types": "./dist/http/node.d.ts",
@@ -64,7 +69,7 @@
     }
   },
   "scripts": {
-    "build": "tsc --noEmit -p tsconfig.json && vp pack src/index.ts src/options.ts --dts --platform browser && tsc --target ES2022 --module ESNext --moduleResolution Bundler --skipLibCheck --outDir dist/http --rootDir src/http --declaration --noEmit false src/http/node.ts src/http/express.ts src/http/fastify.ts src/http/koa.ts && node build.mjs",
+    "build": "tsc --noEmit -p tsconfig.json && vp pack src/index.ts src/options.ts src/react.ts --dts --platform browser && tsc --target ES2022 --module ESNext --moduleResolution Bundler --skipLibCheck --outDir dist/http --rootDir src/http --declaration --noEmit false src/http/node.ts src/http/express.ts src/http/fastify.ts src/http/koa.ts && node build.mjs",
     "prepack": "npm run build",
     "test": "playwright test",
     "pretest": "npm run build",

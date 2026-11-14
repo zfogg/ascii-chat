@@ -121,7 +121,7 @@ TEST_CASE("terminal_detect/colorterm_variable_detection_parameterized", "[termin
     setenv("COLORTERM", tc->colorterm_value, 1);
   }
 
-  terminal_capabilities_t caps = detect_terminal_capabilities();
+  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
 
   ASCIICHAT_REQUIRE_EQ(caps.color_level, tc->expected_color_level, "%s: expected color level %d, got %d", tc->description,
                tc->expected_color_level, caps.color_level);
@@ -182,7 +182,7 @@ TEST_CASE("terminal_detect/term_variable_color_detection_parameterized", "[termi
   // Set TERM value
   setenv("TERM", tc->term_value, 1);
 
-  terminal_capabilities_t caps = detect_terminal_capabilities();
+  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
 
   ASCIICHAT_REQUIRE_EQ(caps.color_level, tc->expected_color_level, "%s: expected color level %d, got %d", tc->description,
                tc->expected_color_level, caps.color_level);
@@ -221,12 +221,8 @@ typedef struct {
 } utf8_test_case_t;
 
 static utf8_test_case_t utf8_cases[] = {
-    {"en_US.UTF-8", "", "", true, "LANG=en_US.UTF-8"},
-    {"C.UTF-8", "", "", true, "LANG=C.UTF-8"},
-    {"C", "C.UTF-8", "", true, "LC_ALL=C.UTF-8 (takes precedence over LANG)"},
-    {"C", "", "en_US.utf8", true, "LC_CTYPE=en_US.utf8"},
-    {"C", "", "", false, "LANG=C (no UTF-8)"},
-    {"", "", "", false, "All locale vars unset"},
+    {"en_US.UTF-8", "", "", true, "LANG=en_US.UTF-8"},    {"C.UTF-8", "", "", true, "LANG=C.UTF-8"}, {"C", "C.UTF-8", "", true, "LC_ALL=C.UTF-8 (takes precedence over LANG)"},
+    {"C", "", "en_US.utf8", true, "LC_CTYPE=en_US.utf8"}, {"C", "", "", false, "LANG=C (no UTF-8)"}, {"", "", "", false, "All locale vars unset"},
 };
 
 
@@ -256,7 +252,7 @@ TEST_CASE("terminal_detect/utf8_support_detection_parameterized", "[terminal_det
     setenv("LC_CTYPE", tc->lc_ctype_value, 1);
   }
 
-  terminal_capabilities_t caps = detect_terminal_capabilities();
+  terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
 
   ASCIICHAT_REQUIRE_EQ(caps.utf8_support, tc->expected_utf8_support, "%s: expected UTF-8 support=%d, got %d", tc->description,
                tc->expected_utf8_support, caps.utf8_support);

@@ -16,7 +16,7 @@
 #include "ascii-chat/common.h"
 #include "ascii-chat/log/log.h"
 #include "ascii-chat/log/grep.h"
-#include "ascii-chat/os/keyboard.h"
+#include <libplatform/keyboard.h>
 #include <libplatform/mutex.h>
 #include <libplatform/terminal.h>
 #include <libplatform/lifecycle.h>

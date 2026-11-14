@@ -1,7 +1,7 @@
 #pragma once
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <stddef.h>
 /** UTF-8 cursor movement/deletion in caller-owned single-line storage. */
 void ui_input_edit_key(char *buffer, size_t capacity, size_t *length, size_t *cursor, keyboard_key_t key);

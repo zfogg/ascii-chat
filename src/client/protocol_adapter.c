@@ -334,7 +334,12 @@ static asciichat_error_t client_startup_peer_error(client_connection_t *connecti
     size_t length = 0;
     bool notifications = errno_notifications_suppress(true);
     asciichat_errno_scope_t scope = errno_scope_begin();
-    asciichat_error_t received = packet_receive_via_transport(transport, &type, &payload, &length, &allocation);
+    packet_envelope_t envelope = {0};
+    asciichat_error_t received = acip_client_receive_packet(transport, &envelope);
+    type = envelope.type;
+    payload = envelope.data;
+    length = envelope.len;
+    allocation = envelope.allocated_buffer;
     errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
     errno_notifications_suppress(notifications);
     if (received == ASCIICHAT_OK && type == PACKET_TYPE_ERROR_MESSAGE)

@@ -26,8 +26,7 @@ static void teardown(void) {
 }
 TEST_CASE("source_paths/project_relative_paths_and_symbol_display", "[source_paths]") {
 
-  const char *paths[] = {"src/main.c", "lib/platform/windows/keyboard.c", "include/ascii-chat/util/path.h",
-                         "tests/integration/source_paths.c"};
+  const char *paths[] = {"src/main.c", "lib/platform/windows/keyboard.c", "include/ascii-chat/util/path.h", "tests/integration/source_paths.c"};
   for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
     char absolute[4096];
     safe_snprintf(absolute, sizeof(absolute), "%s/%s", ASCIICHAT_SOURCE_ROOT, paths[i]);

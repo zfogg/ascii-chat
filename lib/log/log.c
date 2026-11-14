@@ -1199,6 +1199,21 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   if (level < (log_level_t)loaded_level && !(g_notice_text && g_notice_unfiltered)) {
     return;
   }
+#ifdef __EMSCRIPTEN__
+  /* Browser logging is independent of terminal and stdout redirection. */
+  char browser_message[LOG_MMAP_MSG_BUFFER_SIZE];
+  va_list browser_args;
+  va_start(browser_args, fmt);
+  safe_vsnprintf(browser_message, sizeof(browser_message), fmt, browser_args);
+  va_end(browser_args);
+  platform_log_hook(level, browser_message);
+  if (g_notice_text) {
+    output_notice(level, file, line, func);
+  } else {
+    session_log_buffer_append(g_history, browser_message);
+  }
+  return;
+#endif
   /* =========================================================================
    * MMAP PATH: When mmap logging is active, writes go to mmap'd file
    * ========================================================================= */

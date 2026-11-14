@@ -2,7 +2,7 @@
 #define SIMD_CELL_NEON 1
 #define SIMD_CELL_ISA neon
 #include "../simd/lookup.c"
-#include <ascii-chat/video/ascii/render.h>
+#include <ascii-chat/video/ascii/render/common.h>
 #include <ascii-chat/video/ascii/neon.h>
 // Keep NEON's uniform-length UTF-8 compaction. ANSI state and row endings
 // are handled by the common emitter; this writes only complete glyph bytes.

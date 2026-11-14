@@ -53,9 +53,10 @@ function ConvertTo-DockerPath {
 $ImageName = "ascii-chat-tests"
 $ContainerName = "ascii-chat-test-runner"
 
-# Volume names for persistent caching
+# Volume names for persistent build caching
 $CcacheVolume = "ascii-chat-ccache"
-$DepsCacheVolume = "ascii-chat-deps-cache"
+$DepsCachePath = ConvertTo-DockerPath (Join-Path $RepoRoot ".deps-cache/docker")
+New-Item -ItemType Directory -Force -Path (Join-Path $RepoRoot ".deps-cache/docker") | Out-Null
 
 # Check if Docker is running
 Write-Host "Checking Docker..." -ForegroundColor Cyan
@@ -231,7 +232,7 @@ echo ""
         --name $ContainerName `
         -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
-        -v "${DepsCacheVolume}:/app/.deps-cache" `
+        -v "${DepsCachePath}:/app/.deps-cache/docker" `
         -e CCACHE_DIR=/ccache `
         -e TESTING=1 `
         -w /app `
@@ -349,7 +350,7 @@ if ($Interactive) {
         --name $ContainerName `
         -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
-        -v "${DepsCacheVolume}:/app/.deps-cache" `
+        -v "${DepsCachePath}:/app/.deps-cache/docker" `
         -e CCACHE_DIR=/ccache `
         -e TESTING=1 `
         -w /app `
@@ -363,7 +364,7 @@ if ($Interactive) {
         --name $ContainerName `
         -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
-        -v "${DepsCacheVolume}:/app/.deps-cache" `
+        -v "${DepsCachePath}:/app/.deps-cache/docker" `
         -e CCACHE_DIR=/ccache `
         -e TESTING=1 `
         -e ASAN_OPTIONS=detect_leaks=1 `

@@ -16,7 +16,7 @@
 #include <ascii-chat/log/log.h>
 #include <libplatform/system.h>
 #include <libplatform/agent.h>
-#include <ascii-chat/os/pipe.h>
+#include <libplatform/pipe.h>
 
 #include <ctype.h>
 #include <errno.h>

@@ -72,7 +72,7 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
   atomic_store_u64(&vfb->total_frames_dropped, 0);
   atomic_store_u64(&vfb->last_frame_sequence, 0);
 
-  log_debug("Created video frame buffer for client %u with double buffering", client_id);
+  log_debug("Created video frame buffer for client %s with double buffering", client_id);
 
   // DEBUG: Final state check
   log_info("VFB_FINAL: vfb=%p, back_buffer=%p (should be %p), frames[0].data=%p, frames[1].data=%p, allocated_size=%zu", (void *)vfb, (void *)vfb->back_buffer, (void *)&vfb->frames[1],
@@ -154,7 +154,7 @@ void video_frame_commit(video_frame_buffer_t *vfb) {
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_FRAMES_DROPPED, 1);
     stats_counter_add(stats_runtime_scope(), STATS_COUNTER_QUEUE_DROPS, 1);
     if (drops == 1 || drops % 100 == 0) {
-      log_dev_every(4500 * US_PER_MS_INT, "Dropping frame for client %u (reader too slow, total drops: %llu)", vfb->client_id, (unsigned long long)drops);
+      log_dev_every(4500 * US_PER_MS_INT, "Dropping frame for client %s (reader too slow, total drops: %llu)", vfb->client_id, (unsigned long long)drops);
     }
   }
   video_frame_t *temp = vfb->front_buffer;

@@ -113,11 +113,22 @@ if(DEFINED EMSCRIPTEN)
 
     include(ExternalProject)
     include(FetchContent)
+    # A cancelled FetchContent download can leave the shared cache with an
+    # empty source directory.  CMake then treats that directory as an
+    # explicit SOURCE_DIR and refuses to use the URL declared below.  Remove
+    # only that known-empty cache entry so the next configure can repopulate it.
+    set(_libsodium_source_dir "${FETCHCONTENT_BASE_DIR}/libsodium-wasm-src")
+    if(IS_DIRECTORY "${_libsodium_source_dir}")
+        file(GLOB _libsodium_source_entries "${_libsodium_source_dir}/*")
+        if(NOT _libsodium_source_entries)
+            file(REMOVE_RECURSE "${_libsodium_source_dir}")
+        endif()
+    endif()
     FetchContent_Declare(libsodium-wasm-src
         URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
         URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/libsodium-wasm-src"
+        SOURCE_DIR "${_libsodium_source_dir}"
         SOURCE_SUBDIR asciichat-autotools
         UPDATE_DISCONNECTED ON
     )

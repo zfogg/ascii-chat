@@ -839,11 +839,12 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
         bool is_new_frame = (incoming_rgb_hash != client->last_received_frame_hash);
 
         if (is_new_frame) {
-          log_debug_every(US_PER_SEC_INT, "RECV_FRAME #%u NEW: Client %s size=%zu dims=%ux%u hash=0x%08x (prev=0x%08x)", client->frames_received, client_id, rgb_data_size, img_width, img_height,
-                          incoming_rgb_hash, client->last_received_frame_hash);
+          log_debug_every(US_PER_SEC_INT, "RECV_FRAME #%llu NEW: Client %s size=%zu dims=%ux%u hash=0x%08x (prev=0x%08x)", (unsigned long long)client->frames_received, client_id, rgb_data_size,
+                          img_width, img_height, incoming_rgb_hash, client->last_received_frame_hash);
           client->last_received_frame_hash = incoming_rgb_hash;
         } else {
-          log_debug_every(US_PER_SEC_INT, "RECV_FRAME #%u DUP: Client %s size=%zu dims=%ux%u hash=0x%08x", client->frames_received, client_id, rgb_data_size, img_width, img_height, incoming_rgb_hash);
+          log_debug_every(US_PER_SEC_INT, "RECV_FRAME #%llu DUP: Client %s size=%zu dims=%ux%u hash=0x%08x", (unsigned long long)client->frames_received, client_id, rgb_data_size, img_width,
+                          img_height, incoming_rgb_hash);
         }
 
         video_frame_commit(client->incoming_video_buffer);
@@ -996,8 +997,8 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
     frame->receive_timestamp_ns = time_get_realtime_ns();
     frame->sequence_number = client->frames_received++;
 
-    log_debug_every(US_PER_SEC_INT, "RECV_H265 #%lu: client_id=%s size=%zu dims=%ux%u keyframe=%s", frame->sequence_number, client->client_id, rgba_size, frame_width, frame_height,
-                    is_keyframe ? "yes" : "no");
+    log_debug_every(US_PER_SEC_INT, "RECV_H265 #%llu: client_id=%s size=%zu dims=%ux%u keyframe=%s", (unsigned long long)frame->sequence_number, client->client_id, rgba_size, frame_width,
+                    frame_height, is_keyframe ? "yes" : "no");
 
     video_frame_commit(client->incoming_video_buffer);
   } else {

@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Heading } from "@ascii-chat/shared/components/Heading";
+import { defaultGlyphPalette, defaultPalettes } from "@ascii-chat/shared/wasm";
 import { getOptionHelp, AsciiChatMode } from "../../utils";
 import { Tooltip } from "../Tooltip";
+import { HelpIcon as DimensionHelp } from "../HelpIcon";
 import { LOCKED_SETTINGS_HELP } from "../lockedSettings";
 import type { useCameraFrameRate } from "../../hooks/useCameraFrameRate";
 import {
@@ -66,29 +68,6 @@ interface BinarySettingsProps {
   onContentFitChange?: (fit: "contain" | "cover") => void;
   cameraFps?: ReturnType<typeof useCameraFrameRate>;
   separateCameraFps?: boolean;
-}
-
-function DimensionHelp({ label, text }: { label: string; text: string }) {
-  const id = useId();
-  return (
-    <span className="group relative inline-flex">
-      <button
-        type="button"
-        aria-label={`${label} help`}
-        aria-describedby={id}
-        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-terminal-8 text-[10px] text-terminal-8 hover:text-terminal-fg focus-visible:outline focus-visible:outline-terminal-4"
-      >
-        <span aria-hidden="true">i</span>
-      </button>
-      <span
-        id={id}
-        role="tooltip"
-        className="pointer-events-none absolute left-0 top-full z-50 mt-2 hidden w-48 rounded bg-gray-800 p-2 text-xs font-normal text-white shadow-lg group-hover:block group-focus-within:block"
-      >
-        {text}
-      </span>
-    </span>
-  );
 }
 
 export function BinarySettings({
@@ -253,7 +232,10 @@ export function BinarySettings({
           </div>
 
           {contentFit && onContentFitChange && (
-            <Tooltip text="Contain shows the entire image with black bars. Cover fills the canvas and crops the edges.">
+            <Tooltip
+              helpLabel="Content fit"
+              text="Contain shows the entire image with black bars. Cover fills the canvas and crops the edges."
+            >
               <div className="flex-1 min-w-[100px]">
                 <label
                   htmlFor={`${dimensionsId}-fit`}
@@ -280,6 +262,7 @@ export function BinarySettings({
           )}
 
           <Tooltip
+            helpLabel="Frame Rate"
             text={disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "fps")}
           >
             <div className="flex-1 min-w-[200px]">
@@ -381,31 +364,7 @@ export function BinarySettings({
           )}
 
           <Tooltip
-            text={
-              disabled
-                ? LOCKED_SETTINGS_HELP
-                : audioVisualizationSelected
-                  ? "Audio visualizations disable temporal stabilization by default. Enable it explicitly to keep it on when switching back to video."
-                  : "Reduce character and color flicker between webcam frames. Enabled by default for video."
-            }
-          >
-            <label className="flex items-center gap-2 text-sm text-terminal-fg">
-              <input
-                type="checkbox"
-                checked={config.stabilize ?? true}
-                disabled={disabled}
-                onChange={(e) => {
-                  updateConfig({
-                    stabilize: e.target.checked,
-                    stabilizeExplicit: true,
-                  });
-                }}
-              />
-              Reduce flicker
-            </label>
-          </Tooltip>
-
-          <Tooltip
+            helpLabel="Color Mode"
             text={
               disabled
                 ? LOCKED_SETTINGS_HELP
@@ -434,6 +393,7 @@ export function BinarySettings({
           </Tooltip>
 
           <Tooltip
+            helpLabel="Render Mode"
             text={
               disabled
                 ? LOCKED_SETTINGS_HELP
@@ -464,6 +424,7 @@ export function BinarySettings({
           </Tooltip>
 
           <Tooltip
+            helpLabel="Color Filter"
             text={
               disabled
                 ? LOCKED_SETTINGS_HELP
@@ -499,7 +460,10 @@ export function BinarySettings({
             </div>
           </Tooltip>
 
-          <Tooltip text="Choose luminance mapping or experimental glyph-shape matching. Unicode palettes use luminance.">
+          <Tooltip
+            helpLabel="Text Art Render Algorithm"
+            text="Choose luminance mapping or experimental glyph-shape matching. Unicode palettes use luminance."
+          >
             <div className="flex-1 min-w-[200px]">
               <label
                 htmlFor={rendererSelectId}
@@ -525,6 +489,7 @@ export function BinarySettings({
           </Tooltip>
 
           <Tooltip
+            helpLabel="Palette"
             text={
               disabled
                 ? LOCKED_SETTINGS_HELP
@@ -598,21 +563,30 @@ export function BinarySettings({
                 text={
                   disabled
                     ? LOCKED_SETTINGS_HELP
-                    : "Enter characters from darkest to brightest."
+                    : "Select Custom in Palette to edit these characters. Enter custom characters from darkest to brightest."
                 }
               />
             </div>
             <input
               id={paletteInputId}
               type="text"
-              value={paletteDraft}
+              value={
+                config.palette === "custom"
+                  ? paletteDraft
+                  : config.renderer === "glyph" &&
+                      !config.paletteExplicit &&
+                      config.palette === "standard"
+                    ? defaultGlyphPalette
+                    : defaultPalettes[config.palette]
+              }
               onChange={(event) => updatePaletteDraft(event.target.value)}
-              disabled={disabled}
+              disabled={disabled || config.palette !== "custom"}
               className="w-full px-2 py-1 bg-terminal-bg border border-terminal-8 rounded text-sm text-terminal-fg focus:outline-none focus:border-terminal-4 font-mono"
             />
           </div>
 
           <Tooltip
+            helpLabel="Animation"
             text={
               disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "matrix")
             }
@@ -700,22 +674,68 @@ export function BinarySettings({
           )}
 
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-medium text-terminal-8 mb-1">
-              Camera Framing
-            </label>
+            <div className="flex items-center gap-1.5 mb-1">
+              <label className="text-xs font-medium text-terminal-8">
+                Camera Framing
+              </label>
+              <DimensionHelp
+                label="Camera Framing"
+                text={
+                  disabled
+                    ? LOCKED_SETTINGS_HELP
+                    : "Automatically zoom and pan to keep your face in view. Widens smoothly when your face is lost."
+                }
+              />
+            </div>
             <button
               type="button"
               aria-label="Face Follow"
               aria-pressed={!!config.faceFollow}
               disabled={disabled}
               onClick={() => updateConfig({ faceFollow: !config.faceFollow })}
-              title="Automatically zoom and pan to keep your face in view. Widens smoothly when your face is lost."
               className={`w-full px-4 py-2 border rounded text-sm font-medium transition-colors ${config.faceFollow ? "border-transparent bg-terminal-2 text-terminal-bg hover:bg-terminal-10" : "bg-terminal-bg text-terminal-fg border-terminal-8 hover:border-terminal-fg"}`}
             >
               Face Follow{config.faceFollow ? " On" : " Off"}
             </button>
           </div>
+
           <Tooltip
+            helpLabel="Stabilization"
+            text={
+              disabled
+                ? LOCKED_SETTINGS_HELP
+                : audioVisualizationSelected
+                  ? "Audio visualizations disable temporal stabilization by default. Enable it explicitly to keep it on when switching back to video."
+                  : "Reduce character and color flicker between webcam frames. Enabled by default for video."
+            }
+          >
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs font-medium text-terminal-8 mb-1">
+                Stabilization
+              </label>
+              <button
+                type="button"
+                aria-label="Reduce flicker"
+                aria-pressed={config.stabilize ?? true}
+                disabled={disabled}
+                onClick={() =>
+                  updateConfig({
+                    stabilize: !(config.stabilize ?? true),
+                    stabilizeExplicit: true,
+                  })
+                }
+                className={`w-full px-4 py-2 border rounded text-sm font-medium transition-colors ${
+                  (config.stabilize ?? true)
+                    ? "border-transparent bg-terminal-2 text-terminal-bg hover:bg-terminal-10"
+                    : "bg-terminal-bg text-terminal-fg border-terminal-8 hover:border-terminal-fg"
+                }`}
+              >
+                Reduce flicker{(config.stabilize ?? true) ? " On" : " Off"}
+              </button>
+            </div>
+          </Tooltip>
+          <Tooltip
+            helpLabel="Content Horizontal Flip"
             text={
               disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "flip-x")
             }
@@ -740,6 +760,7 @@ export function BinarySettings({
           </Tooltip>
 
           <Tooltip
+            helpLabel="Content Vertical Flip"
             text={
               disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "flip-y")
             }

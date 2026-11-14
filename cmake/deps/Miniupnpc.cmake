@@ -27,6 +27,16 @@ include(${CMAKE_CURRENT_LIST_DIR}/../utils/FindDependency.cmake)
 
 
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+    # Browser transports cannot perform native UPnP/NAT-PMP port mapping.
+    # Do not discover a host miniupnpc package while configuring WASM.
+    set(MINIUPNPC_FOUND FALSE)
+    set(MINIUPNPC_LIBRARIES "")
+    set(MINIUPNPC_INCLUDE_DIRS "")
+    message(STATUS "miniupnpc skipped for WebAssembly (browser networking has no UPnP API)")
+    return()
+endif()
+
 if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
     function(asciichat_build_miniupnpc)
         asciichat_dependency_defaults()

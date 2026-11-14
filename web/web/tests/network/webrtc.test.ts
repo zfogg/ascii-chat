@@ -14,13 +14,35 @@ import {
 
 vi.mock("../../src/wasm/client", async (original) => ({
   ...(await original<typeof import("../../src/wasm/client")>()),
-  serializePacket(type: number, payload: Uint8Array) {
-    const bytes = new Uint8Array(22 + payload.length);
-    const view = new DataView(bytes.buffer);
-    view.setUint16(8, type, false);
-    view.setUint32(10, payload.length, false);
-    bytes.set(payload, 22);
-    return bytes;
+  processClientEvent(event: Record<string, unknown>) {
+    if (event["type"] === "send-packet") {
+      const payload = event["payload"] as Uint8Array;
+      const bytes = new Uint8Array(22 + payload.length);
+      const view = new DataView(bytes.buffer);
+      view.setUint16(8, event["packetType"] as number, false);
+      view.setUint32(10, payload.length, false);
+      bytes.set(payload, 22);
+      return { code: 0, state: ConnectionState.CONNECTED, bytes };
+    }
+    if (event["type"] === "receive-transport-packet") {
+      const bytes = event["packet"] as Uint8Array;
+      const view = new DataView(
+        bytes.buffer,
+        bytes.byteOffset,
+        bytes.byteLength,
+      );
+      return {
+        code: 0,
+        state: ConnectionState.CONNECTED,
+        packet: {
+          type: view.getUint16(8, false),
+          length: view.getUint32(10, false),
+          client_id: view.getUint32(18, false),
+          crc32: view.getUint32(14, false),
+        },
+      };
+    }
+    throw new Error(`Unexpected client event: ${String(event["type"])}`);
   },
 }));
 
@@ -554,7 +576,7 @@ describe("handoff with queued media", () => {
       getBufferedAmount: () => buffered,
       close: vi.fn(),
     });
-    Reflect.set(session, "peerCrypto", oldCrypto);
+    Reflect.set(session, "securitySession", oldCrypto);
     session.sendPacket(PacketType.IMAGE_FRAME, new Uint8Array(8));
     expect(session.getBufferedAmount()).toBeGreaterThan(buffered);
     const oldQueue = Reflect.get(session, "outbound");
@@ -568,7 +590,7 @@ describe("handoff with queued media", () => {
       getBufferedAmount: () => 0,
       close: vi.fn(),
     });
-    Reflect.set(session, "peerCrypto", nextCrypto);
+    Reflect.set(session, "securitySession", nextCrypto);
     expect(session.needsKeyframe(PacketType.IMAGE_FRAME_H264)).toBe(true);
     session.sendPacket(
       PacketType.IMAGE_FRAME_H264,
@@ -621,14 +643,14 @@ it("retains signaling after the audio congestion deadline and bounds successor r
   const media = session as unknown as {
     state: ConnectionState;
     bridge: object;
-    peerCrypto: object;
+    securitySession: object;
   };
   const bridgeClosed = vi.fn(),
     cryptoClosed = vi.fn();
   media.state = ConnectionState.CONNECTED;
   // Fill the bounded reliable wire window so admitted audio must remain queued.
   media.bridge = { getBufferedAmount: () => 256 * 1024, close: bridgeClosed };
-  media.peerCrypto = { sendPacket: vi.fn(), close: cryptoClosed };
+  media.securitySession = { sendPacket: vi.fn(), close: cryptoClosed };
   try {
     session.sendPacket(PacketType.AUDIO_OPUS_BATCH, new Uint8Array(32));
     await vi.advanceTimersByTimeAsync(5004);

@@ -57,7 +57,8 @@ static asciichat_error_t contract_advertise(asciichat_mdns_t *context, const asc
   ++advertisement_calls;
   return advertisement_result;
 }
-static bool contract_can_prompt(void) {
+static bool contract_can_prompt(bool user_setting) {
+  (void)user_setting;
   return can_prompt;
 }
 static bool contract_disclosure(ui_prompt_kind_t kind, ui_notice_severity_t severity, const char *text,
@@ -85,8 +86,7 @@ static asciichat_error_t contract_ice(webrtc_peer_manager_t *manager, const acip
   forwarded_signal = message;
   return signal_result;
 }
-static asciichat_error_t contract_adopt(network_server_t *server, acip_transport_t *transport, const char *id,
-                                        bool authenticated) {
+static asciichat_error_t contract_adopt(network_server_t *server, acip_transport_t *transport, const char *id, bool authenticated) {
   (void)server;
   ASCIICHAT_REQUIRE_NOT_NULL(transport);
   ASCIICHAT_REQUIRE(authenticated);
@@ -311,8 +311,7 @@ TEST_CASE("server_main_contract/discovery_request_preserves_security_policy_and_
   v->max_clients = 3;
   SAFE_STRNCPY(v->address, "127.0.0.1", sizeof(v->address));
   server_options_commit(v);
-  server_discovery_policy_t policy = {
-      .has_identity = true, .has_password = true, .password = "fixture-secret", .expose_ip = false};
+  server_discovery_policy_t policy = {.has_identity = true, .has_password = true, .password = "fixture-secret", .expose_ip = false};
   g_server_encryption_enabled = true;
   memset(g_server_private_key.public_key, 0x42, 32);
   memset(g_server_private_key.key.ed25519, 0x24, 64);
@@ -342,8 +341,7 @@ TEST_CASE("server_main_contract/turn_server_list_requires_credentials_trims_entr
   ASCIICHAT_REQUIRE_EQ(server_configure_turn(servers, "", "secret"), 0);
   ASCIICHAT_REQUIRE_EQ(server_configure_turn(servers, "user", ""), 0);
   options_t *v = server_options();
-  SAFE_STRNCPY(v->turn_servers, " turn:one , \tturn:two\t ,   ,turn:three,turn:four,turn:ignored",
-               sizeof(v->turn_servers));
+  SAFE_STRNCPY(v->turn_servers, " turn:one , \tturn:two\t ,   ,turn:three,turn:four,turn:ignored", sizeof(v->turn_servers));
   server_options_commit(v);
   ASCIICHAT_REQUIRE_EQ(server_configure_turn(servers, "local-user", "local-secret"), 4);
   ASCIICHAT_REQUIRE_STR_EQ(servers[0].url, "turn:one");

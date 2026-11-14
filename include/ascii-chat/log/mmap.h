@@ -36,7 +36,7 @@
 #include <libplatform/atomic.h>
 #endif
 #include "../common.h"
-#include "../os/mmap.h"
+#include <libplatform/mmap.h>
 
 #ifdef __cplusplus
 extern "C" {

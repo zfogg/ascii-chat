@@ -18,7 +18,7 @@
 #include <libplatform/socket.h>
 #include <ascii-chat/common/sync.h>
 #include <libplatform/process.h>
-#include <ascii-chat/os/memory.h>
+#include <libplatform/memory.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/asan.h>
 #include <ascii-chat/buffer.h>
@@ -38,7 +38,7 @@
 #include <ascii-chat/debug/memory.h>        // For debug memory reporting
 #include <libplatform/symbols.h>            // For symbols cache init
 #include <libplatform/terminal.h>           // For terminal_screen_cleanup
-#include <ascii-chat/os/keyboard.h>         // For keyboard_destroy()
+#include <libplatform/keyboard.h>           // For keyboard_destroy()
 #include <ascii-chat/tui/terminal_screen.h> // For terminal_screen_cleanup
 #include <string.h>
 #include <libplatform/atomic.h>

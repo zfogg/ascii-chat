@@ -105,7 +105,7 @@ bool validate_palette_chars(const char *chars, size_t len) {
     } else {
       // Non-ASCII: use utf8_display_width to check character width
       // Create a temporary buffer with the UTF-8 encoded character
-      uint8_t utf8_buf[UTF8_BUFFER_SIZE] = {0};
+      uint8_t utf8_buf[ASCII_CHAT_UTF8_BUFFER_SIZE] = {0};
 
       // Encode codepoint to UTF-8 (simple for demo, should use proper encoder)
       if (cp <= 0x7F) {

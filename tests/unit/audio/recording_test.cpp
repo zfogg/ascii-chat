@@ -18,8 +18,7 @@
 
 // Recording workers consume injected PCM; no physical device or callback clock is needed.
 static unsigned device_stream;
-static const PaDeviceInfo recording_device = {
-    .structVersion = 2, .name = "recording speaker", .maxOutputChannels = 1, .defaultSampleRate = AUDIO_SAMPLE_RATE};
+static const PaDeviceInfo recording_device = {.structVersion = 2, .name = "recording speaker", .maxOutputChannels = 1, .defaultSampleRate = AUDIO_SAMPLE_RATE};
 PaError Pa_Initialize(void) {
   return paNoError;
 }
@@ -41,8 +40,8 @@ const PaDeviceInfo *Pa_GetDeviceInfo(PaDeviceIndex device) {
 const char *Pa_GetErrorText(PaError error) {
   return error == paNoError ? "Success" : "Recording fixture has no such device";
 }
-PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const PaStreamParameters *output, double rate,
-                      unsigned long frames, PaStreamFlags flags, PaStreamCallback *callback, void *data) {
+PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const PaStreamParameters *output, double rate, unsigned long frames, PaStreamFlags flags, PaStreamCallback *callback,
+                      void *data) {
   (void)rate;
   (void)frames;
   (void)flags;
@@ -661,8 +660,7 @@ TEST_CASE("recording/file_pause_gap_keeps_audio_and_video_timelines_aligned", "[
   while ((count = ffmpeg_decoder_read_audio_samples(decoder, samples, 12000)) > 0) {
     for (size_t i = 0; i < count; i++, total++) {
       for (size_t window_index = 0; window_index < 3; window_index++) {
-        if (total / AUDIO_CHANNELS >= window_starts[window_index] &&
-            total / AUDIO_CHANNELS < window_starts[window_index] + 24000)
+        if (total / AUDIO_CHANNELS >= window_starts[window_index] && total / AUDIO_CHANNELS < window_starts[window_index] + 24000)
           window[window_index] += samples[i] * samples[i];
       }
     }

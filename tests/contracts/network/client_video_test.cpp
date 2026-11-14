@@ -67,8 +67,7 @@ static image_t *video_read(session_capture_ctx_t *capture) {
     return NULL;
   return session_capture_read_frame(capture);
 }
-static asciichat_error_t video_encoded(client_connection_t *connection, const void *pixels, uint32_t width,
-                                       uint32_t height, video_codec_t codec, bool *encoding_failed) {
+static asciichat_error_t video_encoded(client_connection_t *connection, const void *pixels, uint32_t width, uint32_t height, video_codec_t codec, bool *encoding_failed) {
   (void)connection;
   (void)pixels;
   ASCIICHAT_REQUIRE(codec == VIDEO_CODEC_H264 || codec == VIDEO_CODEC_H265);
@@ -82,8 +81,7 @@ static asciichat_error_t video_encoded(client_connection_t *connection, const vo
   *encoding_failed = false;
   return wire_result;
 }
-static asciichat_error_t video_raw(client_connection_t *connection, const void *pixels, uint32_t width, uint32_t height,
-                                   uint32_t format) {
+static asciichat_error_t video_raw(client_connection_t *connection, const void *pixels, uint32_t width, uint32_t height, uint32_t format) {
   (void)connection;
   ASCIICHAT_REQUIRE_NOT_NULL(pixels);
   ASCIICHAT_REQUIRE_GT(width, 0);

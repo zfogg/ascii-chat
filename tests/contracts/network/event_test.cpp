@@ -25,10 +25,8 @@ static asciichat_error_t count_packet(const void *data, size_t size, void *arg) 
 static void decoder_tests(void) {
   packet_decoder_t decoder = {0};
   uint8_t wire[sizeof(packet_header_t) + 3];
-  packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
-                            .type = HOST_TO_NET_U16(PACKET_TYPE_TEXT_MESSAGE),
-                            .length = HOST_TO_NET_U32(3),
-                            .crc32 = HOST_TO_NET_U32(asciichat_crc32("abc", 3))};
+  packet_header_t header = {
+      .magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(PACKET_TYPE_TEXT_MESSAGE), .length = HOST_TO_NET_U32(3), .crc32 = HOST_TO_NET_U32(asciichat_crc32("abc", 3))};
   memcpy(wire, &header, sizeof(header));
   memcpy(wire + sizeof(header), "abc", 3);
   for (size_t split = 0; split <= sizeof(wire); ++split) {

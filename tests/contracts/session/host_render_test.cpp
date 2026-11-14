@@ -55,8 +55,7 @@ static asciichat_error_t send_frame(acip_transport_t *transport, const socket_bu
     return ASCIICHAT_OK;
   }
   sink_t *sink = transport->impl_data;
-  asciichat_error_t result = session_protocol_dispatch(&sink->protocol, PACKET_TYPE_ASCII_FRAME,
-                                                       packet + sizeof(header), length - sizeof(header));
+  asciichat_error_t result = session_protocol_dispatch(&sink->protocol, PACKET_TYPE_ASCII_FRAME, packet + sizeof(header), length - sizeof(header));
   asciichat_error_context_t error = {0};
   errno_has(&error);
   ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Receiver rejected real rendered frame: %s", error.context_message);
@@ -64,13 +63,9 @@ static asciichat_error_t send_frame(acip_transport_t *transport, const socket_bu
   return result;
 }
 
-static terminal_capabilities_packet_t capabilities(terminal_color_mode_t color, palette_type_t palette,
-                                                   const char *custom) {
-  terminal_capabilities_packet_t packet = {.width = HOST_TO_NET_U16(40),
-                                           .height = HOST_TO_NET_U16(12),
-                                           .color_level = HOST_TO_NET_U32(color),
-                                           .utf8_support = HOST_TO_NET_U32(1),
-                                           .palette_type = HOST_TO_NET_U32(palette)};
+static terminal_capabilities_packet_t capabilities(terminal_color_mode_t color, palette_type_t palette, const char *custom) {
+  terminal_capabilities_packet_t packet = {
+      .width = HOST_TO_NET_U16(40), .height = HOST_TO_NET_U16(12), .color_level = HOST_TO_NET_U32(color), .utf8_support = HOST_TO_NET_U32(1), .palette_type = HOST_TO_NET_U32(palette)};
   if (custom)
     SAFE_STRNCPY(packet.palette_custom, custom, sizeof(packet.palette_custom));
   return packet;
@@ -219,9 +214,7 @@ static void test_tcp_delivery(const image_t *image) {
   uint32_t source = session_host_add_memory_participant(host);
   ASCIICHAT_REQUIRE(source && session_host_inject_frame(host, source, image) == ASCIICHAT_OK);
   sink_t sink = {0};
-  session_protocol_init(&sink.protocol, network_connection_transport(owner),
-                        (session_protocol_media_t){.on_frame = receive_frame, .context = &sink},
-                        (acip_client_callbacks_t){0});
+  session_protocol_init(&sink.protocol, network_connection_transport(owner), (session_protocol_media_t){.on_frame = receive_frame, .context = &sink}, (acip_client_callbacks_t){0});
   terminal_capabilities_packet_t caps = capabilities(TERM_COLOR_NONE, PALETTE_CUSTOM, "TT");
   update(host, client, &caps);
   ASCIICHAT_REQUIRE_EQ(render_tick(host), ASCIICHAT_OK);
@@ -434,9 +427,7 @@ TEST_CASE("host_render/recipient_settings_and_delivery", "[host_render]") {
   const acip_transport_methods_t methods = {.sendv = send_frame};
   for (int i = 0; i < 3; ++i) {
     transports[i] = (acip_transport_t){.methods = &methods, .impl_data = &sinks[i]};
-    session_protocol_init(&sinks[i].protocol, &transports[i],
-                          (session_protocol_media_t){.on_frame = receive_frame, .context = &sinks[i]},
-                          (acip_client_callbacks_t){0});
+    session_protocol_init(&sinks[i].protocol, &transports[i], (session_protocol_media_t){.on_frame = receive_frame, .context = &sinks[i]}, (acip_client_callbacks_t){0});
     ids[i] = session_host_add_client(host, NULL, ACIP_TRANSPORT_BORROWED, "test", 0);
     ASCIICHAT_REQUIRE(ids[i]);
     uint8_t query[ACIP_SETTINGS_HEADER_SIZE];
@@ -459,8 +450,7 @@ TEST_CASE("host_render/recipient_settings_and_delivery", "[host_render]") {
       .get_config = display_config, .render_frame = display_frame, .context = &display};
   ASCIICHAT_REQUIRE_EQ(session_host_set_render_target(host, &target), ASCIICHAT_OK);
 
-  terminal_capabilities_packet_t caps[3] = {capabilities(TERM_COLOR_TRUECOLOR, PALETTE_CUSTOM, "XY"),
-                                            capabilities(TERM_COLOR_256, PALETTE_CUSTOM, "XY"),
+  terminal_capabilities_packet_t caps[3] = {capabilities(TERM_COLOR_TRUECOLOR, PALETTE_CUSTOM, "XY"), capabilities(TERM_COLOR_256, PALETTE_CUSTOM, "XY"),
                                             capabilities(TERM_COLOR_NONE, PALETTE_CUSTOM, "XY")};
   for (int i = 0; i < 3; ++i)
     update(host, ids[i], &caps[i]);
@@ -605,8 +595,7 @@ TEST_CASE("host_render/mirror_output_validation", "[host_render]") {
   ASCIICHAT_REQUIRE_NOT_NULL(image);
   for (int i = 0; i < image->w * image->h; ++i)
     image->pixels[i] = (rgb_pixel_t){.r = 120, .g = 80, .b = 40};
-  session_display_config_t config = {
-      .snapshot_mode = true, .palette_type = PALETTE_CUSTOM, .custom_palette = "XX", .color_mode = TERM_COLOR_NONE};
+  session_display_config_t config = {.snapshot_mode = true, .palette_type = PALETTE_CUSTOM, .custom_palette = "XX", .color_mode = TERM_COLOR_NONE};
   session_display_ctx_t *display = session_display_create(&config);
   ASCIICHAT_REQUIRE_NOT_NULL(display);
   for (int mode = RENDER_MODE_FOREGROUND; mode <= RENDER_MODE_HALF_BLOCK; ++mode) {
@@ -666,11 +655,8 @@ static asciichat_error_t broadcast_send(acip_transport_t *transport, const void 
   if (sink->fail)
     return ERROR_NETWORK;
   session_protocol_t protocol;
-  session_protocol_init(&protocol, transport,
-                        (session_protocol_media_t){.on_frame = broadcast_frame_received, .context = sink},
-                        (acip_client_callbacks_t){0});
-  return session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, (const uint8_t *)data + sizeof(header),
-                                   length - sizeof(header));
+  session_protocol_init(&protocol, transport, (session_protocol_media_t){.on_frame = broadcast_frame_received, .context = sink}, (acip_client_callbacks_t){0});
+  return session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, (const uint8_t *)data + sizeof(header), length - sizeof(header));
 }
 TEST_CASE("host_render/broadcast_and_targeted_frames_preserve_membership_when_one_recipient_fails", "[host_render]") {
   socket_init();

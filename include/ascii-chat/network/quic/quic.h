@@ -34,8 +34,7 @@ asciichat_error_t quic_endpoint_set_http_server(quic_endpoint_t *endpoint, http_
  * address storage. A listener requires a matching certificate and key. */
 asciichat_error_t quic_endpoint_open(const struct sockaddr *bind_address, socklen_t bind_length, bool listener,
                                      const quic_config_t *config, quic_endpoint_t **out);
-asciichat_error_t quic_endpoint_address(quic_endpoint_t *endpoint, struct sockaddr_storage *address,
-                                        socklen_t *length);
+asciichat_error_t quic_endpoint_address(quic_endpoint_t *endpoint, struct sockaddr_storage *address, socklen_t *length);
 
 /** Start a client connection to a resolved address. server_name is used for
  * certificate identity verification and is required even for an IP address.

@@ -2,7 +2,7 @@
 
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/common/sync.h>
-#include <ascii-chat/os/memory.h>
+#include <libplatform/memory.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/util/utf8.h>

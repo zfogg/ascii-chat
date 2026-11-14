@@ -47,8 +47,7 @@ static void *receive_packets(void *context) {
 }
 static void interrupt_owner(void *context) {
   owner_t *owner = context;
-  log_info("Interrupting owner socket=%llu transport_socket=%llu", (unsigned long long)owner->socket,
-           (unsigned long long)acip_transport_get_socket(owner->transport));
+  log_info("Interrupting owner socket=%llu transport_socket=%llu", (unsigned long long)owner->socket, (unsigned long long)acip_transport_get_socket(owner->transport));
   session_connection_interrupt_transport(owner->transport);
 }
 static asciichat_error_t join_owner(void *context) {
@@ -75,8 +74,7 @@ static void release_owner(void *context) {
 static void initialize(owner_t *owner, socket_t socket) {
   memset(owner, 0, sizeof(*owner));
   owner->socket = socket;
-  session_connection_init(&owner->connection, (session_connection_ops_t){interrupt_owner, join_owner, release_owner},
-                          owner);
+  session_connection_init(&owner->connection, (session_connection_ops_t){interrupt_owner, join_owner, release_owner}, owner);
   owner->transport = acip_tcp_transport_create_owned("owner_test", socket, NULL);
   ASCIICHAT_REQUIRE(owner->transport);
 }
@@ -199,8 +197,7 @@ static asciichat_error_t peer_close(acip_transport_t *transport) {
   (void)transport;
   return ASCIICHAT_OK;
 }
-static asciichat_error_t peer_packet(network_connection_t *connection, packet_type_t type, const void *data,
-                                     size_t length, void *context) {
+static asciichat_error_t peer_packet(network_connection_t *connection, packet_type_t type, const void *data, size_t length, void *context) {
   (void)connection;
   (void)type;
   (void)data;
@@ -233,8 +230,7 @@ TEST_CASE("session_connections/disconnected_peer_preserves_receive_cause_without
   CLEAR_ERRNO();
   atomic_store_int(&closed_peer_receives, 0);
   atomic_store_int(&closed_peer_releases, 0);
-  network_server_config_t config = {
-      .bind_ipv4 = true, .ipv4_address = "127.0.0.1", .callbacks = {.packet = peer_packet, .closed = peer_released}};
+  network_server_config_t config = {.bind_ipv4 = true, .ipv4_address = "127.0.0.1", .callbacks = {.packet = peer_packet, .closed = peer_released}};
   network_server_t *server = NULL;
   ASCIICHAT_REQUIRE_EQ(network_server_create(&config, &server), ASCIICHAT_OK);
   transport = SAFE_CALLOC(1, sizeof(*transport), acip_transport_t *);
@@ -254,8 +250,7 @@ TEST_CASE("session_connections/disconnected_peer_preserves_receive_cause_without
 TEST_CASE("session_connections/retains_owners_until_workers_join", "[session_connections]") {
   int interrupted[2] = {0};
   const acip_transport_methods_t dispatch_methods = {.interrupt = count_interrupt};
-  acip_transport_t dispatch[2] = {{.methods = &dispatch_methods, .impl_data = &interrupted[0]},
-                                  {.methods = &dispatch_methods, .impl_data = &interrupted[1]}};
+  acip_transport_t dispatch[2] = {{.methods = &dispatch_methods, .impl_data = &interrupted[0]}, {.methods = &dispatch_methods, .impl_data = &interrupted[1]}};
   acip_transport_interrupt(NULL);
   session_connection_interrupt_transport(&dispatch[0]);
   ASCIICHAT_REQUIRE(interrupted[0] == 1 && interrupted[1] == 0);

@@ -60,6 +60,12 @@ export class BrowserVideoDecoder {
         codedWidth: width,
         codedHeight: height,
         optimizeForLatency: true,
+        ...(type === PacketType.IMAGE_FRAME_H265
+          ? { hevc: { format: "annexb" } }
+          : { avc: { format: "annexb" } }),
+      } as VideoDecoderConfig & {
+        avc?: { format: "annexb" };
+        hevc?: { format: "annexb" };
       });
     }
     this.decoder!.decode(
