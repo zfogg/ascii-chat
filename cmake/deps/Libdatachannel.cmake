@@ -51,9 +51,16 @@ function(asciichat_build_libdatachannel)
             BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_libdatachannel"
         GIT_REPOSITORY https://github.com/paullouisageneau/libdatachannel.git
         GIT_TAG v0.22.5 GIT_SHALLOW TRUE
-        GIT_SUBMODULES deps/plog deps/libjuice deps/usrsctp GIT_SUBMODULES_RECURSE TRUE
-        SOURCE_SUBDIR asciichat-patch-first)
-    FetchContent_MakeAvailable(asciichat_libdatachannel)
+        GIT_SUBMODULES deps/plog deps/libjuice deps/usrsctp GIT_SUBMODULES_RECURSE TRUE)
+    FetchContent_GetProperties(asciichat_libdatachannel)
+    if(NOT asciichat_libdatachannel_POPULATED)
+        cmake_policy(PUSH)
+        if(POLICY CMP0169)
+            cmake_policy(SET CMP0169 OLD)
+        endif()
+        FetchContent_Populate(asciichat_libdatachannel)
+        cmake_policy(POP)
+    endif()
     set(LIBDATACHANNEL_SOURCE_DIR "${asciichat_libdatachannel_SOURCE_DIR}")
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/patch-libdatachannel-cmake.cmake")
     add_subdirectory("${asciichat_libdatachannel_SOURCE_DIR}" "${asciichat_libdatachannel_BINARY_DIR}" EXCLUDE_FROM_ALL)

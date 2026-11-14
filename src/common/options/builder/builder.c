@@ -22,8 +22,6 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <libflags/flags.h>
-#include <libflags/builder.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/utf8.h>
@@ -32,75 +30,6 @@
 #include <string.h>
 #include <limits.h>
 #include <stdarg.h>
-
-static flags_value_type_t option_type_to_flags_type(option_type_t type) {
-  switch (type) {
-  case OPTION_TYPE_BOOL:
-    return FLAGS_TYPE_BOOL;
-  case OPTION_TYPE_INT:
-    return FLAGS_TYPE_INT64;
-  case OPTION_TYPE_DOUBLE:
-    return FLAGS_TYPE_DOUBLE;
-  case OPTION_TYPE_STRING:
-    return FLAGS_TYPE_STRING;
-  case OPTION_TYPE_CALLBACK:
-  case OPTION_TYPE_ACTION:
-  default:
-    return FLAGS_TYPE_CUSTOM;
-  }
-}
-
-flags_schema_builder_t *options_config_build_flags_schema(const options_config_t *config) {
-  if (!config)
-    return NULL;
-  flags_schema_builder_t *builder = flags_schema_builder_create();
-  if (!builder)
-    return NULL;
-  for (size_t i = 0; i < config->num_descriptors; ++i) {
-    const option_descriptor_t *source = &config->descriptors[i];
-    flags_option_spec_t target = {.name = source->long_name,
-                                  .metavar = source->arg_placeholder,
-                                  .description = source->help_text,
-                                  .environment_name = source->env_var_name,
-                                  .short_name = source->short_name,
-                                  .type = option_type_to_flags_type(source->type),
-                                  .behavior = source->type == OPTION_TYPE_ACTION ? FLAGS_BEHAVIOR_ACTION : FLAGS_BEHAVIOR_VALUE,
-                                  .argument_requirement =
-                                      source->type == OPTION_TYPE_BOOL && !source->optional_arg ? FLAGS_ARGUMENT_NONE : (source->optional_arg ? FLAGS_ARGUMENT_OPTIONAL : FLAGS_ARGUMENT_REQUIRED),
-                                  .repeatable = false,
-                                  .secret = source->long_name && (strstr(source->long_name, "password") || strstr(source->long_name, "key")),
-                                  .storage_offset = source->offset,
-                                  .storage_size = source->type == OPTION_TYPE_BOOL     ? sizeof(bool)
-                                                  : source->type == OPTION_TYPE_INT    ? sizeof(int)
-                                                  : source->type == OPTION_TYPE_DOUBLE ? sizeof(double)
-                                                                                       : sizeof(char *),
-                                  .default_value = source->default_value,
-                                  .dynamic_string = source->owns_memory};
-    if (source->metadata.enum_values) {
-      size_t count = 0;
-      while (source->metadata.enum_values[count])
-        ++count;
-      target.enum_values = (const char *const *)source->metadata.enum_values;
-      target.enum_value_count = count;
-      target.type = FLAGS_TYPE_ENUM;
-    }
-    if (!source->long_name || !flags_schema_builder_add_option(builder, &target)) {
-      flags_schema_builder_destroy(builder);
-      return NULL;
-    }
-  }
-  return builder;
-}
-
-bool options_config_configure_flags_environment(flags_context_t *context, const char *prefix) {
-  if (!context)
-    return false;
-  const flags_environment_config_t environment = {
-      .prefix = prefix ? prefix : "ASCII_CHAT_",
-      .derive_names = true,
-  };
-  return flags_set_environment_config(context, &environment);
-}
 
 // Use platform utilities
 #include <libplatform/terminal.h>
@@ -1472,27 +1401,34 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
 
     // Check environment variable first (primary)
     const char *env_value = NULL;
-    char derived_env_name[256];
-    const char *env_name = desc->env_var_name;
-    if (!env_name && desc->long_name && flags_derive_environment_name("ASCII_CHAT_", desc->long_name, derived_env_name, sizeof(derived_env_name)))
-      env_name = derived_env_name;
-    if (env_name)
-      env_value = SAFE_GETENV(env_name);
+    if (desc->env_var_name) {
+      env_value = SAFE_GETENV(desc->env_var_name);
+    }
+    // Windows can expose an environment variable with an empty value as a
+    // non-NULL string. Empty values are equivalent to unset for option
+    // precedence; never pass them to parsers as explicit input.
+    if (env_value && env_value[0] == '\0') {
+      env_value = NULL;
+    }
     // Check shorter alias names as fallback if primary not set
     if (!env_value) {
-      if (env_name && strcmp(env_name, "ASCII_CHAT_PORT") == 0) {
+      if (desc->env_var_name && strcmp(desc->env_var_name, "ASCII_CHAT_PORT") == 0) {
         env_value = SAFE_GETENV("PORT");
-      } else if (env_name && strcmp(env_name, "ASCII_CHAT_WEBSOCKET_PORT") == 0) {
+      } else if (desc->env_var_name && strcmp(desc->env_var_name, "ASCII_CHAT_WEBSOCKET_PORT") == 0) {
         env_value = SAFE_GETENV("WS_PORT");
       }
+    }
+    if (env_value && env_value[0] == '\0') {
+      env_value = NULL;
     }
 
     // Use handler registry to apply environment variables and defaults
     if (desc->type >= 0 && desc->type < (int)(NUM_OPTION_TYPES)) {
       if (g_builder_handlers[desc->type].apply_env) {
         asciichat_error_t result = g_builder_handlers[desc->type].apply_env(field, env_value, desc);
-        if (result != ASCIICHAT_OK)
+        if (result != ASCIICHAT_OK) {
           return result;
+        }
       }
     } else if (desc->type == OPTION_TYPE_CALLBACK && desc->parse_fn && desc->default_value) {
       // Special handling for callbacks with parse_fn
