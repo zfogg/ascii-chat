@@ -621,6 +621,17 @@ elseif(WIN32)
 else()
     # Linux/Unix
     _find_llvm_tool(ASCIICHAT_LLD_EXECUTABLE ld.lld lld)
+    # The LLVM helper may not run during the early compiler/bootstrap phase,
+    # while musl still requires a linker during that same configure.  Probe
+    # the standard installation directories directly as a final LLD-only
+    # fallback.
+    if(NOT ASCIICHAT_LLD_EXECUTABLE)
+        find_program(ASCIICHAT_LLD_EXECUTABLE
+            NAMES ld.lld lld ld.lld-23 ld.lld-22 ld.lld-21 ld.lld-20 ld.lld-19
+            PATHS /usr/bin /usr/local/bin
+            NO_DEFAULT_PATH
+            DOC "System LLD linker")
+    endif()
 endif()
 
 # =============================================================================
