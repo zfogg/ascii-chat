@@ -12,9 +12,9 @@ interface State {
 
 interface GoogleAnalyticsWindow extends Window {
   gtag?: (
-    command: "event",
+    command: string,
     eventName: string,
-    parameters: { description: string; fatal: string },
+    parameters?: Record<string, string>,
   ) => void;
 }
 
