@@ -364,7 +364,7 @@ endmacro()
 # -----------------------------------------------------------------------------
 list(FILTER UTIL_SRCS EXCLUDE REGEX "/utf8proc/utf8proc[.]c$")
 create_ascii_chat_module(ascii-chat-util "${UTIL_SRCS}")
-target_link_libraries(ascii-chat-util PRIVATE ${UTF8PROC_LIBRARIES} asciichat-icu)
+target_link_libraries(ascii-chat-util PRIVATE ${UTF8PROC_LIBRARIES} asciichat-icu libflags::flags)
 
 # PCRE2: Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
 # CRITICAL: Must be defined before including pcre2.h in any source file
