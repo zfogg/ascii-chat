@@ -1871,19 +1871,6 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
   // Restore detected_mode before parsing so mode validation works.
   opts->detected_mode = mode_saved_for_parsing;
 
-  // Apply telemetry environment values after config restoration, before CLI.
-  // Using the normal value parsers retains range checks and error reporting.
-  for (size_t i = 0; i < config->num_descriptors; ++i) {
-    const option_descriptor_t *desc = &config->descriptors[i];
-    if (!desc->long_name || strncmp(desc->long_name, "otel-", 5) || !desc->env_var_name)
-      continue;
-    const char *value = SAFE_GETENV(desc->env_var_name);
-    if (value && value[0] != '\0' && desc->type >= 0 && desc->type < NUM_OPTION_TYPES) {
-      asciichat_error_t env_result = g_builder_handlers[desc->type].apply_cli((char *)opts + desc->offset, value, desc);
-      if (env_result != ASCIICHAT_OK)
-        return env_result;
-    }
-  }
   // Save flip_x and flip_y before parsing - they should not be reset by the parser
   bool saved_flip_x_for_parse = opts->flip_x;
   bool saved_flip_y_for_parse = opts->flip_y;
@@ -1904,6 +1891,12 @@ static asciichat_error_t parse_mode_options(options_t *opts, options_config_t *c
   if (!flags_context) {
     flags_schema_builder_destroy(flags_builder);
     return SET_ERRNO(ERROR_MEMORY, "Failed to create libflags option context");
+  }
+  const flags_environment_config_t environment = {.prefix = "ASCII_CHAT_", .derive_names = true};
+  if (!flags_set_environment_config(flags_context, &environment) || !flags_apply_environment(flags_context)) {
+    flags_destroy_preserving_storage(flags_context);
+    flags_schema_builder_destroy(flags_builder);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to apply environment options");
   }
   flags_parse_result_t parsed = {0};
   const bool parsed_ok = flags_parse(flags_context, mode_argc, mode_argv, &parsed);
