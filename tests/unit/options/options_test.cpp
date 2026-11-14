@@ -1095,7 +1095,7 @@ GENERATE_OPTIONS_TEST(
     test_comprehensive_client_values,
     // NOTE: --quiet and --log-file are now global options, removed from this test
     ARGV_LIST("client", "10.0.0.1:9999", "--width=200", "--height=100", "--webcam-index=2", "--flip-x",
-              "--color-mode=256", "--render-mode=background", "--palette=digital", "--audio", "--stretch", "--snapshot",
+              "--color-mode=256", "--render-mode=background", "--renderer=luminance", "--palette=digital", "--audio", "--stretch", "--snapshot",
               "--snapshot-delay=5.0", "--encrypt", "--key=testkey123"),
     true,
     {
