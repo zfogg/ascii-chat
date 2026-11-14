@@ -8,6 +8,34 @@ final class IOSSessionModelTests: XCTestCase {
         XCTAssertEqual(IOSMode.allCases.map(\.id), [0, 1, 2])
     }
 
+    func testEveryModeUsesItsNativeLowercaseLaunchMessage() {
+        for mode in IOSMode.allCases {
+            let model = IOSSessionModel()
+            model.start(mode: mode)
+            XCTAssertEqual(model.status, .starting)
+            XCTAssertEqual(model.message, "Starting \(mode.title.lowercased())…")
+            XCTAssertTrue(model.isActive)
+        }
+    }
+
+    func testStatusActivityMatchesTheNativeSessionLifecycle() {
+        let model = IOSSessionModel()
+        XCTAssertFalse(model.isActive)
+
+        model.start(mode: .mirror)
+        XCTAssertTrue(model.isActive)
+        model.markRunning()
+        XCTAssertTrue(model.isActive)
+        model.stopRequested()
+        XCTAssertTrue(model.isActive)
+        model.finish(result: 0)
+        XCTAssertFalse(model.isActive)
+
+        model.start(mode: .discovery)
+        model.finish(result: -9)
+        XCTAssertFalse(model.isActive)
+    }
+
     func testHardwareKeyboardSequencesMatchTerminalInput() {
         let cases = [
             ("UIKeyInputUpArrow", "\u{1b}[A"),
@@ -26,6 +54,24 @@ final class IOSSessionModelTests: XCTestCase {
             XCTAssertEqual(IOSKeyboardInput.terminalSequence(for: input), expected, input)
         }
         XCTAssertNil(IOSKeyboardInput.terminalSequence(for: "unsupported"))
+    }
+
+    func testHardwareKeyboardSequencesContainOnlyTerminalBytes() {
+        let inputs = [
+            "UIKeyInputUpArrow", "UIKeyInputDownArrow", "UIKeyInputLeftArrow", "UIKeyInputRightArrow",
+            "UIKeyInputEscape", "UIKeyInputDelete", "h", "c", "d", "l", "u"
+        ]
+        for input in inputs {
+            let sequence = try! XCTUnwrap(IOSKeyboardInput.terminalSequence(for: input))
+            XCTAssertTrue(sequence.utf8.allSatisfy { $0 < 0x80 }, input)
+            XCTAssertFalse(sequence.isEmpty, input)
+        }
+    }
+
+    func testKeyboardMappingDoesNotTranslateUnmodifiedPrintableKeys() {
+        for input in ["H", "C", "D", "L", "U", "x", "1", " "] {
+            XCTAssertNil(IOSKeyboardInput.terminalSequence(for: input), input)
+        }
     }
 
     func testFailedSessionPublishesFailureMessage() {
@@ -69,5 +115,24 @@ final class IOSSessionModelTests: XCTestCase {
         model.finish(result: 7)
         let finished = await iterator.next()
         XCTAssertEqual(finished, .finished(7))
+    }
+
+    func testSessionEventsPreserveEveryTransitionInOrder() async {
+        let model = IOSSessionModel()
+        let stream = model.events()
+        var iterator = stream.makeAsyncIterator()
+
+        model.start(mode: .client)
+        model.markRunning()
+        model.stopRequested()
+        model.finish(result: 0)
+
+        var received: [IOSSessionModel.Status] = []
+        for _ in 0..<5 {
+            if let status = await iterator.next() {
+                received.append(status)
+            }
+        }
+        XCTAssertEqual(received, [.idle, .starting, .running, .stopping, .finished(0)])
     }
 }
