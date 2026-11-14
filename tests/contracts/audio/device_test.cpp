@@ -91,6 +91,11 @@ PaError Pa_CloseStream(PaStream *stream) {
 }
 
 static void setup(void) {
+  memset(streams, 0, sizeof(streams));
+  opens = starts = closes = stops = initialized = terminated = 0;
+  fail_open = fail_start = minimum_input_channels = 0;
+  fail_duplex = fail_all = no_input = no_output = false;
+  memset(&context, 0, sizeof(context));
   log_init(NULL, LOG_FATAL, false, false);
   ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
   options_t options = *options_get();
@@ -111,6 +116,11 @@ static void teardown(void) {
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
+
+struct AudioDeviceFixture {
+  AudioDeviceFixture() { setup(); }
+  ~AudioDeviceFixture() { teardown(); }
+};
 static void pause_processing(void) {
   ASCIICHAT_REQUIRE(context.worker_running);
   atomic_store_bool(&context.worker_should_stop, true);
@@ -124,7 +134,7 @@ static int invoke(device_stream_t *stream, const float *input, float *output, un
   return stream->callback(input, output, count, &time, flags, stream->data);
 }
 
-TEST_CASE("audio_device/duplex_callback_preserves_capture_scales_playback_and_silences_underrun_and_shutdown", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/duplex_callback_preserves_capture_scales_playback_and_silences_underrun_and_shutdown", "[audio_device]") {
   ASCIICHAT_REQUIRE_EQ(audio_start_duplex(&context), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE(context.running && context.duplex_stream && !context.separate_streams);
   ASCIICHAT_REQUIRE_EQ(opens, 1);
@@ -168,7 +178,7 @@ TEST_CASE("audio_device/duplex_callback_preserves_capture_scales_playback_and_si
   ASCIICHAT_REQUIRE_EQ(closes, 1);
 }
 
-TEST_CASE("audio_device/separate_native_rate_callbacks_convert_constant_samples_and_ignore_shutdown_capture", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/separate_native_rate_callbacks_convert_constant_samples_and_ignore_shutdown_capture", "[audio_device]") {
   input_info.defaultSampleRate = 24000;
   output_info.defaultSampleRate = 32000;
   ASCIICHAT_REQUIRE_EQ(audio_start_duplex(&context), ASCIICHAT_OK);
@@ -204,7 +214,7 @@ TEST_CASE("audio_device/separate_native_rate_callbacks_convert_constant_samples_
   ASCIICHAT_REQUIRE_NULL(context.render_buffer);
 }
 
-TEST_CASE("audio_device/duplex_open_failure_falls_back_and_retires_all_partial_streams", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/duplex_open_failure_falls_back_and_retires_all_partial_streams", "[audio_device]") {
   fail_duplex = true;
   ASCIICHAT_REQUIRE_EQ(audio_start_duplex(&context), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE(context.separate_streams && context.input_stream && context.output_stream);
@@ -216,7 +226,7 @@ TEST_CASE("audio_device/duplex_open_failure_falls_back_and_retires_all_partial_s
     ASCIICHAT_REQUIRE(streams[i].closed);
 }
 
-TEST_CASE("audio_device/channel_retry_closes_partial_stream_without_unnecessary_rate_change", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/channel_retry_closes_partial_stream_without_unnecessary_rate_change", "[audio_device]") {
   context.playback_only = true;
   fail_open = 1;
   output_info.defaultSampleRate = 44100;
@@ -229,7 +239,7 @@ TEST_CASE("audio_device/channel_retry_closes_partial_stream_without_unnecessary_
   ASCIICHAT_REQUIRE_EQ(closes, 2);
 }
 
-TEST_CASE("audio_device/start_failure_releases_both_streams_and_allows_clean_retry", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/start_failure_releases_both_streams_and_allows_clean_retry", "[audio_device]") {
   input_info.defaultSampleRate = 24000;
   fail_start = 2;
   ASCIICHAT_REQUIRE_EQ(audio_start_duplex(&context), ERROR_AUDIO);
@@ -245,7 +255,7 @@ TEST_CASE("audio_device/start_failure_releases_both_streams_and_allows_clean_ret
   ASCIICHAT_REQUIRE_EQ(closes, opens);
 }
 
-TEST_CASE("audio_device/absent_microphone_and_failed_devices_report_audio_error_without_starting_worker", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/absent_microphone_and_failed_devices_report_audio_error_without_starting_worker", "[audio_device]") {
   no_input = true;
   ASCIICHAT_REQUIRE_EQ(audio_start_duplex(&context), ERROR_AUDIO);
   ASCIICHAT_REQUIRE_NOT(context.worker_running);
@@ -260,7 +270,7 @@ TEST_CASE("audio_device/absent_microphone_and_failed_devices_report_audio_error_
   ASCIICHAT_REQUIRE_EQ(closes, opens);
 }
 
-TEST_CASE("audio_device/real_worker_publishes_microphone_samples_with_configured_sensitivity", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/real_worker_publishes_microphone_samples_with_configured_sensitivity", "[audio_device]") {
   ASCIICHAT_REQUIRE_EQ(options_set_double("microphone_sensitivity", 0.25), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(audio_start_duplex(&context), ASCIICHAT_OK);
   float input[480 * AUDIO_CHANNELS], output[480 * AUDIO_CHANNELS], captured[480 * AUDIO_CHANNELS];
@@ -280,7 +290,7 @@ TEST_CASE("audio_device/real_worker_publishes_microphone_samples_with_configured
 
 // Signal counters are debug instrumentation; the sample-delivery tests run in every build.
 #ifndef NDEBUG
-TEST_CASE("audio_device/capture_callbacks_notify_once_per_twenty_millisecond_batch", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/capture_callbacks_notify_once_per_twenty_millisecond_batch", "[audio_device]") {
   ASCIICHAT_REQUIRE_EQ(audio_start_duplex(&context), ASCIICHAT_OK);
   pause_processing();
   float input[480 * AUDIO_CHANNELS] = {0}, output[480 * AUDIO_CHANNELS];
@@ -293,7 +303,7 @@ TEST_CASE("audio_device/capture_callbacks_notify_once_per_twenty_millisecond_bat
 }
 #endif
 
-TEST_CASE("audio_device/real_worker_preserves_both_ten_millisecond_capture_blocks", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/real_worker_preserves_both_ten_millisecond_capture_blocks", "[audio_device]") {
   ASCIICHAT_REQUIRE_EQ(audio_start_duplex(&context), ASCIICHAT_OK);
   float input[960 * AUDIO_CHANNELS], output[480 * AUDIO_CHANNELS], captured[960 * AUDIO_CHANNELS];
   for (unsigned i = 0; i < 960 * AUDIO_CHANNELS; ++i)
@@ -308,7 +318,7 @@ TEST_CASE("audio_device/real_worker_preserves_both_ten_millisecond_capture_block
     ASCIICHAT_REQUIRE_FLOAT_EQ(captured[i], input[i], 1e-6);
 }
 
-TEST_CASE("audio_device/stereo_only_microphone_accepts_mono_speech_with_explicit_capture_fallback", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/stereo_only_microphone_accepts_mono_speech_with_explicit_capture_fallback", "[audio_device]") {
   options_t options = *options_get();
   options.microphone_channels = 1;
   ASCIICHAT_REQUIRE_EQ(options_state_set(&options), ASCIICHAT_OK);
@@ -327,7 +337,7 @@ TEST_CASE("audio_device/stereo_only_microphone_accepts_mono_speech_with_explicit
     ASCIICHAT_REQUIRE_EQ(captured[i], 0.25f);
 }
 
-TEST_CASE("audio_device/mono_speakers_receive_a_centered_downmix_of_stereo_playback", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/mono_speakers_receive_a_centered_downmix_of_stereo_playback", "[audio_device]") {
   context.playback_only = true;
   output_info.maxOutputChannels = 1;
   ASCIICHAT_REQUIRE_EQ(audio_start_duplex(&context), ASCIICHAT_OK);
@@ -345,7 +355,7 @@ TEST_CASE("audio_device/mono_speakers_receive_a_centered_downmix_of_stereo_playb
     ASCIICHAT_REQUIRE_EQ(output[i], -0.25f);
 }
 
-TEST_CASE("audio_device/four_channel_interface_routes_only_the_selected_stereo_pair", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/four_channel_interface_routes_only_the_selected_stereo_pair", "[audio_device]") {
   input_info.maxInputChannels = 4;
   options_t options = *options_get();
   options.microphone_channel = 2;
@@ -368,7 +378,7 @@ TEST_CASE("audio_device/four_channel_interface_routes_only_the_selected_stereo_p
   }
 }
 
-TEST_CASE("audio_device/invalid_interface_pair_fails_before_opening_any_stream", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/invalid_interface_pair_fails_before_opening_any_stream", "[audio_device]") {
   options_t options = *options_get();
   options.microphone_channel = 1;
   ASCIICHAT_REQUIRE_EQ(options_state_set(&options), ASCIICHAT_OK);
@@ -377,7 +387,7 @@ TEST_CASE("audio_device/invalid_interface_pair_fails_before_opening_any_stream",
   ASCIICHAT_REQUIRE_NOT(context.worker_running);
 }
 
-TEST_CASE("audio_device/remote_only_capture_without_playback_needs_no_portaudio_device", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/remote_only_capture_without_playback_needs_no_portaudio_device", "[audio_device]") {
   options_t options = *options_get();
   options.audio_capture_source = AUDIO_CAPTURE_SOURCE_REMOTE;
   options.audio_no_playback = true;

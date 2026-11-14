@@ -243,8 +243,7 @@ static auto ringbuffer_roundtrip_property_catch2_data = {
 };
 
 TEST_CASE("audio/ringbuffer_roundtrip_property", "[audio]") {
-  int sample_count{};
-  ASCIICHAT_ASSUME(sample_count > 0 && sample_count <= 1024);
+  int sample_count = GENERATE(10, 50, 100, 256, 512, 1024);
 
   // Use capture buffer which disables jitter buffering for basic roundtrip testing
   audio_ring_buffer_t *rb = audio_ring_buffer_create_for_capture();
@@ -335,8 +334,7 @@ static auto ringbuffer_overflow_property_catch2_data = {
 };
 
 TEST_CASE("audio/ringbuffer_overflow_property", "[audio]") {
-  int write_size{};
-  ASCIICHAT_ASSUME(write_size > 0 && write_size <= 8000);
+  int write_size = GENERATE(500, 1000, 2000, 4000, 8000);
 
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   ASCIICHAT_ASSUME(rb != NULL);

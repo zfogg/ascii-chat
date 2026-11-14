@@ -721,7 +721,7 @@ jobs:
           path: |
             coverage-reports/**/coverage.xml
             coverage-reports/**/ctest-results.xml
-          coverage-reports/**/catch2-xml/*.xml
+            coverage-reports/**/catch2-xml/*.xml
             coverage-reports/summary.json
           retention-days: 7
       - name: Install pinned Codecov CLI
