@@ -253,7 +253,7 @@ const FLOWS: Record<string, Flow> = {
             note: "Lock-free atomic_ptr_load; falls back to static g_default_options if NULL",
           },
           {
-            path: "src/common/options/runtime.c",
+            path: "src/common/options_runtime.c",
             fn: "options_update()",
             note: "Copy-on-write: allocate → memcpy → updater → swap → deferred-free old",
           },
