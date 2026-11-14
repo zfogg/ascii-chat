@@ -758,7 +758,7 @@ runs:
           if ($LASTEXITCODE -ne 0) { throw "Could not fetch the pinned vcpkg baseline" }
           git checkout --detach FETCH_HEAD
           if ($LASTEXITCODE -ne 0) { throw "Could not checkout the pinned vcpkg baseline" }
-          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --depth 10000 --filter=blob:none origin
+          git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch --depth 10000 origin
           if ($LASTEXITCODE -ne 0) { throw "Could not fetch vcpkg port history" }
           Pop-Location
         }
