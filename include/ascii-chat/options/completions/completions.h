@@ -32,8 +32,7 @@
  * 3. **Dispatcher**: Routes to appropriate generator based on format
  *
  * All generators extract metadata from the centralized options registry via:
- * - `options_registry_get_for_mode()` - Get options by mode
- * - `options_registry_find_by_name()` - Look up individual options
+ * - libflags schema metadata - Supplies options and values to generators
  * - Option descriptor fields (long_name, short_name, help_text, mode_bitmask)
  *
  * **Adding New Shells**:

@@ -43,4 +43,3 @@ void registry_init_size(void);
 const registry_entry_t *registry_find_entry_by_name(const char *long_name);
 const registry_entry_t *registry_find_entry_by_short(char short_name);
 option_descriptor_t registry_entry_to_descriptor(const registry_entry_t *entry);
-bool registry_entry_applies_to_mode(const registry_entry_t *entry, asciichat_mode_t mode, bool for_binary_help);
