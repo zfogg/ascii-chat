@@ -172,6 +172,35 @@ asciichat_error_t config_create_default(const char *config_path) {
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const char *config_path, bool strict, options_t *opts) {
+  (void)detected_mode;
+  if (!config_path || !opts)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing configuration path or destination");
+
+  struct stat file_info;
+  if (strcmp(config_path, "-") != 0 && stat(config_path, &file_info) != 0) {
+    if (!strict && (errno == ENOENT || errno == ENOTDIR))
+      return ASCIICHAT_OK;
+    return SET_ERRNO(ERROR_CONFIG, "Unable to access configuration file '%s': %s", config_path, strerror(errno));
+  }
+
+  flags_schema_builder_t *builder = options_config_build_flags_schema(OPTION_MODE_ALL);
+  if (!builder)
+    return SET_ERRNO(ERROR_CONFIG, "Failed to build configuration schema");
+  flags_context_t *context = flags_create(flags_schema_builder_schema(builder), opts, sizeof(*opts));
+  if (!context) {
+    flags_schema_builder_destroy(builder);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to create configuration context");
+  }
+
+  const bool loaded = flags_config_load_toml(context, config_path);
+  flags_destroy_preserving_storage(context);
+  flags_schema_builder_destroy(builder);
+  if (!loaded)
+    return SET_ERRNO(ERROR_CONFIG, "Failed to load configuration file '%s'", config_path);
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bool strict, options_t *opts) {
   // Use platform abstraction to find all config.toml files across standard locations
   config_file_list_t config_files = {0};
