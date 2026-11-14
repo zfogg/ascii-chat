@@ -368,7 +368,7 @@ jobs:
         id: cache-build
         uses: ./.github/actions/cache-build
         with:
-          cache-version: v8-${{ matrix.instrumentation }}
+          cache-version: v9-${{ matrix.instrumentation }}
 
       - name: Clean test executables and libraries only
         run: |
