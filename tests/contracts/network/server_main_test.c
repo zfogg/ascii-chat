@@ -56,7 +56,8 @@ static asciichat_error_t contract_advertise(asciichat_mdns_t *context, const asc
   ++advertisement_calls;
   return advertisement_result;
 }
-static bool contract_can_prompt(void) {
+static bool contract_can_prompt(bool user_setting) {
+  (void)user_setting;
   return can_prompt;
 }
 static bool contract_disclosure(ui_prompt_kind_t kind, ui_notice_severity_t severity, const char *text, unsigned timeout) {

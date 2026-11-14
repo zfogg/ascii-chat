@@ -26,3 +26,5 @@ void platform_wakeup_destroy(platform_wakeup_t *wake);
 #ifdef __cplusplus
 }
 #endif
+
+#endif
