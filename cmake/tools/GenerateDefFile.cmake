@@ -14,9 +14,6 @@ if(NOT OBJ_FILES)
 endif()
 
 list(LENGTH OBJ_FILES obj_count)
-message(STATUS "Scanning ${obj_count} object files from library modules")
-
-message(STATUS "Generating .def file: ${OUTPUT_FILE}")
 
 # A response file avoids the Windows command-line limit and starts llvm-nm once.
 # PCH entries in TARGET_OBJECTS are compiler inputs, not exportable object files.
@@ -77,4 +74,3 @@ list(LENGTH ALL_SYMBOLS EXPORT_COUNT)
 list(TRANSFORM ALL_SYMBOLS PREPEND "    ")
 list(JOIN ALL_SYMBOLS "\n" _def_exports)
 file(WRITE "${OUTPUT_FILE}" "LIBRARY ${LIBRARY_NAME}\nEXPORTS\n${_def_exports}\n")
-message(STATUS "Generated ${OUTPUT_FILE} with ${EXPORT_COUNT} exported symbols")

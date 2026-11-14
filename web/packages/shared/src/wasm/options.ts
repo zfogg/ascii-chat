@@ -41,6 +41,10 @@ export const defaultPalettes = {
   minimal: "   .-+*#",
   cool: "   ▁▂▃▄▅▆▇█",
 } as const;
+/** The glyph renderer's default atlas covers printable ASCII, from space to tilde. */
+export const defaultGlyphPalette = Array.from({ length: 95 }, (_, index) =>
+  String.fromCharCode(index + 32),
+).join("");
 
 /** Browser-facing names map to the native numeric values above. */
 export const colorModeValues = {
@@ -167,7 +171,10 @@ export class Options {
       orderedPatch["palette_explicit"] = explicitPalette;
       patchValues = orderedPatch;
     }
-    const code = this.bindings.OptionsBinding.patch(patchValues, expectedRevision);
+    const code = this.bindings.OptionsBinding.patch(
+      patchValues,
+      expectedRevision,
+    );
     if (code !== 0)
       throw new Error(
         `Settings update rejected (${code}); refresh the settings and retry.`,

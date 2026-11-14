@@ -40,6 +40,7 @@ export {
   paletteTypes,
   paletteName,
   defaultPalettes,
+  defaultGlyphPalette,
   TextRenderer,
 } from "@ascii-chat/shared/wasm/options";
 export type { SessionUiEvent } from "../components/AsciiRenderer/types";

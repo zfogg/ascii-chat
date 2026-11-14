@@ -7,6 +7,7 @@ import {
   screen,
 } from "@testing-library/react";
 import { HeadingProvider } from "@ascii-chat/shared/components";
+import { defaultGlyphPalette, defaultPalettes } from "@ascii-chat/shared/wasm";
 import { AsciiChatMode } from "../../src/utils/optionsHelp";
 import { BinarySettings } from "../../src/components/shared/BinarySettings";
 import {
@@ -20,12 +21,12 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-test("shows the engine standard palette and applies typed characters after 750 ms", () => {
+test("applies custom palette characters after 750 ms", () => {
   vi.useFakeTimers();
   const onChange = vi.fn();
   render(
     <BinarySettings
-      config={DEFAULT_SETTINGS}
+      config={{ ...DEFAULT_SETTINGS, palette: "custom" }}
       mode={AsciiChatMode.MIRROR}
       onChange={onChange}
     />,
@@ -40,7 +41,7 @@ test("shows the engine standard palette and applies typed characters after 750 m
   const tooltipId = help.getAttribute("aria-describedby");
   expect(tooltipId).toBeTruthy();
   expect(document.getElementById(tooltipId!)?.textContent).toBe(
-    "Enter characters from darkest to brightest.",
+    "Select Custom in Palette to edit these characters. Enter custom characters from darkest to brightest.",
   );
 
   fireEvent.change(input, { target: { value: " .+#" } });
@@ -63,7 +64,7 @@ test("resets the debounce while the user continues typing", () => {
   const onChange = vi.fn();
   render(
     <BinarySettings
-      config={DEFAULT_SETTINGS}
+      config={{ ...DEFAULT_SETTINGS, palette: "custom" }}
       mode={AsciiChatMode.MIRROR}
       onChange={onChange}
     />,
@@ -128,6 +129,9 @@ test("glyph defaults to its 95-character palette and permits an explicit palette
   );
   const palette = screen.getByLabelText("Palette") as HTMLSelectElement;
   expect(palette.value).toBe("glyph-default");
+  expect(
+    (screen.getByLabelText("Palette characters") as HTMLInputElement).value,
+  ).toBe(defaultGlyphPalette);
   fireEvent.change(palette, { target: { value: "standard" } });
   expect(onChange).toHaveBeenCalledWith({
     ...DEFAULT_SETTINGS,
@@ -153,7 +157,9 @@ test.each([
       wrapper: HeadingProvider,
     },
   );
-  fireEvent.click(screen.getByRole("checkbox", { name: "Reduce flicker" }));
+  const toggle = screen.getByRole("button", { name: "Reduce flicker" });
+  expect(toggle.getAttribute("aria-pressed")).toBe("true");
+  fireEvent.click(toggle);
   expect(onChange).toHaveBeenCalledWith({
     ...DEFAULT_SETTINGS,
     stabilize: false,
@@ -166,7 +172,7 @@ test("choosing a preset cancels an uncommitted edit", () => {
   const onChange = vi.fn();
   render(
     <BinarySettings
-      config={DEFAULT_SETTINGS}
+      config={{ ...DEFAULT_SETTINGS, palette: "custom" }}
       mode={AsciiChatMode.MIRROR}
       onChange={onChange}
     />,
@@ -192,7 +198,7 @@ test("restores the configured palette after an empty edit", () => {
   const onChange = vi.fn();
   render(
     <BinarySettings
-      config={DEFAULT_SETTINGS}
+      config={{ ...DEFAULT_SETTINGS, palette: "custom" }}
       mode={AsciiChatMode.MIRROR}
       onChange={onChange}
     />,
@@ -210,7 +216,7 @@ test("cancels a pending palette edit when settings are disabled", () => {
   const onChange = vi.fn();
   const view = render(
     <BinarySettings
-      config={DEFAULT_SETTINGS}
+      config={{ ...DEFAULT_SETTINGS, palette: "custom" }}
       mode={AsciiChatMode.MIRROR}
       onChange={onChange}
     />,
@@ -221,7 +227,7 @@ test("cancels a pending palette edit when settings are disabled", () => {
   });
   view.rerender(
     <BinarySettings
-      config={DEFAULT_SETTINGS}
+      config={{ ...DEFAULT_SETTINGS, palette: "custom" }}
       mode={AsciiChatMode.MIRROR}
       onChange={onChange}
       disabled
@@ -232,4 +238,48 @@ test("cancels a pending palette edit when settings are disabled", () => {
   expect(
     (screen.getByLabelText("Palette characters") as HTMLInputElement).value,
   ).toBe(DEFAULT_PALETTE_CHARS);
+});
+
+test("shows preset characters and preserves custom characters when switching palettes", () => {
+  const onChange = vi.fn();
+  const custom = {
+    ...DEFAULT_SETTINGS,
+    palette: "custom" as const,
+    paletteChars: " .+#",
+  };
+  const view = render(
+    <BinarySettings
+      config={custom}
+      mode={AsciiChatMode.MIRROR}
+      onChange={onChange}
+    />,
+    { wrapper: HeadingProvider },
+  );
+  const input = screen.getByLabelText("Palette characters") as HTMLInputElement;
+  expect(input.disabled).toBe(false);
+  expect(input.value).toBe(" .+#");
+  for (const [palette, chars] of Object.entries(defaultPalettes)) {
+    view.rerender(
+      <BinarySettings
+        config={{
+          ...custom,
+          palette: palette as keyof typeof defaultPalettes,
+          paletteExplicit: true,
+        }}
+        mode={AsciiChatMode.MIRROR}
+        onChange={onChange}
+      />,
+    );
+    expect(input.disabled).toBe(true);
+    expect(input.value).toBe(chars);
+  }
+  view.rerender(
+    <BinarySettings
+      config={custom}
+      mode={AsciiChatMode.MIRROR}
+      onChange={onChange}
+    />,
+  );
+  expect(input.disabled).toBe(false);
+  expect(input.value).toBe(" .+#");
 });

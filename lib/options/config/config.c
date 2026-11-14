@@ -74,7 +74,7 @@
 #define CONFIG_DEBUG(fmt, ...)                                                                                                                                                                         \
   do {                                                                                                                                                                                                 \
     /* Debug messages are only shown in debug builds after logging is initialized */                                                                                                                   \
-    /* Use log_dev which safely checks initialization itself */                                                                                                                                         \
+    /* Use log_dev which safely checks initialization itself */                                                                                                                                        \
     log_dev(fmt, ##__VA_ARGS__);                                                                                                                                                                       \
   } while (0)
 

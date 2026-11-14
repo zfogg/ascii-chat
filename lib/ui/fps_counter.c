@@ -109,7 +109,6 @@ void fps_counter_tick_at(fps_counter_t *counter, uint64_t now) {
   if (counter->count < FPS_WINDOW_SIZE) {
     counter->count++;
   }
-
 }
 
 float fps_counter_get(fps_counter_t *counter) {
