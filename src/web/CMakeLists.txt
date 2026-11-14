@@ -191,8 +191,6 @@ set(LIB_SRC_COMMON
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/help.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/completions/completions.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/builder/builder.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/builder/handlers.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/builder/help.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/manpage/embedded.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/manpage/formatter.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/manpage/merger.c

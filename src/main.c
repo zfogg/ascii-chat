@@ -78,7 +78,6 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/actions.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/log/log.h>
