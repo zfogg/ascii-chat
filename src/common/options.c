@@ -525,6 +525,12 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
       ++entry;
     if (!entry || !entry->long_name)
       continue;
+    if (entry->mode_bitmask == OPTION_MODE_NONE || (entry->mode_bitmask & OPTION_MODE_BINARY))
+      if (!flags_command_add_option(root, option)) {
+        flags_schema_builder_destroy(schema_builder);
+        flags_command_destroy(root);
+        return SET_ERRNO(ERROR_MEMORY, "Failed to register binary option");
+      }
     for (size_t mode_index = 0; mode_index < sizeof(command_modes) / sizeof(command_modes[0]); ++mode_index)
       if (entry->mode_bitmask & command_modes[mode_index])
         if (!flags_command_add_option(command_nodes[mode_index], option)) {
