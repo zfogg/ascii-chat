@@ -63,38 +63,6 @@ typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 #endif
 
-/* ============================================================================
- * Platform Maximum Path Length
- * ============================================================================
- * Defined here (before logging.h) to avoid circular dependencies.
- * Also defined in platform/system.h for documentation purposes.
- */
-#ifdef _WIN32
-#include <limits.h>
-#ifndef PATH_MAX
-#define PATH_MAX 260
-#endif
-// Windows extended-length path maximum (not the legacy 260 MAX_PATH)
-#define PLATFORM_MAX_PATH_LENGTH 32767
-#elif defined(__linux__)
-#include <limits.h>
-#ifndef PATH_MAX
-#define PLATFORM_MAX_PATH_LENGTH 4096
-#else
-#define PLATFORM_MAX_PATH_LENGTH PATH_MAX
-#endif
-#elif defined(__APPLE__)
-#include <sys/syslimits.h>
-#ifndef PATH_MAX
-#define PLATFORM_MAX_PATH_LENGTH 1024
-#else
-#define PLATFORM_MAX_PATH_LENGTH PATH_MAX
-#endif
-#else
-// Fallback for unknown platforms
-#define PLATFORM_MAX_PATH_LENGTH 4096
-#endif
-
 // INFO: flightaware/dump1090 dev made this after my pr: https://github.com/flightaware/dump1090/pull/282
 #if ((defined(__clang__) && __clang_major__ >= 21) || (defined(__GNUC__) && __GNUC__ >= 10))
 #define NONSTRING __attribute__((nonstring))
