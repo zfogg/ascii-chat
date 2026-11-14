@@ -44,7 +44,7 @@
 #include <stdio.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <ascii-chat/video/ascii/rle.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/debug/named.h>

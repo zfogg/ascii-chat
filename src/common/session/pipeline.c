@@ -13,11 +13,11 @@
 #include "capture.h"
 #include "display.h"
 #include "render.h"
-#include <ascii-chat/os/memory.h>
+#include <libplatform/memory.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <libplatform/terminal.h>
 #include <libplatform/wakeup.h>
 #include <ascii-chat/tui/keyboard_help.h>
@@ -48,6 +48,7 @@ typedef struct {
   uint64_t source_epoch, frame_serial;
   gotel_context_t telemetry_context;
   bool fresh;
+  bool visualization;
   uint64_t captured_ns; // wall-clock timestamp
   uint64_t acquisition_started_ns;
   /**
@@ -62,6 +63,10 @@ typedef struct {
    * the struct copy itself.
    */
 } pipeline_frame_t;
+
+static bool pipeline_frame_is_stale_visualization(const pipeline_frame_t *frame) {
+  return frame && frame->visualization && !GET_OPTION(waveform) && !GET_OPTION(fft);
+}
 
 struct frame_slot_s {
   pipeline_frame_t frame;
@@ -362,6 +367,7 @@ static void *pipeline_capture_thread(void *arg) {
     frame->source_epoch = session_capture_source_epoch(pipeline->capture);
     frame->frame_serial = session_capture_frame_serial(pipeline->capture);
     frame->fresh = frame->frame_serial != previous_serial;
+    frame->visualization = GET_OPTION(waveform) || GET_OPTION(fft);
     previous_serial = frame->frame_serial;
 
     // Record first frame timestamp for snapshot timer
@@ -664,6 +670,16 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
     if (!frame_is_valid(frame)) {
       ascii_otel_metric(ASCII_OTEL_METRIC_DROP_INVALID, 1);
       log_error("Received invalid frame: corrupted or NULL");
+      free_frame(frame);
+      frame = NULL;
+      continue;
+    }
+
+    // A visualization frame may already be pending when the keyboard handler
+    // disables FFT/waveform. Do not let that stale synthetic frame flash before
+    // the first frame captured from the underlying webcam is displayed.
+    if (pipeline_frame_is_stale_visualization(frame)) {
+      ascii_otel_metric(ASCII_OTEL_METRIC_DROP_DISPLAY, 1);
       free_frame(frame);
       frame = NULL;
       continue;

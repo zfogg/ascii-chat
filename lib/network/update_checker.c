@@ -16,7 +16,7 @@
 #include <ascii-chat/version.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <libplatform/socket.h>
-#include <ascii-chat/os/network.h>
+#include <ascii-chat/network/platform.h>
 #include <libplatform/system.h>
 #include <libplatform/filesystem.h>
 #include <ascii-chat/util/path.h>

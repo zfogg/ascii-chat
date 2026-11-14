@@ -6,9 +6,9 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <libplatform/filesystem.h>
-#include <ascii-chat/os/symbols.h>
+#include <libplatform/symbols.h>
 #include <ascii-chat/source_root.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/input.h>

@@ -22,7 +22,7 @@
 
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/session/session_log_buffer.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -142,7 +142,8 @@ void log_search_process_pending(void);
  * If no log file or read error: Falls back to in-memory buffer only.
  */
 asciichat_error_t log_search_gather_and_filter_logs(session_log_entry_t **out_entries, size_t *out_count);
-asciichat_error_t log_search_filter_buffer(session_log_buffer_t *logs, session_log_entry_t **out_entries, size_t *out_count);
+asciichat_error_t log_search_filter_buffer(session_log_buffer_t *logs, session_log_entry_t **out_entries,
+                                           size_t *out_count);
 
 /**
  * @brief Render grep input line at bottom of screen

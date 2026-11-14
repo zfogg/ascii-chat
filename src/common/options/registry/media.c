@@ -16,7 +16,7 @@
 #include <ascii-chat/util/string.h>
 
 #include <ascii-chat/options/parsers.h>
-#include <ascii-chat/os/memory.h>
+#include <libplatform/memory.h>
 #include <string.h>
 #include <libflags/flags.h>
 

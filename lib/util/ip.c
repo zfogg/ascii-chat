@@ -15,7 +15,7 @@
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
-#include <ascii-chat/os/network.h>
+#include <ascii-chat/network/platform.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
 #include <stdio.h>

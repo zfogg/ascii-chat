@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <stdatomic.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <ascii-chat/tui/controller.h>
 
 /* ============================================================================

@@ -16,7 +16,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/io.h>
-#include <ascii-chat/os/question.h>
+#include <libplatform/question.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>

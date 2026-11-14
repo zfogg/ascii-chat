@@ -6,8 +6,8 @@ void ui_input_poll_sync(void);
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define TUI_INPUT_PASTE_BUFFER_SIZE 8192
 
-#include <ascii-chat/os/keyboard.h>
-#include <ascii-chat/os/question.h>
+#include <libplatform/keyboard.h>
+#include <libplatform/question.h>
 #include <ascii-chat/tui/controller.h>
 
 /** Input policy is separate from presentation. Covered controls are consumed and discarded. */
@@ -45,4 +45,5 @@ typedef struct {
 
 /** Collect paste boundaries and optional application-classified text bursts.
  * Once ready, the caller consumes/clears paste before reading another event. */
-keyboard_key_t tui_input_events_read(tui_input_events_t *state, keyboard_key_t (*read_key)(void), bool (*classify_paste)(const char *));
+keyboard_key_t tui_input_events_read(tui_input_events_t *state, keyboard_key_t (*read_key)(void),
+                                     bool (*classify_paste)(const char *));

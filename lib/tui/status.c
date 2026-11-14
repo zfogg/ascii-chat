@@ -18,7 +18,7 @@
 #include <libplatform/terminal.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/ip.h>

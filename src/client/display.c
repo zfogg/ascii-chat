@@ -85,7 +85,7 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <ascii-chat/video/ascii/ascii.h>

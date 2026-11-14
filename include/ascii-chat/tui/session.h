@@ -7,7 +7,7 @@
 
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/ui/frame_buffer.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <ascii-chat/video/anim/controller.h>
 
 /**
@@ -64,7 +64,8 @@ terminal_size_t ui_session_size(const ui_session_t *session);
  * cleanup path. snapshots and serialize access to a session; callbacks must not recurse into its renderer. The runtime
  * owns selection policy, transitions and animation.
  */
-typedef void (*ui_session_draw_fn)(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation, void *context);
+typedef void (*ui_session_draw_fn)(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
+                                   void *context);
 typedef struct {
   int screen;
   terminal_size_t minimum;
