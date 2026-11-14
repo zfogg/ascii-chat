@@ -17,6 +17,11 @@ Test(common_parsers, levenshtein_handles_utf8_and_invalid_inputs) {
   cr_assert_eq(levenshtein("\xff", "abc"), SIZE_MAX);
 }
 
+Test(common_parsers, levenshtein_find_similar_uses_best_candidate) {
+  const char *candidates[] = {"server", "serve", "client", NULL};
+  cr_assert_str_eq(levenshtein_find_similar("serer", candidates), "server");
+}
+
 Test(common_parsers, display_aliases_and_rejected_values_preserve_previous_settings) {
   options_t *options = SAFE_MALLOC(sizeof(*options), options_t *);
   *options = options_t_new();
