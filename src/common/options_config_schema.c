@@ -211,20 +211,23 @@ static asciichat_error_t config_schema_build_from_registry_entries(const registr
     // Use builder's type directly
     meta->type = desc->type;
 
-    // Generate category: lowercase the group name from builder
-    SAFE_STRNCPY(category_buffer, desc->group, sizeof(category_buffer) - 1);
-    category_buffer[sizeof(category_buffer) - 1] = '\0';
-    str_tolower(category_buffer);
-
-    // Generate TOML key: "category.field_name" (category is lowercase group, field_name is long_name with
-    // dashes->underscores)
+    // Generate TOML key and normalized category through libflags.
     const char *field_name = desc->long_name;
-    if (strcmp(category_buffer, "otel") == 0 && strncmp(field_name, "otel-", 5) == 0)
+    if (strcmp(desc->group, "OTEL") == 0 && strncmp(field_name, "otel-", 5) == 0)
       field_name += 5;
-    if (!generate_toml_key(category_buffer, field_name, toml_key_buffer, sizeof(toml_key_buffer))) {
+    if (!flags_config_make_toml_key(desc->group, field_name, toml_key_buffer, sizeof(toml_key_buffer))) {
       g_dynamic_schema_count--; // Skip this entry
       continue;
     }
+
+    const char *separator = strchr(toml_key_buffer, '.');
+    if (!separator || (size_t)(separator - toml_key_buffer) >= sizeof(category_buffer)) {
+      g_dynamic_schema_count--;
+      continue;
+    }
+    size_t category_length = (size_t)(separator - toml_key_buffer);
+    memcpy(category_buffer, toml_key_buffer, category_length);
+    category_buffer[category_length] = '\0';
 
     // Store generated strings (allocate and store)
     meta->toml_key = store_dynamic_string(toml_key_buffer);
