@@ -109,7 +109,27 @@ endif()
 # a usable imported target or system zlib is already available.
 if(ZLIB_LIBRARY MATCHES "-NOTFOUND$" OR ZLIB_LIBRARIES MATCHES "-NOTFOUND$" OR
    NOT ZLIB_LIBRARY OR NOT ZLIB_LIBRARIES)
-    if(UNIX)
+    if(TARGET ZLIB::ZLIB)
+        set(ZLIB_LIBRARY ZLIB::ZLIB CACHE STRING
+            "zlib target used by dependency subprojects" FORCE)
+        set(ZLIB_LIBRARIES ZLIB::ZLIB CACHE STRING
+            "zlib target used by dependency subprojects" FORCE)
+    elseif(TARGET ZLIB::zlib)
+        set(ZLIB_LIBRARY ZLIB::zlib CACHE STRING
+            "zlib target used by dependency subprojects" FORCE)
+        set(ZLIB_LIBRARIES ZLIB::zlib CACHE STRING
+            "zlib target used by dependency subprojects" FORCE)
+    elseif(ZLIB_LINK_LIBRARIES)
+        set(ZLIB_LIBRARY "${ZLIB_LINK_LIBRARIES}" CACHE STRING
+            "zlib libraries used by dependency subprojects" FORCE)
+        set(ZLIB_LIBRARIES "${ZLIB_LINK_LIBRARIES}" CACHE STRING
+            "zlib libraries used by dependency subprojects" FORCE)
+    elseif(ZLIB_LDFLAGS)
+        set(ZLIB_LIBRARY "${ZLIB_LDFLAGS}" CACHE STRING
+            "zlib linker flags used by dependency subprojects" FORCE)
+        set(ZLIB_LIBRARIES "${ZLIB_LDFLAGS}" CACHE STRING
+            "zlib linker flags used by dependency subprojects" FORCE)
+    elseif(UNIX)
         unset(_ASCIICHAT_ZLIB_LIBRARY CACHE)
         unset(_ASCIICHAT_ZLIB_LIBRARY)
         find_library(_ASCIICHAT_ZLIB_LIBRARY NAMES z zlib NO_CACHE)
@@ -119,11 +139,6 @@ if(ZLIB_LIBRARY MATCHES "-NOTFOUND$" OR ZLIB_LIBRARIES MATCHES "-NOTFOUND$" OR
             set(ZLIB_LIBRARIES "${_ASCIICHAT_ZLIB_LIBRARY}" CACHE STRING
                 "zlib libraries used by dependency subprojects" FORCE)
         endif()
-    elseif(TARGET ZLIB::ZLIB)
-        set(ZLIB_LIBRARY ZLIB::ZLIB CACHE STRING
-            "zlib target used by dependency subprojects" FORCE)
-        set(ZLIB_LIBRARIES ZLIB::ZLIB CACHE STRING
-            "zlib target used by dependency subprojects" FORCE)
     endif()
 endif()
 
