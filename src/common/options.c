@@ -487,25 +487,30 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   flags_command_t *discovery_service = flags_command_create(root, "discovery-service", "discovery service mode");
   flags_command_t *mcp_server = flags_command_create(root, "mcp-server", "MCP server mode");
   flags_command_t *api_server = flags_command_create(root, "api-server", "API server mode");
-  static const flags_option_spec_t command_options[] = {
-      {.name = "log-file", .short_name = 'L', .argument_requirement = FLAGS_ARGUMENT_REQUIRED},
-      {.name = "log-level", .argument_requirement = FLAGS_ARGUMENT_REQUIRED},
-      {.name = "config", .argument_requirement = FLAGS_ARGUMENT_REQUIRED},
-      {.name = "color", .argument_requirement = FLAGS_ARGUMENT_OPTIONAL},
-      {.name = "config-create", .argument_requirement = FLAGS_ARGUMENT_OPTIONAL},
-      {.name = "file", .short_name = 'f', .argument_requirement = FLAGS_ARGUMENT_REQUIRED},
-      {.name = "url", .short_name = 'u', .argument_requirement = FLAGS_ARGUMENT_REQUIRED},
-  };
   if (!root || !server || !client || !mirror || !discovery_service || !mcp_server || !api_server) {
     flags_command_destroy(root);
     return SET_ERRNO(ERROR_MEMORY, "Failed to construct command schema");
   }
-  for (size_t i = 0; i < sizeof(command_options) / sizeof(command_options[0]); ++i)
-    flags_command_add_option(root, &command_options[i]);
+  flags_schema_builder_t *schema_builder = flags_schema_builder_create();
+  if (!schema_builder || options_registry_add_all_to_flags_builder(schema_builder, OPTION_MODE_ALL) != ASCIICHAT_OK) {
+    flags_schema_builder_destroy(schema_builder);
+    flags_command_destroy(root);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to construct command option schema");
+  }
+  const flags_schema_t *schema = flags_schema_builder_schema(schema_builder);
+  for (size_t i = 0; i < schema->option_count; ++i) {
+    const flags_option_spec_t *option = &schema->options[i];
+    if (!flags_command_add_option(root, option)) {
+      flags_schema_builder_destroy(schema_builder);
+      flags_command_destroy(root);
+      return SET_ERRNO(ERROR_MEMORY, "Failed to register command option");
+    }
+  }
   flags_command_set_implicit_for_option(root, mirror, "file");
   flags_command_set_implicit_for_option(root, mirror, "url");
   flags_command_resolution_t resolution;
   if (!flags_resolve_command_ex(root, argc, argv, &resolution)) {
+    flags_schema_builder_destroy(schema_builder);
     flags_command_destroy(root);
     return SET_ERRNO(ERROR_USAGE, "Unable to resolve command");
   }
@@ -513,6 +518,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   int first_positional_idx = resolution.first_positional_index;
   if (resolution.used_implicit_command) {
     *out_mode = MODE_MIRROR;
+    flags_schema_builder_destroy(schema_builder);
     flags_command_destroy(root);
     return ASCIICHAT_OK;
   }
@@ -523,10 +529,12 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
       if (strcmp(name, mode_names_check[i]) == 0) {
         *out_mode = modes[i];
         *out_mode_index = resolution.command_index;
+        flags_schema_builder_destroy(schema_builder);
         flags_command_destroy(root);
         return ASCIICHAT_OK;
       }
   }
+  flags_schema_builder_destroy(schema_builder);
   flags_command_destroy(root);
 
   // If no positional argument found, check for mirror-specific options
