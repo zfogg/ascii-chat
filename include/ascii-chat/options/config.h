@@ -103,14 +103,13 @@ flags_schema_builder_t *options_config_build_flags_schema(option_mode_bitmask_t 
  *       arguments, so that CLI arguments can override config file values.
  *
  * @note If strict is false and the config file doesn't exist, is not a regular file,
- *       or fails to parse, the function returns ASCIICHAT_OK (non-fatal). Individual
- *       invalid values are skipped with warnings, but valid values are still applied.
+ *       or fails to parse or validate, the function returns ASCIICHAT_OK (non-fatal).
  *
  * @note If strict is true, any error (file not found, parse error, etc.) causes the
  *       function to return an error code immediately.
  *
- * @warning Configuration warnings are printed directly to stderr because logging
- *          may not be initialized yet when this function is called.
+ * @note Configuration diagnostics use the application's logging callback, so they
+ *       follow terminal, file, and browser/WASM logging sinks.
  *
  * @ingroup config
  */
