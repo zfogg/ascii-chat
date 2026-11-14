@@ -65,6 +65,12 @@ ASCIICHAT_API char **g_argv = NULL;
 ASCIICHAT_API bool g_color_flag_passed = false; // Was --color explicitly passed in argv?
 ASCIICHAT_API bool g_color_flag_value = false;  // What was the value of --color?
 
+static void ascii_chat_write_memory_report(const char *text, size_t length, void *user_data) {
+  (void)user_data;
+  if (text && length > 0)
+    log_plain_stderr_nonewline("%.*s", (int)length, text);
+}
+
 /* ============================================================================
  * Shutdown Check System Implementation
  * ============================================================================
@@ -139,6 +145,7 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client, bo
   if (!g_shared_initialized) {
     static const char *const ascii_chat_libraries[] = {"libasciichat", NULL};
     symbol_cache_set_project_modules("ascii-chat", ascii_chat_libraries);
+    debug_memory_set_report_writer(ascii_chat_write_memory_report, NULL);
 
     // 1. TIMER SYSTEM - Initialize first so timing is available for everything else
     if (!timer_system_init()) {
