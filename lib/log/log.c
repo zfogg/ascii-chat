@@ -24,6 +24,7 @@
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
+#include <libplatform/debug/memory.h>
 #include <libplatform/system.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
@@ -42,6 +43,12 @@
 #include <ascii-chat/log/log.h>
 
 int terminal_choose_log_fd(int level);
+
+static void log_write_debug_memory_report(const char *text, size_t length, void *user_data) {
+  (void)user_data;
+  if (text && length > 0)
+    log_plain_stderr_nonewline("%.*s", (int)length, text);
+}
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/log/colorize.h>
 #include <ascii-chat/log/mmap.h>
@@ -565,6 +572,8 @@ session_log_buffer_t *log_get_history_buffer(void) {
 }
 
 void log_init(const char *filename, log_level_t level, bool force_stderr, bool use_mmap) {
+
+  debug_memory_set_report_writer(log_write_debug_memory_report, NULL);
 
   if (!g_history)
     g_history = session_log_buffer_create();
