@@ -298,21 +298,20 @@ bool validate_webcam_index(const char *value_str, unsigned short int *out_index)
 /**
  * @brief Validate options and report errors to stderr
  *
- * Calls options_config_validate() and handles error message display and cleanup.
- * Validates all option dependencies, conflicts, and custom validators.
+ * Validates the application options after libflags has parsed them and handles
+ * ascii-chat's cross-option policy and error presentation.
  *
- * @param config Reserved compatibility parameter; may be NULL.
+ * @param config Reserved application validation context; may be NULL.
  * @param opts Options struct to validate
  * @return ASCIICHAT_OK if valid, error code otherwise
  *
- * @note Prints error message to stderr if validation fails
+ * @note Reports failures through the application's logging and UI sinks.
  * @note Frees error message internally
  *
  * Example:
  * @code
  * asciichat_error_t result = validate_options_and_report(config, opts);
  * if (result != ASCIICHAT_OK) {
- *     options_config_destroy(config);
  *     return result;
  * }
  * @endcode
