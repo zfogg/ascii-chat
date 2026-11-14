@@ -19,6 +19,7 @@
 
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/source_root.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <libplatform/compiler.h>
@@ -574,6 +575,7 @@ session_log_buffer_t *log_get_history_buffer(void) {
 void log_init(const char *filename, log_level_t level, bool force_stderr, bool use_mmap) {
 
   debug_memory_set_report_writer(log_write_debug_memory_report, NULL);
+  debug_memory_set_owned_source_dirs(ASCIICHAT_OWNED_SOURCE_DIRS);
 
   if (!g_history)
     g_history = session_log_buffer_create();

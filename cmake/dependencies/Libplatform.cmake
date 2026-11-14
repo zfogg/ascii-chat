@@ -50,6 +50,9 @@ else()
 endif()
 target_compile_definitions(libplatform-objects PRIVATE
     LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
+    target_compile_definitions(libplatform-objects PRIVATE DEBUG_MEMORY)
+endif()
 target_include_directories(libplatform-objects PRIVATE
     ${_ascii_chat_repo_root}/include
     ${_ascii_chat_repo_root}/deps
