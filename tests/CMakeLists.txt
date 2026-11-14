@@ -557,6 +557,28 @@ target_link_libraries(benchmarks PRIVATE
         RUN_SERIAL TRUE
         TIMEOUT 600
         ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}")
+    # Catch2's discovery helper receives these paths for unit_tests, but the
+    # benchmark is registered explicitly. Keep its process environment
+    # identical so Windows can resolve the QUIC DLLs (and POSIX can resolve
+    # shared dependency builds) when CTest launches it from the build tree.
+    if(WIN32)
+        set_property(TEST benchmarks APPEND PROPERTY ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-nghttp3/lib"
+            "PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2/lib"
+            "PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2/crypto/ossl"
+            "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+            "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
+    elseif(APPLE)
+        set_property(TEST benchmarks APPEND PROPERTY ENVIRONMENT_MODIFICATION
+            "DYLD_LIBRARY_PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-nghttp3/lib"
+            "DYLD_LIBRARY_PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2/lib"
+            "DYLD_LIBRARY_PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2/crypto/ossl")
+    elseif(UNIX)
+        set_property(TEST benchmarks APPEND PROPERTY ENVIRONMENT_MODIFICATION
+            "LD_LIBRARY_PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-nghttp3/lib"
+            "LD_LIBRARY_PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2/lib"
+            "LD_LIBRARY_PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2/crypto/ossl")
+    endif()
 
     # Integration and benchmark executables retain their process/resource
     # boundaries and are registered below.
