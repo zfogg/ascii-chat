@@ -72,7 +72,7 @@ interface BinarySettingsProps {
 function DimensionHelp({ label, text }: { label: string; text: string }) {
   const id = useId();
   return (
-    <span className="group relative inline-flex">
+    <Tooltip text={text} id={id} inline showOnFocus className="inline-flex">
       <button
         type="button"
         aria-label={`${label} help`}
@@ -81,14 +81,7 @@ function DimensionHelp({ label, text }: { label: string; text: string }) {
       >
         <span aria-hidden="true">i</span>
       </button>
-      <span
-        id={id}
-        role="tooltip"
-        className="pointer-events-none absolute left-0 top-full z-50 mt-2 hidden w-48 rounded bg-gray-800 p-2 text-xs font-normal text-white shadow-lg group-hover:block group-focus-within:block"
-      >
-        {text}
-      </span>
-    </span>
+    </Tooltip>
   );
 }
 

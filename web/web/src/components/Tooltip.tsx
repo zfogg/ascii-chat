@@ -1,102 +1,154 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 
 interface TooltipProps {
   text?: string | undefined;
   children: React.ReactNode;
   className?: string;
+  id?: string;
+  inline?: boolean;
+  showOnFocus?: boolean;
 }
 
 export function Tooltip({
   text,
   children,
   className = "flex-1",
+  id,
+  inline = false,
+  showOnFocus = false,
 }: TooltipProps) {
-  const [isVisible, setIsVisible] = useState(false);
-  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [position, setPosition] = useState({ left: 8, top: 8 });
+  const triggerRef = useRef<HTMLElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const pointRef = useRef<{ x: number; y: number } | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const focusedRef = useRef(false);
 
-  const handleMouseEnter = useCallback(() => {
-    timeoutRef.current = setTimeout(() => {
-      setIsVisible(true);
-    }, 350);
+  const cancelTimer = useCallback(() => {
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
+    timerRef.current = null;
   }, []);
+  useEffect(() => cancelTimer, [cancelTimer]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    const tooltipWidth = 192; // w-48 = 12rem = 192px
-    const tooltipHeight = 80; // approximate
-    const offset = 12; // distance from cursor
-    const viewportHeight = window.innerHeight;
-    const viewportWidth = window.innerWidth;
-
-    let top = e.clientY + offset;
-    let left = e.clientX + offset;
-
-    // Keep within viewport bounds
-    if (top + tooltipHeight > viewportHeight) {
-      top = e.clientY - tooltipHeight - offset;
-    }
-    if (left + tooltipWidth > viewportWidth) {
-      left = e.clientX - tooltipWidth - offset;
-    }
-
-    // Ensure not off top/left
-    top = Math.max(8, top);
-    left = Math.max(8, left);
-
-    setTooltipStyle({
-      position: "fixed",
-      top: `${top}px`,
-      left: `${left}px`,
-      width: `${tooltipWidth}px`,
-      pointerEvents: "none",
+  const reposition = useCallback(() => {
+    const tooltip = tooltipRef.current;
+    const trigger = triggerRef.current;
+    if (!tooltip || !trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const point = pointRef.current ?? { x: rect.left, y: rect.bottom };
+    const bounds = tooltip.getBoundingClientRect();
+    const margin = 8;
+    const offset = 12;
+    const left =
+      point.x + offset + bounds.width <= window.innerWidth - margin
+        ? point.x + offset
+        : point.x - offset - bounds.width;
+    const top =
+      point.y + offset + bounds.height <= window.innerHeight - margin
+        ? point.y + offset
+        : point.y - offset - bounds.height;
+    setPosition({
+      left: Math.max(
+        margin,
+        Math.min(left, window.innerWidth - margin - bounds.width),
+      ),
+      top: Math.max(
+        margin,
+        Math.min(top, window.innerHeight - margin - bounds.height),
+      ),
     });
   }, []);
 
-  const handleMouseLeave = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-    setIsVisible(false);
-  }, []);
+  useLayoutEffect(() => {
+    if (!visible) return;
+    reposition();
+    window.addEventListener("resize", reposition);
+    window.addEventListener("scroll", reposition, true);
+    return () => {
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+    };
+  }, [visible, text, reposition]);
 
-  const handleFocusCapture = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-    setIsVisible(false);
-  }, []);
-
-  if (!text) {
-    return <>{children}</>;
-  }
-
-  const tooltip = isVisible && (
-    <div
-      className="pointer-events-none z-50 whitespace-normal rounded bg-gray-800 p-2 text-xs text-white shadow-lg transition-opacity duration-200 visible opacity-100"
-      role="tooltip"
-      style={tooltipStyle}
+  if (!text) return <>{children}</>;
+  const handlers = {
+    onMouseEnter: (event: React.MouseEvent) => {
+      pointRef.current = { x: event.clientX, y: event.clientY };
+      cancelTimer();
+      timerRef.current = setTimeout(() => setVisible(true), 350);
+    },
+    onMouseMove: (event: React.MouseEvent) => {
+      pointRef.current = { x: event.clientX, y: event.clientY };
+      if (visible) reposition();
+    },
+    onMouseLeave: () => {
+      cancelTimer();
+      if (!focusedRef.current)
+        timerRef.current = setTimeout(() => setVisible(false), 150);
+    },
+    onFocusCapture: () => {
+      cancelTimer();
+      focusedRef.current = showOnFocus;
+      if (showOnFocus) pointRef.current = null;
+      setVisible(showOnFocus);
+    },
+    onBlurCapture: () => {
+      focusedRef.current = false;
+      setVisible(false);
+    },
+  };
+  const trigger = inline ? (
+    <span
+      ref={triggerRef as React.RefObject<HTMLSpanElement>}
+      className={className}
+      {...handlers}
     >
-      {text}
+      {children}
+    </span>
+  ) : (
+    <div
+      ref={triggerRef as React.RefObject<HTMLDivElement>}
+      className={className}
+      {...handlers}
+    >
+      {children}
     </div>
   );
-
   return (
     <>
-      <div
-        ref={containerRef}
-        className={className}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onMouseMove={handleMouseMove}
-        onFocusCapture={handleFocusCapture}
-      >
-        {children}
-      </div>
-      {tooltip && createPortal(tooltip, document.body)}
+      {trigger}
+      {(visible || id) &&
+        createPortal(
+          <div
+            id={id}
+            ref={tooltipRef}
+            role="tooltip"
+            onMouseEnter={cancelTimer}
+            onMouseLeave={() => {
+              if (!focusedRef.current) setVisible(false);
+            }}
+            className="fixed z-50 whitespace-normal break-words rounded bg-gray-800 p-2 text-xs font-normal text-white shadow-lg"
+            style={{
+              left: position.left,
+              top: position.top,
+              width: "min(20rem, calc(100vw - 16px))",
+              maxHeight: "calc(100vh - 16px)",
+              overflow: "auto",
+              visibility: visible ? "visible" : "hidden",
+            }}
+          >
+            {text}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
