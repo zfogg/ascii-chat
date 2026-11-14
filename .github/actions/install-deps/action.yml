@@ -40,6 +40,9 @@ outputs:
   cmake-cache-hit:
     description: "Whether CMake dependency cache was hit"
     value: ${{ steps.cmake-cache.outputs.cache-hit }}
+  vcpkg-cache-hit:
+    description: "Whether the Windows vcpkg cache was hit"
+    value: ${{ steps.vcpkg-cache.outputs.cache-hit }}
   ccache-key:
     description: "Cache key for ccache (computed by cache-keys step)"
     value: ${{ steps.cache-keys.outputs.ccache-key || steps.cache-keys-win.outputs.ccache-key }}
@@ -720,12 +723,21 @@ runs:
         Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_TARGET_TRIPLET=arm64-windows-static"
         Write-Host "Set vcpkg triplet to arm64-windows-static for Windows ARM64"
 
+    - name: Restore vcpkg cache (Windows)
+      if: inputs.os == 'windows'
+      id: vcpkg-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: .vcpkg
+        key: Windows-${{ runner.arch }}-vcpkg-v1-530d2d2-${{ inputs.vcpkg-triplet }}-${{ inputs.vcpkg-static-triplet }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'vcpkg-overlay/**', 'vcpkg-triplets/**') }}
+
     - name: Setup vcpkg (Windows)
       if: inputs.os == 'windows'
       shell: pwsh
       run: |
-        # Clone vcpkg to a temp location
-        $vcpkgDir = "$env:RUNNER_TEMP\vcpkg"
+        # Keep the pinned checkout and its downloads in the workspace so the
+        # workflow-level cache can reuse them across release runs.
+        $vcpkgDir = "$env:GITHUB_WORKSPACE\.vcpkg"
         if (-not (Test-Path $vcpkgDir)) {
           # This full single-branch clone is intentionally allowed to take
           # several minutes: vcpkg versioning requires historical port blobs.

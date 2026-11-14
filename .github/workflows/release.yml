@@ -838,6 +838,13 @@ jobs:
           # ARM64 CRT path fix is handled in cmake/platform/WindowsWorkarounds.cmake
           cmake @args
 
+      - name: Save vcpkg cache
+        if: success() && steps.install-deps.outputs.vcpkg-cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .vcpkg
+          key: Windows-${{ runner.arch }}-vcpkg-v1-530d2d2-${{ matrix.vcpkg-triplet }}-${{ matrix.vcpkg-static-triplet }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'vcpkg-overlay/**', 'vcpkg-triplets/**') }}
+
       - name: Save CMake dependency cache
         if: success() && steps.install-deps.outputs.cmake-cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -860,7 +867,6 @@ jobs:
           $PSNativeCommandUseErrorActionPreference = $true
           cmake --build build_release --target ascii-chat
           cmake --build build_release --target static-lib
-          cmake --build build_release --target shared-lib
           Write-Host "Skipping Doxygen documentation target on Windows"
           cmake --build build_release --target package
 
