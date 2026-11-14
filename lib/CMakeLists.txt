@@ -988,13 +988,7 @@ elseif(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_
     set(_build_shared_lib FALSE)
 endif()
 if(_build_shared_lib)
-    set(_ascii_chat_platform_system_sources)
-    if(UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
-        list(APPEND _ascii_chat_platform_system_sources
-            "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/lib/posix/system.c")
-    endif()
 add_library(ascii-chat-shared SHARED
-        ${_ascii_chat_platform_system_sources}
         $<TARGET_OBJECTS:ascii-chat-util>
         $<TARGET_OBJECTS:ascii-chat-data-structures>
         $<TARGET_OBJECTS:ascii-chat-crypto>
@@ -1005,9 +999,6 @@ add_library(ascii-chat-shared SHARED
         $<TARGET_OBJECTS:ascii-chat-core>
         $<TARGET_OBJECTS:ascii-chat-panic>
     )
-    if(_ascii_chat_platform_system_sources)
-        target_compile_definitions(ascii-chat-shared PRIVATE LIBPLATFORM_ASCII_CHAT_INTEGRATION=1)
-    endif()
     target_link_libraries(ascii-chat-shared PRIVATE libplatform)
     if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
