@@ -270,6 +270,7 @@ static bool ui_session_logs_key_sized(keyboard_key_t key, terminal_size_t size) 
   case 'C':
   case 'r':
   case 'R':
+  case 'S':
   case 'f':
   case 'F':
   case 'x':
