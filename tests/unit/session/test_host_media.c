@@ -43,11 +43,7 @@ static acip_transport_t transport = {.methods = &methods};
 
 static asciichat_error_t get_config(void *context, session_host_render_config_t *config) {
   cr_assert_eq(context, &renders);
-  *config = (session_host_render_config_t){
-      .width = 40,
-      .height = 12,
-      .palette = "@",
-      .caps = {.color_level = TERM_COLOR_TRUECOLOR, .render_mode = RENDER_MODE_FOREGROUND, .utf8_support = true}};
+  *config = (session_host_render_config_t){.width = 40, .height = 12, .palette = "@", .caps = {.color_level = TERM_COLOR_TRUECOLOR, .render_mode = RENDER_MODE_FOREGROUND, .utf8_support = true}};
   return backend_result;
 }
 static void render(void *context, const char *frame, size_t length, int width, int height) {
@@ -61,8 +57,7 @@ static void setup(void) {
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
-  session_host_config_t config = {
-      .max_clients = 3, .user_data = &joins, .callbacks = {.on_client_join = joined, .on_client_leave = left}};
+  session_host_config_t config = {.max_clients = 3, .user_data = &joins, .callbacks = {.on_client_join = joined, .on_client_leave = left}};
   host = session_host_create(&config);
   cr_assert_not_null(host);
   session_host_render_target_t target = {.get_config = get_config, .render_frame = render, .context = &renders};
@@ -138,8 +133,7 @@ Test(session_host_media, rgb_bgr_rgba_and_bgra_packets_render_the_same_colors_an
   } frame = {0};
   const uint32_t formats[] = {PIXEL_FORMAT_RGB, PIXEL_FORMAT_BGR, PIXEL_FORMAT_RGBA, PIXEL_FORMAT_BGRA};
   for (unsigned n = 0; n < 4; ++n) {
-    frame.header = (image_frame_packet_t){
-        .width = HOST_TO_NET_U32(2), .height = HOST_TO_NET_U32(2), .pixel_format = HOST_TO_NET_U32(formats[n])};
+    frame.header = (image_frame_packet_t){.width = HOST_TO_NET_U32(2), .height = HOST_TO_NET_U32(2), .pixel_format = HOST_TO_NET_U32(formats[n])};
     size_t bytes = n < 2 ? 3 : 4;
     for (unsigned p = 0; p < 4; ++p) {
       frame.pixels[p * bytes] = n & 1 ? 180 : 20;
@@ -148,9 +142,7 @@ Test(session_host_media, rgb_bgr_rgba_and_bgra_packets_render_the_same_colors_an
       if (bytes == 4)
         frame.pixels[p * bytes + 3] = 17;
     }
-    cr_assert_eq(
-        session_host_receive_packet(host, id, PACKET_TYPE_IMAGE_FRAME, &frame, sizeof(frame.header) + 4 * bytes),
-        ASCIICHAT_OK);
+    cr_assert_eq(session_host_receive_packet(host, id, PACKET_TYPE_IMAGE_FRAME, &frame, sizeof(frame.header) + 4 * bytes), ASCIICHAT_OK);
     tick();
     cr_assert_not_null(rendered);
     cr_assert_not_null(strstr(rendered, ";2;20;90;180m"));
@@ -186,8 +178,7 @@ Test(session_host_media, mixed_memory_audio_is_encoded_and_delivered_to_a_networ
   opus_codec_t *decoder = opus_codec_create_decoder(AUDIO_SAMPLE_RATE);
   cr_assert_not_null(decoder);
   float decoded[(OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)];
-  cr_assert_eq(opus_codec_decode(decoder, batch + 18, size, decoded, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)),
-               (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS));
+  cr_assert_eq(opus_codec_decode(decoder, batch + 18, size, decoded, (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS)), (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS));
   double energy = 0;
   for (unsigned i = 0; i < (OPUS_FRAME_SAMPLES * AUDIO_CHANNELS); ++i)
     energy += decoded[i] * decoded[i];

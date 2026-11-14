@@ -193,9 +193,9 @@ bool parse_port_option(const char *arg, void *dest, char **error_msg);
  * This parser can consume 0-2 arguments depending on what's provided.
  * It tracks internal state to ensure only one IPv4 and one IPv6 are specified.
  *
- * Example usage with options_builder_add_positional():
+ * Example usage with flags_schema_builder_add_positional():
  * ```c
- * options_builder_add_positional(
+ * flags_schema_builder_add_positional(
  *     builder,
  *     "bind-address",
  *     "IPv4 or IPv6 bind address (can specify 0-2 addresses)",
@@ -227,9 +227,9 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
  * This parser handles the complex logic of separating address from optional port
  * while correctly handling IPv6 addresses that contain colons.
  *
- * Example usage with options_builder_add_positional():
+ * Example usage with flags_schema_builder_add_positional():
  * ```c
- * options_builder_add_positional(
+ * flags_schema_builder_add_positional(
  *     builder,
  *     "address",
  *     "[address][:port] - Server address (IPv4, IPv6, or hostname) with optional port",
@@ -255,9 +255,9 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
  * - If file doesn't exist or isn't readable, treats as URL
  * - Sets either media_file or media_url field depending on what's detected
  *
- * Example usage with options_builder_add_positional():
+ * Example usage with flags_schema_builder_add_positional():
  * ```c
- * options_builder_add_positional(
+ * flags_schema_builder_add_positional(
  *     builder,
  *     "file|url",
  *     "(optional) Media file path or URL to stream",

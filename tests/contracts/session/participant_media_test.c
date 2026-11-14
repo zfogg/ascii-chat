@@ -117,8 +117,7 @@ static int test_thread_join(platform_thread_t *thread, void **result) {
     workers--;
   return error;
 }
-static asciichat_error_t test_connection_open(const char *name, const char *address, uint16_t port,
-                                              const network_connect_config_t *settings, network_connection_t **out,
+static asciichat_error_t test_connection_open(const char *name, const char *address, uint16_t port, const network_connect_config_t *settings, network_connection_t **out,
                                               connection_endpoint_t *endpoint) {
   if (fail_tcp_transport)
     return SET_ERRNO(ERROR_MEMORY, "Injected connection allocation failure");
@@ -218,16 +217,11 @@ static asciichat_error_t fixture_open(network_connection_t *c, void *arg) {
   asciichat_error_t result = network_connection_prepare_security(c, true, fixture->password);
   if (result != ASCIICHAT_OK)
     return result;
-  *n = (network_negotiation_t){.protocol = NETWORK_PROTOCOL_MEDIA,
-                               .handshake = network_connection_handshake(c),
-                               .initialized = true,
-                               .forbid_encryption = true,
-                               .password = fixture->password,
-                               .require_auth = true};
+  *n = (network_negotiation_t){
+      .protocol = NETWORK_PROTOCOL_MEDIA, .handshake = network_connection_handshake(c), .initialized = true, .forbid_encryption = true, .password = fixture->password, .require_auth = true};
   return ASCIICHAT_OK;
 }
-static asciichat_error_t fixture_packet(network_connection_t *c, packet_type_t type, const void *data, size_t len,
-                                        void *arg) {
+static asciichat_error_t fixture_packet(network_connection_t *c, packet_type_t type, const void *data, size_t len, void *arg) {
   network_fixture_t *f = arg;
   if (network_connection_state(c) == NETWORK_NEGOTIATING) {
     network_negotiation_t *n = network_connection_context(c);
@@ -283,9 +277,7 @@ Test(participant_media, startup_failures_and_worker_lifecycle, .timeout = 60) {
     cr_assert_eq(session_participant_start_video(p), ERROR_INVALID_STATE);
     cr_assert_eq(session_participant_set_transport(p, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
     asciichat_error_t error = fail_stage <= 2 ? session_participant_start_video(p) : session_participant_start_audio(p);
-    cr_assert_eq(error, (fail_stage == 1 || fail_stage == 3 || fail_stage == 5 ? ERROR_MEMORY
-                         : fail_stage == 2 || fail_stage == 6                  ? ERROR_THREAD
-                                                                               : ERROR_INVALID_STATE));
+    cr_assert_eq(error, (fail_stage == 1 || fail_stage == 3 || fail_stage == 5 ? ERROR_MEMORY : fail_stage == 2 || fail_stage == 6 ? ERROR_THREAD : ERROR_INVALID_STATE));
     cr_assert(!session_participant_is_video_active(p) && !session_participant_is_audio_active(p));
     clean();
     session_participant_disconnect(p);
@@ -387,11 +379,7 @@ Test(participant_media, startup_failures_and_worker_lifecycle, .timeout = 60) {
   config.password = "participant-fixture-password";
   network_fixture_t fixture = {.password = config.password};
   network_server_config_t server_config = {
-      .port = config.port,
-      .ipv4_address = "127.0.0.1",
-      .bind_ipv4 = true,
-      .callbacks = {.open = fixture_open, .packet = fixture_packet, .closed = fixture_closed},
-      .user_data = &fixture};
+      .port = config.port, .ipv4_address = "127.0.0.1", .bind_ipv4 = true, .callbacks = {.open = fixture_open, .packet = fixture_packet, .closed = fixture_closed}, .user_data = &fixture};
   cr_assert_eq(network_server_create(&server_config, &fixture.server), ASCIICHAT_OK);
   cr_assert_eq(network_server_start(fixture.server), ASCIICHAT_OK);
   platform_thread_t server_thread;
@@ -421,9 +409,7 @@ Test(participant_media, startup_failures_and_worker_lifecycle, .timeout = 60) {
     int video_before = atomic_load_int(&fixture.video), audio_before = atomic_load_int(&fixture.audio);
     cr_assert_eq(session_participant_start_video(tcp_participant), ASCIICHAT_OK);
     cr_assert_eq(session_participant_start_audio(tcp_participant), ASCIICHAT_OK);
-    for (int i = 0; i < 2000 && (atomic_load_int(&fixture.video) == video_before ||
-                                 atomic_load_int(&fixture.audio) == audio_before);
-         ++i)
+    for (int i = 0; i < 2000 && (atomic_load_int(&fixture.video) == video_before || atomic_load_int(&fixture.audio) == audio_before); ++i)
       platform_sleep_ms(1);
     cr_assert(atomic_load_int(&fixture.video) > video_before && atomic_load_int(&fixture.audio) > audio_before);
     session = SAFE_CALLOC(1, sizeof(*session), discovery_session_t *);
@@ -439,9 +425,7 @@ Test(participant_media, startup_failures_and_worker_lifecycle, .timeout = 60) {
     cr_assert(session_participant_is_audio_active(tcp_participant));
     int audio_before_switch = atomic_load_int(&audio_packets);
     int video_before_switch = atomic_load_int(&video_packets);
-    for (int i = 0; i < 200 && (atomic_load_int(&audio_packets) <= audio_before_switch ||
-                                (cycle == 0 && atomic_load_int(&video_packets) <= video_before_switch));
-         ++i)
+    for (int i = 0; i < 200 && (atomic_load_int(&audio_packets) <= audio_before_switch || (cycle == 0 && atomic_load_int(&video_packets) <= video_before_switch)); ++i)
       platform_sleep_ms(1);
     cr_assert(atomic_load_int(&audio_packets) > audio_before_switch);
     cr_assert(cycle == 1 || atomic_load_int(&video_packets) > video_before_switch);

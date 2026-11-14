@@ -16,8 +16,7 @@ Test(frame_validation, legacy_lengths_and_overflow_boundaries) {
 
 Test(frame_validation, network_order_fields_work_with_unaligned_headers) {
   // A four-pixel RGB row: width=4, height=1, uncompressed, twelve payload bytes.
-  const uint8_t wire[] = {0, 0,  0,   4, 0, 0, 0,   1, 0, 0, 0,   0,   0,   0,
-                          0, 12, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255};
+  const uint8_t wire[] = {0, 0, 0, 4, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 12, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255};
   uint8_t unaligned[sizeof(wire) + 1];
   memcpy(unaligned + 1, wire, sizeof(wire));
   uint32_t width = 0, height = 0, size = 0, flag = 99;

@@ -220,8 +220,7 @@ static void fault_pump(void) {
 }
 static asciichat_error_t fault_display_config(void *context, session_host_render_config_t *config) {
   (void)context;
-  *config = (session_host_render_config_t){
-      .width = 40, .height = 12, .caps = {.color_level = TERM_COLOR_NONE}, .palette = "XX"};
+  *config = (session_host_render_config_t){.width = 40, .height = 12, .caps = {.color_level = TERM_COLOR_NONE}, .palette = "XX"};
   return ASCIICHAT_OK;
 }
 static void fault_display_frame(void *context, const char *frame, size_t length, int width, int height) {
@@ -255,8 +254,7 @@ Test(host_faults, host_renderer_waits_for_peer_capabilities_before_presenting_lo
   cr_assert_eq(options_state_set(v), ASCIICHAT_OK);
   SAFE_FREE(v);
   interactive = true;
-  static app_callbacks_t callbacks = {.platform_get_monotonic_time_us = fault_clock,
-                                      .platform_pump_events = fault_pump};
+  static app_callbacks_t callbacks = {.platform_get_monotonic_time_us = fault_clock, .platform_pump_events = fault_pump};
   app_callbacks_register(&callbacks);
   owner->running = true;
   cr_assert_eq(session_host_start_render(owner), ASCIICHAT_OK);

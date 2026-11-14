@@ -10,6 +10,8 @@
 #include <libplatform/debug/sync.h>
 #include <string.h>
 
+extern void debug_sync_check_cond_deadlocks(void);
+
 #ifndef NDEBUG
 // Internal formatters back the public diagnostic log_state functions.
 extern int mutex_format_state(const mutex_t *mutex, char *buffer, size_t size);

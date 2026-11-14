@@ -561,8 +561,7 @@ void framebuffer_clear(framebuffer_t *fb);
  *
  * @ingroup ringbuffer
  */
-bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, size_t frame_size,
-                                   uint32_t source_client_id, uint32_t frame_sequence, uint32_t timestamp);
+bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, size_t frame_size, uint32_t source_client_id, uint32_t frame_sequence, uint32_t timestamp);
 
 /**
  * @brief Read a multi-source frame from the buffer

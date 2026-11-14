@@ -28,7 +28,26 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
 # DOCKER_OS should be set to architecture (amd64 or arm64) to prevent cross-arch binary conflicts
 # Note: Use FORCE to ensure computed paths always reflect current CMAKE_SOURCE_DIR and CMAKE_BUILD_TYPE
 # Only compute cache root if not already passed from parent build
-if(NOT DEFINED ASCIICHAT_DEPS_CACHE_ROOT OR ASCIICHAT_DEPS_CACHE_ROOT STREQUAL "")
+set(_ascii_chat_kernel_release "")
+if(UNIX AND EXISTS "/proc/sys/kernel/osrelease")
+    file(READ "/proc/sys/kernel/osrelease" _ascii_chat_kernel_release)
+endif()
+set(_ascii_chat_is_wsl OFF)
+if(DEFINED ENV{WSL_INTEROP} OR _ascii_chat_kernel_release MATCHES "[Ww][Ss][Ll]|[Mm]icrosoft")
+    set(_ascii_chat_is_wsl ON)
+endif()
+
+if(_ascii_chat_is_wsl)
+    # WSL distributions share the Windows checkout but cannot reuse native
+    # CMake subbuilds or binaries. Keep their build-type caches under one
+    # portable, distro-independent namespace: .deps-cache/wsl/<type>/.
+    # Recompute this even when a native configure populated the CMake cache;
+    # otherwise the first Windows configure silently controls later WSL builds.
+    if(NOT ASCIICHAT_DEPS_CACHE_ROOT MATCHES "[/\\\\]\.deps-cache[/\\\\]wsl$")
+        set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/wsl" CACHE PATH
+            "Root directory for WSL dependency cache" FORCE)
+    endif()
+elseif(NOT DEFINED ASCIICHAT_DEPS_CACHE_ROOT OR ASCIICHAT_DEPS_CACHE_ROOT STREQUAL "")
     if(DEFINED ENV{DOCKER_OS})
         set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/$ENV{DOCKER_OS}" CACHE PATH "Root directory for dependency cache (Docker $ENV{DOCKER_OS})" FORCE)
     elseif(EXISTS "/.dockerenv")
@@ -42,7 +61,8 @@ endif()
 # Build-type-specific cache directory
 # Note: Only compute if not already passed from parent build (e.g., auxiliary build)
 # This allows the auxiliary CMake build to use the same cache as the parent
-if(NOT DEFINED ASCIICHAT_DEPS_CACHE_DIR OR ASCIICHAT_DEPS_CACHE_DIR STREQUAL "")
+if(NOT DEFINED ASCIICHAT_DEPS_CACHE_DIR OR ASCIICHAT_DEPS_CACHE_DIR STREQUAL "" OR
+   (_ascii_chat_is_wsl AND NOT ASCIICHAT_DEPS_CACHE_DIR MATCHES "[/\\\\]\.deps-cache[/\\\\]wsl[/\\\\]"))
     set(ASCIICHAT_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type" FORCE)
 endif()
 
@@ -55,15 +75,19 @@ endif()
 # Shared source download cache for FetchContent (not build-type-qualified)
 # All platforms (iOS, musl, WASM, native) share the same source files via one FETCHCONTENT_BASE_DIR
 # Build artifacts go into ${ASCIICHAT_DEPS_CACHE_DIR}/<dep>/ (build-type-qualified) as needed
-if(NOT DEFINED FETCHCONTENT_BASE_DIR OR FETCHCONTENT_BASE_DIR STREQUAL "")
+if(NOT DEFINED FETCHCONTENT_BASE_DIR OR FETCHCONTENT_BASE_DIR STREQUAL "" OR
+   (_ascii_chat_is_wsl AND NOT FETCHCONTENT_BASE_DIR MATCHES "[/\\\\]\.deps-cache[/\\\\]wsl[/\\\\]"))
     set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/src" CACHE PATH "FetchContent source cache" FORCE)
 endif()
 
 # Web-specific source cache for FetchContent (keeps web sources separate)
 # Sources are shared across build types but kept in web/ subdirectory
-if(NOT DEFINED WEB_FETCHCONTENT_BASE_DIR OR WEB_FETCHCONTENT_BASE_DIR STREQUAL "")
+if(NOT DEFINED WEB_FETCHCONTENT_BASE_DIR OR WEB_FETCHCONTENT_BASE_DIR STREQUAL "" OR
+   (_ascii_chat_is_wsl AND NOT WEB_FETCHCONTENT_BASE_DIR MATCHES "[/\\\\]\.deps-cache[/\\\\]wsl[/\\\\]"))
     set(WEB_FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/web/src" CACHE PATH "Web FetchContent source cache" FORCE)
 endif()
+unset(_ascii_chat_is_wsl)
+unset(_ascii_chat_kernel_release)
 
 # Validate paths are not empty (which would create directories at root /)
 if(NOT ASCIICHAT_DEPS_CACHE_ROOT OR ASCIICHAT_DEPS_CACHE_ROOT STREQUAL "" OR ASCIICHAT_DEPS_CACHE_ROOT STREQUAL "/")

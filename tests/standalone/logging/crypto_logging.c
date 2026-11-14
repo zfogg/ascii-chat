@@ -4,10 +4,10 @@
 #include <ascii-chat/util/time.h>
 #include <string.h>
 
-#define CHECK(expr)                                                                                                    \
-  do {                                                                                                                 \
-    if (!(expr))                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "Logging regression failed at line %d: %s", __LINE__, #expr);                      \
+#define CHECK(expr)                                                                                                                                                                                    \
+  do {                                                                                                                                                                                                 \
+    if (!(expr))                                                                                                                                                                                       \
+      FATAL(ERROR_ASSERTION_FAILED, "Logging regression failed at line %d: %s", __LINE__, #expr);                                                                                                      \
   } while (0)
 
 // Exercise production crypto and logging without Criterion, including on Windows.
@@ -31,21 +31,18 @@ int main(int argc, char **argv) {
   size_t encrypted_len = 0, decrypted_len = 0;
   for (int i = 0; i < 1000; ++i) {
     CHECK(crypto_encrypt(&sender, message, sizeof(message), encrypted, sizeof(encrypted), &encrypted_len) == CRYPTO_OK);
-    CHECK(crypto_decrypt(&receiver, encrypted, encrypted_len, decrypted, sizeof(decrypted), &decrypted_len) ==
-          CRYPTO_OK);
+    CHECK(crypto_decrypt(&receiver, encrypted, encrypted_len, decrypted, sizeof(decrypted), &decrypted_len) == CRYPTO_OK);
     CHECK(decrypted_len == sizeof(message));
     CHECK(memcmp(message, decrypted, sizeof(message)) == 0);
   }
   encrypted[encrypted_len - 1] ^= 1;
   for (int i = 0; i < 1000; ++i) {
-    CHECK(crypto_decrypt(&receiver, encrypted, encrypted_len, decrypted, sizeof(decrypted), &decrypted_len) ==
-          CRYPTO_ERROR_INVALID_MAC);
+    CHECK(crypto_decrypt(&receiver, encrypted, encrypted_len, decrypted, sizeof(decrypted), &decrypted_len) == CRYPTO_ERROR_INVALID_MAC);
     CLEAR_ERRNO();
   }
   // After the interval, a persistent failure must become visible again.
   platform_sleep_ns(1100 * NS_PER_MS_INT);
-  CHECK(crypto_decrypt(&receiver, encrypted, encrypted_len, decrypted, sizeof(decrypted), &decrypted_len) ==
-        CRYPTO_ERROR_INVALID_MAC);
+  CHECK(crypto_decrypt(&receiver, encrypted, encrypted_len, decrypted, sizeof(decrypted), &decrypted_len) == CRYPTO_ERROR_INVALID_MAC);
   CLEAR_ERRNO();
   crypto_destroy(&sender);
   crypto_destroy(&receiver);

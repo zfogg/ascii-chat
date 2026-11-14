@@ -139,8 +139,7 @@ asciichat_error_t parse_long(const char *str, long *out_value, long min_value, l
  * @param max_value Maximum allowed value (inclusive)
  * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid input or out of range
  */
-asciichat_error_t parse_ulong(const char *str, unsigned long *out_value, unsigned long min_value,
-                              unsigned long max_value);
+asciichat_error_t parse_ulong(const char *str, unsigned long *out_value, unsigned long min_value, unsigned long max_value);
 
 /**
  * @brief Parse unsigned long long integer with range validation
@@ -150,8 +149,7 @@ asciichat_error_t parse_ulong(const char *str, unsigned long *out_value, unsigne
  * @param max_value Maximum allowed value (inclusive)
  * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid input or out of range
  */
-asciichat_error_t parse_ulonglong(const char *str, unsigned long long *out_value, unsigned long long min_value,
-                                  unsigned long long max_value);
+asciichat_error_t parse_ulonglong(const char *str, unsigned long long *out_value, unsigned long long min_value, unsigned long long max_value);
 
 /**
  * @brief Parse port number (1-65535) from string

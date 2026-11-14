@@ -55,8 +55,18 @@
  */
 
 #include <stdbool.h>
+#include <libflags/builder.h>
 #include "../common.h"
 #include "../options/options.h" // For asciichat_mode_t
+
+/**
+ * @brief Build the generic libflags schema for an ascii-chat mode.
+ * @param mode_mask Mode bitmask whose options should be included.
+ * @return Owned schema builder, or NULL when the schema cannot be built.
+ * @note The caller owns the returned builder and must destroy it with
+ *       flags_schema_builder_destroy().
+ */
+flags_schema_builder_t *options_config_build_flags_schema(option_mode_bitmask_t mode_mask);
 
 /**
  * @brief Load configuration from TOML file and apply to global options
@@ -93,19 +103,17 @@
  *       arguments, so that CLI arguments can override config file values.
  *
  * @note If strict is false and the config file doesn't exist, is not a regular file,
- *       or fails to parse, the function returns ASCIICHAT_OK (non-fatal). Individual
- *       invalid values are skipped with warnings, but valid values are still applied.
+ *       or fails to parse or validate, the function returns ASCIICHAT_OK (non-fatal).
  *
  * @note If strict is true, any error (file not found, parse error, etc.) causes the
  *       function to return an error code immediately.
  *
- * @warning Configuration warnings are printed directly to stderr because logging
- *          may not be initialized yet when this function is called.
+ * @note Configuration diagnostics use the application's logging callback, so they
+ *       follow terminal, file, and browser/WASM logging sinks.
  *
  * @ingroup config
  */
-asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const char *config_path, bool strict,
-                                        options_t *opts);
+asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const char *config_path, bool strict, options_t *opts);
 
 /**
  * @brief Load system config first, then user config (user config overrides system)

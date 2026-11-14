@@ -160,8 +160,7 @@ Test(crypto_https_keys, build_gitlab_gpg_url_buffer_too_small) {
 // =============================================================================
 
 Test(crypto_https_keys, parse_ssh_keys_single_key) {
-  const char *response =
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
+  const char *response = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
   char **keys = NULL;
   size_t num_keys = 0;
 
@@ -180,10 +179,9 @@ Test(crypto_https_keys, parse_ssh_keys_single_key) {
 }
 
 Test(crypto_https_keys, parse_ssh_keys_multiple_keys) {
-  const char *response =
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT key1@example.com\n"
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop key2@example.com\n"
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456 key3@example.com";
+  const char *response = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT key1@example.com\n"
+                         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop key2@example.com\n"
+                         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456 key3@example.com";
 
   char **keys = NULL;
   size_t num_keys = 0;
@@ -259,8 +257,7 @@ Test(crypto_https_keys, parse_ssh_keys_null_response) {
 }
 
 Test(crypto_https_keys, parse_ssh_keys_null_keys_out) {
-  const char *response =
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
+  const char *response = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
   size_t num_keys = 0;
 
   asciichat_error_t result = parse_ssh_keys_from_response(response, strlen(response), NULL, &num_keys, 10);
@@ -269,8 +266,7 @@ Test(crypto_https_keys, parse_ssh_keys_null_keys_out) {
 }
 
 Test(crypto_https_keys, parse_ssh_keys_null_num_keys) {
-  const char *response =
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
+  const char *response = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
   char **keys = NULL;
 
   asciichat_error_t result = parse_ssh_keys_from_response(response, strlen(response), &keys, NULL, 10);
@@ -376,8 +372,7 @@ Test(crypto_https_keys, parse_gpg_keys_invalid_format) {
 }
 
 Test(crypto_https_keys, parse_gpg_keys_ssh_key_input) {
-  const char *response =
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
+  const char *response = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
   char **keys = NULL;
   size_t num_keys = 0;
 
@@ -426,8 +421,7 @@ Test(crypto_multi_keys, parse_public_keys_zero_max_keys) {
 
 Test(crypto_multi_keys, parse_public_keys_single_ssh_key) {
   // Valid Ed25519 public key (base64 decoded is 32 bytes after ssh-ed25519 prefix)
-  const char *key_str =
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
+  const char *key_str = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
   public_key_t keys[10];
   size_t num_keys = 0;
 
@@ -481,8 +475,7 @@ Test(crypto_multi_keys, parse_public_keys_gitlab_prefix_detection) {
 Test(crypto_multi_keys, parse_public_keys_respects_max_keys) {
   // Test with file path that would have multiple keys
   // For unit testing without file system, we test the single key case with max_keys=1
-  const char *key_str =
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
+  const char *key_str = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
   public_key_t keys[1];
   size_t num_keys = 0;
 
@@ -509,19 +502,19 @@ Test(crypto_multi_keys, parse_public_keys_invalid_format) {
 
 // Real GitHub keys from zfogg's profile (github.com/zfogg.keys)
 // 1 RSA key + 3 Ed25519 keys - tests that RSA is skipped and all Ed25519 are parsed
-#define ZFOGG_RSA_KEY                                                                                                  \
-  "ssh-rsa "                                                                                                           \
-  "AAAAB3NzaC1yc2EAAAADAQABAAACAQClCSY4EbOMUTgY2RNy8cyXvzv8Necb4u1n1E4l3xinPiEq3v8aI9vkStst4zPLV9+"                    \
-  "YfguKeZX0oJqzrdjGIkoktM6sxGY+s1Xq9MYRVgNsTHphgCA3pY4RvLJ6rJRQ415Sn9XIrGx0GcEv66Wp6v84v/"                            \
-  "NFZKXDuQxFrp9KFFmBcVe6ywKNQWXJD/"                                                                                   \
-  "lluZJhCb2M84EujMPugp/"                                                                                              \
-  "Z8Zxui8mKRFmDKLagHhemtbnspbnII69hBC2FJpqaVJ5NQ2irGvnevFmH4xDivl3Mn6TXjb4n93Uvm7ZUu8gk1UwhsShHIHR+"                  \
-  "ahK/"                                                                                                               \
-  "WN7N9aOMII6BK8qD25mK2vsoINnC/"                                                                                      \
-  "TUPjwnqzSiTN2GiHN1BhBMOJNiYmkMBI5sAQro+Kwppd7yhtXchhH3i/"                                                           \
-  "QQ7bEwB8P+jv40JerJ7RikfV8FRdTyvOQSLC2+gCWrGBC9OUknFyFVgVX+dKNvAI5lGV5mLWsSPlEPuLeUUFM+"                             \
-  "1IwsKOfWMh/"                                                                                                        \
-  "Nj427AX0BOTiU+TlfpzQdri0rRX7rkR81bCtbfkoqaVhj9nP3qjARVjAhRhavACWxQiEvDw4y6VWlgawBwGDnEiCpdh41OYW3Xnkg7bgL/"         \
+#define ZFOGG_RSA_KEY                                                                                                                                                                                  \
+  "ssh-rsa "                                                                                                                                                                                           \
+  "AAAAB3NzaC1yc2EAAAADAQABAAACAQClCSY4EbOMUTgY2RNy8cyXvzv8Necb4u1n1E4l3xinPiEq3v8aI9vkStst4zPLV9+"                                                                                                    \
+  "YfguKeZX0oJqzrdjGIkoktM6sxGY+s1Xq9MYRVgNsTHphgCA3pY4RvLJ6rJRQ415Sn9XIrGx0GcEv66Wp6v84v/"                                                                                                            \
+  "NFZKXDuQxFrp9KFFmBcVe6ywKNQWXJD/"                                                                                                                                                                   \
+  "lluZJhCb2M84EujMPugp/"                                                                                                                                                                              \
+  "Z8Zxui8mKRFmDKLagHhemtbnspbnII69hBC2FJpqaVJ5NQ2irGvnevFmH4xDivl3Mn6TXjb4n93Uvm7ZUu8gk1UwhsShHIHR+"                                                                                                  \
+  "ahK/"                                                                                                                                                                                               \
+  "WN7N9aOMII6BK8qD25mK2vsoINnC/"                                                                                                                                                                      \
+  "TUPjwnqzSiTN2GiHN1BhBMOJNiYmkMBI5sAQro+Kwppd7yhtXchhH3i/"                                                                                                                                           \
+  "QQ7bEwB8P+jv40JerJ7RikfV8FRdTyvOQSLC2+gCWrGBC9OUknFyFVgVX+dKNvAI5lGV5mLWsSPlEPuLeUUFM+"                                                                                                             \
+  "1IwsKOfWMh/"                                                                                                                                                                                        \
+  "Nj427AX0BOTiU+TlfpzQdri0rRX7rkR81bCtbfkoqaVhj9nP3qjARVjAhRhavACWxQiEvDw4y6VWlgawBwGDnEiCpdh41OYW3Xnkg7bgL/"                                                                                         \
   "jFMEaXVGrGsBW1gCY1d/9cVDGQQKe6653mRvmnlIIaT2waGiSoWQKP/6SlJ/hOHa6xUnJsTmlMndwUoVAtxDIvADtw=="
 #define ZFOGG_ED25519_KEY1 "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFlsNir27dY0CPfWR/Nc8PcEwfcfkksSK/pAVr8nZan8"
 #define ZFOGG_ED25519_KEY2 "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP5bVpBcszpper4Ln7zJGfs2I/4VytDZwy5nk7lksdyt"
@@ -531,15 +524,13 @@ Test(crypto_multi_keys, parse_public_keys_invalid_format) {
 Test(crypto_multi_keys, real_github_zfogg_multi_key_response) {
   // Simulate the exact response from github.com/zfogg.keys
   // 1 RSA key + 3 Ed25519 keys
-  const char *zfogg_keys_response =
-      ZFOGG_RSA_KEY "\n" ZFOGG_ED25519_KEY1 "\n" ZFOGG_ED25519_KEY2 "\n" ZFOGG_ED25519_KEY3;
+  const char *zfogg_keys_response = ZFOGG_RSA_KEY "\n" ZFOGG_ED25519_KEY1 "\n" ZFOGG_ED25519_KEY2 "\n" ZFOGG_ED25519_KEY3;
 
   char **raw_keys = NULL;
   size_t num_raw_keys = 0;
 
   // First, parse all raw key strings
-  asciichat_error_t result =
-      parse_ssh_keys_from_response(zfogg_keys_response, strlen(zfogg_keys_response), &raw_keys, &num_raw_keys, 10);
+  asciichat_error_t result = parse_ssh_keys_from_response(zfogg_keys_response, strlen(zfogg_keys_response), &raw_keys, &num_raw_keys, 10);
 
   cr_assert_eq(result, ASCIICHAT_OK, "Should parse zfogg's GitHub key response");
   cr_assert_eq(num_raw_keys, 4, "Should find all 4 key lines (1 RSA + 3 Ed25519)");

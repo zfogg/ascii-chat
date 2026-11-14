@@ -230,7 +230,8 @@ if (
       throw new Error(`WASM declaration mismatch: ${file}`);
   }
 } else {
-  const { protocolVersion } = await import("../../../scripts/wasm-protocol-version.mjs");
+  const { protocolVersion } =
+    await import("../../../scripts/wasm-protocol-version.mjs");
   const artifactDirectory = process.env.ASCII_CHAT_WASM_ARTIFACT_DIR;
   const build = resolve(repo, process.env.ASCII_CHAT_WASM_BUILD_DIR || "build");
   if (!artifactDirectory)

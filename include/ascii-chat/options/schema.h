@@ -7,8 +7,7 @@
  * that can appear in TOML configuration files. The schema drives the
  * generic config parser, eliminating duplicate validation code.
  *
- * @note This is separate from builder.h's option_descriptor_t which is
- *       for CLI parsing. This schema is specifically for TOML config files.
+ * @note This metadata adapts the ascii-chat registry to libflags TOML support.
  */
 
 #pragma once
@@ -17,7 +16,7 @@
 #include <stddef.h>
 #include "../common.h"
 #include "../options/options.h"
-#include "../options/builder.h"
+#include "types.h"
 
 /**
  * @brief Context where an option can appear
@@ -79,8 +78,7 @@ typedef struct {
   } constraints;
 
   // Mode-aware default getter (for options with mode-specific defaults)
-  const void *(*mode_default_getter)(
-      asciichat_mode_t mode); ///< Get mode-specific default value (NULL if not mode-aware)
+  const void *(*mode_default_getter)(asciichat_mode_t mode); ///< Get mode-specific default value (NULL if not mode-aware)
   /**
    * @brief Option metadata for config file parsing
    */
@@ -120,12 +118,18 @@ const config_option_metadata_t *config_schema_get_all(size_t *count);
  *
  * @note This should be called once during initialization before any config parsing
  */
-asciichat_error_t config_schema_build_from_configs(const options_config_t **configs, size_t num_configs);
+/**
+ * @brief Builds configuration metadata directly from the ascii-chat registry.
+ *
+ * @return ASCIICHAT_OK on success, or an error code.
+ * @note This is the native path; callers must not construct a legacy preset.
+ */
+asciichat_error_t config_schema_build_from_registry(void);
 
 /**
  * @brief Clean up dynamically allocated schema resources
  *
- * Frees all memory allocated by config_schema_build_from_configs(),
+ * Frees all memory allocated by config_schema_build_from_registry(),
  * including the dynamic schema array and all associated strings.
  * Safe to call multiple times or if schema was never built.
  *

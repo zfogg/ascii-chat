@@ -1,0 +1,659 @@
+/**
+ * @file common.c
+ * @ingroup options
+ * @brief Common utilities and helpers for option parsing
+ *
+ * Shared helper functions, validators, and global variables used by all
+ * option parsing modules (client.c, server.c, mirror.c).
+ */
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_COMMON_BUFFER_BUFFER_SIZE 256
+#define OPTIONS_COMMON_SUGGESTION_BUFFER_SIZE 256
+
+#include <ascii-chat/options/enums.h>
+#include <ascii-chat/options/common.h>
+#include <ascii-chat/options/registry.h>
+#include <libflags/builder.h>
+#include <libflags/help.h>
+#include <libflags/format.h>
+#include <libflags/values.h>
+
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/log.h>
+#include <ascii-chat/options/levenshtein.h>
+#include <ascii-chat/options/validation.h>
+#include <libplatform/terminal.h>
+#include <sys/stat.h>
+#include <ascii-chat/util/parsing.h>
+#include <ascii-chat/util/password.h>
+#include <ascii-chat/util/path.h>
+#include <ascii-chat/util/string.h>
+
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+// Find the most similar option name to an unknown option
+// Returns the best matching option name, or NULL if no good match found
+// Note: Uses LEVENSHTEIN_SUGGESTION_THRESHOLD from levenshtein.h
+const char *find_similar_option(const char *unknown_opt, const struct option *options) {
+  if (!unknown_opt || !options) {
+    return NULL;
+  }
+
+  const char *best_match = NULL;
+  size_t best_distance = SIZE_MAX;
+
+  for (int i = 0; options[i].name != NULL; i++) {
+    size_t dist = levenshtein(unknown_opt, options[i].name);
+    if (dist < best_distance) {
+      best_distance = dist;
+      best_match = options[i].name;
+    }
+  }
+
+  // Only suggest if the distance is within our threshold
+  if (best_distance <= LEVENSHTEIN_SUGGESTION_THRESHOLD) {
+    return best_match;
+  }
+
+  return NULL;
+}
+
+// Helper to format all available modes for an option (used in error messages)
+// Returns comma-separated list like "server, client, mirror" or "global options"
+const char *format_available_modes(option_mode_bitmask_t mode_bitmask) {
+  static char buffer[OPTIONS_COMMON_BUFFER_BUFFER_SIZE];
+  buffer[0] = '\0';
+
+  bool first = true;
+
+  // Check if it's a global/binary option
+  if (mode_bitmask & OPTION_MODE_BINARY) {
+    SAFE_SNPRINTF(buffer, sizeof(buffer), "global options");
+    return buffer;
+  }
+
+  // Build comma-separated list of modes (ordered: default, client, server, mirror, discovery-service)
+  if (mode_bitmask & OPTION_MODE_DISCOVERY) {
+    safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%sdefault", first ? "" : ", ");
+    first = false;
+  }
+  if (mode_bitmask & OPTION_MODE_CLIENT) {
+    safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%sclient", first ? "" : ", ");
+    first = false;
+  }
+  if (mode_bitmask & OPTION_MODE_SERVER) {
+    safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%sserver", first ? "" : ", ");
+    first = false;
+  }
+  if (mode_bitmask & OPTION_MODE_MIRROR) {
+    safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%smirror", first ? "" : ", ");
+    first = false;
+  }
+  if (mode_bitmask & OPTION_MODE_DISCOVERY_SVC) {
+    safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%sdiscovery-service", first ? "" : ", ");
+    first = false;
+  }
+
+  if (mode_bitmask & OPTION_MODE_MCP_SERVER) {
+    safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%smcp-server", first ? "" : ", ");
+    first = false;
+  }
+  if (mode_bitmask & OPTION_MODE_API_SERVER) {
+    safe_snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), "%sapi-server", first ? "" : ", ");
+  }
+
+  // Fallback if no modes matched
+  if (buffer[0] == '\0') {
+    SAFE_SNPRINTF(buffer, sizeof(buffer), "unknown mode");
+  }
+
+  return buffer;
+}
+
+// Safely parse string to integer with validation
+int strtoint_safe(const char *str) {
+  int32_t result = 0;
+  return flags_parse_int32(str, &result) ? (int)result : INT_MIN;
+}
+
+// Forward declaration for get_required_argument (defined later in file)
+char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name, asciichat_mode_t mode);
+
+// Validate and retrieve required argument for an option
+char *validate_required_argument(const char *optarg, char *argbuf, size_t argbuf_size, const char *option_name, asciichat_mode_t mode) {
+  char *value = get_required_argument(optarg, argbuf, argbuf_size, option_name, mode);
+  if (!value) {
+    (void)option_error_invalid();
+  }
+  return value;
+}
+
+// Validate a positive integer value (internal option parsing helper)
+bool validate_positive_int_opt(const char *value_str, int *out_value, const char *param_name) {
+  if (!value_str || !out_value) {
+    return false;
+  }
+
+  int val = strtoint_safe(value_str);
+  if (val == INT_MIN || val <= 0) {
+    log_error("Invalid %s value '%s'. %s must be a positive integer.", param_name, value_str, param_name);
+    return false;
+  }
+
+  *out_value = val;
+  return true;
+}
+
+// Validate port number (1-65535) (internal option parsing helper)
+bool validate_port_opt(const char *value_str, uint16_t *out_port) {
+  if (!value_str || !out_port) {
+    return false;
+  }
+
+  // Use safe integer parsing with range validation
+  if (parse_port(value_str, out_port) != ASCIICHAT_OK) {
+    log_error("Invalid port value '%s'. Port must be a number between 1 and 65535.", value_str);
+    return false;
+  }
+
+  return true;
+}
+
+// Validate FPS value (0 for auto, otherwise 1-144).
+bool validate_fps_opt(const char *value_str, int *out_fps) {
+  if (!value_str || !out_fps) {
+    return false;
+  }
+
+  int fps_val = strtoint_safe(value_str);
+  if (fps_val == INT_MIN || fps_val < 0 || fps_val > 144) {
+    log_error("Invalid FPS value '%s'. FPS must be between 0 and 144.", value_str);
+    return false;
+  }
+
+  *out_fps = fps_val;
+  return true;
+}
+
+// Validate webcam index using the common device index validator
+bool validate_webcam_index(const char *value_str, unsigned short int *out_index) {
+  if (!value_str || !out_index) {
+    return false;
+  }
+
+  char error_msg[BUFFER_SIZE_SMALL];
+  int parsed_index = validate_opt_device_index(value_str, error_msg, sizeof(error_msg));
+  if (parsed_index == INT_MIN) {
+    log_error("Invalid webcam index: %s", error_msg);
+    return false;
+  }
+  // Webcam index doesn't support -1 (default), must be >= 0
+  if (parsed_index < 0) {
+    log_error("Invalid webcam index '%s'. Webcam index must be a non-negative integer.", value_str);
+    return false;
+  }
+
+  *out_index = (unsigned short int)parsed_index;
+  return true;
+}
+
+// Detect default SSH key path for the current user
+asciichat_error_t detect_default_ssh_key(char *key_path, size_t path_size) {
+  // Use expand_path utility to resolve ~/.ssh/id_ed25519
+  char *full_path = expand_path("~/.ssh/id_ed25519");
+  if (!full_path) {
+    return SET_ERRNO(ERROR_CONFIG, "Could not expand SSH key path");
+  }
+
+  // Check if the Ed25519 private key file exists
+  struct stat st;
+  bool found = (stat(full_path, &st) == 0 && S_ISREG(st.st_mode));
+
+  if (found) {
+    SAFE_SNPRINTF(key_path, path_size, "%s", full_path);
+    log_debug("Found default SSH key: %s", full_path);
+    SAFE_FREE(full_path);
+    return ASCIICHAT_OK;
+  }
+
+  log_error("No Ed25519 SSH key found at %s", full_path);
+  SAFE_FREE(full_path);
+  return SET_ERRNO(ERROR_CRYPTO_KEY, "Only Ed25519 keys are supported (modern, secure, fast). Generate a new key with: ssh-keygen -t ed25519");
+}
+
+// ============================================================================
+// Argument Processing Helpers
+// ============================================================================
+
+// Helper function to strip equals sign from optarg if present
+char *strip_equals_prefix(const char *opt_value, char *buffer, size_t buffer_size) {
+  if (!opt_value)
+    return NULL;
+
+  SAFE_SNPRINTF(buffer, buffer_size, "%s", opt_value);
+  char *value_str = buffer;
+  if (value_str[0] == '=') {
+    value_str++; // Skip the equals sign
+  }
+
+  // Return NULL for empty strings (treat as missing argument)
+  if (strlen(value_str) == 0) {
+    return NULL;
+  }
+
+  return value_str;
+}
+
+// Helper function to handle required arguments with consistent error messages
+// Returns NULL on error (caller should check and return error code)
+char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name, asciichat_mode_t mode) {
+  // Check if opt_value is NULL or empty
+  if (!opt_value || strlen(opt_value) == 0) {
+    goto error;
+  }
+
+  // Check if getopt_long returned the option name itself as the argument
+  // This happens when a long option requiring an argument is at the end of argv
+  if (opt_value && option_name && strcmp(opt_value, option_name) == 0) {
+    goto error;
+  }
+
+  // Process the argument normally
+  char *value_str = strip_equals_prefix(opt_value, buffer, buffer_size);
+  if (!value_str) {
+    goto error;
+  }
+
+  return value_str;
+
+error:
+  (void)0;
+  const char *mode_name = (mode == MODE_SERVER ? "server" : (mode == MODE_MIRROR ? "mirror" : "client"));
+  log_error("%s: option '--%s' requires an argument", mode_name, option_name);
+  return NULL; // Signal error to caller
+}
+
+// Read password from stdin with prompt (returns allocated string or NULL on error)
+char *read_password_from_stdin(const char *prompt) {
+  char *password_buf = SAFE_MALLOC(PASSWORD_MAX_LEN, char *);
+  if (!password_buf) {
+    return NULL;
+  }
+
+  if (prompt_password_simple(prompt, password_buf, PASSWORD_MAX_LEN) != 0) {
+    SAFE_FREE(password_buf);
+    return NULL;
+  }
+
+  return password_buf; // Caller must free
+}
+
+// ============================================================================
+// Global Variable Definitions
+// ============================================================================
+// Removed: All opt_* global variables moved to RCU options_t struct
+// Access these via GET_OPTION(field_name) for thread-safe lock-free reads
+// Modify via options_set_*() functions for thread-safe updates
+// ============================================================================
+
+// These flags are used during parsing, not part of RCU options
+ASCIICHAT_API bool auto_width = true, auto_height = true;
+
+// Track if --port was explicitly set via command-line flag (for mutual exclusion validation)
+bool port_explicitly_set_via_flag = false;
+
+// Default weights; must add up to 1.0
+const float weight_red = 0.2989f;
+const float weight_green = 0.5866f;
+const float weight_blue = 0.1145f;
+
+// Color channel lookup tables (used by image.c for palette precomputation)
+// Size must match ASCII_LUMINANCE_LEVELS (256) from ascii.h
+unsigned short int RED[256];
+unsigned short int GREEN[256];
+unsigned short int BLUE[256];
+unsigned short int GRAY[256];
+
+// ============================================================================
+// Shared Option Parsers (Client + Mirror Common Options)
+// ============================================================================
+
+asciichat_error_t parse_color_mode_option(const char *value_str, options_t *opts) {
+  if (!value_str || !opts) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (strcmp(value_str, OPT_VALUE_AUTO) == 0 || strcmp(value_str, "a") == 0) {
+    opts->color_mode = COLOR_MODE_AUTO;
+  } else if (strcmp(value_str, OPT_COLOR_MODE_NONE) == 0 || strcmp(value_str, OPT_COLOR_MODE_MONO) == 0) {
+    opts->color_mode = COLOR_MODE_NONE;
+  } else if (strcmp(value_str, OPT_COLOR_MODE_16) == 0 || strcmp(value_str, "16color") == 0 || strcmp(value_str, "ansi") == 0) {
+    opts->color_mode = COLOR_MODE_16_COLOR;
+  } else if (strcmp(value_str, OPT_COLOR_MODE_256) == 0 || strcmp(value_str, "256color") == 0) {
+    opts->color_mode = COLOR_MODE_256_COLOR;
+  } else if (strcmp(value_str, OPT_COLOR_MODE_TRUECOLOR) == 0 || strcmp(value_str, "24bit") == 0 || strcmp(value_str, "tc") == 0 || strcmp(value_str, "rgb") == 0 ||
+             strcmp(value_str, OPT_VALUE_TRUE) == 0) {
+    opts->color_mode = COLOR_MODE_TRUECOLOR;
+  } else {
+    log_error("Invalid color mode '%s'. Valid modes: auto, none, 16, 256, truecolor", value_str);
+    return ERROR_INVALID_PARAM;
+  }
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_render_mode_option(const char *value_str, options_t *opts) {
+  if (!value_str || !opts) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (strcmp(value_str, OPT_RENDER_MODE_FOREGROUND) == 0 || strcmp(value_str, OPT_RENDER_MODE_FG) == 0) {
+    opts->render_mode = RENDER_MODE_FOREGROUND;
+  } else if (strcmp(value_str, OPT_RENDER_MODE_BACKGROUND) == 0 || strcmp(value_str, OPT_RENDER_MODE_BG) == 0) {
+    opts->render_mode = RENDER_MODE_BACKGROUND;
+  } else if (strcmp(value_str, OPT_RENDER_MODE_HALF_BLOCK) == 0 || strcmp(value_str, "halfblock") == 0) {
+    opts->render_mode = RENDER_MODE_HALF_BLOCK;
+  } else {
+    log_error("Invalid render mode '%s'. Valid modes: foreground, background, half-block", value_str);
+    return ERROR_INVALID_PARAM;
+  }
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_palette_option(const char *value_str, options_t *opts) {
+  if (!value_str || !opts) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (strcmp(value_str, OPT_PALETTE_STANDARD) == 0) {
+    opts->palette_type = PALETTE_STANDARD;
+  } else if (strcmp(value_str, OPT_PALETTE_BLOCKS) == 0) {
+    opts->palette_type = PALETTE_BLOCKS;
+  } else if (strcmp(value_str, OPT_PALETTE_DIGITAL) == 0) {
+    opts->palette_type = PALETTE_DIGITAL;
+  } else if (strcmp(value_str, OPT_PALETTE_MINIMAL) == 0) {
+    opts->palette_type = PALETTE_MINIMAL;
+  } else if (strcmp(value_str, OPT_PALETTE_COOL) == 0) {
+    opts->palette_type = PALETTE_COOL;
+  } else if (strcmp(value_str, OPT_PALETTE_CUSTOM) == 0) {
+    opts->palette_type = PALETTE_CUSTOM;
+  } else {
+    log_error("Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom", value_str);
+    return ERROR_INVALID_PARAM;
+  }
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_palette_chars_option(const char *value_str, options_t *opts) {
+  if (!value_str || !opts) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (strlen(value_str) >= sizeof(opts->palette_custom)) {
+    log_error("Invalid palette-chars: too long (%zu chars, max %zu)", strlen(value_str), sizeof(opts->palette_custom) - 1);
+    return ERROR_INVALID_PARAM;
+  }
+
+  SAFE_STRNCPY(opts->palette_custom, value_str, sizeof(opts->palette_custom));
+  opts->palette_custom[sizeof(opts->palette_custom) - 1] = '\0';
+  opts->palette_custom_set = true;
+  opts->palette_type = PALETTE_CUSTOM;
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_width_option(const char *value_str, options_t *opts) {
+  if (!opts) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  int width_val;
+  if (!validate_positive_int_opt(value_str, &width_val, "width")) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  opts->width = width_val;
+  opts->auto_width = false;
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_height_option(const char *value_str, options_t *opts) {
+  if (!opts) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  int height_val;
+  if (!validate_positive_int_opt(value_str, &height_val, "height")) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  opts->height = height_val;
+  opts->auto_height = false;
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_webcam_index_option(const char *value_str, options_t *opts) {
+  if (!opts) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  unsigned short int index_val;
+  if (!validate_webcam_index(value_str, &index_val)) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  opts->webcam_index = index_val;
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_snapshot_delay_option(const char *value_str, options_t *opts) {
+  if (!value_str || !opts) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  char *endptr;
+  float delay = strtof(value_str, &endptr);
+  if (endptr == value_str || *endptr != '\0' || delay < 0.0f) {
+    log_error("Invalid snapshot delay '%s'. Must be a non-negative number.", value_str);
+    return ERROR_INVALID_PARAM;
+  }
+
+  opts->snapshot_delay = delay;
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_log_level_option(const char *value_str, options_t *opts) {
+  if (!opts) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  char error_msg[BUFFER_SIZE_SMALL];
+  int log_level = validate_opt_log_level(value_str, error_msg, sizeof(error_msg));
+
+  if (log_level == -1) {
+    log_error("%s", error_msg);
+    return ERROR_INVALID_PARAM;
+  }
+
+  opts->log_level = (log_level_t)log_level;
+
+  return ASCIICHAT_OK;
+}
+
+// ============================================================================
+// Option Formatting Utilities
+// ============================================================================
+
+// ============================================================================
+// Terminal Dimension Utilities
+// ============================================================================
+
+void update_dimensions_for_full_height(options_t *opts) {
+  if (!opts) {
+    return;
+  }
+
+  unsigned short int term_width, term_height;
+
+  // Note: Logging is not available during options_init, so we can't use log_debug here
+  asciichat_error_t result = get_terminal_size(&term_width, &term_height);
+
+  if (result == ASCIICHAT_OK) {
+    // If both dimensions are auto, set height to terminal height and let
+    // aspect_ratio calculate width
+    if (opts->auto_height && opts->auto_width) {
+      opts->height = term_height;
+      opts->width = term_width; // Also set width when both are auto
+    }
+    // If only height is auto, use full terminal height
+    else if (opts->auto_height) {
+      opts->height = term_height;
+    }
+    // If only width is auto, use full terminal width
+    else if (opts->auto_width) {
+      opts->width = term_width;
+    }
+  } else {
+    // Terminal size detection failed, but we can still continue with defaults
+  }
+}
+
+void update_dimensions_to_terminal_size(options_t *opts) {
+  if (!opts) {
+    return;
+  }
+
+  unsigned short int term_width, term_height;
+  // Get current terminal size (get_terminal_size already handles ioctl first, then $COLUMNS/$LINES fallback)
+  asciichat_error_t terminal_result = get_terminal_size(&term_width, &term_height);
+  if (terminal_result == ASCIICHAT_OK) {
+    // Use INFO level so this is visible without -v flag (important for debugging dimension issues)
+    log_dev("Terminal size detected: %ux%u (auto_width=%d, auto_height=%d)", term_width, term_height, opts->auto_width, opts->auto_height);
+    if (opts->auto_width) {
+      opts->width = term_width;
+      log_dev("Auto-width: set width to %u", opts->width);
+    }
+    if (opts->auto_height) {
+      opts->height = term_height;
+      log_dev("Auto-height: set height to %u", opts->height);
+    }
+    log_dev("Final dimensions: %ux%u", opts->width, opts->height);
+  } else {
+    // Terminal detection failed - keep the default values set in options_init()
+    log_warn("TERMINAL_DETECT_FAIL: Could not detect terminal size, using defaults: %ux%u", opts->width, opts->height);
+  }
+}
+
+// ============================================================================
+// Generic Usage Function (Unified Implementation)
+// ============================================================================
+
+/**
+ * @brief Mode metadata for usage display
+ * @brief Mode metadata for usage display
+ */
+typedef struct {
+  asciichat_mode_t mode;    ///< Application mode
+  const char *program_name; ///< Program name shown in usage
+  const char *description;  ///< One-line description of mode
+} mode_metadata_t;
+
+static const mode_metadata_t mode_info[] = {
+    {MODE_API_SERVER, "ascii-chat api-server", "HTTP image-to-ASCII API"},
+    {MODE_MCP_SERVER, "ascii-chat mcp-server", "MCP rendering tools over stdio or HTTP"},
+    {MODE_SERVER, "ascii-chat server", "host a server mixing video and audio for ascii-chat clients"},
+    {MODE_CLIENT, "ascii-chat client", "connect to an ascii-chat server"},
+    {MODE_MIRROR, "ascii-chat mirror", "use the webcam or files or urls without network connections"},
+    {MODE_DISCOVERY_SERVICE, "ascii-chat discovery-service", "secure p2p session signalling"},
+    {MODE_DISCOVERY, "💻📸 ascii-chat 🔡💬", "Video chat in your terminal"},
+};
+
+void usage(FILE *desc, asciichat_mode_t mode) {
+  if (!desc) {
+    return;
+  }
+
+  // Find mode metadata
+  const mode_metadata_t *metadata = NULL;
+  for (size_t i = 0; i < sizeof(mode_info) / sizeof(mode_info[0]); i++) {
+    if (mode_info[i].mode == mode) {
+      metadata = &mode_info[i];
+      break;
+    }
+  }
+
+  if (!metadata) {
+    (void)fprintf(desc, "error: Unknown mode\n");
+    return;
+  }
+
+  flags_schema_builder_t *builder = flags_schema_builder_create();
+  if (!builder) {
+    (void)fprintf(desc, "Error: Failed to create libflags schema\n");
+    return;
+  }
+  const option_mode_bitmask_t mode_mask = mode == MODE_DISCOVERY ? OPTION_MODE_ALL : (option_mode_bitmask_t)(OPTION_MODE_BINARY | (1U << mode));
+  if (options_registry_add_all_to_flags_builder(builder, mode_mask) != ASCIICHAT_OK ||
+      !flags_help_write_options(flags_schema_builder_schema(builder), metadata->program_name, metadata->description, desc)) {
+    (void)fprintf(desc, "Error: Failed to render options\n");
+  }
+  flags_schema_builder_destroy(builder);
+}
+
+// ============================================================================
+// Options Validation Helper
+// ============================================================================
+
+asciichat_error_t validate_options_and_report(const void *config, const void *opts) {
+  if (!opts) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Options are NULL");
+  }
+
+  const options_t *options = (const options_t *)opts;
+  if (options->webrtc_relay_only && options->detected_mode == MODE_CLIENT) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Relay only requires discovery mode; connect using a session name");
+  }
+  if (options->webrtc_relay_only && options->detected_mode == MODE_SERVER && !options->discovery) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Server relay only requires --discovery");
+  }
+  if (options->webrtc_relay_only && (options->no_webrtc || options->webrtc_disable_turn)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "--webrtc-relay-only conflicts with --no-webrtc or --webrtc-disable-turn");
+  }
+  if ((options->turn_username[0] != '\0') != (options->turn_credential[0] != '\0')) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Provide both --turn-username and --turn-credential, or leave both blank");
+  }
+  if (strlen(options->turn_username) > 127 || strlen(options->turn_credential) > 127) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "TURN username and credential must each fit 127 bytes");
+  }
+  (void)config;
+  return options_validate_libflags((options_t *)options);
+}
+
+// ============================================================================
+// Print Project Links
+// ============================================================================
+
+void print_project_links(FILE *desc) {
+  if (!desc) {
+    return;
+  }
+
+  (void)fprintf(desc, "🔗 %s\n", colored_string(LOG_COLOR_GREY, "https://ascii-chat.com"));
+  (void)fprintf(desc, "🔗 %s\n", colored_string(LOG_COLOR_GREY, "https://github.com/zfogg/ascii-chat"));
+}

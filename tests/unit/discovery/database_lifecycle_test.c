@@ -153,9 +153,7 @@ Test(database_lifecycle, transport_storage_failure_rolls_back_session_creation) 
   acip_session_create_t request = {.session_type = SESSION_TYPE_WEBRTC, .max_participants = 4};
   uint8_t keys[1][32] = {{0}}, metadata[10] = {'A', 'C', 'Q', 'T', 1};
   acip_session_created_t response;
-  cr_assert_neq(database_session_create_keys_with_transport(db, &request, keys, 1, &config, &response, metadata,
-                                                            sizeof(metadata)),
-                ASCIICHAT_OK);
+  cr_assert_neq(database_session_create_keys_with_transport(db, &request, keys, 1, &config, &response, metadata, sizeof(metadata)), ASCIICHAT_OK);
   cr_assert_eq(response.session_string[0], 0);
   sqlite3_stmt *statement = NULL;
   cr_assert_eq(sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM sessions", -1, &statement, NULL), SQLITE_OK);
@@ -173,9 +171,7 @@ Test(database_lifecycle, successor_transports_follow_the_host_and_failed_refresh
   cr_assert_eq(database_session_update_host(db, session.session_id, first, "127.0.0.2", 30000, 0), ASCIICHAT_OK);
   cr_assert_eq(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
   cr_assert_eq(length, 0);
-  cr_assert_eq(database_session_update_host_with_transport(db, session.session_id, first, "127.0.0.2", 30000, 0,
-                                                           fresh_metadata, 10),
-               ASCIICHAT_OK);
+  cr_assert_eq(database_session_update_host_with_transport(db, session.session_id, first, "127.0.0.2", 30000, 0, fresh_metadata, 10), ASCIICHAT_OK);
   cr_assert_eq(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
   cr_assert_eq(length, 10);
   cr_assert_arr_eq(output, fresh_metadata, 10);
@@ -184,9 +180,7 @@ Test(database_lifecycle, successor_transports_follow_the_host_and_failed_refresh
                             "BEGIN SELECT RAISE(FAIL, 'test rejection'); END;",
                             NULL, NULL, NULL),
                SQLITE_OK);
-  cr_assert_neq(database_session_update_host_with_transport(db, session.session_id, second, "127.0.0.3", 31000, 0,
-                                                            old_metadata, 10),
-                ASCIICHAT_OK);
+  cr_assert_neq(database_session_update_host_with_transport(db, session.session_id, second, "127.0.0.3", 31000, 0, old_metadata, 10), ASCIICHAT_OK);
   session_entry_t *stored = database_session_find_by_id(db, session.session_id);
   cr_assert_not_null(stored);
   cr_assert_arr_eq(stored->host_participant_id, first, 16);
@@ -205,9 +199,7 @@ Test(database_lifecycle, successor_transports_follow_the_host_and_failed_refresh
 Test(database_lifecycle, clearing_a_failed_host_cannot_republish_its_old_transport) {
   uint8_t metadata[10] = {'A', 'C', 'Q', 'T', 1}, host[16] = {42}, output[10];
   size_t length = 0;
-  cr_assert_eq(
-      database_session_update_host_with_transport(db, session.session_id, host, "127.0.0.2", 30000, 0, metadata, 10),
-      ASCIICHAT_OK);
+  cr_assert_eq(database_session_update_host_with_transport(db, session.session_id, host, "127.0.0.2", 30000, 0, metadata, 10), ASCIICHAT_OK);
   cr_assert_eq(database_session_clear_host(db, session.session_id), ASCIICHAT_OK);
   cr_assert_eq(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
   cr_assert_eq(length, 0);
@@ -235,8 +227,7 @@ static void *concurrent_failed_host_refresh(void *data) {
   uint8_t host[SESSION_ID_SIZE] = {42};
   uint8_t metadata[10] = {'A', 'C', 'Q', 'T', 1};
   for (int i = 0; i < CONCURRENT_HOST_REFRESHES; ++i) {
-    if (database_session_update_host_with_transport(db, session.session_id, host, "127.0.0.2", 30000, 0, metadata,
-                                                    sizeof(metadata)) == ASCIICHAT_OK) {
+    if (database_session_update_host_with_transport(db, session.session_id, host, "127.0.0.2", 30000, 0, metadata, sizeof(metadata)) == ASCIICHAT_OK) {
       race->refresh_ok = false;
       break;
     }

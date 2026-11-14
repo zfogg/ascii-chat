@@ -163,8 +163,7 @@ asciichat_error_t asciichat_mdns_unadvertise(asciichat_mdns_t *mdns, const char 
  * @param user_data User pointer passed to callback
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *service_type,
-                                       asciichat_mdns_discovery_callback_fn callback, void *user_data);
+asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *service_type, asciichat_mdns_discovery_callback_fn callback, void *user_data);
 
 /**
  * @brief Process pending mDNS events (must be called regularly)

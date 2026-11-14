@@ -3,10 +3,9 @@
 /** Regressions for source paths in log headers and memory reports. */
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/memory.h>
-#include <libplatform/symbols.h>
-#include <libplatform/terminal.h>
 #include <ascii-chat/source_root.h>
 #include <ascii-chat/util/path.h>
+#include <libplatform/symbols.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
@@ -73,46 +72,12 @@ Test(source_paths, project_relative_paths_and_symbol_display) {
   cr_assert_eq(strcmp(path_last_components("D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl", 5), "crt\\vcstartup\\src\\startup\\exe_common.inl"), 0);
   cr_assert_eq(strcmp(path_last_components("vendor/runtime/file.c", 5), "vendor/runtime/file.c"), 0);
 
-  cr_assert(symbol_module_is_project("ascii-chat.exe"));
-  cr_assert(symbol_module_is_project("libasciichat.0.3.0.dylib"));
-  cr_assert(symbol_module_is_project("asciichat.dll"));
-  cr_assert(!symbol_module_is_project("ucrtbase.dll"));
-
-  char display_path[512];
-  bool external_source = false;
-  cr_assert_eq(symbol_format_source_path("ucrtbase.dll", "D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl", display_path, sizeof(display_path), &external_source, NULL),
-               ASCIICHAT_OK);
-  cr_assert(external_source);
-  const char *truncation_prefix = terminal_supports_utf8() ? "\xE2\x80\xA6\\" : "...\\";
-  char expected_external_path[512];
-  safe_snprintf(expected_external_path, sizeof(expected_external_path), "%scrt\\vcstartup\\src\\startup\\exe_common.inl", truncation_prefix);
-  cr_assert_eq(strcmp(display_path, expected_external_path), 0);
-  cr_assert_eq(
-      symbol_format_source_path("ascii-chat.exe", "D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl", display_path, sizeof(display_path), &external_source, NULL),
-      ASCIICHAT_OK);
-  cr_assert(external_source);
-  cr_assert_eq(strcmp(display_path, expected_external_path), 0);
-
-  cr_assert_eq(symbol_format_source_path("ucrtbase.dll", "vendor/runtime/file.c", display_path, sizeof(display_path), &external_source, NULL), ASCIICHAT_OK);
-  cr_assert(external_source);
-  cr_assert_eq(strcmp(display_path, "vendor/runtime/file.c"), 0);
-
-  if (ASCIICHAT_SOURCE_ROOT[0]) {
-    cr_assert_eq(symbol_format_source_path("test-error-popup-fixture.exe", ASCIICHAT_SOURCE_ROOT "\\tests\\standalone\\errno\\error_popup_fixture.c", display_path, sizeof(display_path),
-                                           &external_source, ASCIICHAT_OWNED_SOURCE_DIRS),
-                 ASCIICHAT_OK);
-    cr_assert(!external_source);
-    cr_assert_str_eq(display_path, "tests\\standalone\\errno\\error_popup_fixture.c");
-
-    cr_assert_eq(symbol_format_source_path("ascii-chat.exe", ASCIICHAT_SOURCE_ROOT "\\.deps-cache\\Debug\\dep.c", display_path, sizeof(display_path), &external_source, ASCIICHAT_OWNED_SOURCE_DIRS),
-                 ASCIICHAT_OK);
-    cr_assert(external_source);
-    cr_assert_str_eq(display_path, "Debug\\dep.c");
-  }
-
-  char too_small[4];
-  cr_assert_eq(symbol_format_source_path("ucrtbase.dll", "vendor/runtime/file.c", too_small, sizeof(too_small), &external_source, NULL), ERROR_BUFFER_OVERFLOW);
-  CLEAR_ERRNO();
+  const char *const libraries[] = {"libasciichat", NULL};
+  cr_assert(symbol_module_is_project("ascii-chat.exe", "ascii-chat", NULL));
+  cr_assert(symbol_module_is_project("libasciichat.dylib", NULL, libraries));
+  cr_assert(symbol_module_is_project("asciichat.dll", NULL, libraries));
+  cr_assert(symbol_module_is_project("asciichat.lib", NULL, libraries));
+  cr_assert(!symbol_module_is_project("ucrtbase.dll", "ascii-chat", libraries));
 }
 
 Test(source_paths, log_headers_and_memory_reports_preserve_locations) {

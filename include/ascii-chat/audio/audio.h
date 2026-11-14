@@ -137,7 +137,7 @@ typedef struct {
   audio_ring_buffer_t *render_buffer;   ///< Ring buffer for render reference (separate streams mode)
 
   // Worker thread for heavy processing (AEC3, filters)
-  platform_thread_t worker_thread;    ///< Worker thread for audio processing
+  platform_thread_t worker_thread;     ///< Worker thread for audio processing
   mutex_t audio_processing_wait_guard; ///< Coordinates device-worker sleep with shutdown
   cond_t audio_processing_wakeup;      ///< Capture/AEC work, monitor refill, or shutdown notification
   bool worker_running;                 ///< True if worker thread is running
@@ -705,8 +705,7 @@ size_t audio_ring_buffer_available_write(audio_ring_buffer_t *rb);
  *
  * @ingroup audio
  */
-void resample_linear(const float *src, size_t src_samples, float *dst, size_t dst_samples, double src_rate,
-                     double dst_rate);
+void resample_linear(const float *src, size_t src_samples, float *dst, size_t dst_samples, double src_rate, double dst_rate);
 
 /** @} */
 

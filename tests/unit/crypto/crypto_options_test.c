@@ -231,10 +231,8 @@ ParameterizedTest(crypto_options_test_case_t *tc, crypto_options, crypto_options
   // Test the results (only if we expected success)
   cr_assert_eq(opts->no_encrypt, tc->expect_no_encrypt, "No encrypt flag should match for case: %s", tc->description);
   cr_assert_eq(opts->encrypt_key[0] != '\0', tc->expect_key_set, "Key should be set for case: %s", tc->description);
-  cr_assert_eq(opts->server_key[0] != '\0', tc->expect_server_key_set, "Server key should be set for case: %s",
-               tc->description);
-  cr_assert_eq(opts->client_keys[0] != '\0', tc->expect_client_keys_set, "Client keys should be set for case: %s",
-               tc->description);
+  cr_assert_eq(opts->server_key[0] != '\0', tc->expect_server_key_set, "Server key should be set for case: %s", tc->description);
+  cr_assert_eq(opts->client_keys[0] != '\0', tc->expect_client_keys_set, "Client keys should be set for case: %s", tc->description);
 
   // Check expected values (use [0] != '\0' to check if string is non-empty)
   if (tc->expected_key[0] != '\0') {
@@ -244,14 +242,12 @@ ParameterizedTest(crypto_options_test_case_t *tc, crypto_options, crypto_options
 
   if (tc->expected_server_key[0] != '\0') {
     cr_assert(opts->server_key[0] != '\0', "Server key should not be empty for case: %s", tc->description);
-    cr_assert_str_eq(opts->server_key, tc->expected_server_key, "Server key should match for case: %s",
-                     tc->description);
+    cr_assert_str_eq(opts->server_key, tc->expected_server_key, "Server key should match for case: %s", tc->description);
   }
 
   if (tc->expected_client_keys[0] != '\0') {
     cr_assert(opts->client_keys[0] != '\0', "Client keys should not be empty for case: %s", tc->description);
-    cr_assert_str_eq(opts->client_keys, tc->expected_client_keys, "Client keys should match for case: %s",
-                     tc->description);
+    cr_assert_str_eq(opts->client_keys, tc->expected_client_keys, "Client keys should match for case: %s", tc->description);
   }
 }
 
@@ -443,8 +439,7 @@ Theory((bool is_client, bool no_encrypt, bool has_key), crypto_options, option_c
     argv[argc++] = key_val;
   }
 
-  cr_assert_eq(options_init(argc, (char **)argv), ASCIICHAT_OK,
-               "Authentication and payload encryption are independent");
+  cr_assert_eq(options_init(argc, (char **)argv), ASCIICHAT_OK, "Authentication and payload encryption are independent");
 
   // Get options from RCU state
   const options_t *opts = options_get();

@@ -78,7 +78,7 @@
  *
  * @see options.h - Main options module
  * @see registry.h - Central registry of all options
- * @see builder.h - Builder API using these validators
+ * @see libflags/flags.h - Generic typed option validation
  * @see validation.h - Additional validation functions
  *
  * @author Zachary Fogg <me@zfo.gg>
@@ -209,8 +209,7 @@ static inline asciichat_error_t option_error_invalid(void) {
  * }
  * @endcode
  */
-char *validate_required_argument(const char *optarg, char *argbuf, size_t argbuf_size, const char *option_name,
-                                 asciichat_mode_t mode);
+char *validate_required_argument(const char *optarg, char *argbuf, size_t argbuf_size, const char *option_name, asciichat_mode_t mode);
 
 /**
  * @brief Validate a positive integer value
@@ -299,21 +298,20 @@ bool validate_webcam_index(const char *value_str, unsigned short int *out_index)
 /**
  * @brief Validate options and report errors to stderr
  *
- * Calls options_config_validate() and handles error message display and cleanup.
- * Validates all option dependencies, conflicts, and custom validators.
+ * Validates the application options after libflags has parsed them and handles
+ * ascii-chat's cross-option policy and error presentation.
  *
- * @param config Options configuration (opaque pointer, defined in builder.h)
+ * @param config Reserved application validation context; may be NULL.
  * @param opts Options struct to validate
  * @return ASCIICHAT_OK if valid, error code otherwise
  *
- * @note Prints error message to stderr if validation fails
+ * @note Reports failures through the application's logging and UI sinks.
  * @note Frees error message internally
  *
  * Example:
  * @code
  * asciichat_error_t result = validate_options_and_report(config, opts);
  * if (result != ASCIICHAT_OK) {
- *     options_config_destroy(config);
  *     return result;
  * }
  * @endcode
@@ -402,8 +400,7 @@ char *strip_equals_prefix(const char *opt_value, char *buffer, size_t buffer_siz
  * SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value);
  * @endcode
  */
-char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name,
-                            asciichat_mode_t mode);
+char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name, asciichat_mode_t mode);
 
 /**
  * @brief Read password from stdin with prompt

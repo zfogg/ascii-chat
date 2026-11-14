@@ -38,15 +38,15 @@
  * @brief Update check result data
  */
 typedef struct {
-  bool update_available;                                                  ///< True if newer version exists
-  char latest_version[NETWORK_UPDATE_CHECKER_LATEST_VERSION_BUFFER_SIZE]; ///< Latest version tag (e.g., "v0.9.0")
-  char latest_sha[NETWORK_UPDATE_CHECKER_LATEST_SHA_BUFFER_SIZE]; ///< Latest release commit SHA (full 40 chars + null)
+  bool update_available;                                                    ///< True if newer version exists
+  char latest_version[NETWORK_UPDATE_CHECKER_LATEST_VERSION_BUFFER_SIZE];   ///< Latest version tag (e.g., "v0.9.0")
+  char latest_sha[NETWORK_UPDATE_CHECKER_LATEST_SHA_BUFFER_SIZE];           ///< Latest release commit SHA (full 40 chars + null)
   char current_version[NETWORK_UPDATE_CHECKER_CURRENT_VERSION_BUFFER_SIZE]; ///< Current version string
   char current_sha[NETWORK_UPDATE_CHECKER_CURRENT_SHA_BUFFER_SIZE];         ///< Current commit SHA
   char release_url[NETWORK_UPDATE_CHECKER_RELEASE_URL_BUFFER_SIZE];         ///< GitHub release page URL
   time_t last_check_time;                                                   ///< Timestamp of last check
-  time_t dismissed_until; ///< Suppress this available release until this time
-  bool check_succeeded;   ///< True if check completed (even if no update)
+  time_t dismissed_until;                                                   ///< Suppress this available release until this time
+  bool check_succeeded;                                                     ///< True if check completed (even if no update)
 } update_check_result_t;
 
 /**
@@ -137,8 +137,7 @@ install_method_t update_check_detect_install_method(void);
  * @param[out] buffer Output buffer for suggestion string
  * @param buffer_size Size of output buffer
  */
-void update_check_get_upgrade_suggestion(install_method_t method, const char *latest_version, char *buffer,
-                                         size_t buffer_size);
+void update_check_get_upgrade_suggestion(install_method_t method, const char *latest_version, char *buffer, size_t buffer_size);
 
 /** Return the detected AUR helper (paru or yay), or NULL if unavailable. */
 const char *update_check_get_aur_helper(void);

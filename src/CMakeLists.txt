@@ -74,6 +74,7 @@ if(WIN32)
     target_link_libraries(ascii-chat PRIVATE shell32)
 endif()
 target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LIBUV_TARGET} ${YYJSON_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+target_link_libraries(ascii-chat PRIVATE libflags::flags)
 target_include_directories(ascii-chat PRIVATE ${YYJSON_INCLUDE_DIRS})
 
 # The executable's mode sources call FFmpeg directly. pkg-config can return
@@ -203,7 +204,7 @@ elseif(NOT _use_shared_lib AND NOT USE_MUSL)
     set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
 elseif(_use_shared_lib)
     add_dependencies(ascii-chat ascii-chat-shared generate_version)
-    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared libplatform)
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared libplatform libflags::flags)
 
     # Explicitly add system libraries when using shared library
     # The executable needs to link against the same dependencies as the shared library

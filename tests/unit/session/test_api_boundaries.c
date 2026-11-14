@@ -29,10 +29,10 @@ static void teardown(void) {
   log_destroy();
 }
 TestSuite(session_api_boundaries, .init = setup, .fini = teardown, .timeout = 20);
-#define INVALID(call)                                                                                                  \
-  do {                                                                                                                 \
-    cr_assert_eq((call), ERROR_INVALID_PARAM);                                                                         \
-    CLEAR_ERRNO_ALL();                                                                                                 \
+#define INVALID(call)                                                                                                                                                                                  \
+  do {                                                                                                                                                                                                 \
+    cr_assert_eq((call), ERROR_INVALID_PARAM);                                                                                                                                                         \
+    CLEAR_ERRNO_ALL();                                                                                                                                                                                 \
   } while (0)
 Test(session_api_boundaries, capture_null_queries_and_rejected_transmission_do_not_take_ownership) {
   cr_assert_null(session_mirror_capture_create(NULL));
@@ -100,8 +100,7 @@ Test(session_api_boundaries, missing_display_is_rejected_and_empty_ascii_does_no
   INVALID(session_display_encode_frame(NULL, NULL, 0));
   float sample = 0.1f;
   INVALID(session_display_write_audio(NULL, &sample, 1));
-  session_display_config_t config = {
-      .snapshot_mode = true, .palette_type = PALETTE_STANDARD, .color_mode = TERM_COLOR_NONE};
+  session_display_config_t config = {.snapshot_mode = true, .palette_type = PALETTE_STANDARD, .color_mode = TERM_COLOR_NONE};
   session_display_ctx_t *display = session_display_create(&config);
   cr_assert_not_null(display);
   session_display_render_frame(display, NULL);

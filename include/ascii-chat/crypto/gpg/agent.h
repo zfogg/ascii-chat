@@ -176,8 +176,7 @@ bool gpg_agent_is_available(void);
  *
  * @ingroup crypto
  */
-int gpg_agent_sign(int sock, const char *keygrip, const uint8_t *message, size_t message_len, uint8_t *signature_out,
-                   size_t *signature_len_out);
+int gpg_agent_sign(int sock, const char *keygrip, const uint8_t *message, size_t message_len, uint8_t *signature_out, size_t *signature_len_out);
 
 /** @} */
 

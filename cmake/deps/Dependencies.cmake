@@ -34,6 +34,7 @@
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Vcpkg.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Libuv.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Utf8proc.cmake)
 
 # =============================================================================
 # Platform-Specific Configuration (EARLY - needed by other dependencies)
@@ -105,6 +106,16 @@ configure_mdns()
 # yyjson - Fast JSON library for structured logging
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Yyjson.cmake)
 configure_yyjson()
+
+# Configure the shared libplatform target before libflags.  libflags must
+# reuse this target rather than creating a second copy of libplatform inside
+# its FetchContent build tree.
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libplatform.cmake)
+
+# libflags consumes the application's selected PCRE2, yyjson, tomlc17, and
+# libplatform targets. Configure it only after those providers exist so an
+# ascii-chat build never creates duplicate private copies of those libraries.
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Libflags.cmake)
 
 # x264 - H.264/AVC encoder (needed by FFmpeg for libx264 support)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/X264.cmake)

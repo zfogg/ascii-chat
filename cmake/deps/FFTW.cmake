@@ -13,7 +13,8 @@ if(USE_MUSL OR IOS OR EMSCRIPTEN)
         set(DISABLE_FORTRAN ON)
         set(CMAKE_POSITION_INDEPENDENT_CODE ON)
         FetchContent_Declare(asciichat_fftw
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_fftw"
+            SOURCE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/fftw-src"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/fftw-build"
             EXCLUDE_FROM_ALL
             URL https://www.fftw.org/fftw-3.3.10.tar.gz
             URL_HASH SHA256=56c932549852cddcfafdab3820b0200c7742675be92179e59e6215b340e26467
@@ -50,3 +51,37 @@ find_dependency_library(
     STATIC_LIB_NAME libfftw3.a
     REQUIRED
 )
+
+# Some distributions package the double-precision FFTW library but omit the
+# single-precision variant used by ascii-chat's audio and video transforms.
+# Build that missing variant locally instead of making otherwise valid system
+# dependency configurations fail at a later target-link step.
+find_library(FFTW_FLOAT_LIBRARY NAMES fftw3f)
+if(NOT FFTW_FLOAT_LIBRARY)
+    include(FetchContent)
+    set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+    set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+    set(BUILD_SHARED_LIBS OFF)
+    set(BUILD_TESTS OFF)
+    set(ENABLE_THREADS OFF)
+    set(ENABLE_OPENMP OFF)
+    set(ENABLE_FLOAT ON CACHE BOOL "Build the FFTW single-precision library" FORCE)
+    set(ENABLE_LONG_DOUBLE OFF)
+    set(DISABLE_FORTRAN ON)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+    FetchContent_Declare(asciichat_fftw_float
+        SOURCE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/fftw-src"
+        BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/fftw-build"
+        EXCLUDE_FROM_ALL
+        URL https://www.fftw.org/fftw-3.3.10.tar.gz
+        URL_HASH SHA256=56c932549852cddcfafdab3820b0200c7742675be92179e59e6215b340e26467
+    )
+    FetchContent_MakeAvailable(asciichat_fftw_float)
+    set(FFTW_FLOAT_LIBRARY fftw3f)
+    set(FFTW_INCLUDE_DIRS "${asciichat_fftw_float_SOURCE_DIR}/api")
+endif()
+
+# The pkg-config result can include the float library as a bare `fftw3f` item.
+# Link the resolved archive or target below instead; passing the bare name to
+# Clang is interpreted as an input filename and breaks shared-library links.
+list(REMOVE_ITEM FFTW_LIBRARIES fftw3f)

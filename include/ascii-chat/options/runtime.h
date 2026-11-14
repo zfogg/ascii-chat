@@ -57,8 +57,7 @@ typedef struct {
 /** No observer callbacks or network I/O run under the writer mutex. A rejected patch publishes nothing. */
 asciichat_error_t options_apply_patch(const options_patch_t *patch, options_patch_result_t *result);
 /** Prepare caller-owned state. The owner serializes access; remote edits use an allowlist. */
-asciichat_error_t options_prepare_patch(const options_t *current, const options_patch_t *patch, options_t *candidate,
-                                        bool remote_only);
+asciichat_error_t options_prepare_patch(const options_t *current, const options_patch_t *patch, options_t *candidate, bool remote_only);
 /** Capture values and revision together. Callers own the copied snapshot. */
 asciichat_error_t options_read_snapshot(options_snapshot_t *snapshot);
 /** Observers coalesce changes by reading a new snapshot when this revision changes. */
@@ -69,9 +68,7 @@ asciichat_error_t options_cycle(const char *name, int count);
 
 /** Only explicitly exposed fields may enter a remote rendering patch. */
 bool options_remote_render_field(const char *name);
-asciichat_error_t options_prepare_json(const options_t *current, const char *json, size_t length, options_t *candidate,
-                                       bool remote_only);
-asciichat_error_t options_apply_json(const char *json, size_t length, uint64_t expected_revision,
-                                     options_origin_t origin, options_patch_result_t *result);
+asciichat_error_t options_prepare_json(const options_t *current, const char *json, size_t length, options_t *candidate, bool remote_only);
+asciichat_error_t options_apply_json(const char *json, size_t length, uint64_t expected_revision, options_origin_t origin, options_patch_result_t *result);
 /** Caller releases JSON with SAFE_FREE. Only public runtime fields are serialized. */
 char *options_values_json(const options_t *values, bool remote_only);

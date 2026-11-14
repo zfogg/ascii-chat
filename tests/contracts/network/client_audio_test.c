@@ -10,8 +10,7 @@
 
 static const char *fail_checkpoint, *fail_worker;
 static unsigned scheduled;
-static asciichat_error_t schedule_worker(thread_pool_t *pool, void *(*fn)(void *), void *arg, int order,
-                                         const char *name) {
+static asciichat_error_t schedule_worker(thread_pool_t *pool, void *(*fn)(void *), void *arg, int order, const char *name) {
   (void)pool;
   (void)fn;
   (void)arg;
@@ -99,8 +98,7 @@ static asciichat_error_t audio_receive(acip_transport_t *t, void **data, size_t 
   *data = *allocation;
   return ASCIICHAT_OK;
 }
-static const acip_transport_methods_t audio_methods = {
-    .send = audio_send, .recv = audio_receive, .is_connected = audio_connected};
+static const acip_transport_methods_t audio_methods = {.send = audio_send, .recv = audio_receive, .is_connected = audio_connected};
 static acip_transport_t audio_transport = {.methods = &audio_methods};
 static void audio_contract_setup(void) {
   log_init(NULL, LOG_DEV, false, false);
@@ -162,9 +160,7 @@ Test(client_audio_contract, queue_owns_payload_and_frame_sizes_and_applies_bound
   cr_assert_eq(audio_sender_init(&audio_connection), ASCIICHAT_OK);
   cr_assert_eq(audio_queue_packet(&audio_connection, NULL, 3, sizes, 2), -1);
   cr_assert_eq(audio_queue_packet(&audio_connection, encoded, 0, sizes, 2), -1);
-  cr_assert_eq(
-      audio_queue_packet(&audio_connection, encoded, sizeof(audio_connection.audio_send_queue[0].data) + 1, sizes, 2),
-      -1);
+  cr_assert_eq(audio_queue_packet(&audio_connection, encoded, sizeof(audio_connection.audio_send_queue[0].data) + 1, sizes, 2), -1);
   cr_assert_eq(audio_connection.audio_send_queue_head, 0);
   for (unsigned i = 0; i < AUDIO_SEND_QUEUE_SIZE - 1; ++i)
     cr_assert_eq(audio_queue_packet(&audio_connection, encoded, 3, sizes, 2), 0);
@@ -224,16 +220,14 @@ Test(client_audio_contract, received_pcm_checks_bounds_and_delivers_non_silent_a
   CLEAR_ERRNO_ALL();
   audio_process_received_samples(&audio_connection, samples, AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS + 2);
   cr_assert_eq(audio_ring_buffer_available_read(audio_connection.audio_context->playback_buffer), 0);
-  audio_ring_buffer_set_jitter_target(audio_connection.audio_context->playback_buffer,
-                                      OPUS_FRAME_SAMPLES * AUDIO_CHANNELS);
+  audio_ring_buffer_set_jitter_target(audio_connection.audio_context->playback_buffer, OPUS_FRAME_SAMPLES * AUDIO_CHANNELS);
   audio_process_received_samples(&audio_connection, samples, ARRAY_SIZE(samples));
   cr_assert_eq(audio_connection.audio_receive_count, 1);
   audio_process_received_samples(&audio_connection, samples, ARRAY_SIZE(samples));
   cr_assert_eq(audio_connection.audio_receive_count, 2);
   cr_assert_gt(audio_ring_buffer_available_read(audio_connection.audio_context->playback_buffer), 0);
   float actual[512 * AUDIO_CHANNELS];
-  cr_assert_eq(audio_ring_buffer_read(audio_connection.audio_context->playback_buffer, actual, ARRAY_SIZE(actual)),
-               ARRAY_SIZE(actual));
+  cr_assert_eq(audio_ring_buffer_read(audio_connection.audio_context->playback_buffer, actual, ARRAY_SIZE(actual)), ARRAY_SIZE(actual));
   double energy = 0;
   for (unsigned i = 0; i < ARRAY_SIZE(actual); ++i)
     energy += actual[i] * actual[i];
@@ -260,8 +254,7 @@ Test(client_audio_contract, pipeline_decodes_real_opus_and_capture_stop_preserve
     pcm[i] = i % 32 < 16 ? 0.2f : -0.2f;
   int length = opus_codec_encode(encoder, pcm, ARRAY_SIZE(pcm), encoded, sizeof(encoded));
   cr_assert_gt(length, 0);
-  cr_assert_eq(audio_decode_opus(&audio_connection, encoded, length, decoded, ARRAY_SIZE(decoded)),
-               ARRAY_SIZE(decoded));
+  cr_assert_eq(audio_decode_opus(&audio_connection, encoded, length, decoded, ARRAY_SIZE(decoded)), ARRAY_SIZE(decoded));
   opus_codec_destroy(encoder);
   fail_worker = "audio_capture";
   cr_assert_eq(audio_start_thread(&audio_connection), -1);
@@ -289,12 +282,10 @@ Test(client_audio_contract, capture_worker_encodes_oversized_input_and_flushes_a
   float pcm[OPUS_FRAME_SAMPLES * AUDIO_CHANNELS];
   for (unsigned i = 0; i < ARRAY_SIZE(pcm); ++i)
     pcm[i] = i % 32 < 16 ? 2.0f : -2.0f;
-  cr_assert_eq(audio_ring_buffer_write(audio_connection.audio_context->capture_buffer, pcm, ARRAY_SIZE(pcm)),
-               ASCIICHAT_OK);
+  cr_assert_eq(audio_ring_buffer_write(audio_connection.audio_context->capture_buffer, pcm, ARRAY_SIZE(pcm)), ASCIICHAT_OK);
   stop_after = 1;
   platform_thread_t worker;
-  cr_assert_eq(platform_thread_create(&worker, "audio-contract-capture", audio_capture_thread_func, &audio_connection),
-               ASCIICHAT_OK);
+  cr_assert_eq(platform_thread_create(&worker, "audio-contract-capture", audio_capture_thread_func, &audio_connection), ASCIICHAT_OK);
   uint64_t deadline = time_get_ns() + 3 * NS_PER_SEC_INT;
   while (!atomic_load_bool(&audio_connection.audio_capture_thread_exited) && time_get_ns() < deadline)
     platform_sleep_ms(1);
@@ -309,8 +300,7 @@ Test(client_audio_contract, capture_worker_encodes_oversized_input_and_flushes_a
 }
 
 Test(client_audio_contract, protocol_startup_retains_resources_for_owner_cleanup_at_each_checkpoint) {
-  const char *stages[] = {"audio-pipeline", "receive",      "capture",       "audio-duplex", "audio-queue-mutex",
-                          "audio-queue",    "audio-sender", "audio-capture", "keepalive"};
+  const char *stages[] = {"audio-pipeline", "receive", "capture", "audio-duplex", "audio-queue-mutex", "audio-queue", "audio-sender", "audio-capture", "keepalive"};
   for (unsigned i = 0; i < ARRAY_SIZE(stages); ++i) {
     fail_checkpoint = stages[i];
     cr_assert_eq(client_protocol_start(&audio_connection), ERROR_THREAD, "stage %s", stages[i]);
@@ -411,8 +401,7 @@ Test(client_audio_contract, control_callbacks_do_not_replace_the_active_media_tr
   acip_on_webrtc_sdp(&sdp, sizeof(sdp), &audio_connection);
   acip_on_webrtc_ice(&ice, sizeof(ice), &audio_connection);
   cr_assert_eq(server_connection_get_transport(&audio_connection), &audio_transport);
-  remote_log_packet_t log = {
-      .log_level = LOG_INFO, .direction = REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, .message_length = HOST_TO_NET_U32(2)};
+  remote_log_packet_t log = {.log_level = LOG_INFO, .direction = REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, .message_length = HOST_TO_NET_U32(2)};
   acip_on_remote_log(&log, "ok", &audio_connection);
   log.flags = HOST_TO_NET_U16(REMOTE_LOG_FLAG_TRUNCATED);
   acip_on_remote_log(&log, "ok", &audio_connection);

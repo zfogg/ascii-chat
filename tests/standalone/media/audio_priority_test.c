@@ -6,10 +6,10 @@
 #include <ascii-chat/log/log.h>
 #include <windows.h>
 
-#define CHECK(value)                                                                                                   \
-  do {                                                                                                                 \
-    if (!(value))                                                                                                      \
-      FATAL(ERROR_ASSERTION_FAILED, "%s", #value);                                                                     \
+#define CHECK(value)                                                                                                                                                                                   \
+  do {                                                                                                                                                                                                 \
+    if (!(value))                                                                                                                                                                                      \
+      FATAL(ERROR_ASSERTION_FAILED, "%s", #value);                                                                                                                                                     \
   } while (0)
 int main(void) {
   log_init(NULL, LOG_ERROR, false, false);

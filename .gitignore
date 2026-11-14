@@ -4,6 +4,7 @@
 /bin/mmmbed.exe
 /build/*
 /node_modules/
+/ascii_chat.egg-info/
 /.claude/settings.local.json
 
 # Auto-generated version header (created by CMake)

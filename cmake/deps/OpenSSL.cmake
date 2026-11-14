@@ -166,6 +166,17 @@ if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
         pkg_check_modules(ASCIICHAT_SYSTEM_OPENSSL QUIET openssl>=3.0)
     endif()
     if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
+        # A reused build directory may retain paths from a previous machine or
+        # a removed source build.  Clear only invalid OpenSSL cache entries so
+        # FindOpenSSL can rediscover the installed system libraries.
+        if((DEFINED OPENSSL_INCLUDE_DIR AND NOT EXISTS "${OPENSSL_INCLUDE_DIR}/openssl/ssl.h") OR
+           (DEFINED OPENSSL_CRYPTO_LIBRARY AND NOT EXISTS "${OPENSSL_CRYPTO_LIBRARY}") OR
+           (DEFINED OPENSSL_SSL_LIBRARY AND NOT EXISTS "${OPENSSL_SSL_LIBRARY}"))
+            unset(OPENSSL_ROOT_DIR CACHE)
+            unset(OPENSSL_INCLUDE_DIR CACHE)
+            unset(OPENSSL_CRYPTO_LIBRARY CACHE)
+            unset(OPENSSL_SSL_LIBRARY CACHE)
+        endif()
         find_package(OpenSSL 3.0 QUIET COMPONENTS SSL Crypto)
     endif()
     if(ASCIICHAT_SYSTEM_OPENSSL_FOUND AND OpenSSL_FOUND)

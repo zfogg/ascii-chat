@@ -69,8 +69,7 @@ asciichat_error_t send_error_packet_message(socket_t sockfd, asciichat_error_t e
  * @param allowed Output quota decision; false on failure
  * @return ASCIICHAT_OK for a completed decision, typed failure otherwise
  */
-asciichat_error_t check_and_record_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip,
-                                              rate_event_type_t event_type, bool *allowed);
+asciichat_error_t check_and_record_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip, rate_event_type_t event_type, bool *allowed);
 
 /**
  * @brief Map packet type to rate event type and check rate limit
@@ -92,8 +91,7 @@ asciichat_error_t check_and_record_rate_limit(rate_limiter_t *rate_limiter, cons
  * @param allowed Output quota decision; false on failure
  * @return ASCIICHAT_OK for a completed decision, typed failure otherwise
  */
-asciichat_error_t check_and_record_packet_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip,
-                                                     packet_type_t packet_type, bool *allowed);
+asciichat_error_t check_and_record_packet_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip, packet_type_t packet_type, bool *allowed);
 
 #ifdef __cplusplus
 }

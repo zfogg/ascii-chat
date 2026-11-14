@@ -141,8 +141,7 @@ static plain_regex_test_t plain_regex_cases[] = {
 };
 
 ParameterizedTestParameters(log_filter, plain_regex_format) {
-  return cr_make_param_array(plain_regex_test_t, plain_regex_cases,
-                             sizeof(plain_regex_cases) / sizeof(plain_regex_cases[0]));
+  return cr_make_param_array(plain_regex_test_t, plain_regex_cases, sizeof(plain_regex_cases) / sizeof(plain_regex_cases[0]));
 }
 
 ParameterizedTest(plain_regex_test_t *tc, log_filter, plain_regex_format) {
@@ -215,8 +214,7 @@ static basic_match_test_t basic_match_cases[] = {
 };
 
 ParameterizedTestParameters(log_filter, basic_regex_matching) {
-  return cr_make_param_array(basic_match_test_t, basic_match_cases,
-                             sizeof(basic_match_cases) / sizeof(basic_match_cases[0]));
+  return cr_make_param_array(basic_match_test_t, basic_match_cases, sizeof(basic_match_cases) / sizeof(basic_match_cases[0]));
 }
 
 ParameterizedTest(basic_match_test_t *tc, log_filter, basic_regex_matching) {
@@ -252,8 +250,7 @@ static fixed_string_test_t fixed_string_cases[] = {
 };
 
 ParameterizedTestParameters(log_filter, fixed_string_matching) {
-  return cr_make_param_array(fixed_string_test_t, fixed_string_cases,
-                             sizeof(fixed_string_cases) / sizeof(fixed_string_cases[0]));
+  return cr_make_param_array(fixed_string_test_t, fixed_string_cases, sizeof(fixed_string_cases) / sizeof(fixed_string_cases[0]));
 }
 
 ParameterizedTest(fixed_string_test_t *tc, log_filter, fixed_string_matching) {
@@ -507,8 +504,7 @@ static flag_combo_test_t flag_combo_cases[] = {
 };
 
 ParameterizedTestParameters(log_filter, flag_combinations) {
-  return cr_make_param_array(flag_combo_test_t, flag_combo_cases,
-                             sizeof(flag_combo_cases) / sizeof(flag_combo_cases[0]));
+  return cr_make_param_array(flag_combo_test_t, flag_combo_cases, sizeof(flag_combo_cases) / sizeof(flag_combo_cases[0]));
 }
 
 ParameterizedTest(flag_combo_test_t *tc, log_filter, flag_combinations) {

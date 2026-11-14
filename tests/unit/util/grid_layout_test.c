@@ -18,8 +18,7 @@ typedef struct {
 } grid_test_case_t;
 
 // Calculate optimal grid layout based on terminal size and client count
-static void calculate_optimal_grid(int terminal_width, int terminal_height, int num_clients, int *out_cols,
-                                   int *out_rows, int *out_cell_width, int *out_cell_height) {
+static void calculate_optimal_grid(int terminal_width, int terminal_height, int num_clients, int *out_cols, int *out_rows, int *out_cell_width, int *out_cell_height) {
   if (num_clients == 0) {
     *out_cols = 0;
     *out_rows = 0;
@@ -387,17 +386,14 @@ ParameterizedTestParameters(grid_layout, parameterized_comprehensive) {
 ParameterizedTest(grid_test_case_t *tc, grid_layout, parameterized_comprehensive) {
   int cols, rows, cell_width, cell_height;
 
-  calculate_optimal_grid(tc->terminal_width, tc->terminal_height, tc->num_clients, &cols, &rows, &cell_width,
-                         &cell_height);
+  calculate_optimal_grid(tc->terminal_width, tc->terminal_height, tc->num_clients, &cols, &rows, &cell_width, &cell_height);
 
-  cr_expect_eq(cols, tc->expected_cols, "Terminal %dx%d, %d clients: Expected %d cols, got %d", tc->terminal_width,
-               tc->terminal_height, tc->num_clients, tc->expected_cols, cols);
-  cr_expect_eq(rows, tc->expected_rows, "Terminal %dx%d, %d clients: Expected %d rows, got %d", tc->terminal_width,
-               tc->terminal_height, tc->num_clients, tc->expected_rows, rows);
-  cr_expect_eq(cell_width, tc->expected_cell_width, "Terminal %dx%d, %d clients: Expected cell width %d, got %d",
-               tc->terminal_width, tc->terminal_height, tc->num_clients, tc->expected_cell_width, cell_width);
-  cr_expect_eq(cell_height, tc->expected_cell_height, "Terminal %dx%d, %d clients: Expected cell height %d, got %d",
-               tc->terminal_width, tc->terminal_height, tc->num_clients, tc->expected_cell_height, cell_height);
+  cr_expect_eq(cols, tc->expected_cols, "Terminal %dx%d, %d clients: Expected %d cols, got %d", tc->terminal_width, tc->terminal_height, tc->num_clients, tc->expected_cols, cols);
+  cr_expect_eq(rows, tc->expected_rows, "Terminal %dx%d, %d clients: Expected %d rows, got %d", tc->terminal_width, tc->terminal_height, tc->num_clients, tc->expected_rows, rows);
+  cr_expect_eq(cell_width, tc->expected_cell_width, "Terminal %dx%d, %d clients: Expected cell width %d, got %d", tc->terminal_width, tc->terminal_height, tc->num_clients, tc->expected_cell_width,
+               cell_width);
+  cr_expect_eq(cell_height, tc->expected_cell_height, "Terminal %dx%d, %d clients: Expected cell height %d, got %d", tc->terminal_width, tc->terminal_height, tc->num_clients, tc->expected_cell_height,
+               cell_height);
 
   // NOTE: We don't assert full space utilization here because integer division can cause
   // off-by-one or off-by-two rounding (e.g., 160/3=53, so 3*53=159 not 160).

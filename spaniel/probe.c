@@ -6,12 +6,12 @@
 #include <ascii-chat/otel.h>
 #include <stdio.h>
 
-#define CHECK(value)                                                                                                   \
-  do {                                                                                                                 \
-    if (!(value)) {                                                                                                    \
-      fprintf(stderr, "Diagnostic probe failed: %s\n", #value);                                                        \
-      return 1;                                                                                                        \
-    }                                                                                                                  \
+#define CHECK(value)                                                                                                                                                                                   \
+  do {                                                                                                                                                                                                 \
+    if (!(value)) {                                                                                                                                                                                    \
+      fprintf(stderr, "Diagnostic probe failed: %s\n", #value);                                                                                                                                        \
+      return 1;                                                                                                                                                                                        \
+    }                                                                                                                                                                                                  \
   } while (0)
 
 int main(int argc, char **argv) {

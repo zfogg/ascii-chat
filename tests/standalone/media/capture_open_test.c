@@ -13,10 +13,10 @@
 #include <ascii-chat/video/face_follow_image.h>
 #include <math.h>
 
-#define CHECK(expr)                                                                                                    \
-  do {                                                                                                                 \
-    if (!(expr))                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                   \
+#define CHECK(expr)                                                                                                                                                                                    \
+  do {                                                                                                                                                                                                 \
+    if (!(expr))                                                                                                                                                                                       \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                                                                                                   \
   } while (0)
 static audio_context_t audio;
 static bool audio_running, fail_audio_start;
@@ -57,8 +57,7 @@ static void test_destroy(media_source_t *source) {
 static void test_face_destroy(face_follow_image_t *context) {
   CHECK(context == NULL);
 }
-static image_t *test_face_process(face_follow_image_t **context, image_t *source, double now, bool enabled, bool debug,
-                                  int width, int height) {
+static image_t *test_face_process(face_follow_image_t **context, image_t *source, double now, bool enabled, bool debug, int width, int height) {
   (void)context;
   (void)now;
   (void)enabled;
@@ -93,8 +92,7 @@ static void finish_load(session_capture_ctx_t *ctx) {
 }
 #ifndef NDEBUG
 static mutex_t *prefetch_mutex, *recording_mutex;
-static void find_prefetch(uintptr_t key, uint64_t generation, const char *name, const char *type, const char *file,
-                          int line, void *data) {
+static void find_prefetch(uintptr_t key, uint64_t generation, const char *name, const char *type, const char *file, int line, void *data) {
   (void)generation;
   (void)file;
   (void)line;

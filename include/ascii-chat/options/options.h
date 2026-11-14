@@ -13,7 +13,7 @@
  * and unified options state for ascii-chat with support for multiple modes (server, client,
  * mirror, discovery service). The system unifies several layers:
  *
- * - **Builder API** (`builder.h`): Flexible option configuration with mode bitmasks
+ * - **libflags schema API**: Reusable typed option configuration with mode commands
  * - **Registry** (`registry.h`): Single definition of all options with mode applicability
  * - **RCU Thread-Safety** (`rcu.h`): Lock-free read access to options via `GET_OPTION()` macro
  * - **Unified State** (`options_t` struct): Single source of truth for all option values
@@ -25,11 +25,11 @@
  * 1. **Option Descriptors** (registry.c): Single-source-of-truth definitions of all options
  *    with metadata (long name, short name, mode bitmask, defaults, validators, etc.)
  *
- * 2. **Builder Pattern** (builder.h): Flexible API for programmatically constructing option
+ * 2. **libflags schema pattern**: Flexible API for programmatically constructing option
  *    configurations. Supports mode-specific options, dependencies, and custom validators.
  *
  * 3. **Presets** (presets.h): Pre-built configurations for common modes (unified, server, client,
- *    mirror, discovery service). Use `options_preset_unified()` for the standard multi-mode setup.
+ *    mirror, discovery service). The ascii-chat registry supplies the mode-specific libflags schema.
  *
  * 4. **Unified Parsing** (options.c): Single entry point `options_init()` that:
  *    - Detects mode from command-line arguments
@@ -89,7 +89,7 @@
  * **Option Lifecycle**:
  *
  * 1. **Definition**: Options defined in registry.c with metadata and mode bitmasks
- * 2. **Builder Creation**: Use `options_preset_unified()` to create builder with presets
+ * 2. **Schema Creation**: Build a libflags schema from the ascii-chat registry
  * 3. **Initialization**: Call `options_init(argc, argv)` once at program startup
  *    - Mode detection from argv
  *    - Binary-level option parsing
@@ -124,13 +124,13 @@
  *
  * @code{.c}
  * // Create empty builder
- * options_builder_t *builder = options_builder_create("myapp");
+ * flags_schema_builder_t *builder = flags_schema_builder_create();
  *
  * // Add options from registry (filtered by mode)
- * options_registry_add_all_to_builder(builder);
+ * options_registry_add_all_to_flags_builder(builder, OPTION_MODE_CLIENT);
  *
  * // Or add custom options
- * option_descriptor_t my_opt = {
+ * flags_option_spec_t my_opt = {
  *     .long_name = "my-option",
  *     .short_name = 'm',
  *     .type = OPTION_TYPE_STRING,
@@ -138,14 +138,15 @@
  *     .mode_bitmask = OPTION_MODE_CLIENT,
  *     // ... other fields ...
  * };
- * options_builder_add_descriptor(builder, &my_opt);
+ * flags_schema_builder_add_option(builder, &my_opt);
  *
- * // Build immutable config
- * options_config_t *config = options_builder_build(builder);
+ * // Build immutable schema
+ * const flags_schema_t *schema = flags_schema_builder_schema(builder);
  *
  * // Parse command line with custom config
  * options_t my_opts = options_t_new();
- * options_config_parse_args(config, argc, argv, &my_opts);
+ * flags_context_t *context = flags_create(schema, &my_opts, sizeof(my_opts));
+ * flags_parse(context, argc, argv, &result);
  *
  * // Publish to RCU for lock-free access
  * options_state_init();
@@ -191,7 +192,7 @@
  * @see options_init() - Main entry point for parsing
  * @see options_get() - Get pointer to current options struct
  * @see GET_OPTION() - Convenience macro for reading single fields
- * @see builder.h - Builder API for custom configurations
+ * @see libflags/flags.h - Generic option schema and parsing API
  * @see registry.h - Central registry of all options
  * @see rcu.h - RCU-based thread-safe access
  * @see presets.h - Pre-built configurations
@@ -1131,6 +1132,7 @@ typedef struct options_state {
   bool stabilize;                                    ///< Reduce frame-to-frame character flicker
   bool stabilize_explicit;                           ///< Runtime preference was explicitly changed
   ascii_renderer_t renderer;                         ///< Character selection algorithm
+  bool renderer_explicit;                            ///< Renderer was explicitly selected by the user
   bool stretch;                                      ///< Allow aspect ratio distortion
   char video_codec[OPTIONS_VIDEO_CODEC_BUFFER_SIZE]; ///< Video codec (auto, hevc, h264, raw) - default: auto
 
@@ -1747,6 +1749,14 @@ options_t options_t_new(void);
  * @ingroup options
  */
 asciichat_error_t options_init(int argc, char **argv);
+
+/**
+ * @brief Validates parsed values with the libflags schema and ascii-chat policy.
+ *
+ * @param options Parsed option storage.
+ * @return ASCIICHAT_OK when generic and application policy validation succeeds.
+ */
+asciichat_error_t options_validate_libflags(options_t *options);
 
 /**
  * @brief Print usage information for a specific mode

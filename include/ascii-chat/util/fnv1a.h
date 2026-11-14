@@ -48,9 +48,9 @@
 #define FNV1A_INIT(hash) uint64_t hash = FNV1A_32_OFFSET_BASIS;
 
 /** @brief FNV-1a 32-bit hash macro for a single byte */
-#define FNV1A_32_HASH(hash, byte)                                                                                      \
-  do {                                                                                                                 \
-    (hash) = (((hash) ^ (uint64_t)(byte)) * FNV1A_32_PRIME) & FNV1A_32_MASK;                                           \
+#define FNV1A_32_HASH(hash, byte)                                                                                                                                                                      \
+  do {                                                                                                                                                                                                 \
+    (hash) = (((hash) ^ (uint64_t)(byte)) * FNV1A_32_PRIME) & FNV1A_32_MASK;                                                                                                                           \
   } while (0)
 
 /* ============================================================================

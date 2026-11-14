@@ -235,7 +235,12 @@ jobs:
 
       - name: Build test suite
         run: |
-          cmake --build build --target all tests tests-criterion-build
+          cmake --build build --target all
+          if cmake --build build --target help | grep -q 'tests-criterion-build'; then
+            cmake --build build --target tests-criterion-build
+          elif cmake --build build --target help | grep -qE '^\.\.\. tests$|tests-lib-build'; then
+            cmake --build build --target tests
+          fi
 
           echo "Test executables built:"
           ls -la build/bin/test_* 2>/dev/null || echo "No test executables found in build/bin/"
@@ -459,7 +464,12 @@ jobs:
 
       - name: Build and run integration tests
         run: |
-          cmake --build build --target all tests tests-criterion-build
+          cmake --build build --target all
+          if cmake --build build --target help | grep -q 'tests-criterion-build'; then
+            cmake --build build --target tests-criterion-build
+          elif cmake --build build --target help | grep -qE '^\.\.\. tests$|tests-lib-build'; then
+            cmake --build build --target tests
+          fi
           if [ "${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}" = "macos" ]; then
             export ASAN_SYMBOLIZER_PATH="$(brew --prefix llvm)/bin/llvm-symbolizer"
           fi

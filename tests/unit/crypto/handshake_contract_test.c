@@ -32,33 +32,22 @@ Test(handshake_contract, packet_lengths_enforce_negotiated_boundaries_and_reject
   const struct {
     uint16_t type;
     size_t minimum, maximum, alternate;
-  } cases[] = {
-      {PACKET_TYPE_CRYPTO_CAPABILITIES, sizeof(crypto_capabilities_packet_t), sizeof(crypto_capabilities_packet_t), 0},
-      {PACKET_TYPE_CRYPTO_PARAMETERS, sizeof(crypto_parameters_packet_t), sizeof(crypto_parameters_packet_t), 0},
-      {PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, 128, 128, 32},
-      {PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, 128, 169, 32},
-      {PACKET_TYPE_CRYPTO_AUTH_CHALLENGE, AUTH_CHALLENGE_FLAGS_SIZE + 32, AUTH_CHALLENGE_FLAGS_SIZE + 32, 0},
-      {PACKET_TYPE_CRYPTO_AUTH_RESPONSE, 64, 105, 0},
-      {PACKET_TYPE_CRYPTO_AUTH_FAILED, 0, MAX_AUTH_FAILED_PACKET_SIZE, 0},
-      {PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP, 32, 32, 0},
-      {PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE, 0, 0, 0},
-      {PACKET_TYPE_CRYPTO_NO_ENCRYPTION, 0, 0, 0},
-      {PACKET_TYPE_ENCRYPTED, 0, MAX_ENCRYPTED_PACKET_SIZE, 0}};
+  } cases[] = {{PACKET_TYPE_CRYPTO_CAPABILITIES, sizeof(crypto_capabilities_packet_t), sizeof(crypto_capabilities_packet_t), 0},
+               {PACKET_TYPE_CRYPTO_PARAMETERS, sizeof(crypto_parameters_packet_t), sizeof(crypto_parameters_packet_t), 0},
+               {PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, 128, 128, 32},
+               {PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, 128, 169, 32},
+               {PACKET_TYPE_CRYPTO_AUTH_CHALLENGE, AUTH_CHALLENGE_FLAGS_SIZE + 32, AUTH_CHALLENGE_FLAGS_SIZE + 32, 0},
+               {PACKET_TYPE_CRYPTO_AUTH_RESPONSE, 64, 105, 0},
+               {PACKET_TYPE_CRYPTO_AUTH_FAILED, 0, MAX_AUTH_FAILED_PACKET_SIZE, 0},
+               {PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP, 32, 32, 0},
+               {PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE, 0, 0, 0},
+               {PACKET_TYPE_CRYPTO_NO_ENCRYPTION, 0, 0, 0},
+               {PACKET_TYPE_ENCRYPTED, 0, MAX_ENCRYPTED_PACKET_SIZE, 0}};
   for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
-    const size_t lengths[] = {0,
-                              1,
-                              cases[i].minimum ? cases[i].minimum - 1 : 0,
-                              cases[i].minimum,
-                              cases[i].minimum + 1,
-                              cases[i].maximum,
-                              cases[i].maximum + 1,
-                              cases[i].alternate,
-                              SIZE_MAX};
+    const size_t lengths[] = {0, 1, cases[i].minimum ? cases[i].minimum - 1 : 0, cases[i].minimum, cases[i].minimum + 1, cases[i].maximum, cases[i].maximum + 1, cases[i].alternate, SIZE_MAX};
     for (size_t j = 0; j < sizeof(lengths) / sizeof(*lengths); ++j) {
-      bool valid = (lengths[j] >= cases[i].minimum && lengths[j] <= cases[i].maximum) ||
-                   (cases[i].alternate && lengths[j] == cases[i].alternate);
-      cr_assert_eq(crypto_handshake_validate_packet_size(&first, cases[i].type, lengths[j]),
-                   valid ? ASCIICHAT_OK : ERROR_NETWORK_PROTOCOL, "type %u size %zu", cases[i].type, lengths[j]);
+      bool valid = (lengths[j] >= cases[i].minimum && lengths[j] <= cases[i].maximum) || (cases[i].alternate && lengths[j] == cases[i].alternate);
+      cr_assert_eq(crypto_handshake_validate_packet_size(&first, cases[i].type, lengths[j]), valid ? ASCIICHAT_OK : ERROR_NETWORK_PROTOCOL, "type %u size %zu", cases[i].type, lengths[j]);
     }
   }
   cr_assert_eq(crypto_handshake_validate_packet_size(&first, UINT16_MAX, 0), ERROR_NETWORK_PROTOCOL);
@@ -68,11 +57,7 @@ Test(handshake_contract, packet_lengths_enforce_negotiated_boundaries_and_reject
 Test(handshake_contract, negotiated_sizes_use_host_order_for_server_and_network_order_for_client) {
   for (unsigned server = 0; server < 2; ++server) {
     first.is_server = server;
-    crypto_parameters_packet_t parameters = {.selected_cipher = CIPHER_ALGO_NONE,
-                                             .verification_enabled = 1,
-                                             .nonce_size = 24,
-                                             .mac_size = 16,
-                                             .hmac_size = 32};
+    crypto_parameters_packet_t parameters = {.selected_cipher = CIPHER_ALGO_NONE, .verification_enabled = 1, .nonce_size = 24, .mac_size = 16, .hmac_size = 32};
     parameters.kex_public_key_size = server ? 32 : HOST_TO_NET_U16(32);
     parameters.auth_public_key_size = server ? 32 : HOST_TO_NET_U16(32);
     parameters.shared_secret_size = server ? 32 : HOST_TO_NET_U16(32);

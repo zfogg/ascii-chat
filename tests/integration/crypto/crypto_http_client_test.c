@@ -106,8 +106,7 @@ Test(crypto_http_client, fetch_github_ssh_keys_zfogg) {
   for (size_t i = 0; i < num_keys; i++) {
     cr_assert_not_null(keys[i], "Key %zu should not be NULL", i);
     // Check for valid SSH key prefix (ssh-rsa, ssh-ed25519, ecdsa-sha2-*, etc.)
-    cr_assert(strstr(keys[i], "ssh-") != NULL || strstr(keys[i], "ecdsa-") != NULL,
-              "Key %zu should be valid SSH format", i);
+    cr_assert(strstr(keys[i], "ssh-") != NULL || strstr(keys[i], "ecdsa-") != NULL, "Key %zu should be valid SSH format", i);
     log_info("GitHub SSH Key %zu: %.80s...", i, keys[i]);
     SAFE_FREE(keys[i]);
   }
@@ -149,8 +148,7 @@ Test(crypto_http_client, fetch_github_ssh_keys_nonexistent_user) {
   size_t num_keys = 0;
 
   // Use a username that is extremely unlikely to exist
-  asciichat_error_t result =
-      fetch_github_ssh_keys("this_user_definitely_does_not_exist_12345678901234567890", &keys, &num_keys);
+  asciichat_error_t result = fetch_github_ssh_keys("this_user_definitely_does_not_exist_12345678901234567890", &keys, &num_keys);
 
   // Should either fail or return zero keys
   if (result == ASCIICHAT_OK) {

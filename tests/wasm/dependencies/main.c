@@ -5,19 +5,16 @@
 #include <stdio.h>
 
 int main(void) {
-  static const unsigned char expected_hash[32] = {0xbd, 0xdd, 0x81, 0x3c, 0x63, 0x42, 0x39, 0x72, 0x31, 0x71, 0xef,
-                                                  0x3f, 0xee, 0x98, 0x57, 0x9b, 0x94, 0x96, 0x4e, 0x3b, 0xb1, 0xcb,
-                                                  0x3e, 0x42, 0x72, 0x62, 0xc8, 0xc0, 0x68, 0xd5, 0x23, 0x19};
+  static const unsigned char expected_hash[32] = {0xbd, 0xdd, 0x81, 0x3c, 0x63, 0x42, 0x39, 0x72, 0x31, 0x71, 0xef, 0x3f, 0xee, 0x98, 0x57, 0x9b,
+                                                  0x94, 0x96, 0x4e, 0x3b, 0xb1, 0xcb, 0x3e, 0x42, 0x72, 0x62, 0xc8, 0xc0, 0x68, 0xd5, 0x23, 0x19};
   unsigned char hash[32];
-  if (sodium_init() < 0 || crypto_generichash(hash, sizeof(hash), (const unsigned char *)"abc", 3, NULL, 0) != 0 ||
-      sodium_memcmp(hash, expected_hash, sizeof(hash)) != 0) {
+  if (sodium_init() < 0 || crypto_generichash(hash, sizeof(hash), (const unsigned char *)"abc", 3, NULL, 0) != 0 || sodium_memcmp(hash, expected_hash, sizeof(hash)) != 0) {
     return 1;
   }
 
   int error;
   PCRE2_SIZE offset;
-  pcre2_code *pattern = pcre2_compile((PCRE2_SPTR) "^\\p{L}+-(\\d+)$", PCRE2_ZERO_TERMINATED, PCRE2_UTF | PCRE2_UCP,
-                                      &error, &offset, NULL);
+  pcre2_code *pattern = pcre2_compile((PCRE2_SPTR) "^\\p{L}+-(\\d+)$", PCRE2_ZERO_TERMINATED, PCRE2_UTF | PCRE2_UCP, &error, &offset, NULL);
   if (!pattern) {
     return 2;
   }

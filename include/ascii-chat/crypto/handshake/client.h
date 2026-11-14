@@ -30,9 +30,7 @@
  * @note Packet must be received by ACIP handler before calling this function
  * @note State transition: CRYPTO_HANDSHAKE_INIT -> CRYPTO_HANDSHAKE_KEY_EXCHANGE
  */
-asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, acip_transport_t *transport,
-                                                       packet_type_t packet_type, const uint8_t *payload,
-                                                       size_t payload_len);
+asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, acip_transport_t *transport, packet_type_t packet_type, const uint8_t *payload, size_t payload_len);
 
 /**
  * @brief Client: Process auth challenge and send response
@@ -50,9 +48,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
  * @note Packet must be received by ACIP handler before calling this function
  * @note State transition: CRYPTO_HANDSHAKE_KEY_EXCHANGE -> CRYPTO_HANDSHAKE_AUTHENTICATING
  */
-asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, acip_transport_t *transport,
-                                                        packet_type_t packet_type, const uint8_t *payload,
-                                                        size_t payload_len);
+asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, acip_transport_t *transport, packet_type_t packet_type, const uint8_t *payload, size_t payload_len);
 
 /**
  * @brief Client: Wait for handshake complete confirmation
@@ -70,8 +66,6 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
  * @note Packet must be received by ACIP handler before calling this function
  * @note State transition: CRYPTO_HANDSHAKE_AUTHENTICATING -> CRYPTO_HANDSHAKE_READY
  */
-asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *ctx, acip_transport_t *transport,
-                                                   packet_type_t packet_type, const uint8_t *payload,
-                                                   size_t payload_len);
+asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *ctx, acip_transport_t *transport, packet_type_t packet_type, const uint8_t *payload, size_t payload_len);
 
 /** @} */

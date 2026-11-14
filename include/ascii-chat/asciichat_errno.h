@@ -130,24 +130,18 @@ typedef struct {
 extern "C" {
 #endif
 
-asciichat_error_t errno_set(asciichat_error_t code, const char *file, int line, const char *function,
-                            const char *message);
-asciichat_error_t errno_set_with_message(asciichat_error_t code, const char *file, int line, const char *function,
-                                         const char *format, ...);
-asciichat_error_t errno_set_with_system_error(asciichat_error_t code, const char *file, int line, const char *function,
-                                              int sys_errno);
-asciichat_error_t errno_set_with_system_error_and_message(asciichat_error_t code, const char *file, int line,
-                                                          const char *function, int sys_errno, const char *format, ...);
-asciichat_error_t errno_set_with_wsa_error(asciichat_error_t code, const char *file, int line, const char *function,
-                                           int wsa_error);
+asciichat_error_t errno_set(asciichat_error_t code, const char *file, int line, const char *function, const char *message);
+asciichat_error_t errno_set_with_message(asciichat_error_t code, const char *file, int line, const char *function, const char *format, ...);
+asciichat_error_t errno_set_with_system_error(asciichat_error_t code, const char *file, int line, const char *function, int sys_errno);
+asciichat_error_t errno_set_with_system_error_and_message(asciichat_error_t code, const char *file, int line, const char *function, int sys_errno, const char *format, ...);
+asciichat_error_t errno_set_with_wsa_error(asciichat_error_t code, const char *file, int line, const char *function, int wsa_error);
 
 // Arguments evaluate once. Capture errno before evaluating message arguments.
 #define SET_ERRNO(code, ...) errno_set_with_message((code), __FILE__, __LINE__, __func__, __VA_ARGS__)
-#define SET_ERRNO_SYS(code, ...)                                                                                       \
-  ({                                                                                                                   \
-    int _asciichat_saved_errno = platform_get_last_error();                                                            \
-    errno_set_with_system_error_and_message((code), __FILE__, __LINE__, __func__, _asciichat_saved_errno,              \
-                                            __VA_ARGS__);                                                              \
+#define SET_ERRNO_SYS(code, ...)                                                                                                                                                                       \
+  ({                                                                                                                                                                                                   \
+    int _asciichat_saved_errno = platform_get_last_error();                                                                                                                                            \
+    errno_set_with_system_error_and_message((code), __FILE__, __LINE__, __func__, _asciichat_saved_errno, __VA_ARGS__);                                                                                \
   })
 
 bool errno_has(asciichat_error_context_t *context);
@@ -215,8 +209,7 @@ void asciichat_error_stats_record(asciichat_error_t code);
 void asciichat_error_stats_print(void);
 void asciichat_error_stats_reset(void);
 asciichat_error_stats_t asciichat_error_stats_get(void);
-void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int line, const char *function,
-                                  const char *format, ...);
+void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int line, const char *function, const char *format, ...);
 void asciichat_print_error_context(const asciichat_error_context_t *context);
 
 #define HAS_ERRNO(context) errno_has(context)
@@ -229,36 +222,36 @@ void asciichat_print_error_context(const asciichat_error_context_t *context);
 #define CLEAR_ERRNO_TID(tid) errno_clear_thread_error(tid)
 #define CLEAR_ERRNO_ALL_TID(tid) errno_clear_thread_errors(tid)
 #define PRINT_ERRNO_CONTEXT(context) asciichat_print_error_context(context)
-#define LOG_ERRNO_IF_SET(message)                                                                                      \
-  do {                                                                                                                 \
-    asciichat_error_context_t _ctx;                                                                                    \
-    if (HAS_ERRNO(&_ctx)) {                                                                                            \
-      log_error("%s", (message));                                                                                      \
-      errno_print_chain(_ctx.thread_id, _ctx.error_id);                                                                \
-    }                                                                                                                  \
+#define LOG_ERRNO_IF_SET(message)                                                                                                                                                                      \
+  do {                                                                                                                                                                                                 \
+    asciichat_error_context_t _ctx;                                                                                                                                                                    \
+    if (HAS_ERRNO(&_ctx)) {                                                                                                                                                                            \
+      log_error("%s", (message));                                                                                                                                                                      \
+      errno_print_chain(_ctx.thread_id, _ctx.error_id);                                                                                                                                                \
+    }                                                                                                                                                                                                  \
   } while (0)
-#define LOG_ERRNO_IF_CODE(error_code, message)                                                                         \
-  do {                                                                                                                 \
-    asciichat_error_context_t _ctx;                                                                                    \
-    if (HAS_ERRNO(&_ctx) && _ctx.code == (error_code)) {                                                               \
-      log_error("%s", (message));                                                                                      \
-      errno_print_chain(_ctx.thread_id, _ctx.error_id);                                                                \
-    }                                                                                                                  \
+#define LOG_ERRNO_IF_CODE(error_code, message)                                                                                                                                                         \
+  do {                                                                                                                                                                                                 \
+    asciichat_error_context_t _ctx;                                                                                                                                                                    \
+    if (HAS_ERRNO(&_ctx) && _ctx.code == (error_code)) {                                                                                                                                               \
+      log_error("%s", (message));                                                                                                                                                                      \
+      errno_print_chain(_ctx.thread_id, _ctx.error_id);                                                                                                                                                \
+    }                                                                                                                                                                                                  \
   } while (0)
 #define PRINT_ERRNO_IF_ERROR() LOG_ERRNO_IF_SET("Pending error")
 #ifndef NDEBUG
-#define ASSERT_NO_ERRNO_SINCE(scope)                                                                                   \
-  do {                                                                                                                 \
-    if (!errno_scope_is_clean(scope))                                                                                  \
-      FATAL(ERROR_INVALID_STATE, "Successful operation left unresolved errors");                                       \
+#define ASSERT_NO_ERRNO_SINCE(scope)                                                                                                                                                                   \
+  do {                                                                                                                                                                                                 \
+    if (!errno_scope_is_clean(scope))                                                                                                                                                                  \
+      FATAL(ERROR_INVALID_STATE, "Successful operation left unresolved errors");                                                                                                                       \
   } while (0)
-#define ASSERT_NO_ERRNO()                                                                                              \
-  do {                                                                                                                 \
-    asciichat_error_context_t _ctx;                                                                                    \
-    if (HAS_ERRNO(&_ctx)) {                                                                                            \
-      asciichat_print_error_context(&_ctx);                                                                            \
-      FATAL(_ctx.code, "Unresolved error at operation boundary");                                                      \
-    }                                                                                                                  \
+#define ASSERT_NO_ERRNO()                                                                                                                                                                              \
+  do {                                                                                                                                                                                                 \
+    asciichat_error_context_t _ctx;                                                                                                                                                                    \
+    if (HAS_ERRNO(&_ctx)) {                                                                                                                                                                            \
+      asciichat_print_error_context(&_ctx);                                                                                                                                                            \
+      FATAL(_ctx.code, "Unresolved error at operation boundary");                                                                                                                                      \
+    }                                                                                                                                                                                                  \
   } while (0)
 #else
 #define ASSERT_NO_ERRNO_SINCE(scope) ((void)(scope))

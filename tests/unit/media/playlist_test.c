@@ -4,8 +4,7 @@
 
 Test(media_playlist, quoted_drops_and_uri_lines_preserve_order) {
   media_playlist_t list = {0}, again = {0};
-  cr_assert_eq(media_playlist_parse("  \"C:\\Videos\\first movie.webm\"  \"C:\\Videos\\second.mp4\" ", &list),
-               ASCIICHAT_OK);
+  cr_assert_eq(media_playlist_parse("  \"C:\\Videos\\first movie.webm\"  \"C:\\Videos\\second.mp4\" ", &list), ASCIICHAT_OK);
   cr_assert_eq(list.count, 2);
   cr_assert_str_eq(list.paths[0], "C:\\Videos\\first movie.webm");
   cr_assert_str_eq(list.paths[1], "C:\\Videos\\second.mp4");

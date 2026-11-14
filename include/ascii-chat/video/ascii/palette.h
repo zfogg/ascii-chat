@@ -416,8 +416,7 @@ int apply_palette_config(palette_type_t type, const char *custom_chars);
  *
  * @ingroup palette
  */
-int build_client_luminance_palette(const char *palette_chars, size_t palette_len,
-                                   char luminance_mapping[ASCII_LUMINANCE_LEVELS]);
+int build_client_luminance_palette(const char *palette_chars, size_t palette_len, char luminance_mapping[ASCII_LUMINANCE_LEVELS]);
 
 /**
  * @brief Initialize client palette with full configuration
@@ -439,8 +438,7 @@ int build_client_luminance_palette(const char *palette_chars, size_t palette_len
  *
  * @ingroup palette
  */
-int initialize_client_palette(palette_type_t palette_type, const char *custom_chars,
-                              char client_palette_chars[ASCII_PALETTE_BUFFER_SIZE], size_t *client_palette_len,
+int initialize_client_palette(palette_type_t palette_type, const char *custom_chars, char client_palette_chars[ASCII_PALETTE_BUFFER_SIZE], size_t *client_palette_len,
                               char client_luminance_palette[ASCII_LUMINANCE_LEVELS]);
 
 /**
@@ -571,7 +569,6 @@ size_t utf8_palette_find_char_index(const utf8_palette_t *palette, const char *u
  *
  * @ingroup palette
  */
-size_t utf8_palette_find_all_char_indices(const utf8_palette_t *palette, const char *utf8_char, size_t char_bytes,
-                                          size_t *indices, size_t max_indices);
+size_t utf8_palette_find_all_char_indices(const utf8_palette_t *palette, const char *utf8_char, size_t char_bytes, size_t *indices, size_t max_indices);
 
 /** @} */

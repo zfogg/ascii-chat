@@ -190,7 +190,6 @@ asciichat_error_t ssh_agent_get_key(const public_key_t *public_key, private_key_
  *
  * @ingroup crypto
  */
-asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *message, size_t message_len,
-                                 uint8_t signature[ED25519_SIGNATURE_SIZE]);
+asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *message, size_t message_len, uint8_t signature[ED25519_SIGNATURE_SIZE]);
 
 /** @} */

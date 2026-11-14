@@ -53,8 +53,7 @@ static void make_test_id(uint8_t id[16], int value) {
 /**
  * Create realistic metrics for a participant
  */
-static void make_test_metrics(participant_metrics_t *m, int participant_id, int nat_tier, uint32_t upload_kbps,
-                              uint32_t rtt_ns) {
+static void make_test_metrics(participant_metrics_t *m, int participant_id, int nat_tier, uint32_t upload_kbps, uint32_t rtt_ns) {
   memset(m, 0, sizeof(*m));
   make_test_id(m->participant_id, participant_id);
   m->nat_tier = nat_tier;
@@ -349,8 +348,7 @@ Test(consensus_integration, coordinator_lifecycle) {
   }
 
   // Create coordinator (as leader - position 2)
-  asciichat_error_t err = consensus_coordinator_create(participants[2], parts[2].topology, test_election_callback,
-                                                       &parts[2], &parts[2].coordinator);
+  asciichat_error_t err = consensus_coordinator_create(participants[2], parts[2].topology, test_election_callback, &parts[2], &parts[2].coordinator);
   cr_assert_eq(err, ASCIICHAT_OK);
 
   // Verify initial state

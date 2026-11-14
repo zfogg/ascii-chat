@@ -24,8 +24,7 @@ int main(void) {
   for (unsigned i = 0; i < 10000; ++i)
     stats_scope_snapshot(scope, &snapshot);
   double snapshot_ns = (double)(time_get_ns() - start) / 10000;
-  printf("iterations=%u counter_ns=%.1f duration_ns=%.1f snapshot_ns=%.1f\n", iterations, counter_ns, duration_ns,
-         snapshot_ns);
+  printf("iterations=%u counter_ns=%.1f duration_ns=%.1f snapshot_ns=%.1f\n", iterations, counter_ns, duration_ns, snapshot_ns);
   stats_scope_destroy(scope);
   return 0;
 }

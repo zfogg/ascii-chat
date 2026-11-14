@@ -28,23 +28,23 @@ typedef enum { NAT_UPNP_TCP, NAT_UPNP_UDP } nat_upnp_protocol_t;
 
 /** @brief Handle to UPnP context */
 typedef struct nat_upnp_context {
-  char external_ip[NETWORK_NAT_UPNP_EXTERNAL_IP_BUFFER_SIZE]; ///< Detected external/public IP (e.g., "203.0.113.42")
-  uint16_t mapped_port;   ///< External port that was mapped (may differ from internal)
-  uint16_t internal_port; ///< Internal port we're binding to
+  char external_ip[NETWORK_NAT_UPNP_EXTERNAL_IP_BUFFER_SIZE];               ///< Detected external/public IP (e.g., "203.0.113.42")
+  uint16_t mapped_port;                                                     ///< External port that was mapped (may differ from internal)
+  uint16_t internal_port;                                                   ///< Internal port we're binding to
   char device_description[NETWORK_NAT_UPNP_DEVICE_DESCRIPTION_BUFFER_SIZE]; ///< Device name for logging (e.g., "TP-Link
                                                                             ///< Archer C7")
   bool is_natpmp;                                                           ///< true if NAT-PMP was used, false if UPnP
-  char internal_ip[NETWORK_NAT_UPNP_INTERNAL_IP_BUFFER_SIZE];   ///< LAN address used by the gateway to reach us
-  char *control_url;                                            ///< Owned UPnP control URL
-  char service_type[NETWORK_NAT_UPNP_SERVICE_TYPE_BUFFER_SIZE]; ///< UPnP service used to create the mapping
-  char description[NETWORK_NAT_UPNP_DESCRIPTION_BUFFER_SIZE];   ///< Mapping description reused on renewal
-  uint32_t gateway;                                             ///< NAT-PMP gateway, in network byte order
-  uint32_t lease_seconds;                                       ///< Granted/requested lease duration
-  uint64_t expires_at_ns;                                       ///< Monotonic lease expiry
-  uint64_t refresh_at_ns;                                       ///< Next renewal or retry deadline
-  bool is_mapped;                                               ///< true if port mapping is currently active
-  nat_upnp_protocol_t protocol;                                 ///< Transport of this mapping
-  bool external_is_private; ///< Gateway reported an upstream NAT; mapping remains locally usable
+  char internal_ip[NETWORK_NAT_UPNP_INTERNAL_IP_BUFFER_SIZE];               ///< LAN address used by the gateway to reach us
+  char *control_url;                                                        ///< Owned UPnP control URL
+  char service_type[NETWORK_NAT_UPNP_SERVICE_TYPE_BUFFER_SIZE];             ///< UPnP service used to create the mapping
+  char description[NETWORK_NAT_UPNP_DESCRIPTION_BUFFER_SIZE];               ///< Mapping description reused on renewal
+  uint32_t gateway;                                                         ///< NAT-PMP gateway, in network byte order
+  uint32_t lease_seconds;                                                   ///< Granted/requested lease duration
+  uint64_t expires_at_ns;                                                   ///< Monotonic lease expiry
+  uint64_t refresh_at_ns;                                                   ///< Next renewal or retry deadline
+  bool is_mapped;                                                           ///< true if port mapping is currently active
+  nat_upnp_protocol_t protocol;                                             ///< Transport of this mapping
+  bool external_is_private;                                                 ///< Gateway reported an upstream NAT; mapping remains locally usable
 } nat_upnp_context_t;
 
 /**
@@ -73,8 +73,7 @@ typedef struct nat_upnp_context {
 asciichat_error_t nat_upnp_open(uint16_t internal_port, const char *description, nat_upnp_context_t **ctx);
 
 /** @brief Open an owned TCP or UDP mapping; close with nat_upnp_close(). */
-asciichat_error_t nat_upnp_open_protocol(uint16_t internal_port, const char *description, nat_upnp_protocol_t protocol,
-                                         nat_upnp_context_t **ctx);
+asciichat_error_t nat_upnp_open_protocol(uint16_t internal_port, const char *description, nat_upnp_protocol_t protocol, nat_upnp_context_t **ctx);
 
 /**
  * @brief Close port mapping and clean up

@@ -75,25 +75,20 @@ typedef enum {
  */
 
 /** Server mode options: network binding, crypto, compression, ACDS */
-#define MODE_SERVER_GROUPS                                                                                             \
-  (OPT_GROUP_BINARY | OPT_GROUP_NETWORK | OPT_GROUP_CRYPTO | OPT_GROUP_COMPRESSION | OPT_GROUP_ACDS |                  \
-   OPT_GROUP_SERVER | OPT_GROUP_WEBRTC)
+#define MODE_SERVER_GROUPS (OPT_GROUP_BINARY | OPT_GROUP_NETWORK | OPT_GROUP_CRYPTO | OPT_GROUP_COMPRESSION | OPT_GROUP_ACDS | OPT_GROUP_SERVER | OPT_GROUP_WEBRTC)
 
 /** Client mode options: display, webcam, audio, crypto, ACDS */
-#define MODE_CLIENT_GROUPS                                                                                             \
-  (OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_NETWORK | OPT_GROUP_WEBCAM | OPT_GROUP_DISPLAY |                  \
-   OPT_GROUP_AUDIO | OPT_GROUP_SNAPSHOT | OPT_GROUP_CRYPTO | OPT_GROUP_COMPRESSION | OPT_GROUP_ACDS |                  \
-   OPT_GROUP_MEDIA | OPT_GROUP_CLIENT | OPT_GROUP_WEBRTC)
+#define MODE_CLIENT_GROUPS                                                                                                                                                                             \
+  (OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_NETWORK | OPT_GROUP_WEBCAM | OPT_GROUP_DISPLAY | OPT_GROUP_AUDIO | OPT_GROUP_SNAPSHOT | OPT_GROUP_CRYPTO | OPT_GROUP_COMPRESSION |                \
+   OPT_GROUP_ACDS | OPT_GROUP_MEDIA | OPT_GROUP_CLIENT | OPT_GROUP_WEBRTC)
 
 /** Mirror mode options: local webcam preview without networking */
-#define MODE_MIRROR_GROUPS                                                                                             \
-  (OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_WEBCAM | OPT_GROUP_DISPLAY | OPT_GROUP_SNAPSHOT | OPT_GROUP_MEDIA)
+#define MODE_MIRROR_GROUPS (OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_WEBCAM | OPT_GROUP_DISPLAY | OPT_GROUP_SNAPSHOT | OPT_GROUP_MEDIA)
 
 /** Discovery mode options: participant that can become host */
-#define MODE_DISCOVERY_GROUPS                                                                                          \
-  (OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_NETWORK | OPT_GROUP_WEBCAM | OPT_GROUP_DISPLAY |                  \
-   OPT_GROUP_AUDIO | OPT_GROUP_SNAPSHOT | OPT_GROUP_CRYPTO | OPT_GROUP_COMPRESSION | OPT_GROUP_ACDS |                  \
-   OPT_GROUP_MEDIA | OPT_GROUP_WEBRTC)
+#define MODE_DISCOVERY_GROUPS                                                                                                                                                                          \
+  (OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_NETWORK | OPT_GROUP_WEBCAM | OPT_GROUP_DISPLAY | OPT_GROUP_AUDIO | OPT_GROUP_SNAPSHOT | OPT_GROUP_CRYPTO | OPT_GROUP_COMPRESSION |                \
+   OPT_GROUP_ACDS | OPT_GROUP_MEDIA | OPT_GROUP_WEBRTC)
 
 /** ACDS mode options: discovery service with network and crypto */
 #define MODE_ACDS_GROUPS (OPT_GROUP_BINARY | OPT_GROUP_NETWORK | OPT_GROUP_CRYPTO | OPT_GROUP_WEBRTC)

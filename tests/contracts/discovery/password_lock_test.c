@@ -113,9 +113,7 @@ static void run_join(uint8_t expected) {
   cr_assert_eq(response.success, expected == ACIP_ERROR_NONE);
   session_entry_t *entry = database_session_find_by_string(db, session.session_string);
   cr_assert_not_null(entry);
-  cr_assert_eq(entry->current_participants, expected == ACIP_ERROR_NONE           ? 1
-                                            : expected == ACIP_ERROR_SESSION_FULL ? 2
-                                                                                  : 0);
+  cr_assert_eq(entry->current_participants, expected == ACIP_ERROR_NONE ? 1 : expected == ACIP_ERROR_SESSION_FULL ? 2 : 0);
   session_entry_destroy(entry);
 }
 Test(discovery_password_lock, unrelated_lookup_proceeds_during_password_verification) {

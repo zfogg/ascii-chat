@@ -32,15 +32,14 @@
  * 3. **Dispatcher**: Routes to appropriate generator based on format
  *
  * All generators extract metadata from the centralized options registry via:
- * - `options_registry_get_for_mode()` - Get options by mode
- * - `options_registry_find_by_name()` - Look up individual options
+ * - libflags schema metadata - Supplies options and values to generators
  * - Option descriptor fields (long_name, short_name, help_text, mode_bitmask)
  *
  * **Adding New Shells**:
  *
  * To add support for a new shell:
  *
- * 1. Create `lib/options/completions/SHELL_NAME.h` and `.c`
+ * 1. Add the shell adapter in `src/common/options_completions.c`
  * 2. Implement `completions_generate_SHELL_NAME()` function
  * 3. Add case to `completions_generate_for_shell()` dispatcher
  * 4. Update `completion_parse_shell_name()` to recognize new shell
@@ -110,12 +109,11 @@ completion_format_t completions_parse_shell_name(const char *shell_name);
  * Useful for generators that need to show completions for options across multiple modes.
  *
  * @param[out] count Pointer to receive the count of unique options
- * @return Dynamically allocated array of option_descriptor_t, must be freed by caller.
+ * @return Completion output generated from the libflags schema.
  *         Returns NULL if no options found.
  *
  * @note The caller must free the returned pointer with SAFE_FREE()
  */
-option_descriptor_t *completions_collect_all_modes_unique(size_t *count);
 
 #ifdef __cplusplus
 }

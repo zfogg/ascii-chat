@@ -96,12 +96,12 @@ static int journal_contract(void) {
   char source[512];
   bool external;
   if (ASCIICHAT_SOURCE_ROOT[0]) {
-    CHECK(symbol_format_source_path("test-error-popup-fixture.exe", ASCIICHAT_SOURCE_ROOT "\\tests\\standalone\\errno\\error_popup_fixture.c", source, sizeof(source), &external,
-                                    ASCIICHAT_OWNED_SOURCE_DIRS) == ASCIICHAT_OK);
+    CHECK(symbol_format_source_path("test-error-popup-fixture.exe", "test-error-popup-fixture", NULL, ASCIICHAT_SOURCE_ROOT "\\tests\\standalone\\errno\\error_popup_fixture.c", source, sizeof(source),
+                                    &external, ASCIICHAT_OWNED_SOURCE_DIRS) == ASCIICHAT_OK);
     CHECK(!external);
     CHECK(!strcmp(source, "tests\\standalone\\errno\\error_popup_fixture.c"));
   }
-  CHECK(symbol_format_source_path("vendor.dll", "D:\\external\\vendor.c", source, sizeof(source), &external, NULL) == ASCIICHAT_OK);
+  CHECK(symbol_format_source_path("vendor.dll", "test-error-popup-fixture", NULL, "D:\\external\\vendor.c", source, sizeof(source), &external, NULL) == ASCIICHAT_OK);
   CHECK(external);
   CHECK(!strcmp(source, "D:\\external\\vendor.c"));
   asciichat_error_context_t entries[ASCIICHAT_ERRNO_HISTORY_SIZE];

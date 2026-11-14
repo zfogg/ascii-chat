@@ -8,8 +8,7 @@
 
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/crypto/discovery_keys.h>
-static bool startup_connect_fails, startup_lookup_fails, startup_session_missing, startup_key_fails,
-    startup_checkpoint_fails;
+static bool startup_connect_fails, startup_lookup_fails, startup_session_missing, startup_key_fails, startup_checkpoint_fails;
 static unsigned startup_connects, startup_disconnects, startup_lookups, startup_verifications;
 static acds_client_config_t startup_observed;
 static asciichat_error_t crypto_discovery_connect(acds_client_t *client, const acds_client_config_t *config) {
@@ -22,8 +21,7 @@ static void crypto_discovery_disconnect(acds_client_t *client) {
   (void)client;
   ++startup_disconnects;
 }
-static asciichat_error_t crypto_discovery_lookup(acds_client_t *client, const char *name,
-                                                 acds_session_lookup_result_t *result) {
+static asciichat_error_t crypto_discovery_lookup(acds_client_t *client, const char *name, acds_session_lookup_result_t *result) {
   (void)client;
   cr_assert_str_eq(name, "river-cloud-tree");
   ++startup_lookups;
@@ -111,9 +109,7 @@ static void startup_security(bool verify_key) {
   socklen_t length = sizeof(address);
   cr_assert_eq(socket_getsockname(startup_listener, (struct sockaddr *)&address, &length), 0);
   network_connect_config_t settings = {.timeout_ms = 1000};
-  cr_assert_eq(network_connection_open("crypto-startup-peer", "127.0.0.1", NET_TO_HOST_U16(address.sin_port), &settings,
-                                       &startup_owner, NULL),
-               ASCIICHAT_OK);
+  cr_assert_eq(network_connection_open("crypto-startup-peer", "127.0.0.1", NET_TO_HOST_U16(address.sin_port), &settings, &startup_owner, NULL), ASCIICHAT_OK);
   connection.network = startup_owner;
 }
 Test(client_crypto, discovery_identity_is_verified_and_bound_to_the_expected_server_key) {
@@ -128,8 +124,7 @@ Test(client_crypto, discovery_identity_is_verified_and_bound_to_the_expected_ser
   cr_assert_eq(startup_observed.timeout_ms, 5000);
   cr_assert_eq(connection.crypto_ctx, network_connection_handshake(startup_owner));
   cr_assert(connection.crypto_ctx->verify_server_key);
-  cr_assert_str_eq(connection.crypto_ctx->expected_server_key,
-                   "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+  cr_assert_str_eq(connection.crypto_ctx->expected_server_key, "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
 }
 Test(client_crypto, failed_discovery_key_verification_does_not_attempt_an_untrusted_lookup) {
   startup_security(true);

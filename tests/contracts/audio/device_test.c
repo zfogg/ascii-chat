@@ -47,14 +47,13 @@ PaDeviceIndex Pa_GetDefaultOutputDevice(void) {
 const PaDeviceInfo *Pa_GetDeviceInfo(PaDeviceIndex device) {
   return device == 0 ? &input_info : device == 1 ? &output_info : NULL;
 }
-PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const PaStreamParameters *output, double rate,
-                      unsigned long frames, PaStreamFlags flags, PaStreamCallback *callback, void *data) {
+PaError Pa_OpenStream(PaStream **stream, const PaStreamParameters *input, const PaStreamParameters *output, double rate, unsigned long frames, PaStreamFlags flags, PaStreamCallback *callback,
+                      void *data) {
   (void)frames;
   (void)flags;
   cr_assert_lt(opens, 16);
   device_stream_t *entry = &streams[opens++];
-  *entry = (device_stream_t){
-      .callback = callback, .data = data, .input = input != NULL, .output = output != NULL, .rate = rate};
+  *entry = (device_stream_t){.callback = callback, .data = data, .input = input != NULL, .output = output != NULL, .rate = rate};
   if (input) {
     cr_assert_eq(input->sampleFormat, paFloat32);
     cr_assert_geq(input->channelCount, 1);
@@ -97,10 +96,8 @@ static void setup(void) {
   options.audio_capture_source = AUDIO_CAPTURE_SOURCE_MIC;
   options.microphone_channels = 2;
   cr_assert_eq(options_state_set(&options), ASCIICHAT_OK);
-  input_info = (PaDeviceInfo){
-      .structVersion = 2, .name = "contract microphone", .maxInputChannels = 2, .defaultSampleRate = AUDIO_SAMPLE_RATE};
-  output_info = (PaDeviceInfo){
-      .structVersion = 2, .name = "contract speaker", .maxOutputChannels = 2, .defaultSampleRate = AUDIO_SAMPLE_RATE};
+  input_info = (PaDeviceInfo){.structVersion = 2, .name = "contract microphone", .maxInputChannels = 2, .defaultSampleRate = AUDIO_SAMPLE_RATE};
+  output_info = (PaDeviceInfo){.structVersion = 2, .name = "contract speaker", .maxOutputChannels = 2, .defaultSampleRate = AUDIO_SAMPLE_RATE};
   cr_assert_eq(audio_init(&context), ASCIICHAT_OK);
 }
 static void teardown(void) {
@@ -120,8 +117,7 @@ static void pause_processing(void) {
   cr_assert_eq(thread_join(&context.worker_thread, NULL), 0);
   context.worker_running = false;
 }
-static int invoke(device_stream_t *stream, const float *input, float *output, unsigned long count,
-                  PaStreamCallbackFlags flags) {
+static int invoke(device_stream_t *stream, const float *input, float *output, unsigned long count, PaStreamCallbackFlags flags) {
   PaStreamCallbackTimeInfo time = {0};
   return stream->callback(input, output, count, &time, flags, stream->data);
 }
@@ -136,8 +132,7 @@ Test(audio_device, duplex_callback_preserves_capture_scales_playback_and_silence
   cr_assert_eq(opens, 1);
   pause_processing();
   context.playback_buffer->jitter_buffer_enabled = false;
-  float input[32 * AUDIO_CHANNELS], playback[16 * AUDIO_CHANNELS], output[32 * AUDIO_CHANNELS],
-      captured[32 * AUDIO_CHANNELS];
+  float input[32 * AUDIO_CHANNELS], playback[16 * AUDIO_CHANNELS], output[32 * AUDIO_CHANNELS], captured[32 * AUDIO_CHANNELS];
   for (unsigned i = 0; i < 32 * AUDIO_CHANNELS; ++i)
     input[i] = (float)i / 64;
   for (unsigned i = 0; i < 16 * AUDIO_CHANNELS; ++i)

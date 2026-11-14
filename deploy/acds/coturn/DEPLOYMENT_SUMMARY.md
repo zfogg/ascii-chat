@@ -89,7 +89,7 @@ The ascii-chat codebase now includes these servers by default:
 - Username: `ascii`
 - Password: `0aa9917b4dad1b01631e87a32b875e09`
 
-**Code Location**: `lib/options/presets.c:540-554`
+**Code Location**: `src/common/options/config/presets.c:540-554`
 
 **Environment Variables** (optional overrides):
 
@@ -282,7 +282,7 @@ docker stats ascii-chat-coturn
 └── coturn.service              # Systemd service unit
 
 Repository changes:
-├── lib/options/presets.c       # Updated STUN/TURN defaults
+├── src/common/options/config/presets.c       # Updated STUN/TURN defaults
 └── deploy/acds/coturn/         # All deployment files
 ```
 

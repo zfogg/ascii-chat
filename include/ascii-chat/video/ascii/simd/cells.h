@@ -12,8 +12,7 @@ typedef struct {
   void (*pack)(const uint8_t *rgb, uint32_t *out, size_t count);
   void (*lookup)(const uint8_t *luma, const uint32_t table[64], uint32_t *out, size_t count);
   void (*quantize)(const uint32_t *rgb, uint32_t *out, size_t count, unsigned colors);
-  void (*halfblock)(const uint32_t *top, const uint32_t *bottom, uint32_t *glyph, uint32_t *fg, uint32_t *bg,
-                    size_t count, unsigned mode, const uint32_t keys[5]);
+  void (*halfblock)(const uint32_t *top, const uint32_t *bottom, uint32_t *glyph, uint32_t *fg, uint32_t *bg, size_t count, unsigned mode, const uint32_t keys[5]);
   size_t (*run)(const uint32_t *glyph, const uint32_t *fg, const uint32_t *bg, size_t count);
   void (*emit_mono)(outbuf_t *out, const uint32_t *glyph, size_t count);
   // The 16 inputs are centered byte values in [-255, 255].
@@ -27,12 +26,11 @@ int glyph_shape_correlation_neon(const int16_t samples[16], const int16_t mask[1
 int glyph_shape_correlation_sve(const int16_t samples[16], const int16_t mask[16]);
 
 const simd_cells_t *simd_cells_backend(void);
-#define DECLARE_SIMD_CELLS(isa)                                                                                        \
-  void simd_pack_##isa(const uint8_t *, uint32_t *, size_t);                                                           \
-  void simd_lookup_##isa(const uint8_t *, const uint32_t[64], uint32_t *, size_t);                                     \
-  void simd_quantize_##isa(const uint32_t *, uint32_t *, size_t, unsigned);                                            \
-  void simd_halfblock_##isa(const uint32_t *, const uint32_t *, uint32_t *, uint32_t *, uint32_t *, size_t, unsigned,  \
-                            const uint32_t[5]);                                                                        \
+#define DECLARE_SIMD_CELLS(isa)                                                                                                                                                                        \
+  void simd_pack_##isa(const uint8_t *, uint32_t *, size_t);                                                                                                                                           \
+  void simd_lookup_##isa(const uint8_t *, const uint32_t[64], uint32_t *, size_t);                                                                                                                     \
+  void simd_quantize_##isa(const uint32_t *, uint32_t *, size_t, unsigned);                                                                                                                            \
+  void simd_halfblock_##isa(const uint32_t *, const uint32_t *, uint32_t *, uint32_t *, uint32_t *, size_t, unsigned, const uint32_t[5]);                                                              \
   size_t simd_run_##isa(const uint32_t *, const uint32_t *, const uint32_t *, size_t)
 DECLARE_SIMD_CELLS(scalar);
 DECLARE_SIMD_CELLS(sse2);

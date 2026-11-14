@@ -32,9 +32,8 @@
  */
 typedef struct {
   char username[NETWORK_WEBRTC_TURN_CREDENTIALS_USERNAME_BUFFER_SIZE]; /**< Format: "timestamp:session_id" */
-  char
-      password[NETWORK_WEBRTC_TURN_CREDENTIALS_PASSWORD_BUFFER_SIZE]; /**< Base64-encoded HMAC-SHA1(secret, username) */
-  time_t expires_at;                                                  /**< Unix timestamp when credentials expire */
+  char password[NETWORK_WEBRTC_TURN_CREDENTIALS_PASSWORD_BUFFER_SIZE]; /**< Base64-encoded HMAC-SHA1(secret, username) */
+  time_t expires_at;                                                   /**< Unix timestamp when credentials expire */
 } turn_credentials_t;
 
 /**
@@ -66,8 +65,7 @@ typedef struct {
  * }
  * @endcode
  */
-asciichat_error_t turn_generate_credentials(const char *session_id, const char *secret, uint32_t validity_seconds,
-                                            turn_credentials_t *out_credentials);
+asciichat_error_t turn_generate_credentials(const char *session_id, const char *secret, uint32_t validity_seconds, turn_credentials_t *out_credentials);
 
 /**
  * @brief Check if TURN credentials have expired

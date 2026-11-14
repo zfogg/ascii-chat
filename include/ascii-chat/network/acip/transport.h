@@ -243,8 +243,7 @@ typedef struct {
   size_t reserved_bytes; ///< Bound for backend-owned pending data not exposed by queued_bytes.
   void (*destroy_impl)(acip_transport_t *transport);
   /** Receives plaintext packet metadata alongside borrowed packet slices. */
-  asciichat_error_t (*sendv_ex)(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
-                                const acip_send_options_t *options);
+  asciichat_error_t (*sendv_ex)(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count, const acip_send_options_t *options);
   asciichat_error_t (*get_capabilities)(acip_transport_t *transport, acip_transport_capabilities_t *out);
   /** Validate optional delivery semantics without enqueuing data. */
   asciichat_error_t (*validate_send_options)(acip_transport_t *transport, const acip_send_options_t *options);
@@ -265,11 +264,11 @@ struct acip_transport {
   const acip_transport_methods_t *methods; ///< Method table (virtual functions)
   crypto_context_t *crypto_ctx;            ///< Optional encryption context
   atomic_t packet_security_active;         ///< Publishes the stable post-handshake crypto owner.
-  uint64_t receive_timeout_ns;  ///< Optional TCP receive timeout override; zero uses the normal polling timeout
-  bool prefer_visual_datagrams; ///< Select negotiated visual datagrams when supported.
-  bool prefer_audio_datagrams;  ///< Select negotiated datagrams for audio, otherwise reliable delivery.
-  void *impl_data;              ///< Transport-specific state
-  void *user_data;              ///< Application-specific context (e.g., per-client data)
+  uint64_t receive_timeout_ns;             ///< Optional TCP receive timeout override; zero uses the normal polling timeout
+  bool prefer_visual_datagrams;            ///< Select negotiated visual datagrams when supported.
+  bool prefer_audio_datagrams;             ///< Select negotiated datagrams for audio, otherwise reliable delivery.
+  void *impl_data;                         ///< Transport-specific state
+  void *user_data;                         ///< Application-specific context (e.g., per-client data)
 };
 
 // =============================================================================
@@ -307,8 +306,7 @@ asciichat_error_t acip_transport_sendv(acip_transport_t *transport, const socket
  * return ERROR_NOT_SUPPORTED and are never silently changed into reliable
  * delivery. A deadline uses time_get_ns()'s monotonic clock.
  */
-asciichat_error_t acip_transport_sendv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
-                                          const acip_send_options_t *options);
+asciichat_error_t acip_transport_sendv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count, const acip_send_options_t *options);
 
 /** A backend with no capability method reports no optional capabilities.
  * Negotiated backends can return ERROR_INVALID_STATE until negotiation finishes. */
@@ -327,8 +325,7 @@ asciichat_error_t acip_transport_send(acip_transport_t *transport, const void *d
  * @param out_allocated_buffer Buffer to free
  * @return ASCIICHAT_OK on success, error code on failure
  */
-static inline asciichat_error_t acip_transport_recv(acip_transport_t *transport, void **buffer, size_t *out_len,
-                                                    void **out_allocated_buffer) {
+static inline asciichat_error_t acip_transport_recv(acip_transport_t *transport, void **buffer, size_t *out_len, void **out_allocated_buffer) {
   if (!transport || !transport->methods || !transport->methods->recv) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
   }
@@ -466,8 +463,7 @@ typedef struct acip_websocket_runtime acip_websocket_runtime_t;
 asciichat_error_t acip_websocket_runtime_create(acip_websocket_runtime_t **out);
 void acip_websocket_runtime_destroy(acip_websocket_runtime_t **runtime);
 
-acip_transport_t *acip_websocket_client_transport_create(const char *name, const char *url,
-                                                         crypto_context_t *crypto_ctx);
+acip_transport_t *acip_websocket_client_transport_create(const char *name, const char *url, crypto_context_t *crypto_ctx);
 
 /**
  * @brief Create WebSocket server transport from existing connection
@@ -484,8 +480,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
  * @note This is for server-side only - clients use acip_websocket_client_transport_create()
  */
 struct lws;
-acip_transport_t *acip_websocket_server_transport_create(const char *name, struct lws *wsi,
-                                                         crypto_context_t *crypto_ctx);
+acip_transport_t *acip_websocket_server_transport_create(const char *name, struct lws *wsi, crypto_context_t *crypto_ctx);
 
 /**
  * @brief Create WebRTC transport from peer connection and data channel
@@ -500,5 +495,4 @@ acip_transport_t *acip_websocket_server_transport_create(const char *name, struc
  */
 struct webrtc_peer_connection;
 struct webrtc_data_channel;
-acip_transport_t *acip_webrtc_transport_create(struct webrtc_peer_connection *peer_conn,
-                                               struct webrtc_data_channel *data_channel, crypto_context_t *crypto_ctx);
+acip_transport_t *acip_webrtc_transport_create(struct webrtc_peer_connection *peer_conn, struct webrtc_data_channel *data_channel, crypto_context_t *crypto_ctx);

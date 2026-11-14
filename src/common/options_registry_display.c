@@ -1,0 +1,440 @@
+/**
+ * @file display.c
+ * @brief Display layout and rendering options
+ * @ingroup options
+ *
+ * Options for controlling rendering modes, palettes, color filters,
+ * framerate, and snapshot mode.
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date January 2026
+ */
+
+#include <ascii-chat/options/registry/common.h>
+#include <ascii-chat/options/registry/metadata.h>
+#include <ascii-chat/util/string.h>
+
+#include <ascii-chat/options/parsers.h>
+#include <ascii-chat/common.h>
+#include <string.h>
+#include <stdlib.h>
+#include <math.h>
+
+/** Parse an optional intensity; callback error strings follow the parser's SAFE_FREE() ownership contract. */
+static bool parse_zalgo(const char *arg, void *dest, char **error_msg) {
+  int level = 7;
+  if (arg) {
+    if (strlen(arg) == 1 && arg[0] >= '1' && arg[0] <= '9') {
+      level = arg[0] - '0';
+    } else if (strcmp(arg, "10") == 0) {
+      level = 10;
+    } else {
+      // Callback errors are released with SAFE_FREE() by the option parser.
+      *error_msg = platform_strdup("--zalgo requires an integer from 1 to 10 (bare --zalgo uses 7)");
+      return false;
+    }
+  }
+  *(int *)dest = level;
+  return true;
+}
+
+static const char *renderer_values[] = {"luminance", "glyph", NULL};
+static const int renderer_integers[] = {ASCII_RENDERER_LUMINANCE, ASCII_RENDERER_GLYPH};
+static const char *renderer_descriptions[] = {"Map brightness to the selected palette", "Experimental glyph shape matching", NULL};
+static const ascii_renderer_t default_renderer = ASCII_RENDERER_DEFAULT;
+
+static bool parse_explicit_palette(const char *arg, void *dest, char **error_msg) {
+  if (!parse_palette_type(arg, dest, error_msg))
+    return false;
+  options_t *opts = (options_t *)((char *)dest - offsetof(options_t, palette_type));
+  opts->palette_explicit = true;
+  return true;
+}
+
+static bool parse_ascii_renderer(const char *arg, void *dest, char **error_msg) {
+  if (arg && dest && strcmp(arg, "luminance") == 0) {
+    *(ascii_renderer_t *)dest = ASCII_RENDERER_LUMINANCE;
+    ((options_t *)((char *)dest - offsetof(options_t, renderer)))->renderer_explicit = true;
+    return true;
+  }
+  if (arg && dest && strcmp(arg, "glyph") == 0) {
+    *(ascii_renderer_t *)dest = ASCII_RENDERER_GLYPH;
+    ((options_t *)((char *)dest - offsetof(options_t, renderer)))->renderer_explicit = true;
+    return true;
+  }
+  if (error_msg)
+    *error_msg = platform_strdup("--renderer requires luminance or glyph");
+  return false;
+}
+
+static bool parse_fft_scale(const char *arg, void *dest, char **error_msg) {
+  fft_scale_t parsed = {.mode = FFT_SCALE_DB, .min_db = -62.0f, .max_db = -6.0f};
+  if (!arg || !*arg) {
+    *error_msg = platform_strdup("--fft-scale requires linear, log, or MIN:MAX dB");
+    return false;
+  }
+  if (!strcmp(arg, "linear")) {
+    parsed.mode = FFT_SCALE_LINEAR;
+  } else if (!strcmp(arg, "log")) {
+    parsed.mode = FFT_SCALE_LOG;
+  } else {
+    char *end = NULL;
+    parsed.min_db = strtof(arg, &end);
+    if (end == arg || *end != ':')
+      goto invalid;
+    char *max_end = NULL;
+    parsed.max_db = strtof(end + 1, &max_end);
+    if (max_end == end + 1 || *max_end != '\0' || !isfinite(parsed.min_db) || !isfinite(parsed.max_db) || parsed.min_db < -120.0f || parsed.max_db > 0.0f || parsed.max_db - parsed.min_db < 12.0f ||
+        parsed.max_db <= parsed.min_db)
+      goto invalid;
+    parsed.mode = FFT_SCALE_DB;
+  }
+  SAFE_STRNCPY((char *)dest, arg, 32);
+  return true;
+invalid:
+  *error_msg = platform_strdup("--fft-scale dB range must be MIN:MAX with -120 <= MIN < MAX <= 0 and at least 12 dB span");
+  return false;
+}
+
+static const char default_fft_scale[] = "-62:-6";
+
+// ============================================================================
+// DISPLAY CATEGORY - Display layout options
+// ============================================================================
+static const bool default_face_follow_value = false;
+static const bool default_stabilize_value = true;
+
+const registry_entry_t g_display_entries[] = {
+    {.long_name = "zalgo",
+     .type = OPTION_TYPE_CALLBACK,
+     .offset = offsetof(options_t, zalgo),
+     .default_value_size = sizeof(int),
+     .help_text = "Add combining marks at intensity 1-10 (default when enabled: 7). Omit to disable. Terminal/text output only.",
+     .group = "DISPLAY",
+     .arg_placeholder = "LEVEL",
+     .env_var_name = "ASCII_CHAT_ZALGO",
+     .parse_fn = parse_zalgo,
+     .optional_arg = true,
+     .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     .metadata = {.numeric_range = {1, 10, 1}, .input_type = OPTION_INPUT_NUMERIC}},
+    {"waveform",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, waveform),
+     &default_waveform_value,
+     sizeof(bool),
+     "Replace the video image with a live waveform of the source selected by --audio-source.",
+     "DISPLAY",
+     NULL,
+     false,
+     "ASCII_CHAT_WAVEFORM",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
+    {"fft",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, fft),
+     &default_fft_value,
+     sizeof(bool),
+     "Replace the video image with a live scrolling frequency display for the source selected by --audio-source.",
+     "DISPLAY",
+     NULL,
+     false,
+     "ASCII_CHAT_FFT",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
+    {"fft-scale",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, fft_scale),
+     &default_fft_scale,
+     0,
+     "FFT amplitude scale: linear, log, or MIN:MAX dB (default -62:-6).",
+     "DISPLAY",
+     "SCALE",
+     false,
+     "ASCII_CHAT_FFT_SCALE",
+     NULL,
+     parse_fft_scale,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.input_type = OPTION_INPUT_STRING},
+     NULL},
+    // DISPLAY GROUP (client, mirror, discovery)
+    {"color-filter",
+     '\0',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, color_filter),
+     &default_color_filter_value,
+     sizeof(color_filter_t),
+     "Apply a monochromatic color tint to grayscale video. Values: none, black, white, green, magenta, fuchsia, "
+     "orange, teal, cyan, pink, red, yellow, rainbow. Using --color-filter automatically sets --color-mode to mono.",
+     "DISPLAY",
+     NULL,
+     false,
+     "ASCII_CHAT_COLOR_FILTER",
+     NULL,
+     parse_color_filter,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.enum_values = g_color_filter_values, .enum_descriptions = g_color_filter_descs, .enum_integer_values = g_color_filter_integers, .input_type = OPTION_INPUT_ENUM},
+     NULL},
+    {"render-mode",
+     'M',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, render_mode),
+     &default_render_mode_value,
+     sizeof(terminal_render_mode_t),
+     "Render mode of text for your client to display. Values: foreground, background, half-block. Press 'r' during "
+     "rendering to cycle.",
+     "DISPLAY",
+     NULL,
+     false,
+     "ASCII_CHAT_RENDER_MODE",
+     NULL,
+     parse_render_mode,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.enum_values = g_render_values, .enum_descriptions = g_render_descs, .enum_integer_values = g_render_integers, .input_type = OPTION_INPUT_ENUM},
+     NULL},
+    {"palette",
+     'P',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, palette_type),
+     &default_palette_type_value,
+     sizeof(palette_type_t),
+     "Palette type with which to render images to text art. Values: standard, blocks, digital, minimal, cool, "
+     "custom. All but 'custom' are built-in presets that all look different and nice. Try them out.",
+     "DISPLAY",
+     NULL,
+     false,
+     "ASCII_CHAT_PALETTE",
+     NULL,
+     parse_explicit_palette,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.enum_values = g_palette_values, .enum_descriptions = g_palette_descs, .enum_integer_values = g_palette_integers, .input_type = OPTION_INPUT_ENUM},
+     NULL},
+    {"palette-chars",
+     'C',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, palette_custom),
+     "",
+     0,
+     "Ordered sequence of characters from darkest to brightest to use with custom palette (--palette=custom) for "
+     "rendering images to text art for your client. These characters only will be used to create the rendered output. "
+     "Can be UTF-8 content (see --utf8).",
+     "DISPLAY",
+     "STRING",
+     false,
+     "ASCII_CHAT_PALETTE_CHARS",
+     NULL,
+     parse_palette_chars,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
+    {.long_name = "renderer",
+     .type = OPTION_TYPE_CALLBACK,
+     .offset = offsetof(options_t, renderer),
+     .default_value = &default_renderer,
+     .default_value_size = sizeof(ascii_renderer_t),
+     .help_text = "Character selection: glyph (default) or luminance matching. Glyph supports printable "
+                  "ASCII and Unicode block elements; unsupported palette characters are rejected.",
+     .group = "DISPLAY",
+     .arg_placeholder = "luminance|glyph",
+     .env_var_name = "ASCII_CHAT_RENDERER",
+     .parse_fn = parse_ascii_renderer,
+     .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     .metadata = {.enum_values = renderer_values, .enum_descriptions = renderer_descriptions, .enum_integer_values = renderer_integers, .input_type = OPTION_INPUT_ENUM}},
+    {.long_name = "stabilize",
+     .type = OPTION_TYPE_BOOL,
+     .offset = offsetof(options_t, stabilize),
+     .default_value = &default_stabilize_value,
+     .default_value_size = sizeof(bool),
+     .help_text = "Reduce character and color flicker between video frames in all render modes.",
+     .group = "DISPLAY",
+     .env_var_name = "ASCII_CHAT_STABILIZE",
+     .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+    {"stretch",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, stretch),
+     &default_stretch_value,
+     sizeof(bool),
+     "Allow aspect ratio distortion of image for rendering ascii output. This can allow the rendered ascii to fill "
+     "your terminal.",
+     "DISPLAY",
+     NULL,
+     false,
+     "ASCII_CHAT_STRETCH",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
+    {"fps",
+     '\0',
+     OPTION_TYPE_INT,
+     offsetof(options_t, fps),
+     &default_fps_value,
+     sizeof(int),
+     "Target framerate for rendering (0 = auto, 1-144).",
+     "DISPLAY",
+     NULL,
+     false,
+     "ASCII_CHAT_FPS",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.numeric_range = {0, 144, 1}, .examples = g_fps_examples, .input_type = OPTION_INPUT_NUMERIC},
+     NULL},
+    {"fps-counter",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, fps_counter),
+     &default_fps_counter_value,
+     sizeof(bool),
+     "Show FPS counter overlay in top-right corner. Press '-' to toggle.",
+     "DISPLAY",
+     NULL,
+     false,
+     "ASCII_CHAT_FPS_COUNTER",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
+    {"snapshot",
+     'S',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, snapshot_mode),
+     &default_snapshot_mode_value,
+     sizeof(bool),
+     "Snapshot mode (one frame and exit).",
+     "DISPLAY",
+     NULL,
+     false,
+     "ASCII_CHAT_SNAPSHOT",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
+    {"snapshot-delay",
+     'D',
+     OPTION_TYPE_DOUBLE,
+     offsetof(options_t, snapshot_delay),
+     &default_snapshot_delay_value,
+     sizeof(double),
+     "Snapshot delay in seconds. The timer starts right before the client-side program prints the first frame. "
+     "--snapshot --snapshot-delay=0 will print the first frame and exit.",
+     "DISPLAY",
+     "SECONDS",
+     false,
+     "ASCII_CHAT_SNAPSHOT_DELAY",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.numeric_range = {0, 3600, 0}, .input_type = OPTION_INPUT_NUMERIC},
+     NULL},
+    {"matrix",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, matrix_rain),
+     &default_matrix_rain_value,
+     sizeof(bool),
+     "Enable Matrix-style digital rain effect. Works with --render-mode truecolor|256 and --color-filter [color].",
+     "DISPLAY",
+     NULL,
+     false,
+     "ASCII_CHAT_MATRIX",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
+    {"face-follow",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, face_follow),
+     &default_face_follow_value,
+     sizeof(bool),
+     "Automatically zoom and pan to follow your face, with smooth full-frame fallback.",
+     "DISPLAY",
+     NULL,
+     false,
+     "ASCII_CHAT_FACE_FOLLOW",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
+    {"flip-x",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, flip_x),
+     &default_flip_x_value,
+     sizeof(bool),
+     "Flip video horizontally (X-axis). Webcam defaults to mirrored; media and audio animations do not. Explicit "
+     "choices apply to all sources until exit.",
+     "DISPLAY",
+     NULL,
+     false,
+     "ASCII_CHAT_FLIP_X",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
+    {"flip-y",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, flip_y),
+     &default_flip_y_value,
+     sizeof(bool),
+     "Flip video vertically (Y-axis). Works with webcam, files, and streams.",
+     "DISPLAY",
+     NULL,
+     false,
+     "ASCII_CHAT_FLIP_Y",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
+
+    REGISTRY_TERMINATOR()};

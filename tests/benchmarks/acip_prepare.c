@@ -9,10 +9,10 @@
 #include <ascii-chat/util/time.h>
 #include <string.h>
 
-#define CHECK(expr)                                                                                                    \
-  do {                                                                                                                 \
-    if (!(expr))                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "%s", #expr);                                                                      \
+#define CHECK(expr)                                                                                                                                                                                    \
+  do {                                                                                                                                                                                                 \
+    if (!(expr))                                                                                                                                                                                       \
+      FATAL(ERROR_ASSERTION_FAILED, "%s", #expr);                                                                                                                                                      \
   } while (0)
 static size_t allocations, copies;
 static void *measured_alloc(buffer_domain_t *domain, size_t size) {
@@ -29,8 +29,7 @@ static void *measured_copy(void *to, const void *from, size_t size) {
 #define acip_packet_encrypt measured_encrypt
 #include "../../lib/network/acip/prepare.c"
 
-static void prepare(crypto_context_t *crypto, const socket_buffer_t *slices, size_t count, size_t size, int transport,
-                    bool legacy) {
+static void prepare(crypto_context_t *crypto, const socket_buffer_t *slices, size_t count, size_t size, int transport, bool legacy) {
   // 0: synchronous TCP, 1: async TCP, 2: WebSocket (already contiguous).
   if (!crypto) {
     if (!legacy) {
@@ -107,13 +106,11 @@ int main(void) {
             allocations = copies = 0;
             uint64_t start = time_get_ns();
             for (size_t i = 0; i < iterations; ++i)
-              prepare(encrypted ? &crypto : NULL, vector ? slices : &contiguous, vector ? 2 : 1, size, transport,
-                      legacy);
+              prepare(encrypted ? &crypto : NULL, vector ? slices : &contiguous, vector ? 2 : 1, size, transport, legacy);
             uint64_t elapsed = time_get_ns() - start;
             log_warn("prepare-bench run=%d transport=%d vectors=%d encrypted=%d legacy=%d allocs=%.0f copy_bytes=%.0f "
                      "MiB/s=%.2f",
-                     repeat, transport, vector, encrypted, legacy, (double)allocations / iterations,
-                     (double)copies / iterations, (double)size * iterations * 1e9 / elapsed / 1048576.0);
+                     repeat, transport, vector, encrypted, legacy, (double)allocations / iterations, (double)copies / iterations, (double)size * iterations * 1e9 / elapsed / 1048576.0);
           }
         }
       }

@@ -9,11 +9,10 @@ Test(time_util, relative_duration_thresholds_and_direction) {
     int64_t seconds;
     const char *phrase;
   } cases[] = {
-      {0, "a moment"},       {2, "a moment"},         {3, "a few seconds"}, {9, "a few seconds"}, {10, "10 seconds"},
-      {44, "44 seconds"},    {45, "a minute"},        {89, "a minute"},     {120, "2 minutes"},   {2640, "44 minutes"},
-      {2700, "an hour"},     {5340, "an hour"},       {7200, "2 hours"},    {75600, "21 hours"},  {79200, "a day"},
-      {126000, "a day"},     {172800, "2 days"},      {2073600, "24 days"}, {2160000, "a month"}, {3801600, "a month"},
-      {5184000, "2 months"}, {25920000, "10 months"}, {28512000, "a year"}, {44064000, "a year"}, {62208000, "2 years"},
+      {0, "a moment"},         {2, "a moment"},      {3, "a few seconds"}, {9, "a few seconds"},  {10, "10 seconds"},   {44, "44 seconds"},   {45, "a minute"},
+      {89, "a minute"},        {120, "2 minutes"},   {2640, "44 minutes"}, {2700, "an hour"},     {5340, "an hour"},    {7200, "2 hours"},    {75600, "21 hours"},
+      {79200, "a day"},        {126000, "a day"},    {172800, "2 days"},   {2073600, "24 days"},  {2160000, "a month"}, {3801600, "a month"}, {5184000, "2 months"},
+      {25920000, "10 months"}, {28512000, "a year"}, {44064000, "a year"}, {62208000, "2 years"},
   };
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
     int64_t ns = cases[i].seconds * (int64_t)NS_PER_SEC_INT;

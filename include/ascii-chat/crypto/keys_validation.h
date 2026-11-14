@@ -313,8 +313,7 @@ asciichat_error_t compare_public_keys(const public_key_t *key1, const public_key
  *
  * @ingroup keys
  */
-asciichat_error_t check_key_fingerprint(const public_key_t *key, const uint8_t *fingerprint, size_t fingerprint_len,
-                                        bool *matches);
+asciichat_error_t check_key_fingerprint(const public_key_t *key, const uint8_t *fingerprint, size_t fingerprint_len, bool *matches);
 
 /**
  * @brief Generate key fingerprint

@@ -170,8 +170,7 @@
  * }
  * @endcode
  */
-#define ATOMIC_CAS_BOOL(ptr, expected, new_value)                                                                      \
-  atomic_compare_exchange_strong((atomic_t *)(ptr), &(expected), (new_value))
+#define ATOMIC_CAS_BOOL(ptr, expected, new_value) atomic_compare_exchange_strong((atomic_t *)(ptr), &(expected), (new_value))
 
 /**
  * Compare and swap operation for unsigned 32-bit atomics.
@@ -189,8 +188,7 @@
  * }
  * @endcode
  */
-#define ATOMIC_CAS_UINT32(ptr, expected, new_value)                                                                    \
-  atomic_compare_exchange_strong((atomic_uint32_t *)(ptr), (expected), (new_value))
+#define ATOMIC_CAS_UINT32(ptr, expected, new_value) atomic_compare_exchange_strong((atomic_uint32_t *)(ptr), (expected), (new_value))
 
 /**
  * Atomically add to an unsigned 32-bit value.

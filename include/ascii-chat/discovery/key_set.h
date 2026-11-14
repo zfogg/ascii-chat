@@ -15,5 +15,4 @@ typedef struct {
 
 /** Validate order, bounds, deduplication and individual possession proofs.
  * Errors clear the sequence. complete is true only when every key is present. */
-asciichat_error_t acds_create_key_set_collect(acds_create_key_set_t *set, const acip_session_create_t *req,
-                                              bool require_identity, bool *complete);
+asciichat_error_t acds_create_key_set_collect(acds_create_key_set_t *set, const acip_session_create_t *req, bool require_identity, bool *complete);

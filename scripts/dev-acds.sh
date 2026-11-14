@@ -34,7 +34,7 @@ echo -e "${GREEN}✅ Build successful${NC}"
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}👀 Watching for changes...${NC}"
-echo -e "${YELLOW}   Monitored: src/acds/, lib/options/, lib/network/, lib/util/path.c${NC}"
+echo -e "${YELLOW}   Monitored: src/acds/, src/common/options*.c, lib/network/, lib/util/path.c${NC}"
 echo -e "${YELLOW}   Args to ACDS: $*${NC}"
 echo -e "${YELLOW}   Press Ctrl+C to stop${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -64,5 +64,5 @@ chmod +x /tmp/acds-rebuild.sh
 # Watch for changes and rebuild+restart
 # -r: restart command on file change
 # -c: clear screen before running
-find src/acds lib/options lib/network lib/util/path.c -name '*.c' -o -name '*.h' 2>/dev/null | \
+find src/acds src/common lib/network lib/util/path.c \( -name 'options*.c' -o -name '*.h' \) 2>/dev/null | \
     entr -rc /tmp/acds-rebuild.sh "$@"

@@ -25,15 +25,37 @@ set(LIBPLATFORM_BUILD_SHARED "${_ascii_chat_libplatform_shared}" CACHE BOOL
 set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
     "Disable standalone libplatform tests in ascii-chat" FORCE)
 
+if(NOT TARGET ascii-chat-utf8proc)
+    add_library(ascii-chat-utf8proc STATIC
+        "${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc/utf8proc.c")
+    target_include_directories(ascii-chat-utf8proc PUBLIC
+        "${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc")
+    target_compile_definitions(ascii-chat-utf8proc PUBLIC UTF8PROC_STATIC=1)
+    set_target_properties(ascii-chat-utf8proc PROPERTIES POSITION_INDEPENDENT_CODE ON)
+endif()
+set(LIBPLATFORM_UTF8PROC_TARGET ascii-chat-utf8proc CACHE STRING
+    "utf8proc target shared with ascii-chat" FORCE)
+
 # Use the checked-out submodule directly.  Reusing a cached source tree can
 # mix headers and implementations from different libplatform revisions.
 set(_ascii_chat_libplatform_source "${_ascii_chat_repo_root}/deps/ascii-chat-deps/libplatform")
 set(_ascii_chat_libplatform_build "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
 if(NOT TARGET libplatform)
+    # Coverage instrumentation belongs to the final executable.  Passing
+    # --coverage while linking libplatform's shared object pulls Clang's
+    # profile runtime into the DSO, leaving non-exported llvm_gcda_* symbols
+    # unresolved when lld links the executable with sanitizers.  Keep the
+    # compile flags inherited by libplatform, but suppress coverage only for
+    # this shared-library configure step.
+    set(_ascii_chat_saved_shared_linker_flags "${CMAKE_SHARED_LINKER_FLAGS}")
+    string(REPLACE "--coverage" "" CMAKE_SHARED_LINKER_FLAGS
+        "${CMAKE_SHARED_LINKER_FLAGS}")
     add_subdirectory(
         "${_ascii_chat_libplatform_source}"
         "${_ascii_chat_libplatform_build}"
         EXCLUDE_FROM_ALL)
+    set(CMAKE_SHARED_LINKER_FLAGS "${_ascii_chat_saved_shared_linker_flags}")
+    unset(_ascii_chat_saved_shared_linker_flags)
 endif()
 
 if(TARGET asciichat-project-includes)
@@ -50,6 +72,9 @@ else()
 endif()
 target_compile_definitions(libplatform-objects PRIVATE
     LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
+    target_compile_definitions(libplatform-objects PRIVATE DEBUG_MEMORY)
+endif()
 target_include_directories(libplatform-objects PRIVATE
     ${_ascii_chat_repo_root}/include
     ${_ascii_chat_repo_root}/deps

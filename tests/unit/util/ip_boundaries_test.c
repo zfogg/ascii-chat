@@ -25,22 +25,11 @@ Test(ip_boundaries, cidr_network_edges_and_address_families) {
                {"127.0.0.1", "::/0", 0},
                {"invalid", "::/0", 0}};
   for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i)
-    cr_assert_eq(ip_in_cidr(cases[i].ip, cases[i].network), cases[i].contains, "%s in %s", cases[i].ip,
-                 cases[i].network);
+    cr_assert_eq(ip_in_cidr(cases[i].ip, cases[i].network), cases[i].contains, "%s in %s", cases[i].ip, cases[i].network);
 }
 
 Test(ip_boundaries, rejects_malformed_cidr_and_short_buffers) {
-  const char *invalid[] = {"",
-                           "/24",
-                           "10.0.0.1",
-                           "bad/24",
-                           "10.0.0.0/",
-                           "10.0.0.0/-1",
-                           "10.0.0.0/33",
-                           "::/129",
-                           "::/x",
-                           "::/64junk",
-                           "::/9999999999999999999999999999999"};
+  const char *invalid[] = {"", "/24", "10.0.0.1", "bad/24", "10.0.0.0/", "10.0.0.0/-1", "10.0.0.0/33", "::/129", "::/x", "::/64junk", "::/9999999999999999999999999999999"};
   char output[128];
   int prefix;
   for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i)
@@ -100,9 +89,8 @@ Test(ip_boundaries, classify_private_loopback_link_local_and_public_addresses) {
   const struct {
     const char *address;
     int lan, loopback, link, multicast, internet;
-  } ipv4[] = {{"10.255.255.255", 1, 0, 0, 0, 0},  {"172.16.0.0", 1, 0, 0, 0, 0}, {"172.31.255.255", 1, 0, 0, 0, 0},
-              {"192.168.1.1", 1, 0, 0, 0, 0},     {"127.0.0.2", 0, 1, 0, 0, 0},  {"169.254.1.1", 0, 0, 1, 0, 0},
-              {"255.255.255.255", 0, 0, 0, 1, 0}, {"8.8.8.8", 0, 0, 0, 0, 1},    {"bad", 0, 0, 0, 0, 0}};
+  } ipv4[] = {{"10.255.255.255", 1, 0, 0, 0, 0}, {"172.16.0.0", 1, 0, 0, 0, 0},      {"172.31.255.255", 1, 0, 0, 0, 0}, {"192.168.1.1", 1, 0, 0, 0, 0}, {"127.0.0.2", 0, 1, 0, 0, 0},
+              {"169.254.1.1", 0, 0, 1, 0, 0},    {"255.255.255.255", 0, 0, 0, 1, 0}, {"8.8.8.8", 0, 0, 0, 0, 1},        {"bad", 0, 0, 0, 0, 0}};
   for (size_t i = 0; i < sizeof(ipv4) / sizeof(*ipv4); ++i) {
     const char *a = ipv4[i].address;
     cr_assert_eq(is_lan_ipv4(a), ipv4[i].lan, "%s", a);
@@ -146,13 +134,11 @@ Test(ip_boundaries, optional_ports_parse_hostnames_ipv4_and_unambiguous_ipv6) {
   for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
     char output[128];
     uint16_t port = 0;
-    cr_assert_eq(parse_address_with_optional_port(cases[i].input, output, sizeof(output), &port, 27224), 0, "%s",
-                 cases[i].input);
+    cr_assert_eq(parse_address_with_optional_port(cases[i].input, output, sizeof(output), &port, 27224), 0, "%s", cases[i].input);
     cr_assert_str_eq(output, cases[i].address);
     cr_assert_eq(port, cases[i].port);
     cr_assert_eq(parse_address_with_optional_port(cases[i].input, output, strlen(cases[i].address), &port, 27224), -1);
-    cr_assert_eq(parse_address_with_optional_port(cases[i].input, output, strlen(cases[i].address) + 1, &port, 27224),
-                 0);
+    cr_assert_eq(parse_address_with_optional_port(cases[i].input, output, strlen(cases[i].address) + 1, &port, 27224), 0);
   }
 }
 Test(ip_boundaries, optional_port_parser_rejects_malformed_addresses_and_port_overflows) {
@@ -181,8 +167,7 @@ Test(ip_boundaries, optional_port_parser_rejects_malformed_addresses_and_port_ov
   char output[300];
   uint16_t port;
   for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i)
-    cr_assert_eq(parse_address_with_optional_port(invalid[i], output, sizeof(output), &port, 27224), -1, "%s",
-                 invalid[i]);
+    cr_assert_eq(parse_address_with_optional_port(invalid[i], output, sizeof(output), &port, 27224), -1, "%s", invalid[i]);
   cr_assert_eq(parse_address_with_optional_port(NULL, output, sizeof(output), &port, 1), -1);
   cr_assert_eq(parse_address_with_optional_port("host", NULL, sizeof(output), &port, 1), -1);
   cr_assert_eq(parse_address_with_optional_port("host", output, 0, &port, 1), -1);

@@ -158,8 +158,7 @@ typedef struct {
  * @param user_data User context pointer
  * @return ASCIICHAT_OK on success, error code on failure
  */
-typedef asciichat_error_t (*ice_send_candidate_callback_t)(const ice_candidate_t *candidate, const char *mid,
-                                                           void *user_data);
+typedef asciichat_error_t (*ice_send_candidate_callback_t)(const ice_candidate_t *candidate, const char *mid, void *user_data);
 
 /**
  * @brief Credentials and callback used while gathering ICE candidates
@@ -280,8 +279,7 @@ struct webrtc_peer_connection;
  * @param mid Media stream ID
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t ice_add_remote_candidate(struct webrtc_peer_connection *pc, const ice_candidate_t *candidate,
-                                           const char *mid);
+asciichat_error_t ice_add_remote_candidate(struct webrtc_peer_connection *pc, const ice_candidate_t *candidate, const char *mid);
 
 /**
  * @brief Check ICE connection state
@@ -313,8 +311,7 @@ int webrtc_get_rtc_id(struct webrtc_peer_connection *pc);
  * @param remote_candidate Selected remote candidate (output, may be NULL)
  * @return ASCIICHAT_OK if pair selected, ERROR_INVALID_STATE if no pair selected yet
  */
-asciichat_error_t ice_get_selected_pair(struct webrtc_peer_connection *pc, ice_candidate_t *local_candidate,
-                                        ice_candidate_t *remote_candidate);
+asciichat_error_t ice_get_selected_pair(struct webrtc_peer_connection *pc, ice_candidate_t *local_candidate, ice_candidate_t *remote_candidate);
 
 /* ============================================================================
  * Utility Functions

@@ -1,5 +1,5 @@
 /**
- * @file lib/options/colorscheme.h
+ * @file include/ascii-chat/options/colorscheme.h
  * @brief Color scheme management system for ascii-chat
  * @ingroup options
  *
@@ -97,11 +97,10 @@ typedef struct color_scheme_t {
  * rather than inline char arrays, matching the interface expected by callers.
  */
 typedef struct {
-  const char *codes_16[COLORSCHEME_LOG_COLOR_COUNT];        /**< Array of 16-color ANSI code strings */
-  const char *codes_256[COLORSCHEME_LOG_COLOR_COUNT];       /**< Array of 256-color ANSI code strings */
-  const char *codes_truecolor[COLORSCHEME_LOG_COLOR_COUNT]; /**< Array of 24-bit truecolor ANSI code strings */
-  char
-      foreground_16[OPTIONS_COLORSCHEME_FOREGROUND_16_BUFFER_SIZE]; /**< Scheme neutral text color, not an ANSI reset */
+  const char *codes_16[COLORSCHEME_LOG_COLOR_COUNT];                 /**< Array of 16-color ANSI code strings */
+  const char *codes_256[COLORSCHEME_LOG_COLOR_COUNT];                /**< Array of 256-color ANSI code strings */
+  const char *codes_truecolor[COLORSCHEME_LOG_COLOR_COUNT];          /**< Array of 24-bit truecolor ANSI code strings */
+  char foreground_16[OPTIONS_COLORSCHEME_FOREGROUND_16_BUFFER_SIZE]; /**< Scheme neutral text color, not an ANSI reset */
   char foreground_256[OPTIONS_COLORSCHEME_FOREGROUND_256_BUFFER_SIZE];
   char foreground_truecolor[OPTIONS_COLORSCHEME_FOREGROUND_TRUECOLOR_BUFFER_SIZE];
 } compiled_color_scheme_t;
@@ -109,8 +108,7 @@ typedef struct {
 /** A caller-owned palette: no shared string lifetime or allocation. */
 typedef struct {
   char codes[COLORSCHEME_LOG_COLOR_COUNT][COLORSCHEME_SGR_BUFFER_SIZE];
-  char background_codes[COLORSCHEME_LOG_COLOR_COUNT]
-                       [COLORSCHEME_SGR_BUFFER_SIZE]; /**< Matching live logging colors as background SGR sequences. */
+  char background_codes[COLORSCHEME_LOG_COLOR_COUNT][COLORSCHEME_SGR_BUFFER_SIZE]; /**< Matching live logging colors as background SGR sequences. */
   char foreground[COLORSCHEME_SGR_BUFFER_SIZE];
   terminal_background_t background;
 } colorscheme_palette_t;
@@ -196,8 +194,7 @@ asciichat_error_t colorscheme_load_from_file(const char *path, color_scheme_t *s
  * Compiles RGB colors to ANSI escape codes for the specified terminal mode
  * and background. Applies background-appropriate color variant (light/dark).
  */
-asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, terminal_color_mode_t mode,
-                                             terminal_background_t background, compiled_color_scheme_t *compiled);
+asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, terminal_color_mode_t mode, terminal_background_t background, compiled_color_scheme_t *compiled);
 
 /**
  * @brief Clean up allocated strings in a compiled color scheme
@@ -288,7 +285,7 @@ asciichat_error_t options_colorscheme_init_early(int argc, const char *const arg
 /**
  * @brief Shared mutex for color scheme compilation
  *
- * Used by lib/options/colorscheme.c and lib/log/logging.c to synchronize
+ * Used by src/common/options_colorscheme.c and lib/log/logging.c to synchronize
  * color scheme compilation. Defined in colorscheme.c and declared here
  * for use by logging.c.
  */

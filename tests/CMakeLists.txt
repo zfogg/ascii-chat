@@ -29,6 +29,13 @@ include(${CMAKE_SOURCE_DIR}/cmake/test/LeakSanitizer.cmake)
 #   - Future defer tests (prepared for in this infrastructure)
 # =============================================================================
 
+# CI explicitly requests Criterion tests even for configurations whose preset
+# normally disables the test graph. Preserve that contract before any target
+# guards below evaluate BUILD_TESTS.
+if(ASCIICHAT_FORCE_CRITERION_TESTS)
+    set(BUILD_TESTS ON CACHE BOOL "Build test executables" FORCE)
+endif()
+
 # Enable CTest if any tests are being built (Criterion or lib runtime)
 if(BUILD_TESTS)
     enable_testing()
@@ -185,7 +192,7 @@ function(asciichat_configure_contract target)
         add_dependencies(${target} tests-timer-start)
     endif()
     set_property(TARGET ${target} PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)
-    target_link_libraries(${target} PRIVATE ${CRITERION_LIBRARIES})
+    target_link_libraries(${target} PRIVATE ${CRITERION_LIBRARIES} libflags::flags)
     target_link_directories(${target} PRIVATE ${CRITERION_LIBRARY_DIRS} ${FFMPEG_LIBRARY_DIRS})
     target_include_directories(${target} PRIVATE ${CRITERION_INCLUDE_DIRS})
     set_target_properties(${target} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF
@@ -485,6 +492,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # Link against shared library which contains all code
         target_link_libraries(${test_exe_name}
             ${_ascii_tests_library}
+            libflags::flags
             ${TEST_LDFLAGS}
         )
 

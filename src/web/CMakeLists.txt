@@ -82,6 +82,10 @@ include(${_cmake_dir}/dependencies/Libplatform.cmake)
 set(LIB_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../lib)
 set(INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 set(DEPS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../deps)
+set(LIBFLAGS_ROOT "${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src")
+if(NOT EXISTS "${LIBFLAGS_ROOT}/include/libflags/flags.h")
+    set(LIBFLAGS_ROOT "${ASCIICHAT_DEPS_CACHE_ROOT}/../libflags-src")
+endif()
 
 include(${_cmake_dir}/utils/SourceRoot.cmake)
 get_filename_component(_source_root "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
@@ -101,6 +105,7 @@ include_directories(
     ${DEPS_ROOT}/ascii-chat-deps/tomlc17/src
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc
     ${DEPS_ROOT}/ascii-chat-deps/yyjson/src
+    ${LIBFLAGS_ROOT}/include
     # Dependency includes from cmake/deps/*.cmake output variables
     ${VTERM_INCLUDE_DIRS}  # libvterm
     ${LIBSODIUM_INCLUDE_DIRS}  # libsodium
@@ -177,55 +182,52 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/video/ascii/rle.c
 
     # Options system
-    ${LIB_ROOT}/options/rcu.c
     ${LIB_ROOT}/../deps/ascii-chat-deps/yyjson/src/yyjson.c
-    ${LIB_ROOT}/options/options.c
-    ${LIB_ROOT}/options/common.c
-    ${LIB_ROOT}/options/enums.c
-    ${LIB_ROOT}/options/strings.c
-    ${LIB_ROOT}/options/parsing/parsers.c
-    ${LIB_ROOT}/options/parsing/validation.c
-    ${LIB_ROOT}/options/colorscheme.c
-    ${LIB_ROOT}/options/manpage.c
-    ${LIB_ROOT}/options/layout.c
-    ${LIB_ROOT}/options/levenshtein.c
-    ${LIB_ROOT}/options/help_api.c
-    ${LIB_ROOT}/options/completions/completions.c
-    ${LIB_ROOT}/options/completions/bash.c
-    ${LIB_ROOT}/options/completions/fish.c
-    ${LIB_ROOT}/options/completions/zsh.c
-    ${LIB_ROOT}/options/completions/powershell.c
-    ${LIB_ROOT}/options/builder/builder.c
-    ${LIB_ROOT}/options/builder/handlers.c
-    ${LIB_ROOT}/options/builder/help.c
-    ${LIB_ROOT}/options/manpage/formatter.c
-    ${LIB_ROOT}/options/manpage/merger.c
-    ${LIB_ROOT}/options/manpage/parser.c
-    ${LIB_ROOT}/options/manpage/resources.c
-    ${LIB_ROOT}/options/manpage/content/environment.c
-    ${LIB_ROOT}/options/manpage/content/examples.c
-    ${LIB_ROOT}/options/manpage/content/options.c
-    ${LIB_ROOT}/options/manpage/content/positional.c
-    ${LIB_ROOT}/options/manpage/content/usage.c
-    ${LIB_ROOT}/options/config/config.c
-    ${LIB_ROOT}/options/config/presets.c
-    ${LIB_ROOT}/options/config/schema.c
-    ${LIB_ROOT}/options/registry/audio.c
-    ${LIB_ROOT}/options/registry/configuration.c
-    ${LIB_ROOT}/options/registry/core.c
-    ${LIB_ROOT}/options/registry/database.c
-    ${LIB_ROOT}/options/registry/display.c
-    ${LIB_ROOT}/options/registry/general.c
-    ${LIB_ROOT}/options/registry/logging.c
-    ${LIB_ROOT}/options/registry/media.c
-    ${LIB_ROOT}/options/registry/metadata.c
-    ${LIB_ROOT}/options/registry/network.c
-    ${LIB_ROOT}/options/registry/public_api.c
-    ${LIB_ROOT}/options/registry/registry.c
-    ${LIB_ROOT}/options/registry/security.c
-    ${LIB_ROOT}/options/registry/terminal.c
-    ${LIB_ROOT}/options/registry/webcam.c
-    ${LIB_ROOT}/options/registry/debug.c
+    ${LIBFLAGS_ROOT}/lib/builder/builder.c
+    ${LIBFLAGS_ROOT}/lib/commands.c
+    ${LIBFLAGS_ROOT}/lib/completions/completions.c
+    ${LIBFLAGS_ROOT}/lib/config/config.c
+    ${LIBFLAGS_ROOT}/lib/config/keys.c
+    ${LIBFLAGS_ROOT}/lib/format.c
+    ${LIBFLAGS_ROOT}/lib/help.c
+    ${LIBFLAGS_ROOT}/lib/json.c
+    ${LIBFLAGS_ROOT}/lib/levenshtein.c
+    ${LIBFLAGS_ROOT}/lib/log.c
+    ${LIBFLAGS_ROOT}/lib/manpage/formatter.c
+    ${LIBFLAGS_ROOT}/lib/manpage/manpage.c
+    ${LIBFLAGS_ROOT}/lib/manpage/parser.c
+    ${LIBFLAGS_ROOT}/lib/options.c
+    ${LIBFLAGS_ROOT}/lib/parsing/parsers.c
+    ${LIBFLAGS_ROOT}/lib/storage.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_common.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_enums.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_strings.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_runtime.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_layout.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_help.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_config.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_config_schema.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_colorscheme.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_parsing_parsers.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_parsing_validation.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_audio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_configuration.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_core.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_database.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_debug.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_display.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_general.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_logging.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_media.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_metadata.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_mode_defaults.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_network.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_public_api.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_registry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_security.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_terminal.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_webcam.c
 
     # Crypto (needed for logging headers)
     ${LIB_ROOT}/crypto/crypto.c

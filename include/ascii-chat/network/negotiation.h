@@ -24,12 +24,10 @@ typedef struct {
   unsigned step;
 } network_negotiation_t;
 
-asciichat_error_t network_negotiation_receive(network_negotiation_t *, acip_transport_t *, packet_type_t, const void *,
-                                              size_t);
+asciichat_error_t network_negotiation_receive(network_negotiation_t *, acip_transport_t *, packet_type_t, const void *, size_t);
 
 /** Drive a client wire profile using connection-owned security storage.
  * A single absolute deadline covers negotiation; the caller retains transport
  * and credentials until cancellation and all users have drained.
  */
-asciichat_error_t network_client_negotiate(acip_transport_t *, crypto_handshake_context_t *, uint8_t mode,
-                                           network_protocol_t protocol);
+asciichat_error_t network_client_negotiate(acip_transport_t *, crypto_handshake_context_t *, uint8_t mode, network_protocol_t protocol);

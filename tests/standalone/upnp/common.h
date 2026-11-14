@@ -26,18 +26,18 @@ static inline asciichat_error_t test_errno(asciichat_error_t code, const char *f
 }
 #define SET_ERRNO test_errno
 #define SAFE_CALLOC(n, size, type) ((type)calloc(n, size))
-#define SAFE_FREE(p)                                                                                                   \
-  do {                                                                                                                 \
-    free(p);                                                                                                           \
-    (p) = NULL;                                                                                                        \
+#define SAFE_FREE(p)                                                                                                                                                                                   \
+  do {                                                                                                                                                                                                 \
+    free(p);                                                                                                                                                                                           \
+    (p) = NULL;                                                                                                                                                                                        \
   } while (0)
 #define SAFE_STRNCPY(dst, src, n) snprintf(dst, n, "%s", src)
-#define SAFE_STRDUP(dst, src)                                                                                          \
-  do {                                                                                                                 \
-    size_t len = strlen(src) + 1;                                                                                      \
-    dst = malloc(len);                                                                                                 \
-    if (dst)                                                                                                           \
-      memcpy(dst, src, len);                                                                                           \
+#define SAFE_STRDUP(dst, src)                                                                                                                                                                          \
+  do {                                                                                                                                                                                                 \
+    size_t len = strlen(src) + 1;                                                                                                                                                                      \
+    dst = malloc(len);                                                                                                                                                                                 \
+    if (dst)                                                                                                                                                                                           \
+      memcpy(dst, src, len);                                                                                                                                                                           \
   } while (0)
 #define safe_snprintf snprintf
 static inline void test_log(const char *format, ...) {

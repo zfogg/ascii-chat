@@ -1,0 +1,985 @@
+/**
+ * @file src/common/options_colorscheme.c
+ * @brief Color scheme management implementation and early initialization
+ * @ingroup options
+ *
+ * Implements color scheme selection, loading, and compilation for ascii-chat.
+ * Supports built-in themes, TOML configuration files, and early initialization
+ * before logging starts.
+ */
+
+/* Storage capacities in elements; text buffers include the terminating NUL. */
+#define OPTIONS_COLORSCHEME_TEMP_BUFFER_SIZE 128
+#define OPTIONS_COLORSCHEME_TOML_CONTENT_BUFFER_SIZE 8192
+
+#include <defer.h>
+#include <ascii-chat/options/colorscheme.h>
+#include <ascii-chat/util/string.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/debug/named.h>
+#include <libplatform/terminal.h>
+#include <util/string.h>
+#include <ascii-chat/video/terminal/ansi.h>
+#include <sys/stat.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/lifecycle.h>
+#include <ascii-chat-deps/tomlc17/src/tomlc17.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <limits.h>
+#include <stdatomic.h>
+#include <libplatform/keyboard.h>
+#include <ascii-chat/tui/controller.h>
+
+/* ============================================================================
+ * Global State
+ * ============================================================================ */
+
+static color_scheme_t g_active_scheme = {0};
+static _Atomic uint64_t g_scheme_revision = 1;
+static lifecycle_t g_colorscheme_lifecycle = LIFECYCLE_INIT;
+
+/* Mutex for color scheme compilation - used by both colorscheme.c and logging.c */
+/* Must be statically initialized with PTHREAD_MUTEX_INITIALIZER to avoid deadlock
+ * EXCEPTION: Emscripten/WASM with pthreads doesn't support static mutex initialization properly,
+ * so we initialize it explicitly in colorscheme_init() like Windows. */
+#if defined(_WIN32) || defined(__EMSCRIPTEN__)
+mutex_t g_colorscheme_mutex = {.impl = {0}, .name = NULL}; /* Windows CRITICAL_SECTION or Emscripten pthread_mutex_t - initialized in colorscheme_init() */
+#else
+mutex_t g_colorscheme_mutex = {.impl = PTHREAD_MUTEX_INITIALIZER, .name = NULL}; /* POSIX pthread_mutex_t */
+#endif
+
+/* ============================================================================
+ * Built-In Color Schemes
+ * ============================================================================ */
+
+/**
+ * @brief Pastel color scheme (default ascii-chat theme)
+ * Soft, pleasant pastel colors for terminal viewing
+ */
+static const color_scheme_t PASTEL_SCHEME = {.name = "pastel",
+                                             .description = "Soft pastel colors (ascii-chat default)",
+                                             .log_colors_dark =
+                                                 {
+                                                     {240, 150, 100}, /* DEV: Orange */
+                                                     {101, 172, 225}, /* DEBUG: Cyan */
+                                                     {144, 224, 112}, /* INFO: Green */
+                                                     {240, 204, 145}, /* WARN: Yellow */
+                                                     {232, 93, 111},  /* ERROR: Red */
+                                                     {200, 160, 216}, /* FATAL: Magenta */
+                                                     {128, 128, 128}, /* GREY */
+                                                     {255, 255, 255}  /* RESET */
+                                                 },
+                                             .has_light_variant = true,
+                                             .log_colors_light =
+                                                 {
+                                                     {156, 97, 65},   /* DEV: Darker orange (matches dark) */
+                                                     {65, 111, 146},  /* DEBUG: Darker cyan (matches dark) */
+                                                     {93, 145, 72},   /* INFO: Darker green (matches dark) */
+                                                     {156, 132, 94},  /* WARN: Darker yellow (matches dark) */
+                                                     {150, 60, 72},   /* ERROR: Darker red (matches dark) */
+                                                     {130, 104, 140}, /* FATAL: Darker magenta (matches dark) */
+                                                     {80, 80, 80},    /* GREY: Darker gray */
+                                                     {0, 0, 0}        /* RESET */
+                                                 },
+                                             .is_builtin = true};
+
+/**
+ * @brief Nord color scheme
+ * Arctic, muted colors inspired by Nord theme
+ */
+static const color_scheme_t NORD_SCHEME = {.name = "nord",
+                                           .description = "Arctic, muted Nord theme colors",
+                                           .log_colors_dark =
+                                               {
+                                                   {191, 144, 97},  /* DEV: Nord orange */
+                                                   {143, 188, 187}, /* DEBUG: Nord frost */
+                                                   {163, 190, 140}, /* INFO: Nord green */
+                                                   {235, 203, 139}, /* WARN: Nord sun */
+                                                   {191, 97, 106},  /* ERROR: Nord red */
+                                                   {180, 142, 173}, /* FATAL: Nord purple */
+                                                   {216, 222, 233}, /* GREY: Nord snow */
+                                                   {255, 255, 255}  /* RESET */
+                                               },
+                                           .has_light_variant = true,
+                                           .log_colors_light =
+                                               {
+                                                   {76, 86, 106},  /* DEV: Nord bg dark */
+                                                   {67, 76, 94},   /* DEBUG: Nord bg darker */
+                                                   {89, 131, 52},  /* INFO: Darker green */
+                                                   {191, 144, 0},  /* WARN: Darker yellow */
+                                                   {129, 30, 44},  /* ERROR: Darker red */
+                                                   {110, 76, 101}, /* FATAL: Darker purple */
+                                                   {76, 86, 106},  /* GREY */
+                                                   {0, 0, 0}       /* RESET */
+                                               },
+                                           .is_builtin = true};
+
+/**
+ * @brief Solarized color scheme
+ * Precision colors for machines and people (auto-adapts to terminal background)
+ */
+static const color_scheme_t SOLARIZED_SCHEME = {.name = "solarized",
+                                                .description = "Solarized theme - precision colors",
+                                                .log_colors_dark =
+                                                    {
+                                                        {203, 75, 22},   /* DEV: Orange */
+                                                        {42, 161, 152},  /* DEBUG: Cyan */
+                                                        {133, 153, 0},   /* INFO: Green */
+                                                        {181, 137, 0},   /* WARN: Yellow */
+                                                        {220, 50, 47},   /* ERROR: Red */
+                                                        {108, 113, 196}, /* FATAL: Violet */
+                                                        {101, 123, 142}, /* GREY: Base0 */
+                                                        {255, 255, 255}  /* RESET */
+                                                    },
+                                                .has_light_variant = true,
+                                                .log_colors_light =
+                                                    {
+                                                        {161, 105, 70}, /* DEV: Brown/Orange */
+                                                        {20, 110, 101}, /* DEBUG: Darker cyan */
+                                                        {89, 100, 0},   /* INFO: Darker green */
+                                                        {101, 76, 0},   /* WARN: Darker yellow */
+                                                        {153, 0, 0},    /* ERROR: Darker red */
+                                                        {68, 68, 153},  /* FATAL: Darker violet */
+                                                        {42, 61, 76},   /* GREY */
+                                                        {0, 0, 0}       /* RESET */
+                                                    },
+                                                .is_builtin = true};
+
+/**
+ * @brief Dracula color scheme
+ * Dark vampiric theme with vibrant colors
+ */
+static const color_scheme_t DRACULA_SCHEME = {.name = "dracula",
+                                              .description = "Dracula dark theme - vampiric colors",
+                                              .log_colors_dark =
+                                                  {
+                                                      {255, 121, 84},  /* DEV: Orange */
+                                                      {139, 233, 253}, /* DEBUG: Cyan */
+                                                      {80, 250, 123},  /* INFO: Green */
+                                                      {241, 250, 140}, /* WARN: Yellow */
+                                                      {255, 121, 198}, /* ERROR: Pink */
+                                                      {189, 147, 249}, /* FATAL: Purple */
+                                                      {98, 114, 164},  /* GREY: Comment */
+                                                      {255, 255, 255}  /* RESET */
+                                                  },
+                                              .has_light_variant = false,
+                                              .is_builtin = true};
+
+/**
+ * @brief Gruvbox color scheme
+ * Retro warm colors with high contrast (auto-adapts to terminal background)
+ */
+static const color_scheme_t GRUVBOX_SCHEME = {.name = "gruvbox",
+                                              .description = "Gruvbox theme - retro warm colors",
+                                              .log_colors_dark =
+                                                  {
+                                                      {254, 128, 25},  /* DEV: bright_orange */
+                                                      {142, 192, 124}, /* DEBUG: bright_green */
+                                                      {142, 192, 124}, /* INFO: bright_green */
+                                                      {250, 189, 47},  /* WARN: bright_yellow */
+                                                      {251, 73, 52},   /* ERROR: bright_red */
+                                                      {211, 134, 155}, /* FATAL: bright_purple */
+                                                      {168, 153, 132}, /* GREY: gray */
+                                                      {255, 255, 255}  /* RESET */
+                                                  },
+                                              .has_light_variant = true,
+                                              .log_colors_light =
+                                                  {
+                                                      {175, 58, 3},   /* DEV: faded_orange */
+                                                      {121, 116, 14}, /* DEBUG: faded_green */
+                                                      {121, 116, 14}, /* INFO: faded_green */
+                                                      {181, 118, 20}, /* WARN: faded_yellow */
+                                                      {157, 0, 6},    /* ERROR: faded_red */
+                                                      {108, 52, 107}, /* FATAL: faded_purple */
+                                                      {105, 104, 98}, /* GREY */
+                                                      {0, 0, 0}       /* RESET */
+                                                  },
+                                              .is_builtin = true};
+
+/**
+ * @brief Monokai color scheme
+ * Vibrant coding theme
+ */
+static const color_scheme_t MONOKAI_SCHEME = {.name = "monokai",
+                                              .description = "Monokai theme - vibrant coding colors",
+                                              .log_colors_dark =
+                                                  {
+                                                      {253, 151, 31},  /* DEV: Orange */
+                                                      {166, 226, 46},  /* DEBUG: Green */
+                                                      {174, 213, 129}, /* INFO: Light green */
+                                                      {241, 250, 140}, /* WARN: Yellow */
+                                                      {249, 38, 114},  /* ERROR: Magenta */
+                                                      {174, 129, 255}, /* FATAL: Purple */
+                                                      {117, 113, 94},  /* GREY: Comment */
+                                                      {255, 255, 255}  /* RESET */
+                                                  },
+                                              .has_light_variant = false,
+                                              .is_builtin = true};
+
+/**
+ * @brief Base16 Default color scheme
+ * Official Base16 Default colors by Chris Kempson
+ */
+static const color_scheme_t BASE16_DEFAULT_SCHEME = {.name = "base16-default",
+                                                     .description = "Base16 Default theme (Chris Kempson)",
+                                                     .log_colors_dark =
+                                                         {
+                                                             {220, 150, 86},  /* DEV: base09 (orange) */
+                                                             {134, 193, 185}, /* DEBUG: base0C (cyan) */
+                                                             {161, 181, 108}, /* INFO: base0B (green) */
+                                                             {247, 202, 136}, /* WARN: base0A (yellow) */
+                                                             {171, 70, 66},   /* ERROR: base08 (red) */
+                                                             {186, 139, 175}, /* FATAL: base0E (magenta) */
+                                                             {88, 88, 88},    /* GREY: base03 */
+                                                             {248, 248, 248}  /* RESET: base07 */
+                                                         },
+                                                     .has_light_variant = true,
+                                                     .log_colors_light =
+                                                         {
+                                                             {161, 105, 70},  /* DEV: base0F (brown) */
+                                                             {124, 175, 194}, /* DEBUG: base0D (blue) */
+                                                             {161, 181, 108}, /* INFO: base0B (green) */
+                                                             {247, 202, 136}, /* WARN: base0A (yellow) */
+                                                             {171, 70, 66},   /* ERROR: base08 (red) */
+                                                             {186, 139, 175}, /* FATAL: base0E (magenta) */
+                                                             {184, 184, 184}, /* GREY: base04 */
+                                                             {24, 24, 24}     /* RESET: base00 */
+                                                         },
+                                                     .is_builtin = true};
+
+/**
+ * @brief Array of all built-in color schemes
+ */
+static const color_scheme_t *BUILTIN_SCHEMES[] = {&PASTEL_SCHEME, &NORD_SCHEME, &SOLARIZED_SCHEME, &DRACULA_SCHEME, &GRUVBOX_SCHEME, &MONOKAI_SCHEME, &BASE16_DEFAULT_SCHEME};
+
+#define NUM_BUILTIN_SCHEMES (sizeof(BUILTIN_SCHEMES) / sizeof(BUILTIN_SCHEMES[0]))
+
+/* ============================================================================
+ * Internal Functions
+ * ============================================================================ */
+
+/**
+ * @brief Find a built-in scheme by name
+ */
+static const color_scheme_t *find_builtin_scheme(const char *name) {
+  if (!name)
+    return NULL;
+
+  /* Handle "default" alias */
+  if (strcmp(name, "default") == 0) {
+    name = "pastel";
+  }
+
+  for (size_t i = 0; i < NUM_BUILTIN_SCHEMES; i++) {
+    if (strcmp(BUILTIN_SCHEMES[i]->name, name) == 0) {
+      return BUILTIN_SCHEMES[i];
+    }
+  }
+
+  return NULL;
+}
+
+/* ============================================================================
+ * Public API: Initialization
+ * ============================================================================ */
+
+asciichat_error_t colorscheme_init(void) {
+  if (lifecycle_is_initialized(&g_colorscheme_lifecycle)) {
+    return ASCIICHAT_OK;
+  }
+
+  /* NOTE: Mutex is already statically initialized on POSIX with PTHREAD_MUTEX_INITIALIZER.
+   * On Windows and Emscripten/WASM, we initialize it here. Do NOT call mutex_init() on native POSIX
+   * because double-initialization of pthread_mutex_t causes undefined behavior and deadlocks.
+   * Emscripten with pthreads requires explicit initialization because PTHREAD_MUTEX_INITIALIZER
+   * doesn't work correctly in threaded WASM builds. */
+#if defined(_WIN32) || defined(__EMSCRIPTEN__)
+  static bool mutex_initialized = false;
+  if (!mutex_initialized) {
+#ifdef __EMSCRIPTEN__
+#else
+#endif
+    mutex_init(&g_colorscheme_mutex, "colorscheme");
+    mutex_initialized = true;
+  } else {
+  }
+#else
+#endif
+
+  /* Load default scheme */
+  const color_scheme_t *pastel = find_builtin_scheme("pastel");
+  if (!pastel) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to load default pastel scheme");
+  }
+
+  memcpy(&g_active_scheme, pastel, sizeof(color_scheme_t));
+  atomic_fetch_add(&g_scheme_revision, 1);
+
+  /* Mark as initialized */
+  lifecycle_init(&g_colorscheme_lifecycle, "colorscheme");
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+  // Register the statically initialized mutex without initializing its pthread storage again.
+  g_colorscheme_mutex.name = NAMED_REGISTER_MUTEX(&g_colorscheme_mutex, "colorscheme", NULL);
+#endif
+
+  return ASCIICHAT_OK;
+}
+
+void colorscheme_cleanup_compiled(compiled_color_scheme_t *compiled) {
+  if (!compiled) {
+    return;
+  }
+
+  /* Free allocated color code strings */
+  for (int i = 0; i < 8; i++) {
+    char *str_16 = (char *)compiled->codes_16[i];
+    char *str_256 = (char *)compiled->codes_256[i];
+    char *str_truecolor = (char *)compiled->codes_truecolor[i];
+    /* Only free non-NULL pointers - protects against uninitialized data */
+    if (str_16 != NULL) {
+      SAFE_FREE(str_16);
+    }
+    if (str_256 != NULL) {
+      SAFE_FREE(str_256);
+    }
+    if (str_truecolor != NULL) {
+      SAFE_FREE(str_truecolor);
+    }
+  }
+  memset(compiled, 0, sizeof(compiled_color_scheme_t));
+}
+
+void colorscheme_destroy(void) {
+  if (!lifecycle_is_initialized(&g_colorscheme_lifecycle)) {
+    return;
+  }
+
+  mutex_lock(&g_colorscheme_mutex);
+  memset(&g_active_scheme, 0, sizeof(color_scheme_t));
+  atomic_fetch_add(&g_scheme_revision, 1);
+
+  /* Mark as uninitialized */
+  lifecycle_shutdown(&g_colorscheme_lifecycle);
+
+  mutex_unlock(&g_colorscheme_mutex);
+
+  /* NOTE: Do NOT call mutex_destroy() on native POSIX because the mutex is statically
+   * initialized with PTHREAD_MUTEX_INITIALIZER. Destroying a statically-initialized
+   * mutex is undefined behavior. On Windows and Emscripten, we must destroy the mutex
+   * because it was explicitly initialized in colorscheme_init(). */
+#if defined(_WIN32) || defined(__EMSCRIPTEN__)
+  mutex_destroy(&g_colorscheme_mutex);
+#endif
+}
+
+/* ============================================================================
+ * Public API: Scheme Management
+ * ============================================================================ */
+
+const color_scheme_t *colorscheme_get_active_scheme(void) {
+  if (!lifecycle_is_initialized(&g_colorscheme_lifecycle)) {
+    /* Lazy initialization of color system */
+    colorscheme_init();
+  }
+
+  static _Thread_local color_scheme_t snapshot;
+  static _Thread_local uint64_t revision;
+  if (revision != atomic_load(&g_scheme_revision)) {
+    mutex_lock(&g_colorscheme_mutex);
+    memcpy(&snapshot, &g_active_scheme, sizeof(snapshot));
+    revision = atomic_load(&g_scheme_revision);
+    mutex_unlock(&g_colorscheme_mutex);
+  }
+  return &snapshot;
+}
+
+asciichat_error_t colorscheme_set_active_scheme(const char *name) {
+  if (!name) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Scheme name is NULL");
+  }
+
+  /* Ensure color system is initialized */
+  if (!lifecycle_is_initialized(&g_colorscheme_lifecycle)) {
+    colorscheme_init();
+  }
+
+  color_scheme_t scheme = {0};
+  asciichat_error_t result = ASCIICHAT_OK;
+
+  /* Try loading as built-in scheme first */
+  const color_scheme_t *builtin = find_builtin_scheme(name);
+  if (builtin) {
+    memcpy(&scheme, builtin, sizeof(color_scheme_t));
+  } else if (strchr(name, '/') || strchr(name, '.')) {
+    /* Try loading as file path if it contains / or . */
+    result = colorscheme_load_from_file(name, &scheme);
+    if (result != ASCIICHAT_OK) {
+      return result;
+    }
+  } else {
+    return SET_ERRNO(ERROR_CONFIG, "Unknown color scheme: %s (not a built-in scheme or valid file path)", name);
+  }
+
+  mutex_lock(&g_colorscheme_mutex);
+  memcpy(&g_active_scheme, &scheme, sizeof(color_scheme_t));
+  atomic_fetch_add(&g_scheme_revision, 1);
+  mutex_unlock(&g_colorscheme_mutex);
+
+  log_dev("Switched to color scheme: %s", name);
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t colorscheme_load_builtin(const char *name, color_scheme_t *scheme) {
+  if (!name || !scheme) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL name or scheme pointer");
+  }
+
+  const color_scheme_t *builtin = find_builtin_scheme(name);
+  if (!builtin) {
+    return SET_ERRNO(ERROR_CONFIG, "Unknown built-in color scheme: %s", name);
+  }
+
+  memcpy(scheme, builtin, sizeof(color_scheme_t));
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t colorscheme_load_from_file(const char *path, color_scheme_t *scheme) {
+  if (!path || !scheme) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL path or scheme pointer");
+  }
+
+  /* Check if file exists and is readable */
+  struct stat sb;
+  if (stat(path, &sb) != 0 || !S_ISREG(sb.st_mode)) {
+    return SET_ERRNO(ERROR_FILE_NOT_FOUND, "Color scheme file not found or not readable: %s", path);
+  }
+
+  /* Parse TOML file */
+  toml_result_t result = toml_parse_file_ex(path);
+  if (!result.ok) {
+    toml_free(result);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to parse color scheme file '%s': %s", path, result.errmsg);
+  }
+
+  /* Extract scheme information */
+  memset(scheme, 0, sizeof(color_scheme_t));
+
+  /* Get scheme section */
+  toml_datum_t scheme_section = toml_get(result.toptab, "scheme");
+  if (scheme_section.type == TOML_TABLE) {
+    /* Get scheme name */
+    toml_datum_t name_datum = toml_get(scheme_section, "name");
+    if (name_datum.type == TOML_STRING) {
+      SAFE_STRNCPY(scheme->name, name_datum.u.s, sizeof(scheme->name));
+    }
+
+    /* Get scheme description */
+    toml_datum_t desc_datum = toml_get(scheme_section, "description");
+    if (desc_datum.type == TOML_STRING) {
+      SAFE_STRNCPY(scheme->description, desc_datum.u.s, sizeof(scheme->description));
+    }
+  }
+
+  /* Get colors section */
+  toml_datum_t colors_section = toml_get(result.toptab, "colors");
+  if (colors_section.type == TOML_TABLE) {
+    /* Parse dark mode colors */
+    toml_datum_t dark_section = toml_get(colors_section, "dark");
+    if (dark_section.type == TOML_TABLE) {
+      const char *color_names[] = {"dev", "debug", "info", "warn", "error", "fatal", "grey", "reset"};
+      for (int i = 0; i < 8; i++) {
+        toml_datum_t color_value = toml_get(dark_section, color_names[i]);
+        if (color_value.type == TOML_STRING) {
+          parse_hex_color(color_value.u.s, &scheme->log_colors_dark[i].r, &scheme->log_colors_dark[i].g, &scheme->log_colors_dark[i].b);
+        }
+      }
+    }
+
+    /* Parse light mode colors (optional) */
+    toml_datum_t light_section = toml_get(colors_section, "light");
+    if (light_section.type == TOML_TABLE) {
+      scheme->has_light_variant = true;
+      const char *color_names[] = {"dev", "debug", "info", "warn", "error", "fatal", "grey", "reset"};
+      for (int i = 0; i < 8; i++) {
+        toml_datum_t color_value = toml_get(light_section, color_names[i]);
+        if (color_value.type == TOML_STRING) {
+          parse_hex_color(color_value.u.s, &scheme->log_colors_light[i].r, &scheme->log_colors_light[i].g, &scheme->log_colors_light[i].b);
+        }
+      }
+    }
+  }
+
+  scheme->is_builtin = false;
+  SAFE_STRNCPY(scheme->source_file, path, sizeof(scheme->source_file));
+
+  toml_free(result);
+  return ASCIICHAT_OK;
+}
+
+/* ============================================================================
+ * Public API: Color Conversion
+ * ============================================================================ */
+
+asciichat_error_t parse_hex_color(const char *hex, uint8_t *r, uint8_t *g, uint8_t *b) {
+  if (!hex || !r || !g || !b) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter");
+  }
+
+  /* Skip '#' prefix if present */
+  if (hex[0] == '#') {
+    hex++;
+  }
+
+  /* Validate hex string length */
+  if (strlen(hex) != 6) {
+    return SET_ERRNO(ERROR_CONFIG, "Invalid hex color (must be #RRGGBB): %s", hex);
+  }
+
+  for (size_t i = 0; i < 6; ++i) {
+    if (!((hex[i] >= '0' && hex[i] <= '9') || (hex[i] >= 'a' && hex[i] <= 'f') || (hex[i] >= 'A' && hex[i] <= 'F'))) {
+      return SET_ERRNO(ERROR_CONFIG, "Invalid hex color format: %s", hex);
+    }
+  }
+
+  /* Parse hex digits */
+  unsigned int rgb = 0;
+  if (SAFE_SSCANF(hex, "%6x", &rgb) != 1) {
+    return SET_ERRNO(ERROR_CONFIG, "Invalid hex color format: %s", hex);
+  }
+
+  *r = (rgb >> 16) & 0xFF;
+  *g = (rgb >> 8) & 0xFF;
+  *b = rgb & 0xFF;
+
+  return ASCIICHAT_OK;
+}
+
+/* Note: rgb_to_16color() and rgb_to_256color() are already defined in lib/video/ansi_fast.c
+ * We use those definitions instead of duplicating them here.
+ * External declarations from ansi_fast.h are used above. */
+
+void rgb_to_truecolor_ansi(uint8_t r, uint8_t g, uint8_t b, char *buf, size_t size) {
+  if (!buf || size < 20)
+    return;
+  safe_snprintf(buf, size, "\x1b[38;2;%d;%d;%dm", r, g, b);
+}
+
+/* ============================================================================
+ * Public API: Scheme Compilation
+ * ============================================================================ */
+
+asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, terminal_color_mode_t mode, terminal_background_t background, compiled_color_scheme_t *compiled) {
+  if (!scheme || !compiled) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL scheme or compiled pointer");
+  }
+
+  /* Note: mode parameter reserved for future use */
+  (void)mode;
+
+  /* Free any previously compiled strings before recompiling */
+  /* This prevents memory leaks when the color scheme is recompiled */
+  /* Only cleanup if we've actually compiled before (codes_16[0] != NULL means already compiled) */
+  if (compiled->codes_16[0] != NULL) {
+    colorscheme_cleanup_compiled(compiled);
+  } else {
+  }
+
+  /* Select color array based on background */
+  const rgb_pixel_t *colors = (background == TERM_BACKGROUND_LIGHT && scheme->has_light_variant) ? scheme->log_colors_light : scheme->log_colors_dark;
+  // Slot 7 stores the scheme's neutral RGB value, although log entries compile
+  // that slot as an ANSI reset. Notices need its actual foreground color.
+  rgb_pixel_t foreground = colors[7];
+  uint8_t foreground_index = rgb_to_16color(foreground.r, foreground.g, foreground.b);
+  safe_snprintf(compiled->foreground_16, sizeof(compiled->foreground_16), "\033[%dm", foreground_index < 8 ? 30 + foreground_index : 90 + foreground_index - 8);
+  safe_snprintf(compiled->foreground_256, sizeof(compiled->foreground_256), "\033[38;5;%dm", rgb_to_256color(foreground.r, foreground.g, foreground.b));
+  rgb_to_truecolor_ansi(foreground.r, foreground.g, foreground.b, compiled->foreground_truecolor, sizeof(compiled->foreground_truecolor));
+  /* Helper: allocate and format a color code string */
+  char temp_buf[OPTIONS_COLORSCHEME_TEMP_BUFFER_SIZE];
+
+  /* Compile for 16-color mode */
+  for (int i = 0; i < 8; i++) {
+    if (i == 7) {
+      /* RESET */
+      SAFE_STRNCPY(temp_buf, "\x1b[0m", sizeof(temp_buf));
+    } else {
+      uint8_t color_idx = rgb_to_16color(colors[i].r, colors[i].g, colors[i].b);
+      /* ANSI color codes: 30-37 for normal, 90-97 for bright */
+      if (color_idx < 8) {
+        safe_snprintf(temp_buf, sizeof(temp_buf), "\x1b[%dm", 30 + color_idx);
+      } else {
+        safe_snprintf(temp_buf, sizeof(temp_buf), "\x1b[%dm", 90 + (color_idx - 8));
+      }
+    }
+    /* Allocate string with SAFE_MALLOC and copy */
+    size_t len = strlen(temp_buf) + 1;
+    char *allocated = SAFE_MALLOC(len, char *);
+    if (!allocated) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate color code string");
+    }
+    memcpy(allocated, temp_buf, len);
+    compiled->codes_16[i] = allocated;
+  }
+  /* Compile for 256-color mode */
+  for (int i = 0; i < 8; i++) {
+    if (i == 7) {
+      SAFE_STRNCPY(temp_buf, "\x1b[0m", sizeof(temp_buf));
+    } else {
+      uint8_t color_idx = rgb_to_256color(colors[i].r, colors[i].g, colors[i].b);
+      safe_snprintf(temp_buf, sizeof(temp_buf), "\x1b[38;5;%dm", color_idx);
+    }
+    /* Allocate string with SAFE_MALLOC and copy */
+    size_t len = strlen(temp_buf) + 1;
+    char *allocated = SAFE_MALLOC(len, char *);
+    if (!allocated) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate color code string");
+    }
+    memcpy(allocated, temp_buf, len);
+    compiled->codes_256[i] = allocated;
+  }
+
+  /* Compile for truecolor mode */
+  for (int i = 0; i < 8; i++) {
+    if (i == 7) {
+      SAFE_STRNCPY(temp_buf, "\x1b[0m", sizeof(temp_buf));
+    } else {
+      rgb_to_truecolor_ansi(colors[i].r, colors[i].g, colors[i].b, temp_buf, sizeof(temp_buf));
+    }
+    /* Allocate string with SAFE_MALLOC and copy */
+    size_t len = strlen(temp_buf) + 1;
+    char *allocated = SAFE_MALLOC(len, char *);
+    if (!allocated) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate color code string");
+    }
+    memcpy(allocated, temp_buf, len);
+    compiled->codes_truecolor[i] = allocated;
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/* ============================================================================
+ * Public API: Export
+ * ============================================================================ */
+
+asciichat_error_t colorscheme_export_scheme(const char *scheme_name, const char *file_path) {
+  if (!scheme_name) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Scheme name is NULL");
+  }
+
+  color_scheme_t scheme = {0};
+  asciichat_error_t result = colorscheme_load_builtin(scheme_name, &scheme);
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+
+  /* Generate TOML content */
+  char toml_content[OPTIONS_COLORSCHEME_TOML_CONTENT_BUFFER_SIZE] = {0};
+  size_t offset = 0;
+
+  /* Scheme header section */
+  offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset,
+                          "[scheme]\n"
+                          "name = \"%s\"\n"
+                          "description = \"%s\"\n\n",
+                          scheme.name, scheme.description);
+
+  /* Dark mode colors */
+  const char *color_names[] = {"dev", "debug", "info", "warn", "error", "fatal", "grey", "reset"};
+  offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, "[colors.dark]\n");
+
+  for (int i = 0; i < 8; i++) {
+    offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, "%s = \"#%02X%02X%02X\"\n", color_names[i], scheme.log_colors_dark[i].r, scheme.log_colors_dark[i].g,
+                            scheme.log_colors_dark[i].b);
+  }
+
+  /* Light mode colors if available */
+  if (scheme.has_light_variant) {
+    offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, "\n[colors.light]\n");
+    for (int i = 0; i < 8; i++) {
+      offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, "%s = \"#%02X%02X%02X\"\n", color_names[i], scheme.log_colors_light[i].r, scheme.log_colors_light[i].g,
+                              scheme.log_colors_light[i].b);
+    }
+  }
+
+  /* Write to file or stdout */
+  if (file_path) {
+    FILE *fp = platform_fopen("file_stream", file_path, "w");
+    if (!fp) {
+      return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Cannot open %s for writing", file_path);
+    }
+    defer(fclose(fp));
+    if (fputs(toml_content, fp) < 0) {
+      return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to write to %s", file_path);
+    }
+  } else {
+    /* Write to stdout */
+    if (fputs(toml_content, stdout) < 0) {
+      return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to write to stdout");
+    }
+    /* Flush to ensure piped output is written immediately */
+    (void)fflush(stdout);
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/* ============================================================================
+ * Terminal Theme Detection
+ * ============================================================================ */
+
+/**
+ * @brief Detect the user's terminal theme (dark or light background)
+ *
+ * Determines the terminal's color background theme to adapt color schemes accordingly.
+ * The detection uses a priority-based approach:
+ * 1. Environment variable override (TERM_BACKGROUND="light" or "dark")
+ * 2. Automatic detection via terminal_has_dark_background():
+ *    - OSC 11 escape query with luminance calculation (modern terminals)
+ *    - Environment variables and terminal type hints (fallback)
+ *
+ * @return The detected theme: TERM_BACKGROUND_LIGHT or TERM_BACKGROUND_DARK
+ */
+terminal_background_t detect_terminal_background(void) {
+  /* Method 1: Check environment variable override (highest priority) */
+  const char *term_bg = SAFE_GETENV("TERM_BACKGROUND");
+  if (term_bg) {
+    if (platform_strcasecmp(term_bg, "light") == 0) {
+      return TERM_BACKGROUND_LIGHT;
+    }
+    if (platform_strcasecmp(term_bg, "dark") == 0) {
+      return TERM_BACKGROUND_DARK;
+    }
+  }
+
+  /* Method 2: Use terminal_has_dark_background() for automatic theme detection
+   * This checks OSC 11 background color, environment variables, and terminal type */
+  bool is_dark = terminal_has_dark_background();
+  return is_dark ? TERM_BACKGROUND_DARK : TERM_BACKGROUND_LIGHT;
+}
+
+/* ============================================================================
+ * Early Color Scheme Loading (called from main() before log_init)
+ * ============================================================================ */
+
+/**
+ * @brief Scan argv for --color-scheme option (quick parse, no validation)
+ * @param argc Argument count
+ * @param argv Argument array
+ * @return Color scheme name if found, NULL otherwise
+ *
+ * This is a simple linear scan that doesn't do full option parsing.
+ * It's only used to find --color-scheme before logging is initialized.
+ */
+static const char *find_cli_color_scheme(int argc, const char *const argv[]) {
+  for (int i = 1; i < argc - 1; i++) {
+    if (strcmp(argv[i], "--color-scheme") == 0) {
+      return argv[i + 1];
+    }
+  }
+  return NULL;
+}
+
+/**
+ * @brief Load color scheme from config files (checks multiple locations)
+ * @param scheme Pointer to store loaded scheme
+ * @return ASCIICHAT_OK if loaded from any location, ERROR_NOT_FOUND if none found
+ *
+ * Attempts to load user's custom color scheme from TOML config files using the
+ * unified platform config search API. Searches standard locations in priority order:
+ * 1. ~/.config/ascii-chat/colors.toml (highest priority, user config)
+ * 2. /opt/homebrew/etc/ascii-chat/colors.toml (macOS Homebrew)
+ * 3. /usr/local/etc/ascii-chat/colors.toml (Unix/Linux local)
+ * 4. /etc/ascii-chat/colors.toml (system-wide, lowest priority)
+ *
+ * Uses override semantics: returns first match (highest priority).
+ * Built-in defaults are used if no config file found.
+ */
+static asciichat_error_t load_config_color_scheme(color_scheme_t *scheme) {
+  if (!scheme) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "scheme pointer is NULL");
+  }
+
+  /* Use platform abstraction to find colors.toml across standard locations */
+  config_file_list_t config_files = {0};
+  asciichat_error_t search_result = platform_find_config_file("colors.toml", &config_files);
+
+  if (search_result != ASCIICHAT_OK) {
+    /* Platform search failed - non-fatal, will use built-in defaults */
+    return ERROR_NOT_FOUND;
+  }
+
+  /* Use first match (highest priority) - override semantics */
+  asciichat_error_t load_result = ERROR_NOT_FOUND;
+  if (config_files.count > 0) {
+    load_result = colorscheme_load_from_file(config_files.files[0].path, scheme);
+  }
+
+  /* Clean up search results */
+  config_file_list_destroy(&config_files);
+
+  return load_result;
+}
+
+/**
+ * @brief Initialize color scheme early (before logging)
+ * @param argc Argument count
+ * @param argv Argument array
+ * @return ASCIICHAT_OK on success, error code on failure (non-fatal)
+ *
+ * This function is called from main() BEFORE log_init() to apply color scheme
+ * to logging before any log messages are printed.
+ *
+ * Priority order:
+ * 1. --color-scheme CLI argument (highest priority)
+ * 2. ~/.config/ascii-chat/colors.toml config file
+ * 3. Built-in "pastel" default scheme (lowest priority)
+ */
+asciichat_error_t options_colorscheme_init_early(int argc, const char *const argv[]) {
+  /* Initialize the color system with defaults */
+  asciichat_error_t result = colorscheme_init();
+  if (result != ASCIICHAT_OK) {
+    /* Non-fatal: use built-in defaults */
+    return ASCIICHAT_OK;
+  }
+
+  /* Step 1: Try to load from config file (~/.config/ascii-chat/colors.toml) */
+  color_scheme_t config_scheme = {0};
+  asciichat_error_t config_result = load_config_color_scheme(&config_scheme);
+  if (config_result == ASCIICHAT_OK) {
+    /* Config file loaded successfully, apply it */
+    colorscheme_set_active_scheme(config_scheme.name);
+  }
+
+  /* Step 2: CLI --color-scheme overrides config file */
+  const char *cli_scheme = find_cli_color_scheme(argc, argv);
+  if (cli_scheme) {
+    asciichat_error_t cli_result = colorscheme_set_active_scheme(cli_scheme);
+    if (cli_result != ASCIICHAT_OK) {
+      /* Invalid scheme name from CLI, continue with current scheme */
+      return cli_result;
+    }
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/* A single query services all logging and UI threads. Never hold the scheme
+ * mutex during terminal I/O: the input path can itself produce log messages. */
+static atomic_flag g_background_query = ATOMIC_FLAG_INIT;
+static atomic_uint_fast64_t g_background_checked_us;
+static atomic_int g_live_background = TERM_BACKGROUND_DARK;
+static _Thread_local bool g_resolving_palette;
+
+static terminal_background_t current_background(void) {
+  const char *override = SAFE_GETENV("TERM_BACKGROUND");
+  if (override && platform_strcasecmp(override, "light") == 0)
+    return TERM_BACKGROUND_LIGHT;
+  if (override && platform_strcasecmp(override, "dark") == 0)
+    return TERM_BACKGROUND_DARK;
+#if !defined(__EMSCRIPTEN__)
+  bool keyboard = keyboard_is_initialized();
+  uint8_t r, g, b;
+  if (keyboard && keyboard_stream_background(&r, &g, &b))
+    atomic_store(&g_live_background, (0.2126 * r + 0.7152 * g + 0.0722 * b) < 127.5 ? TERM_BACKGROUND_DARK : TERM_BACKGROUND_LIGHT);
+#endif
+  if (!platform_isatty(STDERR_FILENO))
+    return (terminal_background_t)atomic_load(&g_live_background);
+  uint64_t now = platform_get_monotonic_time_us();
+  uint64_t checked = atomic_load(&g_background_checked_us);
+  if ((!checked || now - checked >= 250000) && !atomic_flag_test_and_set(&g_background_query)) {
+#if !defined(__EMSCRIPTEN__)
+    if (keyboard && ui_controller_current_screen() != UI_SCREEN_MEDIA) {
+      // Rendering and logging must never wait for an unsupported terminal.
+      // Its normal input pump decodes the reply and publishes the new RGB.
+      (void)keyboard_request_background();
+    }
+#else
+    atomic_store(&g_live_background, detect_terminal_background());
+#endif
+    atomic_store(&g_background_checked_us, platform_get_monotonic_time_us());
+    atomic_flag_clear(&g_background_query);
+  }
+  return (terminal_background_t)atomic_load(&g_live_background);
+}
+
+terminal_background_t colorscheme_current_background(void) {
+  return current_background();
+}
+
+void colorscheme_current_palette(colorscheme_palette_t *palette, terminal_color_mode_t mode) {
+  if (!palette)
+    return;
+  if (g_resolving_palette)
+    return;
+  memset(palette, 0, sizeof(*palette));
+  g_resolving_palette = true;
+  palette->background = current_background();
+  static _Thread_local colorscheme_palette_t cached;
+  static _Thread_local terminal_color_mode_t cached_mode;
+  static _Thread_local uint64_t cached_revision;
+  uint64_t revision = atomic_load(&g_scheme_revision);
+  if (cached_revision == revision && cached_mode == mode && cached.background == palette->background) {
+    *palette = cached;
+    g_resolving_palette = false;
+    return;
+  }
+  const color_scheme_t *active = colorscheme_get_active_scheme();
+  rgb_pixel_t colors[COLORSCHEME_LOG_COLOR_COUNT];
+  memcpy(colors, palette->background == TERM_BACKGROUND_LIGHT && active->has_light_variant ? active->log_colors_light : active->log_colors_dark, sizeof(colors));
+  for (int i = 0; i < 9; ++i) {
+    char *code = i == 8 ? palette->foreground : palette->codes[i];
+    rgb_pixel_t rgb = colors[i == 8 ? 7 : i];
+    if (mode == TERM_COLOR_NONE)
+      continue;
+    if (i < 8) {
+      char *background = palette->background_codes[i];
+      if (i == 7)
+        safe_snprintf(background, COLORSCHEME_SGR_BUFFER_SIZE, "\033[49m");
+      else if (mode >= TERM_COLOR_TRUECOLOR)
+        safe_snprintf(background, COLORSCHEME_SGR_BUFFER_SIZE, "\033[48;2;%u;%u;%um", rgb.r, rgb.g, rgb.b);
+      else if (mode >= TERM_COLOR_256)
+        safe_snprintf(background, COLORSCHEME_SGR_BUFFER_SIZE, "\033[48;5;%dm", rgb_to_256color(rgb.r, rgb.g, rgb.b));
+      else {
+        unsigned index = rgb_to_16color(rgb.r, rgb.g, rgb.b);
+        safe_snprintf(background, COLORSCHEME_SGR_BUFFER_SIZE, "\033[%um", index < 8 ? 40 + index : 100 + index - 8);
+      }
+    }
+    if (i == 7)
+      safe_snprintf(code, COLORSCHEME_SGR_BUFFER_SIZE, "\033[0m");
+    else if (mode >= TERM_COLOR_TRUECOLOR)
+      rgb_to_truecolor_ansi(rgb.r, rgb.g, rgb.b, code, 32);
+    else if (mode >= TERM_COLOR_256)
+      safe_snprintf(code, COLORSCHEME_SGR_BUFFER_SIZE, "\033[38;5;%dm", rgb_to_256color(rgb.r, rgb.g, rgb.b));
+    else {
+      unsigned index = rgb_to_16color(rgb.r, rgb.g, rgb.b);
+      safe_snprintf(code, COLORSCHEME_SGR_BUFFER_SIZE, "\033[%um", index < 8 ? 30 + index : 90 + index - 8);
+    }
+  }
+  cached = *palette;
+  cached_mode = mode;
+  cached_revision = revision;
+  g_resolving_palette = false;
+}
+
+void colorscheme_apply(const color_scheme_t *scheme) {
+  if (!scheme)
+    return;
+  colorscheme_get_active_scheme();
+  mutex_lock(&g_colorscheme_mutex);
+  memmove(&g_active_scheme, scheme, sizeof(g_active_scheme));
+  atomic_fetch_add(&g_scheme_revision, 1);
+  mutex_unlock(&g_colorscheme_mutex);
+}
+
+uint8_t colorscheme_highlight_background(void) {
+  bool dark = colorscheme_current_background() == TERM_BACKGROUND_DARK;
+  uint8_t grey = dark ? 70 : 200;
+#if !defined(__EMSCRIPTEN__)
+  uint8_t r, g, b;
+  if (keyboard_is_initialized() && keyboard_stream_background(&r, &g, &b) && abs((int)((r + g + b) / 3) - grey) < 40)
+    grey = dark ? 0 : 255;
+#endif
+  return grey;
+}

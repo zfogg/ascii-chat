@@ -17,8 +17,7 @@ static bool discover_ok = true, bad_lan, bad_external;
 static char target[16], description[128];
 static struct UPNPDev device;
 static int igd_result = 1;
-struct UPNPDev *upnpDiscover(int ms, const char *iface, const char *path, int port, int ipv6, unsigned char ttl,
-                             int *error) {
+struct UPNPDev *upnpDiscover(int ms, const char *iface, const char *path, int port, int ipv6, unsigned char ttl, int *error) {
   (void)iface;
   (void)path;
   (void)port;
@@ -50,8 +49,7 @@ int UPNP_GetExternalIPAddress(const char *url, const char *service, char *ip) {
   snprintf(ip, 16, "198.51.100.20");
   return bad_external ? 501 : 0;
 }
-int UPNP_AddPortMapping(const char *url, const char *service, const char *external, const char *internal,
-                        const char *client, const char *desc, const char *proto, const char *remote,
+int UPNP_AddPortMapping(const char *url, const char *service, const char *external, const char *internal, const char *client, const char *desc, const char *proto, const char *remote,
                         const char *lease) {
   assert(strcmp(url, "http://192.168.1.1/control") == 0);
   assert(strcmp(service, "urn:test:WANIPConnection:1") == 0);
@@ -62,8 +60,7 @@ int UPNP_AddPortMapping(const char *url, const char *service, const char *extern
   add_calls++;
   return add_error;
 }
-int UPNP_GetSpecificPortMappingEntry(const char *url, const char *service, const char *external, const char *proto,
-                                     const char *remote, char *client, char *port, char *desc, char *enabled,
+int UPNP_GetSpecificPortMappingEntry(const char *url, const char *service, const char *external, const char *proto, const char *remote, char *client, char *port, char *desc, char *enabled,
                                      char *lease) {
   (void)url;
   (void)service;
@@ -77,8 +74,7 @@ int UPNP_GetSpecificPortMappingEntry(const char *url, const char *service, const
   snprintf(lease, 16, "%s", granted_lease);
   return query_error;
 }
-int UPNP_DeletePortMapping(const char *url, const char *service, const char *port, const char *proto,
-                           const char *remote) {
+int UPNP_DeletePortMapping(const char *url, const char *service, const char *port, const char *proto, const char *remote) {
   assert(strcmp(url, "http://192.168.1.1/control") == 0);
   assert(strcmp(service, "urn:test:WANIPConnection:1") == 0);
   assert(strcmp(port, "27224") == 0 && strcmp(proto, expected_protocol) == 0);
@@ -127,8 +123,7 @@ int sendpublicaddressrequest(natpmp_t *pmp) {
 }
 int sendnewportmappingrequest(natpmp_t *pmp, int proto, uint16_t internal, uint16_t external, uint32_t lifetime) {
   (void)pmp;
-  assert(proto == (strcmp(expected_protocol, "UDP") == 0 ? NATPMP_PROTOCOL_UDP : NATPMP_PROTOCOL_TCP) &&
-         internal == 27224);
+  assert(proto == (strcmp(expected_protocol, "UDP") == 0 ? NATPMP_PROTOCOL_UDP : NATPMP_PROTOCOL_TCP) && internal == 27224);
   assert(external == 27224 || external == 30000);
   pmp_type = proto;
   pmp_reads = 0;

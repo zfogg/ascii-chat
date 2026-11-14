@@ -9,8 +9,7 @@
 void setup_crypto_network_quiet_logging(void);
 void restore_crypto_network_logging(void);
 
-TestSuite(crypto_network_integration, .init = setup_crypto_network_quiet_logging,
-          .fini = restore_crypto_network_logging);
+TestSuite(crypto_network_integration, .init = setup_crypto_network_quiet_logging, .fini = restore_crypto_network_logging);
 
 void setup_crypto_network_quiet_logging(void) {
   // Set log level to FATAL to suppress all INFO/DEBUG messages
@@ -88,41 +87,34 @@ Test(crypto_network_integration, bidirectional_encrypted_communication) {
   uint8_t alice_encrypted_packet[1024];
   size_t alice_packet_len;
 
-  crypto_result_t result =
-      crypto_create_encrypted_packet(&alice_ctx, (const uint8_t *)alice_message, strlen(alice_message),
-                                     alice_encrypted_packet, sizeof(alice_encrypted_packet), &alice_packet_len);
+  crypto_result_t result = crypto_create_encrypted_packet(&alice_ctx, (const uint8_t *)alice_message, strlen(alice_message), alice_encrypted_packet, sizeof(alice_encrypted_packet), &alice_packet_len);
   cr_assert_eq(result, CRYPTO_OK, "Alice should encrypt message successfully");
 
   // Bob receives and decrypts Alice's message
   uint8_t bob_decrypted[1024];
   size_t bob_decrypted_len;
 
-  result = crypto_process_encrypted_packet(&bob_ctx, alice_encrypted_packet, alice_packet_len, bob_decrypted,
-                                           sizeof(bob_decrypted), &bob_decrypted_len);
+  result = crypto_process_encrypted_packet(&bob_ctx, alice_encrypted_packet, alice_packet_len, bob_decrypted, sizeof(bob_decrypted), &bob_decrypted_len);
   cr_assert_eq(result, CRYPTO_OK, "Bob should decrypt Alice's message successfully");
   cr_assert_eq(bob_decrypted_len, strlen(alice_message), "Decrypted length should match");
-  cr_assert_eq(memcmp(bob_decrypted, alice_message, bob_decrypted_len), 0,
-               "Bob should receive Alice's message correctly");
+  cr_assert_eq(memcmp(bob_decrypted, alice_message, bob_decrypted_len), 0, "Bob should receive Alice's message correctly");
 
   // Bob sends reply to Alice
   const char *bob_message = "Hi Alice! I'm doing great, thanks for asking. How about you?";
   uint8_t bob_encrypted_packet[1024];
   size_t bob_packet_len;
 
-  result = crypto_create_encrypted_packet(&bob_ctx, (const uint8_t *)bob_message, strlen(bob_message),
-                                          bob_encrypted_packet, sizeof(bob_encrypted_packet), &bob_packet_len);
+  result = crypto_create_encrypted_packet(&bob_ctx, (const uint8_t *)bob_message, strlen(bob_message), bob_encrypted_packet, sizeof(bob_encrypted_packet), &bob_packet_len);
   cr_assert_eq(result, CRYPTO_OK, "Bob should encrypt reply successfully");
 
   // Alice receives and decrypts Bob's reply
   uint8_t alice_decrypted[1024];
   size_t alice_decrypted_len;
 
-  result = crypto_process_encrypted_packet(&alice_ctx, bob_encrypted_packet, bob_packet_len, alice_decrypted,
-                                           sizeof(alice_decrypted), &alice_decrypted_len);
+  result = crypto_process_encrypted_packet(&alice_ctx, bob_encrypted_packet, bob_packet_len, alice_decrypted, sizeof(alice_decrypted), &alice_decrypted_len);
   cr_assert_eq(result, CRYPTO_OK, "Alice should decrypt Bob's reply successfully");
   cr_assert_eq(alice_decrypted_len, strlen(bob_message), "Decrypted length should match");
-  cr_assert_eq(memcmp(alice_decrypted, bob_message, alice_decrypted_len), 0,
-               "Alice should receive Bob's reply correctly");
+  cr_assert_eq(memcmp(alice_decrypted, bob_message, alice_decrypted_len), 0, "Alice should receive Bob's reply correctly");
 
   crypto_destroy(&alice_ctx);
   crypto_destroy(&bob_ctx);
@@ -160,8 +152,7 @@ Test(crypto_network_integration, password_vs_key_exchange_priority) {
   uint8_t ciphertext[1024];
   size_t ciphertext_len;
 
-  result = crypto_encrypt(&ctx, (const uint8_t *)test_message, strlen(test_message), ciphertext, sizeof(ciphertext),
-                          &ciphertext_len);
+  result = crypto_encrypt(&ctx, (const uint8_t *)test_message, strlen(test_message), ciphertext, sizeof(ciphertext), &ciphertext_len);
   cr_assert_eq(result, CRYPTO_OK, "Encryption should succeed");
 
   // Peer should be able to decrypt (proving shared key was used)
@@ -170,8 +161,7 @@ Test(crypto_network_integration, password_vs_key_exchange_priority) {
 
   result = crypto_decrypt(&peer_ctx, ciphertext, ciphertext_len, decrypted, sizeof(decrypted), &decrypted_len);
   cr_assert_eq(result, CRYPTO_OK, "Peer decryption should succeed");
-  cr_assert_eq(memcmp(decrypted, test_message, strlen(test_message)), 0,
-               "Message should decrypt correctly with shared key");
+  cr_assert_eq(memcmp(decrypted, test_message, strlen(test_message)), 0, "Message should decrypt correctly with shared key");
 
   crypto_destroy(&ctx);
   crypto_destroy(&peer_ctx);
@@ -193,23 +183,18 @@ Test(crypto_network_integration, multiple_messages_same_session) {
   crypto_set_peer_public_key(&server_ctx, client_pubkey);
 
   // Send multiple messages in sequence
-  const char *messages[] = {"Message 1: Connection established", "Message 2: Sending video data",
-                            "Message 3: Audio stream active", "Message 4: Client count update",
-                            "Message 5: Session closing"};
+  const char *messages[] = {"Message 1: Connection established", "Message 2: Sending video data", "Message 3: Audio stream active", "Message 4: Client count update", "Message 5: Session closing"};
 
   for (int i = 0; i < 5; i++) {
     // Client to server
     uint8_t encrypted_packet[1024];
     size_t packet_len;
-    crypto_result_t result =
-        crypto_create_encrypted_packet(&client_ctx, (const uint8_t *)messages[i], strlen(messages[i]), encrypted_packet,
-                                       sizeof(encrypted_packet), &packet_len);
+    crypto_result_t result = crypto_create_encrypted_packet(&client_ctx, (const uint8_t *)messages[i], strlen(messages[i]), encrypted_packet, sizeof(encrypted_packet), &packet_len);
     cr_assert_eq(result, CRYPTO_OK, "Message %d encryption should succeed", i + 1);
 
     uint8_t decrypted[1024];
     size_t decrypted_len;
-    result = crypto_process_encrypted_packet(&server_ctx, encrypted_packet, packet_len, decrypted, sizeof(decrypted),
-                                             &decrypted_len);
+    result = crypto_process_encrypted_packet(&server_ctx, encrypted_packet, packet_len, decrypted, sizeof(decrypted), &decrypted_len);
     cr_assert_eq(result, CRYPTO_OK, "Message %d decryption should succeed", i + 1);
     cr_assert_eq(memcmp(decrypted, messages[i], strlen(messages[i])), 0, "Message %d content should match", i + 1);
 
@@ -217,12 +202,10 @@ Test(crypto_network_integration, multiple_messages_same_session) {
     char ack_message[256];
     safe_snprintf(ack_message, sizeof(ack_message), "ACK: Received message %d", i + 1);
 
-    result = crypto_create_encrypted_packet(&server_ctx, (const uint8_t *)ack_message, strlen(ack_message),
-                                            encrypted_packet, sizeof(encrypted_packet), &packet_len);
+    result = crypto_create_encrypted_packet(&server_ctx, (const uint8_t *)ack_message, strlen(ack_message), encrypted_packet, sizeof(encrypted_packet), &packet_len);
     cr_assert_eq(result, CRYPTO_OK, "ACK %d encryption should succeed", i + 1);
 
-    result = crypto_process_encrypted_packet(&client_ctx, encrypted_packet, packet_len, decrypted, sizeof(decrypted),
-                                             &decrypted_len);
+    result = crypto_process_encrypted_packet(&client_ctx, encrypted_packet, packet_len, decrypted, sizeof(decrypted), &decrypted_len);
     cr_assert_eq(result, CRYPTO_OK, "ACK %d decryption should succeed", i + 1);
     cr_assert_eq(memcmp(decrypted, ack_message, strlen(ack_message)), 0, "ACK %d content should match", i + 1);
   }
@@ -261,8 +244,7 @@ Test(crypto_network_integration, large_message_handling) {
   encrypted_packet = SAFE_MALLOC(large_message_size + 1024, uint8_t *); // Extra space for crypto overhead
   size_t packet_len;
 
-  crypto_result_t result = crypto_create_encrypted_packet(&ctx1, large_message, large_message_size, encrypted_packet,
-                                                          large_message_size + 1024, &packet_len);
+  crypto_result_t result = crypto_create_encrypted_packet(&ctx1, large_message, large_message_size, encrypted_packet, large_message_size + 1024, &packet_len);
   cr_assert_eq(result, CRYPTO_OK, "Large message encryption should succeed");
   cr_assert_gt(packet_len, large_message_size, "Encrypted packet should be larger than plaintext");
 
@@ -271,12 +253,10 @@ Test(crypto_network_integration, large_message_handling) {
   decrypted_message = SAFE_MALLOC(large_message_size, uint8_t *);
   size_t decrypted_len;
 
-  result = crypto_process_encrypted_packet(&ctx2, encrypted_packet, packet_len, decrypted_message, large_message_size,
-                                           &decrypted_len);
+  result = crypto_process_encrypted_packet(&ctx2, encrypted_packet, packet_len, decrypted_message, large_message_size, &decrypted_len);
   cr_assert_eq(result, CRYPTO_OK, "Large message decryption should succeed");
   cr_assert_eq(decrypted_len, large_message_size, "Decrypted size should match original");
-  cr_assert_eq(memcmp(decrypted_message, large_message, large_message_size), 0,
-               "Decrypted content should match original");
+  cr_assert_eq(memcmp(decrypted_message, large_message, large_message_size), 0, "Decrypted content should match original");
 
   SAFE_FREE(large_message);
   SAFE_FREE(encrypted_packet);
@@ -298,8 +278,7 @@ Test(crypto_network_integration, error_handling_integration) {
   uint8_t packet[1024];
   size_t packet_len;
 
-  crypto_result_t result = crypto_create_encrypted_packet(&ctx1, (const uint8_t *)test_msg, strlen(test_msg), packet,
-                                                          sizeof(packet), &packet_len);
+  crypto_result_t result = crypto_create_encrypted_packet(&ctx1, (const uint8_t *)test_msg, strlen(test_msg), packet, sizeof(packet), &packet_len);
   cr_assert_eq(result, CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE, "Should fail without key exchange");
 
   // 2. Complete key exchange
@@ -312,8 +291,7 @@ Test(crypto_network_integration, error_handling_integration) {
   crypto_set_peer_public_key(&ctx2, pubkey1);
 
   // 3. Now encryption should work
-  result = crypto_create_encrypted_packet(&ctx1, (const uint8_t *)test_msg, strlen(test_msg), packet, sizeof(packet),
-                                          &packet_len);
+  result = crypto_create_encrypted_packet(&ctx1, (const uint8_t *)test_msg, strlen(test_msg), packet, sizeof(packet), &packet_len);
   cr_assert_eq(result, CRYPTO_OK, "Should succeed after key exchange");
 
   // 4. Test malformed packet decryption
@@ -321,8 +299,7 @@ Test(crypto_network_integration, error_handling_integration) {
   uint8_t decrypted[1024];
   size_t decrypted_len;
 
-  result = crypto_process_encrypted_packet(&ctx2, malformed_packet, sizeof(malformed_packet), decrypted,
-                                           sizeof(decrypted), &decrypted_len);
+  result = crypto_process_encrypted_packet(&ctx2, malformed_packet, sizeof(malformed_packet), decrypted, sizeof(decrypted), &decrypted_len);
   cr_assert_neq(result, CRYPTO_OK, "Malformed packet should fail to decrypt");
 
   crypto_destroy(&ctx1);
@@ -349,8 +326,7 @@ Test(crypto_network_integration, session_cleanup_and_restart) {
   uint8_t packet[1024];
   size_t packet_len;
 
-  crypto_result_t result =
-      crypto_create_encrypted_packet(&ctx1, (const uint8_t *)msg1, strlen(msg1), packet, sizeof(packet), &packet_len);
+  crypto_result_t result = crypto_create_encrypted_packet(&ctx1, (const uint8_t *)msg1, strlen(msg1), packet, sizeof(packet), &packet_len);
   cr_assert_eq(result, CRYPTO_OK, "First session encryption should work");
 
   // Clean up first session
@@ -369,8 +345,7 @@ Test(crypto_network_integration, session_cleanup_and_restart) {
 
   // Test communication with new session
   const char *msg2 = "Second session message";
-  result =
-      crypto_create_encrypted_packet(&ctx1, (const uint8_t *)msg2, strlen(msg2), packet, sizeof(packet), &packet_len);
+  result = crypto_create_encrypted_packet(&ctx1, (const uint8_t *)msg2, strlen(msg2), packet, sizeof(packet), &packet_len);
   cr_assert_eq(result, CRYPTO_OK, "Second session encryption should work");
 
   uint8_t decrypted[1024];
