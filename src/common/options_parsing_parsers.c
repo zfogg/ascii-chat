@@ -68,7 +68,7 @@ static bool parse_setting_generic(const char *arg, void *dest, const flags_looku
 
   // Handle optional argument - default to first entry in table (usually "auto")
   if (!arg || arg[0] == '\0') {
-    *result = lookup_table[0].enum_value;
+    *result = lookup_table[0].value;
     return true;
   }
 
