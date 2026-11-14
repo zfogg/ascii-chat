@@ -24,7 +24,6 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/levenshtein.h>
 #include <ascii-chat/options/validation.h>
-#include <ascii-chat/options/builder.h>
 #include <libplatform/terminal.h>
 #include <sys/stat.h>
 #include <ascii-chat/util/parsing.h>
@@ -500,35 +499,6 @@ asciichat_error_t parse_log_level_option(const char *value_str, options_t *opts)
 // ============================================================================
 // Option Formatting Utilities
 // ============================================================================
-
-const char *options_get_type_placeholder(option_type_t type) {
-  switch (type) {
-  case OPTION_TYPE_BOOL: return flags_type_placeholder(FLAGS_TYPE_BOOL);
-  case OPTION_TYPE_INT: return flags_type_placeholder(FLAGS_TYPE_INT64);
-  case OPTION_TYPE_DOUBLE: return flags_type_placeholder(FLAGS_TYPE_DOUBLE);
-  case OPTION_TYPE_STRING: return flags_type_placeholder(FLAGS_TYPE_STRING);
-  case OPTION_TYPE_CALLBACK: return flags_type_placeholder(FLAGS_TYPE_CUSTOM);
-  default: return "";
-  }
-}
-
-int options_format_default_value(option_type_t type, const void *default_value, char *buf, size_t bufsize) {
-  if (!default_value || !buf || bufsize == 0) {
-    return 0;
-  }
-
-  switch (type) {
-  case OPTION_TYPE_BOOL: return flags_format_default_value(FLAGS_TYPE_BOOL, default_value, buf, bufsize);
-  case OPTION_TYPE_INT: {
-    int64_t value = 0;
-    memcpy(&value, default_value, sizeof(int));
-    return flags_format_default_value(FLAGS_TYPE_INT64, &value, buf, bufsize);
-  }
-  case OPTION_TYPE_STRING: return flags_format_default_value(FLAGS_TYPE_STRING, default_value, buf, bufsize);
-  case OPTION_TYPE_DOUBLE: return flags_format_default_value(FLAGS_TYPE_DOUBLE, default_value, buf, bufsize);
-  default: return 0;
-  }
-}
 
 // ============================================================================
 // Terminal Dimension Utilities

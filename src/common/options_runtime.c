@@ -12,7 +12,6 @@
 #include <ascii-chat/options/schema.h>
 #include <ascii-chat/options/registry/core.h>
 #include <ascii-chat/options/registry/common.h>
-#include <ascii-chat/options/builder.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>

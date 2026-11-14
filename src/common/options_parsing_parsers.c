@@ -17,7 +17,6 @@
 #include <ctype.h>
 #include <stddef.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/enums.h>           // For OPT_* enum constants
 #include <ascii-chat/options/strings.h>         // For fuzzy matching suggestions

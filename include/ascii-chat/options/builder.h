@@ -1305,7 +1305,6 @@ void options_struct_destroy(const options_config_t *config, void *options_struct
  * @param type Option type enum value
  * @return Pointer to string literal (never NULL, may be empty)
  */
-const char *options_get_type_placeholder(option_type_t type);
 
 /**
  * @brief Format option default value to string
@@ -1322,7 +1321,6 @@ const char *options_get_type_placeholder(option_type_t type);
  * @param bufsize Size of output buffer
  * @return Number of characters written, or 0 on error
  */
-int options_format_default_value(option_type_t type, const void *default_value, char *buf, size_t bufsize);
 
 // ============================================================================
 // Typo Suggestions for Unknown Options
