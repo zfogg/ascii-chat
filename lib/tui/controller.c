@@ -450,6 +450,9 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   if (g_owner && g_render_fd >= 0)
     fd = g_render_fd;
   bool measure_media_write = g_stats_media;
+  bool media_snapshot_stale = g_render_snapshot && g_render_snapshot->media_epoch != atomic_load(&g_media_epoch);
+  if (media_snapshot_stale)
+    return ASCIICHAT_OK;
   if (measure_media_write)
     fps_counter_write_begin(g_fps);
   uint64_t stats_start = g_stats_media ? time_get_ns() : 0;
@@ -472,6 +475,10 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   bool superseded = false;
   while (started && written < len) {
     if (shutdown_is_requested()) {
+      superseded = true;
+      break;
+    }
+    if (g_render_snapshot && g_render_snapshot->media_epoch != atomic_load(&g_media_epoch)) {
       superseded = true;
       break;
     }
