@@ -21,6 +21,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/validation.h>
 #include <ascii-chat/options/schema.h>
+#include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/util/path.h>
 #include <util/string.h>
@@ -58,61 +59,28 @@
 flags_schema_builder_t *options_config_build_flags_schema(option_mode_bitmask_t mode_mask) {
   size_t count = 0;
   const config_option_metadata_t *metadata = config_schema_get_all(&count);
-  if (!metadata)
-    return NULL;
-
   flags_schema_builder_t *builder = flags_schema_builder_create();
   if (!builder)
     return NULL;
+  if (options_registry_add_all_to_flags_builder(builder, mode_mask) != ASCIICHAT_OK) {
+    flags_schema_builder_destroy(builder);
+    return NULL;
+  }
 
-  for (size_t i = 0; i < count; ++i) {
-    const config_option_metadata_t *meta = &metadata[i];
-    if (!meta->toml_key || (meta->mode_bitmask != 0 && !(meta->mode_bitmask & OPTION_MODE_BINARY) && !(meta->mode_bitmask & mode_mask)))
+  /* Configuration keys are application policy; attach them to the generic
+   * registry descriptors without duplicating their storage/type definitions. */
+  flags_schema_t *schema = (flags_schema_t *)flags_schema_builder_schema(builder);
+  for (size_t option_index = 0; option_index < schema->option_count; ++option_index) {
+    flags_option_spec_t *option = (flags_option_spec_t *)&schema->options[option_index];
+    char cli_flag[OPTIONS_CONFIG_QUESTION_BUFFER_SIZE];
+    if (!flags_config_make_cli_flag(option->name, cli_flag, sizeof(cli_flag)))
       continue;
-
-    flags_value_type_t type;
-    size_t minimum_size;
-    switch (meta->type) {
-    case OPTION_TYPE_BOOL:
-      type = FLAGS_TYPE_BOOL;
-      minimum_size = sizeof(bool);
-      break;
-    case OPTION_TYPE_INT:
-      if (meta->field_size != sizeof(int))
-        continue;
-      type = FLAGS_TYPE_INT64;
-      minimum_size = sizeof(int32_t);
-      break;
-    case OPTION_TYPE_DOUBLE:
-      if (meta->field_size != sizeof(double))
-        if (meta->field_size != sizeof(float))
-          continue;
-      type = FLAGS_TYPE_DOUBLE;
-      minimum_size = sizeof(float);
-      break;
-    case OPTION_TYPE_STRING:
-      type = FLAGS_TYPE_STRING;
-      minimum_size = sizeof(char);
-      break;
-    default:
-      continue;
-    }
-    if (meta->field_size < minimum_size)
-      continue;
-
-    const flags_option_spec_t option = {.name = meta->toml_key,
-                                        .metavar = "VALUE",
-                                        .description = meta->description,
-                                        .config_key = meta->toml_key,
-                                        .type = type,
-                                        .behavior = FLAGS_BEHAVIOR_VALUE,
-                                        .argument_requirement = FLAGS_ARGUMENT_REQUIRED,
-                                        .storage_offset = meta->field_offset,
-                                        .storage_size = meta->field_size,
-                                        .dynamic_string = false};
-    if (!flags_schema_builder_add_option(builder, &option)) {
-      flags_schema_builder_destroy(builder);
-      return NULL;
+    for (size_t metadata_index = 0; metadata_index < count; ++metadata_index) {
+      const config_option_metadata_t *meta = &metadata[metadata_index];
+      if (meta->cli_flag && strcmp(meta->cli_flag, cli_flag) == 0) {
+        option->config_key = meta->toml_key;
+        break;
+      }
     }
   }
   return builder;
@@ -882,13 +850,13 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       }
     }
 
-    bool generic_scalar = meta->type == OPTION_TYPE_BOOL || meta->type == OPTION_TYPE_INT || meta->type == OPTION_TYPE_DOUBLE ||
-                          (meta->type == OPTION_TYPE_STRING && !meta->parse_fn);
     bool scalar_exception = meta->field_offset == offsetof(options_t, test_pattern) || strcmp(meta->toml_key, "security.no_encrypt") == 0 ||
                             strcmp(meta->toml_key, "display.palette_chars") == 0;
-    if (generic_scalar && !scalar_exception) {
-      // Ordinary scalar values were parsed and stored by libflags before this
-      // compatibility pass. Keep app-specific exceptions below.
+    const bool libflags_option = meta->type != OPTION_TYPE_ACTION;
+    if (libflags_option && !scalar_exception) {
+      // All ordinary values, including application callbacks, are parsed and
+      // stored by libflags before this compatibility pass. Keep only the
+      // three ascii-chat normalization exceptions below.
       option_set_flags[i] = true;
       continue;
     }
