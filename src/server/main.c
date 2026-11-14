@@ -1375,7 +1375,7 @@ static bool __attribute__((unused)) server_allow_discovery(server_discovery_poli
     // Explicit opt-in to public IP disclosure
     // Only prompt if running interactively (can prompt user)
     // When non-interactive (automated/scripted), treat explicit flag as confirmation
-    bool is_interactive = terminal_can_prompt_user(!GET_OPTION(snapshot_mode));
+    bool is_interactive = terminal_can_prompt_user();
 
     if (is_interactive) {
       if (!ui_notice_confirm_kind(UI_PROMPT_IP_DISCLOSURE, UI_NOTICE_DANGER,
