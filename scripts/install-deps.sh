@@ -150,7 +150,18 @@ if [[ "$PLATFORM" == "macos" ]]; then
 # Linux: Detect package manager
 elif [[ "$PLATFORM" == "linux" ]]; then
   if [ -f /etc/debian_version ]; then
-    bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+    # apt.llvm.org can lag newly released Ubuntu codenames.  If its installer
+    # adds a repository without a Release file, every later apt-get update
+    # fails even though the runner's native repositories provide LLVM.
+    ubuntu_codename="$(. /etc/os-release && printf '%s' "${VERSION_CODENAME:-}")"
+    case "$ubuntu_codename" in
+      resolute)
+        echo "Skipping apt.llvm.org for unsupported Ubuntu codename: $ubuntu_codename"
+        ;;
+      *)
+        bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+        ;;
+    esac
   fi
 
   if command -v apt-get &>/dev/null; then
