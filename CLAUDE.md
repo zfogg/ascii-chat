@@ -1,14 +1,5 @@
 # ascii-chat Development Guide for Claude
 
-> **Current repository guidance (updated 2026-11-08)**
->
-> This guide retains the detailed subsystem notes below, but the repository has
-> changed substantially since the original version was written. The current
-> source of truth for a workflow is the checked-in CMake preset, workflow,
-> topic page, or skill named in the relevant section. If this guide conflicts
-> with those files, inspect the current implementation and update this guide
-> as part of the same change.
-
 ## Current State and Recent Direction
 
 The recent development cycle has broadened ascii-chat from a TCP/WebSocket-
@@ -103,14 +94,28 @@ details as public API.
 
 ## Current Build and Test Workflow
 
-The native build uses Clang, Ninja, and the checked-in CMake presets. On
-Windows use the native PowerShell environment and the `default` preset; do not
-substitute MSVC or GCC. Reconfigure an existing build rather than deleting it.
+The native build uses Ninja and the checked-in CMake presets. The compiler
+family is selected through CMake's native `CMAKE_C_COMPILER` and
+`CMAKE_CXX_COMPILER` cache variables in the compiler-specific presets. The
+generic `default` preset auto-detects Clang, then GCC, then MSVC on Windows.
+After `project()`, compiler-specific logic uses CMake's detected
+`CMAKE_C_COMPILER_ID` rather than a second compiler-identity variable. Use a
+separate build directory when changing compiler families and reconfigure
+rather than deleting it.
 
 ```bash
-# Standard sanitized debug build
+# Standard debug build with automatic compiler selection
 cmake --preset default -B build
 cmake --build build
+
+# Pin a compiler family (each preset selects CMAKE_C_COMPILER/CXX_COMPILER)
+cmake --preset default-clang -B build-clang
+cmake --preset default-gcc -B build-gcc
+cmake --preset default-msvc -B build-msvc
+
+# Fast developer and optimized release variants
+cmake --preset dev-clang -B build-dev-clang
+cmake --preset release-clang -B build-release-clang
 
 # Faster debug build without sanitizer instrumentation
 cmake --preset debug-fast
@@ -299,8 +304,7 @@ ctest --test-dir build --output-on-failure --parallel 0
 
 **IMPORTANT**:
 
-- This project uses Clang only, not MSVC or GCC
-- Use `cmake --preset default` - use Ninja and don't switch to Makefiles or Visual Studio generators
+- Use Ninja and don't switch to Makefiles or Visual Studio generators
 - **Avoid deleting build/** - just re-run `cmake --preset default` and rebuild
 
 ### Running
@@ -915,7 +919,7 @@ ascii-chat/
 │   ├── targets/                # Build target definitions and custom commands for code generation
 │   ├── tools/                  # CMake utility scripts for template substitution and binary embedding
 │   ├── platform/               # Platform-specific CMake configuration (Windows, macOS, Linux)
-│   ├── compiler/               # Compiler detection and flag configuration for Clang
+│   ├── compilers/              # Compiler-family selection and toolchain configuration
 │   ├── toolchains/             # CMake toolchain files for cross-compilation and build environments
 │   ├── init/                   # CMake initialization and project setup helpers
 │   ├── install/                # Installation configuration and packaging rules

@@ -311,6 +311,7 @@ bool timer_start(const char *name);
  * @ingroup module_utilities
  */
 double timer_stop(const char *name);
+double timer_stop_formatted(const char *name_fmt, ...);
 
 /**
  * @brief Check if timing system is initialized
@@ -342,16 +343,15 @@ bool timer_is_initialized(void);
  * @param ... Format arguments to create unique key
  * @ingroup module_utilities
  */
-#define START_TIMER(name_fmt, ...)                                                                                     \
-  do {                                                                                                                 \
-    if (timer_is_initialized()) {                                                                                      \
-      char _timer_name_buf[UTIL_TIME_TIMER_NAME_BUFFER_SIZE];                                                          \
-      char _timer_name_with_tid[UTIL_TIME_TIMER_NAME_WITH_TID_BUFFER_SIZE];                                            \
-      snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
-      snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), "%s_tid%llu", _timer_name_buf,                      \
-               (unsigned long long)thread_current_id());                                                               \
-      (void)timer_start(_timer_name_with_tid);                                                                         \
-    }                                                                                                                  \
+#define START_TIMER(name_fmt, ...)                                                                                                                                                                     \
+  do {                                                                                                                                                                                                 \
+    if (timer_is_initialized()) {                                                                                                                                                                      \
+      char _timer_name_buf[UTIL_TIME_TIMER_NAME_BUFFER_SIZE];                                                                                                                                          \
+      char _timer_name_with_tid[UTIL_TIME_TIMER_NAME_WITH_TID_BUFFER_SIZE];                                                                                                                            \
+      snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                                                                                                     \
+      snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), "%s_tid%llu", _timer_name_buf, (unsigned long long)thread_current_id());                                                            \
+      (void)timer_start(_timer_name_with_tid);                                                                                                                                                         \
+    }                                                                                                                                                                                                  \
   } while (0)
 
 /**
@@ -366,13 +366,13 @@ bool timer_is_initialized(void);
  * @param ... Format arguments to create unique key
  * @ingroup module_utilities
  */
-#define START_TIMER_GLOBAL(name_fmt, ...)                                                                              \
-  do {                                                                                                                 \
-    if (timer_is_initialized()) {                                                                                      \
-      char _timer_name_buf[UTIL_TIME_TIMER_NAME_BUFFER_SIZE];                                                          \
-      snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
-      (void)timer_start(_timer_name_buf);                                                                              \
-    }                                                                                                                  \
+#define START_TIMER_GLOBAL(name_fmt, ...)                                                                                                                                                              \
+  do {                                                                                                                                                                                                 \
+    if (timer_is_initialized()) {                                                                                                                                                                      \
+      char _timer_name_buf[UTIL_TIME_TIMER_NAME_BUFFER_SIZE];                                                                                                                                          \
+      snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                                                                                                     \
+      (void)timer_start(_timer_name_buf);                                                                                                                                                              \
+    }                                                                                                                                                                                                  \
   } while (0)
 
 /**
@@ -386,15 +386,15 @@ bool timer_is_initialized(void);
  * @return Elapsed time in nanoseconds, or -1.0 if timer not found
  * @ingroup module_utilities
  */
-#define STOP_TIMER_GLOBAL(name_fmt, ...)                                                                               \
-  ({                                                                                                                   \
-    double _elapsed = -1.0;                                                                                            \
-    if (timer_is_initialized()) {                                                                                      \
-      char _timer_name_buf[UTIL_TIME_TIMER_NAME_BUFFER_SIZE];                                                          \
-      snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
-      _elapsed = timer_stop(_timer_name_buf);                                                                          \
-    }                                                                                                                  \
-    _elapsed;                                                                                                          \
+#define STOP_TIMER_GLOBAL(name_fmt, ...)                                                                                                                                                               \
+  ({                                                                                                                                                                                                   \
+    double _elapsed = -1.0;                                                                                                                                                                            \
+    if (timer_is_initialized()) {                                                                                                                                                                      \
+      char _timer_name_buf[UTIL_TIME_TIMER_NAME_BUFFER_SIZE];                                                                                                                                          \
+      snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                                                                                                     \
+      _elapsed = timer_stop(_timer_name_buf);                                                                                                                                                          \
+    }                                                                                                                                                                                                  \
+    _elapsed;                                                                                                                                                                                          \
   })
 
 /**
@@ -412,19 +412,7 @@ bool timer_is_initialized(void);
  * @return Elapsed time in nanoseconds, or -1.0 if timer not found
  * @ingroup module_utilities
  */
-#define STOP_TIMER(name_fmt, ...)                                                                                      \
-  ({                                                                                                                   \
-    double _elapsed = -1.0;                                                                                            \
-    if (timer_is_initialized()) {                                                                                      \
-      char _timer_name_buf[UTIL_TIME_TIMER_NAME_BUFFER_SIZE];                                                          \
-      char _timer_name_with_tid[UTIL_TIME_TIMER_NAME_WITH_TID_BUFFER_SIZE];                                            \
-      snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                     \
-      snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), "%s_tid%llu", _timer_name_buf,                      \
-               (unsigned long long)thread_current_id());                                                               \
-      _elapsed = timer_stop(_timer_name_with_tid);                                                                     \
-    }                                                                                                                  \
-    _elapsed;                                                                                                          \
-  })
+#define STOP_TIMER(name_fmt, ...) timer_stop_formatted((name_fmt), ##__VA_ARGS__)
 
 // ============================================================================
 // Time Formatting API
@@ -623,14 +611,14 @@ int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t 
  * @param ... Format arguments for both timer name and message
  * @ingroup module_utilities
  */
-#define STOP_TIMER_AND_LOG(log_level, threshold_ns, timer_name, msg_fmt, ...)                                          \
-  do {                                                                                                                 \
-    double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
-    if (_elapsed_ns >= 0.0 && (threshold_ns == 0 || _elapsed_ns >= (double)(threshold_ns))) {                          \
-      char _duration_str[TIME_DURATION_BUFFER_SIZE];                                                                   \
-      time_pretty((uint64_t)_elapsed_ns, -1, _duration_str, sizeof(_duration_str));                                    \
-      log_##log_level(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                                 \
-    }                                                                                                                  \
+#define STOP_TIMER_AND_LOG(log_level, threshold_ns, timer_name, msg_fmt, ...)                                                                                                                          \
+  do {                                                                                                                                                                                                 \
+    double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                                                                                                        \
+    if (_elapsed_ns >= 0.0 && (threshold_ns == 0 || _elapsed_ns >= (double)(threshold_ns))) {                                                                                                          \
+      char _duration_str[TIME_DURATION_BUFFER_SIZE];                                                                                                                                                   \
+      time_pretty((uint64_t)_elapsed_ns, -1, _duration_str, sizeof(_duration_str));                                                                                                                    \
+      log_##log_level(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                                                                                                                 \
+    }                                                                                                                                                                                                  \
   } while (0)
 
 /**
@@ -658,21 +646,21 @@ int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t 
  * @param ... Format arguments for both timer name and message
  * @ingroup module_utilities
  */
-#define STOP_TIMER_AND_LOG_EVERY(log_level, interval_ns, threshold_ns, timer_name, msg_fmt, ...)                       \
-  do {                                                                                                                 \
-    double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
-    if (_elapsed_ns >= 0.0 && (threshold_ns == 0 || _elapsed_ns >= (double)(threshold_ns))) {                          \
-      static atomic_t _log_every_last_time = {0};                                                                      \
-      uint64_t _log_every_now = time_get_ns();                                                                         \
-      uint64_t _log_every_last = atomic_load_u64(&_log_every_last_time);                                               \
-      if (_log_every_now - _log_every_last >= (uint64_t)(interval_ns)) {                                               \
-        if (atomic_cas_u64(&_log_every_last_time, &_log_every_last, _log_every_now)) {                                 \
-          char _duration_str[TIME_DURATION_BUFFER_SIZE];                                                               \
-          time_pretty((uint64_t)_elapsed_ns, -1, _duration_str, sizeof(_duration_str));                                \
-          log_##log_level(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                             \
-        }                                                                                                              \
-      }                                                                                                                \
-    }                                                                                                                  \
+#define STOP_TIMER_AND_LOG_EVERY(log_level, interval_ns, threshold_ns, timer_name, msg_fmt, ...)                                                                                                       \
+  do {                                                                                                                                                                                                 \
+    double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                                                                                                        \
+    if (_elapsed_ns >= 0.0 && (threshold_ns == 0 || _elapsed_ns >= (double)(threshold_ns))) {                                                                                                          \
+      static atomic_t _log_every_last_time = {0};                                                                                                                                                      \
+      uint64_t _log_every_now = time_get_ns();                                                                                                                                                         \
+      uint64_t _log_every_last = atomic_load_u64(&_log_every_last_time);                                                                                                                               \
+      if (_log_every_now - _log_every_last >= (uint64_t)(interval_ns)) {                                                                                                                               \
+        if (atomic_cas_u64(&_log_every_last_time, &_log_every_last, _log_every_now)) {                                                                                                                 \
+          char _duration_str[TIME_DURATION_BUFFER_SIZE];                                                                                                                                               \
+          time_pretty((uint64_t)_elapsed_ns, -1, _duration_str, sizeof(_duration_str));                                                                                                                \
+          log_##log_level(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                                                                                                             \
+        }                                                                                                                                                                                              \
+      }                                                                                                                                                                                                \
+    }                                                                                                                                                                                                  \
   } while (0)
 
 // ============================================================================

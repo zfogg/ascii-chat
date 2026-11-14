@@ -785,7 +785,9 @@ int log_named_format_message(const char *message, char *output, size_t output_si
               lookup_len = 2;
             }
 
-            const char *name = named_get_by_type_and_id(lookup_type, lookup_len, fd_value);
+            // Generic type+id formatting is disabled above; keep this dead
+            // compatibility path link-free with the current libplatform API.
+            const char *name = NULL;
 
             char temp_output[LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE];
             char type_str[LOG_NAMED_TYPE_SHORT_BUFFER_SIZE];

@@ -36,6 +36,9 @@ set(WHITELISTED_PATHS
     "/opt/homebrew/"
     # Dependency cache paths (non-developer paths, deterministic across builds)
     ".deps-cache/"
+    # Vendored dependency source paths. These are third-party __FILE__ values,
+    # not paths identifying a developer's home directory or local checkout.
+    "/deps/ascii-chat-deps/"
     # LLVM/libc++ source paths - embedded in static libc++abi via __FILE__ macros
     # These are from assertion/exception messages in static libc++ and don't affect portability
     "llvm-project/libcxxabi/"

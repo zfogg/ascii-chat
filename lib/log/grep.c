@@ -663,7 +663,7 @@ char *grep_highlight_colored_copy(const char *colored_text, const char *plain_te
 }
 
 const char *grep_highlight_colored(const char *colored_text, const char *plain_text, size_t match_start, size_t match_len) {
-  static __thread char highlight_buffer[LOG_TERMINAL_BUFFER_SIZE];
+  static _Thread_local char highlight_buffer[LOG_TERMINAL_BUFFER_SIZE];
 
   if (!colored_text || !plain_text || match_len == 0) {
     return colored_text;

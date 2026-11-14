@@ -7,8 +7,7 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_CXX_STANDARD": "26"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     },
     {
@@ -66,6 +65,84 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_TESTS": "OFF"
       }
+    },
+    {
+      "name": "default-clang",
+      "displayName": "Default (Clang)",
+      "description": "Debug build using the Clang toolchain",
+      "inherits": "default",
+      "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "default-gcc",
+      "displayName": "Default (GCC)",
+      "description": "Debug build using GCC and GNU binutils",
+      "inherits": "default",
+      "cacheVariables": { "CMAKE_C_COMPILER": "gcc", "CMAKE_CXX_COMPILER": "g++" },
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    },
+    {
+      "name": "default-msvc",
+      "displayName": "Default (MSVC)",
+      "description": "Debug build using MSVC and the Visual C++ tools",
+      "inherits": "default",
+      "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "dev-clang",
+      "displayName": "Dev (Clang)",
+      "description": "Fast developer build using Clang",
+      "inherits": "dev",
+      "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "dev-gcc",
+      "displayName": "Dev (GCC)",
+      "description": "Fast developer build using GCC",
+      "inherits": "dev",
+      "cacheVariables": { "CMAKE_C_COMPILER": "gcc", "CMAKE_CXX_COMPILER": "g++" },
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    },
+    {
+      "name": "dev-msvc",
+      "displayName": "Dev (MSVC)",
+      "description": "Fast developer build using MSVC",
+      "inherits": "dev",
+      "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "release-clang",
+      "displayName": "Release (Clang)",
+      "description": "Release build using Clang",
+      "inherits": "release",
+      "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "release-gcc",
+      "displayName": "Release (GCC)",
+      "description": "Release build using GCC",
+      "inherits": "release",
+      "cacheVariables": { "CMAKE_C_COMPILER": "gcc", "CMAKE_CXX_COMPILER": "g++" },
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    },
+    {
+      "name": "release-msvc",
+      "displayName": "Release (MSVC)",
+      "description": "Release build using MSVC",
+      "inherits": "release",
+      "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
       "name": "debug",
@@ -285,6 +362,15 @@
       "name": "default",
       "configurePreset": "default"
     },
+    { "name": "default-clang", "configurePreset": "default-clang" },
+    { "name": "default-gcc", "configurePreset": "default-gcc" },
+    { "name": "default-msvc", "configurePreset": "default-msvc" },
+    { "name": "dev-clang", "configurePreset": "dev-clang" },
+    { "name": "dev-gcc", "configurePreset": "dev-gcc" },
+    { "name": "dev-msvc", "configurePreset": "dev-msvc" },
+    { "name": "release-clang", "configurePreset": "release-clang" },
+    { "name": "release-gcc", "configurePreset": "release-gcc" },
+    { "name": "release-msvc", "configurePreset": "release-msvc" },
     {
       "name": "debug",
       "configurePreset": "debug"

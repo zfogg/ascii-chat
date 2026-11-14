@@ -26,7 +26,9 @@ def test_crc32_dispatch(c_compiler, name, defines):
         cpu = masked if name == "masked" else ROOT / "lib/platform/cpu.c"
         exe = out / (name + (".exe" if os.name == "nt" else ""))
         command = [c_compiler, "-std=c17", "-O2", "-Wall", "-Wextra", "-Werror", *coverage_flags(),
-                   *baseline, *defines, "-I", str(ROOT / "include"), str(ROOT / "lib/network/crc32.c"),
+                   *baseline, *defines, "-I", str(ROOT / "include"), "-I",
+                   str(ROOT / "deps/ascii-chat-deps/libplatform/include"),
+                   str(ROOT / "lib/network/crc32.c"),
                    str(cpu), str(HERE / "test.c"), "-o", str(exe)]
         subprocess.run(command, check=True, cwd=out, timeout=60)
         subprocess.run([str(exe)], check=True, timeout=30)

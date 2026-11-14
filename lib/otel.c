@@ -400,8 +400,6 @@ static bool scope_retained(ascii_otel_scope_t *s, ascii_otel_operation_t op, con
 void ascii_otel_scope_end(ascii_otel_scope_t *s) {
   if (!s || !s->retained)
     return;
-  if (atomic_load_explicit(&stopping, memory_order_acquire))
-    gotel_outcome(&s->scope, GOTEL_OUTCOME_CANCELLED, NULL);
   gotel_end(&s->scope);
   if (current_scope == s)
     current_scope = s->previous;
@@ -458,10 +456,10 @@ void ascii_otel_shutdown(void) {
   uint64_t budget_ns = shutdown_timeout_ns < 900 * NS_PER_MS_INT ? shutdown_timeout_ns : 900 * NS_PER_MS_INT;
   bool producers_active = atomic_load_explicit(&readers, memory_order_seq_cst) != 0;
   if (worker_started) {
-    // Do not call gotel_shutdown() here: it performs exporter cancellation on
-    // this thread and can block in the collector's network stack. Setting
-    // `stopping` above wakes the worker, which owns the drain and can be
-    // retained until process exit if its interruptible export exceeds budget.
+    // Interrupt any exporter request before waiting for the worker. Waiting
+    // first makes cancellation unreachable when the worker is blocked in
+    // DNS/TLS/HTTP, which turns a bounded shutdown into a process hang.
+    (void)otel_status(gotel_drain(h), "Drain telemetry exporter");
     while (!atomic_load_explicit(&worker_done, memory_order_acquire) && time_get_ns() - started < budget_ns)
       platform_sleep_ms(1);
     bool done = atomic_load_explicit(&worker_done, memory_order_acquire);

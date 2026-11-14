@@ -426,12 +426,12 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
     for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
       configuration ^= values[i];
       // FNV multiplication intentionally wraps modulo 2^64.
-      (void)__builtin_mul_overflow(configuration, 1099511628211ULL, &configuration);
+      configuration *= 1099511628211ULL;
     }
     if (palette_chars) {
       for (const unsigned char *p = (const unsigned char *)palette_chars; *p; ++p) {
         configuration ^= *p;
-        (void)__builtin_mul_overflow(configuration, 1099511628211ULL, &configuration);
+        configuration *= 1099511628211ULL;
       }
     }
     size_t history_height = (size_t)height * (caps->render_mode == RENDER_MODE_HALF_BLOCK ? 2u : 1u);

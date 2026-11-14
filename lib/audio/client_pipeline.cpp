@@ -112,7 +112,7 @@ extern "C" {
 // ============================================================================
 
 client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
-  return (client_audio_pipeline_config_t){
+  return client_audio_pipeline_config_t{
       .channels = AUDIO_CHANNELS,
       .encoder_channels = AUDIO_CHANNELS,
       .sample_rate = AUDIO_SAMPLE_RATE,
@@ -141,8 +141,7 @@ client_audio_pipeline_config_t client_audio_pipeline_config_for_source(bool has_
     config.processor.spectral.adaptive_eq = options->audio_adaptive_eq;
     config.processor.spectral.pitch_correct = options->audio_pitch_correct;
     config.processor.spectral.auto_gain = options->audio_spectral_agc;
-    bool media = options->test_audio || (has_media_audio && options->audio_capture_source != AUDIO_CAPTURE_SOURCE_MIC &&
-                                         options->audio_capture_source != AUDIO_CAPTURE_SOURCE_REMOTE);
+    bool media = options->test_audio || (has_media_audio && options->audio_capture_source != AUDIO_CAPTURE_SOURCE_MIC && options->audio_capture_source != AUDIO_CAPTURE_SOURCE_REMOTE);
     bool stereo_microphone = options->microphone_channels == 2;
     config.opus_application = media || stereo_microphone ? OPUS_APPLICATION_AUDIO : OPUS_APPLICATION_VOIP;
     config.opus_bitrate = media || stereo_microphone ? 128000 : 32000;
@@ -181,8 +180,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
     p->config.channels = AUDIO_CHANNELS;
   if (p->config.encoder_channels == 0)
     p->config.encoder_channels = p->config.channels;
-  if ((p->config.channels != 1 && p->config.channels != 2) ||
-      (p->config.encoder_channels != 1 && p->config.encoder_channels != 2)) {
+  if ((p->config.channels != 1 && p->config.channels != 2) || (p->config.encoder_channels != 1 && p->config.encoder_channels != 2)) {
     SAFE_FREE(p);
     return NULL;
   }
@@ -193,8 +191,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
 
   // Initialize Opus encoder/decoder first (no exceptions)
   int opus_error = 0;
-  p->encoder =
-      opus_encoder_create(p->config.sample_rate, p->config.encoder_channels, p->config.opus_application, &opus_error);
+  p->encoder = opus_encoder_create(p->config.sample_rate, p->config.encoder_channels, p->config.opus_application, &opus_error);
   if (!p->encoder || opus_error != OPUS_OK) {
     log_error("Failed to create Opus encoder: %d", opus_error);
     goto error;
@@ -235,8 +232,8 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
     auto factory = webrtc::EchoCanceller3Factory(aec3_config);
 
     std::unique_ptr<webrtc::EchoControl> echo_control = factory.Create(static_cast<int>(p->config.sample_rate), // 48kHz
-                                                                       p->config.channels, // speaker channels
-                                                                       p->config.channels  // microphone channels
+                                                                       p->config.channels,                      // speaker channels
+                                                                       p->config.channels                       // microphone channels
     );
 
     if (!echo_control) {
@@ -252,10 +249,8 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       log_info("✓ WebRTC AEC3 initialized (67ms filter for bass, adaptive delay)");
 
       // Create persistent AudioBuffer instances for AEC3
-      p->aec3_render_buffer =
-          new webrtc::AudioBuffer(48000, p->config.channels, 48000, p->config.channels, 48000, p->config.channels);
-      p->aec3_capture_buffer =
-          new webrtc::AudioBuffer(48000, p->config.channels, 48000, p->config.channels, 48000, p->config.channels);
+      p->aec3_render_buffer = new webrtc::AudioBuffer(48000, p->config.channels, 48000, p->config.channels, 48000, p->config.channels);
+      p->aec3_capture_buffer = new webrtc::AudioBuffer(48000, p->config.channels, 48000, p->config.channels, 48000, p->config.channels);
 
       auto *render_buf = static_cast<webrtc::AudioBuffer *>(p->aec3_render_buffer);
       auto *capture_buf = static_cast<webrtc::AudioBuffer *>(p->aec3_capture_buffer);
@@ -326,8 +321,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   p->config.processor.channels = p->config.channels;
   p->config.processor.sample_rate = p->config.sample_rate;
   p->config.processor.spectral.sample_rate = p->config.sample_rate;
-  p->config.processor.flags = {p->flags.agc, p->flags.compressor, p->flags.noise_gate, p->flags.highpass,
-                               p->flags.lowpass};
+  p->config.processor.flags = {p->flags.agc, p->flags.compressor, p->flags.noise_gate, p->flags.highpass, p->flags.lowpass};
   if (audio_processor_create(&p->config.processor, &p->processor) != ASCIICHAT_OK)
     goto error;
   p->initialized = true;
@@ -338,8 +332,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   p->capture_fadein_remaining = (p->config.sample_rate * 200) / 1000 * p->config.channels; // 200ms worth of samples
   log_debug("✓ Capture fade-in: %d samples (200ms)", p->capture_fadein_remaining);
 
-  log_info("Audio pipeline created: %dHz, %llums frames, %dkbps Opus", p->config.sample_rate,
-           (unsigned long long)p->config.frame_duration_ms, p->config.opus_bitrate / 1000);
+  log_info("Audio pipeline created: %dHz, %llums frames, %dkbps Opus", p->config.sample_rate, (unsigned long long)p->config.frame_duration_ms, p->config.opus_bitrate / 1000);
 
   (void)NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(p, "audio_pipeline", NULL);
 
@@ -407,8 +400,7 @@ void client_audio_pipeline_set_flags(client_audio_pipeline_t *pipeline, client_a
     return;
   // No mutex needed - flags are only read by capture thread
   pipeline->flags = flags;
-  audio_processor_set_flags(pipeline->processor,
-                            {flags.agc, flags.compressor, flags.noise_gate, flags.highpass, flags.lowpass});
+  audio_processor_set_flags(pipeline->processor, {flags.agc, flags.compressor, flags.noise_gate, flags.highpass, flags.lowpass});
 }
 
 client_audio_pipeline_flags_t client_audio_pipeline_get_flags(client_audio_pipeline_t *pipeline) {
@@ -428,8 +420,7 @@ client_audio_pipeline_flags_t client_audio_pipeline_get_flags(client_audio_pipel
  * In full-duplex mode, AEC3 and DSP processing are done in process_duplex().
  * This function just does Opus encoding.
  */
-int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float *input, int num_samples,
-                                  uint8_t *opus_out, int max_opus_len) {
+int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float *input, int num_samples, uint8_t *opus_out, int max_opus_len) {
   if (!pipeline || !input || !opus_out || num_samples != pipeline->frame_size) {
     return -1;
   }
@@ -442,8 +433,7 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
   if (pipeline->config.encoder_channels != pipeline->config.channels) {
     if (frames > (int)(sizeof(converted) / sizeof(converted[0])) / pipeline->config.encoder_channels)
       return -1;
-    if (audio_convert_channels(input, (size_t)frames, pipeline->config.channels, converted,
-                               pipeline->config.encoder_channels) != ASCIICHAT_OK)
+    if (audio_convert_channels(input, (size_t)frames, pipeline->config.channels, converted, pipeline->config.encoder_channels) != ASCIICHAT_OK)
       return -1;
     pcm = converted;
   }
@@ -460,8 +450,7 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
 /**
  * Process network playback (decode and register with echo canceller as reference)
  */
-int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint8_t *opus_in, int opus_len,
-                                   float *output, int num_samples) {
+int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint8_t *opus_in, int opus_len, float *output, int num_samples) {
   if (!pipeline || !output || num_samples <= 0 || opus_len < 0 || (!opus_in && opus_len != 0)) {
     return -1;
   }
@@ -469,8 +458,7 @@ int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint
   // No mutex needed - Opus decoder is only used from this thread
 
   // Decode Opus
-  int decoded_samples =
-      opus_decode_float(pipeline->decoder, opus_in, opus_len, output, num_samples / pipeline->config.channels, 0);
+  int decoded_samples = opus_decode_float(pipeline->decoder, opus_in, opus_len, output, num_samples / pipeline->config.channels, 0);
 
   if (decoded_samples < 0) {
     log_error_every(US_PER_SEC_INT, "Opus decoding failed: %d", decoded_samples);
@@ -515,11 +503,8 @@ int client_audio_pipeline_get_playback_frame(client_audio_pipeline_t *pipeline, 
  * Returns processed capture samples in processed_output.
  * Opus encoding is done separately by the encoding thread.
  */
-void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, const float *render_samples,
-                                          int render_count, const float *capture_samples, int capture_count,
-                                          float *processed_output) {
-  if (!pipeline || !processed_output || capture_count < 0 || render_count < 0 ||
-      capture_count % pipeline->config.channels || render_count % pipeline->config.channels)
+void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, const float *render_samples, int render_count, const float *capture_samples, int capture_count, float *processed_output) {
+  if (!pipeline || !processed_output || capture_count < 0 || render_count < 0 || capture_count % pipeline->config.channels || render_count % pipeline->config.channels)
     return;
 
   // Copy capture samples to output buffer for processing
@@ -586,8 +571,7 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, con
           // render_count == capture_count and both are multiples of 480, so no
           // partial frames should occur. If they do (defensive), the tail samples
           // pass through unprocessed rather than corrupting AEC3 with padded data.
-          while (render_offset + webrtc_frame_size <= render_count &&
-                 capture_offset + webrtc_frame_size <= capture_count) {
+          while (render_offset + webrtc_frame_size <= render_count && capture_offset + webrtc_frame_size <= capture_count) {
 
             // STEP 1: Feed render signal (what's playing to speakers)
             for (int channel = 0; channel < channels; channel++)
@@ -602,8 +586,7 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, con
             // STEP 2: Process capture (microphone input)
             for (int channel = 0; channel < channels; channel++)
               for (int frame = 0; frame < 480; frame++)
-                capture_channels[channel][frame] =
-                    processed_output[capture_offset + frame * channels + channel] * 32768.0f;
+                capture_channels[channel][frame] = processed_output[capture_offset + frame * channels + channel] * 32768.0f;
             wrapper->aec3->AnalyzeCapture(capture_buf);
             capture_buf->SplitIntoFrequencyBands();
             wrapper->aec3->ProcessCapture(capture_buf, false);
@@ -619,10 +602,8 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, con
             static int duplex_log_count = 0;
             if (++duplex_log_count % 100 == 1) {
               webrtc::EchoControl::Metrics metrics = wrapper->aec3->GetMetrics();
-              log_debug("AEC3 DUPLEX: ERL=%.1f ERLE=%.1f delay=%dms", metrics.echo_return_loss,
-                        metrics.echo_return_loss_enhancement, metrics.delay_ms);
-              audio_analysis_set_aec3_metrics(metrics.echo_return_loss, metrics.echo_return_loss_enhancement,
-                                              metrics.delay_ms);
+              log_debug("AEC3 DUPLEX: ERL=%.1f ERLE=%.1f delay=%dms", metrics.echo_return_loss, metrics.echo_return_loss_enhancement, metrics.delay_ms);
+              audio_analysis_set_aec3_metrics(metrics.echo_return_loss, metrics.echo_return_loss_enhancement, metrics.delay_ms);
             }
             capture_offset += webrtc_frame_size;
           }
@@ -636,8 +617,7 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, con
     wav_writer_write((wav_writer_t *)pipeline->debug_wav_aec3_out, processed_output, capture_count);
   }
 
-  asciichat_error_t result =
-      audio_processor_process(pipeline->processor, processed_output, processed_output, (size_t)capture_count);
+  asciichat_error_t result = audio_processor_process(pipeline->processor, processed_output, processed_output, (size_t)capture_count);
   if (result != ASCIICHAT_OK)
     log_error("Audio enhancement failed: %d", result);
 }

@@ -113,7 +113,12 @@ if(BUILD_TESTS)
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
         endif()
     endif()
-    set(standalone_includes --native-include=${CMAKE_BINARY_DIR}/generated)
+    # Standalone Python probes compile production headers directly.  Keep the
+    # mapped libplatform include tree in their native include set as well as
+    # the generated ascii-chat headers.
+    set(standalone_includes
+        --native-include=${CMAKE_BINARY_DIR}/generated
+        --native-include=${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include)
     foreach(include_dir IN LISTS LIBSODIUM_INCLUDE_DIRS PCRE2_INCLUDE_DIRS PORTAUDIO_INCLUDE_DIRS OPUS_INCLUDE_DIRS)
         if(IS_ABSOLUTE "${include_dir}")
             list(APPEND standalone_includes --native-include=${include_dir})
@@ -1174,25 +1179,29 @@ endif()
 
 # Criterion buffer ownership, queue, budget, and concurrency contracts.
 if(TARGET ascii-chat-static AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-buffer-ownership EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/contracts/buffer/buffer_test.c)
-    asciichat_configure_contract(test-buffer-ownership)
-    target_link_libraries(test-buffer-ownership PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES}
-        ${LIBWEBSOCKETS_LIBRARIES} OpenSSL::SSL OpenSSL::Crypto ${ZLIB_LIBRARIES})
-    if(WIN32)
-        target_link_libraries(test-buffer-ownership PRIVATE ws2_32)
-    elseif(APPLE)
-        target_link_libraries(test-buffer-ownership PRIVATE "-framework CoreFoundation" "-framework SystemConfiguration")
-    endif()
-    apply_sanitizers_to_target(test-buffer-ownership)
-    target_include_directories(test-buffer-ownership PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated
-        ${LIBWEBSOCKETS_INCLUDE_DIRS})
-    set_target_properties(test-buffer-ownership PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    if(BUILD_TESTS)
-        if(TARGET tests)
-            add_dependencies(tests test-buffer-ownership)
+    if(NOT TARGET ZLIB::ZLIB)
+        message(STATUS "Skipping test-buffer-ownership: ZLIB::ZLIB target is unavailable")
+    else()
+        add_executable(test-buffer-ownership EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/contracts/buffer/buffer_test.c)
+        asciichat_configure_contract(test-buffer-ownership)
+        target_link_libraries(test-buffer-ownership PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES}
+            ${LIBWEBSOCKETS_LIBRARIES} OpenSSL::SSL OpenSSL::Crypto ZLIB::ZLIB)
+        if(WIN32)
+            target_link_libraries(test-buffer-ownership PRIVATE ws2_32)
+        elseif(APPLE)
+            target_link_libraries(test-buffer-ownership PRIVATE "-framework CoreFoundation" "-framework SystemConfiguration")
         endif()
-        asciichat_add_contract_test(buffer-ownership test-buffer-ownership)
-        set_tests_properties(buffer-ownership PROPERTIES TIMEOUT 120)
+        apply_sanitizers_to_target(test-buffer-ownership)
+        target_include_directories(test-buffer-ownership PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated
+            ${LIBWEBSOCKETS_INCLUDE_DIRS})
+        set_target_properties(test-buffer-ownership PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+        if(BUILD_TESTS)
+            if(TARGET tests)
+                add_dependencies(tests test-buffer-ownership)
+            endif()
+            asciichat_add_contract_test(buffer-ownership test-buffer-ownership)
+            set_tests_properties(buffer-ownership PROPERTIES TIMEOUT 120)
+        endif()
     endif()
 endif()
 
@@ -1846,7 +1855,13 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(client-lifecycle test-client-lifecycle)
     set_property(TEST client-lifecycle APPEND PROPERTY LABELS unit)
 
-    add_executable(test-mcp-requests contracts/mcp/request_contract_test.c)
+    add_executable(test-mcp-requests
+        contracts/mcp/request_contract_test.c
+        # request_contract_test.c includes the MCP protocol implementation
+        # directly.  Supply the shared renderer implementation it calls too;
+        # the imported static application library intentionally contains only
+        # the reusable library sources, not src/common/http_renderer.c.
+        ${CMAKE_SOURCE_DIR}/src/common/http_renderer.c)
     asciichat_configure_contract(test-mcp-requests)
     target_link_libraries(test-mcp-requests PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES}
         ${YYJSON_LIBRARIES} ${ASCIICHAT_LIBUV_TARGET} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})

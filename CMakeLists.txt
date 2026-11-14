@@ -121,8 +121,7 @@ configure_musl_pre_project("${CMAKE_BUILD_TYPE}")
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/platform/iOS.cmake)
 
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/LLVM.cmake)
-configure_llvm_pre_project()
+configure_selected_compiler_pre_project()
 
 # Enable C++ for project dependencies and source instrumentation
 if(APPLE)
@@ -245,11 +244,17 @@ endif()
 # Compiler config
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/CCache.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/CompilerDetection.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/CompilerFlags.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compilers/Detection.cmake)
 configure_base_compiler_flags()
-configure_llvm_post_project()
-fix_llvm_ranlib()
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    configure_clang_post_project()
+    fix_clang_ranlib()
+elseif(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    configure_gcc_post_project()
+elseif(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    configure_msvc_post_project()
+endif()
+configure_compiler_post_project()
 configure_musl_post_project()
 
 include(${CMAKE_SOURCE_DIR}/cmake/platform/WindowsWorkarounds.cmake)

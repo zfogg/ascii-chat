@@ -53,7 +53,7 @@ outputs:
     value: ${{ inputs.build-directory }}
   deps-cache-key:
     description: "Fully qualified cache key for the dependency cache."
-    value: ${{ format('{0}-deps-{1}-{2}-{3}', inputs.cache-version, runner.os, runner.arch, steps.cache-config.outputs.build_suffix) }}
+    value: ${{ format('{0}-deps-{1}-{2}-{3}-{4}-{5}', inputs.cache-version, runner.os, runner.arch, github.workflow, github.job, steps.cache-config.outputs.build_suffix) }}
   deps-cache-hit:
     description: "Whether the dependency cache was restored."
     value: ${{ steps.cache-deps-dir.outputs.cache-hit }}
@@ -141,9 +141,10 @@ runs:
       uses: actions/cache/restore@v4
       with:
         path: ${{ inputs.deps-cache-directory }}
-        key: ${{ format('{0}-deps-{1}-{2}-{3}', inputs.cache-version, runner.os, runner.arch, steps.cache-config.outputs.build_suffix) }}
+        key: ${{ format('{0}-deps-{1}-{2}-{3}-{4}-{5}', inputs.cache-version, runner.os, runner.arch, github.workflow, github.job, steps.cache-config.outputs.build_suffix) }}
         restore-keys: |
-          ${{ format('{0}-deps-{1}-{2}-', inputs.cache-version, runner.os, runner.arch) }}
+          ${{ format('{0}-deps-{1}-{2}-{3}-{4}-', inputs.cache-version, runner.os, runner.arch, github.workflow, github.job) }}
+          ${{ format('{0}-deps-{1}-{2}-{3}-', inputs.cache-version, runner.os, runner.arch, github.workflow) }}
 
     - name: Restore ccache directory
       if: inputs.cache-ccache == 'true'

@@ -6,6 +6,7 @@
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/util/pcre2.h>
+#include <ascii-chat/util/symbols.h>
 #include <stdlib.h>
 
 TestSuite(symbol_cache_lifecycle);
@@ -126,9 +127,9 @@ Test(symbol_cache_lifecycle, cached_names_are_copied_and_updates_do_not_invalida
 Test(symbol_cache_lifecycle, source_paths_classify_project_external_and_truncation_without_partial_writes) {
   const char *project[] = {"ascii-chat", "C:\\tools\\ASCII-CHAT.EXE", "libasciichat.so.0.1.0"};
   for (size_t i = 0; i < 3; ++i)
-    cr_assert(symbol_module_is_project(project[i]));
-  cr_assert_not(symbol_module_is_project("libc.so.6"));
-  cr_assert_not(symbol_module_is_project(NULL));
+    cr_assert(asciichat_symbol_module_is_project(project[i]));
+  cr_assert_not(asciichat_symbol_module_is_project("libc.so.6"));
+  cr_assert_not(asciichat_symbol_module_is_project(NULL));
   char output[256];
   bool external;
   cr_assert_eq(symbol_format_source_path("libasciichat.so", "lib/audio/audio.c", output, sizeof(output), &external, NULL), ASCIICHAT_OK);

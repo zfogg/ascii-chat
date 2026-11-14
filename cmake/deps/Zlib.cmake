@@ -57,6 +57,18 @@ endif()
 
 # Try to find zlib via CMake module mode first (vcpkg provides a wrapper),
 # then config mode, then fall back to pkg-config
+# A cached NOTFOUND path is not a valid result and can poison dependency
+# subprojects such as libwebsockets on a later configure.
+if(ZLIB_LIBRARY MATCHES "-NOTFOUND$" OR ZLIB_LIBRARIES MATCHES "-NOTFOUND$")
+    unset(ZLIB_LIBRARY CACHE)
+    unset(ZLIB_LIBRARIES CACHE)
+    unset(ZLIB_INCLUDE_DIR CACHE)
+    unset(ZLIB_INCLUDE_DIRS CACHE)
+    unset(ZLIB_LIBRARY)
+    unset(ZLIB_LIBRARIES)
+    unset(ZLIB_INCLUDE_DIR)
+    unset(ZLIB_INCLUDE_DIRS)
+endif()
 find_package(ZLIB QUIET)
 
 if(NOT ZLIB_FOUND)
@@ -67,7 +79,14 @@ if(NOT ZLIB_FOUND)
     # Fall back to pkg-config if CMake find didn't work
     find_package(PkgConfig QUIET)
     if(PKG_CONFIG_FOUND)
-        pkg_check_modules(ZLIB REQUIRED zlib)
+        pkg_check_modules(ASCIICHAT_ZLIB_PKG REQUIRED IMPORTED_TARGET zlib)
+        if(TARGET PkgConfig::ASCIICHAT_ZLIB_PKG)
+            add_library(ZLIB::zlib INTERFACE IMPORTED)
+            target_link_libraries(ZLIB::zlib INTERFACE PkgConfig::ASCIICHAT_ZLIB_PKG)
+            set(ZLIB_FOUND TRUE)
+            set(ZLIB_INCLUDE_DIRS "${ASCIICHAT_ZLIB_PKG_INCLUDE_DIRS}")
+            set(ZLIB_LDFLAGS "${ASCIICHAT_ZLIB_PKG_LDFLAGS}")
+        endif()
     else()
         # Last resort: check vcpkg installed directory directly
         if(DEFINED VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
@@ -85,11 +104,77 @@ if(NOT ZLIB_FOUND)
     endif()
 
     # Create imported target for compatibility
-    if(NOT TARGET ZLIB::zlib)
+    if(NOT TARGET ZLIB::zlib AND ZLIB_LIBRARIES)
         add_library(ZLIB::zlib INTERFACE IMPORTED)
         target_include_directories(ZLIB::zlib SYSTEM INTERFACE ${ZLIB_INCLUDE_DIRS})
         target_link_libraries(ZLIB::zlib INTERFACE ${ZLIB_LIBRARIES})
     endif()
+endif()
+
+# libwebsockets configures in a nested scope and may re-read ZLIB_LIBRARY from
+# the cache. Never let a stale NOTFOUND value escape into that subproject when
+# a usable imported target or system zlib is already available.
+if(ZLIB_LIBRARY MATCHES "-NOTFOUND$" OR ZLIB_LIBRARIES MATCHES "-NOTFOUND$" OR
+   NOT ZLIB_LIBRARY OR NOT ZLIB_LIBRARIES)
+    if(TARGET ZLIB::ZLIB)
+        set(ZLIB_LIBRARY ZLIB::ZLIB CACHE STRING
+            "zlib target used by dependency subprojects" FORCE)
+        set(ZLIB_LIBRARIES ZLIB::ZLIB CACHE STRING
+            "zlib target used by dependency subprojects" FORCE)
+    elseif(TARGET ZLIB::zlib)
+        set(ZLIB_LIBRARY ZLIB::zlib CACHE STRING
+            "zlib target used by dependency subprojects" FORCE)
+        set(ZLIB_LIBRARIES ZLIB::zlib CACHE STRING
+            "zlib target used by dependency subprojects" FORCE)
+    elseif(ZLIB_LINK_LIBRARIES AND NOT ZLIB_LINK_LIBRARIES MATCHES "-NOTFOUND$")
+        set(ZLIB_LIBRARY "${ZLIB_LINK_LIBRARIES}" CACHE STRING
+            "zlib libraries used by dependency subprojects" FORCE)
+        set(ZLIB_LIBRARIES "${ZLIB_LINK_LIBRARIES}" CACHE STRING
+            "zlib libraries used by dependency subprojects" FORCE)
+    elseif(ZLIB_LDFLAGS AND NOT ZLIB_LDFLAGS MATCHES "-NOTFOUND$")
+        set(ZLIB_LIBRARY "${ZLIB_LDFLAGS}" CACHE STRING
+            "zlib linker flags used by dependency subprojects" FORCE)
+        set(ZLIB_LIBRARIES "${ZLIB_LDFLAGS}" CACHE STRING
+            "zlib linker flags used by dependency subprojects" FORCE)
+    elseif(UNIX)
+        unset(_ASCIICHAT_ZLIB_LIBRARY CACHE)
+        unset(_ASCIICHAT_ZLIB_LIBRARY)
+        find_library(_ASCIICHAT_ZLIB_LIBRARY NAMES z zlib NO_CACHE)
+        if(_ASCIICHAT_ZLIB_LIBRARY)
+            set(ZLIB_LIBRARY "${_ASCIICHAT_ZLIB_LIBRARY}" CACHE FILEPATH
+                "zlib library used by dependency subprojects" FORCE)
+            set(ZLIB_LIBRARIES "${_ASCIICHAT_ZLIB_LIBRARY}" CACHE STRING
+                "zlib libraries used by dependency subprojects" FORCE)
+        else()
+            # pkg-config has already verified that the system linker can resolve
+            # zlib.  Some distributions hide the absolute library path from
+            # CMake's search roots, so preserve the portable linker token.
+            set(ZLIB_LIBRARY "-lz" CACHE STRING
+                "zlib linker flag used by dependency subprojects" FORCE)
+            set(ZLIB_LIBRARIES "-lz" CACHE STRING
+                "zlib linker flag used by dependency subprojects" FORCE)
+        endif()
+    endif()
+endif()
+
+# FindZLIB can restore its NOTFOUND cache entries after the target-based
+# recovery above. pkg-config has already confirmed the system module exists,
+# so normalize those entries one last time for nested dependency projects.
+if(UNIX AND ZLIB_FOUND AND
+   ("${ZLIB_LIBRARY}" STREQUAL "ZLIB_LIBRARY-NOTFOUND" OR
+    "${ZLIB_LIBRARIES}" STREQUAL "ZLIB_LIBRARY-NOTFOUND" OR
+    NOT ZLIB_LIBRARY OR NOT ZLIB_LIBRARIES))
+    set(ZLIB_LIBRARY "-lz")
+    set(ZLIB_LIBRARIES "-lz")
+    set(ZLIB_LIBRARY "-lz" CACHE STRING
+        "zlib linker flag used by dependency subprojects" FORCE)
+    set(ZLIB_LIBRARIES "-lz" CACHE STRING
+        "zlib linker flag used by dependency subprojects" FORCE)
+endif()
+
+if(ZLIB_LIBRARY MATCHES "-NOTFOUND$" OR ZLIB_LIBRARIES MATCHES "-NOTFOUND$" OR
+   NOT ZLIB_LIBRARY OR NOT ZLIB_LIBRARIES)
+    message(FATAL_ERROR "zlib was detected but no usable library was resolved (ZLIB_LIBRARY='${ZLIB_LIBRARY}', ZLIB_LIBRARIES='${ZLIB_LIBRARIES}')")
 endif()
 
 message(STATUS "${BoldGreen}✓${ColorReset} zlib found")

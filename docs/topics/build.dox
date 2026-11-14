@@ -17,7 +17,8 @@
  * different compiler, ABI, SDK, or static/shared dependency configuration.
  *
  * The source tree is modular: `cmake/init/` establishes options and platform
- * detection; `cmake/compiler/` owns Clang/LLVM flags and instrumentation;
+ * detection; `cmake/compilers/` selects and configures LLVM, GCC, or MSVC while
+ * `cmake/compiler/` owns shared flags and instrumentation;
  * `cmake/deps/` finds or builds third-party libraries; `cmake/targets/` assembles
  * targets; `cmake/install/` owns installation and packaging; and
  * `docs/CMakeLists.txt` is the independent Doxygen project.
@@ -70,10 +71,11 @@
  *
  * @section build_platforms Toolchains and platforms
  *
- * Clang/LLVM and Ninja are the supported native toolchain. Windows development
- * normally uses PowerShell with LLVM and the repository presets. Linux and macOS
- * use the platform's Clang or the configured LLVM installation. Keep separate
- * build directories when switching compiler installations or sanitizer runtimes.
+ * LLVM, GCC, and MSVC (on Windows) are supported native toolchains, with Ninja
+ * as the normal generator. `default` uses AUTO selection in the order LLVM,
+ * Clang, then GCC, then MSVC; use `default-clang`, `default-gcc`, or `default-msvc` to pin a
+ * family. Keep separate build directories when switching compiler installations
+ * or sanitizer runtimes.
  * The native defer tool requires LLVM 19 or newer, its C++ development headers
  * and libraries, and libclang. The dependency installers provision these;
  * `ASCIICHAT_LLVM_DEV_ROOT` selects an existing compatible development archive.

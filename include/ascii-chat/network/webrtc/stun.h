@@ -42,6 +42,9 @@ extern "C" {
 // Pack network protocol structures tightly for wire format
 #ifdef _WIN32
 #pragma pack(push, 1)
+#define ASCIICHAT_STUN_PACKED
+#else
+#define ASCIICHAT_STUN_PACKED __attribute__((packed))
 #endif
 
 /**
@@ -72,7 +75,7 @@ extern "C" {
 /** STUN wire URL capacity in bytes, including NUL (63 URL bytes). */
 #define STUN_URL_BUFFER_SIZE 64
 
-typedef struct __attribute__((packed)) {
+typedef struct ASCIICHAT_STUN_PACKED {
   uint8_t host_len;                ///< Length of host string (actual URL length)
   char host[STUN_URL_BUFFER_SIZE]; ///< STUN server URL (e.g., "stun:discovery.ascii.chat:3478")
 } stun_server_t;
@@ -119,6 +122,7 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_se
 #ifdef _WIN32
 #pragma pack(pop)
 #endif
+#undef ASCIICHAT_STUN_PACKED
 
 #ifdef __cplusplus
 }

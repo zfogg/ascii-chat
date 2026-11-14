@@ -22,7 +22,8 @@ def test_log_io(c_compiler):
             shutil.copyfile(HERE / "stubs.h", dest)
         shutil.copyfile(ROOT / "include/ascii-chat/log/io.h", out / "ascii-chat/log/io.h")
         exe = out / "test"
-        subprocess.run([c_compiler, *coverage_flags(), "-I", str(out), str(ROOT / "lib/log/io.c"),
+        subprocess.run([c_compiler, *coverage_flags(), "-I", str(out), "-I", str(ROOT / "include"),
+                        str(ROOT / "lib/log/io.c"),
                         str(HERE / "test.c"), "-o", str(exe)], check=True, cwd=out, timeout=60)
         result = subprocess.run([str(exe)], capture_output=True, text=True, timeout=15, check=True)
         assert result.stdout == "stdout restored\n"

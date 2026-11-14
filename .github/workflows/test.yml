@@ -146,7 +146,7 @@ jobs:
         id: cache-build
         uses: ./.github/actions/cache-build
         with:
-          cache-version: v7
+          cache-version: v8
           build-cache-key: ${{ matrix.build_type }}
 
       - name: Clean test executables and libraries only
@@ -368,7 +368,7 @@ jobs:
         id: cache-build
         uses: ./.github/actions/cache-build
         with:
-          cache-version: v7-${{ matrix.instrumentation }}
+          cache-version: v9-${{ matrix.instrumentation }}
 
       - name: Clean test executables and libraries only
         run: |
@@ -561,7 +561,7 @@ jobs:
         id: cache-build
         uses: ./.github/actions/cache-build
         with:
-          cache-version: v7
+          cache-version: v8
 
       - name: Clean test executables and libraries only
         run: |
@@ -765,7 +765,7 @@ jobs:
         id: cache-build
         uses: ./.github/actions/cache-build
         with:
-          cache-version: v7
+          cache-version: v8
 
       - name: Clean test executables and libraries only
         run: |
@@ -888,7 +888,7 @@ jobs:
         id: cache-build
         uses: ./.github/actions/cache-build
         with:
-          cache-version: v7
+          cache-version: v8
 
       - name: Clean test executables and libraries only
         run: |

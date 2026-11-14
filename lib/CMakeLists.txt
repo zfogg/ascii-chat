@@ -844,6 +844,11 @@ endif()
 # search as a fallback for distro/Homebrew installs that do not ship a CMake
 # package file.
 find_package(nghttp2 CONFIG QUIET)
+if(WIN32)
+    # The bundled nghttp2 archive is static.  Avoid __declspec(dllimport)
+    # declarations from system/vcpkg headers when compiling the HTTP/2 object.
+    target_compile_definitions(ascii-chat-network PRIVATE NGHTTP2_STATICLIB)
+endif()
 if(USE_MUSL)
     # gotel builds this target for the active toolchain; a host installation
     # can otherwise introduce glibc headers and libraries into a musl build.
@@ -1032,7 +1037,7 @@ add_library(ascii-chat-shared SHARED
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}  # DLL goes in bin/
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}  # .so goes in lib/
         ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}  # Import .lib goes in lib/
-        WINDOWS_EXPORT_ALL_SYMBOLS FALSE  # Use generated .def file instead
+        WINDOWS_EXPORT_ALL_SYMBOLS FALSE  # Use generated .def file except for native MSVC
         # Windows: VERSION/SOVERSION embed version info in PE header (no symlinks)
         # Library version is from lib/v* tags, separate from app version
         VERSION ${ASCIICHAT_LIB_VERSION}
@@ -1041,6 +1046,9 @@ add_library(ascii-chat-shared SHARED
         MACOSX_RPATH TRUE
         INSTALL_NAME_DIR "@rpath"
     )
+    if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+        set_property(TARGET ascii-chat-shared PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+    endif()
     if(WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT CMAKE_C_COMPILER MATCHES "clang-cl")
         # The GNU-style Clang driver targets the MSVC ABI here. Match CMake's
         # generated import-library path to the .lib path passed to lld-link.
@@ -1119,7 +1127,7 @@ add_library(ascii-chat-shared SHARED
         # Both clang-cl and clang --target=...-windows-msvc produce MSVC
         # compatible import libraries. The GNU-style clang driver used by the
         # LLVM toolchain still needs the .lib name consumed by the executable.
-        if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER MATCHES "clang-cl")
+        if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER_ID STREQUAL "MSVC" OR CMAKE_C_COMPILER MATCHES "clang-cl")
             set(ASCIICHAT_WINDOWS_IMPORT_LIBRARY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
         else()
             set(ASCIICHAT_WINDOWS_IMPORT_LIBRARY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.dll.a")
@@ -1144,7 +1152,7 @@ add_library(ascii-chat-shared SHARED
 
     # Generate the .def file using a custom command
     # Windows: Auto-generate .def file for symbol export
-    if(WIN32)
+    if(WIN32 AND NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
         if(CMAKE_NM)
             set(_export_nm "${CMAKE_NM}")
         elseif(ASCIICHAT_LLVM_NM_EXECUTABLE)
@@ -1213,6 +1221,9 @@ add_library(ascii-chat-shared SHARED
     # Add include directories needed by the OBJECT libraries
     target_include_directories(ascii-chat-shared PRIVATE
         $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include>
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/lib>
     )
 
     if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
@@ -1255,12 +1266,19 @@ add_library(ascii-chat-shared SHARED
         add_dependencies(ascii-chat-shared ${LIBSODIUM_BUILD_TARGET})
     endif()
 
+    # gotel already supplies its bundled nghttp2 on Windows; adding the
+    # separately discovered vcpkg import library creates duplicate symbols.
+    set(_asciichat_nghttp2_shared_link ${ASCIICHAT_NGHTTP2_TARGET})
+    if(TARGET gotel::gotel)
+        set(_asciichat_nghttp2_shared_link)
+    endif()
+
     # Link external dependencies (libsodium, zstd, opus, etc.)
     # These are needed because shared library is created from OBJECT files,
     # which don't automatically bring in their module dependencies
     target_link_libraries(ascii-chat-shared PRIVATE
         asciichat-icu
-        ${ASCIICHAT_NGHTTP2_TARGET}
+        ${_asciichat_nghttp2_shared_link}
         ${LIBSODIUM_LIBRARIES}
         zstd::libzstd
         ${OPUS_LIBRARIES}
@@ -1268,6 +1286,7 @@ add_library(ascii-chat-shared SHARED
         ${PCRE2_LIBRARIES}
         ${YYJSON_LIBRARIES}
     )
+    unset(_asciichat_nghttp2_shared_link)
 
     # Coverage builds: link Clang profile runtime into shared library
     if(ASCIICHAT_ENABLE_COVERAGE)
@@ -1574,7 +1593,7 @@ else()
     set(ASCIICHAT_SYMBOL_NM_EXECUTABLE "${ASCIICHAT_LLVM_NM_EXECUTABLE}")
 endif()
 
-if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
+if(ASCIICHAT_SYMBOL_NM_EXECUTABLE AND NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     # On Windows, check the import library (.lib) since DLLs don't expose symbols to llvm-nm
     # On Unix, check the shared object directly
     if(WIN32)

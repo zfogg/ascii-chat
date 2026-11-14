@@ -116,7 +116,7 @@ class CoverageReportTests(unittest.TestCase):
         (self.root / "CMakeLists.txt").write_text(
             'cmake_minimum_required(VERSION 3.24)\nproject(fixture C)\n'
             f'include("{module.as_posix()}")\nset(ASCIICHAT_ENABLE_IPO ON)\n'
-            f'include("{(module.parent / "CompilerFlags.cmake").as_posix()}")\n'
+            f'include("{(module.parents[1] / "compilers/Flags.cmake").as_posix()}")\n'
             'set(ASCIICHAT_ENABLE_COVERAGE ON)\n'
             'configure_release_flags(FALSE TRUE FALSE FALSE FALSE)\n'
             'add_executable(ascii-chat main.c)\nadd_subdirectory(tests)\n'
@@ -210,7 +210,7 @@ class CoverageReportTests(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("clang") and shutil.which("cmake") and shutil.which("ninja") and importlib.util.find_spec("gcovr"), "Requires CMake, Ninja, Clang and gcovr")
     def test_release_path_mapping_preserves_coverage_source_lookup(self):
-        module = Path(__file__).resolve().parents[2] / "cmake/compiler/SourcePaths.cmake"
+        module = Path(__file__).resolve().parents[2] / "cmake/compilers/SourcePaths.cmake"
         source = self.root / "lib/main.c"
         source.parent.mkdir()
         source.write_text('#include <stdio.h>\nint main(void) { puts(__FILE__); return 0; }\n')

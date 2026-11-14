@@ -133,13 +133,18 @@ uint64_t time_timespec_to_ns(const struct timespec *ts) {
     SET_ERRNO(ERROR_INVALID_PARAM, "null ts");
     return 0;
   }
-  // Use __uint128_t to prevent overflow during multiplication of large time values
-  __uint128_t result = (__uint128_t)ts->tv_sec * NS_PER_SEC_INT;
-  if (result > UINT64_MAX) {
+  // Check before multiplying so this also works with MSVC, which has no
+  // GNU __uint128_t extension.
+  if (ts->tv_sec < 0 || (uintmax_t)ts->tv_sec > UINT64_MAX / NS_PER_SEC_INT) {
     SET_ERRNO(ERROR_INVALID_PARAM, "timespec value would overflow");
     return UINT64_MAX;
   }
-  return (uint64_t)result + (uint64_t)ts->tv_nsec;
+  uint64_t result = (uint64_t)ts->tv_sec * NS_PER_SEC_INT;
+  if ((uint64_t)ts->tv_nsec > UINT64_MAX - result) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "timespec value would overflow");
+    return UINT64_MAX;
+  }
+  return result + (uint64_t)ts->tv_nsec;
 }
 
 // ============================================================================
@@ -299,6 +304,19 @@ double timer_stop(const char *name) {
 
   rwlock_wrunlock(&g_timer_manager.rwlock);
   return elapsed_ns; // Return nanoseconds
+}
+
+double timer_stop_formatted(const char *name_fmt, ...) {
+  if (!timer_is_initialized())
+    return -1.0;
+  char name[UTIL_TIME_TIMER_NAME_BUFFER_SIZE];
+  char with_tid[UTIL_TIME_TIMER_NAME_WITH_TID_BUFFER_SIZE];
+  va_list args;
+  va_start(args, name_fmt);
+  vsnprintf(name, sizeof(name), name_fmt, args);
+  va_end(args);
+  snprintf(with_tid, sizeof(with_tid), "%s_tid%llu", name, (unsigned long long)thread_current_id());
+  return timer_stop(with_tid);
 }
 
 bool timer_is_initialized(void) {
