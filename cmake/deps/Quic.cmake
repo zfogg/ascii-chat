@@ -89,16 +89,57 @@ function(asciichat_configure_quic)
     set(_nghttp3_library "${_nghttp3_build}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}nghttp3${CMAKE_STATIC_LIBRARY_SUFFIX}")
     file(MAKE_DIRECTORY "${_ngtcp2_build}/lib/includes" "${_nghttp3_build}/lib/includes")
 
+    # Configure the isolated dependency projects while the parent project is
+    # configuring.  ExternalProject_Add normally defers both configure and
+    # build until the first build, which makes the first Ninja invocation look
+    # as though it is unexpectedly configuring third-party projects.  Keep
+    # compilation in the build graph; only run the inexpensive CMake configure
+    # phase here so imported targets and generated headers have a predictable
+    # build tree before generation finishes.
+    set(_quic_generator_args -G "${CMAKE_GENERATOR}")
+    if(CMAKE_GENERATOR_PLATFORM)
+        list(APPEND _quic_generator_args -A "${CMAKE_GENERATOR_PLATFORM}")
+    endif()
+    if(CMAKE_GENERATOR_TOOLSET)
+        list(APPEND _quic_generator_args -T "${CMAKE_GENERATOR_TOOLSET}")
+    endif()
+
+    execute_process(
+        COMMAND "${CMAKE_COMMAND}" -S "${_ngtcp2_source}" -B "${_ngtcp2_build}"
+            ${_quic_generator_args} ${_quic_common_args}
+            -DENABLE_OPENSSL:BOOL=ON
+            -DOPENSSL_INCLUDE_DIR:PATH=${OPENSSL_INCLUDE_DIR}
+            -DOPENSSL_SSL_LIBRARY:FILEPATH=${_quic_ssl_file}
+            -DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}
+            -DVCPKG_MANIFEST_INSTALL:BOOL=OFF
+        RESULT_VARIABLE _ngtcp2_configure_result
+        OUTPUT_VARIABLE _ngtcp2_configure_stdout
+        ERROR_VARIABLE _ngtcp2_configure_stderr)
+    if(NOT _ngtcp2_configure_result EQUAL 0)
+        message(FATAL_ERROR "Failed to configure ngtcp2 (${_ngtcp2_configure_result})\n${_ngtcp2_configure_stdout}${_ngtcp2_configure_stderr}")
+    endif()
+
+    execute_process(
+        COMMAND "${CMAKE_COMMAND}" -S "${_nghttp3_source}" -B "${_nghttp3_build}"
+            ${_quic_generator_args} ${_quic_common_args}
+            -DVCPKG_MANIFEST_INSTALL:BOOL=OFF
+        RESULT_VARIABLE _nghttp3_configure_result
+        OUTPUT_VARIABLE _nghttp3_configure_stdout
+        ERROR_VARIABLE _nghttp3_configure_stderr)
+    if(NOT _nghttp3_configure_result EQUAL 0)
+        message(FATAL_ERROR "Failed to configure nghttp3 (${_nghttp3_configure_result})\n${_nghttp3_configure_stdout}${_nghttp3_configure_stderr}")
+    endif()
+
     ExternalProject_Add(asciichat-ngtcp2-build
         SOURCE_DIR "${_ngtcp2_source}"
         BINARY_DIR "${_ngtcp2_build}"
-        DOWNLOAD_COMMAND "" UPDATE_COMMAND "" INSTALL_COMMAND ""
+        DOWNLOAD_COMMAND "" UPDATE_COMMAND "" CONFIGURE_COMMAND "${CMAKE_COMMAND}" -E true INSTALL_COMMAND ""
         CMAKE_ARGS ${_quic_common_args} "-DENABLE_OPENSSL:BOOL=ON"
             "-DOPENSSL_INCLUDE_DIR:PATH=${OPENSSL_INCLUDE_DIR}"
             "-DOPENSSL_SSL_LIBRARY:FILEPATH=${_quic_ssl_file}"
             "-DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}"
             "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
-        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ngtcp2_crypto_ossl_static
+        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ngtcp2_crypto_ossl_static -- --quiet
         BUILD_BYPRODUCTS "${_ngtcp2_library}" "${_ngtcp2_crypto_library}"
         BUILD_ALWAYS TRUE
         EXCLUDE_FROM_ALL TRUE)
@@ -106,9 +147,9 @@ function(asciichat_configure_quic)
     ExternalProject_Add(asciichat-nghttp3-build
         SOURCE_DIR "${_nghttp3_source}"
         BINARY_DIR "${_nghttp3_build}"
-        DOWNLOAD_COMMAND "" UPDATE_COMMAND "" INSTALL_COMMAND ""
+        DOWNLOAD_COMMAND "" UPDATE_COMMAND "" CONFIGURE_COMMAND "${CMAKE_COMMAND}" -E true INSTALL_COMMAND ""
         CMAKE_ARGS ${_quic_common_args} "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
-        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target nghttp3_static
+        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target nghttp3_static -- --quiet
         BUILD_BYPRODUCTS "${_nghttp3_library}"
         BUILD_ALWAYS TRUE
         EXCLUDE_FROM_ALL TRUE)
