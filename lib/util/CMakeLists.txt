@@ -16,6 +16,7 @@ set(UTIL_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/display.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pcre2.c
     ${CMAKE_CURRENT_SOURCE_DIR}/env.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/symbols.c
 )
 
 if(USE_MUSL)
