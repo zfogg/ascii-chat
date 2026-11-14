@@ -209,6 +209,7 @@
 
 #include "../options/options.h"
 #include "../options/builder.h"
+#include <libflags/builder.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -224,6 +225,14 @@ extern "C" {
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder);
+
+/**
+ * @brief Adds registry metadata directly to a libflags schema builder.
+ * @param builder Destination builder.
+ * @param mode_mask Modes whose options should be included.
+ * @return ASCIICHAT_OK on success, or an error code.
+ */
+asciichat_error_t options_registry_add_all_to_flags_builder(flags_schema_builder_t *builder, option_mode_bitmask_t mode_mask);
 
 /**
  * @brief Get option descriptor by name

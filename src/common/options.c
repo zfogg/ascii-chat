@@ -214,20 +214,13 @@ static void js_log_options(const char *msg) {
 
 
 static asciichat_error_t options_generate_completion_with_libflags(completion_format_t format, FILE *output) {
-  options_config_t *config = options_preset_unified("ascii-chat", "Terminal video chat");
-  if (!config)
-    return SET_ERRNO(ERROR_CONFIG, "Failed to create completion schema");
-
-  const options_config_t *schema_config = config;
-  if (config_schema_build_from_configs(&schema_config, 1) != ASCIICHAT_OK) {
-    options_config_destroy(config);
-    return SET_ERRNO(ERROR_CONFIG, "Failed to build completion metadata");
-  }
-
-  flags_schema_builder_t *builder = options_config_build_flags_schema(OPTION_MODE_ALL);
+  flags_schema_builder_t *builder = flags_schema_builder_create();
   if (!builder) {
-    options_config_destroy(config);
     return SET_ERRNO(ERROR_CONFIG, "Failed to build completion schema");
+  }
+  if (options_registry_add_all_to_flags_builder(builder, OPTION_MODE_ALL) != ASCIICHAT_OK) {
+    flags_schema_builder_destroy(builder);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to populate completion schema");
   }
 
   flags_completion_shell_t shell = format == COMPLETION_FORMAT_BASH ? FLAGS_COMPLETION_BASH
@@ -236,7 +229,6 @@ static asciichat_error_t options_generate_completion_with_libflags(completion_fo
                                    : FLAGS_COMPLETION_POWERSHELL;
   bool written = flags_completion_write(flags_schema_builder_schema(builder), "ascii-chat", shell, output);
   flags_schema_builder_destroy(builder);
-  options_config_destroy(config);
   return written ? ASCIICHAT_OK : SET_ERRNO(ERROR_FILE_OPERATION, "Failed to write completion script");
 }
 
