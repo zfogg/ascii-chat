@@ -484,6 +484,10 @@ runs:
           }
         }
 
+        # Scoop is a native command and can leave a non-zero process status
+        # after a successful install; do not leak that status from this step.
+        exit 0
+
     # The MSI supplies the compiler; the matching development archive supplies LLVM C++ libraries.
     - name: Install LLVM 23 (Windows)
       if: inputs.os == 'windows'
