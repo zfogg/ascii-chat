@@ -35,7 +35,7 @@
 // Option Metadata Registry
 // ============================================================================
 // Schema is now built dynamically from options builder configs.
-// See config_schema_build_from_configs() below.
+// Schema entries are built directly from the native registry.
 
 // ============================================================================
 // Dynamic Schema Storage

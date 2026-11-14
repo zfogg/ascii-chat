@@ -74,8 +74,3 @@ typedef struct {
   const void *(*mode_default_getter)(asciichat_mode_t mode);
 } option_descriptor_t;
 
-/** @brief Minimal schema view used while migrating config metadata to libflags. */
-typedef struct {
-  option_descriptor_t *descriptors;
-  size_t num_descriptors;
-} options_config_t;

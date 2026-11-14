@@ -131,7 +131,7 @@ asciichat_error_t config_schema_build_from_registry(void);
 /**
  * @brief Clean up dynamically allocated schema resources
  *
- * Frees all memory allocated by config_schema_build_from_configs(),
+ * Frees all memory allocated by config_schema_build_from_registry(),
  * including the dynamic schema array and all associated strings.
  * Safe to call multiple times or if schema was never built.
  *
