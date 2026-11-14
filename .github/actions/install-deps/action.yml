@@ -445,22 +445,6 @@ runs:
           }
         }
 
-        function Install-ChocoPackage {
-          param([string]$Package)
-          $job = Start-Job -ScriptBlock {
-            param($PackageName)
-            choco install $PackageName --no-progress -y
-            if ($LASTEXITCODE -ne 0) { throw "Chocolatey failed to install $PackageName" }
-          } -ArgumentList $Package
-          if (-not (Wait-Job $job -Timeout 300)) {
-            Stop-Job $job -ErrorAction SilentlyContinue
-            Remove-Job $job -Force -ErrorAction SilentlyContinue
-            throw "Chocolatey installation timed out after 5 minutes: $Package"
-          }
-          Receive-Job $job -ErrorAction Stop
-          Remove-Job $job -Force -ErrorAction SilentlyContinue
-        }
-
         # The matching LLVM development archive is installed separately below.
         # doxygen is needed for generating documentation included in installers.
         # GitHub's AMD64 image has Chocolatey and its packages resolve much
@@ -475,27 +459,21 @@ runs:
         }
         $packages = $basePackages + $extra
 
-        if ($env:RUNNER_ARCH -eq 'X64') {
-          foreach ($pkg in $packages) {
-            Install-ChocoPackage -Package $pkg
-          }
-        } else {
-          Ensure-Scoop
-          Ensure-ScoopBucket -Bucket 'main'
-          Ensure-ScoopBucket -Bucket 'extras'
-          foreach ($pkg in $packages) {
-            Install-ScoopPackage -Package $pkg
-          }
+        Ensure-Scoop
+        Ensure-ScoopBucket -Bucket 'main'
+        Ensure-ScoopBucket -Bucket 'extras'
+        foreach ($pkg in $packages) {
+          Install-ScoopPackage -Package $pkg
+        }
 
-          # Persist Scoop shims for later action steps without failing when a
-          # runner uses only one of the user/global locations.
-          foreach ($shimsPath in @(
-              (Join-Path $env:USERPROFILE 'scoop\shims'),
-              'C:\ProgramData\scoop\shims'
-            )) {
-            if (Test-Path $shimsPath) {
-              Add-Content -Path $env:GITHUB_PATH -Value $shimsPath
-            }
+        # Persist Scoop shims for later action steps without failing when a
+        # runner uses only one of the user/global locations.
+        foreach ($shimsPath in @(
+            (Join-Path $env:USERPROFILE 'scoop\shims'),
+            'C:\ProgramData\scoop\shims'
+          )) {
+          if (Test-Path $shimsPath) {
+            Add-Content -Path $env:GITHUB_PATH -Value $shimsPath
           }
         }
 
