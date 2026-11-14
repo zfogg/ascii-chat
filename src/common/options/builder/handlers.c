@@ -15,6 +15,7 @@
 #include <ascii-chat/options/builder/internal.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/util/string.h>
+#include <libflags/values.h>
 #include <string.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -248,15 +249,7 @@ static asciichat_error_t parse_bool_value(const char *value_str, bool *out_value
     return SET_ERRNO(ERROR_USAGE, "Option --%s requires a value (true/false, yes/no, 1/0, on/off)", desc ? desc->long_name : "unknown");
   }
 
-  // Check for true values
-  if (strcasecmp(value_str, OPT_VALUE_TRUE) == 0 || strcasecmp(value_str, "yes") == 0 || strcasecmp(value_str, "1") == 0 || strcasecmp(value_str, "on") == 0) {
-    *out_value = true;
-    return ASCIICHAT_OK;
-  }
-
-  // Check for false values
-  if (strcasecmp(value_str, OPT_VALUE_FALSE) == 0 || strcasecmp(value_str, "no") == 0 || strcasecmp(value_str, "0") == 0 || strcasecmp(value_str, "off") == 0) {
-    *out_value = false;
+  if (flags_parse_bool_relaxed(value_str, out_value)) {
     return ASCIICHAT_OK;
   }
 
