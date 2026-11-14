@@ -68,6 +68,7 @@
 #include <ascii-chat/options/presets.h>
 #include <ascii-chat/options/actions.h>
 #include <ascii-chat/options/registry/mode_defaults.h> // Mode-aware defaults
+#include <ascii-chat/options/registry/core.h>
 
 #include <ascii-chat/options/config.h>
 #include <ascii-chat/options/strings.h> // Enum/mode string conversions
@@ -81,6 +82,7 @@
 #include <libplatform/system.h>
 #include <libflags/flags.h>
 #include <libflags/commands.h>
+#include <yyjson.h>
 #include <libflags/completions/completions.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/systemd.h>
@@ -99,6 +101,112 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
+
+static const char *options_json_type(const registry_entry_t *entry) {
+  if (entry->type == OPTION_TYPE_BOOL)
+    return "boolean";
+  if (entry->type == OPTION_TYPE_INT || !strcmp(entry->long_name, "zalgo"))
+    return "integer";
+  if (entry->type == OPTION_TYPE_DOUBLE || (entry->type == OPTION_TYPE_CALLBACK && !entry->metadata.enum_values && entry->metadata.numeric_range.max && strcmp(entry->long_name, "seek")))
+    return "number";
+  return "string";
+}
+
+static asciichat_error_t options_json_validate_value(const registry_entry_t *entry, yyjson_val *value) {
+  if (!strcmp(entry->long_name, "test-pattern")) {
+    if (yyjson_is_bool(value) || (yyjson_is_int(value) && yyjson_get_sint(value) >= 0 && yyjson_get_sint(value) <= 1) ||
+        (yyjson_is_str(value) && (!strcmp(yyjson_get_str(value), "0") || !strcmp(yyjson_get_str(value), "1"))))
+      return ASCIICHAT_OK;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "test-pattern must be boolean, 0 or 1");
+  }
+  const char *type = options_json_type(entry);
+  bool valid = (!strcmp(type, "boolean") && yyjson_is_bool(value)) || (!strcmp(type, "integer") && yyjson_is_int(value)) ||
+               (!strcmp(type, "number") && yyjson_is_num(value)) || (!strcmp(type, "string") && yyjson_is_str(value)) ||
+               (!strcmp(entry->long_name, "seek") && yyjson_is_num(value));
+  if (!valid)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Wrong type for %s", entry->long_name);
+  if (yyjson_is_str(value) && (yyjson_get_len(value) > 4096 || strlen(yyjson_get_str(value)) != yyjson_get_len(value)))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid or oversized option %s", entry->long_name);
+  if (yyjson_is_num(value) && !isfinite(yyjson_get_num(value)))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Non-finite option");
+  return ASCIICHAT_OK;
+}
+
+yyjson_mut_val *options_json_schema_for_option(yyjson_mut_doc *document, const char *name) {
+  if (!document || !name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Missing option schema argument");
+    return NULL;
+  }
+  const registry_entry_t *entry = registry_find_entry_by_name(name);
+  if (!entry || entry->type == OPTION_TYPE_ACTION) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Unknown value option: %s", name);
+    return NULL;
+  }
+  yyjson_mut_val *schema = yyjson_mut_obj(document);
+  yyjson_mut_obj_add_str(document, schema, "type", options_json_type(entry));
+  yyjson_mut_obj_add_str(document, schema, "description", entry->help_text);
+  if (entry->metadata.enum_values) {
+    yyjson_mut_val *values = yyjson_mut_arr(document);
+    for (size_t i = 0; entry->metadata.enum_values[i]; ++i)
+      yyjson_mut_arr_add_str(document, values, entry->metadata.enum_values[i]);
+    yyjson_mut_obj_add_val(document, schema, "enum", values);
+  }
+  if (!strcmp(name, "test-pattern")) {
+    yyjson_mut_obj_remove_str(schema, "type");
+    yyjson_mut_obj_remove_str(schema, "enum");
+    yyjson_mut_val *values = yyjson_mut_arr(document);
+    yyjson_mut_arr_add_bool(document, values, true);
+    yyjson_mut_arr_add_bool(document, values, false);
+    yyjson_mut_arr_add_int(document, values, 0);
+    yyjson_mut_arr_add_int(document, values, 1);
+    yyjson_mut_arr_add_str(document, values, "0");
+    yyjson_mut_arr_add_str(document, values, "1");
+    yyjson_mut_obj_add_val(document, schema, "enum", values);
+  }
+  if (!strcmp(name, "seek")) {
+    yyjson_mut_obj_remove_str(schema, "type");
+    yyjson_mut_val *types = yyjson_mut_arr(document);
+    yyjson_mut_arr_add_str(document, types, "string");
+    yyjson_mut_arr_add_str(document, types, "number");
+    yyjson_mut_obj_add_val(document, schema, "type", types);
+  }
+  return schema;
+}
+
+asciichat_error_t options_json_parse_value(const char *name, yyjson_val *value, char *output, size_t output_size, bool *omitted) {
+  if (!name || !value || !output || !output_size || !omitted)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing JSON option argument");
+  *omitted = false;
+  const registry_entry_t *entry = registry_find_entry_by_name(name);
+  if (!entry || entry->type < 0 || entry->type >= NUM_OPTION_TYPES || entry->type == OPTION_TYPE_ACTION || entry->owns_memory)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported value option: %s", name);
+  asciichat_error_t error = options_json_validate_value(entry, value);
+  if (error != ASCIICHAT_OK)
+    return error;
+  if (yyjson_is_str(value)) {
+    size_t length = yyjson_get_len(value);
+    if (length >= output_size || (entry->type == OPTION_TYPE_STRING && entry->default_value_size && length >= entry->default_value_size))
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Option value too long: %s", name);
+    SAFE_STRNCPY(output, yyjson_get_str(value), output_size);
+  } else if (yyjson_is_bool(value)) {
+    SAFE_SNPRINTF(output, output_size, "%s", yyjson_get_bool(value) ? "true" : "false");
+  } else {
+    SAFE_SNPRINTF(output, output_size, "%.17g", yyjson_get_num(value));
+  }
+  if (!strcmp(name, "test-pattern") && yyjson_is_bool(value)) {
+    if (!yyjson_get_bool(value)) {
+      *omitted = true;
+      return ASCIICHAT_OK;
+    }
+    SAFE_SNPRINTF(output, output_size, "0");
+  }
+  option_descriptor_t descriptor = registry_entry_to_descriptor(entry);
+  options_t *scratch = SAFE_CALLOC(1, sizeof(*scratch), options_t *);
+  error = g_builder_handlers[descriptor.type].apply_cli((char *)scratch + descriptor.offset, output, &descriptor);
+  SAFE_FREE(scratch);
+  return error;
+}
 
 static void js_log_options(const char *msg) {
   (void)msg;
