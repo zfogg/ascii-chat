@@ -286,12 +286,11 @@ static asciichat_error_t apply_cli_int(void *field, const char *opt_value, const
     return SET_ERRNO(ERROR_USAGE, "Option --%s requires a numeric value", desc ? desc->long_name : "unknown");
   }
 
-  char *endptr;
-  long value = strtol(opt_value, &endptr, 10);
-  if (*endptr != '\0' || value < INT_MIN || value > INT_MAX) {
+  int32_t parsed_value = 0;
+  if (!flags_parse_int32(opt_value, &parsed_value)) {
     return SET_ERRNO(ERROR_USAGE, "Option --%s: '%s' is not a valid integer", desc ? desc->long_name : "unknown", opt_value);
   }
-  int int_value = (int)value;
+  int int_value = (int)parsed_value;
 
   // Check numeric range constraints if defined in descriptor's metadata
   if (desc && desc->metadata.numeric_range.max != 0) {
