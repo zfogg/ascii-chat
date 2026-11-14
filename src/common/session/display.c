@@ -1122,6 +1122,17 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     const char *erase_below_sequence = "\033[J";
     size_t cursor_seq_len = 6;
     size_t erase_below_len = 3;
+    // ESC[J erases from the cursor through the end of the screen.  When the
+    // frame fills the terminal height, the cursor is on the final cell and
+    // ESC[J erases the bottom-right glyph we just rendered.  Only clear below
+    // shorter frames, where the cursor is guaranteed to be above the last row.
+    size_t frame_rows = 1;
+    for (size_t i = 0; i < frame_len; ++i)
+      frame_rows += display_frame[i] == '\n';
+    int output_fd = ctx->tty_info.fd >= 0 ? ctx->tty_info.fd : STDOUT_FILENO;
+    terminal_size_t terminal = {0};
+    if (terminal_get_size_fd(output_fd, &terminal) == ASCIICHAT_OK && frame_rows >= (size_t)terminal.rows)
+      erase_below_len = 0;
     // The frame is shorter than the terminal in some configurations.  Erase
     // from the final frame cursor to the bottom of the screen in the same
     // submission so stale rows cannot survive a resize or a shorter frame.
@@ -1143,7 +1154,6 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
       memcpy(frame_buffer + cursor_seq_len + frame_len, erase_below_sequence, erase_below_len);
 
       log_debug_every(US_PER_SEC_INT, "FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout", total_size, cursor_seq_len, frame_len);
-      int output_fd = ctx->tty_info.fd >= 0 ? ctx->tty_info.fd : STDOUT_FILENO;
       asciichat_error_t presented = ASCIICHAT_OK;
       if (ctx->snapshot_mode) {
         // Snapshot processes may exit immediately after the first frame. Write

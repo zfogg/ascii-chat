@@ -93,18 +93,12 @@ function(asciichat_configure_quic)
                                       "-DCMAKE_SYSTEM_PROCESSOR:STRING=${CMAKE_SYSTEM_PROCESSOR}")
     endif()
 
-    get_target_property(_quic_ssl_type OpenSSL::SSL TYPE)
-    get_target_property(_quic_crypto_type OpenSSL::Crypto TYPE)
-    if(_quic_ssl_type STREQUAL "SHARED_LIBRARY")
-        set(_quic_ssl_file "$<TARGET_LINKER_FILE:OpenSSL::SSL>")
-    else()
-        set(_quic_ssl_file "$<TARGET_FILE:OpenSSL::SSL>")
-    endif()
-    if(_quic_crypto_type STREQUAL "SHARED_LIBRARY")
-        set(_quic_crypto_file "$<TARGET_LINKER_FILE:OpenSSL::Crypto>")
-    else()
-        set(_quic_crypto_file "$<TARGET_FILE:OpenSSL::Crypto>")
-    endif()
+    # The ngtcp2 configure is a separate CMake process. Generator expressions
+    # such as $<TARGET_FILE:OpenSSL::SSL> are only valid in the parent build's
+    # generated buildsystem and are rejected by CMake 4.5 while ngtcp2 runs
+    # try_compile checks. Pass the already-resolved FindOpenSSL paths instead.
+    set(_quic_ssl_file "${OPENSSL_SSL_LIBRARY}")
+    set(_quic_crypto_file "${OPENSSL_CRYPTO_LIBRARY}")
 
     set(_ngtcp2_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/ngtcp2")
     set(_nghttp3_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/nghttp3")

@@ -74,7 +74,7 @@
  * ## Detector and builds
  *
  * Native and browser use the same pinned BSD-3-Clause libfacedetection sources and
- * embedded model in `deps/libfacedetection`. No OpenCV, external model download, or
+ * embedded model in `deps/ascii-chat-deps/libfacedetection`. No OpenCV, external model download, or
  * cloud inference is required. `lib/video/face_follow.c` implements the shared
  * controller; a narrow C++ adapter isolates the detector from C consumers.
  *

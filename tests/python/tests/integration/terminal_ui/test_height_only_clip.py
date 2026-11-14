@@ -67,6 +67,28 @@ def test_width_clipping_does_not_blank_media_rows(binary, test_environment, coun
         term.close()
 
 
+@pytest.mark.parametrize("color_mode", ["none", "truecolor"])
+def test_exact_fit_media_keeps_bottom_right_cell(binary, test_environment, color_mode):
+    args = [
+        str(binary), "--quiet", "--no-check-update", "mirror", "--test-pattern", "0",
+        "--renderer", "glyph", "--palette", "custom",
+        "--palette-chars", "@", "--color-mode", color_mode, "--splash-screen=false", "--audio=false",
+    ]
+    term = Terminal(args, rows=100, cols=200, terminal_replies=True, environment=test_environment)
+    try:
+        term.expect(
+            lambda _: all(row[:200] == "@" * 200 for row in term.screen.display),
+            "Exact-fit media lost the bottom or right terminal cell",
+            timeout=20,
+        )
+        raw = "".join(term.raw)
+        frames = re.findall(r"\x1b\[\?2026h(.*?)\x1b\[\?2026l", raw, re.DOTALL)
+        assert frames, "No synchronized media frame was captured"
+        assert "\x1b[J" not in frames[-1], "Exact-height frame erased its bottom-right cell"
+    finally:
+        term.close()
+
+
 def test_fps_overlay_fits_without_wrapping(binary, test_environment):
     args = [
         str(binary), "--quiet", "--no-check-update", "mirror", "--test-pattern", "1",
