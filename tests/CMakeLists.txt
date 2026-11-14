@@ -113,7 +113,12 @@ if(BUILD_TESTS)
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
         endif()
     endif()
-    set(standalone_includes --native-include=${CMAKE_BINARY_DIR}/generated)
+    # Standalone Python probes compile production headers directly.  Keep the
+    # mapped libplatform include tree in their native include set as well as
+    # the generated ascii-chat headers.
+    set(standalone_includes
+        --native-include=${CMAKE_BINARY_DIR}/generated
+        --native-include=${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include)
     foreach(include_dir IN LISTS LIBSODIUM_INCLUDE_DIRS PCRE2_INCLUDE_DIRS PORTAUDIO_INCLUDE_DIRS OPUS_INCLUDE_DIRS)
         if(IS_ABSOLUTE "${include_dir}")
             list(APPEND standalone_includes --native-include=${include_dir})
