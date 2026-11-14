@@ -145,7 +145,9 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client, bo
   if (!g_shared_initialized) {
     static const char *const ascii_chat_libraries[] = {"libasciichat", NULL};
     symbol_cache_set_project_modules("ascii-chat", ascii_chat_libraries);
+#if defined(DEBUG_MEMORY)
     debug_memory_set_report_writer(ascii_chat_write_memory_report, NULL);
+#endif
 
     // 1. TIMER SYSTEM - Initialize first so timing is available for everything else
     if (!timer_system_init()) {
