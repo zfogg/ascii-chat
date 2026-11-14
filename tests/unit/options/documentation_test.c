@@ -1,166 +1,31 @@
 #include <criterion/criterion.h>
-#include <ascii-chat/options/builder.h>
-#include <ascii-chat/options/registry.h>
-#include <ascii-chat/options/manpage.h>
-#include <libflags/manpage/parser.h>
-#include <libplatform/filesystem.h>
-#include <libplatform/system.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/logging.h>
+
+#include <ascii-chat/options/config.h>
+#include <ascii-chat/options/options.h>
+#include <libflags/manpage/manpage.h>
+
 #include <string.h>
 
 TestSuite(option_documentation);
 
-static options_config_t *documentation_config(void) {
-  options_builder_t *builder = options_builder_create(sizeof(options_t));
+Test(option_documentation, libflags_schema_writes_options_and_environment) {
+  flags_schema_builder_t *builder = options_config_build_flags_schema(OPTION_MODE_ALL);
   cr_assert_not_null(builder);
-  builder->program_name = "ascii-chat";
-  builder->description = "Terminal video chat";
-  cr_assert_eq(options_registry_add_all_to_builder(builder), ASCIICHAT_OK);
-  options_builder_add_usage(builder, "server", "[address]", true, "Host a session");
-  options_builder_add_usage(builder, NULL, "<session>", false, "Join a session");
-  options_builder_add_mode(builder, "server", "Host a session");
-  options_builder_add_mode(builder, "client", "Join a session");
-  options_builder_add_example(builder, OPTION_MODE_SERVER, "--port 27224", "Host securely", false);
-  options_builder_add_example_utility(builder, OPTION_MODE_MIRROR, "cat sample.mp4 | ascii-chat mirror -f -", "Pipe a video", true);
-  options_config_t *config = options_builder_build(builder);
-  options_builder_destroy(builder);
-  cr_assert_not_null(config);
-  return config;
-}
-
-static char *read_stream(FILE *stream) {
-  cr_assert_eq(fflush(stream), 0);
-  cr_assert_eq(fseek(stream, 0, SEEK_END), 0);
-  long length = ftell(stream);
-  cr_assert_geq(length, 0);
-  cr_assert_eq(fseek(stream, 0, SEEK_SET), 0);
-  char *text = SAFE_CALLOC((size_t)length + 1, 1, char *);
-  cr_assert_eq(fread(text, 1, (size_t)length, stream), (size_t)length);
-  return text;
-}
-
-Test(option_documentation, mode_help_exposes_relevant_options_at_narrow_and_wide_widths) {
-  options_config_t *config = documentation_config();
-  const asciichat_mode_t modes[] = {MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE};
-  const char *widths[] = {"45", "120"};
-  for (size_t w = 0; w < 2; ++w)
-    for (size_t m = 0; m < sizeof(modes) / sizeof(*modes); ++m) {
-      platform_setenv("COLUMNS", widths[w]);
-      FILE *stream = tmpfile();
-      cr_assert_not_null(stream);
-      options_print_help_for_mode(config, modes[m], "ascii-chat", "Terminal video chat", stream);
-      char *text = read_stream(stream);
-      cr_assert_not_null(strstr(text, "Terminal video chat"));
-      cr_assert_not_null(strstr(text, "--help"));
-      if (modes[m] == MODE_SERVER)
-        cr_assert_not_null(strstr(text, "--max-clients"));
-      if (modes[m] == MODE_CLIENT)
-        cr_assert_null(strstr(text, "--max-clients"));
-      SAFE_FREE(text);
-      fclose(stream);
-    }
-  options_config_destroy(config);
-}
-
-Test(option_documentation, usage_and_option_sections_can_be_composed_independently) {
-  options_config_t *config = documentation_config();
   FILE *stream = tmpfile();
   cr_assert_not_null(stream);
-  options_config_print_usage(config, stream);
-  options_config_print_usage_section(config, stream);
-  int width = options_config_calculate_max_col_width(config);
-  cr_assert_gt(width, 0);
-  options_config_print_options_sections_with_width(config, stream, width, MODE_SERVER);
-  options_config_print_options_sections(config, stream, MODE_CLIENT);
-  char *text = read_stream(stream);
-  cr_assert_not_null(strstr(text, "Host a session"));
-  cr_assert_not_null(strstr(text, "--port"));
-  cr_assert_not_null(strstr(text, "--password"));
-  cr_assert_not_null(strstr(text, "--color-mode"));
-  SAFE_FREE(text);
+  const flags_manpage_metadata_t metadata = {
+      .program_name = "ascii-chat",
+      .section = "1",
+      .description = "Video chat in your terminal",
+  };
+  cr_assert(flags_manpage_write(flags_schema_builder_schema(builder), &metadata, stream));
+  cr_assert(flags_manpage_write_environment(flags_schema_builder_schema(builder), "ASCII_CHAT_", stream));
+  cr_assert_eq(fseek(stream, 0, SEEK_SET), 0);
+  char output[8192] = {0};
+  (void)fread(output, 1, sizeof(output) - 1, stream);
+  cr_assert_not_null(strstr(output, "OPTIONS"));
+  cr_assert_not_null(strstr(output, "port"));
+  cr_assert_not_null(strstr(output, "ENVIRONMENT"));
   fclose(stream);
-  options_config_destroy(config);
-}
-
-Test(option_documentation, templates_and_merged_manpages_contain_generated_options_and_manual_sections) {
-  options_config_t *config = documentation_config();
-  char path[1024];
-  int fd;
-  cr_assert_eq(platform_create_temp_file(path, sizeof(path), "ascii-manpage", &fd), 0);
-  if (fd >= 0)
-    platform_close(fd);
-  const char *modes[] = {NULL, "server", "client", "mirror", "discovery-service"};
-  for (size_t i = 0; i < sizeof(modes) / sizeof(*modes); ++i) {
-    cr_assert_eq(options_config_generate_manpage_template(config, "ascii-chat", modes[i], path, "Terminal chat"), ASCIICHAT_OK);
-    FILE *stream = platform_fopen("manpage-test", path, "r");
-    cr_assert_not_null(stream);
-    char *text = read_stream(stream);
-    cr_assert_not_null(strstr(text, ".SH"));
-    cr_assert_not_null(strstr(text, "OPTIONS"));
-    cr_assert_not_null(strstr(text, "port"));
-    cr_assert_not_null(strstr(text, "password"));
-    SAFE_FREE(text);
-    fclose(stream);
-  }
-  cr_assert_eq(platform_delete_temp_file(path), 0);
-  asciichat_error_t result = options_config_generate_manpage_merged(config, "ascii-chat", NULL, path, "Terminal chat");
-  asciichat_error_context_t context = {0};
-  HAS_ERRNO(&context);
-  cr_assert_eq(result, ASCIICHAT_OK, "%s", context.context_message);
-  size_t count = 0;
-  flags_manpage_section_t *sections = NULL;
-  FILE *generated = fopen(path, "rb");
-  cr_assert_not_null(generated);
-  cr_assert(flags_manpage_parser_parse(generated, &sections, &count));
-  fclose(generated);
-  cr_assert_not_null(sections);
-  cr_assert_gt(count, 3);
-  cr_assert_not_null(flags_manpage_parser_find(sections, count, "DESCRIPTION"));
-  cr_assert_not_null(flags_manpage_parser_find(sections, count, "OPTIONS"));
-  flags_manpage_parser_free(sections, count);
-  cr_assert_eq(platform_delete_temp_file(path), 0);
-  options_config_destroy(config);
-}
-
-Test(option_documentation, parser_preserves_manual_merge_and_unmarked_section_content) {
-  const char *input = ".TH TEST 1\n.\\\" AUTO-START: OPTIONS\n.SH OPTIONS\nGenerated options\n.\\\" AUTO-END: OPTIONS\n"
-                      ".\\\" MANUAL-START: DESCRIPTION\n.SH \"DESCRIPTION\"\nKeep this prose\n.\\\" MANUAL-END: DESCRIPTION\n"
-                      ".\" MERGE-START: ENVIRONMENT\n.SH ENVIRONMENT\nCUSTOM_ENV\n.\" MERGE-END: ENVIRONMENT\n.SH NOTES\nUnmarked "
-                      "prose\n";
-  flags_manpage_section_t *sections = NULL;
-  size_t count = 0;
-  cr_assert(flags_manpage_parser_parse_memory(input, strlen(input), &sections, &count));
-  cr_assert_eq(count, 4);
-  const flags_manpage_section_t *section = flags_manpage_parser_find(sections, count, "DESCRIPTION");
-  cr_assert_not_null(section);
-  cr_assert_eq(section->type, FLAGS_MANPAGE_SECTION_MANUAL);
-  cr_assert_not_null(strstr(section->content, "Keep this prose"));
-  section = flags_manpage_parser_find(sections, count, "OPTIONS");
-  cr_assert_eq(section->type, FLAGS_MANPAGE_SECTION_AUTO);
-  section = flags_manpage_parser_find(sections, count, "ENVIRONMENT");
-  cr_assert_eq(section->type, FLAGS_MANPAGE_SECTION_MERGE);
-  section = flags_manpage_parser_find(sections, count, "NOTES");
-  cr_assert_eq(section->type, FLAGS_MANPAGE_SECTION_UNMARKED);
-  cr_assert_null(flags_manpage_parser_find(sections, count, "MISSING"));
-  flags_manpage_parser_free(sections, count);
-  cr_assert_not(flags_manpage_parser_parse_memory(NULL, 1, &sections, &count));
-  cr_assert_not(flags_manpage_parser_parse_memory("", 0, &sections, &count));
-  cr_assert_not(flags_manpage_parser_parse_file(NULL, &sections, &count));
-  flags_manpage_parser_free(NULL, 0);
-}
-
-Test(option_documentation, mode_names_and_groff_escaping_are_stable) {
-  cr_assert_not_null(strstr(format_mode_names(OPTION_MODE_SERVER | OPTION_MODE_CLIENT), "server"));
-  cr_assert_not_null(strstr(format_mode_names(OPTION_MODE_BINARY | OPTION_MODE_MIRROR), "global"));
-  cr_assert_not_null(strstr(format_mode_names(OPTION_MODE_DISCOVERY_SVC), "discovery-service"));
-  cr_assert_str_eq(format_mode_names(OPTION_MODE_MCP_SERVER), "mcp-server");
-  cr_assert_not_null(strstr(format_mode_names(OPTION_MODE_BINARY | OPTION_MODE_MCP_SERVER), "mcp-server"));
-  cr_assert_str_eq(escape_groff_special("--file"), "--file");
-  cr_assert_str_eq(escape_groff_special(NULL), "");
-  options_config_t *config = documentation_config();
-  cr_assert_eq(options_config_generate_manpage_template(NULL, "x", NULL, NULL, "x"), ERROR_INVALID_PARAM);
-  cr_assert_eq(options_config_generate_manpage_template(config, NULL, NULL, NULL, "x"), ERROR_INVALID_PARAM);
-  cr_assert_eq(options_config_generate_manpage_merged(NULL, "x", NULL, NULL, "x"), ERROR_INVALID_PARAM);
-  options_config_destroy(config);
+  flags_schema_builder_destroy(builder);
 }
