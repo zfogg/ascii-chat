@@ -124,7 +124,7 @@
  *
  * @code{.c}
  * // Create empty builder
- * options_builder_t *builder = options_builder_create("myapp");
+ * flags_schema_builder_t *builder = flags_schema_builder_create();
  *
  * // Add options from registry (filtered by mode)
  * options_registry_add_all_to_flags_builder(builder, OPTION_MODE_CLIENT);
