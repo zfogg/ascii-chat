@@ -1,24 +1,12 @@
 {
-  "sourceHash": "a4c7b9af412fbfb3a1afeeb7d149c03d92f1e562b444c32245a6324ed6b9c188",
+  "sourceHash": "906f07eb66722312df4561e4c5b39ccec926501197312b1cd416fdfc7a510439",
   "capabilities": {
     "mirror": {
       "module": "mirror",
       "protocolVersion": "2.3.0",
-      "codecs": [
-        "raw",
-        "h264",
-        "hevc",
-        "opus"
-      ],
-      "transports": [
-        "webrtc",
-        "webtransport",
-        "websocket"
-      ],
-      "rendererModes": [
-        "luminance",
-        "glyph"
-      ],
+      "codecs": ["raw", "h264", "hevc", "opus"],
+      "transports": ["webrtc", "webtransport", "websocket"],
+      "rendererModes": ["luminance", "glyph"],
       "features": {
         "stabilization": true,
         "renderer": true,
@@ -28,17 +16,8 @@
     "client": {
       "module": "client",
       "protocolVersion": "2.3.0",
-      "codecs": [
-        "raw",
-        "h264",
-        "hevc",
-        "opus"
-      ],
-      "transports": [
-        "webrtc",
-        "webtransport",
-        "websocket"
-      ],
+      "codecs": ["raw", "h264", "hevc", "opus"],
+      "transports": ["webrtc", "webtransport", "websocket"],
       "rendererModes": [],
       "features": {
         "stabilization": false,
