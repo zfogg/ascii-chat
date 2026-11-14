@@ -157,6 +157,16 @@ if(ZLIB_LIBRARY MATCHES "-NOTFOUND$" OR ZLIB_LIBRARIES MATCHES "-NOTFOUND$" OR
     endif()
 endif()
 
+# FindZLIB can restore its NOTFOUND cache entries after the target-based
+# recovery above. pkg-config has already confirmed the system module exists,
+# so normalize those entries one last time for nested dependency projects.
+if(UNIX AND (ZLIB_LIBRARY MATCHES "-NOTFOUND$" OR ZLIB_LIBRARIES MATCHES "-NOTFOUND$"))
+    set(ZLIB_LIBRARY "-lz" CACHE STRING
+        "zlib linker flag used by dependency subprojects" FORCE)
+    set(ZLIB_LIBRARIES "-lz" CACHE STRING
+        "zlib linker flag used by dependency subprojects" FORCE)
+endif()
+
 if(ZLIB_LIBRARY MATCHES "-NOTFOUND$" OR ZLIB_LIBRARIES MATCHES "-NOTFOUND$" OR
    NOT ZLIB_LIBRARY OR NOT ZLIB_LIBRARIES)
     message(FATAL_ERROR "zlib was detected but no usable library was resolved (ZLIB_LIBRARY='${ZLIB_LIBRARY}', ZLIB_LIBRARIES='${ZLIB_LIBRARIES}')")
