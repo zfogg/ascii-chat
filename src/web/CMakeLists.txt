@@ -188,7 +188,6 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/options/colorscheme.c
     ${LIB_ROOT}/options/manpage.c
     ${LIB_ROOT}/options/layout.c
-    ${LIB_ROOT}/options/levenshtein.c
     ${LIB_ROOT}/options/help_api.c
     ${LIB_ROOT}/options/completions/completions.c
     ${LIB_ROOT}/options/builder/builder.c
