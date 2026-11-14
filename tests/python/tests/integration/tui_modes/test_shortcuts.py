@@ -67,7 +67,8 @@ def test_tui_mode_shortcuts(binary, tmp_path, terminal_factory, profile):
                     show("?", "Keyboard Shortcuts", "help")
                     text = term.pump()
                     if mode == "mirror":
-                        assert "R      Cycle text renderer" in text, text
+                        assert "Shift-r  Cycle text renderer" in text, text
+                        assert "Shift-s  Toggle stabilization" in text, text
                         assert "Renderer: Glyph" in text, text
                         renderer_values = []
                         expected_renderers = ["Luminance", "Glyph", "Luminance", "Glyph"]

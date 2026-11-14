@@ -141,15 +141,16 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
       has_media ? "Space  Play/Pause (files only)" : NULL,
       has_media ? "[      Toggle Media Playback" : NULL,
       has_media ? (terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "← / →  Seek backward/forward 30s" : "Left / Right  Seek backward/forward 30s") : NULL,
-      "m / M  Mute/Unmute audio",
+      "m      Mute/Unmute audio",
       terminal_should_use_utf8(GET_OPTION(force_utf8)) ? "↑ / ↓  Volume up/down (10%)" : "Up / Down  Volume up/down (10%)",
-      "c / C  Cycle color mode",
-      "f / F  Cycle color filter",
-      "x / X  Flip webcam horizontally",
-      "y / Y  Flip webcam vertically",
-      "w / W  Toggle Face Follow",
+      "c      Cycle color mode",
+      "f      Cycle color filter",
+      "x      Flip webcam horizontally",
+      "y      Flip webcam vertically",
+      "w      Toggle Face Follow",
+      "Shift-s  Toggle stabilization",
       "r      Cycle render mode",
-      "R      Cycle text renderer",
+      "Shift-r  Cycle text renderer",
       "-      FPS counter",
 #if defined(ASCIICHAT_DIAGNOSTIC_UI)
       browser ? NULL : "`      Error stacks diagnostic TUI",
@@ -173,9 +174,10 @@ char *ui_session_help_render(terminal_size_t size, bool has_media, bool browser,
   snprintf(settings[7], sizeof(settings[7]), "Renderer: %s", renderer_to_string(GET_OPTION(renderer)));
   snprintf(settings[8], sizeof(settings[8]), "Flip   : rows=%s cols=%s", status_indicator(GET_OPTION(flip_y)), status_indicator(GET_OPTION(flip_x)));
   snprintf(settings[9], sizeof(settings[9]), "Face Follow : %s", status_indicator(GET_OPTION(face_follow)));
-  int settings_count = 10;
+  snprintf(settings[10], sizeof(settings[10]), "Stabilize: %s", status_indicator(GET_OPTION(stabilize)));
+  int settings_count = 11;
+  settings[settings_count++][0] = '\0';
   snprintf(settings[settings_count++], sizeof(settings[0]), "Animations (number key toggle):");
-  snprintf(settings[settings_count++], sizeof(settings[0]), "-------------------------------");
   snprintf(settings[settings_count++], sizeof(settings[0]), "(1) Matrix \"Digital Rain\" : %s", status_indicator(GET_OPTION(matrix_rain)));
   snprintf(settings[settings_count++], sizeof(settings[0]), "(2) Audio Waveform : %s", status_indicator(GET_OPTION(waveform)));
   snprintf(settings[settings_count++], sizeof(settings[0]), "(3) Audio Frequencies (FFT) : %s", status_indicator(GET_OPTION(fft)));
