@@ -211,7 +211,6 @@ set(LIB_SRC_COMMON
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_colorscheme.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_parsing_parsers.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_parsing_validation.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_parsing_actions.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_audio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_configuration.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_registry_core.c
