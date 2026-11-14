@@ -487,10 +487,12 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   flags_command_t *discovery_service = flags_command_create(root, "discovery-service", "discovery service mode");
   flags_command_t *mcp_server = flags_command_create(root, "mcp-server", "MCP server mode");
   flags_command_t *api_server = flags_command_create(root, "api-server", "API server mode");
-  if (!root || !server || !client || !mirror || !discovery_service || !mcp_server || !api_server) {
+  flags_command_t *default_command = flags_command_create(root, "default", "default discovery mode");
+  if (!root || !server || !client || !mirror || !discovery_service || !mcp_server || !api_server || !default_command) {
     flags_command_destroy(root);
     return SET_ERRNO(ERROR_MEMORY, "Failed to construct command schema");
   }
+  flags_command_set_default(root, default_command);
   flags_schema_builder_t *schema_builder = flags_schema_builder_create();
   if (!schema_builder || options_registry_add_all_to_flags_builder(schema_builder, OPTION_MODE_ALL) != ASCIICHAT_OK) {
     flags_schema_builder_destroy(schema_builder);
@@ -533,6 +535,13 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
         flags_command_destroy(root);
         return ASCIICHAT_OK;
       }
+    if (!strcmp(name, "default")) {
+      *out_mode = MODE_DISCOVERY;
+      *out_mode_index = -1;
+      flags_schema_builder_destroy(schema_builder);
+      flags_command_destroy(root);
+      return ASCIICHAT_OK;
+    }
   }
   flags_schema_builder_destroy(schema_builder);
   flags_command_destroy(root);
