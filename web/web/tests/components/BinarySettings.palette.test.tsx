@@ -104,11 +104,11 @@ test.each([
   const select = screen.getByLabelText(
     "Text Art Render Algorithm",
   ) as HTMLSelectElement;
-  expect(select.value).toBe("glyph");
-  fireEvent.change(select, { target: { value: "luminance" } });
+  expect(select.value).toBe("luminance");
+  fireEvent.change(select, { target: { value: "glyph" } });
   expect(onChange).toHaveBeenCalledWith({
     ...DEFAULT_SETTINGS,
-    renderer: "luminance",
+    renderer: "glyph",
   });
   expect(
     select.compareDocumentPosition(screen.getByText("Palette")) &
