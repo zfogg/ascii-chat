@@ -92,16 +92,7 @@ Test(common_parsers, numeric_options_enforce_ranges_and_do_not_commit_rejected_v
   SAFE_FREE(options);
 }
 
-Test(common_parsers, suggestions_explain_mode_restrictions_and_reject_unrelated_names) {
-  option_descriptor_t descriptors[] = {{.long_name = "width", .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_MIRROR}, {.long_name = "max-clients", .mode_bitmask = OPTION_MODE_SERVER}};
-  options_config_t config = {.descriptors = descriptors, .num_descriptors = 2};
-  const char *suggestion = find_similar_option_with_mode("--widht", &config, OPTION_MODE_CLIENT);
-  cr_assert_not_null(suggestion);
-  cr_assert_not_null(strstr(suggestion, "--width"));
-  suggestion = find_similar_option_with_mode("--max-client", &config, OPTION_MODE_CLIENT);
-  cr_assert_not_null(strstr(suggestion, "server"));
-  cr_assert_null(find_similar_option_with_mode("not-an-option", &config, OPTION_MODE_CLIENT));
-  cr_assert_null(find_similar_option_with_mode("--unrelated-unknown-flag", &config, OPTION_MODE_CLIENT));
+Test(common_parsers, mode_restrictions_are_formatted) {
   cr_assert_str_eq(format_available_modes(OPTION_MODE_BINARY), "global options");
   cr_assert_str_eq(format_available_modes(0), "unknown mode");
   const char *all = format_available_modes(OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC);

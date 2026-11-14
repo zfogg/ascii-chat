@@ -121,61 +121,6 @@ const char *format_available_modes(option_mode_bitmask_t mode_bitmask) {
   return buffer;
 }
 
-// Find similar option across all modes and suggest it with mode information
-// Returns formatted suggestion string with mode info, or NULL if no good match
-const char *find_similar_option_with_mode(const char *unknown_opt, const options_config_t *config, option_mode_bitmask_t current_mode_bitmask) {
-  if (!unknown_opt || !config) {
-    return NULL;
-  }
-
-  // Extract the option name without dashes
-  const char *opt_name = unknown_opt;
-  if (strncmp(opt_name, "--", 2) == 0) {
-    opt_name += 2;
-  } else if (strncmp(opt_name, "-", 1) == 0) {
-    opt_name += 1;
-  } else {
-    return NULL; // Not an option format
-  }
-
-  const option_descriptor_t *best_match = NULL;
-  size_t best_distance = SIZE_MAX;
-
-  // Search through all descriptors
-  for (size_t i = 0; i < config->num_descriptors; i++) {
-    const option_descriptor_t *desc = &config->descriptors[i];
-    if (!desc->long_name)
-      continue;
-
-    // Calculate distance to the long name
-    size_t dist = levenshtein(opt_name, desc->long_name);
-    if (dist < best_distance) {
-      best_distance = dist;
-      best_match = desc;
-    }
-  }
-
-  // Only suggest if the distance is within our threshold
-  if (best_distance > LEVENSHTEIN_SUGGESTION_THRESHOLD || !best_match) {
-    return NULL;
-  }
-
-  // Check if the option is not available in current mode
-  bool available_in_current_mode = (best_match->mode_bitmask & current_mode_bitmask) != 0;
-
-  static char suggestion[OPTIONS_COMMON_SUGGESTION_BUFFER_SIZE];
-  if (available_in_current_mode) {
-    // Option exists but user typed it wrong - just suggest the correct spelling
-    safe_snprintf(suggestion, sizeof(suggestion), "Did you mean '--%s'?", best_match->long_name);
-  } else {
-    // Option exists but in a different mode - show all available modes
-    const char *modes_str = format_available_modes(best_match->mode_bitmask);
-    safe_snprintf(suggestion, sizeof(suggestion), "Did you mean '--%s' (available in modes: %s)?", best_match->long_name, modes_str);
-  }
-
-  return suggestion;
-}
-
 // Safely parse string to integer with validation
 int strtoint_safe(const char *str) {
   int32_t result = 0;

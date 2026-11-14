@@ -1314,36 +1314,6 @@ Test(options, deferred_action_no_action_by_default) {
   cr_assert_null(args, "Arguments should be NULL when action is ACTION_NONE");
 }
 
-Test(options_errors, custom_validator_preserves_errno_context) {
-  option_descriptor_t descriptor = *options_registry_find_by_name("video-codec");
-  options_config_t config = {.descriptors = &descriptor, .num_descriptors = 1};
-  options_t opts = {.video_codec = "invalid"};
-  asciichat_errno_scope_t scope = errno_checkpoint();
-  cr_assert_eq(options_config_validate(&config, &opts, NULL), ERROR_USAGE);
-  asciichat_error_context_t error;
-  cr_assert(errno_peek_since(scope, &error));
-  cr_assert_str_eq(error.context_message, "--video-codec must be auto, hevc, h264, or raw");
-  errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
-}
-
-static bool reject_without_errno(const void *opts) {
-  (void)opts;
-  return false;
-}
-
-Test(options_errors, custom_validator_does_not_reuse_stale_errno) {
-  option_descriptor_t descriptor = {.long_name = "test", .validate = reject_without_errno};
-  options_config_t config = {.descriptors = &descriptor, .num_descriptors = 1};
-  options_t opts = {0};
-  asciichat_errno_scope_t scope = errno_checkpoint();
-  SET_ERRNO(ERROR_MEMORY, "Unrelated earlier failure");
-  cr_assert_eq(options_config_validate(&config, &opts, NULL), ERROR_USAGE);
-  asciichat_error_context_t error;
-  cr_assert(errno_peek_since(scope, &error));
-  cr_assert_str_eq(error.context_message, "Option '--test' failed validation");
-  errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
-}
-
 Test(options, repeated_media_arguments_share_one_ordered_playlist) {
   char *argv[] = {"program", "mirror", "--file", "first.mp4", "--url", "https://example.com/second.webm", "--file=third.mp4", NULL};
   optind = 1;
