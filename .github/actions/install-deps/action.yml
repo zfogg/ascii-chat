@@ -452,7 +452,12 @@ runs:
         # The matching LLVM development archive is installed separately below.
         # doxygen is needed for generating documentation included in installers
         # NOTE: git is already pre-installed on GitHub Actions Windows runners
-        $basePackages = @('ninja', 'ccache', 'doxygen')
+        # GitHub's Windows images commonly provide these already. Avoid
+        # invoking Scoop for preinstalled tools; Scoop can spend many minutes
+        # resolving an otherwise unnecessary package on AMD64 runners.
+        $basePackages = @('ninja', 'ccache', 'doxygen') | Where-Object {
+          $null -eq (Get-Command $_ -ErrorAction SilentlyContinue)
+        }
 
         $extra = @()
         if (-not [string]::IsNullOrWhiteSpace('${{ inputs.extra-packages }}')) {
