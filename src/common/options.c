@@ -53,7 +53,6 @@
 #define OPTIONS_LONG_FORM_EQ_BUFFER_SIZE 256
 #define OPTIONS_NORMALIZED_URL_BUFFER_SIZE 2048
 
-#include <ascii-chat/options/builder/internal.h>
 #include <ascii-chat/crypto/policy.h>
 #include <ctype.h>
 #include <sys/stat.h>
