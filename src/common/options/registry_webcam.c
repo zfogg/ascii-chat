@@ -16,12 +16,12 @@
 #include <string.h>
 
 static bool parse_test_pattern(const char *arg, void *dest, char **error_msg) {
-  if (arg && strcmp(arg, "0") != 0 && strcmp(arg, "1") != 0) {
+  if (arg && strcmp(arg, "0") != 0 && strcmp(arg, "1") != 0 && strcmp(arg, "true") != 0 && strcmp(arg, "false") != 0) {
     *error_msg = platform_strdup("Test pattern must be 0 or 1");
     return false;
   }
   options_t *opts = (options_t *)((char *)dest - offsetof(options_t, test_pattern));
-  opts->test_pattern = true;
+  opts->test_pattern = !arg || strcmp(arg, "false") != 0;
   opts->test_pattern_index = arg && arg[0] == '1' ? 1 : 0;
   if (!opts->flip_x_explicit)
     opts->flip_x = false;

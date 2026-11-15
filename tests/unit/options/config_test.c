@@ -1499,7 +1499,6 @@ Test(config, integer_vs_string_port) {
   asciichat_error_t result2 = config_load_and_apply(true, config_path2, false, &backup);
   cr_assert_eq(result2, ASCIICHAT_OK, "String port should succeed");
   opts = &backup;
-  opts = options_get();
   cr_assert_eq(opts->port, 5678, "String port should be parsed and applied");
 
   unlink(config_path2);
