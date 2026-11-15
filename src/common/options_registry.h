@@ -186,7 +186,7 @@
 
 #pragma once
 
-#include "../options/options.h"
+#include <options.h>
 #include "types.h"
 #include <libflags/builder.h>
 

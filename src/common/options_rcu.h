@@ -83,7 +83,7 @@
 
 #pragma once
 
-#include "../options/options.h" // Provides options_t struct definition
+#include <options.h> // Provides options_t struct definition
 #include <libplatform/mutex.h>
 #include <stdbool.h>
 #include <libplatform/atomic.h>

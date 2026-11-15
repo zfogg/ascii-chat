@@ -204,7 +204,6 @@ set(LIB_SRC_COMMON
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_enums.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_strings.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_runtime.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_layout.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_help.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_config.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/options_colorscheme.c

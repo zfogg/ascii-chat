@@ -24,7 +24,7 @@
 #include <stdint.h>
 
 #include "../common.h"
-#include "../options/options.h"
+#include <options.h>
 
 #ifdef __cplusplus
 extern "C" {

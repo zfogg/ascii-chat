@@ -57,7 +57,7 @@
 #include <stdbool.h>
 #include <libflags/builder.h>
 #include "../common.h"
-#include "../options/options.h" // For asciichat_mode_t
+#include <options.h> // For asciichat_mode_t
 
 /**
  * @brief Build the generic libflags schema for an ascii-chat mode.
