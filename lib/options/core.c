@@ -1999,10 +1999,6 @@ static void record_explicit_screen_and_debug_options(options_t *opts, int mode_a
                          strncmp(mode_argv[i], "--errno-stacks=", 15) == 0)) {
       bool errno_report = strncmp(mode_argv[i], "--errno-stacks", 14) == 0;
       double *report_time = errno_report ? &opts->debug_errno_stacks_time : &opts->debug_sync_state_time;
-      if (errno_report)
-        opts->debug_errno_stacks_time_explicit = true;
-      else
-        opts->debug_sync_state_time_explicit = true;
       if (strcmp(mode_argv[i], "--sync-state") == 0 || strcmp(mode_argv[i], "--errno-stacks") == 0) {
         if (i + 1 < mode_argc) {
           char *endptr;
@@ -2024,7 +2020,6 @@ static void record_explicit_screen_and_debug_options(options_t *opts, int mode_a
       }
     }
     if (mode_argv[i] && (strcmp(mode_argv[i], "--backtrace") == 0 || strncmp(mode_argv[i], "--backtrace=", 12) == 0)) {
-      opts->debug_backtrace_time_explicit = true;
       if (strcmp(mode_argv[i], "--backtrace") == 0) {
         if (i + 1 < mode_argc) {
           char *endptr;
@@ -2046,7 +2041,6 @@ static void record_explicit_screen_and_debug_options(options_t *opts, int mode_a
       }
     }
     if (mode_argv[i] && (strcmp(mode_argv[i], "--memory-report") == 0 || strncmp(mode_argv[i], "--memory-report=", 16) == 0)) {
-      opts->debug_memory_report_interval_explicit = true;
       if (strcmp(mode_argv[i], "--memory-report") == 0) {
         if (i + 1 < mode_argc) {
           char *endptr;
