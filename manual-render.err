@@ -1,0 +1,11 @@
+[18:54:06.370513] [DEBUG] [thread/main.0] lib/log/log.c:1881@log_redetect_terminal_capabilities(): Terminal capabilities: color_level=0, capabilities=0x0, utf8=no, fps=60
+[?2004h[18:54:06.382744] [DEBUG] [thread/main.0] lib/asciichat_errno.c:456@set_formatted(): Binary-level option '--log-level' must appear before the mode 'mirror', not after it: Invalid command line usage (code=2)
++-----------------------------------------------------------------------------+
+| WARNING                                                                     |
++-----------------------------------------------------------------------------+
+| Invalid Options                                                             |
+| Binary-level Option '--log-level' Must Appear Before The Mode 'mirror', Not |
+|  After It                                                                   |
++-----------------------------------------------------------------------------+
+[18:54:06.388169] [DEBUG] [thread/main.0] lib/options/rcu.c:503@options_state_destroy(): Options state shutdown complete
+[?2004l

@@ -341,6 +341,7 @@ static bool g_redraw;
 static bool g_finished;
 static uint64_t g_media_frame_id;
 static _Atomic uint64_t g_media_epoch;
+static atomic_t g_sync_initialized = {0};
 static _Thread_local uint64_t g_acquisition_started_ns;
 static _Thread_local bool g_probe_frame;
 static _Thread_local uint64_t g_probe_requested_ns;
@@ -379,6 +380,17 @@ static void stats_media_end(void) {
 
 static size_t write_output_chunk(int fd, const void *data, size_t length) {
   uint64_t started_ns = g_stats_media ? time_get_ns() : 0;
+  static _Thread_local int trace_writes;
+  static _Thread_local uint64_t trace_sequence;
+  if (!trace_writes) {
+    const char *value = SAFE_GETENV("ASCII_CHAT_TRACE_TERMINAL_WRITES");
+    trace_writes = value && strcmp(value, "1") == 0 ? 1 : -1;
+  }
+  bool trace = g_stats_media && trace_writes > 0;
+  uint64_t sequence = trace ? ++trace_sequence : 0;
+  if (trace)
+    log_debug("MEDIA_WRITE_BEGIN: sequence=%llu chunk=%llu fd=%d requested=%zu at_ns=%llu", (unsigned long long)sequence, (unsigned long long)g_stats_chunks, fd, length,
+              (unsigned long long)time_get_ns());
 #ifndef NDEBUG
   static _Thread_local bool test_delay_checked, test_delay;
   if (!test_delay_checked) {
@@ -391,16 +403,25 @@ static size_t write_output_chunk(int fd, const void *data, size_t length) {
 #endif
   // A presentation write must not split an image protocol packet emitted by
   // another thread. Non-owner logging must remain nonblocking here.
+  uint64_t lock_started_ns = trace ? time_get_ns() : 0;
   if (g_owner)
     ui_controller_packet_begin();
+  uint64_t acquired_ns = trace ? time_get_ns() : 0;
   size_t written = platform_write_all(fd, data, length);
+  uint64_t returned_ns = trace ? time_get_ns() : 0;
   if (g_owner)
     ui_controller_packet_end();
+  if (trace)
+    log_debug("MEDIA_WRITE_END: sequence=%llu fd=%d requested=%zu written=%zu lock_wait_ms=%.3f write_ms=%.3f returned_ns=%llu", (unsigned long long)sequence, fd, length, written,
+              (double)(acquired_ns - lock_started_ns) / NS_PER_MS_INT, (double)(returned_ns - acquired_ns) / NS_PER_MS_INT, (unsigned long long)returned_ns);
   if (g_stats_media) {
     uint64_t elapsed_ns = time_get_ns() - started_ns;
     if (elapsed_ns > g_stats_max_chunk_ns)
       g_stats_max_chunk_ns = elapsed_ns;
     ++g_stats_chunks;
+    if (elapsed_ns >= 50 * NS_PER_MS_INT || written != length)
+      log_debug("MEDIA_WRITE_CHUNK: frame=%llu fd=%d requested=%zu written=%zu elapsed_ms=%.2f", g_render_snapshot ? (unsigned long long)g_render_snapshot->frame_id : 0ULL, fd, length, written,
+                (double)elapsed_ns / NS_PER_MS_INT);
   }
   return written;
 }
@@ -450,15 +471,15 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   if (g_owner && g_render_fd >= 0)
     fd = g_render_fd;
   bool measure_media_write = g_stats_media;
-  bool media_snapshot_stale = g_render_snapshot && g_render_snapshot->media_epoch != atomic_load(&g_media_epoch);
+  bool media_snapshot_stale = g_render_snapshot && g_rendering_screen == UI_SCREEN_MEDIA && g_render_snapshot->media_epoch != atomic_load(&g_media_epoch);
   if (media_snapshot_stale)
     return ASCIICHAT_OK;
   if (measure_media_write)
     fps_counter_write_begin(g_fps);
   uint64_t stats_start = g_stats_media ? time_get_ns() : 0;
+  bool help_media_overlay = ui_controller_current_screen() == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_MEDIA;
   // Terminals supporting synchronized output present the art and its overlays
   // together, even when a large UTF-8 frame requires several writes.
-  bool help_media_overlay = ui_controller_current_screen() == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_MEDIA;
   bool synchronized = g_render_snapshot != NULL || help_media_overlay;
   g_help_sync_open = help_media_overlay;
   // A frame can legitimately occupy the terminal's last column and row.
@@ -478,7 +499,7 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
       superseded = true;
       break;
     }
-    if (g_render_snapshot && g_render_snapshot->media_epoch != atomic_load(&g_media_epoch)) {
+    if (g_render_snapshot && g_rendering_screen == UI_SCREEN_MEDIA && g_render_snapshot->media_epoch != atomic_load(&g_media_epoch)) {
       superseded = true;
       break;
     }
@@ -490,22 +511,20 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
     }
     size_t count = len - written;
     bool row_boundary = false;
-    if (g_stats_media && count > 32768) {
-      count = 32768;
+    if (g_stats_media && count > 16384) {
+      count = 16384;
       size_t boundary = media_chunk_boundary(data + written, count);
       if (boundary) {
         count = boundary;
         row_boundary = true;
       }
-      // Never inspect beyond the candidate chunk: the next byte may belong
-      // to unrelated memory or to the next output chunk.
       count = ui_controller_trim_utf8_chunk(data + written, count);
     }
     size_t sent = write_output_chunk(fd, data + written, count);
     written += sent;
     if (sent != count)
       break;
-    if (synchronized && g_stats_media && row_boundary && written < len && time_get_ns() - sync_started_ns >= 40 * NS_PER_MS_INT) {
+    if (synchronized && g_stats_media && written < len && row_boundary && time_get_ns() - sync_started_ns >= 40 * NS_PER_MS_INT) {
       // Give the terminal a complete set of rows before its synchronized
       // output watchdog can expose a partly written row.
       if (write_output_chunk(fd, "\033[?2026l\033[?2026h", 16) != 16) {
@@ -997,12 +1016,10 @@ static void *presentation_main(void *unused) {
       awaiting_reply = false;
       fps_counter_frame_end(g_fps, reply_written_ns);
     }
-    if (awaiting_reply && !ui_error_popup_visible() && ui_controller_current_screen() == UI_SCREEN_MEDIA && !shutdown_is_requested()) {
-      // Keep only the latest mailbox frame while the frontend parses output.
-      // Input and modal screens remain independent of this backpressure.
-      platform_sleep_ms(2);
-      continue;
-    }
+    // A terminal capability query is advisory. Some ConPTY frontends,
+    // including Alacritty, do not answer the OSC query; never hold the media
+    // presentation loop behind that optional reply. The timeout below still
+    // records the frontend as non-responsive for diagnostics.
     // This path must remain independent of producers, including one stuck
     // holding the controller mutex. It reads only the collector's mailbox.
     if (ui_sync_is_visible() && ui_controller_current_screen() >= 0 && (ui_controller_current_screen() <= UI_SCREEN_SYNC || ui_controller_current_screen() == UI_SCREEN_ERROR) &&
@@ -1088,7 +1105,6 @@ static void *presentation_main(void *unused) {
       bool resized = false;
       // Observe physical changes once for all modes; consumers use the published dimensions.
       if (terminal_resize_poll(&watcher, screen->fd, &resized) != ASCIICHAT_OK) {
-        // A minimized or detached terminal has no usable drawing area.
         atomic_store_bool(&g_blocked, true);
         const ui_session_view_t hidden = {.screen = -1};
         ui_session_render(g_session, &hidden, time_get_ns());
@@ -1240,9 +1256,11 @@ static void *presentation_main(void *unused) {
           ui_notice_frame_presented(screen->snapshot);
         if (fresh_media) {
           fps_counter_write_begin(g_fps);
-          // A frontend reply drains the complete update. A local console query
-          // adds an RPC without establishing any stronger completion boundary.
-          asciichat_error_t drained = g_probe_requested_ns ? ASCIICHAT_OK : terminal_flush(screen->fd);
+          // platform_write_all has already submitted the complete frame. Do
+          // not synchronously drain the Windows console after every frame:
+          // ConPTY/Alacritty can make that wait for terminal-side rendering
+          // and serialize the producer behind the terminal compositor.
+          asciichat_error_t drained = ASCIICHAT_OK;
           fps_counter_write_end(g_fps, drained == ASCIICHAT_OK);
           if (written != ASCIICHAT_OK || drained != ASCIICHAT_OK)
             CLEAR_ERRNO();
@@ -1341,6 +1359,7 @@ static asciichat_error_t controller_start(void) {
   ui_output_set_writer(ui_controller_write);
   if (lifecycle_init_once(&g_lifecycle)) {
     atomic_store_bool(&g_presentation_stop_requested, false);
+    atomic_store_bool(&g_sync_initialized, false);
     atomic_store(&g_sync_finishing, false);
     atomic_store(&g_sync_rendering, false);
     atomic_store_bool(&g_blocked, false);
@@ -1567,11 +1586,14 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
     copy->terminal->fd = retained_fd;
   }
   int output_fd = copy->terminal->fd;
-  err = ui_sync_start(output_fd);
-  if (err != ASCIICHAT_OK) {
-    mutex_unlock(&g_mutex);
-    release_snapshot(copy);
-    return err;
+  if (!atomic_load_bool(&g_sync_initialized)) {
+    err = ui_sync_start(output_fd);
+    if (err != ASCIICHAT_OK) {
+      mutex_unlock(&g_mutex);
+      release_snapshot(copy);
+      return err;
+    }
+    atomic_store_bool(&g_sync_initialized, true);
   }
   if (queue_notice) {
     size_t pending = 1;

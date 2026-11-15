@@ -112,11 +112,13 @@ runs:
       id: cache-keys
       shell: bash
       run: |
-        # Compute deps hash from cmake/deps files
+        # Compute deps hash from the dependency module declarations.
+        # Keep the cache key tied to cmake/deps/*.cmake, matching the files
+        # that select and configure the dependency sources.
         if command -v sha256sum &>/dev/null; then
-          deps_hash=$(find cmake/deps -type f -exec sha256sum {} \; 2>/dev/null | sort | sha256sum | cut -c1-16)
+          deps_hash=$(sha256sum cmake/deps/*.cmake 2>/dev/null | sort | sha256sum | cut -c1-16)
         else
-          deps_hash=$(find cmake/deps -type f -exec shasum -a 256 {} \; 2>/dev/null | sort | shasum -a 256 | cut -c1-16)
+          deps_hash=$(shasum -a 256 cmake/deps/*.cmake 2>/dev/null | sort | shasum -a 256 | cut -c1-16)
         fi
 
         # Get runner info
@@ -141,8 +143,8 @@ runs:
       id: cache-keys-win
       shell: pwsh
       run: |
-        # Compute deps hash from cmake/deps files
-        $files = Get-ChildItem -Path "cmake/deps" -File -Recurse | Sort-Object FullName
+        # Compute deps hash from cmake/deps/*.cmake
+        $files = Get-ChildItem -Path "cmake/deps" -Filter "*.cmake" -File | Sort-Object Name
         $hashes = $files | ForEach-Object {
           $hash = Get-FileHash -Path $_.FullName -Algorithm SHA256
           "$($hash.Hash) $($_.FullName)"
