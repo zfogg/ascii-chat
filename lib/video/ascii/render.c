@@ -592,6 +592,15 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
     return NULL;
   }
   bool allowed[GLYPH_COUNT] = {false};
+  bool use_chroma_shape = false;
+  if (mode == ASCII_COLOR_TRUE && palette) {
+    for (const uint8_t *p = (const uint8_t *)palette; *p; ++p) {
+      if (*p >= 0x80) {
+        use_chroma_shape = true;
+        break;
+      }
+    }
+  }
   int candidates[GLYPH_COUNT];
   // Restrict the atlas to unique palette entries before scoring any cells.
   size_t candidate_count = 0;
@@ -693,6 +702,23 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
           continue;
         int dot = shape_correlation(centered_samples, glyphs[c].centered);
         uint64_t error = (uint64_t)(tone_error + sample_energy + glyphs[c].energy - 2 * dot);
+        if (use_chroma_shape) {
+          // Luminance alone cannot distinguish equal-luminance chromatic
+          // regions. Use the strongest color-channel shape correlation as a
+          // secondary signal so vertical and horizontal boundaries retain
+          // their orientation in true-colour output.
+          int chroma_dot = 0;
+          for (int channel = 0; channel < 3; ++channel) {
+            int channel_mean = sums[channel] / 16;
+            int channel_dot = 0;
+            for (int i = 0; i < 16; ++i)
+              channel_dot += (samples[channel][i] - channel_mean) * glyphs[c].centered[i];
+            if (abs(channel_dot) > abs(chroma_dot))
+              chroma_dot = channel_dot;
+          }
+          uint64_t chroma_bonus = (uint64_t)(abs(chroma_dot) / 8);
+          error = chroma_bonus < error ? error - chroma_bonus : 0;
+        }
         if (is_previous) {
           previous_error = error;
           previous_index = c;
