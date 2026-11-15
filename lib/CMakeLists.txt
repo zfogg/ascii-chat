@@ -865,6 +865,12 @@ elseif(TARGET nghttp2::nghttp2)
     set(ASCIICHAT_NGHTTP2_TARGET nghttp2::nghttp2)
 elseif(TARGET nghttp2::nghttp2_static)
     set(ASCIICHAT_NGHTTP2_TARGET nghttp2::nghttp2_static)
+elseif(TARGET nghttp2_static)
+    # gotel builds nghttp2 as a private dependency of otlp-c.  ascii-chat's
+    # object-based shared library also contains HTTP/2 objects, so it must
+    # link the archive explicitly when gotel's private dependency is not
+    # transitive.
+    set(ASCIICHAT_NGHTTP2_TARGET nghttp2_static)
 else()
     find_path(ASCIICHAT_NGHTTP2_INCLUDE_DIR nghttp2/nghttp2.h NO_CMAKE_FIND_ROOT_PATH)
     find_library(ASCIICHAT_NGHTTP2_LIBRARY NAMES nghttp2 nghttp2_static NO_CMAKE_FIND_ROOT_PATH)
@@ -1267,12 +1273,9 @@ add_library(ascii-chat-shared SHARED
         add_dependencies(ascii-chat-shared ${LIBSODIUM_BUILD_TARGET})
     endif()
 
-    # gotel already supplies its bundled nghttp2 on Windows; adding the
-    # separately discovered vcpkg import library creates duplicate symbols.
+    # ascii-chat-shared is built from object libraries, so gotel's private
+    # otlp-c -> nghttp2 dependency must be linked explicitly here.
     set(_asciichat_nghttp2_shared_link ${ASCIICHAT_NGHTTP2_TARGET})
-    if(TARGET gotel::gotel)
-        set(_asciichat_nghttp2_shared_link)
-    endif()
 
     # Link external dependencies (libsodium, zstd, opus, etc.)
     # These are needed because shared library is created from OBJECT files,
