@@ -104,24 +104,6 @@ if(NOT DEFINED FETCHCONTENT_BASE_DIR OR FETCHCONTENT_BASE_DIR STREQUAL "" OR
     set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/src" CACHE PATH "FetchContent source cache" FORCE)
 endif()
 
-# A restored dependency cache may contain the disconnected-mode flag without
-# containing every source tree required by gotel.  Let FetchContent repair
-# incomplete caches instead of failing later when gotel dereferences a missing
-# sequel or otlp-c target.
-if(FETCHCONTENT_FULLY_DISCONNECTED)
-    set(_ascii_chat_gotel_sources_ready TRUE)
-    foreach(_ascii_chat_gotel_source IN ITEMS sequel-src otlp_c-src)
-        if(NOT EXISTS "${ASCIICHAT_DEPS_CACHE_DIR}/gotel/${_ascii_chat_gotel_source}")
-            set(_ascii_chat_gotel_sources_ready FALSE)
-        endif()
-    endforeach()
-    if(NOT _ascii_chat_gotel_sources_ready)
-        message(STATUS "Incomplete gotel FetchContent cache; enabling dependency retrieval")
-        set(FETCHCONTENT_FULLY_DISCONNECTED OFF CACHE BOOL "Use only cached FetchContent sources" FORCE)
-    endif()
-    unset(_ascii_chat_gotel_sources_ready)
-endif()
-
 # Web-specific source cache for FetchContent (keeps web sources separate)
 # Sources are shared across build types but kept in web/ subdirectory
 if(NOT DEFINED WEB_FETCHCONTENT_BASE_DIR OR WEB_FETCHCONTENT_BASE_DIR STREQUAL "" OR
@@ -155,6 +137,23 @@ message(STATUS "Using dependency cache: ${BoldCyan}${ASCIICHAT_DEPS_CACHE_DIR}${
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/ProjectConstants.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
+
+# A restored dependency cache may contain the disconnected-mode flag without
+# containing every source tree required by gotel.  Let FetchContent repair
+# incomplete caches instead of failing later when gotel dereferences a missing
+# sequel or otlp-c target.
+set(_ascii_chat_gotel_sources_ready TRUE)
+foreach(_ascii_chat_gotel_source IN ITEMS sequel-src otlp_c-src)
+    if(NOT EXISTS "${ASCIICHAT_DEPS_CACHE_DIR}/gotel/${_ascii_chat_gotel_source}")
+        set(_ascii_chat_gotel_sources_ready FALSE)
+    endif()
+endforeach()
+if(NOT _ascii_chat_gotel_sources_ready)
+    message(STATUS "Incomplete gotel FetchContent cache; enabling dependency retrieval")
+    set(FETCHCONTENT_FULLY_DISCONNECTED OFF CACHE BOOL "Use only cached FetchContent sources" FORCE)
+endif()
+unset(_ascii_chat_gotel_sources_ready)
+
 include(${CMAKE_SOURCE_DIR}/cmake/init/Options.cmake)
 
 if(ASCIICHAT_FORMAT_ONLY)
