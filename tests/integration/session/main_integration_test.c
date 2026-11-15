@@ -91,8 +91,8 @@ static pid_t spawn_process(const char *path, char *const argv[], const char *nam
 
     FILE *log_file = fopen(log_path, "w");
     if (log_file) {
-      dup2(fileno(log_file), STDOUT_FILENO);
-      dup2(fileno(log_file), STDERR_FILENO);
+      (void)platform_dup2(fileno(log_file), STDOUT_FILENO);
+      (void)platform_dup2(fileno(log_file), STDERR_FILENO);
       fclose(log_file);
     }
 

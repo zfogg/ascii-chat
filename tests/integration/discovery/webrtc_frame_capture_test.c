@@ -306,7 +306,7 @@ Test(webrtc_discovery, frame_capture_via_webrtc, .init = setup_test, .fini = cle
     // Child: Start ACDS with fresh database (with 10 second timeout)
     (void)setpgid(0, 0);
     freopen(ACDS_LOG_PATH, "w", stdout);
-    dup2(STDOUT_FILENO, STDERR_FILENO);
+    (void)platform_dup2(STDOUT_FILENO, STDERR_FILENO);
     execlp("timeout", "timeout", "45", binary_path, "--no-check-update", "discovery-service", "127.0.0.1",
            "::", "--port", "27325", "--database", ACDS_DB_PATH, "--status-screen=false", NULL);
     exit(1); // Should not reach here
@@ -333,7 +333,7 @@ Test(webrtc_discovery, frame_capture_via_webrtc, .init = setup_test, .fini = cle
     // Child: Start server (receives video from clients, doesn't capture)
     (void)setpgid(0, 0);
     freopen(SERVER_LOG_PATH, "w", stdout);
-    dup2(STDOUT_FILENO, STDERR_FILENO);
+    (void)platform_dup2(STDOUT_FILENO, STDERR_FILENO);
     execlp("timeout", "timeout", "45", binary_path, "--no-check-update", "--log-level", "debug", "server", "0.0.0.0",
            "::", "--port", "27224", "--discovery", "--discovery-expose-ip", "--discovery-service", "127.0.0.1",
            "--discovery-service-port", "27325", "--status-screen=false", NULL);

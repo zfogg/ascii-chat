@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <libplatform/system.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/select.h>
@@ -132,8 +133,8 @@ static void start_server(void) {
     close(server_proc.stderr_pipe[0]);
 
     // Redirect stderr to see exec errors
-    dup2(server_proc.stdout_pipe[1], STDOUT_FILENO);
-    dup2(server_proc.stderr_pipe[1], STDERR_FILENO);
+    (void)platform_dup2(server_proc.stdout_pipe[1], STDOUT_FILENO);
+    (void)platform_dup2(server_proc.stderr_pipe[1], STDERR_FILENO);
 
     char cwd[1024];
     getcwd(cwd, sizeof(cwd));
@@ -204,8 +205,8 @@ static void start_client(int client_num) {
     close(proc->stdout_pipe[0]);
     close(proc->stderr_pipe[0]);
 
-    dup2(proc->stdout_pipe[1], STDOUT_FILENO);
-    dup2(proc->stderr_pipe[1], STDERR_FILENO);
+    (void)platform_dup2(proc->stdout_pipe[1], STDOUT_FILENO);
+    (void)platform_dup2(proc->stderr_pipe[1], STDERR_FILENO);
 
     // Run client in snapshot mode to connect and exit quickly
     // Same path logic as server: try relative first, then absolute

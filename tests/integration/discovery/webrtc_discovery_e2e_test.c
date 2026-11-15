@@ -129,8 +129,8 @@ static pid_t spawn_process_with_log(const char *binary_path, char *const argv[],
     // Child: redirect output to log file
     FILE *log_file = fopen(log_path, "w");
     if (log_file) {
-      dup2(fileno(log_file), STDOUT_FILENO);
-      dup2(fileno(log_file), STDERR_FILENO);
+      (void)platform_dup2(fileno(log_file), STDOUT_FILENO);
+      (void)platform_dup2(fileno(log_file), STDERR_FILENO);
       fclose(log_file);
     }
 
