@@ -16,6 +16,13 @@ else()
     set(_ascii_chat_libplatform_shared OFF)
 endif()
 
+# Coverage instrumentation is linked into the instrumented executable.  Keep
+# libplatform in that link rather than placing instrumented objects in a shared
+# library: lld rejects the resulting unresolved gcov references from the DSO.
+if(ASCIICHAT_ENABLE_COVERAGE AND CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
+    set(_ascii_chat_libplatform_shared OFF)
+endif()
+
 set(LIBPLATFORM_BUILD_SHARED "${_ascii_chat_libplatform_shared}" CACHE BOOL
     "Build libplatform as a shared library" FORCE)
 set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
