@@ -408,7 +408,7 @@ target_link_libraries(ascii-chat-data-structures PRIVATE ascii-chat-util)
 # -----------------------------------------------------------------------------
 
 add_library(ascii-chat-platform INTERFACE)
-target_link_libraries(ascii-chat-platform INTERFACE libplatform)
+target_link_libraries(ascii-chat-platform INTERFACE libplatform::libplatform)
 target_include_directories(ascii-chat-platform INTERFACE
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/lib
@@ -1009,7 +1009,7 @@ add_library(ascii-chat-shared SHARED
     )
     # Consumers of the shared object also call platform APIs directly (tests,
     # tooling, and small probes), so keep libplatform transitively visible.
-    target_link_libraries(ascii-chat-shared PUBLIC libplatform)
+    target_link_libraries(ascii-chat-shared PUBLIC libplatform::libplatform)
     if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
     endif()
@@ -1659,7 +1659,7 @@ add_dependencies(ascii-chat-static-lib build-ascii-chat-static-lib)
 # Create an INTERFACE library for dependency propagation
 # (IMPORTED libraries can't have INTERFACE_LINK_LIBRARIES in older CMake)
 add_library(ascii-chat-static-lib-deps INTERFACE)
-target_link_libraries(ascii-chat-static-lib-deps INTERFACE libplatform ${UTF8PROC_LIBRARIES} asciichat-icu)
+target_link_libraries(ascii-chat-static-lib-deps INTERFACE libplatform::libplatform ${UTF8PROC_LIBRARIES} asciichat-icu)
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-static-lib-deps INTERFACE asciichat-quic)
 endif()
