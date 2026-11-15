@@ -224,6 +224,7 @@ if(BUILD_CATCH2_TESTS AND CATCH2_FOUND)
     endif()
     # Build test LDFLAGS systematically (matches Makefile complex setup)
     set(TEST_LDFLAGS Catch2::Catch2WithMain)
+    list(APPEND TEST_LDFLAGS ${ASCIICHAT_NGHTTP2_TARGET})
 
     if(PLATFORM_LINUX)
         # Add Linux-specific test dependencies (matching Makefile order)

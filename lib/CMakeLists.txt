@@ -1764,6 +1764,7 @@ target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
     ${LIBWEBSOCKETS_LIBRARIES}
     OpenSSL::SSL
     OpenSSL::Crypto
+    ${ASCIICHAT_NGHTTP2_TARGET}
 )
 if(FREETYPE_LIBRARY_DIRS)
     target_link_directories(ascii-chat-static-lib-deps INTERFACE ${FREETYPE_LIBRARY_DIRS})
