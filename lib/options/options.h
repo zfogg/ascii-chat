@@ -320,14 +320,8 @@ typedef enum { AUDIO_CAPTURE_SOURCE_AUTO = 0, AUDIO_CAPTURE_SOURCE_MIC = 1, AUDI
 /** @brief Default splash screen flag (true = show splash, false = hide splash) */
 #define OPT_SPLASH_DEFAULT true
 
-/** @brief Default splash screen explicitly set flag (false = use default splash setting) */
-#define OPT_SPLASH_SCREEN_EXPLICITLY_SET_DEFAULT false
-
 /** @brief Default status screen flag (true = show status, false = hide status) */
 #define OPT_STATUS_SCREEN_DEFAULT true
-
-/** @brief Default status screen explicitly set flag (false = use default status screen setting) */
-#define OPT_STATUS_SCREEN_EXPLICITLY_SET_DEFAULT false
 
 /** @brief Default keep-awake (prevent system sleep) flag (false = normal system sleep) */
 #define OPT_ENABLE_KEEPAWAKE_DEFAULT false
@@ -1194,19 +1188,17 @@ typedef struct options_state {
   // ============================================================================
   // Splash Screen Options
   // ============================================================================
-  bool splash_screen;                ///< Show splash screen (default: true = show, use --no-splash-screen to hide)
-  bool splash_screen_explicitly_set; ///< True if splash screen was explicitly set by user
-  bool status_screen;                ///< Show status screen (default: true = show, use --no-status-screen to hide)
-  bool status_screen_explicitly_set; ///< True if status_screen was explicitly set by user
-  bool no_check_update;              ///< Disable automatic update checks (default: false = checks enabled)
+  bool splash_screen;   ///< Show splash screen (default: true = show, use --no-splash-screen to hide)
+  bool status_screen;   ///< Show status screen (default: true = show, use --no-status-screen to hide)
+  bool no_check_update; ///< Disable automatic update checks (default: false = checks enabled)
 
   // ============================================================================
   // Diagnostics options
   // ============================================================================
-  double debug_errno_stacks_time;             ///< Delay before the error report
-  double debug_sync_state_time;               ///< Time parameter for --sync-state
-  double debug_backtrace_time;                ///< Time parameter for --backtrace option
-  double debug_memory_report_interval;        ///< Interval in seconds for periodic memory reports
+  double debug_errno_stacks_time;      ///< Delay before the error report
+  double debug_sync_state_time;        ///< Time parameter for --sync-state
+  double debug_backtrace_time;         ///< Time parameter for --backtrace option
+  double debug_memory_report_interval; ///< Interval in seconds for periodic memory reports
 
   // ============================================================================
   // Render-to-file options

@@ -349,7 +349,6 @@ Test(server_lifecycle, status_worker_lifetime_tracks_start_success_and_failure) 
   options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
   *v = *options_get();
   v->status_screen = true;
-  v->status_screen_explicitly_set = true;
   cr_assert_eq(options_state_set(v), ASCIICHAT_OK);
   SAFE_FREE(v);
   cr_assert_eq(session_server_like_run(&c), ASCIICHAT_OK);

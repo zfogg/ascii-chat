@@ -667,9 +667,7 @@ options_t options_t_new(void) {
   opts.help = OPT_HELP_DEFAULT;
   opts.version = OPT_VERSION_DEFAULT;
   opts.splash_screen = OPT_SPLASH_DEFAULT;
-  opts.splash_screen_explicitly_set = OPT_SPLASH_SCREEN_EXPLICITLY_SET_DEFAULT;
   opts.status_screen = OPT_STATUS_SCREEN_DEFAULT;
-  opts.status_screen_explicitly_set = OPT_STATUS_SCREEN_EXPLICITLY_SET_DEFAULT;
   opts.enable_keepawake = OPT_ENABLE_KEEPAWAKE_DEFAULT;
   opts.disable_keepawake = OPT_DISABLE_KEEPAWAKE_DEFAULT;
   opts.no_check_update = OPT_NO_CHECK_UPDATE_DEFAULT;
@@ -1834,8 +1832,11 @@ static asciichat_error_t parse_mode_options(options_t *opts, asciichat_mode_t de
   flags_parse_result_t parsed = {0};
   const bool parsed_ok = flags_parse(flags_context, mode_argc, mode_argv, &parsed);
   const bool schema_valid = parsed_ok && flags_validate(flags_context);
-  if (parsed_ok && schema_valid && !options_explicit_state_merge(flags_context))
+  if (parsed_ok && schema_valid && !options_explicit_state_merge(flags_context)) {
+    flags_destroy_preserving_storage(flags_context);
+    flags_schema_builder_destroy(flags_builder);
     return SET_ERRNO(ERROR_MEMORY, "Failed to record explicit option state");
+  }
   if (parsed_ok && schema_valid)
     options_resolve_flip_x(opts, flags_was_explicitly_set(flags_context, "flip-x"));
   flags_destroy_preserving_storage(flags_context);
@@ -1986,105 +1987,6 @@ static asciichat_error_t validate_color_filter(options_t *opts) {
   return ASCIICHAT_OK;
 }
 
-static void record_explicit_screen_and_debug_options(options_t *opts, int mode_argc, char **mode_argv) {
-  // Detect if splash or status_screen were explicitly set on command line
-  for (int i = 0; i < mode_argc; i++) {
-    if (mode_argv[i] && (strcmp(mode_argv[i], "--splash-screen") == 0 || strncmp(mode_argv[i], "--splash-screen=", 16) == 0)) {
-      // Parse the value if provided (--splash-screen=true/false)
-      bool splash_value = true; // Default to true for plain --splash-screen
-      if (strncmp(mode_argv[i], "--splash-screen=", 16) == 0) {
-        const char *value = mode_argv[i] + 16;
-        if (strcasecmp(value, "false") == 0 || strcasecmp(value, "no") == 0 || strcasecmp(value, "0") == 0 || strcasecmp(value, "off") == 0) {
-          splash_value = false;
-        }
-      }
-      opts->splash_screen = splash_value;
-      opts->splash_screen_explicitly_set = true;
-    }
-    if (mode_argv[i] && (strcmp(mode_argv[i], "--status-screen") == 0 || strncmp(mode_argv[i], "--status-screen=", 16) == 0)) {
-      // Parse the value if provided (--status-screen=true/false)
-      bool status_value = true; // Default to true for plain --status-screen
-      if (strncmp(mode_argv[i], "--status-screen=", 16) == 0) {
-        const char *value = mode_argv[i] + 16;
-        if (strcasecmp(value, "false") == 0 || strcasecmp(value, "no") == 0 || strcasecmp(value, "0") == 0 || strcasecmp(value, "off") == 0) {
-          status_value = false;
-        }
-      }
-      opts->status_screen = status_value;
-      opts->status_screen_explicitly_set = true;
-    }
-
-#ifndef NDEBUG
-    if (mode_argv[i] && (strcmp(mode_argv[i], "--sync-state") == 0 || strncmp(mode_argv[i], "--sync-state=", 13) == 0 || strcmp(mode_argv[i], "--errno-stacks") == 0 ||
-                         strncmp(mode_argv[i], "--errno-stacks=", 15) == 0)) {
-      bool errno_report = strncmp(mode_argv[i], "--errno-stacks", 14) == 0;
-      double *report_time = errno_report ? &opts->debug_errno_stacks_time : &opts->debug_sync_state_time;
-      if (strcmp(mode_argv[i], "--sync-state") == 0 || strcmp(mode_argv[i], "--errno-stacks") == 0) {
-        if (i + 1 < mode_argc) {
-          char *endptr;
-          double val = strtod(mode_argv[i + 1], &endptr);
-          if (endptr != mode_argv[i + 1] && val > 0.0) {
-            *report_time = val;
-            i++;
-          }
-        }
-      } else {
-        const char *value_str = strchr(mode_argv[i], '=') + 1;
-        if (value_str[0] != '\0') {
-          char *endptr;
-          double val = strtod(value_str, &endptr);
-          if (endptr != value_str && val > 0.0) {
-            *report_time = val;
-          }
-        }
-      }
-    }
-    if (mode_argv[i] && (strcmp(mode_argv[i], "--backtrace") == 0 || strncmp(mode_argv[i], "--backtrace=", 12) == 0)) {
-      if (strcmp(mode_argv[i], "--backtrace") == 0) {
-        if (i + 1 < mode_argc) {
-          char *endptr;
-          double val = strtod(mode_argv[i + 1], &endptr);
-          if (endptr != mode_argv[i + 1] && val > 0.0) {
-            opts->debug_backtrace_time = val;
-            i++;
-          }
-        }
-      } else {
-        const char *value_str = mode_argv[i] + 12;
-        if (value_str[0] != '\0') {
-          char *endptr;
-          double val = strtod(value_str, &endptr);
-          if (endptr != value_str && val > 0.0) {
-            opts->debug_backtrace_time = val;
-          }
-        }
-      }
-    }
-    if (mode_argv[i] && (strcmp(mode_argv[i], "--memory-report") == 0 || strncmp(mode_argv[i], "--memory-report=", 16) == 0)) {
-      if (strcmp(mode_argv[i], "--memory-report") == 0) {
-        if (i + 1 < mode_argc) {
-          char *endptr;
-          double val = strtod(mode_argv[i + 1], &endptr);
-          if (endptr != mode_argv[i + 1] && val > 0.0) {
-            opts->debug_memory_report_interval = val;
-            i++;
-          }
-        }
-      } else {
-        const char *value_str = mode_argv[i] + 16;
-        if (value_str[0] != '\0') {
-          char *endptr;
-          double val = strtod(value_str, &endptr);
-          if (endptr != value_str && val > 0.0) {
-            opts->debug_memory_report_interval = val;
-          }
-        }
-      }
-    }
-#endif
-  }
-}
-
 static void apply_screen_defaults(options_t *opts, int mode_argc, char **mode_argv) {
   // Auto-disable splash when grep is used (since it's one-time startup screen)
   // UNLESS it was explicitly set by the user
@@ -2098,7 +2000,7 @@ static void apply_screen_defaults(options_t *opts, int mode_argc, char **mode_ar
   }
 
   if (grep_was_provided) {
-    if (!opts->splash_screen_explicitly_set) {
+    if (!options_was_explicitly_set("splash-screen")) {
       opts->splash_screen = false;
       log_debug("Auto-disabled splash because --grep was provided");
     }
@@ -2111,11 +2013,11 @@ static void apply_screen_defaults(options_t *opts, int mode_argc, char **mode_ar
   bool should_auto_disable_screens = !is_terminal_interactive || is_claudecode_set;
 
   if (should_auto_disable_screens) {
-    if (!opts->splash_screen_explicitly_set) {
+    if (!options_was_explicitly_set("splash-screen")) {
       opts->splash_screen = false;
       log_debug("Auto-disabled splash (non-interactive terminal or CLAUDECODE set)");
     }
-    if (!opts->status_screen_explicitly_set) {
+    if (!options_was_explicitly_set("status-screen")) {
       opts->status_screen = false;
       log_debug("Auto-disabled status screen (non-interactive terminal or CLAUDECODE set)");
     }
@@ -2577,7 +2479,6 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     goto cleanup;
   }
-  record_explicit_screen_and_debug_options(&opts, mode_args.argc, mode_args.argv);
   apply_screen_defaults(&opts, mode_args.argc, mode_args.argv);
   result = validate_option_strings(&opts);
   if (result != ASCIICHAT_OK) {

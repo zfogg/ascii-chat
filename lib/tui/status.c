@@ -109,7 +109,7 @@ void ui_status_display(const ui_status_t *status) {
   // 1. Terminal is interactive (default behavior), OR
   // 2. User explicitly set --status-screen on command line (force it regardless of terminal)
   // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
-  if (!terminal_is_interactive() && !GET_OPTION(status_screen_explicitly_set)) {
+  if (!terminal_is_interactive() && !options_was_explicitly_set("status-screen")) {
     return;
   }
 
@@ -159,7 +159,7 @@ bool ui_status_display_interactive(const ui_status_t *status) {
   // 1. Terminal is interactive (default behavior), OR
   // 2. User explicitly set --status-screen on command line (force it regardless of terminal)
   // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
-  if (!terminal_is_interactive() && !GET_OPTION(status_screen_explicitly_set)) {
+  if (!terminal_is_interactive() && !options_was_explicitly_set("status-screen")) {
     return true;
   }
 

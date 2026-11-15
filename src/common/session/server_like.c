@@ -411,7 +411,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
 
   if (config->status_fn) {
     bool status_opt = GET_OPTION(status_screen);
-    bool status_explicit = GET_OPTION(status_screen_explicitly_set);
+    bool status_explicit = options_was_explicitly_set("status-screen");
     if ((status_opt && terminal_is_interactive()) || (status_explicit && status_opt)) {
       atomic_store_bool(&g_status_should_exit, false);
 

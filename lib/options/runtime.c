@@ -265,8 +265,6 @@ static const options_t g_default_options = (options_t){
     // Remaining Options (zero-initialized by default)
     // ========================================================================
     .reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT,
-    .splash_screen_explicitly_set = OPT_SPLASH_SCREEN_EXPLICITLY_SET_DEFAULT,
-    .status_screen_explicitly_set = OPT_STATUS_SCREEN_EXPLICITLY_SET_DEFAULT,
     .no_check_update = OPT_NO_CHECK_UPDATE_DEFAULT,
 
     // All remaining array fields (identity_keys, num_identity_keys, etc.)
@@ -992,9 +990,9 @@ char *options_values_json(const options_t *values, bool remote_only) {
   for (size_t i = 0; i < sizeof(runtime_fields) / sizeof(*runtime_fields); ++i) {
     const runtime_field_t *field = &runtime_fields[i];
     bool exposed = options_remote_render_field(field->name);
-    if (!remote_only && (!strcmp(field->name, "flip_x") || !strcmp(field->name, "media_input") || !strcmp(field->name, "flip_y") ||
-                         !strcmp(field->name, "waveform") || !strcmp(field->name, "fft") || !strcmp(field->name, "fps_counter") || !strcmp(field->name, "audio_source") ||
-                         !strcmp(field->name, "speakers_volume") || !strcmp(field->name, "microphone_sensitivity") || !strcmp(field->name, "audio_enabled")))
+    if (!remote_only && (!strcmp(field->name, "flip_x") || !strcmp(field->name, "media_input") || !strcmp(field->name, "flip_y") || !strcmp(field->name, "waveform") || !strcmp(field->name, "fft") ||
+                         !strcmp(field->name, "fps_counter") || !strcmp(field->name, "audio_source") || !strcmp(field->name, "speakers_volume") || !strcmp(field->name, "microphone_sensitivity") ||
+                         !strcmp(field->name, "audio_enabled")))
       exposed = true;
     if (!exposed)
       continue;
