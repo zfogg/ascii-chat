@@ -102,6 +102,9 @@ if(TARGET libplatform-objects)
     target_include_directories(libplatform-objects PRIVATE
         ${_ascii_chat_repo_root}/include
         ${_ascii_chat_repo_root}/deps)
+    if(DEFINED KERNEL_HEADERS_DIR AND EXISTS "${KERNEL_HEADERS_DIR}")
+        target_include_directories(libplatform-objects PRIVATE "${KERNEL_HEADERS_DIR}")
+    endif()
 endif()
 if(LIBSODIUM_INCLUDE_DIRS)
     target_include_directories(libplatform PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
