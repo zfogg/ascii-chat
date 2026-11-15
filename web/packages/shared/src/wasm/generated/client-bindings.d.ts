@@ -52,11 +52,7 @@ declare namespace RuntimeExports {
     export function nodePermissions(node: unknown, perms: unknown): 0 | 2;
     export function mayLookup(dir: unknown): unknown;
     export function mayCreate(dir: unknown, name: unknown): unknown;
-    export function mayDelete(
-      dir: unknown,
-      name: unknown,
-      isdir: unknown,
-    ): unknown;
+    export function mayDelete(dir: unknown, name: unknown, isdir: unknown): unknown;
     export function mayOpen(node: unknown, flags: unknown): unknown;
     export function checkOpExists(op: unknown, err: unknown): unknown;
     export let MAX_OPEN_FDS: number;
@@ -66,11 +62,7 @@ declare namespace RuntimeExports {
     export function createStream(stream: unknown, fd?: number): unknown;
     export function closeStream(fd: unknown): void;
     export function dupStream(origStream: unknown, fd?: number): unknown;
-    export function doSetAttr(
-      stream: unknown,
-      node: unknown,
-      attr: unknown,
-    ): void;
+    export function doSetAttr(stream: unknown, node: unknown, attr: unknown): void;
     export namespace chrdev_stream_ops {
       function open(stream: unknown): void;
       function llseek(): never;
@@ -82,11 +74,7 @@ declare namespace RuntimeExports {
     export function getDevice(dev: unknown): unknown;
     export function getMounts(mount: unknown): unknown[];
     export function syncfs(populate: unknown, callback: unknown): void;
-    export function mount(
-      type: unknown,
-      opts: unknown,
-      mountpoint: unknown,
-    ): unknown;
+    export function mount(type: unknown, opts: unknown, mountpoint: unknown): unknown;
     export function unmount(mountpoint: unknown): void;
     export function lookup(parent: unknown, name: unknown): unknown;
     export function mknod(path: unknown, mode: unknown, dev: unknown): unknown;
@@ -109,11 +97,7 @@ declare namespace RuntimeExports {
     export function mkdirTree(path: unknown, mode?: number): void;
     export function mkdev(path: unknown, mode: unknown, dev?: unknown): unknown;
     export function symlink(oldpath: unknown, newpath: unknown): unknown;
-    export function link(
-      oldpath: unknown,
-      newpath: unknown,
-      flags: unknown,
-    ): unknown;
+    export function link(oldpath: unknown, newpath: unknown, flags: unknown): unknown;
     export function rename(old_path: unknown, new_path: unknown): void;
     export function rmdir(path: unknown): void;
     export function readdir(path: unknown): unknown;
@@ -128,18 +112,10 @@ declare namespace RuntimeExports {
       mode: unknown,
       dontFollow?: boolean,
     ): void;
-    export function chmod(
-      path: unknown,
-      mode: unknown,
-      dontFollow?: boolean,
-    ): void;
+    export function chmod(path: unknown, mode: unknown, dontFollow?: boolean): void;
     export function lchmod(path: unknown, mode: unknown): void;
     export function fchmod(fd: unknown, mode: unknown): void;
-    export function doChown(
-      stream: unknown,
-      node: unknown,
-      dontFollow?: boolean,
-    ): void;
+    export function doChown(stream: unknown, node: unknown, dontFollow?: boolean): void;
     export function chown(
       path: unknown,
       uid: unknown,
@@ -148,11 +124,7 @@ declare namespace RuntimeExports {
     ): void;
     export function lchown(path: unknown, uid: unknown, gid: unknown): void;
     export function fchown(fd: unknown, uid: unknown, gid: unknown): void;
-    export function doTruncate(
-      stream: unknown,
-      node: unknown,
-      len: unknown,
-    ): void;
+    export function doTruncate(stream: unknown, node: unknown, len: unknown): void;
     export function truncate(path: unknown, len: unknown): void;
     export function ftruncate(fd: unknown, len: unknown): void;
     export function utime(
@@ -164,11 +136,7 @@ declare namespace RuntimeExports {
     export function open(path: unknown, flags: unknown, mode?: number): unknown;
     export function close(stream: unknown): void;
     export function isClosed(stream: unknown): boolean;
-    export function llseek(
-      stream: unknown,
-      offset: unknown,
-      whence: unknown,
-    ): unknown;
+    export function llseek(stream: unknown, offset: unknown, whence: unknown): unknown;
     export function read(
       stream: unknown,
       buffer: unknown,
@@ -212,11 +180,7 @@ declare namespace RuntimeExports {
       error: unknown,
     ): void;
     export function staticInit(): void;
-    export function init(
-      input?: unknown,
-      output?: unknown,
-      error?: unknown,
-    ): void;
+    export function init(input?: unknown, output?: unknown, error?: unknown): void;
     export function quit(): void;
     export function analyzePath(
       path: unknown,
@@ -412,10 +376,7 @@ export interface AudioProcessorBinding extends ClassHandle {
   error(): number;
   close(): void;
   process(_0: AudioSamples, _1: AudioSamples): number;
-  processBatch(
-    _0: ReadonlyArray<AudioSamples>,
-    _1: ReadonlyArray<AudioSamples>,
-  ): number;
+  processBatch(_0: ReadonlyArray<AudioSamples>, _1: ReadonlyArray<AudioSamples>): number;
 }
 
 export interface OpusCodecBinding extends ClassHandle {
@@ -481,15 +442,10 @@ export interface SessionResult extends WasmRecord {
 export interface ProtocolInfo extends WasmRecord {
   packetTypes: Readonly<Record<string, number>>;
 }
-export interface PacketOutput {
-  type: number;
-  payload: Uint8Array;
-}
+export interface PacketOutput { type: number; payload: Uint8Array; }
 export type PacketOutputList = ReadonlyArray<PacketOutput>;
-export interface HostPacket {
-  id: number;
-  bytes: Uint8Array;
-}
+export interface HostPacket { id: number; bytes: Uint8Array; }
+
 
 export interface ClientSessionBinding extends ClassHandle {
   valid(): boolean;
@@ -608,12 +564,7 @@ export interface MirrorFrameBinding extends ClassHandle {
     _2: number,
     _3: boolean,
   ): string | undefined;
-  processFrame(
-    _0: RgbaBytes,
-    _1: number,
-    _2: number,
-    _3: boolean,
-  ): MirrorFrameResult;
+  processFrame(_0: RgbaBytes, _1: number, _2: number, _3: boolean): MirrorFrameResult;
   transform(_0: RgbaBytes, _1: number, _2: number): number;
   submitAudio(_0: VisualizationSamples, _1: number): void;
   renderAudio(_0: number, _1: number, _2: number): string | undefined;
