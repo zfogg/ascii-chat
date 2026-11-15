@@ -82,6 +82,7 @@ asciichat_error_t registry_add_all_to_flags_builder(flags_schema_builder_t *buil
       break;
     case OPTION_TYPE_CALLBACK:
       type = FLAGS_TYPE_CUSTOM;
+      behavior = FLAGS_BEHAVIOR_CALLBACK;
       break;
     case OPTION_TYPE_ACTION:
       type = FLAGS_TYPE_CUSTOM;
