@@ -514,7 +514,9 @@ target_link_libraries(unit_tests PRIVATE
         SKIP_PRECOMPILE_HEADERS ON
         INTERPROCEDURAL_OPTIMIZATION OFF)
     target_include_directories(benchmarks PRIVATE
-        ${_ascii_tests_mimalloc_include} ${LIBWEBSOCKETS_INCLUDE_DIRS})
+        ${_ascii_tests_mimalloc_include}
+        ${CMAKE_SOURCE_DIR}/src/common
+        ${LIBWEBSOCKETS_INCLUDE_DIRS})
     target_compile_options(benchmarks PRIVATE -Wno-c++11-narrowing)
     target_compile_definitions(benchmarks PRIVATE BUILDING_STATIC_LIB)
     if(NOT TARGET gotel::testing)
@@ -555,7 +557,7 @@ target_link_libraries(benchmarks PRIVATE
         --reporter junit::out=${TEST_XML_DIR}/benchmarks.xml
         --colour-mode ansi)
     set_tests_properties(benchmarks PROPERTIES
-        LABELS "benchmark;performance;serial"
+        LABELS "benchmarks;serial"
         RUN_SERIAL TRUE
         TIMEOUT 600
         ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}")
@@ -589,7 +591,7 @@ target_link_libraries(benchmarks PRIVATE
         # Transform test file paths to executable names with flattened structure
         # tests/unit/common_test.cpp -> test_unit_common
         # tests/integration/crypto_network_test.cpp -> test_integration_crypto_network
-        # Determine the top-level test category (unit/integration/performance)
+        # Determine the top-level test category (unit/integration/benchmarks)
         file(RELATIVE_PATH test_rel ${CMAKE_CURRENT_SOURCE_DIR} ${test_src})
         string(REPLACE "\\" "/" test_rel ${test_rel})
         string(REGEX MATCH "^[^/]+" test_category ${test_rel})
@@ -1503,9 +1505,9 @@ if(BUILD_TESTS AND TARGET ascii-chat)
     asciichat_add_pytest(python-media integration/media --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
     set_tests_properties(python-media PROPERTIES LABELS "integration;python;media")
     asciichat_add_pytest(python-glyph-performance performance/glyph -n 0 --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
-    set_tests_properties(python-glyph-performance PROPERTIES LABELS "performance;python;media" RUN_SERIAL TRUE)
+    set_tests_properties(python-glyph-performance PROPERTIES LABELS "benchmarks;python;media" RUN_SERIAL TRUE)
     asciichat_add_pytest(python-fps-performance performance/fps -n 0 --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
-    set_tests_properties(python-fps-performance PROPERTIES LABELS "performance;python;media" RUN_SERIAL TRUE)
+    set_tests_properties(python-fps-performance PROPERTIES LABELS "benchmarks;python;media" RUN_SERIAL TRUE)
     asciichat_add_pytest(python-discovery integration/discovery --ascii-chat-binary=$<TARGET_FILE:ascii-chat>
         --ignore=${CMAKE_SOURCE_DIR}/tests/python/tests/integration/discovery/test_discovery_webrtc.py)
     set_tests_properties(python-discovery PROPERTIES LABELS "integration;python;network" RUN_SERIAL TRUE)
@@ -2573,7 +2575,7 @@ endif()
 get_property(contract_tests DIRECTORY PROPERTY ASCIICHAT_CONTRACT_TESTS)
 foreach(contract_test IN LISTS contract_tests)
     get_property(category TEST ${contract_test} PROPERTY LABELS)
-    if(NOT category MATCHES "(^|;)(unit|integration|performance)(;|$)")
+    if(NOT category MATCHES "(^|;)(unit|integration|benchmarks)(;|$)")
         set_property(TEST ${contract_test} APPEND PROPERTY LABELS integration)
     endif()
     set_property(TEST ${contract_test} APPEND PROPERTY LABELS  contract)

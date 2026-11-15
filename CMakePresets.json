@@ -408,14 +408,14 @@
       }
     },
     {
-      "name": "performance",
-      "displayName": "Performance Tests",
-      "description": "Run performance tests only",
+      "name": "benchmarks",
+      "displayName": "Benchmark Tests",
+      "description": "Run benchmark tests only",
       "configurePreset": "tests",
       "inherits": "base-test",
       "filter": {
         "include": {
-          "label": "^performance$"
+          "label": "^benchmarks$"
         }
       }
     },
@@ -444,14 +444,14 @@
       }
     },
     {
-      "name": "github-performance",
-      "displayName": "Performance Tests (GitHub CI)",
-      "description": "Run performance tests in GitHub CI environment",
+      "name": "github-benchmarks",
+      "displayName": "Benchmark Tests (GitHub CI)",
+      "description": "Run benchmark tests in GitHub CI environment",
       "configurePreset": "github",
       "inherits": "base-test",
       "filter": {
         "include": {
-          "label": "^performance$"
+          "label": "^benchmarks$"
         }
       }
     },

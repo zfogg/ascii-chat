@@ -539,7 +539,7 @@ jobs:
             /tmp/client_test*.log
           retention-days: 7
 
-  performance-tests:
+  benchmarks:
     needs: preflight
     name: Performance Tests
     runs-on: ${{ matrix.os }}
@@ -653,7 +653,7 @@ jobs:
           # Run performance tests via ctest preset
           # Test adapters generate detailed XML in build/Testing/xml/
           set -o pipefail
-          ctest --test-dir build --label-regex "^performance$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
+          ctest --test-dir build --label-regex "^benchmarks$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee benchmarks-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
           echo "Performance tests completed successfully"
 
@@ -707,7 +707,7 @@ jobs:
 
   coverage:
     name: Publish complete coverage
-    needs: [unit-tests, integration-tests, performance-tests]
+    needs: [unit-tests, integration-tests, benchmarks]
     if: ${{ always() && !cancelled() && (github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) }}
     runs-on: ubuntu-latest
     steps:

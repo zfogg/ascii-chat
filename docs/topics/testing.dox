@@ -15,11 +15,11 @@
  * ctest --preset all --output-on-failure --parallel 0
  * ctest --preset unit
  * ctest --preset integration
- * ctest --preset performance
+ * ctest --preset benchmarks
  * @endcode
  *
- * The performance CTest group remains for compatibility, but native timing
- * sources live in `tests/benchmarks/`. They use Catch2 `BENCHMARK` or
+ * The benchmarks CTest group selects native timing sources in
+ * `tests/benchmarks/`. They use Catch2 `BENCHMARK` or
  * `BENCHMARK_ADVANCED`, are tagged `[benchmark]`, and run serially in CI.
  *
  * @section testing_writing Writing Catch2 tests
@@ -73,6 +73,6 @@
  * @section testing_troubleshooting Troubleshooting
  * List tests with `unit_tests --list-tests` and inspect CTest with `ctest -N`.
  * Run a focused case with a Catch2 expression and write XML with
- * `--reporter junit --out path.xml`. Catch2 filters and XML directories
- * are no longer supported.
+ * `--reporter junit --out path.xml`. Catch2 filters and XML directories are
+ * integrated with CTest discovery.
  */
