@@ -18,6 +18,21 @@
 #include <libflags/config/keys.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
+
+static bool registry_flags_validate(const flags_context_t *context, const char *text, const flags_value_t *value, char *error, size_t error_size, void *user_data) {
+  (void)context;
+  (void)value;
+  (void)error;
+  (void)error_size;
+  const registry_entry_t *entry = user_data;
+  if (!entry || strcmp(entry->long_name, "snapshot-delay") != 0 || !text)
+    return true;
+  errno = 0;
+  char *end = NULL;
+  double delay = strtod(text, &end);
+  return errno != ERANGE && end != text && *end == '\0' && delay >= 0.0;
+}
 
 static void registry_flags_change(flags_context_t *context, const char *name, const flags_value_t *old_value, const flags_value_t *new_value, void *user_data) {
   (void)name;
@@ -129,7 +144,7 @@ asciichat_error_t registry_add_all_to_flags_builder(flags_schema_builder_t *buil
                                   .enum_value_count = 0,
                                   .dynamic_string = entry->owns_memory,
                                   .parse = entry->type == OPTION_TYPE_CALLBACK ? registry_flags_parse : NULL,
-                                  .validate = NULL,
+                                  .validate = entry->type == OPTION_TYPE_DOUBLE ? registry_flags_validate : NULL,
                                   .validation_regex = entry->metadata.validation_pattern,
                                   .on_change = entry->type == OPTION_TYPE_ACTION || (entry->type == OPTION_TYPE_STRING && entry->parse_fn) ? registry_flags_change : NULL,
                                   .user_data = (void *)entry};

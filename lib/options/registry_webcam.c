@@ -40,7 +40,7 @@ const registry_entry_t g_webcam_entries[] = {
      OPTION_TYPE_INT,
      offsetof(options_t, webcam_index),
      &default_webcam_index_value,
-     sizeof(unsigned short int),
+     sizeof(((options_t *)0)->webcam_index),
      "Webcam device index to use for video input.",
      "WEBCAM",
      NULL,
