@@ -2,18 +2,6 @@
  * Shared cell construction and terminal emission for scalar and SIMD kernels.
  */
 
-/* The legacy glyph matcher still owns its reference renderer. The production
- * renderer was split into render/render.c and render/common.c; keep these
- * private legacy symbols distinct while retaining the public matcher API used
- * by compatibility tests. */
-#define ascii_render ascii_legacy_render
-#define ascii_render_halfblocks ascii_legacy_render_halfblocks
-#define ascii_frame_init ascii_legacy_frame_init
-#define ascii_frame_emit_row ascii_legacy_frame_emit_row
-#define ascii_frame_finish ascii_legacy_frame_finish
-#define ascii_half_frame_init ascii_legacy_half_frame_init
-#define ascii_frame_emit_halfrow ascii_legacy_frame_emit_halfrow
-
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define VIDEO_ASCII_RENDER_SEQUENCE_BUFFER_SIZE 16
 #define ASCII_TEMPORAL_MOTION_LIMIT 8
@@ -33,6 +21,7 @@
 #include <limits.h>
 #include <ascii-chat/video/ascii/simd/cells.h>
 
+#if 0
 static _Thread_local outbuf_t *g_output_target;
 #define ASCII_RENDER_WORKSPACE_POOL_SIZE 4
 static _Thread_local uint32_t g_scratch_workspace[ASCII_RENDER_WORKSPACE_POOL_SIZE][IMAGE_MAX_WIDTH * ASCII_SCRATCH_PLANES];
@@ -471,6 +460,8 @@ void ascii_frame_emit_halfrow(ascii_frame_t *frame, ascii_color_t mode, bool mor
   emit_row_end(&frame->output, mode != ASCII_COLOR_NONE, more_rows);
   ++frame->row;
 }
+
+#endif
 
 /* Compare a small spatial image patch against glyph coverage masks.
  * The source is fitted at 8x8 samples per output cell, then averaged to 4x4.
