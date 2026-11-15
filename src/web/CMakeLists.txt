@@ -200,33 +200,33 @@ set(LIB_SRC_COMMON
     ${LIBFLAGS_ROOT}/lib/options.c
     ${LIBFLAGS_ROOT}/lib/parsing/parsers.c
     ${LIBFLAGS_ROOT}/lib/storage.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/core.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/common.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/enums.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/strings.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/runtime.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/help.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/config.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/colorscheme.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/parsing_parsers.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/parsing_validation.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_audio.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_configuration.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_core.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_database.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_debug.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_display.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_general.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_logging.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_media.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_metadata.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_mode_defaults.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_network.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_public_api.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_registry.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_security.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_terminal.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/registry_webcam.c
+    ${LIB_ROOT}/options/colorscheme.c
+    ${LIB_ROOT}/options/core.c
+    ${LIB_ROOT}/options/common.c
+    ${LIB_ROOT}/options/enums.c
+    ${LIB_ROOT}/options/strings.c
+    ${LIB_ROOT}/options/runtime.c
+    ${LIB_ROOT}/options/help.c
+    ${LIB_ROOT}/options/config.c
+    ${LIB_ROOT}/options/parsing_parsers.c
+    ${LIB_ROOT}/options/parsing_validation.c
+    ${LIB_ROOT}/options/registry_audio.c
+    ${LIB_ROOT}/options/registry_configuration.c
+    ${LIB_ROOT}/options/registry_core.c
+    ${LIB_ROOT}/options/registry_database.c
+    ${LIB_ROOT}/options/registry_debug.c
+    ${LIB_ROOT}/options/registry_display.c
+    ${LIB_ROOT}/options/registry_general.c
+    ${LIB_ROOT}/options/registry_logging.c
+    ${LIB_ROOT}/options/registry_media.c
+    ${LIB_ROOT}/options/registry_metadata.c
+    ${LIB_ROOT}/options/registry_mode_defaults.c
+    ${LIB_ROOT}/options/registry_network.c
+    ${LIB_ROOT}/options/registry_public_api.c
+    ${LIB_ROOT}/options/registry_registry.c
+    ${LIB_ROOT}/options/registry_security.c
+    ${LIB_ROOT}/options/registry_terminal.c
+    ${LIB_ROOT}/options/registry_webcam.c
 
     # Crypto (needed for logging headers)
     ${LIB_ROOT}/crypto/crypto.c
