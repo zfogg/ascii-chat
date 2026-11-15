@@ -148,7 +148,9 @@ asciichat_error_t registry_add_all_to_flags_builder(flags_schema_builder_t *buil
                                   .parse = entry->type == OPTION_TYPE_CALLBACK ? registry_flags_parse : NULL,
                                   .validate = entry->type == OPTION_TYPE_DOUBLE ? registry_flags_validate : NULL,
                                   .validation_regex = entry->metadata.validation_pattern,
-                                  .on_change = entry->type == OPTION_TYPE_ACTION || (entry->type == OPTION_TYPE_STRING && entry->parse_fn) ? registry_flags_change : NULL,
+                                  .on_change = entry->type == OPTION_TYPE_ACTION || (entry->type == OPTION_TYPE_STRING && entry->parse_fn) || strcmp(entry->long_name, "flip-x") == 0 || strcmp(entry->long_name, "flip-y") == 0
+                                                    ? registry_flags_change
+                                                    : NULL,
                                   .user_data = (void *)entry};
     if (entry->type == OPTION_TYPE_CALLBACK || entry->type == OPTION_TYPE_ACTION)
       option.storage_size = 0;
