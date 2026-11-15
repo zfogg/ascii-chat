@@ -150,6 +150,3 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Criterion.cmake)
 
 # Platform-specific system libraries (Windows, macOS frameworks, Linux libs)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/PlatformLibraries.cmake)
-
-# Native telemetry is an explicit dependency; browser builds keep no-op hooks.
-include(${CMAKE_SOURCE_DIR}/cmake/deps/Gotel.cmake)

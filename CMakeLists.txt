@@ -390,6 +390,11 @@ asciichat_enable_analyzers_for_targets()
 # =============================================================================
 # ascii-chat-Specific Stuff: Source code, Library modules, Headers, and Executable Config
 # =============================================================================
+# Native telemetry is configured before the project libraries because its
+# musl build supplies the toolchain-native nghttp2 target used by the HTTP/2
+# server module.
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Gotel.cmake)
+
 # Source files - recursive CMakeLists.txt (replaces SourceFiles.cmake)
 # lib/CMakeLists.txt handles adding its own subdirectories
 # Note: Using include() instead of add_subdirectory() so defer/panic tooling
