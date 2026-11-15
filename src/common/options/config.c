@@ -154,8 +154,10 @@ asciichat_error_t config_create_default(const char *config_path) {
 
 asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const char *config_path, bool strict, options_t *opts) {
   (void)detected_mode;
-  if (!config_path || !opts)
+  if (!opts)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing configuration path or destination");
+  if (!config_path)
+    return strict ? SET_ERRNO(ERROR_CONFIG, "Missing configuration path") : ASCIICHAT_OK;
 
   struct stat file_info;
   if (strcmp(config_path, "-") != 0 && stat(config_path, &file_info) != 0) {
