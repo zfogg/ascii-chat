@@ -39,6 +39,11 @@ static void registry_flags_change(flags_context_t *context, const char *name, co
   char *error = NULL;
   entry->parse_fn(new_value->string, (char *)storage + entry->offset, &error);
   free(error);
+  if (strcmp(entry->long_name, "palette-chars") == 0) {
+    options_t *options = storage;
+    options->palette_custom_set = true;
+    options->palette_type = PALETTE_CUSTOM;
+  }
 }
 
 static bool registry_flags_parse(flags_context_t *context, const char *text, flags_value_t *value, void *user_data) {
