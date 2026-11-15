@@ -20,28 +20,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-static bool registry_flags_validate(const flags_context_t *context, const char *name, const flags_value_t *value, char *error, size_t error_size, void *user_data) {
-  (void)context;
-  (void)name;
-  (void)error;
-  (void)error_size;
-  const registry_entry_t *entry = user_data;
-  if (!entry || !value || entry->metadata.input_type != OPTION_INPUT_NUMERIC ||
-      (entry->type != OPTION_TYPE_INT && entry->type != OPTION_TYPE_DOUBLE))
-    return true;
-  const double number = entry->type == OPTION_TYPE_DOUBLE ? value->number : (double)value->integer;
-  const double minimum = entry->metadata.numeric_range.min;
-  const double maximum = entry->metadata.numeric_range.max;
-  const double step = entry->metadata.numeric_range.step;
-  if (minimum == 0.0 && maximum == 0.0 && step == 0.0)
-    return true;
-  if (number < minimum || number > maximum)
-    return false;
-  if (step > 0.0 && fabs(fmod(number - minimum, step)) > 1e-9)
-    return false;
-  return true;
-}
-
 static void registry_flags_change(flags_context_t *context, const char *name, const flags_value_t *old_value, const flags_value_t *new_value, void *user_data) {
   (void)name;
   (void)old_value;
@@ -152,7 +130,7 @@ asciichat_error_t registry_add_all_to_flags_builder(flags_schema_builder_t *buil
                                   .enum_value_count = 0,
                                   .dynamic_string = entry->owns_memory,
                                   .parse = entry->type == OPTION_TYPE_CALLBACK ? registry_flags_parse : NULL,
-                                  .validate = entry->metadata.input_type == OPTION_INPUT_NUMERIC ? registry_flags_validate : NULL,
+                                  .validate = NULL,
                                   .validation_regex = entry->metadata.validation_pattern,
                                   .on_change = entry->type == OPTION_TYPE_ACTION || (entry->type == OPTION_TYPE_STRING && entry->parse_fn) ? registry_flags_change : NULL,
                                   .user_data = (void *)entry};
