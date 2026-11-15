@@ -562,7 +562,8 @@ set_property(SOURCE
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/sve/luminance.c"
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/sve/color.c"
     APPEND PROPERTY
-    COMPILE_OPTIONS "$<$<CONFIG:Debug>:-O2;-finline-functions>")
+    # -finline cancels Debug's -fno-inline; -finline-functions alone does not.
+    COMPILE_OPTIONS "$<$<CONFIG:Debug>:-O2;-finline>")
 # The core module's Debug precompiled header uses -O0 and cannot be reused by
 # this optimized source with Clang.
 set_source_files_properties("${CMAKE_SOURCE_DIR}/src/common/session/frame_validation.c"
