@@ -18,10 +18,28 @@ function(configure_gcc_pre_project)
         list(GET _pair 1 _value)
         set(${_name} "${_value}" CACHE FILEPATH "GCC tool" FORCE)
     endforeach()
-    # Run the native Linux defer transformer. This keeps source transformation
-    # on the GCC host instead of sending a Python/libclang worker through a
-    # Windows-mounted source tree.
-    set(DEFER_BACKEND NATIVE CACHE STRING "defer transformer backend" FORCE)
+    # Use the checked-in defer Python/libclang backend for GCC. The published
+    # native defer archives predate GCC support and probe GCC with Clang's
+    # -print-resource-dir option. GCC remains the native application compiler
+    # and uses its own binutils below; only source transformation is delegated
+    # to libclang, as it is for MSVC.
+    find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
+    find_program(_gcc_llvm_config NAMES llvm-config llvm-config-20 llvm-config-19 llvm-config-18 REQUIRED)
+    execute_process(
+        COMMAND "${_gcc_llvm_config}" --libdir
+        OUTPUT_VARIABLE _gcc_llvm_libdir
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE _gcc_llvm_config_result
+    )
+    if(NOT _gcc_llvm_config_result EQUAL 0 OR NOT _gcc_llvm_libdir)
+        message(FATAL_ERROR "llvm-config could not report the libclang directory for GCC defer transformations")
+    endif()
+    find_file(_gcc_libclang NAMES libclang.so libclang.so.1
+        PATHS "${_gcc_llvm_libdir}" NO_DEFAULT_PATH REQUIRED)
+    set(DEFER_BACKEND PYTHON CACHE STRING "defer transformer backend" FORCE)
+    set(DEFER_TOOL_ROOT "${CMAKE_SOURCE_DIR}/deps/defer" CACHE PATH "defer source tree" FORCE)
+    set(DEFER_PYTHON_COMMAND "${Python3_EXECUTABLE}" CACHE FILEPATH "defer Python interpreter" FORCE)
+    set(DEFER_LIBCLANG_PATH "${_gcc_libclang}" CACHE FILEPATH "libclang shared library" FORCE)
     # GCC 11, still shipped by supported Ubuntu LTS releases, does not accept
     # C++26. Select the supported C++23 dialect before project() performs
     # compiler feature detection.
