@@ -3,6 +3,7 @@ import { Heading } from "@ascii-chat/shared/components/Heading";
 import { defaultGlyphPalette, defaultPalettes } from "@ascii-chat/shared/wasm";
 import { getOptionHelp, AsciiChatMode } from "../../utils";
 import { Tooltip } from "../Tooltip";
+import { HelpIcon as DimensionHelp } from "../HelpIcon";
 import { LOCKED_SETTINGS_HELP } from "../lockedSettings";
 import type { useCameraFrameRate } from "../../hooks/useCameraFrameRate";
 import {
@@ -67,22 +68,6 @@ interface BinarySettingsProps {
   onContentFitChange?: (fit: "contain" | "cover") => void;
   cameraFps?: ReturnType<typeof useCameraFrameRate>;
   separateCameraFps?: boolean;
-}
-
-function DimensionHelp({ label, text }: { label: string; text: string }) {
-  const id = useId();
-  return (
-    <Tooltip text={text} id={id} inline showOnFocus className="inline-flex">
-      <button
-        type="button"
-        aria-label={`${label} help`}
-        aria-describedby={id}
-        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-terminal-8 text-[10px] text-terminal-8 hover:text-terminal-fg focus-visible:outline focus-visible:outline-terminal-4"
-      >
-        <span aria-hidden="true">i</span>
-      </button>
-    </Tooltip>
-  );
 }
 
 export function BinarySettings({
@@ -247,7 +232,10 @@ export function BinarySettings({
           </div>
 
           {contentFit && onContentFitChange && (
-            <Tooltip text="Contain shows the entire image with black bars. Cover fills the canvas and crops the edges.">
+            <Tooltip
+              helpLabel="Content fit"
+              text="Contain shows the entire image with black bars. Cover fills the canvas and crops the edges."
+            >
               <div className="flex-1 min-w-[100px]">
                 <label
                   htmlFor={`${dimensionsId}-fit`}
@@ -274,6 +262,7 @@ export function BinarySettings({
           )}
 
           <Tooltip
+            helpLabel="Frame Rate"
             text={disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "fps")}
           >
             <div className="flex-1 min-w-[200px]">
@@ -375,6 +364,7 @@ export function BinarySettings({
           )}
 
           <Tooltip
+            helpLabel="Color Mode"
             text={
               disabled
                 ? LOCKED_SETTINGS_HELP
@@ -403,6 +393,7 @@ export function BinarySettings({
           </Tooltip>
 
           <Tooltip
+            helpLabel="Render Mode"
             text={
               disabled
                 ? LOCKED_SETTINGS_HELP
@@ -433,6 +424,7 @@ export function BinarySettings({
           </Tooltip>
 
           <Tooltip
+            helpLabel="Color Filter"
             text={
               disabled
                 ? LOCKED_SETTINGS_HELP
@@ -468,7 +460,10 @@ export function BinarySettings({
             </div>
           </Tooltip>
 
-          <Tooltip text="Choose luminance mapping or experimental glyph-shape matching. Unicode palettes use luminance.">
+          <Tooltip
+            helpLabel="Text Art Render Algorithm"
+            text="Choose luminance mapping or experimental glyph-shape matching. Unicode palettes use luminance."
+          >
             <div className="flex-1 min-w-[200px]">
               <label
                 htmlFor={rendererSelectId}
@@ -494,6 +489,7 @@ export function BinarySettings({
           </Tooltip>
 
           <Tooltip
+            helpLabel="Palette"
             text={
               disabled
                 ? LOCKED_SETTINGS_HELP
@@ -590,6 +586,7 @@ export function BinarySettings({
           </div>
 
           <Tooltip
+            helpLabel="Animation"
             text={
               disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "matrix")
             }
@@ -677,16 +674,25 @@ export function BinarySettings({
           )}
 
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-medium text-terminal-8 mb-1">
-              Camera Framing
-            </label>
+            <div className="flex items-center gap-1.5 mb-1">
+              <label className="text-xs font-medium text-terminal-8">
+                Camera Framing
+              </label>
+              <DimensionHelp
+                label="Camera Framing"
+                text={
+                  disabled
+                    ? LOCKED_SETTINGS_HELP
+                    : "Automatically zoom and pan to keep your face in view. Widens smoothly when your face is lost."
+                }
+              />
+            </div>
             <button
               type="button"
               aria-label="Face Follow"
               aria-pressed={!!config.faceFollow}
               disabled={disabled}
               onClick={() => updateConfig({ faceFollow: !config.faceFollow })}
-              title="Automatically zoom and pan to keep your face in view. Widens smoothly when your face is lost."
               className={`w-full px-4 py-2 border rounded text-sm font-medium transition-colors ${config.faceFollow ? "border-transparent bg-terminal-2 text-terminal-bg hover:bg-terminal-10" : "bg-terminal-bg text-terminal-fg border-terminal-8 hover:border-terminal-fg"}`}
             >
               Face Follow{config.faceFollow ? " On" : " Off"}
@@ -694,6 +700,7 @@ export function BinarySettings({
           </div>
 
           <Tooltip
+            helpLabel="Stabilization"
             text={
               disabled
                 ? LOCKED_SETTINGS_HELP
@@ -728,6 +735,7 @@ export function BinarySettings({
             </div>
           </Tooltip>
           <Tooltip
+            helpLabel="Content Horizontal Flip"
             text={
               disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "flip-x")
             }
@@ -752,6 +760,7 @@ export function BinarySettings({
           </Tooltip>
 
           <Tooltip
+            helpLabel="Content Vertical Flip"
             text={
               disabled ? LOCKED_SETTINGS_HELP : getOptionHelp(mode, "flip-y")
             }

@@ -688,6 +688,23 @@ asciichat_error_t session_pipeline_run_main(session_pipeline_t *pipeline, sessio
       continue;
     }
 
+    /* Visualization presentation replaces the captured image. Avoid running
+     * that image through the expensive glyph renderer only to discard it. */
+    if (frame->visualization) {
+      const bool fresh = frame->fresh;
+      const uint64_t epoch = frame->source_epoch;
+      const uint64_t acquisition_started_ns = frame->acquisition_started_ns;
+      free_frame(frame);
+      frame = NULL;
+      if (epoch == session_capture_source_epoch(pipeline->capture) && (GET_OPTION(waveform) || GET_OPTION(fft))) {
+        ui_controller_frame_acquired_at(acquisition_started_ns);
+        session_display_write_ascii_frame(pipeline->display, " ", fresh);
+        ui_controller_frame_acquired_at(0);
+        session_capture_complete_open(pipeline->capture, epoch);
+      }
+      continue;
+    }
+
     // Check if help screen is active - if so, don't render ASCII frames
     int screen = ui_controller_current_screen();
     // Snapshot mode has no interactive prompt/log overlay.  Do not discard its

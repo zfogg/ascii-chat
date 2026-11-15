@@ -159,9 +159,11 @@ endif()
 #
 # Separate cache directories for different build configurations:
 # - .deps-cache/<BuildType>/           : Native builds (normal glibc/system libc)
+# - .deps-cache/wasm/<BuildType>/         : WASM/Emscripten builds
+# - .deps-cache/wsl/<Distro>/<BuildType>/ : WSL builds, isolated per distro
 # - .deps-cache/musl/                  : Native musl builds
-# - .deps-cache/docker/<BuildType>/    : Docker builds
-# - .deps-cache/docker/musl/           : Docker musl builds
+# - .deps-cache/docker/<Arch>/<BuildType>/ : Docker builds, isolated per arch
+# - .deps-cache/docker/<Arch>/musl/        : Docker musl builds
 #
 # Build types need separate caches because dependencies like mimalloc have different
 # configurations (Debug: MI_DEBUG_FULL=ON, Release: MI_DEBUG_FULL=OFF)

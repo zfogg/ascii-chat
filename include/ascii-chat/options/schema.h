@@ -16,6 +16,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "../common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include "../options/options.h"
 #include "../options/builder.h"
 
@@ -132,3 +136,7 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
  * @note This should be called during shutdown to prevent memory leaks
  */
 void config_schema_destroy(void);
+
+#ifdef __cplusplus
+}
+#endif

@@ -22,6 +22,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Owned slice of a parsed roff man-page section
  * @brief Section type marker
@@ -264,3 +268,7 @@ const char *escape_groff_special(const char *str);
 const char *format_mode_names(option_mode_bitmask_t bitmask);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
