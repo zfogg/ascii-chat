@@ -7,45 +7,7 @@
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/video/ascii/simd/cells.h>
-
-/** Shared terminal-cell contract for every ISA and scalar fallback.
- * Palettes use complete UTF-8 glyphs from cache64. Runs never cross rows.
- * Background mode sets a contrasting foreground. Colored rows finish with
- * SGR reset before newline; monochrome rows carry no SGR or erase sequences.
- * The returned buffer is owned by the caller and freed with SAFE_FREE.
- * ISA entry points select their vector stages; callers must check CPU support.
- */
-typedef enum { ASCII_COLOR_NONE, ASCII_COLOR_16, ASCII_COLOR_256, ASCII_COLOR_TRUE } ascii_color_t;
-
-/** A renderer-owned history; one instance must not be shared by independent streams. */
-/**
- * @brief For ascii stabilizer, this is the live record that ties `cells`, `width`, `height`, `configuration` together.
- * The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before
- * freeing the record.
- */
-/**
- * @brief ascii temporal cell keeps the values that move through the subsystem: `glyph`, `color`, `background`,
- * `source_owner`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that
- * populated them rather than the struct copy itself.
- */
-typedef struct {
-  uint8_t samples[16];
-  uint8_t rgb_samples[3][16];
-  uint32_t glyph;
-  uint32_t color;
-  uint32_t background;
-  uint64_t source_owner;
-  bool valid;
-} ascii_temporal_cell_t;
-
-typedef struct {
-  ascii_temporal_cell_t *cells;
-  size_t width, height;
-  uint64_t configuration;
-  uint64_t elapsed_ns;
-  uint64_t last_timestamp_ns;
-  uint64_t fixed_step_ns;
-} ascii_stabilizer_t;
+#include <ascii-chat/video/ascii/render/render.h>
 
 /** Prepare history for a viewport and rendering contract, resetting it on change. */
 asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height,
