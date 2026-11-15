@@ -36,6 +36,17 @@ static void layout_print_colored_segment(FILE *stream, const char *seg) {
   fprintf(stream, "%s", seg);
 }
 
+/** Copy a bounded layout segment and always terminate it. */
+static void layout_copy_segment(char *dst, size_t dst_size, const char *src, size_t length) {
+  if (!dst || dst_size == 0)
+    return;
+
+  size_t copy_len = length < dst_size - 1 ? length : dst_size - 1;
+  if (src && copy_len > 0)
+    memcpy(dst, src, copy_len);
+  dst[copy_len] = '\0';
+}
+
 /* ============================================================================
  * Wrapped Description Printing
  * ============================================================================ */
@@ -129,7 +140,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       int text_len = p - line_start;
       if (text_len > 0) {
         char seg[BUFFER_SIZE_MEDIUM];
-        SAFE_STRNCPY(seg, line_start, text_len + 1);
+        layout_copy_segment(seg, sizeof(seg), line_start, (size_t)text_len);
         layout_print_colored_segment(stream, seg);
       }
 
@@ -190,7 +201,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       // Print text up to break point with colors applied
       int text_len = last_space - line_start;
       char seg[BUFFER_SIZE_MEDIUM];
-      SAFE_STRNCPY(seg, line_start, text_len + 1);
+      layout_copy_segment(seg, sizeof(seg), line_start, (size_t)text_len);
       layout_print_colored_segment(stream, seg);
 
       fprintf(stream, "\n");
@@ -210,7 +221,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
   if (p > line_start) {
     char seg[BUFFER_SIZE_MEDIUM];
     int text_len = p - line_start;
-    SAFE_STRNCPY(seg, line_start, text_len + 1);
+    layout_copy_segment(seg, sizeof(seg), line_start, (size_t)text_len);
     layout_print_colored_segment(stream, seg);
   }
 }
@@ -237,9 +248,14 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
   // otherwise default to 35. The provided width respects both colored text and UTF-8 characters.
   // Allow the first column to expand up to 60% of terminal width, but leave room for description.
   int fixed_first_col_width = (first_col_len > 0) ? first_col_len : 35;
-  int max_first_col_width = (term_width * 6) / 10;
-  if (max_first_col_width < 40)
-    max_first_col_width = 40;
+  // Keep enough room for a useful description column.  Letting the first
+  // column grow to 60% of a narrow terminal makes descriptions wrap one word
+  // at a time and stretches help vertically.  Long option names are handled
+  // by the existing next-line fallback below.
+  const int minimum_description_width = 45;
+  int max_first_col_width = term_width - 2 - 2 - minimum_description_width;
+  if (max_first_col_width < 20)
+    max_first_col_width = 20;
   if (fixed_first_col_width > max_first_col_width) {
     fixed_first_col_width = max_first_col_width;
   }
