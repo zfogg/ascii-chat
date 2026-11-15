@@ -11,7 +11,11 @@ endif()
 set(GOTEL_BUILD_TEST_SUPPORT ${BUILD_TESTS} CACHE BOOL
     "Build reusable telemetry test helpers" FORCE)
 set(GOTEL_WITH_SQLITE ON CACHE BOOL "Build SQLite telemetry adapter" FORCE)
-set(GOTEL_WITH_GRPC ON CACHE BOOL "Build native OTLP/gRPC telemetry transport" FORCE)
+# Keep the optional gRPC adapter disabled in the application build. The
+# pinned gotel/otlp-c sources expose overlapping HTTP request symbols when
+# combined with the application's HTTP exporter on Windows; telemetry uses
+# OTLP/HTTP here and nghttp2 remains available to the native HTTP server.
+set(GOTEL_WITH_GRPC OFF CACHE BOOL "Build native OTLP/gRPC telemetry transport" FORCE)
 set(GOTEL_UTF8PROC_TARGET utf8proc CACHE STRING
     "Use ascii-chat's utf8proc target" FORCE)
 
@@ -32,15 +36,43 @@ set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
 # Keep the vendored C++ facade aligned with ascii-chat's C++26 toolchain.
 set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
 
+# Prefer the package-manager nghttp2 target when it is already available.
+# Otherwise gotel's GRPC module fetches and builds a private nghttp2 copy,
+# which conflicts with vcpkg's `nghttp2` target and needlessly recompiles the
+# HTTP/2 sources during normal ascii-chat development.
+if(NOT GOTEL_NGHTTP2_TARGET)
+    if(TARGET nghttp2)
+        set(GOTEL_NGHTTP2_TARGET nghttp2 CACHE STRING
+            "Use the existing nghttp2 target for gotel" FORCE)
+    elseif(TARGET nghttp2::nghttp2)
+        set(GOTEL_NGHTTP2_TARGET nghttp2::nghttp2 CACHE STRING
+            "Use the existing nghttp2 target for gotel" FORCE)
+    endif()
+endif()
+
+# FindDependency.cmake may expose nghttp2 as raw include/library variables
+# rather than a CMake target. Wrap that installed package in a local
+# interface target so gotel does not FetchContent-build a duplicate copy.
+if(NOT GOTEL_NGHTTP2_TARGET AND ASCIICHAT_NGHTTP2_LIBRARY)
+    if(NOT TARGET asciichat-vcpkg-nghttp2)
+        add_library(asciichat-vcpkg-nghttp2 INTERFACE)
+        if(ASCIICHAT_NGHTTP2_INCLUDE_DIR)
+            target_include_directories(asciichat-vcpkg-nghttp2 INTERFACE
+                "${ASCIICHAT_NGHTTP2_INCLUDE_DIR}")
+        endif()
+        target_link_libraries(asciichat-vcpkg-nghttp2 INTERFACE
+            "${ASCIICHAT_NGHTTP2_LIBRARY}")
+    endif()
+    set(GOTEL_NGHTTP2_TARGET asciichat-vcpkg-nghttp2 CACHE STRING
+        "Use the installed nghttp2 library for gotel" FORCE)
+endif()
+
 # Keep Gotel and its fetched otlp-c/Sequel build trees in the persistent
 # dependency cache. This is separate from the main build directory.
 set(_asciichat_gotel_cache_dir "${ASCIICHAT_DEPS_CACHE_DIR}/gotel")
 file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 
 set(_asciichat_parent_shared_libs ${BUILD_SHARED_LIBS})
-# Musl cannot safely consume host/shared dependency builds. Otherwise honor
-# ASCIICHAT_SHARED_DEPS selects the dependency mode; Debug and Dev presets
-# enable it, while Release and RelWithDebInfo remain static by default.
 if(USE_MUSL OR ASCIICHAT_STATIC_DEPS)
     set(_asciichat_gotel_shared OFF)
 else()
@@ -70,7 +102,8 @@ set(FETCHCONTENT_BASE_DIR "${_asciichat_gotel_cache_dir}" CACHE PATH
     "Persistent Gotel dependency source/build cache" FORCE)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
-                 "${_asciichat_gotel_cache_dir}/build")
+                 "${_asciichat_gotel_cache_dir}/build"
+                 EXCLUDE_FROM_ALL)
 
 # gotel's gRPC adapter uses one private URL bit to distinguish its HTTP/2
 # transport. Keep that integration detail in the generated bridge header; do
@@ -82,7 +115,11 @@ if(EXISTS "${_asciichat_otlp_http_header}")
     if(NOT _asciichat_otlp_http_text MATCHES "int grpc;")
         string(REPLACE "int tls;" "int tls;\n int grpc;"
             _asciichat_otlp_http_text "${_asciichat_otlp_http_text}")
-        file(WRITE "${_asciichat_otlp_http_header}" "${_asciichat_otlp_http_text}")
+        file(READ "${_asciichat_otlp_http_header}" _asciichat_otlp_http_existing)
+        if(NOT _asciichat_otlp_http_existing STREQUAL _asciichat_otlp_http_text)
+            file(WRITE "${_asciichat_otlp_http_header}" "${_asciichat_otlp_http_text}")
+        endif()
+        unset(_asciichat_otlp_http_existing)
     endif()
 endif()
 

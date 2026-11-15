@@ -51,8 +51,8 @@
  * ============================================================================ */
 
 // Global flags for snapshot mode timing
-bool g_snapshot_first_frame_rendered = false;
-uint64_t g_snapshot_first_frame_rendered_ns = 0; // Timestamp when first frame was rendered (for terminal output)
+ASCIICHAT_API bool g_snapshot_first_frame_rendered = false;
+ASCIICHAT_API uint64_t g_snapshot_first_frame_rendered_ns = 0; // Timestamp when first frame was rendered (for terminal output)
 uint64_t g_snapshot_first_capture_ns = 0;        // Timestamp when first frame was captured (for video output)
 uint64_t g_snapshot_actual_duration_ms = 0;      // Actual elapsed time in ms when capture thread hits snapshot timeout
 uint64_t g_snapshot_last_capture_elapsed_ns = 0; // Elapsed time from first to last frame capture (for PTS distribution)

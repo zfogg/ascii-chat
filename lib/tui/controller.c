@@ -471,7 +471,7 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   if (g_owner && g_render_fd >= 0)
     fd = g_render_fd;
   bool measure_media_write = g_stats_media;
-  bool media_snapshot_stale = g_render_snapshot && g_render_snapshot->media_epoch != atomic_load(&g_media_epoch);
+  bool media_snapshot_stale = g_render_snapshot && g_rendering_screen == UI_SCREEN_MEDIA && g_render_snapshot->media_epoch != atomic_load(&g_media_epoch);
   if (media_snapshot_stale)
     return ASCIICHAT_OK;
   if (measure_media_write)
@@ -480,7 +480,7 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   bool help_media_overlay = ui_controller_current_screen() == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_MEDIA;
   // Terminals supporting synchronized output present the art and its overlays
   // together, even when a large UTF-8 frame requires several writes.
-  bool synchronized = false;
+  bool synchronized = g_render_snapshot != NULL || help_media_overlay;
   g_help_sync_open = help_media_overlay;
   // A frame can legitimately occupy the terminal's last column and row.
   // Disable DECAWM while presenting it so writing the bottom-right cell does
@@ -499,7 +499,7 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
       superseded = true;
       break;
     }
-    if (g_render_snapshot && g_render_snapshot->media_epoch != atomic_load(&g_media_epoch)) {
+    if (g_render_snapshot && g_rendering_screen == UI_SCREEN_MEDIA && g_render_snapshot->media_epoch != atomic_load(&g_media_epoch)) {
       superseded = true;
       break;
     }
