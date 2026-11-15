@@ -31,7 +31,7 @@
 #include <libplatform/terminal.h> // For platform_isatty()
 #include <libplatform/filesystem.h>
 #include <libplatform/question.h> // For platform_prompt_yes_no
-#include <options/options.h>              // For opt_snapshot_mode
+#include <options/options.h>      // For opt_snapshot_mode
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <defer.h>

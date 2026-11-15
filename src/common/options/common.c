@@ -509,8 +509,7 @@ void usage(FILE *desc, asciichat_mode_t mode) {
     return;
   }
   const option_mode_bitmask_t mode_mask = mode == MODE_DISCOVERY ? OPTION_MODE_ALL : (option_mode_bitmask_t)(OPTION_MODE_BINARY | (1U << mode));
-  if (registry_add_all_to_flags_builder(builder, mode_mask) != ASCIICHAT_OK ||
-      !flags_help_write_options(flags_schema_builder_schema(builder), metadata->program_name, metadata->description, desc)) {
+  if (registry_add_all_to_flags_builder(builder, mode_mask) != ASCIICHAT_OK || !flags_help_write_options(flags_schema_builder_schema(builder), metadata->program_name, metadata->description, desc)) {
     (void)fprintf(desc, "Error: Failed to render options\n");
   }
   flags_schema_builder_destroy(builder);
