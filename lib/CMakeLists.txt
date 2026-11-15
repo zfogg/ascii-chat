@@ -94,7 +94,6 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/options_enums.c
     ${CMAKE_SOURCE_DIR}/src/common/options_strings.c
     ${CMAKE_SOURCE_DIR}/src/common/options_runtime.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_layout.c
     ${CMAKE_SOURCE_DIR}/src/common/options_help.c
     # options/config/
     ${CMAKE_SOURCE_DIR}/src/common/options_config.c
