@@ -5,7 +5,7 @@
  */
 
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/socket.h>
+#include <libplatform/socket.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/packet/packet.h>
