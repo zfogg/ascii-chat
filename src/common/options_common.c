@@ -144,7 +144,7 @@ bool validate_positive_int_opt(const char *value_str, int *out_value, const char
     return false;
   }
 
-  *out_value = val;
+  *out_value = (int)parsed;
   return true;
 }
 

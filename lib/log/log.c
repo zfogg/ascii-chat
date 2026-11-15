@@ -45,31 +45,6 @@
 
 int terminal_choose_log_fd(int level);
 
-static void log_write_debug_memory_report(const char *text, size_t length, void *user_data) {
-  (void)user_data;
-  if (!text || length == 0)
-    return;
-
-  char plain[8192];
-  size_t out = 0;
-  for (size_t i = 0; i < length; i++) {
-    if ((unsigned char)text[i] == 0x1b) {
-      while (i + 1 < length && text[i] != 'm')
-        i++;
-      continue;
-    }
-    plain[out++] = text[i];
-    if (out == sizeof(plain) - 1) {
-      plain[out] = '\0';
-      log_plain_stderr_nonewline("%s", plain);
-      out = 0;
-    }
-  }
-  if (out > 0) {
-    plain[out] = '\0';
-    log_plain_stderr_nonewline("%s", plain);
-  }
-}
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/log/colorize.h>
 #include <ascii-chat/log/mmap.h>
@@ -593,11 +568,6 @@ session_log_buffer_t *log_get_history_buffer(void) {
 }
 
 void log_init(const char *filename, log_level_t level, bool force_stderr, bool use_mmap) {
-
-#if defined(DEBUG_MEMORY)
-  debug_memory_set_report_writer(log_write_debug_memory_report, NULL);
-  debug_memory_set_owned_source_dirs(ASCIICHAT_OWNED_SOURCE_DIRS);
-#endif
 
   if (!g_history)
     g_history = session_log_buffer_create();
