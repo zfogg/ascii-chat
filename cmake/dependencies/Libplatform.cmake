@@ -36,6 +36,17 @@ if(NOT TARGET libplatform)
         EXCLUDE_FROM_ALL)
 endif()
 
+# Older libplatform revisions list the standalone POSIX signal module beside
+# system.c, but both define platform_install_crash_handler with incompatible
+# APIs. ascii-chat uses the system implementation; remove the duplicate when
+# that source is present in the checked-out dependency.
+if(TARGET libplatform-objects)
+    get_target_property(_ascii_chat_libplatform_sources libplatform-objects SOURCES)
+    list(FILTER _ascii_chat_libplatform_sources EXCLUDE REGEX "(^|/)signal\\.c$")
+    set_property(TARGET libplatform-objects PROPERTY SOURCES
+        "${_ascii_chat_libplatform_sources}")
+endif()
+
 if(TARGET asciichat-project-includes)
     target_include_directories(asciichat-project-includes INTERFACE
         "${_ascii_chat_libplatform_source}/lib")
