@@ -750,11 +750,20 @@ static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const
   g_animation = animation;
   g_render_volume = view->volume;
   bool previous = errno_notifications_suppress(true);
-  if (view->errors || view->layer_count > 1)
+  /* Media frames already cover the terminal. Clearing before composing the
+   * help overlay forces an expensive full-screen erase on every frame. */
+  bool help_over_media = view->active == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_MEDIA;
+  if (view->errors || (view->layer_count > 1 && !help_over_media))
     frame_buffer_clear_screen(output);
   if (view->sync_backdrop)
     ui_sync_render(size);
-  for (size_t i = 0; i < view->layer_count; ++i) {
+  size_t first_layer = 0;
+  if (help_over_media && view->layer_count >= 2 && view->layers[0].render == render_text && view->layers[0].snapshot) {
+    const text_snapshot_t *media = view->layers[0].snapshot;
+    frame_buffer_append(output, media->text, media->len);
+    first_layer = 1;
+  }
+  for (size_t i = first_layer; i < view->layer_count; ++i) {
     screen_t *layer = &view->layers[i];
     bool help = i + 1 == view->layer_count && view->active == UI_SCREEN_HELP;
     if (help && view->errors)
@@ -765,7 +774,12 @@ static void draw_native_view(frame_buffer_t *output, terminal_size_t size, const
     }
     screen_snapshot_t *previous_snapshot = g_render_snapshot;
     g_render_snapshot = layer->owned;
-    layer->render(size, layer->snapshot);
+    if (help && layer->render == render_text && layer->snapshot) {
+      const text_snapshot_t *help_text = layer->snapshot;
+      frame_buffer_append(output, help_text->text, help_text->len);
+    } else {
+      layer->render(size, layer->snapshot);
+    }
     g_render_snapshot = previous_snapshot;
   }
   uint64_t media_frame_id = 0;
@@ -1774,7 +1788,8 @@ static char *expand_media_row(const char *row, size_t length, int columns) {
 
 static void render_text(terminal_size_t size, const void *data) {
   const text_snapshot_t *text = data;
-  if (text->media && !GET_OPTION(snapshot_mode) && GET_OPTION(fps_counter) && size.cols >= 7 && text->dimensions.cols <= size.cols && text->dimensions.rows <= size.rows) {
+  bool help_overlay = ui_controller_current_screen() == UI_SCREEN_HELP;
+  if (text->media && !help_overlay && !GET_OPTION(snapshot_mode) && GET_OPTION(fps_counter) && size.cols >= 7 && text->dimensions.cols <= size.cols && text->dimensions.rows <= size.rows) {
     const char *newline = memchr(text->text, '\n', text->len);
     size_t first_bytes = newline ? (size_t)(newline - text->text) : text->len;
     // Expand REP before clipping, so a repeated glyph cannot cross the counter.
@@ -1812,7 +1827,7 @@ static void render_text(terminal_size_t size, const void *data) {
   }
   // If only the height exceeds the terminal, every visible row already fits.
   // Preserve its SGR and REP sequences instead of expanding and clipping it.
-  bool counter = GET_OPTION(fps_counter) && size.cols >= 7;
+  bool counter = !help_overlay && GET_OPTION(fps_counter) && size.cols >= 7;
   if (text->dimensions.cols > 0 && text->dimensions.cols < size.cols && (!counter || text->dimensions.cols <= size.cols - 7)) {
     const char *cursor = text->text;
     const char *end = cursor + text->len;
