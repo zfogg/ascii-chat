@@ -116,6 +116,10 @@ cmake --preset default-msvc -B build-msvc
 # Fast developer and optimized release variants
 cmake --preset dev-clang -B build-dev-clang
 cmake --preset release-clang -B build-release-clang
+cmake --preset dev-gcc -B build-dev-gcc       # Linux/WSL
+cmake --preset release-gcc -B build-release-gcc # Linux/WSL
+cmake --preset dev-msvc -B build-dev-msvc     # Windows
+cmake --preset release-msvc -B build-release-msvc # Windows
 
 # Faster debug build without sanitizer instrumentation
 cmake --preset debug-fast
