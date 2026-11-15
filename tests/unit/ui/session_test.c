@@ -82,6 +82,46 @@ static void draw(frame_buffer_t *output, terminal_size_t size, const animation_s
   frame_buffer_append(output, fixture->text, strlen(fixture->text));
 }
 
+Test(session_ui, media_hides_cursor_in_frame_after_idle) {
+  ui_session_t *session = ui_session_create();
+  cr_assert_not_null(session);
+  view_fixture_t fixture = {.text = "ASCII art"};
+  ui_session_view_t view = {.screen = UI_SCREEN_MEDIA, .draw = draw, .context = &fixture};
+  const char *frame = ui_session_render(session, &view, 1);
+  cr_assert_not_null(frame);
+  cr_assert_not_null(strstr(frame, "\033[?25l"));
+  ui_session_view_t hidden = {.screen = -1};
+  cr_assert_null(ui_session_render(session, &hidden, 2));
+  frame = ui_session_render(session, &view, 3);
+  cr_assert_not_null(frame);
+  const char *hide = strstr(frame, "\033[?25l");
+  const char *art = strstr(frame, fixture.text);
+  cr_assert_not_null(hide);
+  cr_assert_not_null(art);
+  cr_assert(hide < art, "Hide the cursor before positioning it to draw media");
+  ui_session_destroy(session);
+}
+
+Test(session_ui, media_frames_hide_cursor_after_editor) {
+  ui_session_t *session = ui_session_create();
+  cr_assert_not_null(session);
+  view_fixture_t fixture = {.text = "\033[?25hEditor"};
+  ui_session_view_t view = {.screen = UI_SCREEN_PROMPT, .draw = draw, .context = &fixture};
+  const char *frame = ui_session_render(session, &view, 1);
+  cr_assert_not_null(frame);
+  cr_assert_not_null(strstr(frame, "\033[?25h"));
+  view.screen = UI_SCREEN_MEDIA;
+  view.dirty = true;
+  fixture.text = "ASCII art";
+  for (uint64_t now = 2; now < 5; ++now) {
+    frame = ui_session_render(session, &view, now);
+    cr_assert_not_null(frame);
+    cr_assert_not_null(strstr(frame, "\033[?25l"));
+    cr_assert_null(strstr(frame, "\033[?25h"));
+  }
+  ui_session_destroy(session);
+}
+
 Test(session_ui, shared_priority_order) {
   cr_assert_eq(ui_session_select_screen(0), -1);
   uint32_t visible = 0;
@@ -95,8 +135,7 @@ Test(session_ui, native_view_resize_and_paused_recovery) {
   ui_session_t *session = ui_session_create();
   cr_assert_not_null(session);
   view_fixture_t fixture = {.text = "retained media"};
-  ui_session_view_t view = {
-      .screen = UI_SCREEN_MEDIA, .minimum = {.cols = 20, .rows = 10}, .draw = draw, .context = &fixture};
+  ui_session_view_t view = {.screen = UI_SCREEN_MEDIA, .minimum = {.cols = 20, .rows = 10}, .draw = draw, .context = &fixture};
   cr_assert_not_null(strstr(ui_session_render(session, &view, 1), fixture.text));
   cr_assert_null(ui_session_render(session, &view, 2));
   ui_session_resize(session, 10, 5);
@@ -117,8 +156,7 @@ Test(session_ui, native_view_resize_and_paused_recovery) {
 Test(session_ui, covered_splash_clock_pauses_even_without_host_ticks) {
   ui_session_t *session = ui_session_create();
   view_fixture_t fixture = {.text = "splash"};
-  ui_session_view_t view = {
-      .screen = UI_SCREEN_SPLASH, .minimum = {.cols = 20, .rows = 10}, .draw = draw, .context = &fixture};
+  ui_session_view_t view = {.screen = UI_SCREEN_SPLASH, .minimum = {.cols = 20, .rows = 10}, .draw = draw, .context = &fixture};
   ui_session_render(session, &view, 1000000000ULL);
   ui_session_render(session, &view, 2000000000ULL);
   cr_assert_float_eq(fixture.seconds, 1, 0.001);
@@ -135,11 +173,7 @@ Test(session_ui, covered_splash_clock_pauses_even_without_host_ticks) {
 Test(session_ui, progress_refresh_is_throttled_but_dirty_snapshots_are_immediate) {
   ui_session_t *session = ui_session_create();
   view_fixture_t fixture = {.text = "progress"};
-  ui_session_view_t view = {.screen = UI_SCREEN_RENDER_PROGRESS,
-                            .minimum = {.cols = 1, .rows = 1},
-                            .refresh_ns = 125000000,
-                            .draw = draw,
-                            .context = &fixture};
+  ui_session_view_t view = {.screen = UI_SCREEN_RENDER_PROGRESS, .minimum = {.cols = 1, .rows = 1}, .refresh_ns = 125000000, .draw = draw, .context = &fixture};
   cr_assert_not_null(ui_session_render(session, &view, 1));
   cr_assert_null(ui_session_render(session, &view, 100000001));
   cr_assert_not_null(ui_session_render(session, &view, 125000001));

@@ -154,6 +154,12 @@
  * the glyph whose rendered shape best matches the source cell. It can preserve
  * edges and texture better, but it needs a supported glyph palette and more
  * work per cell.
+ * Fine scoring reuses the source cell's 8x8 luminance samples across shortlisted
+ * glyphs. Candidates are visited by tone distance with exact brightness bounds;
+ * original palette order breaks score ties.
+ * A bounded cache reuses fits within a frame for identical patches with the
+ * same prior glyph. Lookups check every source pixel, including fine detail;
+ * color and temporal-history updates remain independent per cell.
 
  * @code{.c}
  * // Brightness-only rendering: stable and broadly compatible.
@@ -604,8 +610,8 @@
  * - Automatic detection via $LANG and $LC_ALL
  *
  * **Terminal Size Detection**:
- * - Uses TIOCGWINSZ ioctl on POSIX (lib/platform/posix/terminal.c)
- * - Uses GetConsoleScreenBufferInfo on Windows (lib/platform/windows/terminal.c)
+ * - Uses TIOCGWINSZ ioctl on POSIX through libplatform
+ * - Uses GetConsoleScreenBufferInfo on Windows through libplatform
  * - Falls back to $COLUMNS and $LINES environment variables
  * - Default: 80x24 if detection fails
  *

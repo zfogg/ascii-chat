@@ -513,8 +513,6 @@ static const gotel_command_rule_t command_argument_rules[] = {
     {"--tls-key", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--tls-key-password", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--discovery-service", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
-    {"--discovery-service-port", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
-    {"--discovery-service-url", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--stun-servers", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--turn-servers", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--turn-username", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},

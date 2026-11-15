@@ -3,7 +3,7 @@
 #include <new>
 #include <semaphore>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/wakeup.h>
+#include <libplatform/wakeup.h>
 
 /**
  * @brief platform wakeup keeps the values that move through the subsystem: the fields shown below. Some members are

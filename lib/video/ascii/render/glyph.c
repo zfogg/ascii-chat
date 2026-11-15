@@ -81,50 +81,73 @@ typedef struct {
   int16_t mask[16];
   int16_t centered[16];
   uint8_t fine[64];
-  int sum, tone, energy;
+  int sum, tone, energy, fine_mean;
   uint32_t key;
 } glyph_candidate_t;
+
+// Frame-local pointers borrow immutable source pixels; no pixel copies or
+// persistent history are retained. A direct-mapped table keeps memory bounded.
+#define GLYPH_MATCH_CACHE_SIZE 256
+typedef struct {
+  const rgb_pixel_t *pixels;
+  uint32_t previous;
+  size_t best, previous_index;
+  uint64_t best_error, previous_error;
+} glyph_match_cache_t;
 
 // Preserve hue while keeping visible ink against the dark canvas. Color is
 // weighted by glyph coverage, so a small feature is not colored by its corner.
 static uint32_t glyph_foreground(const glyph_candidate_t *glyph, const int16_t samples[3][16], const int sums[3]) {
   unsigned channels[3], peak = 0;
-  int order[16];
-  int luminance[16];
-  for (int i = 0; i < 16; ++i) {
-    luminance[i] = (77 * samples[0][i] + 150 * samples[1][i] + 29 * samples[2][i]) >> 8;
-    int j = i;
-    while (j > 0 && luminance[order[j - 1]] > luminance[i]) {
-      order[j] = order[j - 1];
-      --j;
+  // With constant color, both coverage-weighted estimates equal that color.
+  // Upscaled source pixels commonly cover an entire terminal cell.
+  bool uniform = true;
+  for (int i = 1; uniform && i < 16; ++i)
+    uniform = samples[0][i] == samples[0][0] && samples[1][i] == samples[1][0] && samples[2][i] == samples[2][0];
+  if (uniform) {
+    for (int c = 0; c < 3; ++c) {
+      channels[c] = (unsigned)samples[c][0];
+      if (channels[c] > peak)
+        peak = channels[c];
     }
-    order[j] = i;
-  }
-  int median = order[8];
-  int weighted_luma = 0;
-  for (int i = 0; i < 16; ++i)
-    weighted_luma += luminance[i] * glyph->mask[i];
-  if (glyph->sum) {
-    int covered = 0;
+  } else {
+    int order[16];
+    int luminance[16];
     for (int i = 0; i < 16; ++i) {
-      covered += glyph->mask[order[i]];
-      if (covered * 2 >= glyph->sum) {
-        median = order[i];
-        break;
+      luminance[i] = (77 * samples[0][i] + 150 * samples[1][i] + 29 * samples[2][i]) >> 8;
+      int j = i;
+      while (j > 0 && luminance[order[j - 1]] > luminance[i]) {
+        order[j] = order[j - 1];
+        --j;
+      }
+      order[j] = i;
+    }
+    int median = order[8];
+    int weighted_luma = 0;
+    for (int i = 0; i < 16; ++i)
+      weighted_luma += luminance[i] * glyph->mask[i];
+    if (glyph->sum) {
+      int covered = 0;
+      for (int i = 0; i < 16; ++i) {
+        covered += glyph->mask[order[i]];
+        if (covered * 2 >= glyph->sum) {
+          median = order[i];
+          break;
+        }
       }
     }
-  }
-  for (int c = 0; c < 3; ++c) {
-    int weighted = 0;
-    for (int i = 0; i < 16; ++i)
-      weighted += samples[c][i] * glyph->mask[i];
-    unsigned average = glyph->sum ? (unsigned)((weighted + glyph->sum / 2) / glyph->sum) : (unsigned)((sums[c] + 8) / 16);
-    // Blend with a covered median pixel to reduce isolated outliers without
-    // creating colors by independently taking a median of each channel.
-    bool representative = !glyph->sum || luminance[median] * glyph->sum * 2 >= weighted_luma;
-    channels[c] = representative ? (average + (unsigned)samples[c][median] + 1) / 2 : average;
-    if (channels[c] > peak)
-      peak = channels[c];
+    for (int c = 0; c < 3; ++c) {
+      int weighted = 0;
+      for (int i = 0; i < 16; ++i)
+        weighted += samples[c][i] * glyph->mask[i];
+      unsigned average = glyph->sum ? (unsigned)((weighted + glyph->sum / 2) / glyph->sum) : (unsigned)((sums[c] + 8) / 16);
+      // Blend with a covered median pixel to reduce isolated outliers without
+      // creating colors by independently taking a median of each channel.
+      bool representative = !glyph->sum || luminance[median] * glyph->sum * 2 >= weighted_luma;
+      channels[c] = representative ? (average + (unsigned)samples[c][median] + 1) / 2 : average;
+      if (channels[c] > peak)
+        peak = channels[c];
+    }
   }
   if (peak) {
     unsigned target = 128 + peak / 2;
@@ -205,8 +228,12 @@ char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_ce
     const uint8_t *mask = g < GLYPH_ASCII_COUNT ? glyph_masks[g] : block_mask;
     if (g >= GLYPH_ASCII_COUNT)
       glyph_block_mask(g - GLYPH_ASCII_COUNT, block_mask);
-    for (int i = 0; i < 64; ++i)
+    glyph->fine_mean = 0;
+    for (int i = 0; i < 64; ++i) {
       glyph->fine[i] = g < GLYPH_ASCII_COUNT ? glyph_masks_fine[g][i] : glyph_block_pixel(g - GLYPH_ASCII_COUNT, i % 8, i / 8);
+      glyph->fine_mean += glyph->fine[i];
+    }
+    glyph->fine_mean /= 64;
     glyph->sum = glyph->energy = 0;
     for (int i = 0; i < 16; ++i) {
       glyph->mask[i] = mask[i];
@@ -219,6 +246,24 @@ char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_ce
       glyph->energy += glyph->centered[i] * glyph->centered[i];
     }
   }
+  // Visit nearby tones first so the existing brightness lower bound can
+  // reject distant candidates sooner. Canonical indices still break ties.
+  size_t tone_order[GLYPH_COUNT];
+  for (size_t c = 0; c < candidate_count; ++c) {
+    size_t position = c;
+    while (position && glyphs[tone_order[position - 1]].tone > glyphs[c].tone) {
+      tone_order[position] = tone_order[position - 1];
+      --position;
+    }
+    tone_order[position] = c;
+  }
+  size_t tone_start[256];
+  size_t position = 0;
+  for (int tone = 0; tone < 256; ++tone) {
+    while (position < candidate_count && glyphs[tone_order[position]].tone < tone)
+      ++position;
+    tone_start[tone] = position;
+  }
   image_t cells = *image;
   cells.w /= 8;
   cells.h /= 8;
@@ -226,12 +271,17 @@ char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_ce
   if (ascii_frame_init(&frame, &cells, " .") != ASCIICHAT_OK)
     return NULL;
   frame.temporal_preselected = true;
+  // Cells often contain the same pixels (flat areas and upscaling). Reuse
+  // only the fit, within this frame, and only for the same prior glyph.
+  // Color and temporal history are still resolved independently for each cell.
+  glyph_match_cache_t matches[GLYPH_MATCH_CACHE_SIZE] = {0};
   for (int y = 0; y < cells.h; ++y) {
     for (int x = 0; x < cells.w; ++x) {
       int16_t samples[3][16] = {{0}};
       int sums[3] = {0};
       uint8_t patch[16];
       int sample_mean = 0;
+      uint64_t patch_hash = UINT64_C(0xcbf29ce484222325);
       for (int sy = 0; sy < 4; ++sy) {
         const rgb_pixel_t *top = image->pixels + (size_t)(y * 8 + sy * 2) * (size_t)image->w + (size_t)(x * 8);
         const rgb_pixel_t *bottom = top + image->w;
@@ -242,6 +292,7 @@ char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_ce
           int red = (a.r + b.r + c.r + d.r) / 4;
           int green = (a.g + b.g + c.g + d.g) / 4;
           int blue = (a.b + b.b + c.b + d.b) / 4;
+          patch_hash = (patch_hash ^ (uint32_t)((red << 16) | (green << 8) | blue)) * UINT64_C(0x100000001b3);
           patch[i] = (uint8_t)glyph_lift_luma((77 * red + 150 * green + 29 * blue) >> 8);
           samples[0][i] = (int16_t)red;
           samples[1][i] = (int16_t)green;
@@ -272,82 +323,120 @@ char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_ce
       size_t best = 0, previous_index = 0;
       uint64_t best_error = UINT64_MAX;
       uint64_t previous_error = UINT64_MAX;
-      enum { GLYPH_SHORTLIST = 8 };
-      size_t shortlist[GLYPH_SHORTLIST];
-      uint64_t shortlist_error[GLYPH_SHORTLIST];
-      size_t shortlist_count = 0;
-      uint64_t prior_coarse_error = UINT64_MAX;
       ascii_temporal_cell_t *previous = frame.stabilizer ? &frame.stabilizer->cells[(size_t)y * frame.width + x] : NULL;
-      for (size_t c = 0; c < candidate_count; ++c) {
-        bool is_previous = previous && previous->valid && previous->glyph == glyphs[c].key;
-        int tone_delta = sample_mean - glyphs[c].tone;
-        int tone_error = 16 * tone_delta * tone_delta;
-        // Shape and color residuals cannot lower the brightness error.
-        if (!is_previous && shortlist_count == GLYPH_SHORTLIST && (uint64_t)tone_error > shortlist_error[shortlist_count - 1])
-          continue;
-        int dot = shape_correlation(centered_samples, glyphs[c].centered);
-        uint64_t error = (uint64_t)(tone_error + sample_energy + glyphs[c].energy - 2 * dot);
-        if (mode != ASCII_COLOR_NONE && chroma_energy && glyphs[c].energy) {
-          int64_t red_dot = shape_correlation(chroma[0], glyphs[c].centered);
-          int64_t blue_dot = shape_correlation(chroma[1], glyphs[c].centered);
-          int64_t explained = (red_dot * red_dot + blue_dot * blue_dot) / glyphs[c].energy;
-          int64_t residual = chroma_energy - explained;
-          if (residual > 0)
-            error += (uint64_t)residual / 8;
-        } else if (mode != ASCII_COLOR_NONE) {
-          error += (uint64_t)chroma_energy / 8;
-        }
-        if (is_previous) {
-          prior_coarse_error = error;
-          previous_index = c;
-        }
-        size_t position = 0;
-        while (position < shortlist_count && shortlist_error[position] <= error)
-          ++position;
-        if (position < GLYPH_SHORTLIST) {
-          size_t end = shortlist_count < GLYPH_SHORTLIST ? shortlist_count++ : GLYPH_SHORTLIST - 1;
-          for (size_t j = end; j > position; --j) {
-            shortlist[j] = shortlist[j - 1];
-            shortlist_error[j] = shortlist_error[j - 1];
+      uint32_t previous_key = previous && previous->valid ? previous->glyph : 0;
+      const rgb_pixel_t *pixels = image->pixels + (size_t)y * 8 * (size_t)image->w + (size_t)x * 8;
+      patch_hash ^= previous_key;
+      glyph_match_cache_t *match = &matches[(patch_hash ^ (patch_hash >> 32)) & (GLYPH_MATCH_CACHE_SIZE - 1)];
+      bool repeated = match->pixels && previous_key == match->previous;
+      for (int row = 0; repeated && row < 8; ++row)
+        repeated = memcmp(pixels + (size_t)row * image->w, match->pixels + (size_t)row * image->w, 8 * sizeof(*pixels)) == 0;
+      if (repeated) {
+        best = match->best;
+        previous_index = match->previous_index;
+        best_error = match->best_error;
+        previous_error = match->previous_error;
+      } else {
+        enum { GLYPH_SHORTLIST = 8 };
+        size_t shortlist[GLYPH_SHORTLIST];
+        uint64_t shortlist_error[GLYPH_SHORTLIST];
+        size_t shortlist_count = 0;
+        uint64_t prior_coarse_error = UINT64_MAX;
+        size_t lower = tone_start[sample_mean], upper = lower;
+        while (lower || upper < candidate_count) {
+          size_t c;
+          if (!lower || (upper < candidate_count && glyphs[tone_order[upper]].tone - sample_mean < sample_mean - glyphs[tone_order[lower - 1]].tone))
+            c = tone_order[upper++];
+          else
+            c = tone_order[--lower];
+          bool is_previous = previous && previous->valid && previous->glyph == glyphs[c].key;
+          int tone_delta = sample_mean - glyphs[c].tone;
+          int tone_error = 16 * tone_delta * tone_delta;
+          // Shape and color residuals cannot lower the brightness error.
+          if (!is_previous && shortlist_count == GLYPH_SHORTLIST && (uint64_t)tone_error > shortlist_error[shortlist_count - 1]) {
+            // A previous temporal choice must still receive its full score.
+            if (previous && previous->valid && prior_coarse_error == UINT64_MAX)
+              continue;
+            break;
           }
-          shortlist[position] = c;
-          shortlist_error[position] = error;
+          int dot = sample_energy ? shape_correlation(centered_samples, glyphs[c].centered) : 0;
+          uint64_t error = (uint64_t)(tone_error + sample_energy + glyphs[c].energy - 2 * dot);
+          // Chroma residuals are nonnegative too. Avoid their correlations and
+          // division once the luminance fit alone cannot enter the shortlist.
+          if (!is_previous && shortlist_count == GLYPH_SHORTLIST && error > shortlist_error[shortlist_count - 1])
+            continue;
+          // A chroma residual below eight contributes zero after division.
+          if (mode != ASCII_COLOR_NONE && chroma_energy >= 8 && glyphs[c].energy) {
+            int64_t red_dot = shape_correlation(chroma[0], glyphs[c].centered);
+            int64_t blue_dot = shape_correlation(chroma[1], glyphs[c].centered);
+            int64_t explained = (red_dot * red_dot + blue_dot * blue_dot) / glyphs[c].energy;
+            int64_t residual = chroma_energy - explained;
+            if (residual > 0)
+              error += (uint64_t)residual / 8;
+          } else if (mode != ASCII_COLOR_NONE) {
+            error += (uint64_t)chroma_energy / 8;
+          }
+          if (is_previous) {
+            prior_coarse_error = error;
+            previous_index = c;
+          }
+          size_t position = 0;
+          while (position < shortlist_count && (shortlist_error[position] < error || (shortlist_error[position] == error && shortlist[position] < c)))
+            ++position;
+          if (position < GLYPH_SHORTLIST) {
+            size_t end = shortlist_count < GLYPH_SHORTLIST ? shortlist_count++ : GLYPH_SHORTLIST - 1;
+            for (size_t j = end; j > position; --j) {
+              shortlist[j] = shortlist[j - 1];
+              shortlist_error[j] = shortlist_error[j - 1];
+            }
+            shortlist[position] = c;
+            shortlist_error[position] = error;
+          }
         }
-      }
-      // The second pass resolves near-ties with the original 8x8 samples.
-      // Keep monochrome's established glyph scoring and its reference behavior.
-      bool previous_scored = false;
-      for (size_t n = 0; n < shortlist_count + (prior_coarse_error != UINT64_MAX ? 1u : 0u); ++n) {
-        bool prior = n == shortlist_count;
-        size_t index = prior ? previous_index : shortlist[n];
-        if (prior && previous_scored)
-          continue;
-        uint64_t error = prior ? prior_coarse_error : shortlist_error[n];
+        // The second pass resolves near-ties with the original 8x8 samples.
+        // Keep monochrome's established glyph scoring and its reference behavior.
+        int16_t fine_samples[64];
         if (mode != ASCII_COLOR_NONE) {
-          int fine_mean = 0;
-          for (int i = 0; i < 64; ++i)
-            fine_mean += glyphs[index].fine[i];
-          fine_mean /= 64;
-          uint64_t fine_error = 0;
+          // Source luminance is independent of the shortlisted glyph. Convert
+          // the patch once instead of rereading its RGB pixels for each candidate.
           for (int sy = 0; sy < 8; ++sy) {
             const rgb_pixel_t *row = image->pixels + (size_t)(y * 8 + sy) * (size_t)image->w + (size_t)x * 8;
             for (int sx = 0; sx < 8; ++sx) {
               rgb_pixel_t p = row[sx];
-              int luma = glyph_lift_luma((77 * p.r + 150 * p.g + 29 * p.b) >> 8);
-              int delta = (luma - sample_mean) - ((int)glyphs[index].fine[sy * 8 + sx] - fine_mean);
-              fine_error += (uint64_t)(delta * delta);
+              fine_samples[sy * 8 + sx] = (int16_t)(glyph_lift_luma((77 * p.r + 150 * p.g + 29 * p.b) >> 8) - sample_mean);
             }
           }
-          error += fine_error / 16;
         }
-        if (previous && previous->valid && previous->glyph == glyphs[index].key) {
-          previous_error = error;
-          previous_scored = true;
+        bool previous_scored = false;
+        for (size_t n = 0; n < shortlist_count + (prior_coarse_error != UINT64_MAX ? 1u : 0u); ++n) {
+          bool prior = n == shortlist_count;
+          size_t index = prior ? previous_index : shortlist[n];
+          if (prior && previous_scored)
+            continue;
+          uint64_t error = prior ? prior_coarse_error : shortlist_error[n];
+          bool is_previous = previous && previous->valid && previous->glyph == glyphs[index].key;
+          if (!is_previous && error >= best_error)
+            continue;
+          if (mode != ASCII_COLOR_NONE) {
+            // Both centered values are in [-255, 255], so the complete squared
+            // residual is at most 64 * 510 * 510 and fits in a signed int.
+            int fine_error = 0;
+            for (int i = 0; i < 64; ++i) {
+              int delta = fine_samples[i] - ((int)glyphs[index].fine[i] - glyphs[index].fine_mean);
+              fine_error += delta * delta;
+            }
+            error += (uint64_t)fine_error / 16;
+          }
+          if (is_previous) {
+            previous_error = error;
+            previous_scored = true;
+          }
+          if (!prior && error < best_error) {
+            best_error = error;
+            best = index;
+          }
         }
-        if (!prior && error < best_error) {
-          best_error = error;
-          best = index;
-        }
+        *match = (glyph_match_cache_t){.pixels = pixels, .previous = previous_key, .best = best, .previous_index = previous_index, .best_error = best_error, .previous_error = previous_error};
       }
       uint32_t rgb = glyph_foreground(&glyphs[best], samples, sums);
       uint32_t bg_rgb = ((uint32_t)(sums[0] / 16) << 16) | ((uint32_t)(sums[1] / 16) << 8) | (uint32_t)(sums[2] / 16);

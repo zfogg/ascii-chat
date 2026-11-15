@@ -1,5 +1,5 @@
 /**
- * @file platform/api.h
+ * @file api.h
  * @brief DLL export/import macros for cross-platform symbol visibility
  * @ingroup platform
  * @addtogroup platform

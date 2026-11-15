@@ -379,19 +379,39 @@ static void stats_media_end(void) {
   g_stats_media = false;
 }
 
-static size_t write_output_chunk(int fd, const void *data, size_t length) {
-  uint64_t started_ns = g_stats_media ? time_get_ns() : 0;
+static bool trace_terminal_calls(void) {
   static _Thread_local int trace_writes;
-  static _Thread_local uint64_t trace_sequence;
   if (!trace_writes) {
     const char *value = SAFE_GETENV("ASCII_CHAT_TRACE_TERMINAL_WRITES");
     trace_writes = value && strcmp(value, "1") == 0 ? 1 : -1;
   }
-  bool trace = g_stats_media && trace_writes > 0;
+  return trace_writes > 0;
+}
+
+static bool read_terminal_size(int fd, terminal_size_t *size) {
+  bool trace = trace_terminal_calls();
+  static _Thread_local uint64_t sequence;
+  uint64_t id = trace ? ++sequence : 0;
+  if (trace)
+    log_file_msg("TERMINAL_CALL_BEGIN: thread=%llu sequence=%llu call=terminal_get_size_fd fd=%d at_ns=%llu", (unsigned long long)thread_current_id(), (unsigned long long)id, fd,
+                 (unsigned long long)time_get_ns());
+  uint64_t started_ns = trace ? time_get_ns() : 0;
+  int result = terminal_get_size_fd(fd, size);
+  uint64_t returned_ns = trace ? time_get_ns() : 0;
+  if (trace)
+    log_file_msg("TERMINAL_CALL_END: thread=%llu sequence=%llu call=terminal_get_size_fd fd=%d result=%d cols=%d rows=%d elapsed_ms=%.3f at_ns=%llu", (unsigned long long)thread_current_id(),
+                 (unsigned long long)id, fd, result, result == 0 ? size->cols : 0, result == 0 ? size->rows : 0, (double)(returned_ns - started_ns) / NS_PER_MS_INT, (unsigned long long)returned_ns);
+  return result == ASCIICHAT_OK;
+}
+
+static size_t write_output_chunk(int fd, const void *data, size_t length) {
+  uint64_t started_ns = g_stats_media ? time_get_ns() : 0;
+  static _Thread_local uint64_t trace_sequence;
+  bool trace = g_stats_media && trace_terminal_calls();
   uint64_t sequence = trace ? ++trace_sequence : 0;
   if (trace)
-    log_debug("MEDIA_WRITE_BEGIN: sequence=%llu chunk=%llu fd=%d requested=%zu at_ns=%llu", (unsigned long long)sequence, (unsigned long long)g_stats_chunks, fd, length,
-              (unsigned long long)time_get_ns());
+    log_file_msg("MEDIA_WRITE_BEGIN: thread=%llu sequence=%llu chunk=%llu fd=%d requested=%zu at_ns=%llu", (unsigned long long)thread_current_id(), (unsigned long long)sequence,
+                 (unsigned long long)g_stats_chunks, fd, length, (unsigned long long)time_get_ns());
 #ifndef NDEBUG
   static _Thread_local bool test_delay_checked, test_delay;
   if (!test_delay_checked) {
@@ -404,17 +424,34 @@ static size_t write_output_chunk(int fd, const void *data, size_t length) {
 #endif
   // A presentation write must not split an image protocol packet emitted by
   // another thread. Non-owner logging must remain nonblocking here.
+  if (trace)
+    log_file_msg("TERMINAL_CALL_BEGIN: thread=%llu sequence=%llu call=ui_controller_packet_begin fd=%d at_ns=%llu", (unsigned long long)thread_current_id(), (unsigned long long)sequence, fd,
+                 (unsigned long long)time_get_ns());
   uint64_t lock_started_ns = trace ? time_get_ns() : 0;
   if (g_owner)
     ui_controller_packet_begin();
   uint64_t acquired_ns = trace ? time_get_ns() : 0;
+  if (trace) {
+    log_file_msg("TERMINAL_CALL_END: thread=%llu sequence=%llu call=ui_controller_packet_begin fd=%d elapsed_ms=%.3f at_ns=%llu", (unsigned long long)thread_current_id(), (unsigned long long)sequence,
+                 fd, (double)(acquired_ns - lock_started_ns) / NS_PER_MS_INT, (unsigned long long)acquired_ns);
+    log_file_msg("TERMINAL_CALL_BEGIN: thread=%llu sequence=%llu call=platform_write_all fd=%d requested=%zu at_ns=%llu", (unsigned long long)thread_current_id(), (unsigned long long)sequence, fd,
+                 length, (unsigned long long)time_get_ns());
+  }
+  uint64_t write_started_ns = trace ? time_get_ns() : 0;
   size_t written = platform_write_all(fd, data, length);
   uint64_t returned_ns = trace ? time_get_ns() : 0;
+  if (trace) {
+    log_file_msg("TERMINAL_CALL_END: thread=%llu sequence=%llu call=platform_write_all fd=%d requested=%zu written=%zu elapsed_ms=%.3f at_ns=%llu", (unsigned long long)thread_current_id(),
+                 (unsigned long long)sequence, fd, length, written, (double)(returned_ns - write_started_ns) / NS_PER_MS_INT, (unsigned long long)returned_ns);
+    log_file_msg("TERMINAL_CALL_BEGIN: thread=%llu sequence=%llu call=ui_controller_packet_end fd=%d at_ns=%llu", (unsigned long long)thread_current_id(), (unsigned long long)sequence, fd,
+                 (unsigned long long)time_get_ns());
+  }
+  uint64_t unlock_started_ns = trace ? time_get_ns() : 0;
   if (g_owner)
     ui_controller_packet_end();
   if (trace)
-    log_debug("MEDIA_WRITE_END: sequence=%llu fd=%d requested=%zu written=%zu lock_wait_ms=%.3f write_ms=%.3f returned_ns=%llu", (unsigned long long)sequence, fd, length, written,
-              (double)(acquired_ns - lock_started_ns) / NS_PER_MS_INT, (double)(returned_ns - acquired_ns) / NS_PER_MS_INT, (unsigned long long)returned_ns);
+    log_file_msg("TERMINAL_CALL_END: thread=%llu sequence=%llu call=ui_controller_packet_end fd=%d elapsed_ms=%.3f at_ns=%llu", (unsigned long long)thread_current_id(), (unsigned long long)sequence,
+                 fd, (double)(time_get_ns() - unlock_started_ns) / NS_PER_MS_INT, (unsigned long long)time_get_ns());
   if (g_stats_media) {
     uint64_t elapsed_ns = time_get_ns() - started_ns;
     if (elapsed_ns > g_stats_max_chunk_ns)
@@ -715,7 +752,7 @@ terminal_size_t ui_controller_size(void) {
     terminal_size_t detected = {0};
     asciichat_errno_scope_t scope = errno_scope_begin();
     int fd = atomic_load(&g_default_fd);
-    if (platform_isatty(fd) && terminal_get_size_fd(fd, &detected) == ASCIICHAT_OK && detected.cols > 0 && detected.rows > 0)
+    if (platform_isatty(fd) && read_terminal_size(fd, &detected) && detected.cols > 0 && detected.rows > 0)
       size = detected;
     errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
   }
@@ -1052,7 +1089,7 @@ static void *presentation_main(void *unused) {
       int fd = ui_sync_output_fd();
       terminal_size_t size = {0};
       g_render_fd = fd;
-      if (terminal_get_size_fd(fd, &size) == ASCIICHAT_OK && size.cols > 0 && size.rows > 0) {
+      if (read_terminal_size(fd, &size) && size.cols > 0 && size.rows > 0) {
         g_render_size = size;
         title_update(UI_SCREEN_SYNC, NULL, false);
         atomic_store_bool(&g_blocked, false);
@@ -1119,7 +1156,16 @@ static void *presentation_main(void *unused) {
       terminal_resize_watcher_t watcher = {.size = previous_size};
       bool resized = false;
       // Observe physical changes once for all modes; consumers use the published dimensions.
-      if (terminal_resize_poll(&watcher, screen->fd, &resized) != ASCIICHAT_OK) {
+      bool trace_resize = trace_terminal_calls();
+      if (trace_resize)
+        log_file_msg("TERMINAL_CALL_BEGIN: thread=%llu call=terminal_resize_poll fd=%d at_ns=%llu", (unsigned long long)thread_current_id(), screen->fd, (unsigned long long)time_get_ns());
+      uint64_t resize_started_ns = trace_resize ? time_get_ns() : 0;
+      int resize_result = terminal_resize_poll(&watcher, screen->fd, &resized);
+      uint64_t resize_returned_ns = trace_resize ? time_get_ns() : 0;
+      if (trace_resize)
+        log_file_msg("TERMINAL_CALL_END: thread=%llu call=terminal_resize_poll fd=%d result=%d changed=%d elapsed_ms=%.3f at_ns=%llu", (unsigned long long)thread_current_id(), screen->fd,
+                     resize_result, resized, (double)(resize_returned_ns - resize_started_ns) / NS_PER_MS_INT, (unsigned long long)resize_returned_ns);
+      if (resize_result != ASCIICHAT_OK) {
         atomic_store_bool(&g_blocked, true);
         const ui_session_view_t hidden = {.screen = -1};
         ui_session_render(g_session, &hidden, time_get_ns());
@@ -1530,7 +1576,7 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
     terminal_size_t detected = {0};
     // Redirected output has no terminal geometry. Avoid raising a terminal
     // error for every frame when rendering to a file, pipe, or null device.
-    if (!platform_isatty(fd) || terminal_get_size_fd(fd, &detected) != ASCIICHAT_OK || detected.cols <= 0 || detected.rows <= 0)
+    if (!platform_isatty(fd) || !read_terminal_size(fd, &detected) || detected.cols <= 0 || detected.rows <= 0)
       detected = (terminal_size_t){.cols = GET_OPTION(width), .rows = GET_OPTION(height)};
     g_render_size = detected;
     g_owner = true;
