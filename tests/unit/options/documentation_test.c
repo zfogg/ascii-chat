@@ -21,7 +21,7 @@ Test(option_documentation, libflags_schema_writes_options_and_environment) {
   cr_assert(flags_manpage_write(flags_schema_builder_schema(builder), &metadata, stream));
   cr_assert(flags_manpage_write_environment(flags_schema_builder_schema(builder), "ASCII_CHAT_", stream));
   cr_assert_eq(fseek(stream, 0, SEEK_SET), 0);
-  char output[8192] = {0};
+  char output[65536] = {0};
   (void)fread(output, 1, sizeof(output) - 1, stream);
   cr_assert_not_null(strstr(output, "OPTIONS"));
   cr_assert_not_null(strstr(output, "port"));
