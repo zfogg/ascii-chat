@@ -21,7 +21,21 @@
 #include <limits.h>
 #include <ascii-chat/video/ascii/simd/cells.h>
 
-#if 0
+/* Keep the compatibility matcher self-contained while the production
+ * renderer uses the split common/stabilizer implementation. */
+#define ascii_render_set_output_target ascii_legacy_render_set_output_target
+#define ascii_stabilizer_set_target ascii_legacy_stabilizer_set_target
+#define ascii_stabilizer_reset ascii_legacy_stabilizer_reset
+#define ascii_stabilizer_prepare ascii_legacy_stabilizer_prepare
+#define ascii_stabilizer_choose ascii_legacy_stabilizer_choose
+#define ascii_frame_init ascii_legacy_frame_init
+#define ascii_frame_emit_row ascii_legacy_frame_emit_row
+#define ascii_frame_finish ascii_legacy_frame_finish
+#define ascii_half_frame_init ascii_legacy_half_frame_init
+#define ascii_frame_emit_halfrow ascii_legacy_frame_emit_halfrow
+#define ascii_render ascii_legacy_render
+#define ascii_render_halfblocks ascii_legacy_render_halfblocks
+
 static _Thread_local outbuf_t *g_output_target;
 #define ASCII_RENDER_WORKSPACE_POOL_SIZE 4
 static _Thread_local uint32_t g_scratch_workspace[ASCII_RENDER_WORKSPACE_POOL_SIZE][IMAGE_MAX_WIDTH * ASCII_SCRATCH_PLANES];
@@ -459,18 +473,6 @@ void ascii_frame_emit_halfrow(ascii_frame_t *frame, ascii_color_t mode, bool mor
   emit_prepared_row(&frame->output, mode, ops, frame->glyph, frame->fg, frame->bg, frame->width);
   emit_row_end(&frame->output, mode != ASCII_COLOR_NONE, more_rows);
   ++frame->row;
-}
-
-#endif
-
-static uint32_t temporal_blend_color(uint32_t previous, uint32_t current, unsigned weight) {
-  uint32_t result = 0;
-  for (unsigned shift = 0; shift <= 16; shift += 8) {
-    unsigned old_channel = (previous >> shift) & 255;
-    unsigned new_channel = (current >> shift) & 255;
-    result |= (uint32_t)((old_channel * (256 - weight) + new_channel * weight + 128) / 256) << shift;
-  }
-  return result;
 }
 
 /* Compare a small spatial image patch against glyph coverage masks.
