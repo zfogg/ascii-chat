@@ -39,6 +39,13 @@ FetchContent_Declare(libplatform
     BINARY_DIR "${_ascii_chat_libplatform_build}")
 FetchContent_MakeAvailable(libplatform)
 
+# libplatform is a separate CMake project and does not inherit the parent's
+# MSVC C11 atomics option through its target properties.  Apply the native
+# compiler requirement directly to its object target.
+if(MSVC AND TARGET libplatform-objects)
+    target_compile_options(libplatform-objects PRIVATE /experimental:c11atomics)
+endif()
+
 # libplatform is linked as a native shared library. Keep its dependency-only
 # objects in the platform's normal object format: the application may enable
 # ThinLTO for release builds, but embedding LLVM bitcode in this archive makes
