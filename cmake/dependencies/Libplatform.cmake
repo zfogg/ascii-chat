@@ -21,6 +21,15 @@ set(LIBPLATFORM_BUILD_SHARED "${_ascii_chat_libplatform_shared}" CACHE BOOL
 set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
     "Disable standalone libplatform tests in ascii-chat" FORCE)
 
+# The master libplatform CMakeLists currently uses llvm-nm only for its
+# Windows shared-library export helper.  MSVC builds use the native static
+# librarian/linker path; avoid invoking an LLVM-only export scan there.
+if(MSVC AND LIBPLATFORM_BUILD_SHARED)
+    set(LIBPLATFORM_BUILD_SHARED OFF CACHE BOOL
+        "Build libplatform as a shared library" FORCE)
+    message(STATUS "MSVC: building libplatform static because its master export scanner is LLVM-only")
+endif()
+
 # Use the checked-out submodule directly.  Reusing a cached source tree can
 # mix headers and implementations from different libplatform revisions.
 set(_ascii_chat_libplatform_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform")
@@ -72,7 +81,9 @@ if(ASCIICHAT_ENABLE_COVERAGE AND CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
 endif()
 
 target_include_directories(asciichat-project-includes INTERFACE
+    "${_ascii_chat_libplatform_source}/include"
     "${_ascii_chat_libplatform_source}/lib")
+
 if(FONTCONFIG_LINK_LIBRARIES)
     target_link_libraries(libplatform PRIVATE ${FONTCONFIG_LINK_LIBRARIES})
 endif()

@@ -32,6 +32,30 @@
 # =============================================================================
 
 function(configure_clang_pre_project)
+    # FindPrograms runs before project(), so CMAKE_C_COMPILER_ID is not
+    # available yet.  Seed the centralized tool variables from the compiler
+    # selected by the CMake preset when necessary.
+    if(NOT ASCIICHAT_CLANG_EXECUTABLE AND CMAKE_C_COMPILER)
+        find_program(_selected_clang NAMES "${CMAKE_C_COMPILER}")
+        if(_selected_clang)
+            set(ASCIICHAT_CLANG_EXECUTABLE "${_selected_clang}" CACHE FILEPATH
+                "Selected Clang compiler" FORCE)
+        elseif(EXISTS "${CMAKE_C_COMPILER}")
+            set(ASCIICHAT_CLANG_EXECUTABLE "${CMAKE_C_COMPILER}" CACHE FILEPATH
+                "Selected Clang compiler" FORCE)
+        endif()
+    endif()
+    if(NOT ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE AND CMAKE_CXX_COMPILER)
+        find_program(_selected_clangxx NAMES "${CMAKE_CXX_COMPILER}")
+        if(_selected_clangxx)
+            set(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE "${_selected_clangxx}" CACHE FILEPATH
+                "Selected Clang C++ compiler" FORCE)
+        elseif(EXISTS "${CMAKE_CXX_COMPILER}")
+            set(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE "${CMAKE_CXX_COMPILER}" CACHE FILEPATH
+                "Selected Clang C++ compiler" FORCE)
+        endif()
+    endif()
+
     # Check for ccache and use it if available (from centralized FindPrograms.cmake)
     if(ASCIICHAT_CCACHE_EXECUTABLE)
         set(CMAKE_C_COMPILER_LAUNCHER "${ASCIICHAT_CCACHE_EXECUTABLE}" CACHE STRING "C compiler launcher" FORCE)

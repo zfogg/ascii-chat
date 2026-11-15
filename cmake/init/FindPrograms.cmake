@@ -283,7 +283,6 @@ set(ASCIICHAT_LLVM_TOOL_SEARCH_PATHS "${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}" CACHE
 # Example: _find_llvm_tool(ASCIICHAT_CLANG_EXECUTABLE clang)
 #   -> searches for: clang, clang-23, clang-22, clang-21, clang-20, clang-19, clang-18
 macro(_find_llvm_tool VAR_NAME)
-    if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
     # Build list of names: base names first, then versioned variants
     set(_tool_names ${ARGN})
     foreach(_base IN ITEMS ${ARGN})
@@ -339,7 +338,6 @@ macro(_find_llvm_tool VAR_NAME)
         )
     endif()
     unset(_tool_names)
-    endif()
 endmacro()
 
 # =============================================================================
