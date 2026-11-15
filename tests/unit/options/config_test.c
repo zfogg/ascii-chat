@@ -638,7 +638,7 @@ Test(config_sections, client_fps_as_integer) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid FPS should succeed");
-  cr_assert_eq(GET_OPTION(fps), 30, "FPS should be set to 30");
+  cr_assert_eq(backup.fps, 30, "FPS should be set to 30");
   unlink(config_path);
   SAFE_FREE(config_path);
   restore_config_options(&backup);
@@ -1143,7 +1143,7 @@ Test(config_sections, full_client_config) {
   cr_assert_eq(result, ASCIICHAT_OK, "Full client config should succeed");
 
   // Verify all values
-  const options_t *opts = options_get();
+  const options_t *opts = &backup;
   cr_assert_eq(opts->port, 9000, "Port should be 9000");
   cr_assert_eq(opts->width, 160, "Width should be 160");
   cr_assert_eq(opts->height, 48, "Height should be 48");
@@ -1379,7 +1379,7 @@ Test(config, multiple_loads_accumulate_correctly) {
 
   asciichat_error_t result1 = config_load_and_apply(true, config_path1, false, &backup);
   cr_assert_eq(result1, ASCIICHAT_OK, "First config load should succeed");
-  const options_t *opts = options_get();
+  const options_t *opts = &backup;
   cr_assert_eq(opts->port, 7777, "Port should be 7777 after first load");
 
   // Second config sets different values
@@ -1392,7 +1392,7 @@ Test(config, multiple_loads_accumulate_correctly) {
 
   asciichat_error_t result2 = config_load_and_apply(true, config_path2, false, &backup);
   cr_assert_eq(result2, ASCIICHAT_OK, "Second config load should succeed");
-  opts = options_get();
+  opts = &backup;
   // Port flag was reset in config_load_and_apply, so this is tricky to test
   // Let's just verify both loads succeeded
   cr_assert_eq(opts->webcam_index, 3, "Webcam index should be 3 after second load");
@@ -1481,7 +1481,7 @@ Test(config, integer_vs_string_port) {
 
   asciichat_error_t result1 = config_load_and_apply(true, config_path1, false, &backup);
   cr_assert_eq(result1, ASCIICHAT_OK, "Integer port should succeed");
-  const options_t *opts = options_get();
+  const options_t *opts = &backup;
   cr_assert_eq(opts->port, 1234, "Integer port should be applied");
 
   unlink(config_path1);
@@ -1498,6 +1498,7 @@ Test(config, integer_vs_string_port) {
 
   asciichat_error_t result2 = config_load_and_apply(true, config_path2, false, &backup);
   cr_assert_eq(result2, ASCIICHAT_OK, "String port should succeed");
+  opts = &backup;
   opts = options_get();
   cr_assert_eq(opts->port, 5678, "String port should be parsed and applied");
 
