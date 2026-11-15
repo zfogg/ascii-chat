@@ -13,6 +13,7 @@ if [[ -z "$TOKEN" ]]; then
   echo "WINGET_GITHUB_TOKEN is not configured; skipping WinGet PR submission."
   exit 0
 fi
+export GH_TOKEN="$TOKEN"
 
 command -v gh >/dev/null || { echo "gh is required" >&2; exit 1; }
 command -v sha256sum >/dev/null || { echo "sha256sum is required" >&2; exit 1; }
