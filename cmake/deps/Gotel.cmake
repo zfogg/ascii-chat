@@ -122,6 +122,13 @@ endforeach()
 if(NOT _asciichat_gotel_sources_ready)
     set(_asciichat_gotel_fetchcontent_disconnected ${FETCHCONTENT_FULLY_DISCONNECTED})
     set(FETCHCONTENT_FULLY_DISCONNECTED OFF)
+    # CMake 4.5 diagnoses direct source-only population as CMP0169. This is
+    # intentionally scoped: recovery must populate sources without importing
+    # nested targets, while gotel itself still uses MakeAvailable below.
+    if(POLICY CMP0169)
+        cmake_policy(PUSH)
+        cmake_policy(SET CMP0169 OLD)
+    endif()
     FetchContent_Declare(sequel
         GIT_REPOSITORY https://github.com/zfogg/sequel.git
         GIT_TAG f0865335e0c90b872ad2d4b40d2590509439f1fe)
@@ -130,6 +137,9 @@ if(NOT _asciichat_gotel_sources_ready)
         GIT_REPOSITORY https://github.com/riboseinc/otlp-c.git
         GIT_TAG 0798449d66331c3953b8ba9354164cfbf2f3bdaf)
     FetchContent_Populate(otlp_c)
+    if(POLICY CMP0169)
+        cmake_policy(POP)
+    endif()
     set(FETCHCONTENT_FULLY_DISCONNECTED ${_asciichat_gotel_fetchcontent_disconnected})
     unset(_asciichat_gotel_fetchcontent_disconnected)
 endif()
