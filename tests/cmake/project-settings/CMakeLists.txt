@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.30)
 project(ascii-chat-project-settings LANGUAGES C)
-include("${CMAKE_CURRENT_LIST_DIR}/../../../cmake/compiler/ProjectSettings.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/../../../cmake/compilers/ProjectSettings.cmake")
 target_compile_definitions(asciichat-project-options INTERFACE PROJECT_SETTINGS_PROBE=1)
 target_include_directories(asciichat-project-includes INTERFACE "${CMAKE_CURRENT_LIST_DIR}")
 
