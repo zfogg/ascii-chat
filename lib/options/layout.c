@@ -36,6 +36,17 @@ static void layout_print_colored_segment(FILE *stream, const char *seg) {
   fprintf(stream, "%s", seg);
 }
 
+/** Copy a bounded layout segment and always terminate it. */
+static void layout_copy_segment(char *dst, size_t dst_size, const char *src, size_t length) {
+  if (!dst || dst_size == 0)
+    return;
+
+  size_t copy_len = length < dst_size - 1 ? length : dst_size - 1;
+  if (src && copy_len > 0)
+    memcpy(dst, src, copy_len);
+  dst[copy_len] = '\0';
+}
+
 /* ============================================================================
  * Wrapped Description Printing
  * ============================================================================ */
@@ -129,11 +140,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       int text_len = p - line_start;
       if (text_len > 0) {
         char seg[BUFFER_SIZE_MEDIUM];
-        size_t copy_len = (size_t)text_len;
-        if (copy_len >= sizeof(seg))
-          copy_len = sizeof(seg) - 1;
-        memcpy(seg, line_start, copy_len);
-        seg[copy_len] = '\0';
+        layout_copy_segment(seg, sizeof(seg), line_start, (size_t)text_len);
         layout_print_colored_segment(stream, seg);
       }
 
@@ -194,11 +201,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       // Print text up to break point with colors applied
       int text_len = last_space - line_start;
       char seg[BUFFER_SIZE_MEDIUM];
-      size_t copy_len = (size_t)text_len;
-      if (copy_len >= sizeof(seg))
-        copy_len = sizeof(seg) - 1;
-      memcpy(seg, line_start, copy_len);
-      seg[copy_len] = '\0';
+      layout_copy_segment(seg, sizeof(seg), line_start, (size_t)text_len);
       layout_print_colored_segment(stream, seg);
 
       fprintf(stream, "\n");
@@ -218,11 +221,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
   if (p > line_start) {
     char seg[BUFFER_SIZE_MEDIUM];
     int text_len = p - line_start;
-    size_t copy_len = (size_t)text_len;
-    if (copy_len >= sizeof(seg))
-      copy_len = sizeof(seg) - 1;
-    memcpy(seg, line_start, copy_len);
-    seg[copy_len] = '\0';
+    layout_copy_segment(seg, sizeof(seg), line_start, (size_t)text_len);
     layout_print_colored_segment(stream, seg);
   }
 }
