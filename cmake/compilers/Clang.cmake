@@ -144,6 +144,16 @@ function(configure_clang_pre_project)
 
     message(STATUS "${BoldGreen}Found LLVM${ColorReset} at: ${BoldCyan}${LLVM_ROOT_PREFIX}${ColorReset}")
 
+    # A selected Clang toolchain is a complete suite, not just a compiler.
+    # Fail during configure if the archive, symbol, object, or archive-index
+    # tools are missing instead of allowing a later link/package step to fail.
+    asciichat_require_tool(ASCIICHAT_CLANG_EXECUTABLE "clang")
+    asciichat_require_tool(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE "clang++")
+    asciichat_require_tool(ASCIICHAT_LLVM_AR_EXECUTABLE "llvm-ar")
+    asciichat_require_tool(ASCIICHAT_LLVM_RANLIB_EXECUTABLE "llvm-ranlib")
+    asciichat_require_tool(ASCIICHAT_LLVM_NM_EXECUTABLE "llvm-nm")
+    asciichat_require_tool(ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE "llvm-objdump")
+
     # Get LLVM CMake directories for find_package()
     set(LLVM_CMAKEDIR "")
     if(LLVM_CONFIG_EXECUTABLE)
