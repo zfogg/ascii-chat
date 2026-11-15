@@ -31,6 +31,8 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t color, c
 char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int stride_bytes, ascii_color_t color,
                               const simd_cells_t *ops);
 
+#ifndef ASCII_FRAME_DECLARED
+#define ASCII_FRAME_DECLARED
 /** Prepared row storage shared by ISA-owned processing loops. No pixel work occurs here. */
 /**
  * @brief When code needs to work with ascii frame, it keeps `output`, `output_target`, `width`, `source_height` here
@@ -79,3 +81,4 @@ DECLARE_HALF_PROCESSOR(sve);
  * Returns the prior target so capability conversion can restore its scope.
  */
 outbuf_t *ascii_render_set_output_target(outbuf_t *target);
+#endif

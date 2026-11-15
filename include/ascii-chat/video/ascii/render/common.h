@@ -3,6 +3,8 @@
 #define ASCII_INLINE_SCRATCH_COLUMNS 512
 #define ASCII_SCRATCH_PLANES 6
 
+#ifndef ASCII_FRAME_DECLARED
+#define ASCII_FRAME_DECLARED
 /** Prepared row storage shared by ISA-owned processing loops. No pixel work occurs here. */
 typedef struct {
   outbuf_t output;
@@ -45,3 +47,4 @@ uint32_t ascii_background_contrast(ascii_color_t mode, uint32_t color, uint8_t l
 
 void ascii_stabilizer_frame_row(ascii_frame_t *frame, ascii_color_t mode, bool background, const simd_cells_t *ops);
 void ascii_stabilizer_halfrow(ascii_frame_t *frame, ascii_color_t mode, const simd_cells_t *ops);
+#endif

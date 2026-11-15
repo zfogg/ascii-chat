@@ -938,11 +938,12 @@ TEST_CASE("ascii_emission/glyph_matching_uses_shape_and_rejects_invalid_sizes", 
       bool red = x < 8 ? y < 4 : x < 12;
       pixels[y * 16 + x] = red ? (rgb_pixel_t){150, 0, 0} : (rgb_pixel_t){0, 77, 0};
     }
-  char *chromatic = test_render_glyph(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x80\xe2\x96\x8c");
-  cr_assert_not_null(chromatic);
+  char *chromatic = ascii_render_glyph_match_mode(&image, ASCII_COLOR_TRUE, &simd_cells_scalar,
+                                                  "\xe2\x96\x80\xe2\x96\x8c", true);
+  ASCIICHAT_REQUIRE_NOT_NULL(chromatic);
   decode(chromatic, block_cells, 2, 1, true);
-  cr_assert_str_eq(block_cells[0].glyph, "\xe2\x96\x80");
-  cr_assert_str_eq(block_cells[1].glyph, "\xe2\x96\x8c");
+  ASCIICHAT_REQUIRE_STR_EQ(block_cells[0].glyph, "\xe2\x96\x80");
+  ASCIICHAT_REQUIRE_STR_EQ(block_cells[1].glyph, "\xe2\x96\x8c");
   SAFE_FREE(chromatic);
 
   memset(pixels, 0, sizeof(pixels));
