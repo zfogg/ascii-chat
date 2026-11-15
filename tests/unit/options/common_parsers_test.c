@@ -77,17 +77,6 @@ Test(common_parsers, numeric_options_enforce_ranges_and_do_not_commit_rejected_v
   cr_assert_float_eq(options->snapshot_delay, 1.25, 0.0001);
   cr_assert_eq(parse_log_level_option("debug", options), ASCIICHAT_OK);
   cr_assert_eq(parse_log_level_option("unknown", options), ERROR_INVALID_PARAM);
-  uint16_t port = 17;
-  cr_assert(validate_port_opt("65535", &port));
-  cr_assert_eq(port, 65535);
-  cr_assert_not(validate_port_opt("65536", &port));
-  cr_assert_eq(port, 65535);
-  int fps = 10;
-  cr_assert(validate_fps_opt("30", &fps));
-  cr_assert(validate_fps_opt("0", &fps));
-  cr_assert_eq(fps, 0);
-  cr_assert_not(validate_fps_opt("-1", &fps));
-  cr_assert_eq(fps, 0);
   SAFE_FREE(options);
 }
 

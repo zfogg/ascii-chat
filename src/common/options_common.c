@@ -104,75 +104,6 @@ char *validate_required_argument(const char *optarg, char *argbuf, size_t argbuf
   return value;
 }
 
-// Validate a positive integer value (internal option parsing helper)
-bool validate_positive_int_opt(const char *value_str, int *out_value, const char *param_name) {
-  if (!value_str || !out_value) {
-    return false;
-  }
-
-  int32_t parsed = 0;
-  if (!flags_parse_int32(value_str, &parsed) || parsed <= 0) {
-    log_error("Invalid %s value '%s'. %s must be a positive integer.", param_name, value_str, param_name);
-    return false;
-  }
-
-  *out_value = (int)parsed;
-  return true;
-}
-
-// Validate port number (1-65535) (internal option parsing helper)
-bool validate_port_opt(const char *value_str, uint16_t *out_port) {
-  if (!value_str || !out_port) {
-    return false;
-  }
-
-  // Use safe integer parsing with range validation
-  if (parse_port(value_str, out_port) != ASCIICHAT_OK) {
-    log_error("Invalid port value '%s'. Port must be a number between 1 and 65535.", value_str);
-    return false;
-  }
-
-  return true;
-}
-
-// Validate FPS value (0 for auto, otherwise 1-144).
-bool validate_fps_opt(const char *value_str, int *out_fps) {
-  if (!value_str || !out_fps) {
-    return false;
-  }
-
-  int32_t fps_val = 0;
-  if (!flags_parse_int32(value_str, &fps_val) || fps_val < 0 || fps_val > 144) {
-    log_error("Invalid FPS value '%s'. FPS must be between 0 and 144.", value_str);
-    return false;
-  }
-
-  *out_fps = fps_val;
-  return true;
-}
-
-// Validate webcam index using the common device index validator
-bool validate_webcam_index(const char *value_str, unsigned short int *out_index) {
-  if (!value_str || !out_index) {
-    return false;
-  }
-
-  char error_msg[BUFFER_SIZE_SMALL];
-  int parsed_index = validate_opt_device_index(value_str, error_msg, sizeof(error_msg));
-  if (parsed_index == INT_MIN) {
-    log_error("Invalid webcam index: %s", error_msg);
-    return false;
-  }
-  // Webcam index doesn't support -1 (default), must be >= 0
-  if (parsed_index < 0) {
-    log_error("Invalid webcam index '%s'. Webcam index must be a non-negative integer.", value_str);
-    return false;
-  }
-
-  *out_index = (unsigned short int)parsed_index;
-  return true;
-}
-
 // Detect default SSH key path for the current user
 asciichat_error_t detect_default_ssh_key(char *key_path, size_t path_size) {
   // Use expand_path utility to resolve ~/.ssh/id_ed25519
@@ -385,8 +316,9 @@ asciichat_error_t parse_width_option(const char *value_str, options_t *opts) {
     return ERROR_INVALID_PARAM;
   }
 
-  int width_val;
-  if (!validate_positive_int_opt(value_str, &width_val, "width")) {
+  int32_t width_val;
+  if (!flags_parse_int32(value_str, &width_val) || width_val <= 0) {
+    log_error("Invalid width value '%s'. Width must be a positive integer.", value_str ? value_str : "(null)");
     return ERROR_INVALID_PARAM;
   }
 
@@ -401,8 +333,9 @@ asciichat_error_t parse_height_option(const char *value_str, options_t *opts) {
     return ERROR_INVALID_PARAM;
   }
 
-  int height_val;
-  if (!validate_positive_int_opt(value_str, &height_val, "height")) {
+  int32_t height_val;
+  if (!flags_parse_int32(value_str, &height_val) || height_val <= 0) {
+    log_error("Invalid height value '%s'. Height must be a positive integer.", value_str ? value_str : "(null)");
     return ERROR_INVALID_PARAM;
   }
 
@@ -417,12 +350,13 @@ asciichat_error_t parse_webcam_index_option(const char *value_str, options_t *op
     return ERROR_INVALID_PARAM;
   }
 
-  unsigned short int index_val;
-  if (!validate_webcam_index(value_str, &index_val)) {
+  int32_t index_val;
+  if (!flags_parse_int32(value_str, &index_val) || index_val < 0 || index_val > USHRT_MAX) {
+    log_error("Invalid webcam index '%s'. Webcam index must be a non-negative integer.", value_str ? value_str : "(null)");
     return ERROR_INVALID_PARAM;
   }
 
-  opts->webcam_index = index_val;
+  opts->webcam_index = (unsigned short int)index_val;
 
   return ASCIICHAT_OK;
 }

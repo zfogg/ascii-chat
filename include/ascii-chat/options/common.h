@@ -28,13 +28,6 @@
  * **Typical Usage**:
  *
  * ```c
- * // Validate port number
- * uint16_t port;
- * if (!validate_port_opt("8080", &port)) {
- *     fprintf(stderr, "Invalid port: 8080\\n");
- *     return false;
- * }
- *
  * // Parse color mode from string
  * asciichat_error_t err = parse_color_mode_option("256", opts);
  * if (err != ASCIICHAT_OK) {
@@ -50,11 +43,6 @@
  * ```
  *
  * **Option Parsing Helpers**:
- *
- * - `validate_positive_int_opt()`: Validate positive integers
- * - `validate_port_opt()`: Validate port numbers (1-65535)
- * - `validate_fps_opt()`: Validate frame rates
- * - `validate_webcam_index()`: Validate webcam device indices
  *
  * **Display Option Parsers**:
  *
@@ -159,90 +147,6 @@ static inline asciichat_error_t option_error_invalid(void) {
  * @endcode
  */
 char *validate_required_argument(const char *optarg, char *argbuf, size_t argbuf_size, const char *option_name, asciichat_mode_t mode);
-
-/**
- * @brief Validate a positive integer value
- *
- * Internal option parsing helper that validates a string represents a positive
- * integer (> 0). Prints error message on failure.
- *
- * @param value_str String to validate
- * @param out_value Output parameter for validated integer
- * @param param_name Parameter name for error messages
- * @return true if valid, false otherwise
- *
- * Example:
- * @code
- * int fps;
- * if (!validate_positive_int_opt(optarg, &fps, "FPS")) {
- *     return option_error_invalid();
- * }
- * @endcode
- */
-bool validate_positive_int_opt(const char *value_str, int *out_value, const char *param_name);
-
-/**
- * @brief Validate port number (1-65535)
- *
- * Internal option parsing helper that validates a port number is in valid range.
- * Uses parse_port() for robust validation.
- *
- * @param value_str String to validate
- * @param out_port Output parameter for validated port
- * @return true if valid, false otherwise
- *
- * Example:
- * @code
- * uint16_t port;
- * if (!validate_port_opt(optarg, &port)) {
- *     return option_error_invalid();
- * }
- * opt_port = port;
- * @endcode
- */
-bool validate_port_opt(const char *value_str, uint16_t *out_port);
-
-/**
- * @brief Validate FPS value (0 for auto, otherwise 1-144)
- *
- * Internal option parsing helper that validates FPS is in reasonable range.
- * Range chosen to support 1 FPS (slideshows) to 144 FPS (high refresh monitors).
- *
- * @param value_str String to validate
- * @param out_fps Output parameter for validated FPS
- * @return true if valid, false otherwise
- *
- * Example:
- * @code
- * int fps;
- * if (!validate_fps_opt(optarg, &fps)) {
- *     return option_error_invalid();
- * }
- * opt_fps = fps;
- * @endcode
- */
-bool validate_fps_opt(const char *value_str, int *out_fps);
-
-/**
- * @brief Validate webcam index using the common device index validator
- *
- * Validates webcam index is a non-negative integer. Unlike audio device indices,
- * webcam indices do not support -1 (default).
- *
- * @param value_str String to validate
- * @param out_index Output parameter for validated index
- * @return true if valid, false otherwise
- *
- * Example:
- * @code
- * unsigned short int webcam_idx;
- * if (!validate_webcam_index(optarg, &webcam_idx)) {
- *     return option_error_invalid();
- * }
- * opt_webcam_index = webcam_idx;
- * @endcode
- */
-bool validate_webcam_index(const char *value_str, unsigned short int *out_index);
 
 /**
  * @brief Validate options and report errors to stderr
