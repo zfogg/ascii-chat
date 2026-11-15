@@ -62,6 +62,13 @@ if(EMSCRIPTEN)
     target_compile_options(libplatform PRIVATE -pthread -matomics -mbulk-memory)
 endif()
 
+# Clang/lld can infer the exported data section as read-only when a Windows
+# DLL exports mutable C globals (notably getopt's optind/optarg state). Keep
+# the section writable so both the CLI and Catch2 tests can reset getopt.
+if(WIN32 AND TARGET libplatform)
+    target_link_options(libplatform PRIVATE "LINKER:SHELL:/SECTION:.data,RW")
+endif()
+
 
 # libplatform's POSIX helpers use interfaces such as fileno() that musl hides
 # from strict C mode unless the feature-test macros are enabled on the target.

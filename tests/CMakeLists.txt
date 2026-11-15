@@ -1,35 +1,35 @@
 include(${CMAKE_SOURCE_DIR}/cmake/test/LeakSanitizer.cmake)
 
 # =============================================================================
-# Tests Module (Criterion-based tests)
+# Tests Module (Catch2 v3 tests)
 # =============================================================================
-# This module sets up the Criterion test framework and creates test executables
+# This module sets up Catch2 v3 and creates test executables
 #
 # Prerequisites:
 #   - Libraries created (via Libraries.cmake)
-#   - BUILD_CRITERION_TESTS option set (from Criterion.cmake)
-#   - CRITERION_FOUND (required for BUILD_CRITERION_TESTS)
+#   - BUILD_CATCH2_TESTS option set (from Catch2.cmake)
+#   - CATCH2_FOUND (required for BUILD_CATCH2_TESTS)
 #   - Platform detection complete
 #   - USE_MUSL known
 #
 # Outputs:
-#   - All test_* executable targets (Criterion-based)
+#   - All test_* executable targets (Catch2-based)
 #   - tests, test_debug, test_release, test_all custom targets
 #   - tests-timer-start, tests-timer-end (build timing targets)
-#   - tests-criterion-build or tests-lib-build (internal build targets)
+#   -  or tests-lib-build (internal build targets)
 #
 # Note: Library runtime tests (test-static-lib, test-shared-lib) are handled
-# by TestLibs.cmake and only require BUILD_TESTS, not Criterion.
+# by TestLibs.cmake and only require BUILD_TESTS, not Catch2.
 #
 # Build Timing:
 #   When BUILD_TESTS is enabled, the module creates timer targets that measure
 #   how long it takes to build all test executables. The timing includes:
-#   - All Criterion test executables (when available)
+#   - All Catch2 test executables (when available)
 #   - Library runtime tests (test-static-lib, test-shared-lib)
 #   - Future defer tests (prepared for in this infrastructure)
 # =============================================================================
 
-# Enable CTest if any tests are being built (Criterion or lib runtime)
+# Enable CTest if any tests are being built (Catch2 or lib runtime)
 if(BUILD_TESTS)
     enable_testing()
     if(UNIX AND NOT APPLE)
@@ -47,7 +47,7 @@ if(BUILD_TESTS)
             list(APPEND _coverage_args --coverage-build --coverage-root ${CMAKE_BINARY_DIR})
         endif()
         add_test(NAME ${name} COMMAND ${Python3_EXECUTABLE}
-            ${CMAKE_SOURCE_DIR}/tests/scripts/run_python_test.py ${_coverage_args} --
+            ${CMAKE_SOURCE_DIR}/tests/python/tools/run_python_test.py ${_coverage_args} --
             ${Python3_EXECUTABLE} ${script} ${ARGN})
     endfunction()
 
@@ -68,7 +68,7 @@ if(BUILD_TESTS)
             list(APPEND _coverage_args --coverage-build --coverage-root ${CMAKE_BINARY_DIR})
         endif()
         add_test(NAME ${name} COMMAND ${Python3_EXECUTABLE}
-            ${CMAKE_SOURCE_DIR}/tests/scripts/run_python_test.py ${_coverage_args} --
+            ${CMAKE_SOURCE_DIR}/tests/python/tools/run_python_test.py ${_coverage_args} --
             ${CMAKE_COMMAND} -E env "UV_PROJECT_ENVIRONMENT=${CMAKE_BINARY_DIR}/python-test-venv"
             ${ASCIICHAT_UV_EXECUTABLE} run --project ${CMAKE_SOURCE_DIR}
             --frozen --python ${Python3_EXECUTABLE} -m pytest
@@ -128,9 +128,9 @@ if(BUILD_TESTS)
 endif()
 
 # =============================================================================
-# Criterion Test Configuration
+# Catch2 Test Configuration
 # =============================================================================
-# Configure Criterion-specific test options based on build type.
+# Configure Catch2-specific test options based on build type.
 # Coverage builds are slower due to instrumentation, so we use longer timeouts.
 # XML output is generated for coverage builds to capture detailed test results.
 
@@ -140,28 +140,29 @@ if(ASCIICHAT_ENABLE_COVERAGE)
     set(IS_COVERAGE_BUILD ON)
 endif()
 
-# Instrumentation slows tests and increases memory per Criterion worker.
+# Instrumentation slows tests and increases memory per test process.
 if(IS_COVERAGE_BUILD OR ASCIICHAT_SANITIZER_COMPILE_FLAGS MATCHES "fsanitize=")
-    set(CRITERION_TIMEOUT 60)      # Criterion's internal timeout per test case
+    set(CATCH2_TIMEOUT 60)
     set(CTEST_TEST_TIMEOUT 120)    # CTest's overall timeout per test executable
-    set(CRITERION_JOBS 1)          # Disable internal parallelism for coverage accuracy
+    set(CATCH2_JOBS 1)          # Disable internal parallelism for coverage accuracy
     set(CTEST_PARALLEL_JOBS "${CPU_CORES}")
 else()
-    set(CRITERION_TIMEOUT 25)      # Default timeout
+    set(CATCH2_TIMEOUT 25)      # Default timeout
     set(CTEST_TEST_TIMEOUT 30)     # Tests must complete in 30 seconds or less
-    # CTest distributes executables across cores; do not multiply Criterion workers.
-    set(CRITERION_JOBS 1)
+    # CTest is the parallel scheduler; Catch2 runs one case per discovered CTest.
+    set(CATCH2_JOBS 1)
     set(CTEST_PARALLEL_JOBS "${CPU_CORES}")
 endif()
 
-# XML output directory for Criterion test results
-set(CRITERION_XML_DIR "${CMAKE_BINARY_DIR}/Testing/criterion-xml")
-file(MAKE_DIRECTORY ${CRITERION_XML_DIR})
+# XML output directory for all native test results. Framework adapters write
+# their reports here so CTest and CI remain independent of the chosen runner.
+set(TEST_XML_DIR "${CMAKE_BINARY_DIR}/Testing/xml")
+file(MAKE_DIRECTORY ${TEST_XML_DIR})
 
 # =============================================================================
 # Test Build Timing
 # =============================================================================
-# Create timer start target for all tests (Criterion, library, and future defer tests)
+# Create timer start target for all tests (Catch2, library, and future defer tests)
 # This target is created unconditionally so other modules can depend on it
 if(BUILD_TESTS AND NOT TARGET tests-timer-start)
     add_custom_target(tests-timer-start
@@ -176,7 +177,7 @@ if(BUILD_TESTS AND NOT TARGET tests-timer-start)
     )
 endif()
 
-# Collect all test targets for timing (populated by Criterion tests, lib tests, etc.)
+# Collect all test targets for timing (populated by Catch2 tests, lib tests, etc.)
 set(ALL_TIMED_TEST_TARGETS "" CACHE INTERNAL "All test targets for timing")
 
 # White-box contract suites retain explicit production link dependencies.
@@ -185,9 +186,8 @@ function(asciichat_configure_contract target)
         add_dependencies(${target} tests-timer-start)
     endif()
     set_property(TARGET ${target} PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)
-    target_link_libraries(${target} PRIVATE ${CRITERION_LIBRARIES})
-    target_link_directories(${target} PRIVATE ${CRITERION_LIBRARY_DIRS} ${FFMPEG_LIBRARY_DIRS})
-    target_include_directories(${target} PRIVATE ${CRITERION_INCLUDE_DIRS})
+    target_link_libraries(${target} PRIVATE Catch2::Catch2WithMain)
+    target_link_directories(${target} PRIVATE ${FFMPEG_LIBRARY_DIRS})
     set_target_properties(${target} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF
         INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF)
     # Registrations are compiled directly into these executables. Omitting the
@@ -196,7 +196,7 @@ function(asciichat_configure_contract target)
     if(NOT APPLE)
         target_link_options(${target} PRIVATE -Wl,--no-gc-sections)
     endif()
-    foreach(build_target tests tests-criterion-build test_all)
+    foreach(build_target tests test_all)
         if(TARGET ${build_target})
             add_dependencies(${build_target} ${target})
         endif()
@@ -205,20 +205,26 @@ endfunction()
 
 function(asciichat_add_contract_test name target)
     set_property(DIRECTORY APPEND PROPERTY ASCIICHAT_CONTRACT_TESTS ${name})
-    add_test(NAME ${name} COMMAND ${target} --jobs 1 --timeout 60
-        --xml=${CRITERION_XML_DIR}/${name}.xml)
+    add_test(NAME ${name} COMMAND ${target}
+        --reporter junit::out=${TEST_XML_DIR}/${name}.xml)
     asciichat_fail_on_lsan_report(${name})
-    set_tests_properties(${name} PROPERTIES LABELS "criterion;contract"
-        ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
+    set_tests_properties(${name} PROPERTIES LABELS "contract"
+        ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
         TIMEOUT 180 RUN_SERIAL TRUE)
 endfunction()
 
-# Criterion test framework setup
-if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+# Catch2 test framework setup
+if(BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    # The options/RCU implementation is linked from the shared production
+    # object target. Give that object compilation the same test-mode contract
+    # as the Catch2 driver so native option tests cannot load host config or
+    # retain orientation state from the bootstrap snapshot.
+    if(TARGET ascii-chat-core)
+        target_compile_definitions(ascii-chat-core PRIVATE TESTING=1)
+    endif()
     # Build test LDFLAGS systematically (matches Makefile complex setup)
-    set(TEST_LDFLAGS ${CRITERION_LIBRARIES})
-    # Criterion requires libffi for theories support
-    list(APPEND TEST_LDFLAGS ffi)
+    set(TEST_LDFLAGS Catch2::Catch2WithMain)
+    list(APPEND TEST_LDFLAGS ${ASCIICHAT_NGHTTP2_TARGET})
 
     if(PLATFORM_LINUX)
         # Add Linux-specific test dependencies (matching Makefile order)
@@ -314,7 +320,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                     find_library(ZLIB_LIB z HINTS /usr/lib /lib)
                 endif()
                 if(ZLIB_LIB)
-                    list(APPEND TEST_LDFLAGS z)
+                    list(APPEND TEST_LDFLAGS ZLIB::ZLIB)
                     message(STATUS "Added zlib for tests (libgit2 dependency)")
                 else()
                     message(WARNING "zlib not found - libgit2 compression may not work")
@@ -349,25 +355,25 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 
     elseif(PLATFORM_DARWIN)
         # macOS test linking - must add library directories from pkg-config
-        # pkg-config sets CRITERION_LIBRARY_DIRS but CMake doesn't automatically use it
+        # pkg-config sets CATCH2_LIBRARY_DIRS but CMake doesn't automatically use it
         # This is especially important when using Homebrew LLVM which doesn't search
         # /opt/homebrew/lib by default
-        if(CRITERION_LIBRARY_DIRS)
-            foreach(dir ${CRITERION_LIBRARY_DIRS})
+        if(CATCH2_LIBRARY_DIRS)
+            foreach(dir ${CATCH2_LIBRARY_DIRS})
                 list(APPEND TEST_LDFLAGS "-L${dir}")
             endforeach()
         else()
-            # Fallback for Homebrew (Criterion is keg-only, so provide both opt prefixes)
+            # Fallback for Homebrew's LLVM/Catch2 installation.
             if(HOMEBREW_PREFIX)
                 list(APPEND TEST_LDFLAGS
-                    "-L${HOMEBREW_PREFIX}/opt/criterion/lib"
+                    "-L${HOMEBREW_PREFIX}/opt/catch2/lib"
                     "-L${HOMEBREW_PREFIX}/lib"
                 )
             endif()
             list(APPEND TEST_LDFLAGS "-L/usr/local/lib")
         endif()
         list(APPEND TEST_LDFLAGS "-framework SystemConfiguration")
-        # Note: CRITERION_LIBRARIES is already added to TEST_LDFLAGS on line 87,
+        # Note: CATCH2_LIBRARIES is already added to TEST_LDFLAGS on line 87,
         # so we only add the library search directories here
     endif()
 
@@ -375,20 +381,22 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set(_ascii_tests_mimalloc_include "${MIMALLOC_INCLUDE_DIRS}")
 
     # Find test files (excluding problematic ones, matches Makefile)
-    file(GLOB_RECURSE TEST_SRCS_ALL ${CMAKE_CURRENT_SOURCE_DIR}/unit/*.c ${CMAKE_CURRENT_SOURCE_DIR}/integration/*.c ${CMAKE_CURRENT_SOURCE_DIR}/performance/*.c)
+    file(GLOB_RECURSE TEST_SRCS_ALL ${CMAKE_CURRENT_SOURCE_DIR}/integration/*.cpp)
+    file(GLOB_RECURSE BENCHMARK_SRCS CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/*.cpp)
     # GLOB_RECURSE returns absolute paths, so TEST_EXCLUDES must also be absolute
     set(TEST_EXCLUDES
         # Native UI fixture has its own main and is driven by the tmux harness.
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/ui_native_probe.c
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/sync_regressions.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/source_paths.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/source_paths.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/client_like_lifecycle.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_multiclient_test.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_multiclient_test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/integration/video_pipeline_test.c
     )
     # Exclude query tests if query runtime library not available
     if(NOT TARGET ascii-query-runtime)
-        list(APPEND TEST_EXCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/unit/tooling/query_test.c)
+        list(APPEND TEST_EXCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/unit/tooling/query_test.cpp)
     endif()
 
     set(TEST_SRCS)
@@ -399,12 +407,188 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         endif()
     endforeach()
 
-    # Create test executables (matches Makefile naming convention)
+    # All ordinary unit cases share one Catch2 executable. Catch's CMake
+    # discovery registers each TEST_CASE as an independent CTest process, so
+    # CTest remains the only parallel scheduler.
+    file(GLOB_RECURSE UNIT_TEST_SRCS CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/unit/*.cpp)
+    add_executable(unit_tests ${UNIT_TEST_SRCS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/catch2_environment.cpp
+        ${CMAKE_SOURCE_DIR}/lib/tests/common.c
+        ${CMAKE_SOURCE_DIR}/lib/tests/globals.c
+        ${CMAKE_SOURCE_DIR}/lib/tests/logging.c)
+    set_target_properties(unit_tests PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+        SKIP_PRECOMPILE_HEADERS ON
+        INTERPROCEDURAL_OPTIMIZATION OFF
+        INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF
+        INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF)
+    target_include_directories(unit_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src/common
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/lib
+        ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include
+        ${_ascii_tests_mimalloc_include}
+        ${LIBWEBSOCKETS_INCLUDE_DIRS}
+        ${YYJSON_INCLUDE_DIRS})
+    target_compile_options(unit_tests PRIVATE -Wno-c++11-narrowing)
+    target_compile_definitions(unit_tests PRIVATE M_PI=3.14159265358979323846 BUILDING_STATIC_LIB)
+    # Unit tests need internal symbols, so use the same production OBJECT
+    # libraries as the CLI. This reuses their .obj/.o files; it does not create
+    # another compilation of the production source graph.
+    # Some bundled gotel builds expose the test API only as source (rather
+    # than a gotel::testing target). Keep the Catch2 aggregate portable.
+    if(NOT TARGET gotel::testing)
+        target_sources(unit_tests PRIVATE
+            ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/src/testing.c)
+        set(_ascii_gotel_testing_target)
+    else()
+        set(_ascii_gotel_testing_target gotel::testing)
+    endif()
+    target_link_libraries(unit_tests PRIVATE
+        ${TEST_LDFLAGS} ${_ascii_gotel_testing_target}
+        libplatform
+        ${LIBSODIUM_LIBRARIES} ${ZSTD_LIBRARIES} ${OPUS_LIBRARIES}
+        ${SQLITE3_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} libdatachannel
+        OpenSSL::Crypto ${FFMPEG_LIBRARIES} ${PORTAUDIO_LIBRARIES})
+add_dependencies(unit_tests ascii-chat-runtime)
+target_link_libraries(unit_tests PRIVATE
+    ascii-chat-runtime-deps
+    $<TARGET_OBJECTS:ascii-chat-util>
+    $<TARGET_OBJECTS:ascii-chat-data-structures>
+    $<TARGET_OBJECTS:ascii-chat-crypto>
+    $<TARGET_OBJECTS:ascii-chat-simd>
+    $<TARGET_OBJECTS:ascii-chat-video>
+    $<TARGET_OBJECTS:ascii-chat-audio>
+    $<TARGET_OBJECTS:ascii-chat-network>
+    $<TARGET_OBJECTS:ascii-chat-core>
+    $<TARGET_OBJECTS:ascii-chat-panic>)
+    target_link_directories(unit_tests PRIVATE ${FFMPEG_LIBRARY_DIRS})
+    # Catch2's prebuilt Windows library is intentionally not sanitizer-built;
+    # Clang emits an MSVC fail-if-mismatch record for sanitized C++ objects.
+    # The test driver still exercises the sanitizer-built shared production
+    # library, so only the driver itself is unsanitized on Windows.
+    if(NOT WIN32 OR ASCIICHAT_CATCH2_FROM_SOURCE)
+        apply_sanitizers_to_target(unit_tests)
+    endif()
+    set_property(TARGET unit_tests PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)
+    if(IS_COVERAGE_BUILD)
+        target_compile_options(unit_tests PRIVATE --coverage)
+        target_link_options(unit_tests PRIVATE --coverage)
+    endif()
+    set(_catch2_test_dll_paths "${CMAKE_BINARY_DIR}/bin")
+    if(DEFINED ASCIICHAT_DEPS_CACHE_DIR)
+        list(APPEND _catch2_test_dll_paths
+            "${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2/lib"
+            "${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2/crypto/ossl"
+            "${ASCIICHAT_DEPS_CACHE_DIR}/quic-nghttp3/lib")
+    endif()
+    if(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
+        list(APPEND _catch2_test_dll_paths
+            "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+            "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin")
+    endif()
+    catch_discover_tests(unit_tests
+        TEST_PREFIX "unit."
+        REPORTER junit
+        OUTPUT_DIR "${TEST_XML_DIR}"
+        OUTPUT_SUFFIX ".xml"
+        DL_PATHS ${_catch2_test_dll_paths}
+        # Keep the CTest label scalar. Catch2 tags remain available through
+        # Catch2 filters; passing a semicolon list here makes CatchAddTests
+        # emit malformed CTest property pairs.
+        PROPERTIES LABELS "unit" TIMEOUT ${CTEST_TEST_TIMEOUT}
+                   ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}")
+
+    # Benchmarks are a single, explicitly serialized Catch2 executable. They
+    # are never scheduled alongside correctness cases because timing results
+    # must not compete for CPU, coverage counters, or shared media resources.
+    add_executable(benchmarks ${BENCHMARK_SRCS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/catch2_environment.cpp
+        ${CMAKE_SOURCE_DIR}/lib/tests/common.c
+        ${CMAKE_SOURCE_DIR}/lib/tests/globals.c
+        ${CMAKE_SOURCE_DIR}/lib/tests/logging.c)
+    set_target_properties(benchmarks PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+        SKIP_PRECOMPILE_HEADERS ON
+        INTERPROCEDURAL_OPTIMIZATION OFF)
+    target_include_directories(benchmarks PRIVATE
+        ${_ascii_tests_mimalloc_include} ${LIBWEBSOCKETS_INCLUDE_DIRS})
+    target_compile_options(benchmarks PRIVATE -Wno-c++11-narrowing)
+    target_compile_definitions(benchmarks PRIVATE BUILDING_STATIC_LIB)
+    if(NOT TARGET gotel::testing)
+        target_sources(benchmarks PRIVATE
+            ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/src/testing.c)
+        set(_ascii_gotel_testing_target)
+    else()
+        set(_ascii_gotel_testing_target gotel::testing)
+    endif()
+    target_link_libraries(benchmarks PRIVATE
+        ${TEST_LDFLAGS} ${_ascii_gotel_testing_target}
+        ${LIBSODIUM_LIBRARIES} ${ZSTD_LIBRARIES} ${OPUS_LIBRARIES}
+        ${SQLITE3_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} libdatachannel
+        OpenSSL::Crypto ${FFMPEG_LIBRARIES} ${PORTAUDIO_LIBRARIES})
+add_dependencies(benchmarks ascii-chat-runtime)
+target_link_libraries(benchmarks PRIVATE
+    ascii-chat-runtime-deps
+    $<TARGET_OBJECTS:ascii-chat-util>
+    $<TARGET_OBJECTS:ascii-chat-data-structures>
+    $<TARGET_OBJECTS:ascii-chat-crypto>
+    $<TARGET_OBJECTS:ascii-chat-simd>
+    $<TARGET_OBJECTS:ascii-chat-video>
+    $<TARGET_OBJECTS:ascii-chat-audio>
+    $<TARGET_OBJECTS:ascii-chat-network>
+    $<TARGET_OBJECTS:ascii-chat-core>
+    $<TARGET_OBJECTS:ascii-chat-panic>)
+    target_link_directories(benchmarks PRIVATE ${FFMPEG_LIBRARY_DIRS})
+    if(NOT WIN32 OR ASCIICHAT_CATCH2_FROM_SOURCE)
+        apply_sanitizers_to_target(benchmarks)
+    endif()
+    set_property(TARGET benchmarks PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)
+    if(IS_COVERAGE_BUILD)
+        target_compile_options(benchmarks PRIVATE --coverage)
+        target_link_options(benchmarks PRIVATE --coverage)
+    endif()
+    add_test(NAME benchmarks COMMAND benchmarks
+        --reporter console
+        --reporter junit::out=${TEST_XML_DIR}/benchmarks.xml
+        --colour-mode ansi)
+    set_tests_properties(benchmarks PROPERTIES
+        LABELS "benchmark;performance;serial"
+        RUN_SERIAL TRUE
+        TIMEOUT 600
+        ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}")
+    # Catch2's discovery helper receives these paths for unit_tests, but the
+    # benchmark is registered explicitly. Keep its process environment
+    # identical so Windows can resolve the QUIC DLLs (and POSIX can resolve
+    # shared dependency builds) when CTest launches it from the build tree.
+    if(WIN32)
+        set_property(TEST benchmarks APPEND PROPERTY ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-nghttp3/lib"
+            "PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2/lib"
+            "PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2/crypto/ossl"
+            "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
+            "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
+    elseif(APPLE)
+        set_property(TEST benchmarks APPEND PROPERTY ENVIRONMENT_MODIFICATION
+            "DYLD_LIBRARY_PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-nghttp3/lib"
+            "DYLD_LIBRARY_PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2/lib"
+            "DYLD_LIBRARY_PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2/crypto/ossl")
+    elseif(UNIX)
+        set_property(TEST benchmarks APPEND PROPERTY ENVIRONMENT_MODIFICATION
+            "LD_LIBRARY_PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-nghttp3/lib"
+            "LD_LIBRARY_PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2/lib"
+            "LD_LIBRARY_PATH=path_list_prepend:${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2/crypto/ossl")
+    endif()
+
+    # Integration and benchmark executables retain their process/resource
+    # boundaries and are registered below.
     set(ALL_TEST_TARGETS)
     foreach(test_src ${TEST_SRCS})
         # Transform test file paths to executable names with flattened structure
-        # tests/unit/common_test.c -> test_unit_common
-        # tests/integration/crypto_network_test.c -> test_integration_crypto_network
+        # tests/unit/common_test.cpp -> test_unit_common
+        # tests/integration/crypto_network_test.cpp -> test_integration_crypto_network
         # Determine the top-level test category (unit/integration/performance)
         file(RELATIVE_PATH test_rel ${CMAKE_CURRENT_SOURCE_DIR} ${test_src})
         string(REPLACE "\\" "/" test_rel ${test_rel})
@@ -414,7 +598,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         endif()
 
         # Create a flattened executable name that preserves subdirectory information
-        string(REPLACE ".c" "" test_rel_noext ${test_rel})
+        string(REPLACE ".cpp" "" test_rel_noext ${test_rel})
         string(REPLACE "/" "_" test_rel_flat ${test_rel_noext})
         string(REGEX REPLACE "_test$" "" test_rel_flat ${test_rel_flat})
         set(test_exe_name "test_${test_rel_flat}")
@@ -424,7 +608,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # - common.c: Provides shared test utilities (test_get_binary_path, etc.)
         # - globals.c: Provides global symbols (g_should_exit) needed by lib code
         # - logging.c: Provides test-specific logging utilities (stdout/stderr redirection)
-        add_executable(${test_exe_name} ${test_src} ${CMAKE_SOURCE_DIR}/lib/tests/common.c ${CMAKE_SOURCE_DIR}/lib/tests/globals.c ${CMAKE_SOURCE_DIR}/lib/tests/logging.c)
+        add_executable(${test_exe_name} ${test_src} ${CMAKE_CURRENT_SOURCE_DIR}/catch2_environment.cpp ${CMAKE_SOURCE_DIR}/lib/tests/common.c ${CMAKE_SOURCE_DIR}/lib/tests/globals.c ${CMAKE_SOURCE_DIR}/lib/tests/logging.c)
 
         # The HTTP renderer is an application-side service shared by the API
         # and MCP servers, not part of the core shared library.  Its focused
@@ -454,22 +638,23 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             add_dependencies(${test_exe_name} tests-timer-start)
         endif()
 
-        # Disable precompiled headers for test targets to avoid conflicts with Criterion macros
+        # Disable precompiled headers for test targets to avoid framework conflicts
         set_target_properties(${test_exe_name} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
-        # Add Criterion and project include directories
+        # Add Catch2 and project include directories
         target_include_directories(${test_exe_name} PRIVATE
-            ${CRITERION_INCLUDE_DIRS}
+            ${CATCH2_INCLUDE_DIRS}
             ${_ascii_tests_mimalloc_include}
             ${LIBWEBSOCKETS_INCLUDE_DIRS}
         )
+        target_compile_options(${test_exe_name} PRIVATE -Wno-c++11-narrowing)
 
-        # Define CRITERION_TEST for test environment detection
-        target_compile_definitions(${test_exe_name} PRIVATE CRITERION_TEST=1)
+        # Catch2 tests use the common TESTING environment contract.
+        target_compile_definitions(${test_exe_name} PRIVATE TESTING=1)
 
         # For musl builds, disable subprocess isolation (no forking)
         if(USE_MUSL)
-            target_compile_definitions(${test_exe_name} PRIVATE CRITERION_NO_EARLY_EXIT=1)
+            target_compile_definitions(${test_exe_name} PRIVATE CATCH_CONFIG_DISABLE_EXCEPTIONS=1)
         endif()
 
         # Link test dependencies via shared library + external dependencies
@@ -607,13 +792,13 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         endif()
 
         # Use release objects for performance tests
-        if(test_category STREQUAL "performance")
+        if(test_category STREQUAL "benchmarks")
             target_compile_options(${test_exe_name} PRIVATE -O3 -DNDEBUG)
         endif()
 
         # Disable dead code elimination for test executables
         # Interface link options are appended after private options, so the
-        # shared project policy must omit stripping for Criterion targets.
+        # shared project policy must omit stripping for Catch2 targets.
         set_property(TARGET ${test_exe_name} PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)
         # Registrations are direct executable objects. The project policy keeps
         # them without force-loading unrelated archives and duplicate symbols.
@@ -622,7 +807,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         endif()
 
         # Disable IPO/LTO for test executables
-        # LTO can see that Criterion's __attribute__((constructor)) test registration
+        # LTO can see test registration code as dead when it is not kept explicitly.
         # functions are never called and removes them as dead code. This happens even
         # with --no-gc-sections because LTO operates at a different (interprocedural)
         # level than section-based dead stripping. Without this, Release builds show
@@ -633,21 +818,11 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF
         )
 
-        # Build Criterion command-line arguments
+        # Build Catch2 command-line arguments
         # Integration tests may launch several servers and clients in child
-        # processes.  Keep their Criterion cases serial within the executable;
-        # CTest's RUN_SERIAL property cannot prevent Criterion itself from
+        # processes. Keep their cases serial within the executable;
+        # CTest's RUN_SERIAL property cannot prevent a runner from
         # running those cases concurrently.
-        set(_test_criterion_jobs ${CRITERION_JOBS})
-        if(test_category STREQUAL "integration" OR test_exe_name MATCHES "gpg")
-            set(_test_criterion_jobs 1)
-        endif()
-
-        set(_test_criterion_timeout ${CRITERION_TIMEOUT})
-        if(test_exe_name MATCHES "webrtc_frame_capture")
-            set(_test_criterion_timeout 60)
-        endif()
-
         set(_test_ctest_timeout ${CTEST_TEST_TIMEOUT})
         if(test_category STREQUAL "integration")
             # Integration executables contain several serial process-level
@@ -660,7 +835,6 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # with the default limit; serialize them to retain every timeout and
         # allow LeakSanitizer to check the runner without suppressions.
         if(test_exe_name MATCHES "^test_unit_(audio_recording|stats_stats)$")
-            set(_test_criterion_jobs 1)
             set(_test_ctest_timeout 120)
         endif()
 
@@ -674,7 +848,6 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             # Durable SQLite fixtures compete for fsync when their cases run
             # concurrently. Keep each case's deadline and serialize the suite
             # so late completions cannot race BoxFort's timeout notifications.
-            set(_test_criterion_jobs 1)
             set(_test_ctest_timeout 120)
         endif()
 
@@ -683,20 +856,16 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             set(_test_ctest_timeout 600)
         endif()
 
-        set(_criterion_args
-            --jobs ${_test_criterion_jobs}
-            --timeout ${_test_criterion_timeout}
-            --color=always
-            --short-filename
+        set(_catch2_args
+            --reporter console
+            --reporter junit::out=${TEST_XML_DIR}/${test_exe_name}.xml
+            --colour-mode ansi
         )
-
-        # Add XML output for all builds (needed for CI test reporting)
-        list(APPEND _criterion_args --xml=${CRITERION_XML_DIR}/${test_exe_name}.xml)
 
         if(test_exe_name MATCHES "main_integration")
             # Each case launches independent server/client subprocesses. Run
             # them in separate CTest processes so a prior case cannot retain
-            # child-process or socket state in the Criterion runner.
+            # child-process or socket state in the runner.
             set(_main_integration_cases
                 client_main_help_flag
                 client_main_no_server
@@ -712,26 +881,26 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             foreach(_case IN LISTS _main_integration_cases)
                 set(_case_test_name "${test_exe_name}_${_case}")
                 add_test(NAME ${_case_test_name}
-                    COMMAND ${test_exe_name} ${_criterion_args} --filter "*${_case}*"
+                    COMMAND ${test_exe_name} ${_catch2_args} "*${_case}*"
                 )
                 asciichat_fail_on_lsan_report(${_case_test_name})
                 set_tests_properties(${_case_test_name} PROPERTIES
-                    ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
+                    ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
                     TIMEOUT ${_test_ctest_timeout}
                     LABELS "${test_category}"
                     RUN_SERIAL TRUE
                 )
             endforeach()
         else()
-            # Add to CTest with Criterion flags
+            # Add to CTest with Catch2 reporters
             add_test(NAME ${test_exe_name}
-                COMMAND ${test_exe_name} ${_criterion_args}
+                COMMAND ${test_exe_name} ${_catch2_args}
             )
 
             # Set test properties
             asciichat_fail_on_lsan_report(${test_exe_name})
             set_tests_properties(${test_exe_name} PROPERTIES
-                ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
+                ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
                 TIMEOUT ${_test_ctest_timeout}
                 LABELS "${test_category}"
             )
@@ -742,17 +911,14 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         endif()
     endforeach()
 
-    # Update timed test targets list with Criterion tests
-    set(ALL_TIMED_TEST_TARGETS ${ALL_TEST_TARGETS} CACHE INTERNAL "All test targets for timing")
-
-    # Internal target to build all Criterion tests (without timing)
-    add_custom_target(tests-criterion-build
-        DEPENDS ${ALL_TEST_TARGETS}
-        COMMENT "Building Criterion test executables"
-    )
+    # Update timed test targets list with Catch2 tests
+    set(ALL_TIMED_TEST_TARGETS unit_tests benchmarks ${ALL_TEST_TARGETS}
+        CACHE INTERNAL "All native test targets for timing")
 
     # Build all test executables without running them.
-    add_custom_target(tests COMMENT "Building all test executables")
+    add_custom_target(tests
+        DEPENDS unit_tests benchmarks ${ALL_TEST_TARGETS}
+        COMMENT "Building all native test executables")
 
     if(TARGET tests-timer-start)
         add_custom_target(tests-timer-end
@@ -765,29 +931,27 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             COMMENT "Finishing test build timing"
             VERBATIM
         )
-        add_dependencies(tests-timer-end tests-timer-start tests-criterion-build)
+        add_dependencies(tests-timer-end tests-timer-start unit_tests benchmarks ${ALL_TEST_TARGETS})
         add_dependencies(tests tests-timer-end)
-    else()
-        add_dependencies(tests tests-criterion-build)
     endif()
 
     # Custom targets for different test modes (matches Makefile)
     # CTest distributes test executables over all detected cores.
     add_custom_target(test_debug
-        DEPENDS tests-criterion-build
+        DEPENDS tests
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${CTEST_PARALLEL_JOBS}
         COMMENT "Running tests in debug mode (${CTEST_PARALLEL_JOBS} parallel jobs)"
     )
 
     add_custom_target(test_release
-        DEPENDS tests-criterion-build
+        DEPENDS tests
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C Release --parallel ${CTEST_PARALLEL_JOBS}
         COMMENT "Running tests in release mode (${CTEST_PARALLEL_JOBS} parallel jobs)"
     )
 
     # Overall test target
     add_custom_target(test_all
-        DEPENDS tests-criterion-build
+        DEPENDS tests
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${CTEST_PARALLEL_JOBS}
         COMMENT "Running all tests (${CTEST_PARALLEL_JOBS} parallel jobs)"
     )
@@ -797,30 +961,30 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     # Also add them to the timed test targets and timer dependency chain
     if(TARGET test-static-lib)
         add_dependencies(test_all test-static-lib)
-        add_dependencies(tests-criterion-build test-static-lib)
+        add_dependencies(tests test-static-lib)
         if(TARGET tests-timer-start)
             add_dependencies(test-static-lib tests-timer-start)
         endif()
     endif()
     if(TARGET test-shared-lib)
         add_dependencies(test_all test-shared-lib)
-        add_dependencies(tests-criterion-build test-shared-lib)
+        add_dependencies(tests test-shared-lib)
         if(TARGET tests-timer-start)
             add_dependencies(test-shared-lib tests-timer-start)
         endif()
     endif()
 
 else()
-    # Criterion tests not available, but lib runtime tests may still be available
+    # Catch2 tests not available, but lib runtime tests may still be available
     if(USE_MUSL AND BUILD_TESTS)
-        message(STATUS "Criterion tests disabled: System Criterion requires glibc (boxfort dependency)")
+        message(STATUS "Catch2 tests disabled: native test framework is unavailable")
         message(STATUS "  -> Library runtime tests still available via ctest")
     elseif(BUILD_TESTS AND NOT WIN32)
-        message(STATUS "${Yellow}Criterion testing framework not found. Criterion tests will not be built.${ColorReset}")
+        message(STATUS "${Yellow}Catch2 testing framework not found. Native tests will not be built.${ColorReset}")
         message(STATUS "  -> Library runtime tests still available via ctest")
     endif()
 
-    # Even without Criterion, create tests target for library tests with timing
+    # Even without Catch2, create tests target for library tests with timing
     if(BUILD_TESTS)
         # Create tests target that depends on lib tests with timing
         add_custom_target(tests-lib-build
@@ -874,10 +1038,10 @@ else()
 endif()
 
 # =============================================================================
-# Standalone Tests (No Criterion Dependency)
+# Standalone fixtures and platform-isolated Catch2 tests
 # =============================================================================
 # Library runtime tests (test-static-lib, test-shared-lib) are handled by
-# TestLibs.cmake and only require BUILD_TESTS, not Criterion.
+# TestLibs.cmake and only require BUILD_TESTS, not Catch2.
 # Note: The defer runtime library was removed when we switched to direct code insertion.
 # =============================================================================
 # Test Library Executables
@@ -885,7 +1049,7 @@ endif()
 # Simple test programs to verify both static and shared libraries work correctly
 # Both targets use the same source file but link against different libraries
 #
-# These tests use assert.h (not Criterion), so they only require BUILD_TESTS=ON
+# External fixtures use assert.h and are intentionally not Catch2 runners.
 # and work on all platforms including Windows.
 #
 # Prerequisites:
@@ -987,8 +1151,8 @@ endif()
 
 # Available when shared library is built (skipped for musl and Linux Release non-musl)
 if(TARGET ascii-chat-shared)
-    if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-        add_executable(test-source-paths EXCLUDE_FROM_ALL integration/source_paths.c)
+    if(BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+        add_executable(test-source-paths EXCLUDE_FROM_ALL integration/source_paths.cpp)
         asciichat_configure_contract(test-source-paths)
         target_link_libraries(test-source-paths PRIVATE ascii-chat-shared)
         apply_sanitizers_to_target(test-source-paths)
@@ -998,7 +1162,7 @@ if(TARGET ascii-chat-shared)
         if(BUILD_TESTS)
             asciichat_add_contract_test(source-paths test-source-paths)
             set_tests_properties(source-paths PROPERTIES LABELS "integration" TIMEOUT 30)
-            foreach(test_build_target tests tests-criterion-build tests-lib-build)
+            foreach(test_build_target tests-lib-build)
                 if(TARGET ${test_build_target})
                     add_dependencies(${test_build_target} test-source-paths)
                 endif()
@@ -1089,7 +1253,7 @@ if(TARGET ascii-chat-static)
     target_include_directories(test-crypto-logging PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
     set_target_properties(test-crypto-logging PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS)
-        foreach(test_build_target tests tests-criterion-build tests-lib-build)
+        foreach(test_build_target tests-lib-build)
             if(TARGET ${test_build_target})
                 add_dependencies(${test_build_target} test-crypto-logging)
             endif()
@@ -1125,7 +1289,7 @@ if(TARGET ascii-chat-static)
                 --errno-probe=$<TARGET_FILE:test-errno-stacks>)
             set_tests_properties(python-errno-signal PROPERTIES LABELS "integration;python;terminal" RUN_SERIAL TRUE)
         endif()
-        # Contract cases are registered by the Criterion targets below.
+        # Contract cases are registered by the Catch2 targets below.
     endif()
 
     add_executable(test-error-popup-fixture EXCLUDE_FROM_ALL
@@ -1136,7 +1300,7 @@ if(TARGET ascii-chat-static)
     set_target_properties(test-error-popup-fixture PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS)
-        foreach(test_build_target tests tests-criterion-build tests-lib-build)
+        foreach(test_build_target tests-lib-build)
             if(TARGET ${test_build_target})
                 add_dependencies(${test_build_target} test-error-popup-fixture)
             endif()
@@ -1162,7 +1326,7 @@ if(TARGET ascii-chat-static)
     set_target_properties(test-errno-tui-fixture PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS AND NOT WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-        foreach(test_build_target tests tests-criterion-build tests-lib-build)
+        foreach(test_build_target tests-lib-build)
             if(TARGET ${test_build_target})
                 add_dependencies(${test_build_target} test-errno-tui-fixture)
             endif()
@@ -1172,9 +1336,9 @@ if(TARGET ascii-chat-static)
     endif()
 endif()
 
-# Criterion buffer ownership, queue, budget, and concurrency contracts.
-if(TARGET ascii-chat-static AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-buffer-ownership EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/contracts/buffer/buffer_test.c)
+# Catch2 buffer ownership, queue, budget, and concurrency contracts.
+if(TARGET ascii-chat-static AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-buffer-ownership EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/contracts/buffer/buffer_test.cpp)
     asciichat_configure_contract(test-buffer-ownership)
     target_link_libraries(test-buffer-ownership PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES}
         ${LIBWEBSOCKETS_LIBRARIES} OpenSSL::SSL OpenSSL::Crypto ${ZLIB_LIBRARIES})
@@ -1196,7 +1360,7 @@ if(TARGET ascii-chat-static AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     endif()
 endif()
 
-# This executable is driven by tmux_prompts.py/tmux_capture.py, not Criterion.
+# This executable is driven by tmux_prompts.py/tmux_capture.py, not a test runner.
 if(TARGET ascii-chat-static)
     add_executable(ui-native-probe EXCLUDE_FROM_ALL integration/ui_native_probe.c)
     target_include_directories(ui-native-probe PRIVATE
@@ -1208,7 +1372,7 @@ if(TARGET ascii-chat-static)
     apply_sanitizers_to_target(ui-native-probe)
     set_target_properties(ui-native-probe PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    foreach(test_target tests tests-criterion-build)
+    foreach(test_target tests)
         if(TARGET ${test_target})
             add_dependencies(${test_target} ui-native-probe test-errno-stacks)
             if(TARGET test-sync-regressions)
@@ -1218,7 +1382,7 @@ if(TARGET ascii-chat-static)
     endforeach()
 endif()
 
-# The lifecycle probe takes scenario names, not Criterion command-line options.
+    # The lifecycle probe takes scenario names, not Catch2 command-line options.
 if(BUILD_TESTS)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
     set(_dependency_paths_args)
@@ -1231,9 +1395,9 @@ if(BUILD_TESTS)
     asciichat_add_pytest(python-dependency dependency ${_dependency_paths_args})
     set_tests_properties(python-dependency PROPERTIES LABELS "unit;python;build")
     add_executable(test-client-like-lifecycle integration/client_like_lifecycle.c)
-    # Windows retains the standalone race probe because Criterion is unavailable.
-    if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-        add_executable(test-splash-init contracts/tui/splash_init_test.c)
+    # Windows retains the standalone race probe for its process boundary.
+    if(BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+        add_executable(test-splash-init contracts/tui/splash_init_test.cpp)
         asciichat_configure_contract(test-splash-init)
     else()
         add_executable(test-splash-init standalone/tui/splash_init.c)
@@ -1248,9 +1412,9 @@ if(BUILD_TESTS)
     apply_sanitizers_to_target(test-splash-init)
     set_target_properties(test-splash-init PROPERTIES
         LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+    if(BUILD_CATCH2_TESTS AND CATCH2_FOUND)
         asciichat_add_contract_test(splash-init test-splash-init)
-        set_tests_properties(splash-init PROPERTIES LABELS "criterion;contract;integration;thread")
+        set_tests_properties(splash-init PROPERTIES LABELS "contract;integration;thread")
     else()
         add_test(NAME splash-init COMMAND $<TARGET_FILE:test-splash-init>)
         set_tests_properties(splash-init PROPERTIES LABELS "integration;thread" TIMEOUT 30
@@ -1269,8 +1433,8 @@ if(BUILD_TESTS)
     set_target_properties(test-client-like-lifecycle PROPERTIES
         LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    # Cover both the documented tests target and the Criterion run targets.
-    foreach(test_build_target tests tests-criterion-build tests-lib-build)
+    # Cover both the documented tests target and the Catch2 run targets.
+    foreach(test_build_target tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} test-client-like-lifecycle test-splash-init)
         endif()
@@ -1284,7 +1448,7 @@ if(BUILD_TESTS)
     apply_sanitizers_to_target(test-mdns-advertiser)
     set_target_properties(test-mdns-advertiser PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    foreach(test_build_target tests tests-criterion-build tests-lib-build)
+    foreach(test_build_target tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} test-mdns-advertiser)
         endif()
@@ -1300,9 +1464,9 @@ if(BUILD_TESTS)
 endif()
 
 # Exercises the production discovery state machine without external services.
-if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+if(BUILD_CATCH2_TESTS AND CATCH2_FOUND)
     add_executable(test-discovery-session-process
-        contracts/discovery/session_process_test.c
+        contracts/discovery/session_process_test.cpp
         ${CMAKE_SOURCE_DIR}/src/discovery-service/server.c
         ${CMAKE_SOURCE_DIR}/src/discovery-service/signaling.c)
     asciichat_configure_contract(test-discovery-session-process)
@@ -1323,16 +1487,16 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     apply_sanitizers_to_target(test-discovery-session-process)
     set_target_properties(test-discovery-session-process PROPERTIES
         LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    foreach(test_build_target tests tests-criterion-build tests-lib-build)
+    foreach(test_build_target tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} test-discovery-session-process)
         endif()
     endforeach()
     asciichat_add_python_test(discovery-session-process
-        ${CMAKE_SOURCE_DIR}/tests/scripts/run_discovery_criterion.py
+        ${CMAKE_SOURCE_DIR}/tests/python/tools/run_discovery_catch2.py
         $<TARGET_FILE:test-discovery-session-process> --jobs 1 --timeout 30
-        --xml=${CRITERION_XML_DIR}/discovery-session-process.xml)
-    set_tests_properties(discovery-session-process PROPERTIES LABELS "integration;criterion;contract" TIMEOUT 120)
+        --reporter junit::out=${TEST_XML_DIR}/discovery-session-process.xml)
+    set_tests_properties(discovery-session-process PROPERTIES LABELS "integration;contract" TIMEOUT 120)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat)
@@ -1353,7 +1517,7 @@ if(BUILD_TESTS AND TARGET ascii-chat)
         --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
     set_tests_properties(python-discovery-session-ownership PROPERTIES LABELS "integration;python;network"
         RUN_SERIAL TRUE)
-    foreach(test_build_target tests tests-criterion-build tests-lib-build)
+    foreach(test_build_target tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} ascii-chat)
         endif()
@@ -1366,17 +1530,17 @@ if(BUILD_TESTS AND TARGET ascii-chat)
     set_tests_properties(python-recording PROPERTIES LABELS "integration;python;media" RUN_SERIAL TRUE)
 endif()
 
-# Production transport tests run natively on Windows, macOS, and Linux without Criterion.
+# Production transport tests run natively on Windows, macOS, and Linux.
 if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
     asciichat_add_pytest(python-event-io integration/event_io --ascii-chat-binary=$<TARGET_FILE:ascii-chat>)
     # The admission stress fixture opens 90 peers and performs serial crypto
-    # handshakes. Give it the same isolation as the Criterion process fixtures.
+    # handshakes. Give it the same isolation as the process fixtures.
     set_tests_properties(python-event-io PROPERTIES LABELS "integration;python;network" RUN_SERIAL TRUE)
 endif()
 
 if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
-    if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-        add_executable(test-webrtc-security EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/contracts/network/webrtc_security_test.c)
+    if(BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+        add_executable(test-webrtc-security EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/contracts/network/webrtc_security_test.cpp)
         asciichat_configure_contract(test-webrtc-security)
         target_link_libraries(test-webrtc-security PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
         if(WIN32)
@@ -1399,14 +1563,25 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
             endif()
         endif()
     endif()
+    if(BUILD_CATCH2_TESTS AND CATCH2_FOUND)
     add_executable(bench-acip-prepare EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/benchmarks/acip_prepare.c)
-    target_link_libraries(bench-acip-prepare PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+    set_source_files_properties(${CMAKE_SOURCE_DIR}/tests/benchmarks/acip_prepare.c PROPERTIES LANGUAGE CXX)
+    target_link_libraries(bench-acip-prepare PRIVATE Catch2::Catch2WithMain ascii-chat-static ${MIMALLOC_LIBRARIES})
     if(WIN32)
         target_link_libraries(bench-acip-prepare PRIVATE ws2_32)
     endif()
     apply_sanitizers_to_target(bench-acip-prepare)
     target_include_directories(bench-acip-prepare PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
     set_target_properties(bench-acip-prepare PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    if(BUILD_TESTS AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+        add_test(NAME bench-acip-prepare
+            COMMAND bench-acip-prepare --reporter junit::out=${TEST_XML_DIR}/bench-acip-prepare.xml)
+        set_tests_properties(bench-acip-prepare PROPERTIES LABELS "benchmark;acip_prepare" RUN_SERIAL TRUE)
+        if(TARGET tests)
+            add_dependencies(tests bench-acip-prepare)
+        endif()
+    endif()
+    endif()
     add_executable(test-acip-prepare EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/standalone/network/prepare_test.c)
     target_link_libraries(test-acip-prepare PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${ASCIICHAT_LIBUV_TARGET})
     apply_sanitizers_to_target(test-acip-prepare)
@@ -1414,7 +1589,7 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
     set_target_properties(test-acip-prepare PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     if(BUILD_TESTS)
         set_property(TARGET test-acip-prepare PROPERTY EXCLUDE_FROM_ALL FALSE)
-        # Contract cases are registered by the Criterion targets below.
+        # Contract cases are registered by the Catch2 targets below.
         asciichat_add_pytest(python-acip integration/acip --acip-websocket-probe=$<TARGET_FILE:test-acip-prepare>)
         set_tests_properties(python-acip PROPERTIES LABELS "integration;python;network")
         if(WIN32)
@@ -1427,10 +1602,10 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
             add_dependencies(tests test-acip-prepare)
         endif()
     endif()
-    if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
+    if(BUILD_CATCH2_TESTS AND CATCH2_FOUND)
         add_executable(test-network-events EXCLUDE_FROM_ALL
-            ${CMAKE_SOURCE_DIR}/tests/contracts/network/event_test.c
-            ${CMAKE_SOURCE_DIR}/tests/contracts/network/accepted_start_test.c)
+            ${CMAKE_SOURCE_DIR}/tests/contracts/network/event_test.cpp
+            ${CMAKE_SOURCE_DIR}/tests/contracts/network/accepted_start_test.cpp)
         asciichat_configure_contract(test-network-events)
         target_link_libraries(test-network-events PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${ASCIICHAT_LIBUV_TARGET})
         apply_sanitizers_to_target(test-network-events)
@@ -1449,7 +1624,7 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
                 add_dependencies(tests test-network-events)
             endif()
         endif()
-        add_executable(test-network-connections EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/contracts/network/connection_test.c)
+    add_executable(test-network-connections EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/contracts/network/connection_test.cpp)
         asciichat_configure_contract(test-network-connections)
         target_link_libraries(test-network-connections PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${ASCIICHAT_LIBUV_TARGET})
         apply_sanitizers_to_target(test-network-connections)
@@ -1573,7 +1748,7 @@ if(TARGET ascii-chat-static)
                     "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
             endif()
         endif()
-        foreach(quic_test_build_target tests tests-criterion-build tests-lib-build)
+        foreach(quic_test_build_target tests-lib-build)
             if(TARGET ${quic_test_build_target})
                 add_dependencies(${quic_test_build_target} test-traffic-metadata test-quic-stream
                     test-quic-tls test-quic-http3 test-quic-dependencies)
@@ -1600,12 +1775,12 @@ if(TARGET ascii-chat-static)
         if(TARGET tests)
             add_dependencies(tests test-network-vectors)
         endif()
-        # Contract cases are registered by the Criterion targets below.
+        # Contract cases are registered by the Catch2 targets below.
     endif()
 endif()
 
-if(TARGET ascii-chat-static AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-crypto-policy EXCLUDE_FROM_ALL contracts/crypto/policy_test.c)
+if(TARGET ascii-chat-static AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-crypto-policy EXCLUDE_FROM_ALL contracts/crypto/policy_test.cpp)
     asciichat_configure_contract(test-crypto-policy)
     target_link_libraries(test-crypto-policy PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     target_include_directories(test-crypto-policy PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
@@ -1627,8 +1802,8 @@ if(TARGET ascii-chat-static AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 endif()
 
 # Exercise the event-driven loop with real conversion and captured terminal output.
-if(BUILD_TESTS AND TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-render-loop contracts/session/render_loop_test.c)
+if(BUILD_TESTS AND TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-render-loop contracts/session/render_loop_test.cpp)
     asciichat_configure_contract(test-render-loop)
     # The white-box copy defines render globals; use one static copy rather than
     # also loading those globals from the Debug shared library under ASan.
@@ -1642,23 +1817,23 @@ if(BUILD_TESTS AND TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CRITERI
     set_tests_properties(render-loop PROPERTIES LABELS "unit" TIMEOUT 30)
 endif()
 # White-box discovery NAT refresh checks mock only worker/network boundaries.
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-nat-refresh contracts/discovery/nat_refresh_test.c)
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-nat-refresh contracts/discovery/nat_refresh_test.cpp)
     asciichat_configure_contract(test-nat-refresh)
     target_link_libraries(test-nat-refresh PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
     target_include_directories(test-nat-refresh PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/common)
     apply_sanitizers_to_target(test-nat-refresh)
     set_target_properties(test-nat-refresh PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     add_test(NAME discovery-nat-refresh COMMAND test-nat-refresh --jobs 1 --timeout 30
-        --xml=${CRITERION_XML_DIR}/discovery-nat-refresh.xml)
+        --reporter junit::out=${TEST_XML_DIR}/discovery-nat-refresh.xml)
     asciichat_fail_on_lsan_report(discovery-nat-refresh)
-    set_tests_properties(discovery-nat-refresh PROPERTIES LABELS "unit;criterion;contract" TIMEOUT 60
-        ENVIRONMENT "TESTING=1;CRITERION_TEST=1;BUILD_DIR=${CMAKE_BINARY_DIR}")
+    set_tests_properties(discovery-nat-refresh PROPERTIES LABELS "unit;contract" TIMEOUT 60
+        ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}")
 endif()
 
-# Shared discovery host rendering, including builds without Criterion.
-if(TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-host-render EXCLUDE_FROM_ALL contracts/session/host_render_test.c)
+# Shared discovery host rendering, including builds without the optional test targets.
+if(TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-host-render EXCLUDE_FROM_ALL contracts/session/host_render_test.cpp)
     asciichat_configure_contract(test-host-render)
     target_link_libraries(test-host-render PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     if(WIN32)
@@ -1679,7 +1854,7 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRI
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
                 "PATH=path_list_prepend:${ASCIICHAT_SANITIZER_RUNTIME_DIR}")
         endif()
-        foreach(test_build_target tests tests-criterion-build tests-lib-build)
+        foreach(test_build_target tests-lib-build)
             if(TARGET ${test_build_target})
                 add_dependencies(${test_build_target} test-host-render)
             endif()
@@ -1687,9 +1862,9 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRI
     endif()
 endif()
 
-# Fault injection around real participant workers; runs without Criterion on Windows too.
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-review-findings contracts/review_findings_test.c)
+# Fault injection around real participant workers; runs on Windows too.
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-review-findings contracts/review_findings_test.cpp)
     asciichat_configure_contract(test-review-findings)
     target_link_libraries(test-review-findings PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     target_include_directories(test-review-findings PRIVATE ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
@@ -1704,7 +1879,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     endif()
     asciichat_add_contract_test(review-findings test-review-findings)
     set_tests_properties(review-findings PROPERTIES LABELS "unit" TIMEOUT 60)
-    add_executable(test-runtime-settings contracts/options/runtime_test.c)
+    add_executable(test-runtime-settings contracts/options/runtime_test.cpp)
     asciichat_configure_contract(test-runtime-settings)
     target_link_libraries(test-runtime-settings PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     target_include_directories(test-runtime-settings PRIVATE ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
@@ -1721,8 +1896,8 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set_tests_properties(runtime-settings PROPERTIES LABELS "unit" TIMEOUT 60)
 endif()
 
-if(BUILD_TESTS AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-participant-media contracts/session/participant_media_test.c)
+if(BUILD_TESTS AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-participant-media contracts/session/participant_media_test.cpp)
     asciichat_configure_contract(test-participant-media)
     target_link_libraries(test-participant-media PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
     target_include_directories(test-participant-media PRIVATE
@@ -1733,7 +1908,7 @@ if(BUILD_TESTS AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     apply_sanitizers_to_target(test-participant-media)
     set_target_properties(test-participant-media PROPERTIES
         LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    foreach(test_build_target tests tests-criterion-build tests-lib-build)
+    foreach(test_build_target tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} test-participant-media)
         endif()
@@ -1758,8 +1933,8 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
 endif()
 
 # Server handlers linked with their real media pipeline and fixture-owned application state.
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-signaling contracts/network/signaling_test.c
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-signaling contracts/network/signaling_test.cpp
         ${CMAKE_SOURCE_DIR}/src/client/webrtc.c)
     asciichat_configure_contract(test-signaling)
     target_link_libraries(test-signaling PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
@@ -1771,7 +1946,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(signaling test-signaling)
     set_property(TEST signaling APPEND PROPERTY LABELS unit)
 
-    add_executable(test-client-crypto contracts/crypto/client_crypto_test.c)
+    add_executable(test-client-crypto contracts/crypto/client_crypto_test.cpp)
     asciichat_configure_contract(test-client-crypto)
     target_link_libraries(test-client-crypto PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
     target_include_directories(test-client-crypto PRIVATE ${CMAKE_SOURCE_DIR}/src
@@ -1782,7 +1957,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(client-crypto test-client-crypto)
     set_property(TEST client-crypto APPEND PROPERTY LABELS unit)
 
-    add_executable(test-server-stream contracts/network/server_stream_test.c
+    add_executable(test-server-stream contracts/network/server_stream_test.cpp
         ${CMAKE_SOURCE_DIR}/src/server/stream.c)
     asciichat_configure_contract(test-server-stream)
     target_link_libraries(test-server-stream PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
@@ -1794,7 +1969,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(server-stream test-server-stream)
     set_property(TEST server-stream APPEND PROPERTY LABELS unit)
 
-    add_executable(test-client-transport contracts/network/client_transport_test.c
+    add_executable(test-client-transport contracts/network/client_transport_test.cpp
         ${CMAKE_SOURCE_DIR}/src/client/server.c ${CMAKE_SOURCE_DIR}/src/client/keepalive.c
         ${CMAKE_SOURCE_DIR}/src/client/crypto.c ${CMAKE_SOURCE_DIR}/src/client/display.c)
     asciichat_configure_contract(test-client-transport)
@@ -1807,7 +1982,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(client-transport test-client-transport)
     set_property(TEST client-transport APPEND PROPERTY LABELS unit)
 
-    add_executable(test-session-h265-client contracts/session/h265_client_test.c
+    add_executable(test-session-h265-client contracts/session/h265_client_test.cpp
         ${CMAKE_SOURCE_DIR}/src/session/h265/client.c)
     asciichat_configure_contract(test-session-h265-client)
     target_link_libraries(test-session-h265-client PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
@@ -1823,7 +1998,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         target_include_directories(test_unit_session_test_api_boundaries PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
     endif()
 
-    add_executable(test-server-lifecycle contracts/session/server_lifecycle_test.c)
+    add_executable(test-server-lifecycle contracts/session/server_lifecycle_test.cpp)
     asciichat_configure_contract(test-server-lifecycle)
     target_link_libraries(test-server-lifecycle PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
     target_include_directories(test-server-lifecycle PRIVATE ${CMAKE_SOURCE_DIR}/src
@@ -1835,7 +2010,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set_property(TEST shared-server-lifecycle APPEND PROPERTY LABELS unit)
 
 
-    add_executable(test-client-lifecycle contracts/session/client_lifecycle_test.c)
+    add_executable(test-client-lifecycle contracts/session/client_lifecycle_test.cpp)
     asciichat_configure_contract(test-client-lifecycle)
     target_link_libraries(test-client-lifecycle PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
     target_include_directories(test-client-lifecycle PRIVATE ${CMAKE_SOURCE_DIR}/src
@@ -1846,7 +2021,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(client-lifecycle test-client-lifecycle)
     set_property(TEST client-lifecycle APPEND PROPERTY LABELS unit)
 
-    add_executable(test-mcp-requests contracts/mcp/request_contract_test.c)
+    add_executable(test-mcp-requests contracts/mcp/request_contract_test.cpp)
     asciichat_configure_contract(test-mcp-requests)
     target_link_libraries(test-mcp-requests PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES}
         ${YYJSON_LIBRARIES} ${ASCIICHAT_LIBUV_TARGET} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
@@ -1859,7 +2034,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(mcp-requests test-mcp-requests)
     set_property(TEST mcp-requests APPEND PROPERTY LABELS unit)
 
-    add_executable(test-discovery-media contracts/discovery/media_callbacks_test.c)
+    add_executable(test-discovery-media contracts/discovery/media_callbacks_test.cpp)
     asciichat_configure_contract(test-discovery-media)
     target_link_libraries(test-discovery-media PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
     target_include_directories(test-discovery-media PRIVATE ${CMAKE_SOURCE_DIR}/src
@@ -1870,7 +2045,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(discovery-media test-discovery-media)
     set_property(TEST discovery-media APPEND PROPERTY LABELS unit)
 
-    add_executable(test-entry-signals contracts/entry/signals_test.c)
+    add_executable(test-entry-signals contracts/entry/signals_test.cpp)
     asciichat_configure_contract(test-entry-signals)
     target_link_libraries(test-entry-signals PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES} ${YYJSON_LIBRARIES})
     target_include_directories(test-entry-signals PRIVATE ${CMAKE_SOURCE_DIR}/src
@@ -1881,7 +2056,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(entry-signals test-entry-signals)
     set_property(TEST entry-signals APPEND PROPERTY LABELS unit)
 
-    add_executable(test-participant-workers contracts/session/participant_workers_test.c)
+    add_executable(test-participant-workers contracts/session/participant_workers_test.cpp)
     asciichat_configure_contract(test-participant-workers)
     target_link_libraries(test-participant-workers PRIVATE ascii-chat-static-lib-with-deps ${MIMALLOC_LIBRARIES})
     target_include_directories(test-participant-workers PRIVATE ${CMAKE_SOURCE_DIR}/src/common
@@ -1892,7 +2067,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(participant-workers test-participant-workers)
     set_property(TEST participant-workers APPEND PROPERTY LABELS unit)
 
-    add_executable(test-host-faults contracts/session/host_faults_test.c)
+    add_executable(test-host-faults contracts/session/host_faults_test.cpp)
     asciichat_configure_contract(test-host-faults)
     target_link_libraries(test-host-faults PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
     target_include_directories(test-host-faults PRIVATE ${CMAKE_SOURCE_DIR}/src
@@ -1903,7 +2078,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(host-faults test-host-faults)
     set_property(TEST host-faults APPEND PROPERTY LABELS unit)
 
-    add_executable(test-client-video contracts/network/client_video_test.c
+    add_executable(test-client-video contracts/network/client_video_test.cpp
         ${CMAKE_SOURCE_DIR}/src/client/server.c ${CMAKE_SOURCE_DIR}/src/client/crypto.c
         ${CMAKE_SOURCE_DIR}/src/client/keepalive.c)
     asciichat_configure_contract(test-client-video)
@@ -1916,7 +2091,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(client-video test-client-video)
     set_property(TEST client-video APPEND PROPERTY LABELS unit)
 
-    add_executable(test-client-audio contracts/network/client_audio_test.c
+    add_executable(test-client-audio contracts/network/client_audio_test.cpp
         ${CMAKE_SOURCE_DIR}/src/client/server.c
         ${CMAKE_SOURCE_DIR}/src/client/crypto.c
         ${CMAKE_SOURCE_DIR}/src/client/display.c
@@ -1931,7 +2106,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(client-audio test-client-audio)
     set_property(TEST client-audio APPEND PROPERTY LABELS unit)
 
-    add_executable(test-capture-transactions contracts/media/capture_transactions_test.c)
+    add_executable(test-capture-transactions contracts/media/capture_transactions_test.cpp)
     asciichat_configure_contract(test-capture-transactions)
     target_link_libraries(test-capture-transactions PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
     target_include_directories(test-capture-transactions PRIVATE ${CMAKE_SOURCE_DIR}/src
@@ -1942,7 +2117,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(capture-transactions test-capture-transactions)
     set_property(TEST capture-transactions APPEND PROPERTY LABELS unit)
 
-    add_executable(test-display-delivery contracts/media/display_delivery_test.c)
+    add_executable(test-display-delivery contracts/media/display_delivery_test.cpp)
     asciichat_configure_contract(test-display-delivery)
     target_link_libraries(test-display-delivery PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${FFMPEG_LIBRARIES})
     target_include_directories(test-display-delivery PRIVATE ${CMAKE_SOURCE_DIR}/src
@@ -1953,7 +2128,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(display-delivery test-display-delivery)
     set_property(TEST display-delivery APPEND PROPERTY LABELS unit)
 
-    add_executable(test-discovery-service-callbacks contracts/discovery/service_callbacks_test.c
+    add_executable(test-discovery-service-callbacks contracts/discovery/service_callbacks_test.cpp
         ${CMAKE_SOURCE_DIR}/src/discovery-service/signaling.c)
     asciichat_configure_contract(test-discovery-service-callbacks)
     target_link_libraries(test-discovery-service-callbacks PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${SQLITE3_LIBRARIES} ${LIBSODIUM_LIBRARIES})
@@ -1965,7 +2140,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(discovery-service-callbacks test-discovery-service-callbacks)
     set_property(TEST discovery-service-callbacks APPEND PROPERTY LABELS unit)
 
-    add_executable(test-server-main contracts/network/server_main_test.c
+    add_executable(test-server-main contracts/network/server_main_test.cpp
         ${CMAKE_SOURCE_DIR}/src/server/client.c ${CMAKE_SOURCE_DIR}/src/server/connections.c
         ${CMAKE_SOURCE_DIR}/src/server/protocol.c ${CMAKE_SOURCE_DIR}/src/server/stream.c
         ${CMAKE_SOURCE_DIR}/src/server/render.c ${CMAKE_SOURCE_DIR}/src/server/stats.c
@@ -1980,7 +2155,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(server-main test-server-main)
     set_property(TEST server-main APPEND PROPERTY LABELS unit)
 
-    add_executable(test-server-render contracts/network/server_render_test.c)
+    add_executable(test-server-render contracts/network/server_render_test.cpp)
     asciichat_configure_contract(test-server-render)
     target_link_libraries(test-server-render PRIVATE ascii-chat-static-lib-with-deps ${MIMALLOC_LIBRARIES})
     target_include_directories(test-server-render PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/src/common
@@ -1991,7 +2166,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(server-render test-server-render)
     set_property(TEST server-render APPEND PROPERTY LABELS unit)
 
-    add_executable(test-server-client contracts/network/server_client_test.c
+    add_executable(test-server-client contracts/network/server_client_test.cpp
         ${CMAKE_SOURCE_DIR}/src/server/protocol.c
         ${CMAKE_SOURCE_DIR}/src/session/h265/server.c)
     asciichat_configure_contract(test-server-client)
@@ -2004,7 +2179,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     asciichat_add_contract_test(server-client test-server-client)
     set_property(TEST server-client APPEND PROPERTY LABELS unit)
 
-    add_executable(test-server-protocol contracts/network/server_protocol_test.c
+    add_executable(test-server-protocol contracts/network/server_protocol_test.cpp
         ${CMAKE_SOURCE_DIR}/src/server/protocol.c ${CMAKE_SOURCE_DIR}/src/session/h265/server.c)
     asciichat_configure_contract(test-server-protocol)
     target_link_libraries(test-server-protocol PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
@@ -2018,8 +2193,8 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 endif()
 
 # Audio device selection and callbacks with a deterministic PortAudio boundary.
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-audio-device contracts/audio/device_test.c)
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-audio-device contracts/audio/device_test.cpp)
     asciichat_configure_contract(test-audio-device)
     # Bind device calls to the executable's deterministic PortAudio boundary.
     # Mach-O's two-level namespace cannot interpose calls from our shared library.
@@ -2035,8 +2210,8 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 endif()
 
 # Discovery host ranking and local wire probes use the production mode implementation.
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-nat-quality contracts/discovery/nat_quality_test.c
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-nat-quality contracts/discovery/nat_quality_test.cpp
         ${CMAKE_SOURCE_DIR}/src/discovery/nat.c)
     asciichat_configure_contract(test-nat-quality)
     target_link_libraries(test-nat-quality PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
@@ -2049,10 +2224,10 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set_tests_properties(nat-quality PROPERTIES LABELS "unit" TIMEOUT 30)
 endif()
 
-# Criterion connection owner tests with real blocked TCP workers.
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-session-connections contracts/session/connection_test.c contracts/session/protocol_test.c
-        contracts/session/establish_test.c)
+# Catch2 connection owner tests with real blocked TCP workers.
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-session-connections contracts/session/connection_test.cpp contracts/session/protocol_test.cpp
+        contracts/session/establish_test.cpp)
     asciichat_configure_contract(test-session-connections)
     target_link_libraries(test-session-connections PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     target_include_directories(test-session-connections PRIVATE
@@ -2063,7 +2238,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     apply_sanitizers_to_target(test-session-connections)
     set_target_properties(test-session-connections PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    foreach(test_build_target tests tests-criterion-build tests-lib-build)
+    foreach(test_build_target tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} test-session-connections)
         endif()
@@ -2072,8 +2247,8 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     set_tests_properties(session-connections PROPERTIES LABELS "integration" TIMEOUT 30)
 endif()
 
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-peer-ready contracts/network/peer_ready_test.c)
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-peer-ready contracts/network/peer_ready_test.cpp)
     asciichat_configure_contract(test-peer-ready)
     if(WIN32)
         target_link_libraries(test-peer-ready PRIVATE ws2_32)
@@ -2084,7 +2259,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     apply_sanitizers_to_target(test-peer-ready)
     set_target_properties(test-peer-ready PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    foreach(test_build_target tests tests-criterion-build tests-lib-build)
+    foreach(test_build_target tests-lib-build)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} test-peer-ready)
         endif()
@@ -2100,7 +2275,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND TARGET ascii-chat-static)
     apply_sanitizers_to_target(test-terminal-pty)
     set_target_properties(test-terminal-pty PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    foreach(test_build_target tests tests-criterion-build test_all)
+    foreach(test_build_target tests test_all)
         if(TARGET ${test_build_target})
             add_dependencies(${test_build_target} test-terminal-pty)
         endif()
@@ -2113,9 +2288,9 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND TARGET ascii-chat-static)
         set_tests_properties(terminal-pty PROPERTIES LABELS "integration" TIMEOUT 45)
     endif()
 endif()
-if(BUILD_TESTS AND WIN32)
-    add_executable(test-terminal-resize standalone/session/terminal_resize_test.c)
-    target_link_libraries(test-terminal-resize PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ws2_32)
+if(BUILD_TESTS AND WIN32 AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-terminal-resize standalone/session/terminal_resize_test.cpp)
+    target_link_libraries(test-terminal-resize PRIVATE Catch2::Catch2WithMain ascii-chat-static ${MIMALLOC_LIBRARIES} ws2_32)
     target_include_directories(test-terminal-resize PRIVATE ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
     apply_sanitizers_to_target(test-terminal-resize)
     set_target_properties(test-terminal-resize PROPERTIES LINKER_LANGUAGE CXX
@@ -2145,7 +2320,7 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
             --transports tcp,webrtc,quic,quic-datagrams
             --output ${CMAKE_BINARY_DIR}/test_artifacts/transport-metrics)
         set_tests_properties(transport-metrics PROPERTIES LABELS "integration;standalone" TIMEOUT 180 RUN_SERIAL TRUE)
-        foreach(_metrics_build_target tests tests-criterion-build tests-lib-build)
+        foreach(_metrics_build_target tests-lib-build)
             if(TARGET ${_metrics_build_target})
                 add_dependencies(${_metrics_build_target} test-transport-metrics)
             endif()
@@ -2155,7 +2330,7 @@ endif()
 
 if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
     foreach(outbound_fixture backpressure backpressure-live)
-        if(outbound_fixture STREQUAL "backpressure" AND NOT (BUILD_CRITERION_TESTS AND CRITERION_FOUND))
+        if(outbound_fixture STREQUAL "backpressure" AND NOT (BUILD_CATCH2_TESTS AND CATCH2_FOUND))
             continue()
         endif()
         string(REPLACE "-" "_" outbound_source "${outbound_fixture}")
@@ -2165,8 +2340,12 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
         else()
             set(outbound_directory standalone)
         endif()
+        set(outbound_extension c)
+        if(outbound_fixture STREQUAL "backpressure")
+            set(outbound_extension cpp)
+        endif()
         add_executable(test-${outbound_fixture} EXCLUDE_FROM_ALL
-            ${CMAKE_SOURCE_DIR}/tests/${outbound_directory}/network/${outbound_source}.c)
+            ${CMAKE_SOURCE_DIR}/tests/${outbound_directory}/network/${outbound_source}.${outbound_extension})
         if(outbound_fixture STREQUAL "backpressure")
             asciichat_configure_contract(test-backpressure)
         endif()
@@ -2181,7 +2360,7 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
         target_include_directories(test-${outbound_fixture} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
         set_target_properties(test-${outbound_fixture} PROPERTIES LINKER_LANGUAGE CXX
             RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-        foreach(test_build_target tests tests-criterion-build tests-lib-build)
+        foreach(test_build_target tests-lib-build)
             if(TARGET ${test_build_target})
                 add_dependencies(${test_build_target} test-${outbound_fixture})
             endif()
@@ -2223,9 +2402,9 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
     endif()
 endif()
 
-# Criterion parser and UI paste collector tests; no camera or clipboard mutation.
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-media-input contracts/media/input_test.c)
+# Catch2 parser and UI paste collector tests; no camera or clipboard mutation.
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-media-input contracts/media/input_test.cpp)
     asciichat_configure_contract(test-media-input)
     target_link_libraries(test-media-input PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
     target_include_directories(test-media-input PRIVATE ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated)
@@ -2238,11 +2417,12 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     endif()
 endif()
 
-if(BUILD_TESTS AND NOT EMSCRIPTEN)
-    add_executable(test-media-capture-pacing standalone/media/capture_pacing_test.c)
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-media-capture-pacing standalone/media/capture_pacing_test.cpp)
+    target_link_libraries(test-media-capture-pacing PRIVATE Catch2::Catch2WithMain)
     target_include_directories(test-media-capture-pacing PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
     add_test(NAME media-capture-pacing COMMAND test-media-capture-pacing)
-    set_tests_properties(media-capture-pacing PROPERTIES LABELS "unit;media" TIMEOUT 10)
+    set_tests_properties(media-capture-pacing PROPERTIES LABELS "unit;standalone;media;" TIMEOUT 10)
     if(TARGET tests)
         add_dependencies(tests test-media-capture-pacing)
     endif()
@@ -2261,7 +2441,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN)
     endif()
 endif()
 
-if(BUILD_TESTS AND WIN32)
+if(BUILD_TESTS AND WIN32 AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
     add_executable(test-media-clipboard standalone/media/clipboard_windows_test.c)
     target_link_libraries(test-media-clipboard PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     target_include_directories(test-media-clipboard PRIVATE ${CMAKE_BINARY_DIR}/generated)
@@ -2274,8 +2454,8 @@ if(BUILD_TESTS AND WIN32)
     endif()
 endif()
 
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    add_executable(test-media-pipeline contracts/media/pipeline_latest_test.c)
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-media-pipeline contracts/media/pipeline_latest_test.cpp)
     asciichat_configure_contract(test-media-pipeline)
     target_link_libraries(test-media-pipeline PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${LIBSODIUM_LIBRARIES})
     target_include_directories(test-media-pipeline PRIVATE ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_BINARY_DIR}/generated)
@@ -2288,9 +2468,9 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     endif()
 endif()
 
-if(BUILD_TESTS AND WIN32)
-    add_executable(test-audio-priority standalone/media/audio_priority_test.c)
-    target_link_libraries(test-audio-priority PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
+if(BUILD_TESTS AND WIN32 AND BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+    add_executable(test-audio-priority standalone/media/audio_priority_test.cpp)
+    target_link_libraries(test-audio-priority PRIVATE Catch2::Catch2WithMain ascii-chat-static ${MIMALLOC_LIBRARIES})
     target_include_directories(test-audio-priority PRIVATE ${CMAKE_BINARY_DIR}/generated)
     apply_sanitizers_to_target(test-audio-priority)
     set_target_properties(test-audio-priority PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
@@ -2301,7 +2481,7 @@ if(BUILD_TESTS AND WIN32)
     endif()
 endif()
 
-if(BUILD_CRITERION_TESTS AND CRITERION_FOUND AND TARGET ascii-chat-static)
+if(BUILD_CATCH2_TESTS AND CATCH2_FOUND AND TARGET ascii-chat-static)
     foreach(contract errno prepare vectored)
         if(contract STREQUAL "errno")
             set(contract_dir errno)
@@ -2313,8 +2493,9 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND AND TARGET ascii-chat-static)
             set(contract_dir network)
             set(contract_name network-vectors)
         endif()
+        set(contract_extension cpp)
         set(contract_target test-contract-${contract})
-        add_executable(${contract_target} contracts/${contract_dir}/${contract}_test.c)
+        add_executable(${contract_target} contracts/${contract_dir}/${contract}_test.${contract_extension})
         target_link_libraries(${contract_target} PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES} ${ASCIICHAT_LIBUV_TARGET})
         target_include_directories(${contract_target} PRIVATE ${CMAKE_BINARY_DIR}/generated)
         apply_sanitizers_to_target(${contract_target})
@@ -2325,9 +2506,9 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND AND TARGET ascii-chat-static)
 endif()
 
 if(BUILD_TESTS AND TARGET ascii-chat)
-    # The Criterion client-transport contract covers this on supported Unix platforms.
-    # Keep the standalone variant on Windows, where Criterion is unavailable.
-    if(NOT BUILD_CRITERION_TESTS OR NOT CRITERION_FOUND)
+    # The Catch2 client-transport contract covers this on all native platforms.
+    # Keep the standalone variant where its process boundary is required.
+    if(NOT BUILD_CATCH2_TESTS OR NOT CATCH2_FOUND)
     add_executable(test-client-ping-sentinel standalone/network/client_ping_test.c)
     target_link_libraries(test-client-ping-sentinel PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES})
     target_include_directories(test-client-ping-sentinel PRIVATE ${CMAKE_SOURCE_DIR}/src
@@ -2376,8 +2557,8 @@ if(BUILD_TESTS AND UNIX AND TARGET ascii-chat)
 endif()
 
 # Replace only the Argon2 boundary to observe real shared-handle interleavings.
-if(BUILD_CRITERION_TESTS AND CRITERION_FOUND AND TARGET ascii-chat-static)
-    add_executable(test-discovery-password-lock contracts/discovery/password_lock_test.c)
+if(BUILD_CATCH2_TESTS AND CATCH2_FOUND AND TARGET ascii-chat-static)
+    add_executable(test-discovery-password-lock contracts/discovery/password_lock_test.cpp)
     target_link_libraries(test-discovery-password-lock PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES}
         ${LIBSODIUM_LIBRARIES} ${SQLITE3_LIBRARIES})
     target_include_directories(test-discovery-password-lock PRIVATE ${CMAKE_BINARY_DIR}/generated)
@@ -2395,7 +2576,7 @@ foreach(contract_test IN LISTS contract_tests)
     if(NOT category MATCHES "(^|;)(unit|integration|performance)(;|$)")
         set_property(TEST ${contract_test} APPEND PROPERTY LABELS integration)
     endif()
-    set_property(TEST ${contract_test} APPEND PROPERTY LABELS criterion contract)
+    set_property(TEST ${contract_test} APPEND PROPERTY LABELS  contract)
 endforeach()
 
 if(BUILD_TESTS AND TARGET ascii-chat)
@@ -2505,8 +2686,8 @@ if(BUILD_TESTS AND TARGET gotel)
     target_include_directories(test-otel-contract PRIVATE ${CMAKE_BINARY_DIR}/generated)
     apply_sanitizers_to_target(test-otel-contract)
     set_target_properties(test-otel-contract PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-    if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-        add_executable(test-otel-adapter-contract contracts/otel/adapter_test.c)
+    if(BUILD_CATCH2_TESTS AND CATCH2_FOUND)
+        add_executable(test-otel-adapter-contract contracts/otel/adapter_test.cpp)
         asciichat_configure_contract(test-otel-adapter-contract)
         target_link_libraries(test-otel-adapter-contract PRIVATE ascii-chat-static-lib-with-deps gotel::testing ${MIMALLOC_LIBRARIES})
         target_include_directories(test-otel-adapter-contract PRIVATE ${CMAKE_BINARY_DIR}/generated)
@@ -2590,7 +2771,7 @@ if(BUILD_TESTS AND TARGET ascii-panic-report AND NOT EMSCRIPTEN)
         set_property(TEST python-panic APPEND PROPERTY ENVIRONMENT
             "LD_PRELOAD=${ASAN_RUNTIME_LIBRARY}" "PYTHONMALLOC=malloc")
     endif()
-    foreach(_test_build_target IN ITEMS tests tests-criterion-build tests-lib-build)
+    foreach(_test_build_target IN ITEMS tests-lib-build)
         if(TARGET ${_test_build_target})
             add_dependencies(${_test_build_target} ascii-panic-report)
         endif()

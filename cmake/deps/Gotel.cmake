@@ -29,6 +29,13 @@ add_library(asciichat-gotel-sqlite INTERFACE)
 if(SQLITE3_INCLUDE_DIRS)
     target_include_directories(asciichat-gotel-sqlite INTERFACE ${SQLITE3_INCLUDE_DIRS})
 endif()
+if(WIN32 AND VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
+    # FindSQLite3 may expose only the Windows library filename (for example
+    # `sqlite3.lib`). Gotel is built in its dependency-cache directory, so the
+    # consuming link command must also receive the vcpkg library directory.
+    target_link_directories(asciichat-gotel-sqlite INTERFACE
+        "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/$<CONFIG>/lib")
+endif()
 target_link_libraries(asciichat-gotel-sqlite INTERFACE ${SQLITE3_LIBRARIES})
 set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
     "Use ascii-chat's SQLite3 dependency" FORCE)
@@ -86,13 +93,30 @@ set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared} CACHE BOOL
 # FetchContent from running its git update step on every configure: updating a
 # populated git checkout refreshes all source mtimes, which makes Ninja treat
 # the entire gotel/nghttp2/otlp-c dependency tree as stale on the next build.
-# First-time population still occurs when a source directory is absent.
+# A restored CI cache may contain the build directory without the source
+# directories, however; in that case FetchContent must be allowed to populate
+# the missing sources during this configure.
 set(_asciichat_parent_fetchcontent_updates_disconnected
     ${FETCHCONTENT_UPDATES_DISCONNECTED})
 set(_asciichat_parent_fetchcontent_fully_disconnected
     ${FETCHCONTENT_FULLY_DISCONNECTED})
-set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
-set(FETCHCONTENT_FULLY_DISCONNECTED ON)
+set(_asciichat_gotel_sources_ready TRUE)
+foreach(_asciichat_gotel_source
+        "${_asciichat_gotel_cache_dir}/otlp_c-src/src/http_client.h"
+        "${_asciichat_gotel_cache_dir}/sequel-src/CMakeLists.txt"
+        "${_asciichat_gotel_cache_dir}/gotel_nghttp2-src/CMakeLists.txt"
+        "${_asciichat_gotel_cache_dir}/gotel_pcre2-src/CMakeLists.txt")
+    if(NOT EXISTS "${_asciichat_gotel_source}")
+        set(_asciichat_gotel_sources_ready FALSE)
+    endif()
+endforeach()
+if(_asciichat_gotel_sources_ready)
+    set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
+    set(FETCHCONTENT_FULLY_DISCONNECTED ON)
+else()
+    set(FETCHCONTENT_UPDATES_DISCONNECTED OFF)
+    set(FETCHCONTENT_FULLY_DISCONNECTED OFF)
+endif()
 set(_asciichat_fetchcontent_base_dir_was_defined FALSE)
 if(DEFINED FETCHCONTENT_BASE_DIR)
     set(_asciichat_fetchcontent_base_dir_was_defined TRUE)
@@ -200,6 +224,8 @@ unset(_asciichat_parent_fetchcontent_base_dir)
 unset(_asciichat_fetchcontent_base_dir_was_defined)
 unset(_asciichat_parent_fetchcontent_updates_disconnected)
 unset(_asciichat_parent_fetchcontent_fully_disconnected)
+unset(_asciichat_gotel_sources_ready)
+unset(_asciichat_gotel_source)
 add_compile_definitions(GOTEL_WITH_SQLITE=1)
 include_directories($<TARGET_PROPERTY:gotel,INTERFACE_INCLUDE_DIRECTORIES>
                     $<TARGET_PROPERTY:otlp_c,INTERFACE_INCLUDE_DIRECTORIES>)
