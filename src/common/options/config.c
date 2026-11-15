@@ -176,6 +176,8 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   const bool loaded = flags_config_load_toml(context, config_path);
   flags_destroy_preserving_storage(context);
   flags_schema_builder_destroy(builder);
+  if (!loaded && !strict)
+    return ASCIICHAT_OK;
   if (!loaded)
     return SET_ERRNO(ERROR_CONFIG, "Failed to load configuration file '%s'", config_path);
   return ASCIICHAT_OK;
