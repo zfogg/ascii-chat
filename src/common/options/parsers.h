@@ -16,7 +16,7 @@
 #include <stdbool.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
-#include "../log/log.h"
+#include <ascii-chat/log/log.h>
 
 /**
  * @brief Parse color setting option (--color flag)

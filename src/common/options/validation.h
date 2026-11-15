@@ -23,7 +23,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "../common.h"
+#include <ascii-chat/common.h>
 #include <options.h>
 
 #ifdef __cplusplus

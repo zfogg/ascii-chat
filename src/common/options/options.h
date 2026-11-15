@@ -217,7 +217,9 @@
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/render/render.h>
-#include "../discovery/strings.h"
+#include <ascii-chat/log/types.h>
+#include <ascii-chat/common/limits.h>
+#include <ascii-chat/discovery/strings.h>
 #include "explicit.h"
 
 /** @brief Backward compatibility aliases for color mode enum values */
@@ -550,7 +552,7 @@ typedef enum { AUDIO_CAPTURE_SOURCE_AUTO = 0, AUDIO_CAPTURE_SOURCE_MIC = 1, AUDI
  * - AUTO-TRUST ENDPOINTS (discovery_keys.c): localhost AND official server
  */
 #ifdef NDEBUG
-#include "../network/acip/acds.h"
+#include <ascii-chat/network/acip/acds.h>
 #define OPT_ENDPOINT_DISCOVERY_SERVICE ACDS_OFFICIAL_SERVER_HOSTNAME
 #else
 #define OPT_ENDPOINT_DISCOVERY_SERVICE "localhost"

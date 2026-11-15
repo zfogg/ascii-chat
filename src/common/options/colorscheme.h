@@ -40,7 +40,7 @@
 #define COLORSCHEME_LOG_COLOR_COUNT 8
 #define COLORSCHEME_SGR_BUFFER_SIZE 32
 
-#include "../common.h"
+#include <ascii-chat/common.h>
 #include <libplatform/terminal.h>
 #include <libplatform/mutex.h>
 #include <ascii-chat/video/rgba/image.h>

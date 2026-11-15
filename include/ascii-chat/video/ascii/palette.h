@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ascii-chat/api.h>
+
 /**
  * @file palette.h
  * @brief ASCII Palette Management for Video-to-ASCII Conversion
