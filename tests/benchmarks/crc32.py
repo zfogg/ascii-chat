@@ -35,19 +35,20 @@ baseline = ["-march=x86-64"] if arch in ("amd64", "x86_64") else (
 with standalone_output_directory("crc32") as out:
     masked_cpu = out / "masked_cpu.c"
     masked_cpu.write_text(
-        '#include <ascii-chat/platform/cpu.h>\n'
+        '#include <libplatform/cpu.h>\n'
         'unsigned crc32_test_probes;\n'
         'uint32_t platform_cpu_features(void) { ++crc32_test_probes; return 0; }\n'
     )
     for name, defines, cpu in [
-        ("auto", ["-DHAVE_CRC32_HW"], ROOT / "lib/platform/cpu.c"),
-        ("disabled", [], ROOT / "lib/platform/cpu.c"),
+        ("auto", ["-DHAVE_CRC32_HW"], ROOT / "deps/ascii-chat-deps/libplatform/lib/cpu.c"),
+        ("disabled", [], ROOT / "deps/ascii-chat-deps/libplatform/lib/cpu.c"),
         ("masked", ["-DHAVE_CRC32_HW", "-DTEST_MASKED_CPU"], masked_cpu),
     ]:
         exe = out / (name + (".exe" if os.name == "nt" else ""))
         command = [
             args.cc, "-std=c17", "-O2", "-Wall", "-Wextra", "-Werror", *coverage_flags(),
             *baseline, *defines, "-I", str(ROOT / "include"),
+            "-I", str(ROOT / "deps/ascii-chat-deps/libplatform/include"),
             str(ROOT / "lib/network/crc32.c"), str(cpu), str(HERE / "test.c"),
             "-o", str(exe),
         ]
