@@ -976,7 +976,6 @@ typedef struct options_state {
   // Network Options
   // ============================================================================
 #ifndef __EMSCRIPTEN__
-  bool address_explicit; ///< Native client destination overrides automatic LAN discovery
 #endif
   char address[OPTIONS_BUFF_SIZE];                   ///< Server address (client) or bind address (server)
   char address6[OPTIONS_BUFF_SIZE];                  ///< IPv6 bind address (server only)
@@ -1071,7 +1070,6 @@ typedef struct options_state {
   int force_utf8;                                                ///< UTF-8 support setting (auto/true/false)
   int stats_interval;                                            ///< Periodic plain statistics on stdout; zero disables.
   int fps;                                                       ///< Target framerate (0 = auto, 1-144)
-  bool fps_explicitly_set;                                       ///< True if FPS was explicitly configured by the user
   bool face_follow;                                              ///< Automatically frame and follow the selected face
   bool face_follow_debug;                                        ///< Developer diagnostic face outline
   bool flip_x;                                                   ///< Effective horizontal orientation
@@ -1111,7 +1109,6 @@ typedef struct options_state {
   bool stabilize;                                    ///< Reduce frame-to-frame character flicker
   bool stabilize_explicit;                           ///< Runtime preference was explicitly changed
   ascii_renderer_t renderer;                         ///< Character selection algorithm
-  bool renderer_explicit;                            ///< Renderer was explicitly selected by the user
   bool stretch;                                      ///< Allow aspect ratio distortion
   char video_codec[OPTIONS_VIDEO_CODEC_BUFFER_SIZE]; ///< Video codec (auto, hevc, h264, raw) - default: auto
 

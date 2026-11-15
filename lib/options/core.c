@@ -650,7 +650,6 @@ options_t options_t_new(void) {
   opts.splash_screen_explicitly_set = OPT_SPLASH_SCREEN_EXPLICITLY_SET_DEFAULT;
   opts.status_screen = OPT_STATUS_SCREEN_DEFAULT;
   opts.status_screen_explicitly_set = OPT_STATUS_SCREEN_EXPLICITLY_SET_DEFAULT;
-  opts.fps_explicitly_set = false;
   opts.enable_keepawake = OPT_ENABLE_KEEPAWAKE_DEFAULT;
   opts.disable_keepawake = OPT_DISABLE_KEEPAWAKE_DEFAULT;
   opts.no_check_update = OPT_NO_CHECK_UPDATE_DEFAULT;
@@ -1640,19 +1639,17 @@ static void initialize_mode_defaults(options_t *opts, asciichat_mode_t detected_
 
 static void build_options_schema(void) {}
 
-static asciichat_error_t load_options_config(options_t *opts, asciichat_mode_t detected_mode, bool *fps_set_by_config) {
+static asciichat_error_t load_options_config(options_t *opts, asciichat_mode_t detected_mode) {
 #ifdef EMSCRIPTEN_BUILD
   // Browser options are supplied through OptionsBinding.  There is no native
   // user/system configuration directory in a WASM module, and probing it
   // would make startup depend on the host filesystem emulation.
   (void)opts;
   (void)detected_mode;
-  *fps_set_by_config = false;
   return ASCIICHAT_OK;
 #endif
   // Isolated MCP renderers never load user/system configuration.
   if (SAFE_GETENV("ASCII_CHAT_MCP_WORKER")) {
-    *fps_set_by_config = false;
     return ASCIICHAT_OK;
   }
   // Extract binary-level options BEFORE config loading (config may reset them)
@@ -1671,7 +1668,6 @@ static asciichat_error_t load_options_config(options_t *opts, asciichat_mode_t d
     if (config_result != ASCIICHAT_OK)
       return config_result;
   }
-  *fps_set_by_config = opts->fps != OPT_FPS_DEFAULT;
   // Telemetry CLI values are parsed again after config and environment resolution.
   SAFE_STRNCPY(binary_before_config.otel_log_level, opts->otel_log_level, sizeof(binary_before_config.otel_log_level));
   SAFE_STRNCPY(binary_before_config.otel_endpoint, opts->otel_endpoint, sizeof(binary_before_config.otel_endpoint));
@@ -1855,18 +1851,6 @@ static asciichat_error_t parse_mode_options(options_t *opts, asciichat_mode_t de
     return result;
   }
   return ASCIICHAT_OK;
-}
-
-static void record_explicit_fps(options_t *opts, int mode_argc, char **mode_argv, bool fps_set_by_config) {
-  bool fps_set_by_cli = false;
-  for (int i = 0; i < mode_argc; i++) {
-    if (mode_argv[i] && (strcmp(mode_argv[i], "--fps") == 0 || strncmp(mode_argv[i], "--fps=", strlen("--fps=")) == 0)) {
-      fps_set_by_cli = true;
-      break;
-    }
-  }
-  const char *fps_env = SAFE_GETENV("ASCII_CHAT_FPS");
-  opts->fps_explicitly_set = fps_set_by_config || fps_set_by_cli || (fps_env && fps_env[0] != '\0');
 }
 
 static void record_explicit_stabilize(options_t *opts, int mode_argc, char **mode_argv) {
@@ -2563,8 +2547,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   initialize_mode_defaults(&opts, detected_mode, detected_session_string);
   build_options_schema();
   // Apply defaults, config, environment, then CLI values in increasing precedence.
-  bool fps_set_by_config = false;
-  result = load_options_config(&opts, detected_mode, &fps_set_by_config);
+  result = load_options_config(&opts, detected_mode);
   if (result != ASCIICHAT_OK) {
     goto cleanup;
   }
@@ -2574,7 +2557,6 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     goto cleanup;
   }
-  record_explicit_fps(&opts, mode_args.argc, mode_args.argv, fps_set_by_config);
   result = validate_custom_palette(&opts);
   if (result != ASCIICHAT_OK) {
     goto cleanup;

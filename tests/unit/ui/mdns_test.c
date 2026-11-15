@@ -24,12 +24,8 @@ Test(mdns_selection, empty_and_noninteractive_lists_never_select_a_server) {
 Test(mdns_selection, explicit_localhost_and_websocket_addresses_disable_automatic_discovery) {
   options_t options = {0};
   char *error = NULL;
-  cr_assert_not(options.address_explicit);
   cr_assert_eq(parse_client_address("localhost", &options, NULL, 0, &error), 1);
-  cr_assert(options.address_explicit);
   cr_assert_str_eq(options.address, "localhost");
-  options.address_explicit = false;
   cr_assert_eq(parse_client_address("ws://localhost:27226", &options, NULL, 0, &error), 1);
-  cr_assert(options.address_explicit);
   cr_assert_str_eq(options.address, "ws://localhost:27226");
 }

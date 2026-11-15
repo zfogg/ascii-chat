@@ -207,7 +207,6 @@ static const options_t g_default_options = (options_t){
     .render_mode = OPT_RENDER_MODE_DEFAULT,
     .show_capabilities = OPT_SHOW_CAPABILITIES_DEFAULT,
     .fps = OPT_FPS_DEFAULT,
-    .fps_explicitly_set = false,
     .palette_type = OPT_PALETTE_TYPE_DEFAULT,
     .palette_custom = OPT_STRING_EMPTY_DEFAULT,
     .palette_custom_set = OPT_PALETTE_CUSTOM_SET_DEFAULT,
