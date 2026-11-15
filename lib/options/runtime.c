@@ -468,6 +468,8 @@ void options_state_destroy(void) {
     return;
   }
 
+  options_explicit_state_destroy();
+
   /* Shutdown lifecycle to mark as no longer initialized */
   lifecycle_shutdown(&g_options_lifecycle);
 

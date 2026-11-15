@@ -77,6 +77,7 @@
 #include <options/colorscheme.h>
 #include <libplatform/system.h>
 #include <libflags/flags.h>
+#include <libflags/explicit.h>
 #include <libflags/builder.h>
 #include <libflags/commands.h>
 #include <yyjson.h>
@@ -99,6 +100,25 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+static flags_explicit_snapshot_t *g_explicit_snapshot;
+
+bool options_was_explicitly_set(const char *option_name) {
+  return flags_explicit_snapshot_was_set(g_explicit_snapshot, option_name);
+}
+
+void options_explicit_state_destroy(void) {
+  flags_explicit_snapshot_destroy(g_explicit_snapshot);
+  g_explicit_snapshot = NULL;
+}
+
+bool options_explicit_state_merge(const flags_context_t *context) {
+  if (!g_explicit_snapshot)
+    g_explicit_snapshot = flags_explicit_snapshot_create(context);
+  else if (!flags_explicit_snapshot_merge(g_explicit_snapshot, context))
+    return false;
+  return g_explicit_snapshot != NULL;
+}
 
 static void options_flags_log_event(const flags_log_event_t *event, void *user_data) {
   (void)user_data;
@@ -1814,6 +1834,8 @@ static asciichat_error_t parse_mode_options(options_t *opts, asciichat_mode_t de
   flags_parse_result_t parsed = {0};
   const bool parsed_ok = flags_parse(flags_context, mode_argc, mode_argv, &parsed);
   const bool schema_valid = parsed_ok && flags_validate(flags_context);
+  if (parsed_ok && schema_valid && !options_explicit_state_merge(flags_context))
+    return SET_ERRNO(ERROR_MEMORY, "Failed to record explicit option state");
   if (parsed_ok && schema_valid)
     options_resolve_flip_x(opts, flags_was_explicitly_set(flags_context, "flip-x"));
   flags_destroy_preserving_storage(flags_context);

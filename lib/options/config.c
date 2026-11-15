@@ -27,6 +27,7 @@
 #include <libplatform/filesystem.h>
 #include <libflags/builder.h>
 #include <libflags/config.h>
+#include <libflags/explicit.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/video/ascii/palette.h>
@@ -176,6 +177,8 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   }
 
   const bool loaded = flags_config_load_toml(context, config_path);
+  if (loaded && !options_explicit_state_merge(context))
+    return SET_ERRNO(ERROR_MEMORY, "Failed to record explicit option state");
   if (loaded)
     options_resolve_flip_x(opts, flags_was_explicitly_set(context, "flip-x"));
   flags_destroy_preserving_storage(context);
