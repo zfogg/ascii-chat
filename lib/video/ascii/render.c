@@ -36,6 +36,20 @@
 #define ascii_render ascii_legacy_render
 #define ascii_render_halfblocks ascii_legacy_render_halfblocks
 
+outbuf_t *ascii_legacy_render_set_output_target(outbuf_t *target);
+ascii_stabilizer_t *ascii_legacy_stabilizer_set_target(ascii_stabilizer_t *state);
+void ascii_legacy_stabilizer_reset(ascii_stabilizer_t *state);
+asciichat_error_t ascii_legacy_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height, uint64_t configuration);
+uint32_t ascii_legacy_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate, uint64_t candidate_error,
+                                        uint64_t previous_error, uint32_t color, uint64_t elapsed_ns, uint32_t *stabilized_color);
+asciichat_error_t ascii_legacy_frame_init(ascii_frame_t *frame, const image_t *image, const char *palette);
+void ascii_legacy_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows, const simd_cells_t *ops);
+char *ascii_legacy_frame_finish(ascii_frame_t *frame);
+asciichat_error_t ascii_legacy_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb, int width, int height, int *stride, ascii_color_t mode);
+void ascii_legacy_frame_emit_halfrow(ascii_frame_t *frame, ascii_color_t mode, bool more_rows, const simd_cells_t *ops);
+char *ascii_legacy_render(const image_t *image, const char *palette, ascii_color_t mode, bool background, bool dither, const simd_cells_t *ops);
+char *ascii_legacy_render_halfblocks(const uint8_t *rgb, int width, int height, int stride, ascii_color_t mode, const simd_cells_t *ops);
+
 static _Thread_local outbuf_t *g_output_target;
 #define ASCII_RENDER_WORKSPACE_POOL_SIZE 4
 static _Thread_local uint32_t g_scratch_workspace[ASCII_RENDER_WORKSPACE_POOL_SIZE][IMAGE_MAX_WIDTH * ASCII_SCRATCH_PLANES];
