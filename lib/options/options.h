@@ -220,7 +220,6 @@
 #include <ascii-chat/log/types.h>
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/discovery/strings.h>
-#include "explicit.h"
 
 /** @brief Backward compatibility aliases for color mode enum values */
 #define COLOR_MODE_AUTO TERM_COLOR_AUTO           ///< Auto-detect color support
