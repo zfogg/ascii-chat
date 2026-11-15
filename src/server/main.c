@@ -74,7 +74,7 @@
 #ifdef _WIN32
 #include <io.h>
 #else
-#include <unistd.h> // For write(), STDERR_FILENO (signal handler), dup(), dup2()
+#include <unistd.h> // For write() and STDERR_FILENO in the signal handler
 #include <fcntl.h>  // For open() and O_WRONLY
 #endif
 
