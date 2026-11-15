@@ -28,7 +28,16 @@ asciichat_error_t client_crypto_init(client_connection_t *connection, const char
     // Connect to the discovery service URL; an explicit URL port overrides the default.
     acds_client_config_t acds_config;
     acds_client_config_init_defaults(&acds_config);
-    SAFE_STRNCPY(acds_config.server_address, GET_OPTION(discovery_server), sizeof(acds_config.server_address));
+    char discovery_url[URL_BUFFER_SIZE];
+    const char *discovery_service = GET_OPTION(discovery_server);
+    if (GET_OPTION(discovery_port) != ACIP_DISCOVERY_DEFAULT_PORT) {
+      asciichat_error_t override_result = connection_endpoint_override_port(discovery_service, (uint16_t)GET_OPTION(discovery_port),
+                                                                            discovery_url, sizeof(discovery_url));
+      if (override_result != ASCIICHAT_OK)
+        return SET_ERRNO(ERROR_USAGE, "Invalid --discovery-service URL for --discovery-service-port override");
+      discovery_service = discovery_url;
+    }
+    SAFE_STRNCPY(acds_config.server_address, discovery_service, sizeof(acds_config.server_address));
     acds_config.server_port = ACIP_DISCOVERY_DEFAULT_PORT;
     acds_config.timeout_ms = 5 * MS_PER_SEC_INT;
     acds_config.identity_key = GET_OPTION(encrypt_key);

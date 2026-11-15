@@ -1683,8 +1683,18 @@ static void server_register_discovery(server_discovery_startup_t *startup, int p
     return;
   }
   // Security is configured, proceed with ACDS connection
+  char discovery_url[URL_BUFFER_SIZE];
   const char *acds_server = GET_OPTION(discovery_server);
   uint16_t acds_port = ACIP_DISCOVERY_DEFAULT_PORT;
+  if (GET_OPTION(discovery_port) != ACIP_DISCOVERY_DEFAULT_PORT) {
+    asciichat_error_t override_result = connection_endpoint_override_port(acds_server, (uint16_t)GET_OPTION(discovery_port),
+                                                                          discovery_url, sizeof(discovery_url));
+    if (override_result != ASCIICHAT_OK) {
+      log_error("Invalid --discovery-service URL for --discovery-service-port override");
+      return;
+    }
+    acds_server = discovery_url;
+  }
 
   log_info("Attempting to create session on ACDS server at %s...", acds_server);
 

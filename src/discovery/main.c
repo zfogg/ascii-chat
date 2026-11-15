@@ -67,6 +67,7 @@
 
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/network/connection_endpoint.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/endian.h>
@@ -850,7 +851,17 @@ int discovery_main(void) {
 
   log_debug("Discovery: is_initiator=%d, port=%d", is_initiator, port_int);
 
+  char service_url_override[URL_BUFFER_SIZE];
   const char *service_url = GET_OPTION(discovery_server);
+  if (GET_OPTION(discovery_port) != ACIP_DISCOVERY_DEFAULT_PORT) {
+    asciichat_error_t override_result = connection_endpoint_override_port(service_url, (uint16_t)GET_OPTION(discovery_port),
+                                                                          service_url_override, sizeof(service_url_override));
+    if (override_result != ASCIICHAT_OK) {
+      log_fatal("Invalid --discovery-service URL for --discovery-service-port override");
+      return ERROR_USAGE;
+    }
+    service_url = service_url_override;
+  }
 
   discovery_ui_state_t ui = {0};
   asciichat_error_t ui_result = mutex_init(&ui.mutex, "discovery_ui");
