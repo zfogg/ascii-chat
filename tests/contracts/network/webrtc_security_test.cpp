@@ -78,7 +78,8 @@ static void initialize(endpoint_t *endpoint, bool server, uint8_t mode, const ch
   endpoint->security = SAFE_CALLOC(1, sizeof(acip_security_t), acip_security_t *);
   REQUIRE(endpoint->security);
   endpoint->security->mode = mode;
-  REQUIRE(((password ? crypto_handshake_init_with_password("webrtc_test", &endpoint->security->handshake, server, password) : crypto_handshake_init("webrtc_test", &endpoint->security->handshake, server))) == (ASCIICHAT_OK));
+  REQUIRE(((password ? crypto_handshake_init_with_password("webrtc_test", &endpoint->security->handshake, server, password)
+                     : crypto_handshake_init("webrtc_test", &endpoint->security->handshake, server))) == (ASCIICHAT_OK));
   webrtc_config_t config = {.bind_address = "127.0.0.1", .on_local_description = description, .on_local_candidate = candidate, .on_datachannel_open = opened, .user_data = endpoint};
   REQUIRE((webrtc_create_peer_connection(&config, &endpoint->pc)) == (ASCIICHAT_OK));
 }

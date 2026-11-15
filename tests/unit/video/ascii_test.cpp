@@ -37,11 +37,14 @@ void ascii_test_fini(void) {
 TEST_CASE("ascii/image_size_property", "[ascii]") {
   int width = GENERATE(1, 2, 4, 8, 16, 32, 64);
   int height = GENERATE(1, 2, 4, 8, 16, 32, 64);
-  if (!(width > 0 && width <= 64)) SKIP("assumption not satisfied");
-  if (!(height > 0 && height <= 64)) SKIP("assumption not satisfied");
+  if (!(width > 0 && width <= 64))
+    SKIP("assumption not satisfied");
+  if (!(height > 0 && height <= 64))
+    SKIP("assumption not satisfied");
 
   image_t *img = image_new(width, height);
-  if (!(img != NULL)) SKIP("assumption not satisfied");
+  if (!(img != NULL))
+    SKIP("assumption not satisfied");
 
   // Fill with gradient pattern
   for (int i = 0; i < width * height; i++) {
@@ -408,7 +411,8 @@ TEST_CASE("ascii/ascii_convert_with_capabilities_different_color_support", "[asc
 // Theory: Width padding property - padding should preserve content and add correct spacing
 TEST_CASE("ascii/width_padding_property", "[ascii]") {
   int pad_width = GENERATE(0, 1, 3, 5, 10, 20);
-  if (!(pad_width >= 0 && pad_width <= 20)) SKIP("assumption not satisfied");
+  if (!(pad_width >= 0 && pad_width <= 20))
+    SKIP("assumption not satisfied");
 
   const char *frame = "Hello\nWorld\nTest";
   char *result = ascii_pad_frame_width(frame, pad_width);
@@ -428,7 +432,8 @@ TEST_CASE("ascii/width_padding_property", "[ascii]") {
 // Theory: Height padding property - padding should preserve content and add correct spacing
 TEST_CASE("ascii/height_padding_property", "[ascii]") {
   int pad_height = GENERATE(0, 1, 2, 5, 10);
-  if (!(pad_height >= 0 && pad_height <= 10)) SKIP("assumption not satisfied");
+  if (!(pad_height >= 0 && pad_height <= 10))
+    SKIP("assumption not satisfied");
 
   const char *frame = "Hello\nWorld\nTest";
   char *result = ascii_pad_frame_height(frame, pad_height);
@@ -1020,8 +1025,8 @@ TEST_CASE("ascii/ascii_create_grid_colored_rows_do_not_overlap", "[ascii]") {
   char plain[256];
   strip_ansi_codes(grid, plain, sizeof(plain));
   REQUIRE(std::strcmp((plain), ("AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB\r\n"
-                                  "AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB\r\n"
-                                  "AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB")) == 0);
+                                "AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB\r\n"
+                                "AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB")) == 0);
   REQUIRE((grid[size - 1]) == ('m')); // Ends with a complete reset, without a scrolling newline.
   SAFE_FREE(grid);
 }

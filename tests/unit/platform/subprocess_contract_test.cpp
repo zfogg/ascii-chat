@@ -41,9 +41,7 @@ TEST_CASE("subprocess_contract/executable_is_independent_of_display_name_and_exi
   REQUIRE(std::strcmp((output), ("")) == 0);
   REQUIRE((platform_execute_subprocess("/bin/sh", exit_args, NULL, 0, NULL, NULL)) == (23));
   const char *missing[] = {"missing", NULL};
-  REQUIRE(platform_execute_subprocess("/definitely-missing-ascii-chat-program", missing, output, sizeof(output),
-                                           NULL, NULL),
-               127);
+  REQUIRE(platform_execute_subprocess("/definitely-missing-ascii-chat-program", missing, output, sizeof(output), NULL, NULL), 127);
   REQUIRE(std::strcmp(output, "") == 0);
 }
 TEST_CASE("subprocess_contract/captured_output_has_exact_capacity_and_overflow_is_drained", "[subprocess_contract]") {

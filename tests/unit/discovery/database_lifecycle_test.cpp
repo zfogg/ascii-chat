@@ -143,9 +143,9 @@ TEST_CASE("database_lifecycle/transport_endpoints_are_hidden_after_host_changes"
 
 TEST_CASE("database_lifecycle/transport_storage_failure_rolls_back_session_creation", "[database_lifecycle]") {
   REQUIRE(((sqlite3_exec(db,
-                                     "CREATE TRIGGER reject_transport BEFORE INSERT ON session_transports BEGIN SELECT "
-                                     "RAISE(FAIL, 'test rejection'); END;",
-                                     NULL, NULL, NULL))) == (SQLITE_OK));
+                         "CREATE TRIGGER reject_transport BEFORE INSERT ON session_transports BEGIN SELECT "
+                         "RAISE(FAIL, 'test rejection'); END;",
+                         NULL, NULL, NULL))) == (SQLITE_OK));
   acip_session_create_t request = {.session_type = SESSION_TYPE_WEBRTC, .max_participants = 4};
   uint8_t keys[1][32] = {{0}}, metadata[10] = {'A', 'C', 'Q', 'T', 1};
   acip_session_created_t response;
@@ -172,9 +172,9 @@ TEST_CASE("database_lifecycle/successor_transports_follow_the_host_and_failed_re
   REQUIRE((length) == (10));
   REQUIRE(std::memcmp((output), (fresh_metadata), (10)) == 0);
   REQUIRE(((sqlite3_exec(db,
-                                     "CREATE TRIGGER reject_host_transport BEFORE INSERT ON session_transport_hosts "
-                                     "BEGIN SELECT RAISE(FAIL, 'test rejection'); END;",
-                                     NULL, NULL, NULL))) == (SQLITE_OK));
+                         "CREATE TRIGGER reject_host_transport BEFORE INSERT ON session_transport_hosts "
+                         "BEGIN SELECT RAISE(FAIL, 'test rejection'); END;",
+                         NULL, NULL, NULL))) == (SQLITE_OK));
   REQUIRE(((database_session_update_host_with_transport(db, session.session_id, second, "127.0.0.3", 31000, 0, old_metadata, 10))) != (ASCIICHAT_OK));
   session_entry_t *stored = database_session_find_by_id(db, session.session_id);
   REQUIRE((stored) != nullptr);
@@ -250,9 +250,9 @@ static void *concurrent_session_creation(void *data) {
 
 TEST_CASE("database_lifecycle/failed_host_refresh_preserves_concurrent_session_creations", "[database_lifecycle]") {
   REQUIRE(((sqlite3_exec(db,
-                                     "CREATE TRIGGER reject_host_refresh BEFORE INSERT ON session_transport_hosts "
-                                     "BEGIN SELECT RAISE(FAIL, 'test rejection'); END;",
-                                     NULL, NULL, NULL))) == (SQLITE_OK));
+                         "CREATE TRIGGER reject_host_refresh BEFORE INSERT ON session_transport_hosts "
+                         "BEGIN SELECT RAISE(FAIL, 'test rejection'); END;",
+                         NULL, NULL, NULL))) == (SQLITE_OK));
   host_refresh_race_t race = {0};
   platform_thread_t refresh, creation;
   REQUIRE((platform_thread_create(&refresh, "host_refresh", concurrent_failed_host_refresh, &race)) == (ASCIICHAT_OK));

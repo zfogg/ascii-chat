@@ -147,7 +147,8 @@ TEST_CASE("crypto/password_verification", "[crypto]") {
 // Replaces: encrypt_decrypt_password_based and encrypt_decrypt_key_exchange
 TEST_CASE("crypto/encryption_roundtrip_property", "[crypto]") {
   size_t data_size = GENERATE(1u, 16u, 64u, 256u, 512u, 1024u, 2048u);
-  if (!(data_size > 0 && data_size <= 2048)) SKIP("assumption not satisfied");
+  if (!(data_size > 0 && data_size <= 2048))
+    SKIP("assumption not satisfied");
 
   crypto_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
@@ -180,7 +181,8 @@ TEST_CASE("crypto/encryption_roundtrip_property", "[crypto]") {
 // Theory: Key exchange encryption roundtrip
 TEST_CASE("crypto/key_exchange_roundtrip_property", "[crypto]") {
   size_t data_size = GENERATE(1u, 32u, 128u, 512u, 1024u);
-  if (!(data_size > 0 && data_size <= 1024)) SKIP("assumption not satisfied");
+  if (!(data_size > 0 && data_size <= 1024))
+    SKIP("assumption not satisfied");
 
   crypto_context_t ctx1, ctx2;
   memset(&ctx1, 0, sizeof(ctx1));
@@ -385,7 +387,8 @@ TEST_CASE("crypto/get_status", "[crypto]") {
 // Theory: Nonce uniqueness property - same plaintext encrypted twice produces different ciphertext
 TEST_CASE("crypto/nonce_uniqueness_property", "[crypto]") {
   size_t data_size = GENERATE(8u, 64u, 256u);
-  if (!(data_size > 0 && data_size <= 256)) SKIP("assumption not satisfied");
+  if (!(data_size > 0 && data_size <= 256))
+    SKIP("assumption not satisfied");
 
   crypto_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));

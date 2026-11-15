@@ -877,17 +877,22 @@ TEST_CASE("ringbuffer/fifo_ordering_property", "[ringbuffer]") {
   const size_t capacity = GENERATE(Catch::Generators::from_range(fifo_capacities));
   const size_t num_ops = GENERATE(Catch::Generators::from_range(fifo_operation_counts));
   // Skip combinations where num_ops > capacity (would require wraparound logic)
-  if (!(capacity >= 2)) SKIP("assumption not satisfied");
-  if (!(num_ops >= 1)) SKIP("assumption not satisfied");
-  if (!(num_ops <= capacity)) SKIP("assumption not satisfied"); // Only fill buffer, not overflow
+  if (!(capacity >= 2))
+    SKIP("assumption not satisfied");
+  if (!(num_ops >= 1))
+    SKIP("assumption not satisfied");
+  if (!(num_ops <= capacity))
+    SKIP("assumption not satisfied"); // Only fill buffer, not overflow
 
   ringbuffer_t *rb = ringbuffer_create(sizeof(int), capacity);
-  if (!(rb != NULL)) SKIP("assumption not satisfied");
+  if (!(rb != NULL))
+    SKIP("assumption not satisfied");
 
   // PROPERTY: Write sequence of integers
   int *written_values;
   written_values = SAFE_MALLOC(num_ops * sizeof(int), int *);
-  if (!(written_values != NULL)) SKIP("assumption not satisfied");
+  if (!(written_values != NULL))
+    SKIP("assumption not satisfied");
 
   for (size_t i = 0; i < num_ops; i++) {
     written_values[i] = (int)i;

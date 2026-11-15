@@ -225,8 +225,10 @@ TEST_CASE("server_main_contract/ice_relay_encodes_two_strings_and_bounds_combine
   REQUIRE(std::memcmp((header.recipient_id), (recipient), (16)) == 0);
   REQUIRE(std::memcmp((header.sender_id), (g_server_participant_id), (16)) == 0);
   REQUIRE((contract_length) == (sizeof(header) + 12));
-  REQUIRE(std::memcmp((contract_payload + sizeof(header)), ("candidate\0"
-                             "0\0"), (12)) == 0);
+  REQUIRE(std::memcmp((contract_payload + sizeof(header)),
+                      ("candidate\0"
+                       "0\0"),
+                      (12)) == 0);
   char oversized[8193];
   memset(oversized, 'x', sizeof(oversized) - 1);
   oversized[sizeof(oversized) - 1] = 0;

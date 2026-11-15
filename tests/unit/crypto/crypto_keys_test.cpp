@@ -533,7 +533,8 @@ TEST_CASE("crypto_keys/format_public_key_gpg", "[crypto_keys]") {
 
 TEST_CASE("crypto_keys/key_type_validation", "[crypto_keys]") {
   key_type_t key_type = GENERATE(KEY_TYPE_UNKNOWN, KEY_TYPE_ED25519, KEY_TYPE_X25519, KEY_TYPE_GPG);
-  if (!(key_type >= KEY_TYPE_UNKNOWN && key_type <= KEY_TYPE_GPG)) SKIP("assumption not satisfied");
+  if (!(key_type >= KEY_TYPE_UNKNOWN && key_type <= KEY_TYPE_GPG))
+    SKIP("assumption not satisfied");
 
   public_key_t key;
   memset(&key, 0, sizeof(key));

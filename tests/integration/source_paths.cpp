@@ -79,13 +79,15 @@ TEST_CASE("source_paths/project_relative_paths_and_symbol_display", "[source_pat
 
   char display_path[512];
   bool external_source = false;
-  REQUIRE((symbol_format_source_path("ucrtbase.dll", "D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl", display_path, sizeof(display_path), &external_source, NULL)) == (ASCIICHAT_OK));
+  REQUIRE((symbol_format_source_path("ucrtbase.dll", "D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl", display_path, sizeof(display_path), &external_source, NULL)) ==
+          (ASCIICHAT_OK));
   REQUIRE(external_source);
   const char *truncation_prefix = terminal_supports_utf8() ? "\xE2\x80\xA6\\" : "...\\";
   char expected_external_path[512];
   safe_snprintf(expected_external_path, sizeof(expected_external_path), "%scrt\\vcstartup\\src\\startup\\exe_common.inl", truncation_prefix);
   REQUIRE((strcmp(display_path, expected_external_path)) == (0));
-  REQUIRE((symbol_format_source_path("ascii-chat.exe", "D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl", display_path, sizeof(display_path), &external_source, NULL)) == (ASCIICHAT_OK));
+  REQUIRE((symbol_format_source_path("ascii-chat.exe", "D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl", display_path, sizeof(display_path), &external_source, NULL)) ==
+          (ASCIICHAT_OK));
   REQUIRE(external_source);
   REQUIRE((strcmp(display_path, expected_external_path)) == (0));
 
@@ -94,14 +96,13 @@ TEST_CASE("source_paths/project_relative_paths_and_symbol_display", "[source_pat
   REQUIRE((strcmp(display_path, "vendor/runtime/file.c")) == (0));
 
   if (ASCIICHAT_SOURCE_ROOT[0]) {
-    REQUIRE((symbol_format_source_path("test-error-popup-fixture.exe", ASCIICHAT_SOURCE_ROOT "\\tests\\standalone\\errno\\error_popup_fixture.c", display_path, sizeof(display_path),
-                                                   &external_source, ASCIICHAT_OWNED_SOURCE_DIRS)) == (ASCIICHAT_OK));
+    REQUIRE((symbol_format_source_path("test-error-popup-fixture.exe", ASCIICHAT_SOURCE_ROOT "\\tests\\standalone\\errno\\error_popup_fixture.c", display_path, sizeof(display_path), &external_source,
+                                       ASCIICHAT_OWNED_SOURCE_DIRS)) == (ASCIICHAT_OK));
     REQUIRE(!external_source);
     REQUIRE(std::strcmp((display_path), ("tests\\standalone\\errno\\error_popup_fixture.c")) == 0);
 
-    REQUIRE((symbol_format_source_path("ascii-chat.exe", ASCIICHAT_SOURCE_ROOT "\\.deps-cache\\Debug\\dep.c",
-                                           display_path, sizeof(display_path), &external_source,
-                                           ASCIICHAT_OWNED_SOURCE_DIRS) == ASCIICHAT_OK));
+    REQUIRE((symbol_format_source_path("ascii-chat.exe", ASCIICHAT_SOURCE_ROOT "\\.deps-cache\\Debug\\dep.c", display_path, sizeof(display_path), &external_source, ASCIICHAT_OWNED_SOURCE_DIRS) ==
+             ASCIICHAT_OK));
     REQUIRE(external_source);
     REQUIRE(std::strcmp(display_path, "Debug\\dep.c") == 0);
   }

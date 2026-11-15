@@ -134,8 +134,8 @@ TEST_CASE("secure_socket_contract/authenticated_malformed_inner_packets_are_reje
     size_t length = 0;
     crypto_session_t *session;
     REQUIRE((crypto_session_lock(&sender, &session)) == (ASCIICHAT_OK));
-    REQUIRE((crypto_record_seal_into(&session->records, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, plaintext, scenario == 3 ? sizeof(header) - 1 : sizeof(plaintext), ciphertext,
-                                                 sizeof(ciphertext), &length)) == (ASCIICHAT_OK));
+    REQUIRE((crypto_record_seal_into(&session->records, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, plaintext, scenario == 3 ? sizeof(header) - 1 : sizeof(plaintext), ciphertext, sizeof(ciphertext),
+                                     &length)) == (ASCIICHAT_OK));
     crypto_session_unlock(session);
     if (scenario == 4)
       ciphertext[length - 1] ^= 1;

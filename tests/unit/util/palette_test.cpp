@@ -274,11 +274,13 @@ static constexpr int palette_length_cases[] = {2, 5, 10, 15, 20, 30, 50, 70};
 
 TEST_CASE("palette/palette_length_property", "[palette]") {
   const int palette_len = GENERATE(Catch::Generators::from_range(palette_length_cases));
-  if (!(palette_len >= 2 && palette_len <= 70)) SKIP("assumption not satisfied");
+  if (!(palette_len >= 2 && palette_len <= 70))
+    SKIP("assumption not satisfied");
 
   char luminance_mapping[256];
   char *test_palette = SAFE_MALLOC(palette_len + 1, char *);
-  if (!(test_palette != NULL)) SKIP("assumption not satisfied");
+  if (!(test_palette != NULL))
+    SKIP("assumption not satisfied");
 
   // Create a palette of increasing complexity
   for (int i = 0; i < palette_len; i++) {
@@ -443,10 +445,12 @@ static constexpr const char *utf8_boundary_cases[] = {"ABC", "→→→", "🌑�
 
 TEST_CASE("palette/utf8_boundary_property", "[palette]") {
   const char *palette_string = GENERATE(Catch::Generators::from_range(utf8_boundary_cases));
-  if (!(palette_string != NULL)) SKIP("assumption not satisfied");
+  if (!(palette_string != NULL))
+    SKIP("assumption not satisfied");
 
   utf8_palette_t *palette = utf8_palette_create(palette_string);
-  if (!(palette != NULL)) SKIP("assumption not satisfied");
+  if (!(palette != NULL))
+    SKIP("assumption not satisfied");
 
   size_t char_count = utf8_palette_get_char_count(palette);
 

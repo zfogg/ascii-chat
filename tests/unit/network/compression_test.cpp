@@ -151,10 +151,12 @@ static auto compression_roundtrip_property_catch2_data = {
 
 TEST_CASE("compression/compression_roundtrip_property", "[compression]") {
   size_t data_size = GENERATE(Catch::Generators::from_range(compression_roundtrip_property_catch2_data));
-  if (!(data_size > 0 && data_size <= 8192)) SKIP("assumption not satisfied");
+  if (!(data_size > 0 && data_size <= 8192))
+    SKIP("assumption not satisfied");
 
   char *original_data = (char *)SAFE_MALLOC(data_size, void *);
-  if (!(original_data != NULL)) SKIP("assumption not satisfied");
+  if (!(original_data != NULL))
+    SKIP("assumption not satisfied");
 
   for (size_t i = 0; i < data_size; i++) {
     original_data[i] = (char)('A' + (i % 26));
@@ -193,10 +195,12 @@ static auto compressible_data_property_catch2_data = {
 
 TEST_CASE("compression/compressible_data_property", "[compression]") {
   size_t data_size = GENERATE(Catch::Generators::from_range(compressible_data_property_catch2_data));
-  if (!(data_size > 0 && data_size <= 4096)) SKIP("assumption not satisfied");
+  if (!(data_size > 0 && data_size <= 4096))
+    SKIP("assumption not satisfied");
 
   char *original_data = (char *)SAFE_MALLOC(data_size, void *);
-  if (!(original_data != NULL)) SKIP("assumption not satisfied");
+  if (!(original_data != NULL))
+    SKIP("assumption not satisfied");
   memset(original_data, 'A', data_size);
 
   void *compressed_data = NULL;
@@ -231,7 +235,8 @@ static auto compression_threshold_property_catch2_data = {
 
 TEST_CASE("compression/compression_threshold_property", "[compression]") {
   size_t original_size = GENERATE(Catch::Generators::from_range(compression_threshold_property_catch2_data));
-  if (!(original_size > 0 && original_size <= 2000)) SKIP("assumption not satisfied");
+  if (!(original_size > 0 && original_size <= 2000))
+    SKIP("assumption not satisfied");
 
   size_t test_compressed_sizes[] = {(size_t)(original_size * 0.5f), (size_t)(original_size * 0.7f), (size_t)(original_size * 0.85f), (size_t)(original_size * 1.0f), (size_t)(original_size * 1.2f)};
 

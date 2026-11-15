@@ -496,19 +496,27 @@ TEST_CASE("aspect_ratio/aspect_ratio_preservation_property", "[aspect_ratio]") {
   const ssize_t target_w = aspect_ratio_target_widths[index];
   const ssize_t target_h = aspect_ratio_target_heights[index];
   // Skip invalid combinations
-  if (!(img_w > 0)) SKIP("assumption not satisfied");
-  if (!(img_h > 0)) SKIP("assumption not satisfied");
-  if (!(target_w > 0)) SKIP("assumption not satisfied");
-  if (!(target_h > 0)) SKIP("assumption not satisfied");
+  if (!(img_w > 0))
+    SKIP("assumption not satisfied");
+  if (!(img_h > 0))
+    SKIP("assumption not satisfied");
+  if (!(target_w > 0))
+    SKIP("assumption not satisfied");
+  if (!(target_h > 0))
+    SKIP("assumption not satisfied");
 
   // Skip extreme aspect ratios that can't be preserved accurately in small target dimensions
   float input_aspect_ratio = (float)img_w / (float)img_h;
-  if (!(input_aspect_ratio >= 0.1f)) SKIP("assumption not satisfied");  // Skip very tall images (>10:1 height:width)
-  if (!(input_aspect_ratio <= 10.0f)) SKIP("assumption not satisfied"); // Skip very wide images (>10:1 width:height)
+  if (!(input_aspect_ratio >= 0.1f))
+    SKIP("assumption not satisfied"); // Skip very tall images (>10:1 height:width)
+  if (!(input_aspect_ratio <= 10.0f))
+    SKIP("assumption not satisfied"); // Skip very wide images (>10:1 width:height)
 
   // Skip cases where target dimensions are too small to preserve aspect ratio
-  if (!(target_w >= 10)) SKIP("assumption not satisfied"); // Need reasonable minimum target size
-  if (!(target_h >= 10)) SKIP("assumption not satisfied");
+  if (!(target_w >= 10))
+    SKIP("assumption not satisfied"); // Need reasonable minimum target size
+  if (!(target_h >= 10))
+    SKIP("assumption not satisfied");
 
   // Test aspect_ratio2 (no CHAR_ASPECT correction)
   ssize_t out_w2, out_h2;

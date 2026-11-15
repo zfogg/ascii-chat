@@ -182,9 +182,9 @@ TEST_CASE("discovery_key_set/invalid_key_sets_and_storage_failures_leave_no_part
   REQUIRE((database_session_create_keys(db, &req, keys, 0, &config, &session)) == (ERROR_INVALID_PARAM));
   REQUIRE((database_session_create_keys(db, &req, keys, MAX_SESSION_KEYS + 1, &config, &session)) == (ERROR_INVALID_PARAM));
   REQUIRE(((sqlite3_exec(db,
-                                     "CREATE TRIGGER fail_key BEFORE INSERT ON session_identity_keys "
-                                     "BEGIN SELECT RAISE(ABORT, 'injected key failure'); END",
-                                     NULL, NULL, NULL))) == (SQLITE_OK));
+                         "CREATE TRIGGER fail_key BEFORE INSERT ON session_identity_keys "
+                         "BEGIN SELECT RAISE(ABORT, 'injected key failure'); END",
+                         NULL, NULL, NULL))) == (SQLITE_OK));
   REQUIRE((database_session_create_keys(db, &req, keys, 2, &config, &session)) != (ASCIICHAT_OK));
   int64_t sessions;
   REQUIRE((database_stats_session_count(db, &sessions)) == (ASCIICHAT_OK));
@@ -203,18 +203,18 @@ TEST_CASE("discovery_key_set/migration_retains_old_sessions_keys_revocations_and
   acip_session_created_t session;
   REQUIRE((database_session_create(db, &req, &config, &session)) == (ASCIICHAT_OK));
   REQUIRE(((sqlite3_exec(db,
-                                     "CREATE TABLE session_keys (id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                                     "session_string TEXT NOT NULL REFERENCES sessions(session_string) ON DELETE CASCADE, "
-                                     "identity_pubkey BLOB NOT NULL, key_version INTEGER NOT NULL, added_at INTEGER NOT NULL, "
-                                     "revoked INTEGER DEFAULT 0, UNIQUE(session_string, identity_pubkey))",
-                                     NULL, NULL, NULL))) == (SQLITE_OK));
+                         "CREATE TABLE session_keys (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                         "session_string TEXT NOT NULL REFERENCES sessions(session_string) ON DELETE CASCADE, "
+                         "identity_pubkey BLOB NOT NULL, key_version INTEGER NOT NULL, added_at INTEGER NOT NULL, "
+                         "revoked INTEGER DEFAULT 0, UNIQUE(session_string, identity_pubkey))",
+                         NULL, NULL, NULL))) == (SQLITE_OK));
   // Reconstruct the pre-migration schema and retain a revoked host key plus a
   // second legacy rotation key. The old tables are left in place by migration.
   sqlite3_stmt *stmt;
   REQUIRE((sqlite3_prepare_v2(db,
-                                          "INSERT INTO session_keys "
-                                          "(session_string, identity_pubkey, key_version, added_at, revoked) VALUES (?, ?, 7, 123, ?)",
-                                          -1, &stmt, NULL)) == (SQLITE_OK));
+                              "INSERT INTO session_keys "
+                              "(session_string, identity_pubkey, key_version, added_at, revoked) VALUES (?, ?, 7, 123, ?)",
+                              -1, &stmt, NULL)) == (SQLITE_OK));
   for (size_t i = 0; i < 2; ++i) {
     sqlite3_bind_text(stmt, 1, session.session_string, -1, SQLITE_STATIC);
     sqlite3_bind_blob(stmt, 2, keys[i], 32, SQLITE_STATIC);
@@ -225,12 +225,12 @@ TEST_CASE("discovery_key_set/migration_retains_old_sessions_keys_revocations_and
   sqlite3_finalize(stmt);
   // Older deployments could leave orphaned rows when foreign keys were disabled.
   REQUIRE(((sqlite3_exec(db,
-                                     "PRAGMA foreign_keys = OFF; "
-                                     "INSERT INTO session_keys "
-                                     "(session_string, identity_pubkey, key_version, added_at, revoked) "
-                                     "VALUES ('missing-session', zeroblob(32), 1, 123, 0); "
-                                     "PRAGMA foreign_keys = ON;",
-                                     NULL, NULL, NULL))) == (SQLITE_OK));
+                         "PRAGMA foreign_keys = OFF; "
+                         "INSERT INTO session_keys "
+                         "(session_string, identity_pubkey, key_version, added_at, revoked) "
+                         "VALUES ('missing-session', zeroblob(32), 1, 123, 0); "
+                         "PRAGMA foreign_keys = ON;",
+                         NULL, NULL, NULL))) == (SQLITE_OK));
   REQUIRE((sqlite3_exec(db, "DROP TABLE session_identity_keys; DROP TABLE session_key_policy;", NULL, NULL, NULL)) == (SQLITE_OK));
   database_close(db);
   REQUIRE((database_init(db_path, &db)) == (ASCIICHAT_OK));
@@ -276,13 +276,13 @@ TEST_CASE("discovery_key_set/restricted_sessions_still_require_passwords_and_typ
   SAFE_STRNCPY(join.password, "secret", sizeof(join.password));
   expect_join(&join, true);
   REQUIRE(((sqlite3_exec(db,
-                                     "INSERT INTO session_identity_keys "
-                                     "SELECT session_string, 'x25519', host_pubkey, 0, 0, 0 FROM sessions",
-                                     NULL, NULL, NULL))) == (SQLITE_CONSTRAINT));
+                         "INSERT INTO session_identity_keys "
+                         "SELECT session_string, 'x25519', host_pubkey, 0, 0, 0 FROM sessions",
+                         NULL, NULL, NULL))) == (SQLITE_CONSTRAINT));
   REQUIRE(((sqlite3_exec(db,
-                                     "INSERT INTO session_identity_keys "
-                                     "SELECT session_string, 'ed25519', X'01', 0, 0, 0 FROM sessions",
-                                     NULL, NULL, NULL))) == (SQLITE_CONSTRAINT));
+                         "INSERT INTO session_identity_keys "
+                         "SELECT session_string, 'ed25519', X'01', 0, 0, 0 FROM sessions",
+                         NULL, NULL, NULL))) == (SQLITE_CONSTRAINT));
   REQUIRE((database_session_add_key(db, session.session_string, keys[0], 99)) == (ASCIICHAT_OK));
   uint8_t stored[3][32];
   size_t count;
@@ -345,9 +345,9 @@ TEST_CASE("discovery_key_set/host_only_legacy_database_is_backfilled_and_new_res
 TEST_CASE("discovery_key_set/fresh_databases_do_not_create_superseded_key_tables_or_indexes", "[discovery_key_set]") {
   sqlite3_stmt *stmt;
   REQUIRE((sqlite3_prepare_v2(db,
-                                          "SELECT COUNT(*) FROM sqlite_master WHERE name IN "
-                                          "('session_keys', 'idx_session_keys_session', 'idx_session_keys_active')",
-                                          -1, &stmt, NULL)) == (SQLITE_OK));
+                              "SELECT COUNT(*) FROM sqlite_master WHERE name IN "
+                              "('session_keys', 'idx_session_keys_session', 'idx_session_keys_active')",
+                              -1, &stmt, NULL)) == (SQLITE_OK));
   REQUIRE((sqlite3_step(stmt)) == (SQLITE_ROW));
   REQUIRE((sqlite3_column_int(stmt, 0)) == (0));
   sqlite3_finalize(stmt);

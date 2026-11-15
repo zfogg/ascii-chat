@@ -444,7 +444,7 @@ TEST_CASE("compressor/process_below_threshold", "[compressor]") {
 
   // Process signal below threshold
   float gain = compressor_process_sample(&comp, 0.1f); // -20dB
-  REQUIRE((gain) >= (0.9f));                    // Should have minimal compression
+  REQUIRE((gain) >= (0.9f));                           // Should have minimal compression
 }
 
 TEST_CASE("compressor/process_above_threshold", "[compressor]") {
@@ -454,7 +454,7 @@ TEST_CASE("compressor/process_above_threshold", "[compressor]") {
 
   // Process signal above threshold
   float gain = compressor_process_sample(&comp, 0.5f); // -6dB
-  REQUIRE((gain) <= (1.0f));                    // Should have some compression
+  REQUIRE((gain) <= (1.0f));                           // Should have some compression
 }
 
 /* ============================================================================
@@ -669,9 +669,9 @@ TEST_CASE("soft_clip/process_buffer", "[soft_clip]") {
   soft_clip_buffer(buffer, 5, 0.8f, 6.0f);
 
   REQUIRE((buffer[0]) == Catch::Approx(0.5f));  // Within threshold
-  REQUIRE((buffer[1]) < (1.0f));               // Clipped
+  REQUIRE((buffer[1]) < (1.0f));                // Clipped
   REQUIRE((buffer[2]) == Catch::Approx(-0.3f)); // Within threshold
-  REQUIRE((buffer[3]) > (-1.0f));              // Clipped
+  REQUIRE((buffer[3]) > (-1.0f));               // Clipped
   REQUIRE((buffer[4]) == Catch::Approx(0.0f));  // Zero
 }
 
@@ -712,7 +712,7 @@ TEST_CASE("mixer_integration/full_pipeline_with_processing", "[mixer_integration
 
   // Output should be properly limited and processed
   REQUIRE((max_output) <= (1.0f)); // No clipping
-  REQUIRE((rms_output) > (0.0f)); // Non-zero output
+  REQUIRE((rms_output) > (0.0f));  // Non-zero output
 
   // Clean up
   audio_ring_buffer_destroy(sine_buffer);
@@ -767,24 +767,29 @@ static constexpr int audio_bounds_property_catch2_data[] = {1, 2, 3, 4, 8};
 TEST_CASE("mixer_integration/audio_bounds_property", "[mixer_integration]") {
   size_t num_sources = GENERATE(Catch::Generators::from_range(audio_bounds_property_catch2_data));
   float amplitude = GENERATE(0.1f, 0.5f, 1.0f, 1.5f, 2.0f);
-  if (!(num_sources > 0 && num_sources <= MIXER_MAX_SOURCES)) SKIP("assumption not satisfied");
-  if (!(amplitude > 0.0f && amplitude <= 2.0f)) SKIP("assumption not satisfied");
+  if (!(num_sources > 0 && num_sources <= MIXER_MAX_SOURCES))
+    SKIP("assumption not satisfied");
+  if (!(amplitude > 0.0f && amplitude <= 2.0f))
+    SKIP("assumption not satisfied");
 
   mixer_t *mixer = mixer_create(MIXER_MAX_SOURCES, 48000);
-  if (!(mixer != NULL)) SKIP("assumption not satisfied");
+  if (!(mixer != NULL))
+    SKIP("assumption not satisfied");
 
   // Create sources with specified amplitude
   audio_ring_buffer_t *buffers[MIXER_MAX_SOURCES];
   for (size_t i = 0; i < num_sources; i++) {
     buffers[i] = audio_ring_buffer_create();
-    if (!(buffers[i] != NULL)) SKIP("assumption not satisfied");
+    if (!(buffers[i] != NULL))
+      SKIP("assumption not satisfied");
 
     // Generate test signal with specified amplitude
     float test_data[256];
     generate_sine_wave(test_data, 256, 440.0f + (float)i * 100.0f, 48000.0f, amplitude);
 
     asciichat_error_t write_result = audio_ring_buffer_write(buffers[i], test_data, 256);
-    if (!(write_result == ASCIICHAT_OK)) SKIP("assumption not satisfied");
+    if (!(write_result == ASCIICHAT_OK))
+      SKIP("assumption not satisfied");
     char client_id[32];
     snprintf(client_id, sizeof(client_id), "%u", 100 + (uint32_t)i);
     mixer_add_source(mixer, client_id, buffers[i]);

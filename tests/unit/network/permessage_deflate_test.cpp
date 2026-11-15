@@ -145,7 +145,8 @@ static void generate_test_data(uint8_t *data, size_t size, int pattern) {
  */
 TEST_CASE("permessage_deflate/small_messages", "[permessage_deflate]") {
   size_t msg_size = GENERATE(1u, 8u, 64u, 256u, 512u);
-  if (!(msg_size > 0 && msg_size <= 512)) SKIP("assumption not satisfied");
+  if (!(msg_size > 0 && msg_size <= 512))
+    SKIP("assumption not satisfied");
 
   uint8_t *original = SAFE_MALLOC(msg_size, uint8_t *);
   REQUIRE((original) != nullptr);
@@ -180,7 +181,8 @@ TEST_CASE("permessage_deflate/small_messages", "[permessage_deflate]") {
  */
 TEST_CASE("permessage_deflate/medium_messages", "[permessage_deflate]") {
   size_t msg_size = GENERATE(1024u, 4096u, 16384u, 65536u);
-  if (!(msg_size > 0 && msg_size <= 65536)) SKIP("assumption not satisfied");
+  if (!(msg_size > 0 && msg_size <= 65536))
+    SKIP("assumption not satisfied");
 
   uint8_t *original = SAFE_MALLOC(msg_size, uint8_t *);
   REQUIRE((original) != nullptr);

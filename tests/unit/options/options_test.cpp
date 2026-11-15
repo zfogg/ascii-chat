@@ -256,17 +256,11 @@ GENERATE_OPTIONS_TEST(
  * Address and Port Validation Tests
  * ============================================================================ */
 
-GENERATE_OPTIONS_TEST(
-    valid_ipv4_192_168_1_1, ARGV_LIST("client", "192.168.1.1"), true, { REQUIRE(std::strcmp((opts->address), ("192.168.1.1")) == 0); },
-    { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(valid_ipv4_192_168_1_1, ARGV_LIST("client", "192.168.1.1"), true, { REQUIRE(std::strcmp((opts->address), ("192.168.1.1")) == 0); }, { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    valid_ipv4_127_0_0_1, ARGV_LIST("client", "127.0.0.1"), true, { REQUIRE(std::strcmp((opts->address), ("127.0.0.1")) == 0); },
-    { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(valid_ipv4_127_0_0_1, ARGV_LIST("client", "127.0.0.1"), true, { REQUIRE(std::strcmp((opts->address), ("127.0.0.1")) == 0); }, { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    valid_ipv4_255_255_255_255, ARGV_LIST("client", "255.255.255.255"), true, { REQUIRE(std::strcmp((opts->address), ("255.255.255.255")) == 0); },
-    { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(valid_ipv4_255_255_255_255, ARGV_LIST("client", "255.255.255.255"), true, { REQUIRE(std::strcmp((opts->address), ("255.255.255.255")) == 0); }, { REQUIRE((exit_code) == (0)); })
 
 GENERATE_OPTIONS_TEST(
     invalid_ipv4_octet_too_large, ARGV_LIST("client", "256.1.1.1"), true,
@@ -345,8 +339,7 @@ TEST_CASE("options/ip_address_validation", "[options]") {
 
 GENERATE_OPTIONS_TEST(valid_port_80, ARGV_LIST("client", "-p", "80"), true, { REQUIRE((opts->port) == (80)); }, { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    valid_port_65535, ARGV_LIST("client", "-p", "65535"), true, { REQUIRE((opts->port) == (65535)); }, { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(valid_port_65535, ARGV_LIST("client", "-p", "65535"), true, { REQUIRE((opts->port) == (65535)); }, { REQUIRE((exit_code) == (0)); })
 
 GENERATE_OPTIONS_TEST(
     invalid_port_too_low, ARGV_LIST("client", "-p", "0"), true,
@@ -454,17 +447,13 @@ GENERATE_OPTIONS_TEST(
     },
     { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    invalid_dimension_zero, ARGV_LIST("client", "-x", "0"), true, { FAIL("Should not reach this point - invalid dimension should cause exit"); },
-    { REQUIRE((exit_code) == (1)); })
+GENERATE_OPTIONS_TEST(invalid_dimension_zero, ARGV_LIST("client", "-x", "0"), true, { FAIL("Should not reach this point - invalid dimension should cause exit"); }, { REQUIRE((exit_code) == (1)); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_dimension_negative, ARGV_LIST("client", "-x", "-1"), true, { FAIL("Should not reach this point - invalid dimension should cause exit"); },
-    { REQUIRE((exit_code) == (1)); })
+    invalid_dimension_negative, ARGV_LIST("client", "-x", "-1"), true, { FAIL("Should not reach this point - invalid dimension should cause exit"); }, { REQUIRE((exit_code) == (1)); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_dimension_non_numeric, ARGV_LIST("client", "-x", "abc"), true, { FAIL("Should not reach this point - invalid dimension should cause exit"); },
-    { REQUIRE((exit_code) == (1)); })
+    invalid_dimension_non_numeric, ARGV_LIST("client", "-x", "abc"), true, { FAIL("Should not reach this point - invalid dimension should cause exit"); }, { REQUIRE((exit_code) == (1)); })
 
 /* ============================================================================
  * Webcam Options Tests
@@ -473,20 +462,16 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(valid_webcam_index, ARGV_LIST("client", "-c", "2"), true, {/* no option assertions needed for success-only check */}, { REQUIRE((exit_code) == (0)); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_webcam_index_neg1, ARGV_LIST("client", "-c", "-1"), true, { FAIL("Should not reach this point - invalid webcam index should cause exit"); },
-    { REQUIRE((exit_code) == (1)); })
+    invalid_webcam_index_neg1, ARGV_LIST("client", "-c", "-1"), true, { FAIL("Should not reach this point - invalid webcam index should cause exit"); }, { REQUIRE((exit_code) == (1)); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_webcam_index_abc, ARGV_LIST("client", "-c", "abc"), true, { FAIL("Should not reach this point - invalid webcam index should cause exit"); },
-    { REQUIRE((exit_code) == (1)); })
+    invalid_webcam_index_abc, ARGV_LIST("client", "-c", "abc"), true, { FAIL("Should not reach this point - invalid webcam index should cause exit"); }, { REQUIRE((exit_code) == (1)); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_webcam_index_decimal, ARGV_LIST("client", "-c", "2.5"), true, { FAIL("Should not reach this point - invalid webcam index should cause exit"); },
-    { REQUIRE((exit_code) == (1)); })
+    invalid_webcam_index_decimal, ARGV_LIST("client", "-c", "2.5"), true, { FAIL("Should not reach this point - invalid webcam index should cause exit"); }, { REQUIRE((exit_code) == (1)); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_webcam_index_empty, ARGV_LIST("client", "-c", ""), true, { FAIL("Should not reach this point - invalid webcam index should cause exit"); },
-    { REQUIRE((exit_code) == (1)); })
+    invalid_webcam_index_empty, ARGV_LIST("client", "-c", ""), true, { FAIL("Should not reach this point - invalid webcam index should cause exit"); }, { REQUIRE((exit_code) == (1)); })
 
 GENERATE_OPTIONS_TEST(valid_webcam_flip, ARGV_LIST("client", "--flip-x"), true, {/* flip flag only */}, { REQUIRE((exit_code) == (0)); })
 
@@ -687,9 +672,7 @@ GENERATE_OPTIONS_TEST(
     },
     { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    invalid_encryption_key, ARGV_LIST("client", "--key", ""), true, { FAIL("Should not reach this point - empty key should cause exit"); },
-    { REQUIRE((exit_code) == (1)); })
+GENERATE_OPTIONS_TEST(invalid_encryption_key, ARGV_LIST("client", "--key", ""), true, { FAIL("Should not reach this point - empty key should cause exit"); }, { REQUIRE((exit_code) == (1)); })
 
 /* ============================================================================
  * Flag Options Tests
@@ -734,12 +717,10 @@ GENERATE_OPTIONS_TEST(help_short, ARGV_LIST("client", "-h"), true,
  * ============================================================================ */
 
 GENERATE_OPTIONS_TEST_IN_SUITE(
-    options_errors, unknown_option, ARGV_LIST("client", "--unknown-option"), true, { FAIL("Should not reach this point - unknown option should cause exit"); },
-    { REQUIRE((exit_code) == (1)); })
+    options_errors, unknown_option, ARGV_LIST("client", "--unknown-option"), true, { FAIL("Should not reach this point - unknown option should cause exit"); }, { REQUIRE((exit_code) == (1)); })
 
 GENERATE_OPTIONS_TEST_IN_SUITE(
-    options_errors, missing_argument_port, ARGV_LIST("client", "--port"), true, { FAIL("Should not reach this point - missing argument should cause exit"); },
-    { REQUIRE((exit_code) == (1)); })
+    options_errors, missing_argument_port, ARGV_LIST("client", "--port"), true, { FAIL("Should not reach this point - missing argument should cause exit"); }, { REQUIRE((exit_code) == (1)); })
 
 /* ============================================================================
  * Equals Sign Handling Tests
@@ -966,37 +947,21 @@ GENERATE_OPTIONS_TEST(
       REQUIRE((exit_code) == (0));
     })
 
-GENERATE_OPTIONS_TEST(
-    color_mode_auto, ARGV_LIST("client", "--color-mode", "auto"), true, { REQUIRE((opts->color_mode) == (COLOR_MODE_AUTO)); },
-    { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(color_mode_auto, ARGV_LIST("client", "--color-mode", "auto"), true, { REQUIRE((opts->color_mode) == (COLOR_MODE_AUTO)); }, { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    color_mode_256, ARGV_LIST("client", "--color-mode", "256"), true, { REQUIRE((opts->color_mode) == (COLOR_MODE_256_COLOR)); },
-    { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(color_mode_256, ARGV_LIST("client", "--color-mode", "256"), true, { REQUIRE((opts->color_mode) == (COLOR_MODE_256_COLOR)); }, { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    color_mode_truecolor, ARGV_LIST("client", "--color-mode", "truecolor"), true, { REQUIRE((opts->color_mode) == (COLOR_MODE_TRUECOLOR)); },
-    { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(color_mode_truecolor, ARGV_LIST("client", "--color-mode", "truecolor"), true, { REQUIRE((opts->color_mode) == (COLOR_MODE_TRUECOLOR)); }, { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    render_mode_foreground, ARGV_LIST("client", "--render-mode", "foreground"), true, { REQUIRE((opts->render_mode) == (RENDER_MODE_FOREGROUND)); },
-    { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(render_mode_foreground, ARGV_LIST("client", "--render-mode", "foreground"), true, { REQUIRE((opts->render_mode) == (RENDER_MODE_FOREGROUND)); }, { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    render_mode_background, ARGV_LIST("client", "--render-mode", "background"), true, { REQUIRE((opts->render_mode) == (RENDER_MODE_BACKGROUND)); },
-    { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(render_mode_background, ARGV_LIST("client", "--render-mode", "background"), true, { REQUIRE((opts->render_mode) == (RENDER_MODE_BACKGROUND)); }, { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    render_mode_half_block, ARGV_LIST("client", "--render-mode", "half-block"), true, { REQUIRE((opts->render_mode) == (RENDER_MODE_HALF_BLOCK)); },
-    { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(render_mode_half_block, ARGV_LIST("client", "--render-mode", "half-block"), true, { REQUIRE((opts->render_mode) == (RENDER_MODE_HALF_BLOCK)); }, { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    palette_standard, ARGV_LIST("client", "--palette", "standard"), true, { REQUIRE((opts->palette_type) == (PALETTE_STANDARD)); },
-    { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(palette_standard, ARGV_LIST("client", "--palette", "standard"), true, { REQUIRE((opts->palette_type) == (PALETTE_STANDARD)); }, { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    palette_blocks, ARGV_LIST("client", "--palette", "blocks"), true, { REQUIRE((opts->palette_type) == (PALETTE_BLOCKS)); },
-    { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(palette_blocks, ARGV_LIST("client", "--palette", "blocks"), true, { REQUIRE((opts->palette_type) == (PALETTE_BLOCKS)); }, { REQUIRE((exit_code) == (0)); })
 
 GENERATE_OPTIONS_TEST(
     palette_custom_chars, ARGV_LIST("client", "--palette-chars", "@#%*+=:-. "), true,
@@ -1033,8 +998,7 @@ GENERATE_OPTIONS_TEST(
     { REQUIRE((exit_code) == (0)); })
 
 GENERATE_OPTIONS_TEST(
-    test_snapshot_delay_values, ARGV_LIST("client", "--snapshot", "--snapshot-delay", "2.5"), true, { REQUIRE((opts->snapshot_delay) == Catch::Approx(2.5f)); },
-    { REQUIRE((exit_code) == (0)); })
+    test_snapshot_delay_values, ARGV_LIST("client", "--snapshot", "--snapshot-delay", "2.5"), true, { REQUIRE((opts->snapshot_delay) == Catch::Approx(2.5f)); }, { REQUIRE((exit_code) == (0)); })
 
 GENERATE_OPTIONS_TEST(
     test_webcam_values, ARGV_LIST("client", "-c", "3", "--flip-x"), true,
@@ -1127,43 +1091,26 @@ GENERATE_OPTIONS_TEST(
     },
     { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    test_16color_mode, ARGV_LIST("client", "--color-mode", "16"), true, { REQUIRE((opts->color_mode) == (COLOR_MODE_16_COLOR)); },
-    { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(test_16color_mode, ARGV_LIST("client", "--color-mode", "16"), true, { REQUIRE((opts->color_mode) == (COLOR_MODE_16_COLOR)); }, { REQUIRE((exit_code) == (0)); })
+
+GENERATE_OPTIONS_TEST(test_16color_alias, ARGV_LIST("client", "--color-mode", "16color"), true, { REQUIRE((opts->color_mode) == (COLOR_MODE_16_COLOR)); }, { REQUIRE((exit_code) == (0)); })
+
+GENERATE_OPTIONS_TEST(test_256color_alias, ARGV_LIST("client", "--color-mode", "256color"), true, { REQUIRE((opts->color_mode) == (COLOR_MODE_256_COLOR)); }, { REQUIRE((exit_code) == (0)); })
+
+GENERATE_OPTIONS_TEST(test_truecolor_alias, ARGV_LIST("client", "--color-mode", "24bit"), true, { REQUIRE((opts->color_mode) == (COLOR_MODE_TRUECOLOR)); }, { REQUIRE((exit_code) == (0)); })
 
 GENERATE_OPTIONS_TEST(
-    test_16color_alias, ARGV_LIST("client", "--color-mode", "16color"), true, { REQUIRE((opts->color_mode) == (COLOR_MODE_16_COLOR)); },
-    { REQUIRE((exit_code) == (0)); })
+    test_palette_digital, ARGV_LIST("client", "--palette", "digital", "--renderer", "luminance"), true, { REQUIRE((opts->palette_type) == (PALETTE_DIGITAL)); }, { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    test_256color_alias, ARGV_LIST("client", "--color-mode", "256color"), true, { REQUIRE((opts->color_mode) == (COLOR_MODE_256_COLOR)); },
-    { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(test_palette_minimal, ARGV_LIST("client", "--palette", "minimal"), true, { REQUIRE((opts->palette_type) == (PALETTE_MINIMAL)); }, { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    test_truecolor_alias, ARGV_LIST("client", "--color-mode", "24bit"), true, { REQUIRE((opts->color_mode) == (COLOR_MODE_TRUECOLOR)); },
-    { REQUIRE((exit_code) == (0)); })
-
-GENERATE_OPTIONS_TEST(
-    test_palette_digital, ARGV_LIST("client", "--palette", "digital", "--renderer", "luminance"), true, { REQUIRE((opts->palette_type) == (PALETTE_DIGITAL)); },
-    { REQUIRE((exit_code) == (0)); })
-
-GENERATE_OPTIONS_TEST(
-    test_palette_minimal, ARGV_LIST("client", "--palette", "minimal"), true, { REQUIRE((opts->palette_type) == (PALETTE_MINIMAL)); },
-    { REQUIRE((exit_code) == (0)); })
-
-GENERATE_OPTIONS_TEST(
-    test_palette_cool, ARGV_LIST("client", "--palette", "cool"), true, { REQUIRE((opts->palette_type) == (PALETTE_COOL)); },
-    { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(test_palette_cool, ARGV_LIST("client", "--palette", "cool"), true, { REQUIRE((opts->palette_type) == (PALETTE_COOL)); }, { REQUIRE((exit_code) == (0)); })
 
 /* Converted looped palette test into specific GENERATE_OPTIONS_TEST cases above. */
 
-GENERATE_OPTIONS_TEST(
-    test_render_mode_fg_alias, ARGV_LIST("client", "--render-mode", "fg"), true, { REQUIRE((opts->render_mode) == (RENDER_MODE_FOREGROUND)); },
-    { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(test_render_mode_fg_alias, ARGV_LIST("client", "--render-mode", "fg"), true, { REQUIRE((opts->render_mode) == (RENDER_MODE_FOREGROUND)); }, { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    test_render_mode_bg_alias, ARGV_LIST("client", "--render-mode", "bg"), true, { REQUIRE((opts->render_mode) == (RENDER_MODE_BACKGROUND)); },
-    { REQUIRE((exit_code) == (0)); })
+GENERATE_OPTIONS_TEST(test_render_mode_bg_alias, ARGV_LIST("client", "--render-mode", "bg"), true, { REQUIRE((opts->render_mode) == (RENDER_MODE_BACKGROUND)); }, { REQUIRE((exit_code) == (0)); })
 
 // NOTE: --log-file is now a global option handled at binary level, not mode-specific
 // GENERATE_OPTIONS_TEST(

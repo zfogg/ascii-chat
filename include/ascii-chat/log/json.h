@@ -46,8 +46,7 @@ extern "C" {
  *
  * @see log_set_json_output() - Set the JSON output file descriptor
  */
-void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const char *file, int line, const char *func,
-                    const char *message);
+void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const char *file, int line, const char *func, const char *message);
 
 /**
  * @brief Set the JSON output file descriptor.

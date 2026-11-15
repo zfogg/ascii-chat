@@ -239,11 +239,13 @@ TEST_CASE("audio/ringbuffer_roundtrip_property", "[audio]") {
 
   // Use capture buffer which disables jitter buffering for basic roundtrip testing
   audio_ring_buffer_t *rb = audio_ring_buffer_create_for_capture();
-  if (!(rb != NULL)) SKIP("assumption not satisfied");
+  if (!(rb != NULL))
+    SKIP("assumption not satisfied");
 
   float *test_data = SAFE_MALLOC(sample_count * sizeof(float), float *);
   float *read_data = SAFE_MALLOC(sample_count * sizeof(float), float *);
-  if (!(test_data != NULL && read_data != NULL)) SKIP("assumption not satisfied");
+  if (!(test_data != NULL && read_data != NULL))
+    SKIP("assumption not satisfied");
 
   // Fill test data with sine wave
   for (int i = 0; i < sample_count; i++) {
@@ -321,10 +323,12 @@ TEST_CASE("audio/ringbuffer_overflow_property", "[audio]") {
   int write_size = GENERATE(500, 1000, 2000, 4000, 8000);
 
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
-  if (!(rb != NULL)) SKIP("assumption not satisfied");
+  if (!(rb != NULL))
+    SKIP("assumption not satisfied");
 
   float *test_data = SAFE_MALLOC(write_size * sizeof(float), float *);
-  if (!(test_data != NULL)) SKIP("assumption not satisfied");
+  if (!(test_data != NULL))
+    SKIP("assumption not satisfied");
 
   for (int i = 0; i < write_size; i++) {
     test_data[i] = i * 0.001f;

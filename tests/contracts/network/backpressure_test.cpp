@@ -354,7 +354,9 @@ static void check_backend_failure(asciichat_error_t code, bool omit_context, boo
     REQUIRE((producers[i].result) == (code));
     REQUIRE(producers[i].has_cause);
     REQUIRE((producers[i].cause.code) == (code));
-    REQUIRE(std::strcmp((producers[i].cause.context_message), (omit_context ? "Outbound backend submission failed" : wrap_context ? "Backend failure wrapper" : "Backend rejected outgoing packet")) == 0);
+    REQUIRE(std::strcmp((producers[i].cause.context_message), (omit_context   ? "Outbound backend submission failed"
+                                                               : wrap_context ? "Backend failure wrapper"
+                                                                              : "Backend rejected outgoing packet")) == 0);
     if (!omit_context) {
       REQUIRE(producers[i].detail.has_system_error);
       REQUIRE((producers[i].detail.system_errno) == (EPIPE));

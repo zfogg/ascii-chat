@@ -184,9 +184,7 @@ TEST_CASE("tcp_transport/error_response_hides_internal_details", "[tcp_transport
   REQUIRE((receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT)) == (PACKET_RECV_SUCCESS));
   asciichat_error_t code;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1];
-  REQUIRE((packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t),
-                                          envelope.len - sizeof(packet_header_t), &code, message, sizeof(message),
-                                          NULL) == ASCIICHAT_OK));
+  REQUIRE((packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t), envelope.len - sizeof(packet_header_t), &code, message, sizeof(message), NULL) == ASCIICHAT_OK));
   REQUIRE(code == ERROR_INTERNAL);
   REQUIRE(std::strcmp(message, asciichat_error_string(ERROR_INTERNAL)) == 0);
   buffer_release(envelope.allocated_buffer);
@@ -206,9 +204,7 @@ TEST_CASE("tcp_transport/error_response_hides_errno_stack_locations", "[tcp_tran
   REQUIRE(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT) == PACKET_RECV_SUCCESS);
   asciichat_error_t code;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1];
-  REQUIRE((packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t),
-                                          envelope.len - sizeof(packet_header_t), &code, message, sizeof(message),
-                                          NULL) == ASCIICHAT_OK));
+  REQUIRE((packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t), envelope.len - sizeof(packet_header_t), &code, message, sizeof(message), NULL) == ASCIICHAT_OK));
   REQUIRE(code == ERROR_NETWORK_PROTOCOL);
   REQUIRE(std::strcmp(message, asciichat_error_string(ERROR_NETWORK_PROTOCOL)) == 0);
   REQUIRE(strstr(message, "outer client failure") == nullptr);
@@ -238,9 +234,7 @@ TEST_CASE("tcp_transport/acip_error_response_hides_errno_stack_locations", "[tcp
   REQUIRE(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT) == PACKET_RECV_SUCCESS);
   asciichat_error_t code;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1];
-  REQUIRE((packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t),
-                                          envelope.len - sizeof(packet_header_t), &code, message, sizeof(message),
-                                          NULL) == ASCIICHAT_OK));
+  REQUIRE((packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t), envelope.len - sizeof(packet_header_t), &code, message, sizeof(message), NULL) == ASCIICHAT_OK));
   REQUIRE(code == ERROR_NETWORK_PROTOCOL);
   REQUIRE(std::strcmp(message, asciichat_error_string(ERROR_NETWORK_PROTOCOL)) == 0);
   REQUIRE(strstr(message, "client connection failed") == nullptr);
