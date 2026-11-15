@@ -34,6 +34,7 @@ struct ui_session {
   animation_t animation;
   ui_splash_view_t splash;
   bool loading, help, show_logs, dirty, owns_logs;
+  bool media_cursor_hidden;
   time_t started;
   int active;
   bool covered;
@@ -207,12 +208,19 @@ const char *ui_session_render(ui_session_t *s, const ui_session_view_t *view, ui
   if (covered)
     ui_too_small_render(s->frame, s->size, view->minimum);
   else {
-    // Media frames are continuously redrawn and may follow another UI screen
-    // that intentionally showed the editing cursor. Reassert the terminal
-    // cursor state through the platform abstraction so it cannot flash
-    // between ASCII frames.
-    if (view->screen == UI_SCREEN_MEDIA)
-      (void)terminal_cursor_hide();
+    // Media frames may follow another UI screen that showed the editing
+    // cursor. Hide it once when media takes ownership. Calling the Windows
+    // terminal abstraction for every frame routes through stdio and flushes
+    // stdout, which can make ConPTY frontends such as Alacritty visibly flash
+    // the cursor and throttles the frame presenter.
+    if (view->screen == UI_SCREEN_MEDIA) {
+      if (!s->media_cursor_hidden) {
+        (void)terminal_cursor_hide();
+        s->media_cursor_hidden = true;
+      }
+    } else {
+      s->media_cursor_hidden = false;
+    }
     if (view->screen == UI_SCREEN_HELP) {
       int top = (s->size.rows - view->minimum.rows) / 2;
       terminal_color_mode_t mode = GET_OPTION(color_mode);

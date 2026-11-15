@@ -172,7 +172,6 @@ function(asciichat_configure_quic)
             "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ${_quic_ngtcp2_crypto_target} -- --quiet
         BUILD_BYPRODUCTS ${_ngtcp2_byproducts}
-        BUILD_ALWAYS TRUE
         EXCLUDE_FROM_ALL TRUE)
 
     ExternalProject_Add(asciichat-nghttp3-build
@@ -182,7 +181,6 @@ function(asciichat_configure_quic)
         CMAKE_ARGS ${_quic_common_args} "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ${_quic_nghttp3_target} -- --quiet
         BUILD_BYPRODUCTS ${_nghttp3_byproducts}
-        BUILD_ALWAYS TRUE
         EXCLUDE_FROM_ALL TRUE)
 
     add_library(asciichat-ngtcp2 ${_quic_shared_type} IMPORTED GLOBAL)
