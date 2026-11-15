@@ -6,6 +6,7 @@
 #ifdef __cplusplus
 #include <atomic>
 #define _Atomic(type) std::atomic<type>
+#define _Static_assert static_assert
 #else
 /* MSVC's C headers do not expose C11 max_align_t in C mode. */
 typedef double max_align_t;

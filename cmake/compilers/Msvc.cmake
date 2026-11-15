@@ -2,6 +2,10 @@ include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/Common.cmake")
 
 function(configure_msvc_pre_project)
+    # Keep the application and static third-party libraries on the same CRT.
+    # The x64-windows-static dependency graph uses the static CRT, so use /MT
+    # for every native MSVC configuration as well.
+    set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreaded CACHE STRING "MSVC runtime library" FORCE)
     # Native cl.exe cannot parse the repository's defer marker syntax. Use the
     # standalone Python/libclang transformer for C sources, then compile the
     # generated sources with cl.exe as usual.
