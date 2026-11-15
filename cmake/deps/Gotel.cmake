@@ -15,15 +15,10 @@ set(GOTEL_WITH_SQLITE ON CACHE BOOL "Build SQLite telemetry adapter" FORCE)
 # pinned gotel/otlp-c sources expose overlapping HTTP request symbols when
 # combined with the application's HTTP exporter on Windows; telemetry uses
 # OTLP/HTTP here and nghttp2 remains available to the native HTTP server.
-# Musl release builds also use Gotel's toolchain-built nghttp2_static target
-# for ascii-chat's native HTTP/2 server.  The dependency is only populated
-# when Gotel's gRPC module is enabled; keep that module disabled on the normal
-# platform builds where its duplicate HTTP symbols conflict with the app.
-if(USE_MUSL)
-    set(GOTEL_WITH_GRPC ON CACHE BOOL "Build native OTLP/gRPC telemetry transport" FORCE)
-else()
-    set(GOTEL_WITH_GRPC OFF CACHE BOOL "Build native OTLP/gRPC telemetry transport" FORCE)
-endif()
+# Keep Gotel's optional gRPC telemetry transport disabled.  Its pinned adapter
+# rewrites the HTTP source staging path and is not needed by ascii-chat's HTTP
+#/2 server.
+set(GOTEL_WITH_GRPC OFF CACHE BOOL "Build native OTLP/gRPC telemetry transport" FORCE)
 set(GOTEL_UTF8PROC_TARGET utf8proc CACHE STRING
     "Use ascii-chat's utf8proc target" FORCE)
 
@@ -110,6 +105,26 @@ if(DEFINED FETCHCONTENT_BASE_DIR)
 endif()
 set(FETCHCONTENT_BASE_DIR "${_asciichat_gotel_cache_dir}" CACHE PATH
     "Persistent Gotel dependency source/build cache" FORCE)
+
+if(USE_MUSL AND NOT TARGET nghttp2_static)
+    # The musl application links its native HTTP/2 server against a static
+    # nghttp2 target. Build that target directly instead of enabling Gotel's
+    # unrelated gRPC adapter just to make it appear.
+    set(ENABLE_LIB_ONLY ON CACHE BOOL "Build nghttp2 library only" FORCE)
+    set(BUILD_STATIC_LIBS ON CACHE BOOL "Build nghttp2 static libraries" FORCE)
+    set(ENABLE_HTTP3 OFF CACHE BOOL "Disable nghttp2 HTTP/3 integration" FORCE)
+    set(ENABLE_APP OFF CACHE BOOL "Disable nghttp2 applications" FORCE)
+    set(ENABLE_HPACK_TOOLS OFF CACHE BOOL "Disable nghttp2 HPACK tools" FORCE)
+    set(ENABLE_EXAMPLES OFF CACHE BOOL "Disable nghttp2 examples" FORCE)
+    set(BUILD_TESTING OFF CACHE BOOL "Disable nghttp2 tests" FORCE)
+    FetchContent_Declare(asciichat_nghttp2
+        GIT_REPOSITORY https://github.com/nghttp2/nghttp2.git
+        GIT_TAG 43b29f991403b5419dd0bea2840581078ead9bf8)
+    FetchContent_MakeAvailable(asciichat_nghttp2)
+    if(TARGET nghttp2_static)
+        set_target_properties(nghttp2_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    endif()
+endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                  "${_asciichat_gotel_cache_dir}/build"
