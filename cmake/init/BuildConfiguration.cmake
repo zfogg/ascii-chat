@@ -20,11 +20,11 @@ set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-message(STATUS "Using ${BoldCyan}C23${ColorReset} and ${BoldCyan}C++26${ColorReset} standards")
+message(STATUS "Using ${BoldCyan}C23${ColorReset} and ${BoldCyan}C++23${ColorReset} standards")
 
 # =============================================================================
 # Windows Install Prefix Configuration

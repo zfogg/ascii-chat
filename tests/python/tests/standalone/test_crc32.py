@@ -21,9 +21,9 @@ def test_crc32_dispatch(c_compiler, name, defines):
     baseline = ["-march=x86-64"] if arch in ("amd64", "x86_64") else (["-march=armv8-a"] if arch in ("arm64", "aarch64") else [])
     with standalone_output_directory("crc32-" + name) as out:
         masked = out / "masked_cpu.c"
-        masked.write_text('#include <ascii-chat/platform/cpu.h>\nunsigned crc32_test_probes;\n'
+        masked.write_text('#include <libplatform/cpu.h>\nunsigned crc32_test_probes;\n'
                           'uint32_t platform_cpu_features(void) { ++crc32_test_probes; return 0; }\n')
-        cpu = masked if name == "masked" else ROOT / "lib/platform/cpu.c"
+        cpu = masked if name == "masked" else ROOT / "deps/ascii-chat-deps/libplatform/lib/cpu.c"
         exe = out / (name + (".exe" if os.name == "nt" else ""))
         command = [c_compiler, "-std=c17", "-O2", "-Wall", "-Wextra", "-Werror", *coverage_flags(),
                    *baseline, *defines, "-I", str(ROOT / "include"), str(ROOT / "lib/network/crc32.c"),

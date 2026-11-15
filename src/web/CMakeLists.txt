@@ -314,8 +314,7 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/debug/debug_helpers.c
     ${LIB_ROOT}/debug/mutex.c
 
-    # Note: platform/system.c is NOT included here - it's included by the WASM-specific
-    # wasm/system.c file, which follows the same pattern as posix/system.c and windows/system.c
+    # Platform implementations are supplied by the linked libplatform target.
 
     # Logging (real logging system with full header formatting)
     ${LIB_ROOT}/log/log.c
@@ -330,8 +329,7 @@ set(LIB_SRC_COMMON
 
     # Debug/memory tracking (sync/mutex/atomic debugging excluded for WASM)
 
-    # Terminal abstraction (using WASM-specific version from PLATFORM_SRC)
-    # ${LIB_ROOT}/platform/terminal.c - EXCLUDED: using wasm/terminal.c instead
+    # Terminal abstraction is supplied by the linked libplatform WASM backend.
 
     # Media source handling (webcam, files, URLs)
     ${LIB_ROOT}/media/source.c

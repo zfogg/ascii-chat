@@ -610,8 +610,8 @@
  * - Automatic detection via $LANG and $LC_ALL
  *
  * **Terminal Size Detection**:
- * - Uses TIOCGWINSZ ioctl on POSIX (lib/platform/posix/terminal.c)
- * - Uses GetConsoleScreenBufferInfo on Windows (lib/platform/windows/terminal.c)
+ * - Uses TIOCGWINSZ ioctl on POSIX through libplatform
+ * - Uses GetConsoleScreenBufferInfo on Windows through libplatform
  * - Falls back to $COLUMNS and $LINES environment variables
  * - Default: 80x24 if detection fails
  *

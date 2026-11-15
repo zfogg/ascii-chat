@@ -84,7 +84,7 @@ const FLOWS: Record<string, Flow> = {
             note: "Receives argc/argv, calls options_init() at line 733",
           },
           {
-            path: "lib/platform/wasm/",
+            path: "deps/ascii-chat-deps/libplatform/lib/wasm/",
             fn: "wasm_set_option()",
             note: "WASM JS→C bridge for setting options programmatically",
           },
@@ -529,7 +529,7 @@ const FLOWS: Record<string, Flow> = {
             note: "Repositions cursor, writes full ANSI frame atomically",
           },
           {
-            path: "lib/platform/terminal.c",
+            path: "deps/ascii-chat-deps/libplatform/lib/terminal.c",
             fn: "terminal_should_use_control_sequences()",
             note: "Returns false when stdout is piped (not a TTY)",
           },
@@ -618,7 +618,7 @@ const FLOWS: Record<string, Flow> = {
           "Resolves the font for rendering: fontconfig on Linux, CoreText on macOS. Supports path, family name, or embedded binary font data.",
         files: [
           {
-            path: "lib/platform/font.c",
+            path: "deps/ascii-chat-deps/libplatform/lib/font.c",
             fn: "platform_font_resolve()",
             note: "fontconfig/CoreText lookup → file path or embedded bytes",
           },
@@ -1532,7 +1532,7 @@ interface Man3Entry {
 // follow the standard encoding (full-path or basename).
 const MAN3_OVERRIDES: Record<string, string> = {
   "lib/network/tcp/tcp.c": "/man3/ascii-chat-lib_network_tcp_client.c.html",
-  "lib/platform/font.c": "/man3/ascii-chat-platform_font.h.html",
+  "deps/ascii-chat-deps/libplatform/lib/font.c": "/man3/libplatform-font.h.html",
   "lib/video/ascii/avx2/color.c": "/man3/ascii-chat-avx2_color.c.html",
   "lib/video/ascii/neon/color.c": "/man3/ascii-chat-neon_color.c.html",
 };

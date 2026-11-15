@@ -435,6 +435,7 @@
  *
  * Symbolizers convert raw memory addresses into human-readable function names and
  * source locations. The shared libplatform backtrace system (`libplatform/symbols.c`)
+   * source locations. The shared libplatform backtrace system (`libplatform/symbols.c`)
  * **automatically detects and uses** these tools when available.
  *
  * | Tool | Platform | Priority |
@@ -447,6 +448,7 @@
  *       memory addresses like `0x401234` instead of `main() at src/client.c:42`.
  *
  * **Automatic Detection** (`libplatform/symbols.c`):
+   * **Automatic Detection** (`libplatform/symbols.c`):
  *
  * The symbol cache system automatically:
  * 1. Checks for `llvm-symbolizer` in PATH (preferred)

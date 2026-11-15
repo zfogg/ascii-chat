@@ -13,7 +13,7 @@
  * kqueue report readiness. `platform/event.h` exposes asynchronous reads and writes
  * so networking code does not depend on either model.
  *
- * `lib/platform/event.c` owns handles, wakeups, deadlines, and worker lifetimes.
+ * libplatform owns handles, wakeups, deadlines, and worker lifetimes.
  * `lib/network/packet/decoder.c` incrementally assembles ACIP headers and payloads,
  * validates lengths before allocation, checks CRCs, and emits complete packets.
  * `lib/network/tcp/async.c` implements the ACIP transport with owned output buffers
