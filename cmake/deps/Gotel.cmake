@@ -92,7 +92,8 @@ set(_asciichat_parent_fetchcontent_updates_disconnected
 set(_asciichat_parent_fetchcontent_fully_disconnected
     ${FETCHCONTENT_FULLY_DISCONNECTED})
 set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
-set(FETCHCONTENT_FULLY_DISCONNECTED ON)
+# Do not force FULLY_DISCONNECTED here.  A fresh release runner must be able
+# to populate sequel and otlp-c before subsequent configures reuse the cache.
 set(_asciichat_fetchcontent_base_dir_was_defined FALSE)
 if(DEFINED FETCHCONTENT_BASE_DIR)
     set(_asciichat_fetchcontent_base_dir_was_defined TRUE)
