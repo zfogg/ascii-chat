@@ -18,7 +18,6 @@
 #include <libflags/config/keys.h>
 #include <string.h>
 #include <stdlib.h>
-#include <math.h>
 
 static void registry_flags_change(flags_context_t *context, const char *name, const flags_value_t *old_value, const flags_value_t *new_value, void *user_data) {
   (void)name;
