@@ -1351,7 +1351,7 @@ if(TARGET ascii-chat-static AND BUILD_TESTS AND CATCH2_FOUND)
     add_executable(test-buffer-ownership EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/contracts/buffer/buffer_test.cpp)
     asciichat_configure_contract(test-buffer-ownership)
     target_link_libraries(test-buffer-ownership PRIVATE ascii-chat-static ${MIMALLOC_LIBRARIES}
-        ${LIBWEBSOCKETS_LIBRARIES} OpenSSL::SSL OpenSSL::Crypto ${ZLIB_LIBRARIES})
+        ${LIBWEBSOCKETS_LIBRARIES} OpenSSL::SSL OpenSSL::Crypto)
     if(WIN32)
         target_link_libraries(test-buffer-ownership PRIVATE ws2_32)
     elseif(APPLE)
