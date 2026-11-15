@@ -49,7 +49,10 @@ jobs:
       - name: Checkout release source
         uses: actions/checkout@v4
         with:
-          ref: ${{ steps.release.outputs.tag }}
+          # The selected release may predate this workflow. Use the current
+          # default branch for the submission tooling and target the release
+          # asset selected above.
+          ref: master
 
       - name: Generate and submit manifest PR
         env:
