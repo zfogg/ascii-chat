@@ -254,7 +254,9 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
   int second_col_start = 2 + fixed_first_col_width + 2;
 
   // At narrow terminal widths, force single-column layout
-  bool force_single_column = (term_width <= 90);
+  // Two columns become taller than a compact single-column layout on
+  // ordinary 80- to 120-column terminals once descriptions are wrapped.
+  bool force_single_column = (term_width <= 120);
 
   // Position where first column ends (including leading spaces)
   int first_col_end = 2 + display_width;
