@@ -40,8 +40,8 @@ outbuf_t *ascii_legacy_render_set_output_target(outbuf_t *target);
 ascii_stabilizer_t *ascii_legacy_stabilizer_set_target(ascii_stabilizer_t *state);
 void ascii_legacy_stabilizer_reset(ascii_stabilizer_t *state);
 asciichat_error_t ascii_legacy_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height, uint64_t configuration);
-uint32_t ascii_legacy_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate, uint64_t candidate_error,
-                                        uint64_t previous_error, uint32_t color, uint64_t elapsed_ns, uint32_t *stabilized_color);
+uint32_t ascii_legacy_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate, uint64_t candidate_error, uint64_t previous_error, uint32_t color,
+                                        uint64_t elapsed_ns, uint32_t *stabilized_color);
 asciichat_error_t ascii_legacy_frame_init(ascii_frame_t *frame, const image_t *image, const char *palette);
 void ascii_legacy_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows, const simd_cells_t *ops);
 char *ascii_legacy_frame_finish(ascii_frame_t *frame);
