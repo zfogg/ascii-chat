@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import time
 from pathlib import Path
+from typing import cast
 
 import pygetwindow as gw
 import pymonctl as pm
@@ -18,6 +20,7 @@ import win32gui
 import win32process
 import pywintypes
 from PIL import Image, ImageChops, ImageStat
+from ascii_chat_tests.terminal_cadence import cadence_metrics, probe_box, require_cadence
 
 ROOT = Path(__file__).resolve().parents[1]
 ALACRITTY = Path(r"C:\Program Files\Alacritty\alacritty.exe")
@@ -77,7 +80,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--ascii-args",
         nargs=argparse.REMAINDER,
-        default=["mirror", "--test-pattern", "1", "--renderer", "luminance", "--color-mode", "256"],
+        default=["mirror", "-c", "0", "--color-mode", "truecolor"],
     )
     return parser.parse_args()
 
@@ -98,19 +101,18 @@ def focus_window(hwnd: int) -> None:
             win32process.AttachThreadInput(current_thread, foreground_thread, False)
 
 
-def client_signature(window_left: int, window_top: int, points: list[tuple[int, int]]) -> tuple[int, ...]:
+def client_signature(box: tuple[int, int, int, int]) -> bytes:
     # Capture one small region around the image-difference location selected
     # from the two diagnostic frames. A GDI GetPixel loop is too slow to be a
     # 60 Hz probe and can sample a static cell of the pattern.
-    x, y = points[0]
-    width, height = 640, 400
+    left, top, right, bottom = box
     shot = SCREEN.grab({
-        "left": window_left + max(0, x - width // 2),
-        "top": window_top + max(0, y - height // 2),
-        "width": width,
-        "height": height,
+        "left": left,
+        "top": top,
+        "width": right - left,
+        "height": bottom - top,
     })
-    return (bytes(shot.raw),)
+    return bytes(shot.raw)
 
 
 def capture_image(box: tuple[int, int, int, int]) -> Image.Image:
@@ -127,6 +129,10 @@ def main() -> None:
         raise RuntimeError(f"ascii-chat binary was not found at {args.binary}")
     if args.samples < 1 or args.interval <= 0 or args.fps <= 0 or args.fps_seconds <= 0:
         raise RuntimeError("samples, interval, fps, and fps-seconds must be positive")
+
+    ascii_args_lower = [value.lower() for value in args.ascii_args]
+    explicit_ascii_fps = any(value == "--fps" or value.startswith("--fps=") for value in ascii_args_lower)
+    ascii_fps = int(args.fps)
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     force_terminate_alacritty()
@@ -145,9 +151,9 @@ def main() -> None:
         "-e",
         str(args.binary),
         *args.ascii_args,
-        "--fps",
-        str(int(args.fps)),
     ]
+    if not explicit_ascii_fps:
+        command.extend(["--fps", str(ascii_fps)])
     process = subprocess.Popen(command)
     try:
         deadline = time.monotonic() + 10
@@ -225,7 +231,9 @@ def main() -> None:
         previous = None
         while time.monotonic() < ready_deadline:
             candidate = capture_image(box)
-            bright_pixels = sum(1 for pixel in candidate.getdata() if max(pixel) > 80)
+            red, green, blue = candidate.split()
+            intensity = ImageChops.lighter(ImageChops.lighter(red, green), blue)
+            bright_pixels = sum(intensity.histogram()[81:])
             if bright_pixels / (candidate.width * candidate.height) >= 0.005:
                 previous = candidate
                 break
@@ -247,41 +255,54 @@ def main() -> None:
             # much slower full-screen screenshot path.
             # Let Alacritty finish its ConPTY surface setup and discard the
             # initial resize/startup frames before measuring cadence.
-            time.sleep(2.0)
+            time.sleep(1.0)
             current_hwnd = titled_window(window_title)
             if current_hwnd:
                 hwnd = current_hwnd
                 client_width, client_height = win32gui.GetClientRect(hwnd)[2:]
                 client_left, client_top = win32gui.ClientToScreen(hwnd, (0, 0))
                 client_right, client_bottom = win32gui.ClientToScreen(hwnd, (client_width, client_height))
+                box = (client_left, client_top, client_right, client_bottom)
             probe_frame = capture_image(box)
             changed_box = ImageChops.difference(previous, probe_frame).getbbox()
             if changed_box:
                 changed_left, changed_top, changed_right, changed_bottom = changed_box
-                points = [((changed_left + changed_right) // 2, (changed_top + changed_bottom) // 2)]
+                diff_pixels = ImageChops.difference(previous, probe_frame).load()
+                if diff_pixels is None:
+                    raise RuntimeError("Could not inspect captured frame pixels")
+                strongest = (0, changed_left, changed_top)
+                for y in range(changed_top, changed_bottom, 4):
+                    for x in range(changed_left, changed_right, 4):
+                        pixel = cast(tuple[int, int, int], diff_pixels[x, y])
+                        strength = max(pixel)
+                        if strength > strongest[0]:
+                            strongest = (strength, x, y)
+                points = [(strongest[1], strongest[2])]
             else:
                 points = [((client_right - client_left) // 2, (client_bottom - client_top) // 2)]
-            probe_previous = client_signature(client_left, client_top, points)
+            region = probe_box(box, points[0])
+            probe_previous = client_signature(region)
             interval = 1.0 / args.fps
             start_time = time.monotonic()
             deadline = start_time + args.fps_seconds
             index = 0
+            observations = []
             while time.monotonic() < deadline:
                 target_time = start_time + (index + 1) * interval
                 remaining = target_time - time.monotonic()
                 if remaining > 0:
                     time.sleep(remaining)
-                probe_current = client_signature(client_left, client_top, points)
+                probe_current = client_signature(region)
+                observed_at = time.monotonic() - start_time
                 changed = probe_current != probe_previous
+                observations.append((observed_at, changed))
                 samples.append((index, changed, 1.0 if changed else 0.0))
                 probe_previous = probe_current
-                index += 1
-            achieved_fps = len(samples) / args.fps_seconds
-            if achieved_fps < args.fps * 0.8:
-                raise AssertionError(
-                    f"Alacritty FPS probe achieved {achieved_fps:.1f} FPS, "
-                    f"below the required {args.fps * 0.8:.1f} FPS minimum"
-                )
+                # Skip missed sampling slots instead of counting a burst of
+                # catch-up captures as independently displayed frames.
+                index = max(index + 1, int(observed_at / interval))
+            metrics = cadence_metrics(observations, time.monotonic() - start_time)
+            print("cadence=" + json.dumps(metrics, sort_keys=True))
             current = capture_image(box)
         current.save(frame_b)
         print(f"monitor_index={args.monitor_index} monitor={target_rect}")
@@ -291,7 +312,9 @@ def main() -> None:
         if args.hold_seconds > 0:
             time.sleep(args.hold_seconds)
         changed_count = sum(1 for _, changed, _ in samples if changed)
-        required_changed = (len(samples) * 2 + 2) // 3
+        required_changed = 1 if args.no_fps_check else len(samples) * 5 / 6
+        if not args.no_fps_check:
+            require_cadence(metrics, args.fps)
         if changed_count < required_changed:
             unchanged = [index for index, changed, _ in samples if not changed]
             preview = ", ".join(str(index) for index in unchanged[:12])

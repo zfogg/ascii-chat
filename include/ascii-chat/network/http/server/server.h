@@ -14,6 +14,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct http_server http_server_t;
 typedef struct http_request http_request_t;
 typedef struct http_response http_response_t;
@@ -107,3 +111,7 @@ asciichat_error_t http_response_write(http_response_t *response, const void *dat
 /** Return the number of bytes buffered for the response body. */
 size_t http_response_body_length(const http_response_t *response);
 asciichat_error_t http_response_finish(http_response_t *response);
+
+#ifdef __cplusplus
+}
+#endif

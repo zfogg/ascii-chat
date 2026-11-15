@@ -690,7 +690,9 @@ read_latest:
 
   // Use FFmpeg's runtime-selected SIMD converter instead of a per-pixel C copy.
   // Keep the context across frames, including changes in capture dimensions.
+  uint64_t converter_started_ns = time_get_ns();
   ctx->rgb_converter = sws_getCachedContext(ctx->rgb_converter, (int)width, (int)height, AV_PIX_FMT_BGRA, (int)width, (int)height, AV_PIX_FMT_RGB24, SWS_POINT, NULL, NULL, NULL);
+  uint64_t converter_ready_ns = time_get_ns();
   size_t stride_bytes = (size_t)(ctx->stride < 0 ? -(int64_t)ctx->stride : ctx->stride);
   if (!ctx->rgb_converter || stride_bytes < (size_t)width * 4 || bufferLength < stride_bytes * height) {
     IMFMediaBuffer_Unlock(buffer);
@@ -704,6 +706,7 @@ read_latest:
   const int input_stride[4] = {ctx->stride};
   uint8_t *output[4] = {(uint8_t *)img->pixels};
   const int output_stride[4] = {(int)width * 3};
+  uint64_t convert_started_ns = time_get_ns();
   if (sws_scale(ctx->rgb_converter, input, input_stride, 0, (int)height, output, output_stride) != (int)height) {
     IMFMediaBuffer_Unlock(buffer);
     IMFMediaBuffer_Release(buffer);
@@ -711,10 +714,16 @@ read_latest:
     SET_ERRNO(ERROR_WEBCAM, "Could not convert webcam RGB buffer");
     return NULL;
   }
+  uint64_t convert_done_ns = time_get_ns();
+  if (convert_done_ns - convert_started_ns >= 50 * NS_PER_MS_INT)
+    log_debug("CAMERA_CONVERT: device=%u width=%u height=%u convert_ms=%.2f", ctx->device_index, width, height, (double)(convert_done_ns - convert_started_ns) / NS_PER_MS_INT);
 
+  uint64_t converted_ns = time_get_ns();
   // Unlock and cleanup
   IMFMediaBuffer_Unlock(buffer);
+  uint64_t unlocked_ns = time_get_ns();
   IMFMediaBuffer_Release(buffer);
+  uint64_t buffer_released_ns = time_get_ns();
   IMFSample_Release(sample);
 
   uint64_t complete_ns = time_get_ns();
@@ -724,6 +733,11 @@ read_latest:
               "device_age_ms=%.2f",
               ctx->device_index, (unsigned long long)request_ns, (unsigned long long)wall_ns, (unsigned long long)complete_ns, (double)(wall_ns - request_ns) / NS_PER_MS_INT,
               (double)(complete_ns - wall_ns) / NS_PER_MS_INT, device_age_ms);
+    log_debug("CAMERA_COPY_STAGES: device=%u sample_ns=%llu setup_ms=%.3f converter_ms=%.3f conversion_ms=%.3f "
+              "unlock_ms=%.3f buffer_release_ms=%.3f sample_release_ms=%.3f",
+              ctx->device_index, (unsigned long long)wall_ns, (double)(converter_started_ns - wall_ns) / NS_PER_MS_INT, (double)(converter_ready_ns - converter_started_ns) / NS_PER_MS_INT,
+              (double)(converted_ns - converter_ready_ns) / NS_PER_MS_INT, (double)(unlocked_ns - converted_ns) / NS_PER_MS_INT, (double)(buffer_released_ns - unlocked_ns) / NS_PER_MS_INT,
+              (double)(complete_ns - buffer_released_ns) / NS_PER_MS_INT);
   }
   return img;
 }

@@ -188,17 +188,20 @@ asciichat_error_t test_pattern_render_at(test_pattern_t *p, int index, double ti
     for (int y = 1; y < h; y++)
       memcpy(pixels + (size_t)y * w, pixels, (size_t)w * sizeof(*pixels));
     if (cadence) {
-      // Keep the cadence marker compact and overlaid on the animated pattern.
-      // The old marker replaced the entire image with eight black/white bars,
-      // which made the test look broken in terminal captures. Gray-code bits
-      // guarantee a deterministic change at each 60 Hz sample without hiding
-      // the underlying test pattern.
-      int marker = (int)fmax(16, fmin(w, h) / 4.0);
+      // Show all nine Gray-code bits in a compact 3x3 marker. Showing only
+      // bit zero repeats every other 60 Hz frame, hiding valid presentations
+      // from a visual cadence check. Adjacent codes differ in exactly one
+      // tile while the surrounding animated pattern remains visible.
+      int marker = (int)fmax(16, fmin(w, h) / 16.0);
       int marker_left = (w - marker) / 2;
       int marker_top = (h - marker) / 2;
       for (int y = marker_top; y < marker_top + marker && y < h; y++)
-        for (int x = marker_left; x < marker_left + marker && x < w; x++)
-          pixels[(size_t)y * w + x] = (code & 1u) ? white : (rgb_pixel_t){0, 0, 0};
+        for (int x = marker_left; x < marker_left + marker && x < w; x++) {
+          unsigned tile_x = (unsigned)(x - marker_left) * 3 / (unsigned)marker;
+          unsigned tile_y = (unsigned)(y - marker_top) * 3 / (unsigned)marker;
+          unsigned bit = tile_y * 3 + tile_x;
+          pixels[(size_t)y * w + x] = (code & (1u << bit)) ? white : (rgb_pixel_t){0, 0, 0};
+        }
       return ASCIICHAT_OK;
     }
     int top = (int)fmax(0, floor(cy - radius - 1)), bottom = (int)fmin(h, ceil(cy + radius + 1));

@@ -380,6 +380,17 @@ static void stats_media_end(void) {
 
 static size_t write_output_chunk(int fd, const void *data, size_t length) {
   uint64_t started_ns = g_stats_media ? time_get_ns() : 0;
+  static _Thread_local int trace_writes;
+  static _Thread_local uint64_t trace_sequence;
+  if (!trace_writes) {
+    const char *value = SAFE_GETENV("ASCII_CHAT_TRACE_TERMINAL_WRITES");
+    trace_writes = value && strcmp(value, "1") == 0 ? 1 : -1;
+  }
+  bool trace = g_stats_media && trace_writes > 0;
+  uint64_t sequence = trace ? ++trace_sequence : 0;
+  if (trace)
+    log_debug("MEDIA_WRITE_BEGIN: sequence=%llu chunk=%llu fd=%d requested=%zu at_ns=%llu", (unsigned long long)sequence, (unsigned long long)g_stats_chunks, fd, length,
+              (unsigned long long)time_get_ns());
 #ifndef NDEBUG
   static _Thread_local bool test_delay_checked, test_delay;
   if (!test_delay_checked) {
@@ -392,16 +403,25 @@ static size_t write_output_chunk(int fd, const void *data, size_t length) {
 #endif
   // A presentation write must not split an image protocol packet emitted by
   // another thread. Non-owner logging must remain nonblocking here.
+  uint64_t lock_started_ns = trace ? time_get_ns() : 0;
   if (g_owner)
     ui_controller_packet_begin();
+  uint64_t acquired_ns = trace ? time_get_ns() : 0;
   size_t written = platform_write_all(fd, data, length);
+  uint64_t returned_ns = trace ? time_get_ns() : 0;
   if (g_owner)
     ui_controller_packet_end();
+  if (trace)
+    log_debug("MEDIA_WRITE_END: sequence=%llu fd=%d requested=%zu written=%zu lock_wait_ms=%.3f write_ms=%.3f returned_ns=%llu", (unsigned long long)sequence, fd, length, written,
+              (double)(acquired_ns - lock_started_ns) / NS_PER_MS_INT, (double)(returned_ns - acquired_ns) / NS_PER_MS_INT, (unsigned long long)returned_ns);
   if (g_stats_media) {
     uint64_t elapsed_ns = time_get_ns() - started_ns;
     if (elapsed_ns > g_stats_max_chunk_ns)
       g_stats_max_chunk_ns = elapsed_ns;
     ++g_stats_chunks;
+    if (elapsed_ns >= 50 * NS_PER_MS_INT || written != length)
+      log_debug("MEDIA_WRITE_CHUNK: frame=%llu fd=%d requested=%zu written=%zu elapsed_ms=%.2f", g_render_snapshot ? (unsigned long long)g_render_snapshot->frame_id : 0ULL, fd, length, written,
+                (double)elapsed_ns / NS_PER_MS_INT);
   }
   return written;
 }
