@@ -154,6 +154,7 @@
  *
  * - @ref topic_dependencies "Dependencies"
  * - @ref topic_build "Build System"
+ * - @ref topic_winget "WinGet package"
  * - @ref topic_testing "Testing"
  * - @ref topic_debug "Debugging"
  * - @ref md_docs_2keymask "Keymask public-key art"

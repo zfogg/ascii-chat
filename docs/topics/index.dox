@@ -216,6 +216,7 @@
  *
  * - @ref topic_dependencies "Dependencies" - Third-party libraries and build requirements
  * - @ref topic_build "Build System" - CMake configuration, cross-platform compilation, build types
+ * - @ref topic_winget "WinGet package" - Installing released Windows builds with winget
  * - @ref topic_testing "Testing" - Test framework, test runner, Docker testing, coverage reporting
  * - @ref topic_debug "Debugging Utilities" - Error tracking, memory leak detection, diagnostics
  * - @ref errno "Error Handling System" - Typed error codes, error context, thread-safe errors
