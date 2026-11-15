@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file rcu_validation_test.c
  * @brief Unit tests for RCU option value validation (issue #403)
@@ -6,7 +7,6 @@
  * registry metadata before publishing to RCU.
  */
 
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <math.h>
 
@@ -26,45 +26,45 @@ static void teardown(void) {
   options_state_destroy();
 }
 TEST_CASE("rcu_validation/webrtc_bind_address_accepts_numeric_interfaces", "[rcu_validation]") {
-  ASCIICHAT_REQUIRE_STR_EMPTY(GET_OPTION(webrtc_bind_address));
+  REQUIRE(GET_OPTION(webrtc_bind_address)[0] == '\0');
   const char *addresses[] = {"127.0.0.1", "::1", "192.0.2.1", "2001:db8::1", "0.0.0.0", "::", ""};
   for (size_t i = 0; i < sizeof(addresses) / sizeof(*addresses); ++i) {
-    ASCIICHAT_REQUIRE_EQ(options_set_string("webrtc_bind_address", addresses[i]), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_STR_EQ(GET_OPTION(webrtc_bind_address), addresses[i]);
+    REQUIRE((options_set_string("webrtc_bind_address", addresses[i])) == (ASCIICHAT_OK));
+    REQUIRE(std::strcmp((GET_OPTION(webrtc_bind_address)), (addresses[i])) == 0);
   }
 }
 
 TEST_CASE("rcu_validation/webrtc_bind_address_rejects_invalid_values_without_publishing", "[rcu_validation]") {
-  ASCIICHAT_REQUIRE_EQ(options_set_string("webrtc_bind_address", "127.0.0.1"), ASCIICHAT_OK);
+  REQUIRE((options_set_string("webrtc_bind_address", "127.0.0.1")) == (ASCIICHAT_OK));
   const char *invalid[] = {"localhost", "127.0.0.1:5000", "[::1]", "::not-an-ip", "256.0.0.1"};
   for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
-    ASCIICHAT_REQUIRE_NE(options_set_string("webrtc_bind_address", invalid[i]), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_STR_EQ(GET_OPTION(webrtc_bind_address), "127.0.0.1");
+    REQUIRE((options_set_string("webrtc_bind_address", invalid[i])) != (ASCIICHAT_OK));
+    REQUIRE(std::strcmp((GET_OPTION(webrtc_bind_address)), ("127.0.0.1")) == 0);
   }
 }
 
 TEST_CASE("rcu_validation/face_follow_and_zalgo_keyboard_round_trip", "[rcu_validation]") {
   double volume = 1.0;
-  ASCIICHAT_REQUIRE_EQ(options_set_bool("face_follow", false), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(options_set_int("zalgo", 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(ui_session_key((keyboard_key_t)'4', &volume), UI_ACTION_NONE);
-  ASCIICHAT_REQUIRE_NOT(GET_OPTION(face_follow));
-  ASCIICHAT_REQUIRE_EQ(ui_session_key((keyboard_key_t)'w', &volume), UI_ACTION_SETTINGS);
-  ASCIICHAT_REQUIRE(GET_OPTION(face_follow));
-  ASCIICHAT_REQUIRE_EQ(ui_session_key((keyboard_key_t)'z', &volume), UI_ACTION_SETTINGS);
-  ASCIICHAT_REQUIRE_EQ(GET_OPTION(zalgo), 8);
+  REQUIRE((options_set_bool("face_follow", false)) == (ASCIICHAT_OK));
+  REQUIRE((options_set_int("zalgo", 0)) == (ASCIICHAT_OK));
+  REQUIRE((ui_session_key((keyboard_key_t)'4', &volume)) == (UI_ACTION_NONE));
+  REQUIRE(!(GET_OPTION(face_follow)));
+  REQUIRE((ui_session_key((keyboard_key_t)'w', &volume)) == (UI_ACTION_SETTINGS));
+  REQUIRE(GET_OPTION(face_follow));
+  REQUIRE((ui_session_key((keyboard_key_t)'z', &volume)) == (UI_ACTION_SETTINGS));
+  REQUIRE((GET_OPTION(zalgo)) == (8));
   ui_session_key((keyboard_key_t)'W', &volume);
   ui_session_key((keyboard_key_t)'Z', &volume);
-  ASCIICHAT_REQUIRE_NOT(GET_OPTION(face_follow));
-  ASCIICHAT_REQUIRE_EQ(GET_OPTION(zalgo), 0);
+  REQUIRE(!(GET_OPTION(face_follow)));
+  REQUIRE((GET_OPTION(zalgo)) == (0));
 }
 
 TEST_CASE("rcu_validation/zalgo_rejects_invalid_runtime_intensity", "[rcu_validation]") {
-  ASCIICHAT_REQUIRE_EQ(options_set_int("zalgo", 8), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NE(options_set_int("zalgo", -1), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(GET_OPTION(zalgo), 8);
-  ASCIICHAT_REQUIRE_NE(options_set_int("zalgo", 11), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(GET_OPTION(zalgo), 8);
+  REQUIRE((options_set_int("zalgo", 8)) == (ASCIICHAT_OK));
+  REQUIRE((options_set_int("zalgo", -1)) != (ASCIICHAT_OK));
+  REQUIRE((GET_OPTION(zalgo)) == (8));
+  REQUIRE((options_set_int("zalgo", 11)) != (ASCIICHAT_OK));
+  REQUIRE((GET_OPTION(zalgo)) == (8));
 }
 
 // ============================================================================
@@ -76,7 +76,7 @@ TEST_CASE("rcu_validation/zalgo_rejects_invalid_runtime_intensity", "[rcu_valida
  */
 TEST_CASE("rcu_validation/fps_below_minimum", "[rcu_validation]") {
   asciichat_error_t err = options_set_int("fps", -1);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Expected validation error for fps=-1");
+  REQUIRE((err) != (ASCIICHAT_OK));
 }
 
 /**
@@ -84,11 +84,11 @@ TEST_CASE("rcu_validation/fps_below_minimum", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/fps_valid", "[rcu_validation]") {
   asciichat_error_t err = options_set_int("fps", 30);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Expected success for fps=30");
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   // Verify value was set
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->fps, 30, "Expected fps to be 30");
+  REQUIRE((opts->fps) == (30));
 }
 
 /**
@@ -96,7 +96,7 @@ TEST_CASE("rcu_validation/fps_valid", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/fps_above_maximum", "[rcu_validation]") {
   asciichat_error_t err = options_set_int("fps", 200);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Expected validation error for fps=200");
+  REQUIRE((err) != (ASCIICHAT_OK));
 }
 
 /**
@@ -104,7 +104,7 @@ TEST_CASE("rcu_validation/fps_above_maximum", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/port_negative", "[rcu_validation]") {
   asciichat_error_t err = options_set_int("port", -1);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Expected validation error for port=-1");
+  REQUIRE((err) != (ASCIICHAT_OK));
 }
 
 /**
@@ -112,11 +112,11 @@ TEST_CASE("rcu_validation/port_negative", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/port_valid", "[rcu_validation]") {
   asciichat_error_t err = options_set_int("port", 27224);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Expected success for port=27224");
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   // Verify value was set
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->port, 27224, "Expected port to be 27224");
+  REQUIRE((opts->port) == (27224));
 }
 
 /**
@@ -124,7 +124,7 @@ TEST_CASE("rcu_validation/port_valid", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/max_clients_zero", "[rcu_validation]") {
   asciichat_error_t err = options_set_int("max_clients", 0);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Expected validation error for max_clients=0");
+  REQUIRE((err) != (ASCIICHAT_OK));
 }
 
 /**
@@ -132,11 +132,11 @@ TEST_CASE("rcu_validation/max_clients_zero", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/max_clients_valid", "[rcu_validation]") {
   asciichat_error_t err = options_set_int("max_clients", 4);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Expected success for max_clients=4");
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   // Verify value was set
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->max_clients, 4, "Expected max_clients to be 4");
+  REQUIRE((opts->max_clients) == (4));
 }
 
 /**
@@ -144,7 +144,7 @@ TEST_CASE("rcu_validation/max_clients_valid", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/color_mode_invalid_negative", "[rcu_validation]") {
   asciichat_error_t err = options_set_int("color_mode", -2);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Expected validation error for invalid color_mode");
+  REQUIRE((err) != (ASCIICHAT_OK));
 }
 
 /**
@@ -152,7 +152,7 @@ TEST_CASE("rcu_validation/color_mode_invalid_negative", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/color_mode_invalid_high", "[rcu_validation]") {
   asciichat_error_t err = options_set_int("color_mode", 9999);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Expected validation error for color_mode=9999");
+  REQUIRE((err) != (ASCIICHAT_OK));
 }
 
 /**
@@ -160,10 +160,10 @@ TEST_CASE("rcu_validation/color_mode_invalid_high", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/color_mode_valid", "[rcu_validation]") {
   asciichat_error_t err = options_set_int("color_mode", 0);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Expected success for valid color_mode");
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ((int)opts->color_mode, 0, "Expected color_mode to be 0");
+  REQUIRE(((int)opts->color_mode) == (0));
 }
 
 /**
@@ -171,10 +171,10 @@ TEST_CASE("rcu_validation/color_mode_valid", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/log_level_valid", "[rcu_validation]") {
   asciichat_error_t err = options_set_int("log_level", 2);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Expected success for valid log_level");
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ((int)opts->log_level, 2, "Expected log_level to be 2");
+  REQUIRE(((int)opts->log_level) == (2));
 }
 
 // ============================================================================
@@ -186,10 +186,10 @@ TEST_CASE("rcu_validation/log_level_valid", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/snapshot_delay_valid", "[rcu_validation]") {
   asciichat_error_t err = options_set_double("snapshot_delay", 1.5);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Expected success for snapshot_delay=1.5");
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE(fabs(opts->snapshot_delay - 1.5) < 0.001, "Expected snapshot_delay to be 1.5");
+  REQUIRE(fabs(opts->snapshot_delay - 1.5) < 0.001);
 }
 
 /**
@@ -197,10 +197,10 @@ TEST_CASE("rcu_validation/snapshot_delay_valid", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/microphone_sensitivity_valid", "[rcu_validation]") {
   asciichat_error_t err = options_set_double("microphone_sensitivity", 0.8);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Expected success for microphone_sensitivity=0.8");
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE(fabs(opts->microphone_sensitivity - 0.8) < 0.001, "Expected microphone_sensitivity to be 0.8");
+  REQUIRE(fabs(opts->microphone_sensitivity - 0.8) < 0.001);
 }
 
 /**
@@ -208,10 +208,10 @@ TEST_CASE("rcu_validation/microphone_sensitivity_valid", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/speakers_volume_valid", "[rcu_validation]") {
   asciichat_error_t err = options_set_double("speakers_volume", 1.0);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Expected success for speakers_volume=1.0");
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE(fabs(opts->speakers_volume - 1.0) < 0.001, "Expected speakers_volume to be 1.0");
+  REQUIRE(fabs(opts->speakers_volume - 1.0) < 0.001);
 }
 
 // ============================================================================
@@ -223,10 +223,10 @@ TEST_CASE("rcu_validation/speakers_volume_valid", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/bool_field_true", "[rcu_validation]") {
   asciichat_error_t err = options_set_bool("no_compress", true);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Expected success for no_compress=true");
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->no_compress, true, "Expected no_compress to be true");
+  REQUIRE((opts->no_compress) == (true));
 }
 
 /**
@@ -234,10 +234,10 @@ TEST_CASE("rcu_validation/bool_field_true", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/bool_field_false", "[rcu_validation]") {
   asciichat_error_t err = options_set_bool("no_compress", false);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Expected success for no_compress=false");
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->no_compress, false, "Expected no_compress to be false");
+  REQUIRE((opts->no_compress) == (false));
 }
 
 // ============================================================================
@@ -249,10 +249,10 @@ TEST_CASE("rcu_validation/bool_field_false", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/string_field_address", "[rcu_validation]") {
   asciichat_error_t err = options_set_string("address", "127.0.0.1");
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Expected success for valid address");
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_STR_EQ(opts->address, "127.0.0.1", "Expected address to be 127.0.0.1");
+  REQUIRE(std::strcmp((opts->address), ("127.0.0.1")) == 0);
 }
 
 /**
@@ -260,10 +260,10 @@ TEST_CASE("rcu_validation/string_field_address", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/string_field_password", "[rcu_validation]") {
   asciichat_error_t err = options_set_string("password", "secret123");
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Expected success for valid password");
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_STR_EQ(opts->password, "secret123", "Expected password to be set");
+  REQUIRE(std::strcmp((opts->password), ("secret123")) == 0);
 }
 
 // ============================================================================
@@ -275,7 +275,7 @@ TEST_CASE("rcu_validation/string_field_password", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/set_int_null_field", "[rcu_validation]") {
   asciichat_error_t err = options_set_int(NULL, 42);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Expected error for NULL field_name");
+  REQUIRE((err) != (ASCIICHAT_OK));
 }
 
 /**
@@ -283,7 +283,7 @@ TEST_CASE("rcu_validation/set_int_null_field", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/set_int_unknown_field", "[rcu_validation]") {
   asciichat_error_t err = options_set_int("nonexistent_field", 42);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Expected error for unknown field");
+  REQUIRE((err) != (ASCIICHAT_OK));
 }
 
 /**
@@ -291,7 +291,7 @@ TEST_CASE("rcu_validation/set_int_unknown_field", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/set_bool_null_field", "[rcu_validation]") {
   asciichat_error_t err = options_set_bool(NULL, true);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Expected error for NULL field_name");
+  REQUIRE((err) != (ASCIICHAT_OK));
 }
 
 /**
@@ -299,7 +299,7 @@ TEST_CASE("rcu_validation/set_bool_null_field", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/set_string_null_field", "[rcu_validation]") {
   asciichat_error_t err = options_set_string(NULL, "test");
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Expected error for NULL field_name");
+  REQUIRE((err) != (ASCIICHAT_OK));
 }
 
 /**
@@ -307,7 +307,7 @@ TEST_CASE("rcu_validation/set_string_null_field", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/set_string_null_value", "[rcu_validation]") {
   asciichat_error_t err = options_set_string("address", NULL);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Expected error for NULL value");
+  REQUIRE((err) != (ASCIICHAT_OK));
 }
 
 /**
@@ -315,5 +315,5 @@ TEST_CASE("rcu_validation/set_string_null_value", "[rcu_validation]") {
  */
 TEST_CASE("rcu_validation/set_double_null_field", "[rcu_validation]") {
   asciichat_error_t err = options_set_double(NULL, 1.5);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Expected error for NULL field_name");
+  REQUIRE((err) != (ASCIICHAT_OK));
 }

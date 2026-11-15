@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include "../../../src/common/session/host.h"
 #include "../../../src/common/session/audio.h"
@@ -60,9 +60,9 @@ static int fault_join(platform_thread_t *thread, void **result) {
 #undef thread_join
 static session_host_t *owner;
 static void admitted(session_host_t *host, uint32_t id, void *data) {
-  ASCIICHAT_REQUIRE_EQ(host, owner);
-  ASCIICHAT_REQUIRE_EQ(data, &admission_calls);
-  ASCIICHAT_REQUIRE_NE(id, 0);
+  REQUIRE((host) == (owner));
+  REQUIRE((data) == (&admission_calls));
+  REQUIRE((id) != (0));
   ++admission_calls;
 }
 static session_host_config_t configuration(void) {
@@ -77,13 +77,13 @@ static session_host_config_t configuration(void) {
 static void setup(void) {
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
-  ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
+  REQUIRE((options_state_init()) == (ASCIICHAT_OK));
 }
 static void teardown(void) {
   fail_image = fail_ring = fail_mutex = fail_thread = fail_join = false;
   if (owner) {
     owner->render_thread_running = false;
-    ASCIICHAT_REQUIRE_EQ(session_host_destroy(owner), ASCIICHAT_OK);
+    REQUIRE((session_host_destroy(owner)) == (ASCIICHAT_OK));
   }
   options_state_destroy();
   CLEAR_ERRNO_ALL();
@@ -92,116 +92,116 @@ static void teardown(void) {
 static void create(void) {
   session_host_config_t config = configuration();
   owner = session_host_create(&config);
-  ASCIICHAT_REQUIRE_NOT_NULL(owner);
+  REQUIRE((owner) != nullptr);
 }
 TEST_CASE("host_faults/mutex_failure_does_not_publish_host_and_configuration_strings_are_owned", "[host_faults]") {
   session_host_config_t config = configuration();
   fail_mutex = true;
-  ASCIICHAT_REQUIRE_NULL(session_host_create(&config));
+  REQUIRE((session_host_create(&config)) == nullptr);
   fail_mutex = false;
   CLEAR_ERRNO_ALL();
   create();
-  ASCIICHAT_REQUIRE_STR_EQ(owner->ipv4_address, "127.0.0.1");
-  ASCIICHAT_REQUIRE_STR_EQ(owner->ipv6_address, "::1");
-  ASCIICHAT_REQUIRE_STR_EQ(owner->key_path, "fixture-key");
-  ASCIICHAT_REQUIRE_STR_EQ(owner->password, "fixture-password");
+  REQUIRE(std::strcmp((owner->ipv4_address), ("127.0.0.1")) == 0);
+  REQUIRE(std::strcmp((owner->ipv6_address), ("::1")) == 0);
+  REQUIRE(std::strcmp((owner->key_path), ("fixture-key")) == 0);
+  REQUIRE(std::strcmp((owner->password), ("fixture-password")) == 0);
 }
 TEST_CASE("host_faults/memory_participant_allocation_failure_does_not_consume_capacity_or_publish_admission", "[host_faults]") {
   create();
   for (unsigned failure = 0; failure < 2; ++failure) {
     fail_image = failure == 0;
     fail_ring = failure == 1;
-    ASCIICHAT_REQUIRE_EQ(session_host_add_memory_participant(owner), 0);
-    ASCIICHAT_REQUIRE_EQ(session_host_get_client_count(owner), 0);
-    ASCIICHAT_REQUIRE_EQ(admission_calls, 0);
-    ASCIICHAT_REQUIRE_NOT(owner->clients[0].active);
-    ASCIICHAT_REQUIRE_NULL(owner->clients[0].incoming_video);
-    ASCIICHAT_REQUIRE_NULL(owner->clients[0].incoming_audio);
+    REQUIRE((session_host_add_memory_participant(owner)) == (0));
+    REQUIRE((session_host_get_client_count(owner)) == (0));
+    REQUIRE((admission_calls) == (0));
+    REQUIRE(!(owner->clients[0].active));
+    REQUIRE((owner->clients[0].incoming_video) == nullptr);
+    REQUIRE((owner->clients[0].incoming_audio) == nullptr);
     CLEAR_ERRNO_ALL();
   }
   fail_image = fail_ring = false;
-  ASCIICHAT_REQUIRE_NE(session_host_add_memory_participant(owner), 0);
-  ASCIICHAT_REQUIRE_EQ(admission_calls, 1);
+  REQUIRE((session_host_add_memory_participant(owner)) != (0));
+  REQUIRE((admission_calls) == (1));
 }
 TEST_CASE("host_faults/network_participant_allocation_failure_keeps_caller_transport_and_capacity", "[host_faults]") {
   create();
   for (unsigned failure = 0; failure < 2; ++failure) {
     fail_image = failure == 0;
     fail_ring = failure == 1;
-    ASCIICHAT_REQUIRE_EQ(session_host_add_client(owner, NULL, ACIP_TRANSPORT_BORROWED, NULL, 0), 0);
-    ASCIICHAT_REQUIRE_EQ(session_host_get_client_count(owner), 0);
-    ASCIICHAT_REQUIRE_EQ(admission_calls, 0);
-    ASCIICHAT_REQUIRE_NULL(owner->clients[0].incoming_video);
-    ASCIICHAT_REQUIRE_NULL(owner->clients[0].incoming_audio);
+    REQUIRE((session_host_add_client(owner, NULL, ACIP_TRANSPORT_BORROWED, NULL, 0)) == (0));
+    REQUIRE((session_host_get_client_count(owner)) == (0));
+    REQUIRE((admission_calls) == (0));
+    REQUIRE((owner->clients[0].incoming_video) == nullptr);
+    REQUIRE((owner->clients[0].incoming_audio) == nullptr);
     CLEAR_ERRNO_ALL();
   }
   fail_image = fail_ring = false;
-  ASCIICHAT_REQUIRE_NE(session_host_add_client(owner, NULL, ACIP_TRANSPORT_BORROWED, NULL, 0), 0);
-  ASCIICHAT_REQUIRE_EQ(admission_calls, 1);
+  REQUIRE((session_host_add_client(owner, NULL, ACIP_TRANSPORT_BORROWED, NULL, 0)) != (0));
+  REQUIRE((admission_calls) == (1));
 }
 TEST_CASE("host_faults/failed_frame_resize_preserves_the_last_committed_video_buffer_and_pixels", "[host_faults]") {
   create();
   uint32_t id = session_host_add_memory_participant(owner);
-  ASCIICHAT_REQUIRE_NE(id, 0);
+  REQUIRE((id) != (0));
   image_t *image = image_new(2, 2);
-  ASCIICHAT_REQUIRE_NOT_NULL(image);
+  REQUIRE((image) != nullptr);
   memset(image->pixels, 91, 12);
-  ASCIICHAT_REQUIRE_EQ(session_host_inject_frame(owner, id, image), ASCIICHAT_OK);
+  REQUIRE((session_host_inject_frame(owner, id, image)) == (ASCIICHAT_OK));
   image_destroy(image);
   image_t *previous = owner->clients[0].incoming_video;
   image = image_new(3, 3);
-  ASCIICHAT_REQUIRE_NOT_NULL(image);
+  REQUIRE((image) != nullptr);
   fail_image = true;
-  ASCIICHAT_REQUIRE_EQ(session_host_inject_frame(owner, id, image), ERROR_MEMORY);
-  ASCIICHAT_REQUIRE_EQ(owner->clients[0].incoming_video, previous);
-  ASCIICHAT_REQUIRE_EQ(previous->w, 2);
-  ASCIICHAT_REQUIRE_EQ(((uint8_t *)previous->pixels)[0], 91);
+  REQUIRE((session_host_inject_frame(owner, id, image)) == (ERROR_MEMORY));
+  REQUIRE((owner->clients[0].incoming_video) == (previous));
+  REQUIRE((previous->w) == (2));
+  REQUIRE((((uint8_t *)previous->pixels)[0]) == (91));
   image_destroy(image);
 }
 TEST_CASE("host_faults/malformed_injected_frame_is_rejected_before_replacing_the_committed_buffer", "[host_faults]") {
   create();
   uint32_t id = session_host_add_memory_participant(owner);
-  ASCIICHAT_REQUIRE_NE(id, 0);
+  REQUIRE((id) != (0));
   image_t *previous = owner->clients[0].incoming_video;
   image_t invalid = {.w = 2, .h = 2, .pixels = NULL};
-  ASCIICHAT_REQUIRE_EQ(session_host_inject_frame(owner, id, &invalid), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(owner->clients[0].incoming_video, previous);
+  REQUIRE((session_host_inject_frame(owner, id, &invalid)) == (ERROR_INVALID_PARAM));
+  REQUIRE((owner->clients[0].incoming_video) == (previous));
   rgb_pixel_t pixel = {0};
   const int dimensions[][2] = {{0, 1}, {1, 0}, {-1, 1}, {1, -1}, {INT_MAX, INT_MAX}};
   for (unsigned i = 0; i < ARRAY_SIZE(dimensions); ++i) {
     invalid = (image_t){.w = dimensions[i][0], .h = dimensions[i][1], .pixels = &pixel};
-    ASCIICHAT_REQUIRE_EQ(session_host_inject_frame(owner, id, &invalid), ERROR_INVALID_PARAM);
-    ASCIICHAT_REQUIRE_EQ(owner->clients[0].incoming_video, previous);
+    REQUIRE((session_host_inject_frame(owner, id, &invalid)) == (ERROR_INVALID_PARAM));
+    REQUIRE((owner->clients[0].incoming_video) == (previous));
     CLEAR_ERRNO_ALL();
   }
 }
 TEST_CASE("host_faults/render_start_failure_is_retryable_and_failed_stop_retains_worker_owned_audio", "[host_faults]") {
   create();
-  ASCIICHAT_REQUIRE_EQ(session_host_start_render(owner), ERROR_INVALID_STATE);
+  REQUIRE((session_host_start_render(owner)) == (ERROR_INVALID_STATE));
   owner->running = true;
   fail_thread = true;
-  ASCIICHAT_REQUIRE_EQ(session_host_start_render(owner), ERROR_THREAD);
-  ASCIICHAT_REQUIRE_NOT(owner->render_thread_running);
-  ASCIICHAT_REQUIRE_NOT_NULL(owner->audio_ctx);
+  REQUIRE((session_host_start_render(owner)) == (ERROR_THREAD));
+  REQUIRE(!(owner->render_thread_running));
+  REQUIRE((owner->audio_ctx) != nullptr);
   fail_thread = false;
   CLEAR_ERRNO_ALL();
-  ASCIICHAT_REQUIRE_EQ(session_host_start_render(owner), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(thread_starts, 2);
-  ASCIICHAT_REQUIRE_EQ(session_host_start_render(owner), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(thread_starts, 2);
+  REQUIRE((session_host_start_render(owner)) == (ASCIICHAT_OK));
+  REQUIRE((thread_starts) == (2));
+  REQUIRE((session_host_start_render(owner)) == (ASCIICHAT_OK));
+  REQUIRE((thread_starts) == (2));
   session_audio_ctx_t *audio = owner->audio_ctx;
   fail_join = true;
   session_host_stop_render(owner);
-  ASCIICHAT_REQUIRE(owner->render_thread_running);
-  ASCIICHAT_REQUIRE_EQ(owner->audio_ctx, audio);
+  REQUIRE(owner->render_thread_running);
+  REQUIRE((owner->audio_ctx) == (audio));
   fail_join = false;
   CLEAR_ERRNO_ALL();
   session_host_stop_render(owner);
-  ASCIICHAT_REQUIRE_NOT(owner->render_thread_running);
-  ASCIICHAT_REQUIRE_NULL(owner->audio_ctx);
-  ASCIICHAT_REQUIRE_EQ(thread_joins, 2);
+  REQUIRE(!(owner->render_thread_running));
+  REQUIRE((owner->audio_ctx) == nullptr);
+  REQUIRE((thread_joins) == (2));
   session_host_stop_render(owner);
-  ASCIICHAT_REQUIRE_EQ(thread_joins, 2);
+  REQUIRE((thread_joins) == (2));
 }
 
 static unsigned pump_count, local_frames;
@@ -225,43 +225,43 @@ static asciichat_error_t fault_display_config(void *context, session_host_render
 }
 static void fault_display_frame(void *context, const char *frame, size_t length, int width, int height) {
   (void)context;
-  ASCIICHAT_REQUIRE_NOT_NULL(frame);
-  ASCIICHAT_REQUIRE_GT(length, 0);
-  ASCIICHAT_REQUIRE_EQ(width, 40);
-  ASCIICHAT_REQUIRE_EQ(height, 12);
+  REQUIRE((frame) != nullptr);
+  REQUIRE((length) > (0));
+  REQUIRE((width) == (40));
+  REQUIRE((height) == (12));
   ++local_frames;
 }
 TEST_CASE("host_faults/host_renderer_waits_for_peer_capabilities_before_presenting_local_frames", "[host_faults]") {
   session_host_config_t c = configuration();
   c.max_clients = 2;
   owner = session_host_create(&c);
-  ASCIICHAT_REQUIRE_NOT_NULL(owner);
+  REQUIRE((owner) != nullptr);
   uint32_t id = session_host_add_memory_participant(owner);
-  ASCIICHAT_REQUIRE_NE(id, 0);
-  ASCIICHAT_REQUIRE_NE(session_host_add_client(owner, NULL, ACIP_TRANSPORT_BORROWED, "peer", 0), 0);
+  REQUIRE((id) != (0));
+  REQUIRE((session_host_add_client(owner, NULL, ACIP_TRANSPORT_BORROWED, "peer", 0)) != (0));
   image_t *image = image_new(2, 2);
-  ASCIICHAT_REQUIRE_NOT_NULL(image);
+  REQUIRE((image) != nullptr);
   memset(image->pixels, 120, 12);
-  ASCIICHAT_REQUIRE_EQ(session_host_inject_frame(owner, id, image), ASCIICHAT_OK);
+  REQUIRE((session_host_inject_frame(owner, id, image)) == (ASCIICHAT_OK));
   image_destroy(image);
   session_host_render_target_t target = {.get_config = fault_display_config, .render_frame = fault_display_frame};
-  ASCIICHAT_REQUIRE_EQ(session_host_set_render_target(owner, &target), ASCIICHAT_OK);
+  REQUIRE((session_host_set_render_target(owner, &target)) == (ASCIICHAT_OK));
   options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
   *v = *options_get();
   v->detected_mode = MODE_DISCOVERY;
   v->snapshot_mode = false;
   v->splash_screen = true;
-  ASCIICHAT_REQUIRE_EQ(options_state_set(v), ASCIICHAT_OK);
+  REQUIRE((options_state_set(v)) == (ASCIICHAT_OK));
   SAFE_FREE(v);
   interactive = true;
   static app_callbacks_t callbacks = {.platform_get_monotonic_time_us = fault_clock, .platform_pump_events = fault_pump};
   app_callbacks_register(&callbacks);
   owner->running = true;
-  ASCIICHAT_REQUIRE_EQ(session_host_start_render(owner), ASCIICHAT_OK);
+  REQUIRE((session_host_start_render(owner)) == (ASCIICHAT_OK));
   host_render_thread(owner);
-  ASCIICHAT_REQUIRE_EQ(pump_count, 2);
-  ASCIICHAT_REQUIRE_EQ(local_frames, 1);
-  ASCIICHAT_REQUIRE_NOT(owner->render_thread_running);
+  REQUIRE((pump_count) == (2));
+  REQUIRE((local_frames) == (1));
+  REQUIRE(!(owner->render_thread_running));
   app_callbacks_register(NULL);
   host_render_thread(NULL);
   CLEAR_ERRNO_ALL();

@@ -13,6 +13,10 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define SHA1_BLOCK_LENGTH 64
 #define SHA1_DIGEST_LENGTH 20
 
@@ -33,3 +37,7 @@ void SHA1Update(SHA1_CTX *context, const void *data, unsigned int len);
 void SHA1Final(unsigned char digest[SHA1_DIGEST_LENGTH], SHA1_CTX *context);
 
 #endif /* _SHA1_H_ */
+
+#ifdef __cplusplus
+}
+#endif

@@ -13,6 +13,10 @@
 #include "../../common.h"
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Man page resource container
  * @brief Man page resource container
@@ -76,3 +80,7 @@ void manpage_resources_destroy(manpage_resources_t *resources);
 bool manpage_resources_is_valid(const manpage_resources_t *resources);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

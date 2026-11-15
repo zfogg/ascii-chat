@@ -1,12 +1,10 @@
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
 
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/tests/logging.h>
-#include <ascii-chat/tests/common.h>
 
 void setup_crypto_network_quiet_logging(void);
 void restore_crypto_network_logging(void);
@@ -28,10 +26,10 @@ TEST_CASE("crypto_network_integration/full_handshake_simulation", "[crypto_netwo
 
   // Initialize both contexts (simulating client and server startup)
   crypto_result_t result = crypto_init(&client_ctx);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Client crypto initialization should succeed");
+  REQUIRE((result) == (CRYPTO_OK));
 
   result = crypto_init(&server_ctx);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Server crypto initialization should succeed");
+  REQUIRE((result) == (CRYPTO_OK));
 
   // Simulate network handshake
   uint8_t client_packet[1024];
@@ -40,25 +38,25 @@ TEST_CASE("crypto_network_integration/full_handshake_simulation", "[crypto_netwo
 
   // Step 1: Client sends public key to server
   result = crypto_create_public_key_packet(&client_ctx, client_packet, sizeof(client_packet), &client_packet_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Client public key packet creation should succeed");
+  REQUIRE((result) == (CRYPTO_OK));
 
   // Step 2: Server receives and processes client's public key
   result = crypto_process_public_key_packet(&server_ctx, client_packet, client_packet_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Server should process client public key successfully");
-  ASCIICHAT_REQUIRE(server_ctx.key_exchange_complete, "Server key exchange should be complete");
+  REQUIRE((result) == (CRYPTO_OK));
+  REQUIRE(server_ctx.key_exchange_complete);
 
   // Step 3: Server sends its public key to client
   result = crypto_create_public_key_packet(&server_ctx, server_packet, sizeof(server_packet), &server_packet_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Server public key packet creation should succeed");
+  REQUIRE((result) == (CRYPTO_OK));
 
   // Step 4: Client receives and processes server's public key
   result = crypto_process_public_key_packet(&client_ctx, server_packet, server_packet_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Client should process server public key successfully");
-  ASCIICHAT_REQUIRE(client_ctx.key_exchange_complete, "Client key exchange should be complete");
+  REQUIRE((result) == (CRYPTO_OK));
+  REQUIRE(client_ctx.key_exchange_complete);
 
   // Both parties should now be ready for encrypted communication
-  ASCIICHAT_REQUIRE(crypto_is_ready(&client_ctx), "Client should be ready for encrypted communication");
-  ASCIICHAT_REQUIRE(crypto_is_ready(&server_ctx), "Server should be ready for encrypted communication");
+  REQUIRE(crypto_is_ready(&client_ctx));
+  REQUIRE(crypto_is_ready(&server_ctx));
 
   // Cleanup
   crypto_destroy(&client_ctx);
@@ -87,16 +85,16 @@ TEST_CASE("crypto_network_integration/bidirectional_encrypted_communication", "[
   size_t alice_packet_len;
 
   crypto_result_t result = crypto_create_encrypted_packet(&alice_ctx, (const uint8_t *)alice_message, strlen(alice_message), alice_encrypted_packet, sizeof(alice_encrypted_packet), &alice_packet_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Alice should encrypt message successfully");
+  REQUIRE((result) == (CRYPTO_OK));
 
   // Bob receives and decrypts Alice's message
   uint8_t bob_decrypted[1024];
   size_t bob_decrypted_len;
 
   result = crypto_process_encrypted_packet(&bob_ctx, alice_encrypted_packet, alice_packet_len, bob_decrypted, sizeof(bob_decrypted), &bob_decrypted_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Bob should decrypt Alice's message successfully");
-  ASCIICHAT_REQUIRE_EQ(bob_decrypted_len, strlen(alice_message), "Decrypted length should match");
-  ASCIICHAT_REQUIRE_EQ(memcmp(bob_decrypted, alice_message, bob_decrypted_len), 0, "Bob should receive Alice's message correctly");
+  REQUIRE((result) == (CRYPTO_OK));
+  REQUIRE((bob_decrypted_len) == (strlen(alice_message)));
+  REQUIRE((memcmp(bob_decrypted, alice_message, bob_decrypted_len)) == (0));
 
   // Bob sends reply to Alice
   const char *bob_message = "Hi Alice! I'm doing great, thanks for asking. How about you?";
@@ -104,16 +102,16 @@ TEST_CASE("crypto_network_integration/bidirectional_encrypted_communication", "[
   size_t bob_packet_len;
 
   result = crypto_create_encrypted_packet(&bob_ctx, (const uint8_t *)bob_message, strlen(bob_message), bob_encrypted_packet, sizeof(bob_encrypted_packet), &bob_packet_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Bob should encrypt reply successfully");
+  REQUIRE((result) == (CRYPTO_OK));
 
   // Alice receives and decrypts Bob's reply
   uint8_t alice_decrypted[1024];
   size_t alice_decrypted_len;
 
   result = crypto_process_encrypted_packet(&alice_ctx, bob_encrypted_packet, bob_packet_len, alice_decrypted, sizeof(alice_decrypted), &alice_decrypted_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Alice should decrypt Bob's reply successfully");
-  ASCIICHAT_REQUIRE_EQ(alice_decrypted_len, strlen(bob_message), "Decrypted length should match");
-  ASCIICHAT_REQUIRE_EQ(memcmp(alice_decrypted, bob_message, alice_decrypted_len), 0, "Alice should receive Bob's reply correctly");
+  REQUIRE((result) == (CRYPTO_OK));
+  REQUIRE((alice_decrypted_len) == (strlen(bob_message)));
+  REQUIRE((memcmp(alice_decrypted, bob_message, alice_decrypted_len)) == (0));
 
   crypto_destroy(&alice_ctx);
   crypto_destroy(&bob_ctx);
@@ -125,8 +123,8 @@ TEST_CASE("crypto_network_integration/password_vs_key_exchange_priority", "[cryp
   // Initialize with password first
   const char *password = "shared-secret-password";
   crypto_result_t result = crypto_init_with_password(&ctx, password);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Password initialization should succeed");
-  ASCIICHAT_REQUIRE(crypto_is_ready(&ctx), "Should be ready with password");
+  REQUIRE((result) == (CRYPTO_OK));
+  REQUIRE(crypto_is_ready(&ctx));
 
   // Now set up key exchange as well
   crypto_context_t peer_ctx;
@@ -142,9 +140,9 @@ TEST_CASE("crypto_network_integration/password_vs_key_exchange_priority", "[cryp
   crypto_set_peer_public_key(&peer_ctx, ctx_pubkey);
 
   // Both password and key exchange are now available
-  ASCIICHAT_REQUIRE(ctx.has_password, "Should still have password");
-  ASCIICHAT_REQUIRE(ctx.key_exchange_complete, "Should have completed key exchange");
-  ASCIICHAT_REQUIRE(crypto_is_ready(&ctx), "Should be ready");
+  REQUIRE(ctx.has_password);
+  REQUIRE(ctx.key_exchange_complete);
+  REQUIRE(crypto_is_ready(&ctx));
 
   // Test that encryption uses shared key (higher priority than password)
   const char *test_message = "Testing priority: shared key should be used";
@@ -152,15 +150,15 @@ TEST_CASE("crypto_network_integration/password_vs_key_exchange_priority", "[cryp
   size_t ciphertext_len;
 
   result = crypto_encrypt(&ctx, (const uint8_t *)test_message, strlen(test_message), ciphertext, sizeof(ciphertext), &ciphertext_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Encryption should succeed");
+  REQUIRE((result) == (CRYPTO_OK));
 
   // Peer should be able to decrypt (proving shared key was used)
   uint8_t decrypted[1024];
   size_t decrypted_len;
 
   result = crypto_decrypt(&peer_ctx, ciphertext, ciphertext_len, decrypted, sizeof(decrypted), &decrypted_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Peer decryption should succeed");
-  ASCIICHAT_REQUIRE_EQ(memcmp(decrypted, test_message, strlen(test_message)), 0, "Message should decrypt correctly with shared key");
+  REQUIRE((result) == (CRYPTO_OK));
+  REQUIRE((memcmp(decrypted, test_message, strlen(test_message))) == (0));
 
   crypto_destroy(&ctx);
   crypto_destroy(&peer_ctx);
@@ -189,24 +187,24 @@ TEST_CASE("crypto_network_integration/multiple_messages_same_session", "[crypto_
     uint8_t encrypted_packet[1024];
     size_t packet_len;
     crypto_result_t result = crypto_create_encrypted_packet(&client_ctx, (const uint8_t *)messages[i], strlen(messages[i]), encrypted_packet, sizeof(encrypted_packet), &packet_len);
-    ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Message %d encryption should succeed", i + 1);
+    REQUIRE((result) == (CRYPTO_OK));
 
     uint8_t decrypted[1024];
     size_t decrypted_len;
     result = crypto_process_encrypted_packet(&server_ctx, encrypted_packet, packet_len, decrypted, sizeof(decrypted), &decrypted_len);
-    ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Message %d decryption should succeed", i + 1);
-    ASCIICHAT_REQUIRE_EQ(memcmp(decrypted, messages[i], strlen(messages[i])), 0, "Message %d content should match", i + 1);
+    REQUIRE((result) == (CRYPTO_OK));
+    REQUIRE((memcmp(decrypted, messages[i], strlen(messages[i]))) == (0));
 
     // Server acknowledgment back to client
     char ack_message[256];
     safe_snprintf(ack_message, sizeof(ack_message), "ACK: Received message %d", i + 1);
 
     result = crypto_create_encrypted_packet(&server_ctx, (const uint8_t *)ack_message, strlen(ack_message), encrypted_packet, sizeof(encrypted_packet), &packet_len);
-    ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "ACK %d encryption should succeed", i + 1);
+    REQUIRE((result) == (CRYPTO_OK));
 
     result = crypto_process_encrypted_packet(&client_ctx, encrypted_packet, packet_len, decrypted, sizeof(decrypted), &decrypted_len);
-    ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "ACK %d decryption should succeed", i + 1);
-    ASCIICHAT_REQUIRE_EQ(memcmp(decrypted, ack_message, strlen(ack_message)), 0, "ACK %d content should match", i + 1);
+    REQUIRE((result) == (CRYPTO_OK));
+    REQUIRE((memcmp(decrypted, ack_message, strlen(ack_message))) == (0));
   }
 
   crypto_destroy(&client_ctx);
@@ -244,8 +242,8 @@ TEST_CASE("crypto_network_integration/large_message_handling", "[crypto_network_
   size_t packet_len;
 
   crypto_result_t result = crypto_create_encrypted_packet(&ctx1, large_message, large_message_size, encrypted_packet, large_message_size + 1024, &packet_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Large message encryption should succeed");
-  ASCIICHAT_REQUIRE_GT(packet_len, large_message_size, "Encrypted packet should be larger than plaintext");
+  REQUIRE((result) == (CRYPTO_OK));
+  REQUIRE((packet_len) > (large_message_size));
 
   // Decrypt large message
   uint8_t *decrypted_message;
@@ -253,9 +251,9 @@ TEST_CASE("crypto_network_integration/large_message_handling", "[crypto_network_
   size_t decrypted_len;
 
   result = crypto_process_encrypted_packet(&ctx2, encrypted_packet, packet_len, decrypted_message, large_message_size, &decrypted_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Large message decryption should succeed");
-  ASCIICHAT_REQUIRE_EQ(decrypted_len, large_message_size, "Decrypted size should match original");
-  ASCIICHAT_REQUIRE_EQ(memcmp(decrypted_message, large_message, large_message_size), 0, "Decrypted content should match original");
+  REQUIRE((result) == (CRYPTO_OK));
+  REQUIRE((decrypted_len) == (large_message_size));
+  REQUIRE((memcmp(decrypted_message, large_message, large_message_size)) == (0));
 
   SAFE_FREE(large_message);
   SAFE_FREE(encrypted_packet);
@@ -278,7 +276,7 @@ TEST_CASE("crypto_network_integration/error_handling_integration", "[crypto_netw
   size_t packet_len;
 
   crypto_result_t result = crypto_create_encrypted_packet(&ctx1, (const uint8_t *)test_msg, strlen(test_msg), packet, sizeof(packet), &packet_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE, "Should fail without key exchange");
+  REQUIRE((result) == (CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE));
 
   // 2. Complete key exchange
   uint8_t pubkey1[CRYPTO_PUBLIC_KEY_SIZE];
@@ -291,7 +289,7 @@ TEST_CASE("crypto_network_integration/error_handling_integration", "[crypto_netw
 
   // 3. Now encryption should work
   result = crypto_create_encrypted_packet(&ctx1, (const uint8_t *)test_msg, strlen(test_msg), packet, sizeof(packet), &packet_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Should succeed after key exchange");
+  REQUIRE((result) == (CRYPTO_OK));
 
   // 4. Test malformed packet decryption
   uint8_t malformed_packet[] = {0x01, 0x02, 0x03, 0x04}; // Too small
@@ -299,7 +297,7 @@ TEST_CASE("crypto_network_integration/error_handling_integration", "[crypto_netw
   size_t decrypted_len;
 
   result = crypto_process_encrypted_packet(&ctx2, malformed_packet, sizeof(malformed_packet), decrypted, sizeof(decrypted), &decrypted_len);
-  ASCIICHAT_REQUIRE_NE(result, CRYPTO_OK, "Malformed packet should fail to decrypt");
+  REQUIRE((result) != (CRYPTO_OK));
 
   crypto_destroy(&ctx1);
   crypto_destroy(&ctx2);
@@ -326,7 +324,7 @@ TEST_CASE("crypto_network_integration/session_cleanup_and_restart", "[crypto_net
   size_t packet_len;
 
   crypto_result_t result = crypto_create_encrypted_packet(&ctx1, (const uint8_t *)msg1, strlen(msg1), packet, sizeof(packet), &packet_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "First session encryption should work");
+  REQUIRE((result) == (CRYPTO_OK));
 
   // Clean up first session
   crypto_destroy(&ctx1);
@@ -345,13 +343,13 @@ TEST_CASE("crypto_network_integration/session_cleanup_and_restart", "[crypto_net
   // Test communication with new session
   const char *msg2 = "Second session message";
   result = crypto_create_encrypted_packet(&ctx1, (const uint8_t *)msg2, strlen(msg2), packet, sizeof(packet), &packet_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Second session encryption should work");
+  REQUIRE((result) == (CRYPTO_OK));
 
   uint8_t decrypted[1024];
   size_t decrypted_len;
   result = crypto_process_encrypted_packet(&ctx2, packet, packet_len, decrypted, sizeof(decrypted), &decrypted_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Second session decryption should work");
-  ASCIICHAT_REQUIRE_EQ(memcmp(decrypted, msg2, strlen(msg2)), 0, "Second session message should match");
+  REQUIRE((result) == (CRYPTO_OK));
+  REQUIRE((memcmp(decrypted, msg2, strlen(msg2))) == (0));
 
   crypto_destroy(&ctx1);
   crypto_destroy(&ctx2);

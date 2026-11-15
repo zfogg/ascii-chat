@@ -19,6 +19,10 @@
 #include <stdbool.h>
 #include <ascii-chat/video/rgba/image.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if SIMD_SUPPORT_SSE2
 #if (!defined(__SSE2__) && !defined(_M_X64) && !(defined(_M_IX86_FP) && _M_IX86_FP >= 2))
 #error "SSE2 support required"
@@ -73,4 +77,8 @@ char *rgb_to_16color_halfblocks_sse2(const uint8_t *rgb, int width, int height, 
 
 #if SIMD_SUPPORT_SSE2
 char *rgb_to_halfblocks_sse2(const uint8_t *rgb, int width, int height, int stride, const char *palette);
+#endif
+
+#ifdef __cplusplus
+}
 #endif

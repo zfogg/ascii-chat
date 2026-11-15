@@ -21,6 +21,10 @@
 #include <libplatform/cond.h>
 #include "../debug/named.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // ============================================================================
 // Static Initialization Helpers
 // ============================================================================
@@ -317,3 +321,7 @@ static inline void static_cond_broadcast(static_cond_t *c) {
 // ============================================================================
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

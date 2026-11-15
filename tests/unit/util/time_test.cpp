@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -19,28 +19,28 @@ TEST_CASE("time_util/relative_duration_thresholds_and_direction", "[time_util]")
     int64_t ns = cases[i].seconds * (int64_t)NS_PER_SEC_INT;
     char expected[64], actual[64];
     snprintf(expected, sizeof(expected), "%s ago", cases[i].phrase);
-    ASCIICHAT_REQUIRE_EQ(time_human_readable_unsigned((uint64_t)ns, actual, sizeof(actual)), (int)strlen(expected));
-    ASCIICHAT_REQUIRE_STR_EQ(actual, expected, "past duration: %lld seconds", (long long)cases[i].seconds);
-    ASCIICHAT_REQUIRE_EQ(time_human_readable(ns, actual, sizeof(actual)), (int)strlen(expected));
-    ASCIICHAT_REQUIRE_STR_EQ(actual, expected);
+    REQUIRE((time_human_readable_unsigned((uint64_t)ns, actual, sizeof(actual))) == ((int)strlen(expected)));
+    REQUIRE(std::strcmp((actual), (expected)) == 0);
+    REQUIRE((time_human_readable(ns, actual, sizeof(actual))) == ((int)strlen(expected)));
+    REQUIRE(std::strcmp((actual), (expected)) == 0);
     if (ns != 0) {
       snprintf(expected, sizeof(expected), "%s from now", cases[i].phrase);
-      ASCIICHAT_REQUIRE_EQ(time_human_readable(-ns, actual, sizeof(actual)), (int)strlen(expected));
-      ASCIICHAT_REQUIRE_STR_EQ(actual, expected, "future duration: %lld seconds", (long long)cases[i].seconds);
+      REQUIRE((time_human_readable(-ns, actual, sizeof(actual))) == ((int)strlen(expected)));
+      REQUIRE(std::strcmp((actual), (expected)) == 0);
     }
   }
 }
 
 TEST_CASE("time_util/relative_duration_requires_room_for_terminator", "[time_util]") {
   char text[13]; // "a moment ago" plus the terminator.
-  ASCIICHAT_REQUIRE_EQ(time_human_readable(0, text, sizeof(text)), 12);
-  ASCIICHAT_REQUIRE_STR_EQ(text, "a moment ago");
-  ASCIICHAT_REQUIRE_EQ(time_human_readable(0, text, sizeof(text) - 1), -1);
-  ASCIICHAT_REQUIRE_EQ(time_human_readable_unsigned(0, text, sizeof(text) - 1), -1);
-  ASCIICHAT_REQUIRE_EQ(time_human_readable(0, NULL, sizeof(text)), -1);
-  ASCIICHAT_REQUIRE_EQ(time_human_readable_unsigned(0, NULL, sizeof(text)), -1);
-  ASCIICHAT_REQUIRE_EQ(time_human_readable(0, text, 0), -1);
-  ASCIICHAT_REQUIRE_EQ(time_human_readable_unsigned(0, text, 0), -1);
+  REQUIRE((time_human_readable(0, text, sizeof(text))) == (12));
+  REQUIRE(std::strcmp((text), ("a moment ago")) == 0);
+  REQUIRE((time_human_readable(0, text, sizeof(text) - 1)) == (-1));
+  REQUIRE((time_human_readable_unsigned(0, text, sizeof(text) - 1)) == (-1));
+  REQUIRE((time_human_readable(0, NULL, sizeof(text))) == (-1));
+  REQUIRE((time_human_readable_unsigned(0, NULL, sizeof(text))) == (-1));
+  REQUIRE((time_human_readable(0, text, 0)) == (-1));
+  REQUIRE((time_human_readable_unsigned(0, text, 0)) == (-1));
 }
 
 TEST_CASE("time_util/adaptive_pacing_drains_backlog_and_recovers_gradually", "[time_util]") {
@@ -48,54 +48,54 @@ TEST_CASE("time_util/adaptive_pacing_drains_backlog_and_recovers_gradually", "[t
   adaptive_sleep_state_t state;
   adaptive_sleep_init(&state, &config);
   config.baseline_sleep_ns = 9999; // The state owns its configuration copy.
-  ASCIICHAT_REQUIRE_EQ(state.last_sleep_ns, 1000);
-  ASCIICHAT_REQUIRE_EQ(adaptive_sleep_calculate(&state, 4, 4), 1000);
-  ASCIICHAT_REQUIRE_EQ(adaptive_sleep_calculate(&state, 100, 4), 400);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(state.current_speed_multiplier, 2.5, 1e-9);
-  ASCIICHAT_REQUIRE_EQ(adaptive_sleep_calculate(&state, 100, 4), 307);
-  ASCIICHAT_REQUIRE_EQ(adaptive_sleep_calculate(&state, 0, 4), 470);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(state.current_speed_multiplier, 2.125, 1e-9);
-  ASCIICHAT_REQUIRE_EQ(state.last_sleep_ns, 470);
+  REQUIRE((state.last_sleep_ns) == (1000));
+  REQUIRE((adaptive_sleep_calculate(&state, 4, 4)) == (1000));
+  REQUIRE((adaptive_sleep_calculate(&state, 100, 4)) == (400));
+  REQUIRE((state.current_speed_multiplier) == Catch::Approx(2.5));
+  REQUIRE((adaptive_sleep_calculate(&state, 100, 4)) == (307));
+  REQUIRE((adaptive_sleep_calculate(&state, 0, 4)) == (470));
+  REQUIRE((state.current_speed_multiplier) == Catch::Approx(2.125));
+  REQUIRE((state.last_sleep_ns) == (470));
   for (int i = 0; i < 64; i++) {
     uint64_t sleep = adaptive_sleep_calculate(&state, 0, 0);
-    ASCIICHAT_REQUIRE_GE(sleep, 470);
-    ASCIICHAT_REQUIRE_LE(sleep, 1000);
+    REQUIRE((sleep) >= (470));
+    REQUIRE((sleep) <= (1000));
   }
-  ASCIICHAT_REQUIRE_FLOAT_EQ(state.current_speed_multiplier, 1.0, 1e-9);
+  REQUIRE((state.current_speed_multiplier) == Catch::Approx(1.0));
 }
 
 TEST_CASE("time_util/adaptive_pacing_respects_ranges_excluding_normal_speed", "[time_util]") {
   adaptive_sleep_state_t state;
   adaptive_sleep_config_t fast = {1200, 2.0, 4.0, 1.0, 1.0};
   adaptive_sleep_init(&state, &fast);
-  ASCIICHAT_REQUIRE_EQ(state.last_sleep_ns, 600);
-  ASCIICHAT_REQUIRE_EQ(adaptive_sleep_calculate(&state, 0, 0), 600);
-  ASCIICHAT_REQUIRE_EQ(adaptive_sleep_calculate(&state, 1, 0), 300);
-  ASCIICHAT_REQUIRE_EQ(adaptive_sleep_calculate(&state, 0, 0), 600);
+  REQUIRE((state.last_sleep_ns) == (600));
+  REQUIRE((adaptive_sleep_calculate(&state, 0, 0)) == (600));
+  REQUIRE((adaptive_sleep_calculate(&state, 1, 0)) == (300));
+  REQUIRE((adaptive_sleep_calculate(&state, 0, 0)) == (600));
   adaptive_sleep_config_t slow = {1200, 0.25, 0.5, 1.0, 1.0};
   adaptive_sleep_init(&state, &slow);
-  ASCIICHAT_REQUIRE_EQ(state.last_sleep_ns, 2400);
-  ASCIICHAT_REQUIRE_EQ(adaptive_sleep_calculate(&state, 0, 0), 2400);
-  ASCIICHAT_REQUIRE_EQ(adaptive_sleep_calculate(NULL, 0, 0), 0);
+  REQUIRE((state.last_sleep_ns) == (2400));
+  REQUIRE((adaptive_sleep_calculate(&state, 0, 0)) == (2400));
+  REQUIRE((adaptive_sleep_calculate(NULL, 0, 0)) == (0));
   adaptive_sleep_init(NULL, &slow);
   adaptive_sleep_init(&state, NULL);
-  ASCIICHAT_REQUIRE_EQ(state.last_sleep_ns, 2400);
+  REQUIRE((state.last_sleep_ns) == (2400));
   adaptive_sleep_do(NULL, 0, 0);
 }
 
 TEST_CASE("time_util/formatting_rejects_incomplete_specifiers_and_invalid_buffers", "[time_util]") {
   const char *invalid[] = {"%", "%-", "%04", "%.", "%.3", "%E", "%O", "%Q"};
   for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
-    ASCIICHAT_REQUIRE_NOT(time_format_is_valid_strftime(invalid[i]), "must reject %s", invalid[i]);
+    REQUIRE(!(time_format_is_valid_strftime(invalid[i])));
   }
-  ASCIICHAT_REQUIRE(time_format_is_valid_strftime("%Y-%m-%d %% %H:%M:%S"));
+  REQUIRE(time_format_is_valid_strftime("%Y-%m-%d %% %H:%M:%S"));
   char text[128];
-  ASCIICHAT_REQUIRE_EQ(time_format_safe("literal %% timestamp", text, sizeof(text)), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_STR_EQ(text, "literal % timestamp");
-  ASCIICHAT_REQUIRE_EQ(time_format_safe(NULL, text, sizeof(text)), ERROR_INVALID_STATE);
-  ASCIICHAT_REQUIRE_EQ(time_format_safe("%Y", NULL, sizeof(text)), ERROR_INVALID_STATE);
-  ASCIICHAT_REQUIRE_EQ(time_format_safe("%Y", text, 63), ERROR_INVALID_STATE);
-  ASCIICHAT_REQUIRE_EQ(time_format_safe("%Q", text, sizeof(text)), ERROR_INVALID_STATE);
-  ASCIICHAT_REQUIRE_EQ(time_format_safe("", text, sizeof(text)), ERROR_INVALID_STATE);
-  ASCIICHAT_REQUIRE_EQ(time_format_now("four", text, 5), 0);
+  REQUIRE((time_format_safe("literal %% timestamp", text, sizeof(text))) == (ASCIICHAT_OK));
+  REQUIRE(std::strcmp((text), ("literal % timestamp")) == 0);
+  REQUIRE((time_format_safe(NULL, text, sizeof(text))) == (ERROR_INVALID_STATE));
+  REQUIRE((time_format_safe("%Y", NULL, sizeof(text))) == (ERROR_INVALID_STATE));
+  REQUIRE((time_format_safe("%Y", text, 63)) == (ERROR_INVALID_STATE));
+  REQUIRE((time_format_safe("%Q", text, sizeof(text))) == (ERROR_INVALID_STATE));
+  REQUIRE((time_format_safe("", text, sizeof(text))) == (ERROR_INVALID_STATE));
+  REQUIRE((time_format_now("four", text, 5)) == (0));
 }

@@ -79,6 +79,10 @@
 #include <time.h>
 #include <ascii-chat/common/buffer_sizes.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Video Frame Constants
  * ============================================================================
@@ -455,3 +459,7 @@ void simple_frame_swap_update(simple_frame_swap_t *sfs, const void *data, size_t
 const video_frame_t *simple_frame_swap_get(simple_frame_swap_t *sfs);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

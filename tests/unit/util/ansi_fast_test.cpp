@@ -1,6 +1,4 @@
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -32,7 +30,7 @@ TEST_CASE("ansi_fast/initialization", "[ansi_fast]") {
   ansi_fast_init_256color();
   ansi_fast_init_16color();
 
-  ASCIICHAT_REQUIRE(true, "Initialization functions should not crash");
+  REQUIRE(true);
 }
 
 TEST_CASE("ansi_fast/multiple_initialization_calls", "[ansi_fast]") {
@@ -42,7 +40,7 @@ TEST_CASE("ansi_fast/multiple_initialization_calls", "[ansi_fast]") {
   ansi_fast_init_16color();
   ansi_fast_init_16color(); // Should be safe to call multiple times
 
-  ASCIICHAT_REQUIRE(true, "Multiple initialization calls should be safe");
+  REQUIRE(true);
 }
 
 /* ============================================================================
@@ -58,10 +56,10 @@ TEST_CASE("ansi_fast/append_truecolor_fg_basic", "[ansi_fast]") {
   *result = '\0'; // Null terminate for string comparison
 
   // Should generate: \033[38;2;255;128;64m
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[38;2;255;128;64m", "Basic foreground color should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[38;2;255;128;64m")) == 0);
 
   // Test that result pointer is positioned correctly
-  ASCIICHAT_REQUIRE_EQ(result - buffer, 18, "Result pointer should be positioned correctly");
+  REQUIRE((result - buffer) == (18));
 }
 
 // Test case structure for truecolor edge cases
@@ -82,7 +80,7 @@ TEST_CASE("ansi_fast/truecolor_fg_edge_cases_param", "[ansi_fast]") {
   char buffer[256];
   char *result = append_truecolor_fg(buffer, tc->r, tc->g, tc->b);
   *result = '\0';
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, tc->expected_output, "%s should be correct", tc->description);
+  REQUIRE(std::strcmp((buffer), (tc->expected_output)) == 0);
 }
 
 TEST_CASE("ansi_fast/append_truecolor_bg_basic", "[ansi_fast]") {
@@ -94,9 +92,9 @@ TEST_CASE("ansi_fast/append_truecolor_bg_basic", "[ansi_fast]") {
   *result = '\0';
 
   // Should generate: \033[48;2;100;200;50m
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[48;2;100;200;50m", "Basic background color should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[48;2;100;200;50m")) == 0);
 
-  ASCIICHAT_REQUIRE_EQ(result - buffer, 18, "Result pointer should be positioned correctly");
+  REQUIRE((result - buffer) == (18));
 }
 
 // Test case structure for truecolor background edge cases
@@ -120,7 +118,7 @@ TEST_CASE("ansi_fast/truecolor_bg_edge_cases_param", "[ansi_fast]") {
   char buffer[256];
   char *result = append_truecolor_bg(buffer, tc->r, tc->g, tc->b);
   *result = '\0';
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, tc->expected_output, "%s should be correct", tc->description);
+  REQUIRE(std::strcmp((buffer), (tc->expected_output)) == 0);
 }
 
 TEST_CASE("ansi_fast/append_truecolor_fg_bg_combined", "[ansi_fast]") {
@@ -132,9 +130,9 @@ TEST_CASE("ansi_fast/append_truecolor_fg_bg_combined", "[ansi_fast]") {
   *result = '\0';
 
   // Should generate: \033[38;2;255;0;0;48;2;0;0;255m
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[38;2;255;0;0;48;2;0;0;255m", "Combined fg/bg should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[38;2;255;0;0;48;2;0;0;255m")) == 0);
 
-  ASCIICHAT_REQUIRE_EQ(result - buffer, 28, "Result pointer should be positioned correctly");
+  REQUIRE((result - buffer) == (28));
 }
 
 TEST_CASE("ansi_fast/append_truecolor_fg_bg_edge_cases", "[ansi_fast]") {
@@ -144,11 +142,11 @@ TEST_CASE("ansi_fast/append_truecolor_fg_bg_edge_cases", "[ansi_fast]") {
   // Test various combinations
   result = append_truecolor_fg_bg(buffer, 0, 0, 0, 255, 255, 255);
   *result = '\0';
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[38;2;0;0;0;48;2;255;255;255m", "Black fg, white bg should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[38;2;0;0;0;48;2;255;255;255m")) == 0);
 
   result = append_truecolor_fg_bg(buffer, 128, 64, 192, 64, 128, 32);
   *result = '\0';
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[38;2;128;64;192;48;2;64;128;32m", "Mixed colors should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[38;2;128;64;192;48;2;64;128;32m")) == 0);
 }
 
 /* ============================================================================
@@ -162,14 +160,14 @@ TEST_CASE("ansi_fast/ansi_rle_init", "[ansi_fast]") {
   // Test initialization
   ansi_rle_init(&ctx, buffer, sizeof(buffer), ANSI_MODE_FOREGROUND);
 
-  ASCIICHAT_REQUIRE_EQ(ctx.buffer, buffer, "Buffer should be set correctly");
-  ASCIICHAT_REQUIRE_EQ(ctx.capacity, sizeof(buffer), "Capacity should be set correctly");
-  ASCIICHAT_REQUIRE_EQ(ctx.length, 0, "Length should start at 0");
-  ASCIICHAT_REQUIRE_EQ(ctx.mode, ANSI_MODE_FOREGROUND, "Mode should be set correctly");
-  ASCIICHAT_REQUIRE_EQ(ctx.first_pixel, true, "First pixel should be true");
-  ASCIICHAT_REQUIRE_EQ(ctx.last_r, 0xFF, "Last R should be initialized to impossible value");
-  ASCIICHAT_REQUIRE_EQ(ctx.last_g, 0xFF, "Last G should be initialized to impossible value");
-  ASCIICHAT_REQUIRE_EQ(ctx.last_b, 0xFF, "Last B should be initialized to impossible value");
+  REQUIRE((ctx.buffer) == (buffer));
+  REQUIRE((ctx.capacity) == (sizeof(buffer)));
+  REQUIRE((ctx.length) == (0));
+  REQUIRE((ctx.mode) == (ANSI_MODE_FOREGROUND));
+  REQUIRE((ctx.first_pixel) == (true));
+  REQUIRE((ctx.last_r) == (0xFF));
+  REQUIRE((ctx.last_g) == (0xFF));
+  REQUIRE((ctx.last_b) == (0xFF));
 }
 
 TEST_CASE("ansi_fast/ansi_rle_add_pixel_first", "[ansi_fast]") {
@@ -181,14 +179,14 @@ TEST_CASE("ansi_fast/ansi_rle_add_pixel_first", "[ansi_fast]") {
   // Add first pixel - should emit SGR sequence
   ansi_rle_add_pixel(&ctx, 255, 128, 64, 'A');
 
-  ASCIICHAT_REQUIRE_GT(ctx.length, 0, "Length should be greater than 0 after adding pixel");
-  ASCIICHAT_REQUIRE_EQ(ctx.last_r, 255, "Last R should be updated");
-  ASCIICHAT_REQUIRE_EQ(ctx.last_g, 128, "Last G should be updated");
-  ASCIICHAT_REQUIRE_EQ(ctx.last_b, 64, "Last B should be updated");
-  ASCIICHAT_REQUIRE_EQ(ctx.first_pixel, false, "First pixel should be false");
+  REQUIRE((ctx.length) > (0));
+  REQUIRE((ctx.last_r) == (255));
+  REQUIRE((ctx.last_g) == (128));
+  REQUIRE((ctx.last_b) == (64));
+  REQUIRE((ctx.first_pixel) == (false));
 
   // Check that the character was added
-  ASCIICHAT_REQUIRE_EQ(buffer[ctx.length - 1], 'A', "Character should be added to buffer");
+  REQUIRE((buffer[ctx.length - 1]) == ('A'));
 }
 
 TEST_CASE("ansi_fast/ansi_rle_add_pixel_same_color", "[ansi_fast]") {
@@ -205,8 +203,8 @@ TEST_CASE("ansi_fast/ansi_rle_add_pixel_same_color", "[ansi_fast]") {
   ansi_rle_add_pixel(&ctx, 255, 128, 64, 'B');
 
   // Length should only increase by 1 (for the character)
-  ASCIICHAT_REQUIRE_EQ(ctx.length, length_after_first + 1, "Length should only increase by 1 for same color");
-  ASCIICHAT_REQUIRE_EQ(buffer[ctx.length - 1], 'B', "Second character should be added");
+  REQUIRE((ctx.length) == (length_after_first + 1));
+  REQUIRE((buffer[ctx.length - 1]) == ('B'));
 }
 
 TEST_CASE("ansi_fast/ansi_rle_add_pixel_different_color", "[ansi_fast]") {
@@ -223,10 +221,10 @@ TEST_CASE("ansi_fast/ansi_rle_add_pixel_different_color", "[ansi_fast]") {
   ansi_rle_add_pixel(&ctx, 100, 200, 50, 'B');
 
   // Length should increase by more than 1 (SGR + character)
-  ASCIICHAT_REQUIRE_GT(ctx.length, length_after_first + 1, "Length should increase by more than 1 for different color");
-  ASCIICHAT_REQUIRE_EQ(ctx.last_r, 100, "Last R should be updated");
-  ASCIICHAT_REQUIRE_EQ(ctx.last_g, 200, "Last G should be updated");
-  ASCIICHAT_REQUIRE_EQ(ctx.last_b, 50, "Last B should be updated");
+  REQUIRE((ctx.length) > (length_after_first + 1));
+  REQUIRE((ctx.last_r) == (100));
+  REQUIRE((ctx.last_g) == (200));
+  REQUIRE((ctx.last_b) == (50));
 }
 
 TEST_CASE("ansi_fast/ansi_rle_finish", "[ansi_fast]") {
@@ -240,11 +238,11 @@ TEST_CASE("ansi_fast/ansi_rle_finish", "[ansi_fast]") {
   ansi_rle_finish(&ctx);
 
   // Should add reset sequence and null terminator
-  ASCIICHAT_REQUIRE_GT(ctx.length, length_before_finish, "Length should increase after finish");
-  ASCIICHAT_REQUIRE_EQ(buffer[ctx.length], '\0', "Buffer should be null terminated");
+  REQUIRE((ctx.length) > (length_before_finish));
+  REQUIRE((buffer[ctx.length]) == ('\0'));
 
   // Check that reset sequence was added
-  ASCIICHAT_REQUIRE(strstr(buffer, "\033[0m") != NULL, "Reset sequence should be present");
+  REQUIRE(strstr(buffer, "\033[0m") != NULL);
 }
 
 TEST_CASE("ansi_fast/ansi_rle_different_modes", "[ansi_fast]") {
@@ -255,22 +253,22 @@ TEST_CASE("ansi_fast/ansi_rle_different_modes", "[ansi_fast]") {
   ansi_rle_init(&ctx, buffer, sizeof(buffer), ANSI_MODE_FOREGROUND);
   ansi_rle_add_pixel(&ctx, 255, 128, 64, 'A');
   ansi_rle_finish(&ctx);
-  ASCIICHAT_REQUIRE(strstr(buffer, "\033[38;2;") != NULL, "Foreground mode should use 38;2");
+  REQUIRE(strstr(buffer, "\033[38;2;") != NULL);
 
   // Test background mode
   memset(buffer, 0, sizeof(buffer));
   ansi_rle_init(&ctx, buffer, sizeof(buffer), ANSI_MODE_BACKGROUND);
   ansi_rle_add_pixel(&ctx, 255, 128, 64, 'A');
   ansi_rle_finish(&ctx);
-  ASCIICHAT_REQUIRE(strstr(buffer, "\033[48;2;") != NULL, "Background mode should use 48;2");
+  REQUIRE(strstr(buffer, "\033[48;2;") != NULL);
 
   // Test combined mode
   memset(buffer, 0, sizeof(buffer));
   ansi_rle_init(&ctx, buffer, sizeof(buffer), ANSI_MODE_FOREGROUND_BACKGROUND);
   ansi_rle_add_pixel(&ctx, 255, 128, 64, 'A');
   ansi_rle_finish(&ctx);
-  ASCIICHAT_REQUIRE(strstr(buffer, "\033[38;2;") != NULL, "Combined mode should use 38;2");
-  ASCIICHAT_REQUIRE(strstr(buffer, ";48;2;") != NULL, "Combined mode should use 48;2");
+  REQUIRE(strstr(buffer, "\033[38;2;") != NULL);
+  REQUIRE(strstr(buffer, ";48;2;") != NULL);
 }
 
 /* ============================================================================
@@ -288,7 +286,7 @@ TEST_CASE("ansi_fast/append_256color_fg_basic", "[ansi_fast]") {
   *result = '\0';
 
   // Should generate: \033[38;5;123m
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[38;5;123m", "256-color foreground should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[38;5;123m")) == 0);
 }
 
 TEST_CASE("ansi_fast/append_256color_fg_edge_cases", "[ansi_fast]") {
@@ -300,11 +298,11 @@ TEST_CASE("ansi_fast/append_256color_fg_edge_cases", "[ansi_fast]") {
   // Test edge cases
   result = append_256color_fg(buffer, 0);
   *result = '\0';
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[38;5;0m", "Color 0 should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[38;5;0m")) == 0);
 
   result = append_256color_fg(buffer, 255);
   *result = '\0';
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[38;5;255m", "Color 255 should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[38;5;255m")) == 0);
 }
 
 TEST_CASE("ansi_fast/rgb_to_256color_basic", "[ansi_fast]") {
@@ -312,16 +310,16 @@ TEST_CASE("ansi_fast/rgb_to_256color_basic", "[ansi_fast]") {
 
   // Test basic RGB to 256-color conversion
   result = rgb_to_256color(255, 0, 0); // Red
-  ASCIICHAT_REQUIRE(result >= 16, "Red should map to color cube (16-231)");
-  ASCIICHAT_REQUIRE(result <= 231, "Red should map to color cube (16-231)");
+  REQUIRE(result >= 16);
+  REQUIRE(result <= 231);
 
   result = rgb_to_256color(0, 255, 0); // Green
-  ASCIICHAT_REQUIRE(result >= 16, "Green should map to color cube (16-231)");
-  ASCIICHAT_REQUIRE(result <= 231, "Green should map to color cube (16-231)");
+  REQUIRE(result >= 16);
+  REQUIRE(result <= 231);
 
   result = rgb_to_256color(0, 0, 255); // Blue
-  ASCIICHAT_REQUIRE(result >= 16, "Blue should map to color cube (16-231)");
-  ASCIICHAT_REQUIRE(result <= 231, "Blue should map to color cube (16-231)");
+  REQUIRE(result >= 16);
+  REQUIRE(result <= 231);
 }
 
 TEST_CASE("ansi_fast/rgb_to_256color_grayscale", "[ansi_fast]") {
@@ -329,14 +327,14 @@ TEST_CASE("ansi_fast/rgb_to_256color_grayscale", "[ansi_fast]") {
 
   // Test grayscale conversion
   result = rgb_to_256color(0, 0, 0); // Black
-  ASCIICHAT_REQUIRE_EQ(result, 16, "Black should use exact cube black");
+  REQUIRE((result) == (16));
 
   result = rgb_to_256color(255, 255, 255); // White
-  ASCIICHAT_REQUIRE_EQ(result, 231, "White should use exact cube white");
+  REQUIRE((result) == (231));
 
   result = rgb_to_256color(128, 128, 128); // Gray
-  ASCIICHAT_REQUIRE(result >= 232, "Gray should map to grayscale ramp (232-255)");
-  ASCIICHAT_REQUIRE(result <= 255, "Gray should map to grayscale ramp (232-255)");
+  REQUIRE(result >= 232);
+  REQUIRE(result <= 255);
 }
 
 TEST_CASE("ansi_fast/rgb_to_256color_edge_cases", "[ansi_fast]") {
@@ -344,14 +342,14 @@ TEST_CASE("ansi_fast/rgb_to_256color_edge_cases", "[ansi_fast]") {
 
   // Test edge cases
   result = rgb_to_256color(1, 1, 1); // Near black
-  ASCIICHAT_REQUIRE_EQ(result, 16, "Near black should use the nearest cube endpoint");
+  REQUIRE((result) == (16));
 
   result = rgb_to_256color(254, 254, 254); // Near white
-  ASCIICHAT_REQUIRE_EQ(result, 231, "Near white should use the nearest cube endpoint");
+  REQUIRE((result) == (231));
 
   result = rgb_to_256color(255, 0, 1); // Not grayscale
-  ASCIICHAT_REQUIRE(result >= 16, "Non-grayscale should map to color cube");
-  ASCIICHAT_REQUIRE(result <= 231, "Non-grayscale should map to color cube");
+  REQUIRE(result >= 16);
+  REQUIRE(result <= 231);
 }
 
 /* ============================================================================
@@ -369,11 +367,11 @@ TEST_CASE("ansi_fast/append_16color_fg_basic", "[ansi_fast]") {
   *result = '\0';
 
   // Should generate: \033[31m
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[31m", "16-color red foreground should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[31m")) == 0);
 
   result = append_16color_fg(buffer, 2); // Green
   *result = '\0';
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[32m", "16-color green foreground should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[32m")) == 0);
 }
 
 TEST_CASE("ansi_fast/append_16color_fg_edge_cases", "[ansi_fast]") {
@@ -385,20 +383,20 @@ TEST_CASE("ansi_fast/append_16color_fg_edge_cases", "[ansi_fast]") {
   // Test edge cases
   result = append_16color_fg(buffer, 0); // Black
   *result = '\0';
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[30m", "Black foreground should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[30m")) == 0);
 
   result = append_16color_fg(buffer, 7); // Light gray
   *result = '\0';
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[37m", "Light gray foreground should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[37m")) == 0);
 
   result = append_16color_fg(buffer, 9); // Bright red
   *result = '\0';
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[91m", "Bright red foreground should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[91m")) == 0);
 
   // Test invalid color index
   result = append_16color_fg(buffer, 99); // Invalid
   *result = '\0';
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[37m", "Invalid color should default to white");
+  REQUIRE(std::strcmp((buffer), ("\033[37m")) == 0);
 }
 
 TEST_CASE("ansi_fast/append_16color_bg_basic", "[ansi_fast]") {
@@ -412,11 +410,11 @@ TEST_CASE("ansi_fast/append_16color_bg_basic", "[ansi_fast]") {
   *result = '\0';
 
   // Should generate: \033[41m
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[41m", "16-color red background should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[41m")) == 0);
 
   result = append_16color_bg(buffer, 2); // Green
   *result = '\0';
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[42m", "16-color green background should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[42m")) == 0);
 }
 
 TEST_CASE("ansi_fast/append_16color_bg_edge_cases", "[ansi_fast]") {
@@ -428,20 +426,20 @@ TEST_CASE("ansi_fast/append_16color_bg_edge_cases", "[ansi_fast]") {
   // Test edge cases
   result = append_16color_bg(buffer, 0); // Black
   *result = '\0';
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[40m", "Black background should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[40m")) == 0);
 
   result = append_16color_bg(buffer, 7); // Light gray
   *result = '\0';
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[47m", "Light gray background should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[47m")) == 0);
 
   result = append_16color_bg(buffer, 9); // Bright red
   *result = '\0';
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[101m", "Bright red background should be correct");
+  REQUIRE(std::strcmp((buffer), ("\033[101m")) == 0);
 
   // Test invalid color index
   result = append_16color_bg(buffer, 99); // Invalid
   *result = '\0';
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[40m", "Invalid color should default to black");
+  REQUIRE(std::strcmp((buffer), ("\033[40m")) == 0);
 }
 
 TEST_CASE("ansi_fast/rgb_to_16color_basic", "[ansi_fast]") {
@@ -449,19 +447,19 @@ TEST_CASE("ansi_fast/rgb_to_16color_basic", "[ansi_fast]") {
 
   // Test basic RGB to 16-color conversion
   result = rgb_to_16color(255, 0, 0); // Red
-  ASCIICHAT_REQUIRE_EQ(result, 9, "Bright red should map to color 9");
+  REQUIRE((result) == (9));
 
   result = rgb_to_16color(0, 255, 0); // Green
-  ASCIICHAT_REQUIRE_EQ(result, 10, "Bright green should map to color 10");
+  REQUIRE((result) == (10));
 
   result = rgb_to_16color(0, 0, 255); // Blue
-  ASCIICHAT_REQUIRE_EQ(result, 12, "Bright blue should map to color 12");
+  REQUIRE((result) == (12));
 
   result = rgb_to_16color(0, 0, 0); // Black
-  ASCIICHAT_REQUIRE_EQ(result, 0, "Black should map to color 0");
+  REQUIRE((result) == (0));
 
   result = rgb_to_16color(255, 255, 255); // White
-  ASCIICHAT_REQUIRE_EQ(result, 15, "White should map to color 15");
+  REQUIRE((result) == (15));
 }
 
 TEST_CASE("ansi_fast/rgb_to_16color_approximations", "[ansi_fast]") {
@@ -469,16 +467,16 @@ TEST_CASE("ansi_fast/rgb_to_16color_approximations", "[ansi_fast]") {
 
   // Test color approximations
   result = rgb_to_16color(128, 0, 0); // Dark red
-  ASCIICHAT_REQUIRE_EQ(result, 1, "Dark red should map to color 1");
+  REQUIRE((result) == (1));
 
   result = rgb_to_16color(0, 128, 0); // Dark green
-  ASCIICHAT_REQUIRE_EQ(result, 2, "Dark green should map to color 2");
+  REQUIRE((result) == (2));
 
   result = rgb_to_16color(0, 0, 128); // Dark blue
-  ASCIICHAT_REQUIRE_EQ(result, 4, "Dark blue should map to color 4");
+  REQUIRE((result) == (4));
 
   result = rgb_to_16color(192, 192, 192); // Light gray
-  ASCIICHAT_REQUIRE_EQ(result, 7, "Light gray should map to color 7");
+  REQUIRE((result) == (7));
 }
 
 TEST_CASE("ansi_fast/get_16color_rgb_basic", "[ansi_fast]") {
@@ -486,24 +484,24 @@ TEST_CASE("ansi_fast/get_16color_rgb_basic", "[ansi_fast]") {
 
   // Test getting RGB values for 16-color indices
   get_16color_rgb(0, &r, &g, &b);
-  ASCIICHAT_REQUIRE_EQ(r, 0, "Black R should be 0");
-  ASCIICHAT_REQUIRE_EQ(g, 0, "Black G should be 0");
-  ASCIICHAT_REQUIRE_EQ(b, 0, "Black B should be 0");
+  REQUIRE((r) == (0));
+  REQUIRE((g) == (0));
+  REQUIRE((b) == (0));
 
   get_16color_rgb(9, &r, &g, &b);
-  ASCIICHAT_REQUIRE_EQ(r, 255, "Bright red R should be 255");
-  ASCIICHAT_REQUIRE_EQ(g, 0, "Bright red G should be 0");
-  ASCIICHAT_REQUIRE_EQ(b, 0, "Bright red B should be 0");
+  REQUIRE((r) == (255));
+  REQUIRE((g) == (0));
+  REQUIRE((b) == (0));
 
   get_16color_rgb(10, &r, &g, &b);
-  ASCIICHAT_REQUIRE_EQ(r, 0, "Bright green R should be 0");
-  ASCIICHAT_REQUIRE_EQ(g, 255, "Bright green G should be 255");
-  ASCIICHAT_REQUIRE_EQ(b, 0, "Bright green B should be 0");
+  REQUIRE((r) == (0));
+  REQUIRE((g) == (255));
+  REQUIRE((b) == (0));
 
   get_16color_rgb(15, &r, &g, &b);
-  ASCIICHAT_REQUIRE_EQ(r, 255, "White R should be 255");
-  ASCIICHAT_REQUIRE_EQ(g, 255, "White G should be 255");
-  ASCIICHAT_REQUIRE_EQ(b, 255, "White B should be 255");
+  REQUIRE((r) == (255));
+  REQUIRE((g) == (255));
+  REQUIRE((b) == (255));
 }
 
 TEST_CASE("ansi_fast/get_16color_rgb_edge_cases", "[ansi_fast]") {
@@ -511,9 +509,9 @@ TEST_CASE("ansi_fast/get_16color_rgb_edge_cases", "[ansi_fast]") {
 
   // Test invalid color index
   get_16color_rgb(99, &r, &g, &b);
-  ASCIICHAT_REQUIRE_EQ(r, 192, "Invalid color should default to light gray R");
-  ASCIICHAT_REQUIRE_EQ(g, 192, "Invalid color should default to light gray G");
-  ASCIICHAT_REQUIRE_EQ(b, 192, "Invalid color should default to light gray B");
+  REQUIRE((r) == (192));
+  REQUIRE((g) == (192));
+  REQUIRE((b) == (192));
 }
 
 /* ============================================================================
@@ -529,8 +527,8 @@ TEST_CASE("ansi_fast/rgb_to_16color_dithered_basic", "[ansi_fast]") {
 
   // Test basic dithering with a color that will have error
   result = rgb_to_16color_dithered(200, 50, 50, 0, 0, 10, 10, error_buffer);
-  ASCIICHAT_REQUIRE(result >= 0, "Should return valid color index");
-  ASCIICHAT_REQUIRE(result <= 15, "Should return valid color index");
+  REQUIRE(result >= 0);
+  REQUIRE(result <= 15);
 
   // Check that error was distributed (may be 0 if color maps exactly)
   // Note: Error distribution depends on the actual color mapping
@@ -541,7 +539,7 @@ TEST_CASE("ansi_fast/rgb_to_16color_dithered_no_error_buffer", "[ansi_fast]") {
 
   // Test dithering without error buffer
   result = rgb_to_16color_dithered(255, 0, 0, 0, 0, 10, 10, NULL);
-  ASCIICHAT_REQUIRE_EQ(result, 9, "Red should map to bright red without error buffer");
+  REQUIRE((result) == (9));
 }
 
 TEST_CASE("ansi_fast/rgb_to_16color_dithered_edge_cases", "[ansi_fast]") {
@@ -552,13 +550,13 @@ TEST_CASE("ansi_fast/rgb_to_16color_dithered_edge_cases", "[ansi_fast]") {
 
   // Test edge cases (boundary pixels)
   result = rgb_to_16color_dithered(255, 0, 0, 9, 0, 10, 10, error_buffer); // Right edge
-  ASCIICHAT_REQUIRE_EQ(result, 9, "Right edge pixel should work");
+  REQUIRE((result) == (9));
 
   result = rgb_to_16color_dithered(255, 0, 0, 0, 9, 10, 10, error_buffer); // Bottom edge
-  ASCIICHAT_REQUIRE_EQ(result, 9, "Bottom edge pixel should work");
+  REQUIRE((result) == (9));
 
   result = rgb_to_16color_dithered(255, 0, 0, 9, 9, 10, 10, error_buffer); // Corner
-  ASCIICHAT_REQUIRE_EQ(result, 9, "Corner pixel should work");
+  REQUIRE((result) == (9));
 }
 
 TEST_CASE("ansi_fast/rgb_to_16color_dithered_clamping", "[ansi_fast]") {
@@ -575,8 +573,8 @@ TEST_CASE("ansi_fast/rgb_to_16color_dithered_clamping", "[ansi_fast]") {
   result = rgb_to_16color_dithered(128, 128, 128, 0, 0, 10, 10, error_buffer);
 
   // Should still return a valid color index
-  ASCIICHAT_REQUIRE(result >= 0, "Result should be valid color index");
-  ASCIICHAT_REQUIRE(result <= 15, "Result should be valid color index");
+  REQUIRE(result >= 0);
+  REQUIRE(result <= 15);
 }
 
 /* ============================================================================
@@ -590,7 +588,7 @@ TEST_CASE("ansi_fast/append_color_fg_for_mode_truecolor", "[ansi_fast]") {
   result = append_color_fg_for_mode(buffer, 255, 128, 64, COLOR_MODE_TRUECOLOR);
   *result = '\0';
 
-  ASCIICHAT_REQUIRE_STR_EQ(buffer, "\033[38;2;255;128;64m", "Truecolor mode should generate truecolor sequence");
+  REQUIRE(std::strcmp((buffer), ("\033[38;2;255;128;64m")) == 0);
 }
 
 TEST_CASE("ansi_fast/append_color_fg_for_mode_256color", "[ansi_fast]") {
@@ -602,7 +600,7 @@ TEST_CASE("ansi_fast/append_color_fg_for_mode_256color", "[ansi_fast]") {
   result = append_color_fg_for_mode(buffer, 255, 0, 0, COLOR_MODE_256_COLOR);
   *result = '\0';
 
-  ASCIICHAT_REQUIRE(strstr(buffer, "\033[38;5;") != NULL, "256-color mode should generate 256-color sequence");
+  REQUIRE(strstr(buffer, "\033[38;5;") != NULL);
 }
 
 TEST_CASE("ansi_fast/append_color_fg_for_mode_16color", "[ansi_fast]") {
@@ -614,7 +612,7 @@ TEST_CASE("ansi_fast/append_color_fg_for_mode_16color", "[ansi_fast]") {
   result = append_color_fg_for_mode(buffer, 255, 0, 0, COLOR_MODE_16_COLOR);
   *result = '\0';
 
-  ASCIICHAT_REQUIRE(strstr(buffer, "\033[") != NULL, "16-color mode should generate ANSI sequence");
+  REQUIRE(strstr(buffer, "\033[") != NULL);
 }
 
 TEST_CASE("ansi_fast/append_color_fg_for_mode_none", "[ansi_fast]") {
@@ -624,7 +622,7 @@ TEST_CASE("ansi_fast/append_color_fg_for_mode_none", "[ansi_fast]") {
   result = append_color_fg_for_mode(buffer, 255, 128, 64, COLOR_MODE_NONE);
 
   // Should return unchanged buffer (no color output)
-  ASCIICHAT_REQUIRE_EQ(result, buffer, "None mode should return unchanged buffer");
+  REQUIRE((result) == (buffer));
 }
 
 TEST_CASE("ansi_fast/append_color_fg_for_mode_auto", "[ansi_fast]") {
@@ -634,7 +632,7 @@ TEST_CASE("ansi_fast/append_color_fg_for_mode_auto", "[ansi_fast]") {
   result = append_color_fg_for_mode(buffer, 255, 128, 64, COLOR_MODE_AUTO);
 
   // Should return unchanged buffer (no color output)
-  ASCIICHAT_REQUIRE_EQ(result, buffer, "Auto mode should return unchanged buffer");
+  REQUIRE((result) == (buffer));
 }
 
 TEST_CASE("ansi_fast/append_color_fg_for_mode_invalid", "[ansi_fast]") {
@@ -644,7 +642,7 @@ TEST_CASE("ansi_fast/append_color_fg_for_mode_invalid", "[ansi_fast]") {
   result = append_color_fg_for_mode(buffer, 255, 128, 64, (terminal_color_mode_t)999);
 
   // Should return unchanged buffer (no color output)
-  ASCIICHAT_REQUIRE_EQ(result, buffer, "Invalid mode should return unchanged buffer");
+  REQUIRE((result) == (buffer));
 }
 
 /* ============================================================================
@@ -660,8 +658,8 @@ TEST_CASE("ansi_fast/performance_truecolor_generation", "[ansi_fast]") {
     pos = append_truecolor_fg(pos, i % 256, (i * 2) % 256, (i * 3) % 256);
   }
 
-  ASCIICHAT_REQUIRE_LT((size_t)(pos - buffer), sizeof(buffer), "Should not overflow buffer");
-  ASCIICHAT_REQUIRE_GT(pos - buffer, 0, "Should generate some output");
+  REQUIRE(((size_t)(pos - buffer)) < (sizeof(buffer)));
+  REQUIRE((pos - buffer) > (0));
 }
 
 TEST_CASE("ansi_fast/performance_rle_generation", "[ansi_fast]") {
@@ -677,9 +675,9 @@ TEST_CASE("ansi_fast/performance_rle_generation", "[ansi_fast]") {
 
   ansi_rle_finish(&ctx);
 
-  ASCIICHAT_REQUIRE_LT(ctx.length, sizeof(buffer), "Should not overflow buffer");
-  ASCIICHAT_REQUIRE_GT(ctx.length, 0, "Should generate some output");
-  ASCIICHAT_REQUIRE_EQ(buffer[ctx.length], '\0', "Should be null terminated");
+  REQUIRE((ctx.length) < (sizeof(buffer)));
+  REQUIRE((ctx.length) > (0));
+  REQUIRE((buffer[ctx.length]) == ('\0'));
 }
 
 TEST_CASE("ansi_fast/performance_color_conversion", "[ansi_fast]") {
@@ -688,12 +686,12 @@ TEST_CASE("ansi_fast/performance_color_conversion", "[ansi_fast]") {
   // Test many color conversions
   for (int i = 0; i < 1000; i++) {
     result = rgb_to_256color(i % 256, (i * 2) % 256, (i * 3) % 256);
-    ASCIICHAT_REQUIRE(result >= 0, "256-color result should be valid");
-    ASCIICHAT_REQUIRE(result <= 255, "256-color result should be valid");
+    REQUIRE(result >= 0);
+    REQUIRE(result <= 255);
 
     result = rgb_to_16color(i % 256, (i * 2) % 256, (i * 3) % 256);
-    ASCIICHAT_REQUIRE(result >= 0, "16-color result should be valid");
-    ASCIICHAT_REQUIRE(result <= 15, "16-color result should be valid");
+    REQUIRE(result >= 0);
+    REQUIRE(result <= 15);
   }
 }
 
@@ -712,7 +710,7 @@ TEST_CASE("ansi_fast/buffer_overflow_protection_rle", "[ansi_fast]") {
     ansi_rle_add_pixel(&ctx, 255, 128, 64, 'A');
   }
 
-  ASCIICHAT_REQUIRE(ctx.length <= sizeof(buffer), "Should not overflow small buffer");
+  REQUIRE(ctx.length <= sizeof(buffer));
 }
 
 TEST_CASE("ansi_fast/buffer_overflow_protection_finish", "[ansi_fast]") {
@@ -725,7 +723,7 @@ TEST_CASE("ansi_fast/buffer_overflow_protection_finish", "[ansi_fast]") {
   // Finish should not overflow
   ansi_rle_finish(&ctx);
 
-  ASCIICHAT_REQUIRE(ctx.length <= sizeof(buffer), "Finish should not overflow small buffer");
+  REQUIRE(ctx.length <= sizeof(buffer));
 }
 
 /* ============================================================================
@@ -752,16 +750,16 @@ TEST_CASE("ansi_fast/integration_full_workflow", "[ansi_fast]") {
   ansi_rle_finish(&ctx);
 
   // Verify output
-  ASCIICHAT_REQUIRE_GT(ctx.length, 0, "Should generate output");
-  ASCIICHAT_REQUIRE_EQ(buffer[ctx.length], '\0', "Should be null terminated");
-  ASCIICHAT_REQUIRE(strstr(buffer, "\033[38;2;") != NULL, "Should contain foreground sequences");
-  ASCIICHAT_REQUIRE(strstr(buffer, "\033[0m") != NULL, "Should contain reset sequence");
+  REQUIRE((ctx.length) > (0));
+  REQUIRE((buffer[ctx.length]) == ('\0'));
+  REQUIRE(strstr(buffer, "\033[38;2;") != NULL);
+  REQUIRE(strstr(buffer, "\033[0m") != NULL);
 
   // Check that all expected characters are present (they may be separated by ANSI sequences)
-  ASCIICHAT_REQUIRE(strstr(buffer, "R") != NULL, "Should contain character R");
-  ASCIICHAT_REQUIRE(strstr(buffer, "E") != NULL, "Should contain character E");
-  ASCIICHAT_REQUIRE(strstr(buffer, "D") != NULL, "Should contain character D");
-  ASCIICHAT_REQUIRE(strstr(buffer, "B") != NULL, "Should contain character B");
+  REQUIRE(strstr(buffer, "R") != NULL);
+  REQUIRE(strstr(buffer, "E") != NULL);
+  REQUIRE(strstr(buffer, "D") != NULL);
+  REQUIRE(strstr(buffer, "B") != NULL);
 }
 
 TEST_CASE("ansi_fast/integration_color_mode_switching", "[ansi_fast]") {
@@ -775,15 +773,15 @@ TEST_CASE("ansi_fast/integration_color_mode_switching", "[ansi_fast]") {
   // Test switching between different color modes
   result = append_color_fg_for_mode(buffer, 255, 0, 0, COLOR_MODE_TRUECOLOR);
   *result = '\0';
-  ASCIICHAT_REQUIRE(strstr(buffer, "\033[38;2;") != NULL, "Truecolor should work");
+  REQUIRE(strstr(buffer, "\033[38;2;") != NULL);
 
   result = append_color_fg_for_mode(buffer, 255, 0, 0, COLOR_MODE_256_COLOR);
   *result = '\0';
-  ASCIICHAT_REQUIRE(strstr(buffer, "\033[38;5;") != NULL, "256-color should work");
+  REQUIRE(strstr(buffer, "\033[38;5;") != NULL);
 
   result = append_color_fg_for_mode(buffer, 255, 0, 0, COLOR_MODE_16_COLOR);
   *result = '\0';
-  ASCIICHAT_REQUIRE(strstr(buffer, "\033[") != NULL, "16-color should work");
+  REQUIRE(strstr(buffer, "\033[") != NULL);
 }
 // trigger test workflow
 // coverage fix

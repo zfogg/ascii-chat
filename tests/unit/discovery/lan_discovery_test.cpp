@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file ui_mdns_test.c
  * @brief Unit tests for UI mDNS service discovery (lib/ui/ui_mdns.c)
@@ -10,7 +11,6 @@
  * - Memory management
  */
 
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <stdlib.h>
 #include <string.h>
@@ -28,8 +28,8 @@ TEST_CASE("ui_mdns/query_with_default_config", "[ui_mdns]") {
   ui_mdns_server_t *servers = ui_mdns_query(NULL, &count);
 
   // Should return valid array (even if empty)
-  ASCIICHAT_REQUIRE_NOT_NULL(servers, "Should return server array");
-  ASCIICHAT_REQUIRE(count >= 0, "Server count should be non-negative");
+  REQUIRE((servers) != nullptr);
+  REQUIRE(count >= 0);
 
   ui_mdns_free_results(servers);
 }
@@ -47,8 +47,8 @@ TEST_CASE("ui_mdns/query_with_custom_config", "[ui_mdns]") {
   int count = 0;
   ui_mdns_server_t *servers = ui_mdns_query(&config, &count);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(servers, "Should return server array");
-  ASCIICHAT_REQUIRE(count <= config.max_servers, "Should not exceed max_servers");
+  REQUIRE((servers) != nullptr);
+  REQUIRE(count <= config.max_servers);
 
   ui_mdns_free_results(servers);
 }
@@ -108,7 +108,7 @@ TEST_CASE("ui_mdns/get_best_address_prefers_ipv4", "[ui_mdns]") {
   strcpy(server.ipv6, "2001:db8::1");
 
   const char *addr = ui_mdns_get_best_address(&server);
-  ASCIICHAT_REQUIRE_STR_EQ(addr, "192.168.1.100", "Should prefer IPv4 address");
+  REQUIRE(std::strcmp((addr), ("192.168.1.100")) == 0);
 }
 
 /**
@@ -122,7 +122,7 @@ TEST_CASE("ui_mdns/get_best_address_fallback_ipv6", "[ui_mdns]") {
   strcpy(server.ipv6, "2001:db8::1");
 
   const char *addr = ui_mdns_get_best_address(&server);
-  ASCIICHAT_REQUIRE_STR_EQ(addr, "2001:db8::1", "Should use IPv6 rather than the display name when IPv4 is unavailable");
+  REQUIRE(std::strcmp((addr), ("2001:db8::1")) == 0);
 }
 
 /**
@@ -130,7 +130,7 @@ TEST_CASE("ui_mdns/get_best_address_fallback_ipv6", "[ui_mdns]") {
  */
 TEST_CASE("ui_mdns/get_best_address_null_server", "[ui_mdns]") {
   const char *addr = ui_mdns_get_best_address(NULL);
-  ASCIICHAT_REQUIRE_STR_EQ(addr, "", "Should return empty string for NULL server");
+  REQUIRE(std::strcmp((addr), ("")) == 0);
 }
 
 /**
@@ -143,7 +143,7 @@ TEST_CASE("ui_mdns/get_best_address_fallback_address", "[ui_mdns]") {
   strcpy(server.address, "example.local");
 
   const char *addr = ui_mdns_get_best_address(&server);
-  ASCIICHAT_REQUIRE_STR_EQ(addr, "example.local", "Should return address field as fallback");
+  REQUIRE(std::strcmp((addr), ("example.local")) == 0);
 }
 
 /**
@@ -151,7 +151,7 @@ TEST_CASE("ui_mdns/get_best_address_fallback_address", "[ui_mdns]") {
  */
 TEST_CASE("ui_mdns/prompt_selection_null_servers", "[ui_mdns]") {
   int result = ui_mdns_prompt_selection(NULL, 0);
-  ASCIICHAT_REQUIRE_EQ(result, -1, "Should return -1 for NULL servers");
+  REQUIRE((result) == (-1));
 }
 
 /**
@@ -162,7 +162,7 @@ TEST_CASE("ui_mdns/prompt_selection_zero_count", "[ui_mdns]") {
   memset(servers, 0, sizeof(servers));
 
   int result = ui_mdns_prompt_selection(servers, 0);
-  ASCIICHAT_REQUIRE_EQ(result, -1, "Should return -1 for zero count");
+  REQUIRE((result) == (-1));
 }
 
 /**
@@ -173,10 +173,10 @@ TEST_CASE("ui_mdns/discovered_server_structure", "[ui_mdns]") {
   memset(&server, 0, sizeof(server));
 
   // Verify structure is properly sized and aligned
-  ASCIICHAT_REQUIRE_GT(sizeof(server.name), 0, "Name field should exist");
-  ASCIICHAT_REQUIRE_GT(sizeof(server.address), 0, "Address field should exist");
-  ASCIICHAT_REQUIRE_GT(sizeof(server.ipv4), 0, "IPv4 field should exist");
-  ASCIICHAT_REQUIRE_GT(sizeof(server.ipv6), 0, "IPv6 field should exist");
+  REQUIRE((sizeof(server.name)) > (0));
+  REQUIRE((sizeof(server.address)) > (0));
+  REQUIRE((sizeof(server.ipv4)) > (0));
+  REQUIRE((sizeof(server.ipv6)) > (0));
 }
 
 /**
@@ -190,9 +190,9 @@ TEST_CASE("ui_mdns/discovery_config_structure", "[ui_mdns]") {
   config.max_servers = 20;
   config.quiet = false;
 
-  ASCIICHAT_REQUIRE_EQ(config.timeout_ms, 2000, "Timeout should be settable");
-  ASCIICHAT_REQUIRE_EQ(config.max_servers, 20, "Max servers should be settable");
-  ASCIICHAT_REQUIRE_EQ(config.quiet, false, "Quiet flag should be settable");
+  REQUIRE((config.timeout_ms) == (2000));
+  REQUIRE((config.max_servers) == (20));
+  REQUIRE((config.quiet) == (false));
 }
 
 /**
@@ -208,7 +208,7 @@ TEST_CASE("ui_mdns/query_with_short_timeout", "[ui_mdns]") {
   int count = 0;
   ui_mdns_server_t *servers = ui_mdns_query(&config, &count);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(servers, "Should handle short timeout");
+  REQUIRE((servers) != nullptr);
 
   ui_mdns_free_results(servers);
 }
@@ -226,7 +226,7 @@ TEST_CASE("ui_mdns/query_with_long_timeout", "[ui_mdns]") {
   int count = 0;
   ui_mdns_server_t *servers = ui_mdns_query(&config, &count);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(servers, "Should handle long timeout");
+  REQUIRE((servers) != nullptr);
 
   ui_mdns_free_results(servers);
 }

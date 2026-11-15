@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
@@ -221,16 +222,16 @@ TEST_CASE("main_integration/server_main_starts_and_stops", "[main_integration]")
   char *argv[] = {"ascii-chat", "--log-file", "/tmp/test_server_main.log", "server", "--port", port_str, "--websocket-port", websocket_port_str, "--status-screen=false", NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), argv, "server");
-  ASCIICHAT_REQUIRE_GT(server_pid, 0, "Server should spawn successfully");
+  REQUIRE((server_pid) > (0));
 
   // Wait for server to start listening
   bool started = wait_for_tcp_port(port, 2000);
-  ASCIICHAT_REQUIRE(started, "Server should start listening on port %d", port);
+  REQUIRE(started);
 
   // Verify server is still running
   int status;
   pid_t result = waitpid(server_pid, &status, WNOHANG);
-  ASCIICHAT_REQUIRE_EQ(result, 0, "Server should still be running");
+  REQUIRE((result) == (0));
 
   // Graceful shutdown
   terminate_process(server_pid, "server");
@@ -240,12 +241,12 @@ TEST_CASE("main_integration/server_main_help_flag", "[main_integration]") {
   char *argv[] = {"ascii-chat", "server", "--help", NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), argv, "server_help");
-  ASCIICHAT_REQUIRE_GT(server_pid, 0, "Server should spawn for help");
+  REQUIRE((server_pid) > (0));
 
   int exit_code;
   bool exited = wait_for_process_exit(server_pid, 1000, &exit_code);
-  ASCIICHAT_REQUIRE(exited, "Server should exit after showing help");
-  ASCIICHAT_REQUIRE_EQ(exit_code, 0, "Server should exit with code 0 for --help");
+  REQUIRE(exited);
+  REQUIRE((exit_code) == (0));
 }
 
 TEST_CASE("main_integration/server_main_invalid_port", "[main_integration]") {
@@ -253,12 +254,12 @@ TEST_CASE("main_integration/server_main_invalid_port", "[main_integration]") {
                   NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), argv, "server_bad_port");
-  ASCIICHAT_REQUIRE_GT(server_pid, 0, "Server should spawn");
+  REQUIRE((server_pid) > (0));
 
   int exit_code;
   bool exited = wait_for_process_exit(server_pid, 2000, &exit_code);
-  ASCIICHAT_REQUIRE(exited, "Server should exit on invalid port");
-  ASCIICHAT_REQUIRE_NE(exit_code, 0, "Server should exit with non-zero code for invalid port");
+  REQUIRE(exited);
+  REQUIRE((exit_code) != (0));
 }
 
 // =============================================================================
@@ -269,12 +270,12 @@ TEST_CASE("main_integration/client_main_help_flag", "[main_integration]") {
   char *argv[] = {"ascii-chat", "client", "--help", NULL};
 
   pid_t client_pid = spawn_process(get_binary_path(), argv, "client_help");
-  ASCIICHAT_REQUIRE_GT(client_pid, 0, "Client should spawn for help");
+  REQUIRE((client_pid) > (0));
 
   int exit_code;
   bool exited = wait_for_process_exit(client_pid, 1000, &exit_code);
-  ASCIICHAT_REQUIRE(exited, "Client should exit after showing help");
-  ASCIICHAT_REQUIRE_EQ(exit_code, 0, "Client should exit with code 0 for --help");
+  REQUIRE(exited);
+  REQUIRE((exit_code) == (0));
 }
 
 TEST_CASE("main_integration/client_main_no_server", "[main_integration]") {
@@ -286,7 +287,7 @@ TEST_CASE("main_integration/client_main_no_server", "[main_integration]") {
   char *argv[] = {"ascii-chat", "--no-check-update", "client", "127.0.0.1:27224", "--test-pattern", NULL};
 
   pid_t client_pid = spawn_process(get_binary_path(), argv, "client_no_server");
-  ASCIICHAT_REQUIRE_GT(client_pid, 0, "Client should spawn");
+  REQUIRE((client_pid) > (0));
 
   // Wait 200ms - client should still be running (retrying connection)
   usleep(200000);
@@ -294,7 +295,7 @@ TEST_CASE("main_integration/client_main_no_server", "[main_integration]") {
   // Verify client is still alive (waitpid with WNOHANG returns 0 if still running)
   int status;
   pid_t result = waitpid(client_pid, &status, WNOHANG);
-  ASCIICHAT_REQUIRE_EQ(result, 0, "Client should still be running while retrying connection");
+  REQUIRE((result) == (0));
 
   // Clean up - terminate the client
   terminate_process(client_pid, "client_no_server");
@@ -319,11 +320,11 @@ TEST_CASE("main_integration/server_client_basic_connection", "[main_integration]
                          websocket_port_str, "--no-encrypt", "--status-screen=false",       NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
-  ASCIICHAT_REQUIRE_GT(server_pid, 0, "Server should spawn");
+  REQUIRE((server_pid) > (0));
 
   // Wait for server to be ready
   bool server_ready = wait_for_tcp_port(port, 2000);
-  ASCIICHAT_REQUIRE(server_ready, "Server should be listening");
+  REQUIRE(server_ready);
 
   // Start client with test pattern (no webcam needed in Docker)
   char *client_argv[] = {"ascii-chat",
@@ -342,12 +343,12 @@ TEST_CASE("main_integration/server_client_basic_connection", "[main_integration]
                          NULL};
 
   pid_t client_pid = spawn_process(get_binary_path(), client_argv, "client");
-  ASCIICHAT_REQUIRE_GT(client_pid, 0, "Client should spawn");
+  REQUIRE((client_pid) > (0));
 
   // Wait for client to complete
   int client_exit_code;
   bool client_exited = wait_for_process_exit(client_pid, CLIENT_CONNECT_TIMEOUT_MS, &client_exit_code);
-  ASCIICHAT_REQUIRE(client_exited, "Client should complete snapshot (exit code %d)", client_exit_code);
+  REQUIRE(client_exited);
 
   // Clean up server
   terminate_process(server_pid, "server");
@@ -367,10 +368,10 @@ TEST_CASE("main_integration/server_multiple_clients_sequential", "[main_integrat
   char *server_argv[] = {"ascii-chat", "--log-file", "/tmp/test_multi_seq.log", "server", "--port", port_str, "--websocket-port", websocket_port_str, "--no-encrypt", "--status-screen=false", NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
-  ASCIICHAT_REQUIRE_GT(server_pid, 0, "Server should spawn");
+  REQUIRE((server_pid) > (0));
 
   bool server_ready = wait_for_tcp_port(port, 2000);
-  ASCIICHAT_REQUIRE(server_ready, "Server should be listening");
+  REQUIRE(server_ready);
 
   // Connect multiple clients sequentially with test pattern (no webcam needed)
   for (int i = 0; i < 2; i++) {
@@ -382,12 +383,12 @@ TEST_CASE("main_integration/server_multiple_clients_sequential", "[main_integrat
     char *client_argv[] = {"ascii-chat", "--log-file", client_log_path, "--no-check-update", "client", client_address, "--no-encrypt", "--test-pattern", "--snapshot", "--snapshot-delay", "0", NULL};
 
     pid_t client_pid = spawn_process(get_binary_path(), client_argv, client_name);
-    ASCIICHAT_REQUIRE_GT(client_pid, 0, "Client %d should spawn", i);
+    REQUIRE((client_pid) > (0));
 
     int exit_code;
     bool exited = wait_for_process_exit(client_pid, CLIENT_CONNECT_TIMEOUT_MS, &exit_code);
-    ASCIICHAT_REQUIRE(exited, "Client %d should complete", i);
-    ASCIICHAT_REQUIRE(exited, "Client %d should complete (exit code %d)", i, exit_code);
+    REQUIRE(exited);
+    REQUIRE(exited);
     // Let the server finish removing the just-closed client before reusing it.
     usleep(5000000);
   }
@@ -410,10 +411,10 @@ TEST_CASE("main_integration/server_multiple_clients_concurrent", "[main_integrat
                          websocket_port_str, "--no-encrypt", "--status-screen=false",          NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
-  ASCIICHAT_REQUIRE_GT(server_pid, 0, "Server should spawn");
+  REQUIRE((server_pid) > (0));
 
   bool server_ready = wait_for_tcp_port(port, 2000);
-  ASCIICHAT_REQUIRE(server_ready, "Server should be listening");
+  REQUIRE(server_ready);
 
   // Start multiple clients concurrently with test pattern (no webcam needed)
   pid_t client_pids[2];
@@ -431,7 +432,7 @@ TEST_CASE("main_integration/server_multiple_clients_concurrent", "[main_integrat
                            "--snapshot-delay",  "3",          NULL};
 
     client_pids[i] = spawn_process(get_binary_path(), client_argv, client_name);
-    ASCIICHAT_REQUIRE_GT(client_pids[i], 0, "Client %d should spawn", i);
+    REQUIRE((client_pids[i]) > (0));
     usleep(250000); // Allow the server to finish accepting each client.
   }
 
@@ -439,8 +440,8 @@ TEST_CASE("main_integration/server_multiple_clients_concurrent", "[main_integrat
   for (int i = 0; i < 2; i++) {
     int exit_code;
     bool exited = wait_for_process_exit(client_pids[i], CLIENT_CONNECT_TIMEOUT_MS, &exit_code);
-    ASCIICHAT_REQUIRE(exited, "Client %d should complete", i);
-    ASCIICHAT_REQUIRE(exited, "Client %d should complete (exit code %d)", i, exit_code);
+    REQUIRE(exited);
+    REQUIRE(exited);
   }
 
   terminate_process(server_pid, "server");
@@ -461,10 +462,10 @@ TEST_CASE("main_integration/server_client_with_options", "[main_integration]") {
                          websocket_port_str, "--no-encrypt", "--status-screen=false",        NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
-  ASCIICHAT_REQUIRE_GT(server_pid, 0, "Server should spawn with options");
+  REQUIRE((server_pid) > (0));
 
   bool server_ready = wait_for_tcp_port(port, 2000);
-  ASCIICHAT_REQUIRE(server_ready, "Server should be listening");
+  REQUIRE(server_ready);
 
   // Start client with options (test pattern for no webcam)
   // Note: --color-mode is the correct option, not --color
@@ -486,12 +487,12 @@ TEST_CASE("main_integration/server_client_with_options", "[main_integration]") {
                          NULL};
 
   pid_t client_pid = spawn_process(get_binary_path(), client_argv, "client");
-  ASCIICHAT_REQUIRE_GT(client_pid, 0, "Client should spawn with options");
+  REQUIRE((client_pid) > (0));
 
   int client_exit_code;
   bool client_exited = wait_for_process_exit(client_pid, CLIENT_CONNECT_TIMEOUT_MS, &client_exit_code);
-  ASCIICHAT_REQUIRE(client_exited, "Client should complete");
-  ASCIICHAT_REQUIRE(client_exited, "Client should complete with options (exit code %d)", client_exit_code);
+  REQUIRE(client_exited);
+  REQUIRE(client_exited);
 
   terminate_process(server_pid, "server");
 }
@@ -511,10 +512,10 @@ TEST_CASE("main_integration/server_survives_client_crash", "[main_integration]")
                          websocket_port_str, "--no-encrypt", "--status-screen=false",         NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
-  ASCIICHAT_REQUIRE_GT(server_pid, 0, "Server should spawn");
+  REQUIRE((server_pid) > (0));
 
   bool server_ready = wait_for_tcp_port(port, 2000);
-  ASCIICHAT_REQUIRE(server_ready, "Server should be listening");
+  REQUIRE(server_ready);
 
   // Start client with test pattern (no webcam needed)
   char *client_argv[] = {"ascii-chat",     "--log-file", "/tmp/test_client_crash.log", "client", client_address,
@@ -522,7 +523,7 @@ TEST_CASE("main_integration/server_survives_client_crash", "[main_integration]")
                          "--test-pattern", NULL};
 
   pid_t client_pid = spawn_process(get_binary_path(), client_argv, "client");
-  ASCIICHAT_REQUIRE_GT(client_pid, 0, "Client should spawn");
+  REQUIRE((client_pid) > (0));
 
   usleep(100000); // 100ms - Let client connect (fast with --no-encrypt)
 
@@ -535,7 +536,7 @@ TEST_CASE("main_integration/server_survives_client_crash", "[main_integration]")
   // Server should still be running
   int status;
   pid_t result = waitpid(server_pid, &status, WNOHANG);
-  ASCIICHAT_REQUIRE_EQ(result, 0, "Server should survive client crash");
+  REQUIRE((result) == (0));
 
   // Try connecting another client to verify server is still functional
   char *client2_argv[] = {"ascii-chat",
@@ -552,12 +553,12 @@ TEST_CASE("main_integration/server_survives_client_crash", "[main_integration]")
                           NULL};
 
   pid_t client2_pid = spawn_process(get_binary_path(), client2_argv, "client2");
-  ASCIICHAT_REQUIRE_GT(client2_pid, 0, "Second client should spawn");
+  REQUIRE((client2_pid) > (0));
 
   int exit_code;
   bool exited = wait_for_process_exit(client2_pid, CLIENT_CONNECT_TIMEOUT_MS, &exit_code);
-  ASCIICHAT_REQUIRE(exited, "Second client should complete");
-  ASCIICHAT_REQUIRE(exited, "Second client should complete (exit code %d)", exit_code);
+  REQUIRE(exited);
+  REQUIRE(exited);
 
   terminate_process(server_pid, "server");
 }

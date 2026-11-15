@@ -9,6 +9,10 @@
 #include <ascii-chat/stats/stats.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct stats_peer stats_peer_t;
 #define STATS_VIEW_LINES 128
 typedef struct {
@@ -45,3 +49,7 @@ stats_scope_t *stats_runtime_peer_scope(stats_peer_t *peer);
 void stats_runtime_packet(stats_peer_t *peer, unsigned type, size_t payload_bytes, bool sent, bool success);
 void stats_runtime_connection_state(const char *state);
 void stats_runtime_media(unsigned width, unsigned height, double position, double duration);
+
+#ifdef __cplusplus
+}
+#endif

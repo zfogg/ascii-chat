@@ -4,5 +4,13 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Write exactly size bytes, including embedded NULs, without closing stream. */
 asciichat_error_t stdout_writer_write(FILE *stream, const void *data, size_t size);
+
+#ifdef __cplusplus
+}
+#endif

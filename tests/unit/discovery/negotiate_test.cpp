@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include "../../../src/discovery/negotiate.h"
 #include <ascii-chat/network/acip/acds.h>
@@ -17,34 +17,34 @@ TEST_CASE("negotiate/initialization_copies_identity_and_discards_previous_electi
   negotiate_ctx_t context;
   memset(&context, 0xa5, sizeof(context));
   negotiate_init(&context, session, participant, true);
-  ASCIICHAT_REQUIRE_ARRAY_EQ(context.session_id, session, 16);
-  ASCIICHAT_REQUIRE_ARRAY_EQ(context.participant_id, participant, 16);
+  REQUIRE(std::memcmp((context.session_id), (session), (16)) == 0);
+  REQUIRE(std::memcmp((context.participant_id), (participant), (16)) == 0);
   session[0] = participant[0] = 0;
-  ASCIICHAT_REQUIRE_EQ(context.session_id[0], 1);
-  ASCIICHAT_REQUIRE_EQ(context.participant_id[0], 3);
-  ASCIICHAT_REQUIRE_EQ(context.state, NEGOTIATE_STATE_INIT);
-  ASCIICHAT_REQUIRE(context.is_initiator);
-  ASCIICHAT_REQUIRE_NOT(context.we_are_host || context.peer_quality_received || context.our_quality.detection_complete);
-  ASCIICHAT_REQUIRE_EQ(context.host_address[0], 0);
-  ASCIICHAT_REQUIRE_EQ(context.host_port, 0);
+  REQUIRE((context.session_id[0]) == (1));
+  REQUIRE((context.participant_id[0]) == (3));
+  REQUIRE((context.state) == (NEGOTIATE_STATE_INIT));
+  REQUIRE(context.is_initiator);
+  REQUIRE(!(context.we_are_host || context.peer_quality_received || context.our_quality.detection_complete));
+  REQUIRE((context.host_address[0]) == (0));
+  REQUIRE((context.host_port) == (0));
   negotiate_init(&context, NULL, NULL, false);
-  ASCIICHAT_REQUIRE_EQ(context.session_id[0], 0);
-  ASCIICHAT_REQUIRE_EQ(context.participant_id[0], 0);
-  ASCIICHAT_REQUIRE_NOT(context.is_initiator);
+  REQUIRE((context.session_id[0]) == (0));
+  REQUIRE((context.participant_id[0]) == (0));
+  REQUIRE(!(context.is_initiator));
   negotiate_init(NULL, session, participant, true);
 }
 
 TEST_CASE("negotiate/incomplete_observations_cannot_publish_a_host", "[negotiate]") {
-  ASCIICHAT_REQUIRE_EQ(negotiate_determine_result(NULL), ERROR_INVALID_PARAM);
+  REQUIRE((negotiate_determine_result(NULL)) == (ERROR_INVALID_PARAM));
   for (unsigned flags = 0; flags < 3; ++flags) {
     negotiate_ctx_t context;
     negotiate_init(&context, NULL, NULL, true);
     context.our_quality.detection_complete = (flags & 1) != 0;
     context.peer_quality_received = (flags & 2) != 0;
-    ASCIICHAT_REQUIRE_EQ(negotiate_determine_result(&context), ERROR_INVALID_STATE);
-    ASCIICHAT_REQUIRE_EQ(context.state, NEGOTIATE_STATE_INIT);
-    ASCIICHAT_REQUIRE_NOT(context.we_are_host);
-    ASCIICHAT_REQUIRE_EQ(context.host_port, 0);
+    REQUIRE((negotiate_determine_result(&context)) == (ERROR_INVALID_STATE));
+    REQUIRE((context.state) == (NEGOTIATE_STATE_INIT));
+    REQUIRE(!(context.we_are_host));
+    REQUIRE((context.host_port) == (0));
   }
 }
 
@@ -59,13 +59,13 @@ TEST_CASE("negotiate/elected_endpoint_uses_public_address_mapping_and_connection
       host->upnp_available = kind == 1;
       host->upnp_mapped_port = 34567;
       SAFE_STRNCPY(host->public_address, "203.0.113.7", sizeof(host->public_address));
-      ASCIICHAT_REQUIRE_EQ(negotiate_determine_result(&context), ASCIICHAT_OK);
-      ASCIICHAT_REQUIRE_EQ(context.state, NEGOTIATE_STATE_COMPLETE);
-      ASCIICHAT_REQUIRE_EQ(context.we_are_host, host_is_local != 0);
-      ASCIICHAT_REQUIRE_STR_EQ(context.host_address, "203.0.113.7");
-      ASCIICHAT_REQUIRE_EQ(context.host_port, kind == 1 ? 34567 : ACIP_HOST_DEFAULT_PORT);
+      REQUIRE((negotiate_determine_result(&context)) == (ASCIICHAT_OK));
+      REQUIRE((context.state) == (NEGOTIATE_STATE_COMPLETE));
+      REQUIRE((context.we_are_host) == (host_is_local != 0));
+      REQUIRE(std::strcmp((context.host_address), ("203.0.113.7")) == 0);
+      REQUIRE((context.host_port) == (kind == 1 ? 34567 : ACIP_HOST_DEFAULT_PORT));
       const uint8_t expected[] = {ACIP_CONNECTION_TYPE_DIRECT_PUBLIC, ACIP_CONNECTION_TYPE_UPNP, ACIP_CONNECTION_TYPE_STUN};
-      ASCIICHAT_REQUIRE_EQ(context.connection_type, expected[kind]);
+      REQUIRE((context.connection_type) == (expected[kind]));
     }
   }
 }
@@ -75,11 +75,11 @@ TEST_CASE("negotiate/equal_quality_peers_choose_the_initiator_and_local_host_has
     negotiate_ctx_t context;
     negotiate_init(&context, NULL, NULL, initiator);
     context.our_quality.detection_complete = context.peer_quality_received = true;
-    ASCIICHAT_REQUIRE_EQ(negotiate_determine_result(&context), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(context.we_are_host, initiator != 0);
-    ASCIICHAT_REQUIRE_EQ(context.connection_type, ACIP_CONNECTION_TYPE_STUN);
-    ASCIICHAT_REQUIRE_EQ(context.host_port, ACIP_HOST_DEFAULT_PORT);
+    REQUIRE((negotiate_determine_result(&context)) == (ASCIICHAT_OK));
+    REQUIRE((context.we_are_host) == (initiator != 0));
+    REQUIRE((context.connection_type) == (ACIP_CONNECTION_TYPE_STUN));
+    REQUIRE((context.host_port) == (ACIP_HOST_DEFAULT_PORT));
     if (initiator)
-      ASCIICHAT_REQUIRE_STR_EQ(context.host_address, "127.0.0.1");
+      REQUIRE(std::strcmp((context.host_address), ("127.0.0.1")) == 0);
   }
 }

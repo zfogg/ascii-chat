@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file ip_privacy_test.c
  * @brief Integration tests for ACDS IP privacy controls
@@ -19,7 +20,6 @@
 #include "discovery-service/main.h"
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/network/acip/acds.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <string.h>
 #include <sodium.h>
@@ -53,7 +53,7 @@ TEST_CASE("acds_ip_privacy/password_protected_reveals_ip", "[acds_ip_privacy]") 
 
   sqlite3 *db = NULL;
   asciichat_error_t result = database_init(db_path, &db);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Database initialization should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   acds_config_t config;
   memset(&config, 0, sizeof(config));
@@ -72,11 +72,11 @@ TEST_CASE("acds_ip_privacy/password_protected_reveals_ip", "[acds_ip_privacy]") 
   // Hash password "test-password-123" using Argon2id
   const char *password = "test-password-123";
   int hash_result = crypto_pwhash_str((char *)create_req.password_hash, password, strlen(password), crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE);
-  ASCIICHAT_REQUIRE_EQ(hash_result, 0, "Password hashing should succeed");
+  REQUIRE((hash_result) == (0));
 
   acip_session_created_t create_resp;
   result = database_session_create(db, &create_req, &config, &create_resp);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Session creation should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Join with correct password
   acip_session_join_t join_req;
@@ -88,13 +88,13 @@ TEST_CASE("acds_ip_privacy/password_protected_reveals_ip", "[acds_ip_privacy]") 
 
   acip_session_joined_t join_resp;
   result = database_session_join(db, &join_req, &config, &join_resp);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Session join should succeed");
-  ASCIICHAT_REQUIRE_EQ(join_resp.success, 1, "Join should be successful");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((join_resp.success) == (1));
 
   // Verify IP is revealed (password was verified)
-  ASCIICHAT_REQUIRE_STR_EQ(join_resp.server_address, "192.168.1.100", "Server address should be revealed after password verification");
-  ASCIICHAT_REQUIRE_EQ(join_resp.server_port, 27224, "Server port should be revealed");
-  ASCIICHAT_REQUIRE_EQ(join_resp.session_type, SESSION_TYPE_DIRECT_TCP, "Session type should be revealed");
+  REQUIRE(std::strcmp((join_resp.server_address), ("192.168.1.100")) == 0);
+  REQUIRE((join_resp.server_port) == (27224));
+  REQUIRE((join_resp.session_type) == (SESSION_TYPE_DIRECT_TCP));
 
   database_close(db);
   cleanup_test_db(db_path);
@@ -109,7 +109,7 @@ TEST_CASE("acds_ip_privacy/no_password_no_optin_withholds_ip", "[acds_ip_privacy
 
   sqlite3 *db = NULL;
   asciichat_error_t result = database_init(db_path, &db);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Database initialization should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   acds_config_t config;
   memset(&config, 0, sizeof(config));
@@ -127,7 +127,7 @@ TEST_CASE("acds_ip_privacy/no_password_no_optin_withholds_ip", "[acds_ip_privacy
 
   acip_session_created_t create_resp;
   result = database_session_create(db, &create_req, &config, &create_resp);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Session creation should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Join session (no password required)
   acip_session_join_t join_req;
@@ -138,13 +138,13 @@ TEST_CASE("acds_ip_privacy/no_password_no_optin_withholds_ip", "[acds_ip_privacy
 
   acip_session_joined_t join_resp;
   result = database_session_join(db, &join_req, &config, &join_resp);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Session join should succeed");
-  ASCIICHAT_REQUIRE_EQ(join_resp.success, 1, "Join should be successful");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((join_resp.success) == (1));
 
   // Verify IP is WITHHELD (security control active)
-  ASCIICHAT_REQUIRE_EQ(join_resp.server_address[0], '\0', "Server address should be withheld without password or opt-in");
-  ASCIICHAT_REQUIRE_EQ(join_resp.server_port, 0, "Server port should be zero");
-  ASCIICHAT_REQUIRE_EQ(join_resp.session_type, SESSION_TYPE_WEBRTC, "Session type should be available without revealing IP");
+  REQUIRE((join_resp.server_address[0]) == ('\0'));
+  REQUIRE((join_resp.server_port) == (0));
+  REQUIRE((join_resp.session_type) == (SESSION_TYPE_WEBRTC));
 
   database_close(db);
   cleanup_test_db(db_path);
@@ -159,7 +159,7 @@ TEST_CASE("acds_ip_privacy/explicit_optin_reveals_ip", "[acds_ip_privacy]") {
 
   sqlite3 *db = NULL;
   asciichat_error_t result = database_init(db_path, &db);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Database initialization should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   acds_config_t config;
   memset(&config, 0, sizeof(config));
@@ -177,7 +177,7 @@ TEST_CASE("acds_ip_privacy/explicit_optin_reveals_ip", "[acds_ip_privacy]") {
 
   acip_session_created_t create_resp;
   result = database_session_create(db, &create_req, &config, &create_resp);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Session creation should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Join session (no password)
   acip_session_join_t join_req;
@@ -188,13 +188,13 @@ TEST_CASE("acds_ip_privacy/explicit_optin_reveals_ip", "[acds_ip_privacy]") {
 
   acip_session_joined_t join_resp;
   result = database_session_join(db, &join_req, &config, &join_resp);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Session join should succeed");
-  ASCIICHAT_REQUIRE_EQ(join_resp.success, 1, "Join should be successful");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((join_resp.success) == (1));
 
   // Verify IP is revealed (explicit opt-in)
-  ASCIICHAT_REQUIRE_STR_EQ(join_resp.server_address, "203.0.113.42", "Server address should be revealed with explicit opt-in");
-  ASCIICHAT_REQUIRE_EQ(join_resp.server_port, 8080, "Server port should be revealed");
-  ASCIICHAT_REQUIRE_EQ(join_resp.session_type, SESSION_TYPE_DIRECT_TCP, "Session type should be revealed");
+  REQUIRE(std::strcmp((join_resp.server_address), ("203.0.113.42")) == 0);
+  REQUIRE((join_resp.server_port) == (8080));
+  REQUIRE((join_resp.session_type) == (SESSION_TYPE_DIRECT_TCP));
 
   database_close(db);
   cleanup_test_db(db_path);
@@ -209,7 +209,7 @@ TEST_CASE("acds_ip_privacy/wrong_password_withholds_ip", "[acds_ip_privacy]") {
 
   sqlite3 *db = NULL;
   asciichat_error_t result = database_init(db_path, &db);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Database initialization should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   acds_config_t config;
   memset(&config, 0, sizeof(config));
@@ -228,11 +228,11 @@ TEST_CASE("acds_ip_privacy/wrong_password_withholds_ip", "[acds_ip_privacy]") {
   // Hash the correct password
   const char *password = "test-password-123";
   int hash_result = crypto_pwhash_str((char *)create_req.password_hash, password, strlen(password), crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE);
-  ASCIICHAT_REQUIRE_EQ(hash_result, 0, "Password hashing should succeed");
+  REQUIRE((hash_result) == (0));
 
   acip_session_created_t create_resp;
   result = database_session_create(db, &create_req, &config, &create_resp);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Session creation should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Join with WRONG password
   acip_session_join_t join_req;
@@ -246,9 +246,9 @@ TEST_CASE("acds_ip_privacy/wrong_password_withholds_ip", "[acds_ip_privacy]") {
   result = database_session_join(db, &join_req, &config, &join_resp);
 
   // database_session_join returns ASCIICHAT_OK but sets success=0 and error_code when password is wrong
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "database_session_join should return OK");
-  ASCIICHAT_REQUIRE_EQ(join_resp.success, 0, "Join should fail with wrong password");
-  ASCIICHAT_REQUIRE_EQ(join_resp.error_code, ACIP_ERROR_INVALID_PASSWORD, "Error code should be INVALID_PASSWORD");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((join_resp.success) == (0));
+  REQUIRE((join_resp.error_code) == (ACIP_ERROR_INVALID_PASSWORD));
 
   database_close(db);
   cleanup_test_db(db_path);
@@ -263,7 +263,7 @@ TEST_CASE("acds_ip_privacy/webrtc_session_ip_privacy", "[acds_ip_privacy]") {
 
   sqlite3 *db = NULL;
   asciichat_error_t result = database_init(db_path, &db);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Database initialization should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   acds_config_t config;
   memset(&config, 0, sizeof(config));
@@ -281,7 +281,7 @@ TEST_CASE("acds_ip_privacy/webrtc_session_ip_privacy", "[acds_ip_privacy]") {
 
   acip_session_created_t create_resp;
   result = database_session_create(db, &create_req, &config, &create_resp);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Session creation should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Join session
   acip_session_join_t join_req;
@@ -292,17 +292,17 @@ TEST_CASE("acds_ip_privacy/webrtc_session_ip_privacy", "[acds_ip_privacy]") {
 
   acip_session_joined_t join_resp;
   result = database_session_join(db, &join_req, &config, &join_resp);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Session join should succeed");
-  ASCIICHAT_REQUIRE_EQ(join_resp.success, 1, "Join should be successful");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((join_resp.success) == (1));
 
   // Verify IP is withheld while clients can still identify WebRTC transport.
-  ASCIICHAT_REQUIRE_EQ(join_resp.server_address[0], '\0', "WebRTC session IP should be withheld without password or opt-in");
-  ASCIICHAT_REQUIRE_EQ(join_resp.server_port, 0, "Server port should be zero");
-  ASCIICHAT_REQUIRE_EQ(join_resp.session_type, SESSION_TYPE_WEBRTC, "WebRTC transport type should be available");
+  REQUIRE((join_resp.server_address[0]) == ('\0'));
+  REQUIRE((join_resp.server_port) == (0));
+  REQUIRE((join_resp.session_type) == (SESSION_TYPE_WEBRTC));
 
   // TURN credentials should also NOT be generated (IP not revealed)
-  ASCIICHAT_REQUIRE_EQ(join_resp.turn_username[0], '\0', "TURN username should be empty");
-  ASCIICHAT_REQUIRE_EQ(join_resp.turn_password[0], '\0', "TURN password should be empty");
+  REQUIRE((join_resp.turn_username[0]) == ('\0'));
+  REQUIRE((join_resp.turn_password[0]) == ('\0'));
 
   database_close(db);
   cleanup_test_db(db_path);

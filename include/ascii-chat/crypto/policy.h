@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <ascii-chat/asciichat_errno.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Transport-independent inputs shared by native, WASM, and mobile callers.
  * @brief The useful part of crypto policy is in `transport_secure`, `encrypt`, `no_encrypt`, `no_auth`: together they
  * describe what is pending, who owns it, and how much data is valid. Keep the object with its parent operation and use
@@ -26,3 +30,7 @@ asciichat_error_t crypto_policy_check_mode(bool transport_secure, bool encrypt, 
 
 /** Resolve to the ACIP_CRYPTO_* wire bitmask; reject contradictory requests. */
 asciichat_error_t crypto_policy_resolve(const crypto_policy_t *policy, uint8_t *mode);
+
+#ifdef __cplusplus
+}
+#endif

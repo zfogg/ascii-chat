@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <libplatform/atomic.h>
 #include <libplatform/thread.h>
@@ -36,20 +36,20 @@ TEST_CASE("palette_init/concurrent_first_renderers_observe_a_complete_cache", "[
     platform_thread_t threads[8];
     for (unsigned i = 0; i < 8; i++) {
       workers[i] = (palette_worker_t){.ready = &ready, .start = &start};
-      ASCIICHAT_REQUIRE_EQ(platform_thread_create(&threads[i], "palette-init", open_palette, &workers[i]), 0);
+      REQUIRE((platform_thread_create(&threads[i], "palette-init", open_palette, &workers[i])) == (0));
     }
     uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
     while (atomic_load_u64(&ready) != 8 && time_get_ns() < deadline)
       platform_sleep_us(100);
-    ASCIICHAT_REQUIRE_EQ(atomic_load_u64(&ready), 8);
+    REQUIRE((atomic_load_u64(&ready)) == (8));
     atomic_store_bool(&start, true);
     for (unsigned i = 0; i < 8; i++) {
-      ASCIICHAT_REQUIRE_EQ(thread_join(&threads[i], NULL), 0);
-      ASCIICHAT_REQUIRE_NOT_NULL(workers[i].cache);
-      ASCIICHAT_REQUIRE(workers[i].cache->is_valid);
-      ASCIICHAT_REQUIRE_EQ(workers[i].cache, workers[0].cache);
+      REQUIRE((thread_join(&threads[i], NULL)) == (0));
+      REQUIRE((workers[i].cache) != nullptr);
+      REQUIRE(workers[i].cache->is_valid);
+      REQUIRE((workers[i].cache) == (workers[0].cache));
       for (unsigned glyph = 0; glyph < 64; glyph++)
-        ASCIICHAT_REQUIRE_EQ(workers[i].cache->cache64[glyph].byte_len, 1);
+        REQUIRE((workers[i].cache->cache64[glyph].byte_len) == (1));
     }
   }
 }

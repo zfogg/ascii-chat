@@ -13,6 +13,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Parsed pattern result from /pattern/flags syntax
  * @brief Parsed pattern result from /pattern/flags syntax
@@ -167,3 +171,7 @@ int grep_get_pattern_count(void);
  * @return Pattern string of last CLI --grep, or NULL if no patterns
  */
 const char *grep_get_last_pattern(void);
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/util/time.h>
 #include "../../../src/discovery/session.h"
@@ -28,7 +28,7 @@ static session_audio_ctx_t *media_audio_create(bool host) {
   return audio_failure == 1 ? NULL : session_audio_create(host);
 }
 static asciichat_error_t media_audio_start(session_audio_ctx_t *audio) {
-  ASCIICHAT_REQUIRE_NOT_NULL(audio);
+  REQUIRE((audio) != nullptr);
   return audio_failure == 2 ? ERROR_AUDIO : ASCIICHAT_OK;
 }
 static asciichat_error_t media_thread_create(platform_thread_t *thread, const char *name, void *(*fn)(void *), void *arg) {
@@ -46,8 +46,8 @@ static asciichat_error_t media_join(platform_thread_t *thread, void **result) {
 }
 static asciichat_error_t media_write(audio_context_t *ctx, const float *samples, int count) {
   (void)ctx;
-  ASCIICHAT_REQUIRE_NOT_NULL(samples);
-  ASCIICHAT_REQUIRE_LT(writes, 8);
+  REQUIRE((samples) != nullptr);
+  REQUIRE((writes) < (8));
   chunks[writes++] = count;
   return write_result;
 }
@@ -125,15 +125,15 @@ void signal_exit(void) {
   ++exits;
 }
 void set_interrupt_callback(void (*callback)(void)) {
-  ASCIICHAT_REQUIRE_NULL(callback);
+  REQUIRE((callback) == nullptr);
 }
 static asciichat_error_t media_run(const session_client_like_config_t *config) {
-  ASCIICHAT_REQUIRE_EQ(config->kind, SESSION_CLIENT_LIKE_KIND_DISCOVERY);
-  ASCIICHAT_REQUIRE_EQ(config->discovery, g_discovery);
-  ASCIICHAT_REQUIRE_EQ(config->max_reconnect_attempts, 0);
-  ASCIICHAT_REQUIRE_NOT_NULL(config->prepare_fn);
-  ASCIICHAT_REQUIRE_NOT_NULL(config->run_fn);
-  ASCIICHAT_REQUIRE_NOT_NULL(config->keyboard_handler);
+  REQUIRE((config->kind) == (SESSION_CLIENT_LIKE_KIND_DISCOVERY));
+  REQUIRE((config->discovery) == (g_discovery));
+  REQUIRE((config->max_reconnect_attempts) == (0));
+  REQUIRE((config->prepare_fn) != nullptr);
+  REQUIRE((config->run_fn) != nullptr);
+  REQUIRE((config->keyboard_handler) != nullptr);
   if (report_error)
     g_discovery->on_error(ERROR_NETWORK, "peer negotiation failed", g_discovery->callback_user_data);
   return run_result;
@@ -141,8 +141,8 @@ static asciichat_error_t media_run(const session_client_like_config_t *config) {
 static void setup(void) {
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
-  ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(options_set_bool("audio_enabled", false), ASCIICHAT_OK);
+  REQUIRE((options_state_init()) == (ASCIICHAT_OK));
+  REQUIRE((options_set_bool("audio_enabled", false)) == (ASCIICHAT_OK));
 }
 static void teardown(void) {
   if (g_discovery) {
@@ -156,28 +156,28 @@ static void teardown(void) {
 TEST_CASE("discovery_media/joins_preserve_worker_flags_until_each_handle_has_been_joined", "[discovery_media]") {
   discovery_video_receiver_t receiver = {.receiver_started = true, .audio_started = true};
   join_failures = 1;
-  ASCIICHAT_REQUIRE_EQ(discovery_media_join(&receiver), ERROR_THREAD);
-  ASCIICHAT_REQUIRE(receiver.receiver_started && receiver.audio_started);
-  ASCIICHAT_REQUIRE_EQ(discovery_media_join(&receiver), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NOT(receiver.receiver_started || receiver.audio_started);
-  ASCIICHAT_REQUIRE_EQ(joins, 3);
-  ASCIICHAT_REQUIRE_EQ(discovery_media_join(&receiver), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(joins, 3);
+  REQUIRE((discovery_media_join(&receiver)) == (ERROR_THREAD));
+  REQUIRE(receiver.receiver_started && receiver.audio_started);
+  REQUIRE((discovery_media_join(&receiver)) == (ASCIICHAT_OK));
+  REQUIRE(!(receiver.receiver_started || receiver.audio_started));
+  REQUIRE((joins) == (3));
+  REQUIRE((discovery_media_join(&receiver)) == (ASCIICHAT_OK));
+  REQUIRE((joins) == (3));
   receiver.audio_started = true;
   join_failures = 4;
-  ASCIICHAT_REQUIRE_EQ(discovery_media_join(&receiver), ERROR_THREAD);
-  ASCIICHAT_REQUIRE(receiver.audio_started);
-  ASCIICHAT_REQUIRE_EQ(discovery_media_join(&receiver), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NOT(receiver.audio_started);
+  REQUIRE((discovery_media_join(&receiver)) == (ERROR_THREAD));
+  REQUIRE(receiver.audio_started);
+  REQUIRE((discovery_media_join(&receiver)) == (ASCIICHAT_OK));
+  REQUIRE(!(receiver.audio_started));
   discovery_host_audio_capture_t host = {.started = true};
   atomic_store_bool(&host.running, true);
   joins = 0;
   join_failures = 2;
   discovery_host_audio_join(&host);
-  ASCIICHAT_REQUIRE_EQ(joins, 3);
-  ASCIICHAT_REQUIRE_EQ(sleeps, 2);
-  ASCIICHAT_REQUIRE_NOT(host.started);
-  ASCIICHAT_REQUIRE_NOT(atomic_load_bool(&host.running));
+  REQUIRE((joins) == (3));
+  REQUIRE((sleeps) == (2));
+  REQUIRE(!(host.started));
+  REQUIRE(!(atomic_load_bool(&host.running)));
 }
 TEST_CASE("discovery_media/remote_pcm_is_chunked_and_failed_submission_does_not_advance_observations", "[discovery_media]") {
   audio_context_t audio = {0};
@@ -189,54 +189,54 @@ TEST_CASE("discovery_media/remote_pcm_is_chunked_and_failed_submission_does_not_
   options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
   *v = *options_get();
   v->test_audio = true;
-  ASCIICHAT_REQUIRE_EQ(options_state_set(v), ASCIICHAT_OK);
+  REQUIRE((options_state_set(v)) == (ASCIICHAT_OK));
   SAFE_FREE(v);
-  ASCIICHAT_REQUIRE_EQ(discovery_play_samples(samples, count, &receiver), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(writes, 2);
-  ASCIICHAT_REQUIRE_EQ(chunks[0], AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS);
-  ASCIICHAT_REQUIRE_EQ(chunks[1], 18);
-  ASCIICHAT_REQUIRE_EQ(receiver.observed_audio_samples, count);
-  ASCIICHAT_REQUIRE_EQ(receiver.observed_audio_blocks, 1);
-  ASCIICHAT_REQUIRE_GT(receiver.observed_audio_ns, 0);
-  ASCIICHAT_REQUIRE_EQ(discovery_play_samples(samples, AUDIO_CHANNELS, &receiver), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(receiver.observed_audio_blocks, 2);
-  ASCIICHAT_REQUIRE_GT(receiver.observed_audio_gap_ns, 0);
+  REQUIRE((discovery_play_samples(samples, count, &receiver)) == (ASCIICHAT_OK));
+  REQUIRE((writes) == (2));
+  REQUIRE((chunks[0]) == (AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS));
+  REQUIRE((chunks[1]) == (18));
+  REQUIRE((receiver.observed_audio_samples) == (count));
+  REQUIRE((receiver.observed_audio_blocks) == (1));
+  REQUIRE((receiver.observed_audio_ns) > (0));
+  REQUIRE((discovery_play_samples(samples, AUDIO_CHANNELS, &receiver)) == (ASCIICHAT_OK));
+  REQUIRE((receiver.observed_audio_blocks) == (2));
+  REQUIRE((receiver.observed_audio_gap_ns) > (0));
   write_result = ERROR_AUDIO;
-  ASCIICHAT_REQUIRE_EQ(discovery_play_samples(samples, AUDIO_CHANNELS, &receiver), ERROR_AUDIO);
-  ASCIICHAT_REQUIRE_EQ(receiver.observed_audio_blocks, 2);
+  REQUIRE((discovery_play_samples(samples, AUDIO_CHANNELS, &receiver)) == (ERROR_AUDIO));
+  REQUIRE((receiver.observed_audio_blocks) == (2));
   receiver.audio = NULL;
-  ASCIICHAT_REQUIRE_EQ(discovery_play_samples(samples, AUDIO_CHANNELS, &receiver), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(writes, 4);
+  REQUIRE((discovery_play_samples(samples, AUDIO_CHANNELS, &receiver)) == (ASCIICHAT_OK));
+  REQUIRE((writes) == (4));
   SAFE_FREE(samples);
 }
 TEST_CASE("discovery_media/opus_decode_rejects_invalid_frames_and_preserves_the_disabled_audio_contract", "[discovery_media]") {
   discovery_video_receiver_t receiver = {0};
   float samples[OPUS_FRAME_SAMPLES];
   size_t decoded = 99;
-  ASCIICHAT_REQUIRE_EQ(discovery_decode_opus(NULL, 0, samples, OPUS_FRAME_SAMPLES, &decoded, &receiver), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(decoded, 0);
+  REQUIRE((discovery_decode_opus(NULL, 0, samples, OPUS_FRAME_SAMPLES, &decoded, &receiver)) == (ASCIICHAT_OK));
+  REQUIRE((decoded) == (0));
   audio_context_t audio = {0};
   receiver.audio = &audio;
   receiver.audio_pipeline = client_audio_pipeline_create(NULL);
-  ASCIICHAT_REQUIRE_NOT_NULL(receiver.audio_pipeline);
+  REQUIRE((receiver.audio_pipeline) != nullptr);
   uint8_t invalid[3] = {0xff, 0xff, 0xff};
-  ASCIICHAT_REQUIRE_EQ(discovery_decode_opus(invalid, sizeof(invalid), samples, OPUS_FRAME_SAMPLES, &decoded, &receiver), ERROR_AUDIO);
-  ASCIICHAT_REQUIRE_EQ(decoded, 0);
+  REQUIRE((discovery_decode_opus(invalid, sizeof(invalid), samples, OPUS_FRAME_SAMPLES, &decoded, &receiver)) == (ERROR_AUDIO));
+  REQUIRE((decoded) == (0));
   client_audio_pipeline_destroy(receiver.audio_pipeline);
 }
 TEST_CASE("discovery_media/error_callback_retains_a_bounded_message_and_requests_exit", "[discovery_media]") {
   discovery_ui_state_t ui = {0};
-  ASCIICHAT_REQUIRE_EQ(mutex_init(&ui.mutex, "error-test"), ASCIICHAT_OK);
+  REQUIRE((mutex_init(&ui.mutex, "error-test")) == (ASCIICHAT_OK));
   on_discovery_error(ERROR_NETWORK, NULL, &ui);
-  ASCIICHAT_REQUIRE_STR_EQ(ui.error, "Unknown discovery error");
-  ASCIICHAT_REQUIRE_EQ(ui.error_code, ERROR_NETWORK);
-  ASCIICHAT_REQUIRE_EQ(exits, 1);
+  REQUIRE(std::strcmp((ui.error), ("Unknown discovery error")) == 0);
+  REQUIRE((ui.error_code) == (ERROR_NETWORK));
+  REQUIRE((exits) == (1));
   char large[700];
   memset(large, 'x', sizeof(large) - 1);
   large[sizeof(large) - 1] = 0;
   on_discovery_error(ERROR_AUDIO, large, &ui);
-  ASCIICHAT_REQUIRE_EQ(strlen(ui.error), sizeof(ui.error) - 1);
-  ASCIICHAT_REQUIRE_EQ(ui.error_code, ERROR_AUDIO);
+  REQUIRE((strlen(ui.error)) == (sizeof(ui.error) - 1));
+  REQUIRE((ui.error_code) == (ERROR_AUDIO));
   mutex_destroy(&ui.mutex);
 }
 TEST_CASE("discovery_media/state_notifications_accept_all_roles_and_invalid_values", "[discovery_media]") {
@@ -249,70 +249,70 @@ TEST_CASE("discovery_media/state_notifications_accept_all_roles_and_invalid_valu
   on_session_ready("river-cloud-tree", NULL);
   splash_clear_discovery_session();
   cancelled = true;
-  ASCIICHAT_REQUIRE(discovery_capture_should_exit_adapter(NULL));
+  REQUIRE(discovery_capture_should_exit_adapter(NULL));
   cancelled = false;
-  ASCIICHAT_REQUIRE_NOT(discovery_capture_should_exit_adapter(NULL));
+  REQUIRE(!(discovery_capture_should_exit_adapter(NULL)));
   discovery_keyboard_handler(NULL, KEY_NONE, NULL);
 }
 static void create_session(void) {
   discovery_config_t config = {0};
   g_discovery = discovery_session_create(&config);
-  ASCIICHAT_REQUIRE_NOT_NULL(g_discovery);
+  REQUIRE((g_discovery) != nullptr);
 }
 TEST_CASE("discovery_media/role_negotiation_propagates_handoff_and_process_failures_and_honors_cancellation", "[discovery_media]") {
   create_session();
   handoff_result = ERROR_MEMORY;
-  ASCIICHAT_REQUIRE_EQ(discovery_run(NULL, NULL, NULL), ERROR_MEMORY);
-  ASCIICHAT_REQUIRE_EQ(loops, 0);
+  REQUIRE((discovery_run(NULL, NULL, NULL)) == (ERROR_MEMORY));
+  REQUIRE((loops) == (0));
   handoff_result = ASCIICHAT_OK;
   cancelled = true;
-  ASCIICHAT_REQUIRE_EQ(discovery_run(NULL, NULL, NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(loops, 0);
+  REQUIRE((discovery_run(NULL, NULL, NULL)) == (ASCIICHAT_OK));
+  REQUIRE((loops) == (0));
   cancelled = false;
   process_result = ERROR_NETWORK;
-  ASCIICHAT_REQUIRE_EQ(discovery_run(NULL, NULL, NULL), ERROR_NETWORK);
-  ASCIICHAT_REQUIRE_EQ(loops, 1);
+  REQUIRE((discovery_run(NULL, NULL, NULL)) == (ERROR_NETWORK));
+  REQUIRE((loops) == (1));
   process_result = ASCIICHAT_OK;
   activate = true;
   exit_on_process = true;
-  ASCIICHAT_REQUIRE_EQ(discovery_run(NULL, NULL, NULL), ASCIICHAT_OK);
+  REQUIRE((discovery_run(NULL, NULL, NULL)) == (ASCIICHAT_OK));
 }
 TEST_CASE("discovery_media/active_roles_require_their_committed_host_or_participant_transport", "[discovery_media]") {
   create_session();
   activate = true;
   g_discovery->is_host = true;
-  ASCIICHAT_REQUIRE_EQ(discovery_run(NULL, NULL, NULL), ERROR_INVALID_STATE);
+  REQUIRE((discovery_run(NULL, NULL, NULL)) == (ERROR_INVALID_STATE));
   g_discovery->is_host = false;
-  ASCIICHAT_REQUIRE_EQ(discovery_run(NULL, NULL, NULL), ERROR_INVALID_STATE);
+  REQUIRE((discovery_run(NULL, NULL, NULL)) == (ERROR_INVALID_STATE));
   session_host_config_t config = {.max_clients = 1};
   g_discovery->host_ctx = session_host_create(&config);
-  ASCIICHAT_REQUIRE_NOT_NULL(g_discovery->host_ctx);
+  REQUIRE((g_discovery->host_ctx) != nullptr);
   g_discovery->is_host = true;
   render_result = ERROR_THREAD;
-  ASCIICHAT_REQUIRE_EQ(discovery_run(NULL, NULL, NULL), ERROR_THREAD);
-  ASCIICHAT_REQUIRE_NOT_NULL(g_discovery->host_ctx);
+  REQUIRE((discovery_run(NULL, NULL, NULL)) == (ERROR_THREAD));
+  REQUIRE((g_discovery->host_ctx) != nullptr);
 }
 TEST_CASE("discovery_media/entrypoint_cleans_up_the_owned_session_and_preserves_framework_errors", "[discovery_media]") {
-  ASCIICHAT_REQUIRE_EQ(discovery_main(), 0);
-  ASCIICHAT_REQUIRE_NULL(g_discovery);
-  ASCIICHAT_REQUIRE_EQ(stops, 1);
+  REQUIRE((discovery_main()) == (0));
+  REQUIRE((g_discovery) == nullptr);
+  REQUIRE((stops) == (1));
   run_result = ERROR_AUDIO;
-  ASCIICHAT_REQUIRE_EQ(discovery_main(), ERROR_AUDIO);
-  ASCIICHAT_REQUIRE_NULL(g_discovery);
-  ASCIICHAT_REQUIRE_EQ(stops, 2);
+  REQUIRE((discovery_main()) == (ERROR_AUDIO));
+  REQUIRE((g_discovery) == nullptr);
+  REQUIRE((stops) == (2));
 }
 TEST_CASE("discovery_media/entrypoint_reports_callback_errors_even_when_framework_returns_success", "[discovery_media]") {
   report_error = true;
-  ASCIICHAT_REQUIRE_EQ(discovery_main(), ERROR_NETWORK);
-  ASCIICHAT_REQUIRE_NULL(g_discovery);
-  ASCIICHAT_REQUIRE_EQ(stops, 1);
-  ASCIICHAT_REQUIRE_EQ(exits, 1);
+  REQUIRE((discovery_main()) == (ERROR_NETWORK));
+  REQUIRE((g_discovery) == nullptr);
+  REQUIRE((stops) == (1));
+  REQUIRE((exits) == (1));
 }
 TEST_CASE("discovery_media/constructor_failure_does_not_enter_the_shared_media_framework", "[discovery_media]") {
   fail_create = true;
-  ASCIICHAT_REQUIRE_EQ(discovery_main(), ERROR_MEMORY);
-  ASCIICHAT_REQUIRE_EQ(stops, 0);
-  ASCIICHAT_REQUIRE_NULL(g_discovery);
+  REQUIRE((discovery_main()) == (ERROR_MEMORY));
+  REQUIRE((stops) == (0));
+  REQUIRE((g_discovery) == nullptr);
 }
 
 TEST_CASE("discovery_media/host_audio_startup_failures_leave_session_ownership_with_the_discovery_owner", "[discovery_media]") {
@@ -322,15 +322,15 @@ TEST_CASE("discovery_media/host_audio_startup_failures_leave_session_ownership_w
   options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
   *v = *options_get();
   v->audio_enabled = true;
-  ASCIICHAT_REQUIRE_EQ(options_state_set(v), ASCIICHAT_OK);
+  REQUIRE((options_state_set(v)) == (ASCIICHAT_OK));
   SAFE_FREE(v);
   session_host_config_t config = {.max_clients = 1};
   for (unsigned stage = 1; stage <= 3; ++stage) {
     g_discovery->host_ctx = session_host_create(&config);
-    ASCIICHAT_REQUIRE_NOT_NULL(g_discovery->host_ctx);
+    REQUIRE((g_discovery->host_ctx) != nullptr);
     audio_failure = stage;
-    ASCIICHAT_REQUIRE_EQ(discovery_run(NULL, NULL, NULL), stage == 3 ? ERROR_THREAD : ERROR_AUDIO);
-    ASCIICHAT_REQUIRE_NOT_NULL(g_discovery->host_ctx);
+    REQUIRE((discovery_run(NULL, NULL, NULL)) == (stage == 3 ? ERROR_THREAD : ERROR_AUDIO));
+    REQUIRE((g_discovery->host_ctx) != nullptr);
     session_host_destroy(g_discovery->host_ctx);
     g_discovery->host_ctx = NULL;
     CLEAR_ERRNO_ALL();
@@ -342,14 +342,14 @@ TEST_CASE("discovery_media/host_capture_errors_are_propagated_after_render_clean
   g_discovery->is_host = true;
   session_host_config_t config = {.max_clients = 1};
   g_discovery->host_ctx = session_host_create(&config);
-  ASCIICHAT_REQUIRE_NOT_NULL(g_discovery->host_ctx);
+  REQUIRE((g_discovery->host_ctx) != nullptr);
   render_result = ASCIICHAT_OK;
   session_capture_ctx_t *capture = session_network_capture_create(20);
-  ASCIICHAT_REQUIRE_NOT_NULL(capture);
+  REQUIRE((capture) != nullptr);
   fail_read = true;
-  ASCIICHAT_REQUIRE_EQ(discovery_run(capture, NULL, NULL), ERROR_MEDIA_DECODE);
+  REQUIRE((discovery_run(capture, NULL, NULL)) == (ERROR_MEDIA_DECODE));
   session_capture_destroy(capture);
-  ASCIICHAT_REQUIRE_NOT_NULL(g_discovery->host_ctx);
+  REQUIRE((g_discovery->host_ctx) != nullptr);
 }
 TEST_CASE("discovery_media/host_delivers_a_real_synthetic_frame_and_preserves_signaling_failure", "[discovery_media]") {
   create_session();
@@ -359,13 +359,13 @@ TEST_CASE("discovery_media/host_delivers_a_real_synthetic_frame_and_preserves_si
   g_discovery->is_host = true;
   session_host_config_t host_config = {.max_clients = 1};
   g_discovery->host_ctx = session_host_create(&host_config);
-  ASCIICHAT_REQUIRE_NOT_NULL(g_discovery->host_ctx);
+  REQUIRE((g_discovery->host_ctx) != nullptr);
   session_capture_config_t config = {.type = MEDIA_SOURCE_TEST, .target_fps = 20};
   session_capture_ctx_t *capture = session_mirror_capture_create(&config);
-  ASCIICHAT_REQUIRE_NOT_NULL(capture);
-  ASCIICHAT_REQUIRE_EQ(discovery_run(capture, NULL, NULL), ERROR_NETWORK);
-  ASCIICHAT_REQUIRE_EQ(loops, 2);
-  ASCIICHAT_REQUIRE_EQ(session_host_get_client_count(g_discovery->host_ctx), 1);
-  ASCIICHAT_REQUIRE_EQ(g_discovery->state, DISCOVERY_STATE_ENDED);
+  REQUIRE((capture) != nullptr);
+  REQUIRE((discovery_run(capture, NULL, NULL)) == (ERROR_NETWORK));
+  REQUIRE((loops) == (2));
+  REQUIRE((session_host_get_client_count(g_discovery->host_ctx)) == (1));
+  REQUIRE((g_discovery->state) == (DISCOVERY_STATE_ENDED));
   session_capture_destroy(capture);
 }

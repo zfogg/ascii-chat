@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file acds/session_registry_test.c
  * @brief Unit tests for SQLite-based session management
@@ -11,8 +12,6 @@
  * This focuses on the database session operations.
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 
@@ -52,8 +51,8 @@ TEST_CASE("session_database/database_initialization", "[session_database]") {
   // Initialize the database
   asciichat_error_t result = database_init(db_path, &db);
 
-  ASCIICHAT_CHECK_EQ(result, ASCIICHAT_OK, "Database initialization should succeed");
-  ASCIICHAT_CHECK_NOT_NULL(db, "Database handle should be non-NULL");
+  CHECK((result) == (ASCIICHAT_OK));
+  CHECK((db) != nullptr);
 
   // Cleanup
   database_close(db);
@@ -65,7 +64,7 @@ TEST_CASE("session_database/create_session_basic", "[session_database]") {
   get_temp_db_path(db_path, sizeof(db_path));
 
   sqlite3 *db = NULL;
-  ASCIICHAT_CHECK_EQ(database_init(db_path, &db), ASCIICHAT_OK);
+  CHECK((database_init(db_path, &db)) == (ASCIICHAT_OK));
 
   // Create a test session using the public API
   acip_session_create_t create_req = {0};
@@ -81,22 +80,22 @@ TEST_CASE("session_database/create_session_basic", "[session_database]") {
   asciichat_error_t result = database_session_create(db, &create_req, &config, &response);
 
   // Should succeed
-  ASCIICHAT_CHECK_EQ(result, ASCIICHAT_OK, "Session creation should succeed");
+  CHECK((result) == (ASCIICHAT_OK));
 
   // Session string should be generated
-  ASCIICHAT_CHECK_GT(response.session_string_len, 0, "Session string should be generated");
-  ASCIICHAT_CHECK_NOT_NULL(response.session_id, "Session ID should be set");
+  CHECK((response.session_string_len) > (0));
+  CHECK((response.session_id) != nullptr);
 
   // Session should be findable by string
   session_entry_t *found = database_session_find_by_string(db, response.session_string);
-  ASCIICHAT_CHECK_NOT_NULL(found, "Created session should be findable by string");
+  CHECK((found) != nullptr);
   if (found) {
     session_entry_destroy(found);
   }
 
   // Session should be findable by ID
   found = database_session_find_by_id(db, response.session_id);
-  ASCIICHAT_CHECK_NOT_NULL(found, "Created session should be findable by ID");
+  CHECK((found) != nullptr);
   if (found) {
     session_entry_destroy(found);
   }
@@ -110,7 +109,7 @@ TEST_CASE("session_database/session_lookup_basic", "[session_database]") {
   get_temp_db_path(db_path, sizeof(db_path));
 
   sqlite3 *db = NULL;
-  ASCIICHAT_CHECK_EQ(database_init(db_path, &db), ASCIICHAT_OK);
+  CHECK((database_init(db_path, &db)) == (ASCIICHAT_OK));
 
   // Create a session first
   acip_session_create_t create_req = {0};
@@ -121,16 +120,16 @@ TEST_CASE("session_database/session_lookup_basic", "[session_database]") {
   acip_session_created_t create_response = {0};
   acds_config_t config = {0};
 
-  ASCIICHAT_CHECK_EQ(database_session_create(db, &create_req, &config, &create_response), ASCIICHAT_OK);
+  CHECK((database_session_create(db, &create_req, &config, &create_response)) == (ASCIICHAT_OK));
 
   // Now lookup the session
   acip_session_info_t lookup_response = {0};
   asciichat_error_t result = database_session_lookup(db, create_response.session_string, &config, &lookup_response);
 
-  ASCIICHAT_CHECK_EQ(result, ASCIICHAT_OK, "Session lookup should succeed");
-  ASCIICHAT_CHECK_EQ(lookup_response.found, 1, "Session should be found");
-  ASCIICHAT_CHECK_EQ(lookup_response.max_participants, 4, "Max participants should match");
-  ASCIICHAT_CHECK_EQ(lookup_response.current_participants, 0, "No participants yet");
+  CHECK((result) == (ASCIICHAT_OK));
+  CHECK((lookup_response.found) == (1));
+  CHECK((lookup_response.max_participants) == (4));
+  CHECK((lookup_response.current_participants) == (0));
 
   database_close(db);
   cleanup_test_db(db_path);
@@ -141,7 +140,7 @@ TEST_CASE("session_database/session_lookup_not_found", "[session_database]") {
   get_temp_db_path(db_path, sizeof(db_path));
 
   sqlite3 *db = NULL;
-  ASCIICHAT_CHECK_EQ(database_init(db_path, &db), ASCIICHAT_OK);
+  CHECK((database_init(db_path, &db)) == (ASCIICHAT_OK));
 
   // Try to lookup a session that doesn't exist
   acip_session_info_t lookup_response = {0};
@@ -149,17 +148,17 @@ TEST_CASE("session_database/session_lookup_not_found", "[session_database]") {
 
   asciichat_error_t result = database_session_lookup(db, "nonexistent-session-string", &config, &lookup_response);
 
-  ASCIICHAT_CHECK_EQ(result, ASCIICHAT_OK, "Lookup should return OK (not an error)");
-  ASCIICHAT_CHECK_EQ(lookup_response.found, 0, "Session should not be found");
+  CHECK((result) == (ASCIICHAT_OK));
+  CHECK((lookup_response.found) == (0));
 
   // Try with find_by_string
   session_entry_t *not_found = database_session_find_by_string(db, "nonexistent-session-string");
-  ASCIICHAT_CHECK_NULL(not_found, "Nonexistent session should return NULL");
+  CHECK((not_found) == nullptr);
 
   // Try with fake ID
   uint8_t fake_id[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
   not_found = database_session_find_by_id(db, fake_id);
-  ASCIICHAT_CHECK_NULL(not_found, "Nonexistent session ID should return NULL");
+  CHECK((not_found) == nullptr);
 
   database_close(db);
   cleanup_test_db(db_path);
@@ -170,7 +169,7 @@ TEST_CASE("session_database/session_join_basic", "[session_database]") {
   get_temp_db_path(db_path, sizeof(db_path));
 
   sqlite3 *db = NULL;
-  ASCIICHAT_CHECK_EQ(database_init(db_path, &db), ASCIICHAT_OK);
+  CHECK((database_init(db_path, &db)) == (ASCIICHAT_OK));
 
   // Create a session first (with expose_ip_publicly for test)
   acip_session_create_t create_req = {0};
@@ -184,7 +183,7 @@ TEST_CASE("session_database/session_join_basic", "[session_database]") {
   acip_session_created_t create_response = {0};
   acds_config_t config = {0};
 
-  ASCIICHAT_CHECK_EQ(database_session_create(db, &create_req, &config, &create_response), ASCIICHAT_OK);
+  CHECK((database_session_create(db, &create_req, &config, &create_response)) == (ASCIICHAT_OK));
 
   // Now join the session
   acip_session_join_t join_req = {0};
@@ -194,15 +193,15 @@ TEST_CASE("session_database/session_join_basic", "[session_database]") {
   acip_session_joined_t join_response = {0};
   asciichat_error_t result = database_session_join(db, &join_req, &config, &join_response);
 
-  ASCIICHAT_CHECK_EQ(result, ASCIICHAT_OK, "Session join should succeed");
-  ASCIICHAT_CHECK_EQ(join_response.success, 1, "Join should be successful");
+  CHECK((result) == (ASCIICHAT_OK));
+  CHECK((join_response.success) == (1));
   const uint8_t empty_id[sizeof(join_response.participant_id)] = {0};
-  ASCIICHAT_CHECK_NE(memcmp(join_response.participant_id, empty_id, sizeof(empty_id)), 0, "Participant ID should be set");
+  CHECK((memcmp(join_response.participant_id, empty_id, sizeof(empty_id))) != (0));
 
   // Verify participant count increased
   acip_session_info_t lookup_response = {0};
   database_session_lookup(db, create_response.session_string, &config, &lookup_response);
-  ASCIICHAT_CHECK_EQ(lookup_response.current_participants, 1, "Should have 1 participant");
+  CHECK((lookup_response.current_participants) == (1));
 
   database_close(db);
   cleanup_test_db(db_path);
@@ -213,7 +212,7 @@ TEST_CASE("session_database/session_leave_basic", "[session_database]") {
   get_temp_db_path(db_path, sizeof(db_path));
 
   sqlite3 *db = NULL;
-  ASCIICHAT_CHECK_EQ(database_init(db_path, &db), ASCIICHAT_OK);
+  CHECK((database_init(db_path, &db)) == (ASCIICHAT_OK));
 
   // Create and join a session
   acip_session_create_t create_req = {0};
@@ -224,7 +223,7 @@ TEST_CASE("session_database/session_leave_basic", "[session_database]") {
   acip_session_created_t create_response = {0};
   acds_config_t config = {0};
 
-  ASCIICHAT_CHECK_EQ(database_session_create(db, &create_req, &config, &create_response), ASCIICHAT_OK);
+  CHECK((database_session_create(db, &create_req, &config, &create_response)) == (ASCIICHAT_OK));
 
   // Join the session
   acip_session_join_t join_req = {0};
@@ -232,16 +231,16 @@ TEST_CASE("session_database/session_leave_basic", "[session_database]") {
   memcpy(join_req.session_string, create_response.session_string, create_response.session_string_len);
 
   acip_session_joined_t join_response = {0};
-  ASCIICHAT_CHECK_EQ(database_session_join(db, &join_req, &config, &join_response), ASCIICHAT_OK);
-  ASCIICHAT_CHECK_EQ(join_response.success, 1);
+  CHECK((database_session_join(db, &join_req, &config, &join_response)) == (ASCIICHAT_OK));
+  CHECK((join_response.success) == (1));
 
   // Now leave the session
   asciichat_error_t result = database_session_leave(db, join_response.session_id, join_response.participant_id);
-  ASCIICHAT_CHECK_EQ(result, ASCIICHAT_OK, "Session leave should succeed");
+  CHECK((result) == (ASCIICHAT_OK));
 
   // Session should be deleted (no participants left)
   session_entry_t *found = database_session_find_by_string(db, create_response.session_string);
-  ASCIICHAT_CHECK_NULL(found, "Empty session should be deleted");
+  CHECK((found) == nullptr);
 
   database_close(db);
   cleanup_test_db(db_path);
@@ -252,7 +251,7 @@ TEST_CASE("session_database/session_full", "[session_database]") {
   get_temp_db_path(db_path, sizeof(db_path));
 
   sqlite3 *db = NULL;
-  ASCIICHAT_CHECK_EQ(database_init(db_path, &db), ASCIICHAT_OK);
+  CHECK((database_init(db_path, &db)) == (ASCIICHAT_OK));
 
   // Create a session with max 2 participants
   acip_session_create_t create_req = {0};
@@ -263,7 +262,7 @@ TEST_CASE("session_database/session_full", "[session_database]") {
   acip_session_created_t create_response = {0};
   acds_config_t config = {0};
 
-  ASCIICHAT_CHECK_EQ(database_session_create(db, &create_req, &config, &create_response), ASCIICHAT_OK);
+  CHECK((database_session_create(db, &create_req, &config, &create_response)) == (ASCIICHAT_OK));
 
   // Join twice
   acip_session_join_t join_req = {0};
@@ -271,16 +270,16 @@ TEST_CASE("session_database/session_full", "[session_database]") {
   memcpy(join_req.session_string, create_response.session_string, create_response.session_string_len);
 
   acip_session_joined_t join_response = {0};
-  ASCIICHAT_CHECK_EQ(database_session_join(db, &join_req, &config, &join_response), ASCIICHAT_OK);
-  ASCIICHAT_CHECK_EQ(join_response.success, 1);
+  CHECK((database_session_join(db, &join_req, &config, &join_response)) == (ASCIICHAT_OK));
+  CHECK((join_response.success) == (1));
 
-  ASCIICHAT_CHECK_EQ(database_session_join(db, &join_req, &config, &join_response), ASCIICHAT_OK);
-  ASCIICHAT_CHECK_EQ(join_response.success, 1);
+  CHECK((database_session_join(db, &join_req, &config, &join_response)) == (ASCIICHAT_OK));
+  CHECK((join_response.success) == (1));
 
   // Third join should fail (session full)
-  ASCIICHAT_CHECK_EQ(database_session_join(db, &join_req, &config, &join_response), ASCIICHAT_OK);
-  ASCIICHAT_CHECK_EQ(join_response.success, 0, "Third join should fail");
-  ASCIICHAT_CHECK_EQ(join_response.error_code, ACIP_ERROR_SESSION_FULL, "Error should be SESSION_FULL");
+  CHECK((database_session_join(db, &join_req, &config, &join_response)) == (ASCIICHAT_OK));
+  CHECK((join_response.success) == (0));
+  CHECK((join_response.error_code) == (ACIP_ERROR_SESSION_FULL));
 
   database_close(db);
   cleanup_test_db(db_path);
@@ -291,7 +290,7 @@ TEST_CASE("session_database/multiple_sessions", "[session_database]") {
   get_temp_db_path(db_path, sizeof(db_path));
 
   sqlite3 *db = NULL;
-  ASCIICHAT_CHECK_EQ(database_init(db_path, &db), ASCIICHAT_OK);
+  CHECK((database_init(db_path, &db)) == (ASCIICHAT_OK));
 
   // Create multiple sessions
   acip_session_create_t create_req = {0};
@@ -303,14 +302,14 @@ TEST_CASE("session_database/multiple_sessions", "[session_database]") {
 
   for (int i = 0; i < 5; i++) {
     acip_session_created_t response = {0};
-    ASCIICHAT_CHECK_EQ(database_session_create(db, &create_req, &config, &response), ASCIICHAT_OK);
+    CHECK((database_session_create(db, &create_req, &config, &response)) == (ASCIICHAT_OK));
     memcpy(session_strings[i], response.session_string, response.session_string_len);
   }
 
   // All sessions should be findable
   for (int i = 0; i < 5; i++) {
     session_entry_t *found = database_session_find_by_string(db, session_strings[i]);
-    ASCIICHAT_CHECK_NOT_NULL(found, "Session %d should be findable", i);
+    CHECK((found) != nullptr);
     if (found) {
       session_entry_destroy(found);
     }
@@ -325,7 +324,7 @@ TEST_CASE("session_database/cleanup_expired_sessions", "[session_database]") {
   get_temp_db_path(db_path, sizeof(db_path));
 
   sqlite3 *db = NULL;
-  ASCIICHAT_CHECK_EQ(database_init(db_path, &db), ASCIICHAT_OK);
+  CHECK((database_init(db_path, &db)) == (ASCIICHAT_OK));
 
   // Create a session
   acip_session_create_t create_req = {0};
@@ -335,14 +334,14 @@ TEST_CASE("session_database/cleanup_expired_sessions", "[session_database]") {
   acip_session_created_t response = {0};
   acds_config_t config = {0};
 
-  ASCIICHAT_CHECK_EQ(database_session_create(db, &create_req, &config, &response), ASCIICHAT_OK);
+  CHECK((database_session_create(db, &create_req, &config, &response)) == (ASCIICHAT_OK));
 
   // Call cleanup (newly created sessions should not be expired)
   database_session_cleanup_expired(db);
 
   // Session should still exist (not expired yet - 24hr lifetime)
   session_entry_t *found = database_session_find_by_string(db, response.session_string);
-  ASCIICHAT_CHECK_NOT_NULL(found, "Non-expired session should still exist after cleanup");
+  CHECK((found) != nullptr);
   if (found) {
     session_entry_destroy(found);
   }

@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/log/json.h>
 #include <libplatform/filesystem.h>
@@ -13,10 +13,10 @@ static FILE *fixture_stream;
 static yyjson_doc *parsed;
 
 static void setup(void) {
-  ASCIICHAT_REQUIRE_EQ(platform_create_temp_file(fixture_path, sizeof(fixture_path), "json-log", &fixture_fd), 0);
-  ASCIICHAT_REQUIRE_EQ(platform_temp_file_open("json-log", fixture_path, &fixture_fd), ASCIICHAT_OK);
+  REQUIRE((platform_create_temp_file(fixture_path, sizeof(fixture_path), "json-log", &fixture_fd)) == (0));
+  REQUIRE((platform_temp_file_open("json-log", fixture_path, &fixture_fd)) == (ASCIICHAT_OK));
   fixture_stream = platform_fdopen("json-log", fixture_fd, "w+");
-  ASCIICHAT_REQUIRE_NOT_NULL(fixture_stream);
+  REQUIRE((fixture_stream) != nullptr);
 }
 
 static void cleanup(void) {
@@ -35,14 +35,14 @@ static void cleanup(void) {
 }
 static yyjson_val *read_record(void) {
   char record[8192];
-  ASCIICHAT_REQUIRE_NOT_NULL(fgets(record, sizeof(record), fixture_stream));
+  REQUIRE((fgets(record, sizeof(record), fixture_stream)) != nullptr);
   size_t length = strlen(record);
-  ASCIICHAT_REQUIRE_GT(length, 1);
-  ASCIICHAT_REQUIRE_EQ(record[length - 1], '\n', "each record must end with one newline");
+  REQUIRE((length) > (1));
+  REQUIRE((record[length - 1]) == ('\n'));
   if (parsed)
     yyjson_doc_free(parsed);
   parsed = yyjson_read(record, length, 0);
-  ASCIICHAT_REQUIRE_NOT_NULL(parsed, "log output must be valid standalone JSON: %s", record);
+  REQUIRE((parsed) != nullptr);
   return yyjson_doc_get_root(parsed);
 }
 
@@ -54,23 +54,23 @@ TEST_CASE("json_log/structured_records_preserve_escaped_values_and_optional_meta
   rewind(fixture_stream);
   yyjson_val *root = read_record();
   yyjson_val *header = yyjson_obj_get(root, "header");
-  ASCIICHAT_REQUIRE_STR_EQ(yyjson_get_str(yyjson_obj_get(header, "level")), "WARN");
-  ASCIICHAT_REQUIRE_STR_EQ(yyjson_get_str(yyjson_obj_get(header, "file")), "lib/log/json.c");
-  ASCIICHAT_REQUIRE_EQ(yyjson_get_int(yyjson_obj_get(header, "line")), 42);
-  ASCIICHAT_REQUIRE_STR_EQ(yyjson_get_str(yyjson_obj_get(header, "func")), "test_json");
-  ASCIICHAT_REQUIRE(yyjson_is_uint(yyjson_obj_get(header, "tid")));
+  REQUIRE(std::strcmp((yyjson_get_str(yyjson_obj_get(header, "level"))), ("WARN")) == 0);
+  REQUIRE(std::strcmp((yyjson_get_str(yyjson_obj_get(header, "file"))), ("lib/log/json.c")) == 0);
+  REQUIRE((yyjson_get_int(yyjson_obj_get(header, "line"))) == (42));
+  REQUIRE(std::strcmp((yyjson_get_str(yyjson_obj_get(header, "func"))), ("test_json")) == 0);
+  REQUIRE(yyjson_is_uint(yyjson_obj_get(header, "tid")));
   const char *time = yyjson_get_str(yyjson_obj_get(header, "timestamp"));
-  ASCIICHAT_REQUIRE_NOT_NULL(time);
-  ASCIICHAT_REQUIRE_EQ(strlen(time), 15);
-  ASCIICHAT_REQUIRE_STR_EQ(time + 8, ".123456", "timestamp must retain microseconds");
-  ASCIICHAT_REQUIRE_STR_EQ(yyjson_get_str(yyjson_obj_get(yyjson_obj_get(root, "body"), "message")), message);
+  REQUIRE((time) != nullptr);
+  REQUIRE((strlen(time)) == (15));
+  REQUIRE(std::strcmp((time + 8), (".123456")) == 0);
+  REQUIRE(std::strcmp((yyjson_get_str(yyjson_obj_get(yyjson_obj_get(root, "body"), "message"))), (message)) == 0);
   root = read_record();
   header = yyjson_obj_get(root, "header");
-  ASCIICHAT_REQUIRE_NULL(yyjson_obj_get(header, "file"));
-  ASCIICHAT_REQUIRE_NULL(yyjson_obj_get(header, "line"));
-  ASCIICHAT_REQUIRE_NULL(yyjson_obj_get(header, "func"));
-  ASCIICHAT_REQUIRE_STR_EQ(yyjson_get_str(yyjson_obj_get(yyjson_obj_get(root, "body"), "message")), "second record");
-  ASCIICHAT_REQUIRE_EQ(fgetc(fixture_stream), EOF);
+  REQUIRE((yyjson_obj_get(header, "file")) == nullptr);
+  REQUIRE((yyjson_obj_get(header, "line")) == nullptr);
+  REQUIRE((yyjson_obj_get(header, "func")) == nullptr);
+  REQUIRE(std::strcmp((yyjson_get_str(yyjson_obj_get(yyjson_obj_get(root, "body"), "message"))), ("second record")) == 0);
+  REQUIRE((fgetc(fixture_stream)) == (EOF));
 }
 
 TEST_CASE("json_log/async_records_escape_controls_and_remain_one_line", "[json_log]") {
@@ -80,16 +80,16 @@ TEST_CASE("json_log/async_records_escape_controls_and_remain_one_line", "[json_l
   rewind(fixture_stream);
   yyjson_val *root = read_record();
   yyjson_val *header = yyjson_obj_get(root, "header");
-  ASCIICHAT_REQUIRE_STR_EQ(yyjson_get_str(yyjson_obj_get(header, "level")), "ERROR");
-  ASCIICHAT_REQUIRE_STR_EQ(yyjson_get_str(yyjson_obj_get(header, "file")), "lib/quoted\"file.c");
-  ASCIICHAT_REQUIRE_STR_EQ(yyjson_get_str(yyjson_obj_get(header, "func")), "function\\name");
-  ASCIICHAT_REQUIRE_STR_EQ(yyjson_get_str(yyjson_obj_get(yyjson_obj_get(root, "body"), "message")), "\"\\\n\r\t text");
+  REQUIRE(std::strcmp((yyjson_get_str(yyjson_obj_get(header, "level"))), ("ERROR")) == 0);
+  REQUIRE(std::strcmp((yyjson_get_str(yyjson_obj_get(header, "file"))), ("lib/quoted\"file.c")) == 0);
+  REQUIRE(std::strcmp((yyjson_get_str(yyjson_obj_get(header, "func"))), ("function\\name")) == 0);
+  REQUIRE(std::strcmp((yyjson_get_str(yyjson_obj_get(yyjson_obj_get(root, "body"), "message"))), ("\"\\\n\r\t text")) == 0);
   root = read_record();
   header = yyjson_obj_get(root, "header");
-  ASCIICHAT_REQUIRE_STR_EQ(yyjson_get_str(yyjson_obj_get(header, "file")), "");
-  ASCIICHAT_REQUIRE_STR_EQ(yyjson_get_str(yyjson_obj_get(header, "func")), "");
-  ASCIICHAT_REQUIRE_STR_EQ(yyjson_get_str(yyjson_obj_get(header, "level")), "FATAL");
-  ASCIICHAT_REQUIRE_EQ(fgetc(fixture_stream), EOF);
+  REQUIRE(std::strcmp((yyjson_get_str(yyjson_obj_get(header, "file"))), ("")) == 0);
+  REQUIRE(std::strcmp((yyjson_get_str(yyjson_obj_get(header, "func"))), ("")) == 0);
+  REQUIRE(std::strcmp((yyjson_get_str(yyjson_obj_get(header, "level"))), ("FATAL")) == 0);
+  REQUIRE((fgetc(fixture_stream)) == (EOF));
 }
 
 TEST_CASE("json_log/async_truncation_does_not_split_escape_sequences", "[json_log]") {
@@ -101,9 +101,9 @@ TEST_CASE("json_log/async_truncation_does_not_split_escape_sequences", "[json_lo
   rewind(fixture_stream);
   yyjson_val *root = read_record();
   const char *actual = yyjson_get_str(yyjson_obj_get(yyjson_obj_get(root, "body"), "message"));
-  ASCIICHAT_REQUIRE_NOT_NULL(actual);
-  ASCIICHAT_REQUIRE_EQ(strlen(actual), 510);
-  ASCIICHAT_REQUIRE_EQ(memcmp(actual, message, 510), 0);
+  REQUIRE((actual) != nullptr);
+  REQUIRE((strlen(actual)) == (510));
+  REQUIRE((memcmp(actual, message, 510)) == (0));
 }
 
 TEST_CASE("json_log/async_truncation_keeps_complete_utf8_characters", "[json_log]") {
@@ -122,15 +122,15 @@ TEST_CASE("json_log/async_truncation_keeps_complete_utf8_characters", "[json_log
   for (size_t i = 0; i < 3; ++i) {
     yyjson_val *root = read_record();
     const char *actual = yyjson_get_str(yyjson_obj_get(yyjson_obj_get(root, "body"), "message"));
-    ASCIICHAT_REQUIRE_NOT_NULL(actual);
-    ASCIICHAT_REQUIRE_EQ(strlen(actual), 510, "a character that cannot fit must be omitted completely");
+    REQUIRE((actual) != nullptr);
+    REQUIRE((strlen(actual)) == (510));
     for (size_t j = 0; j < 510; ++j)
-      ASCIICHAT_REQUIRE_EQ(actual[j], 'x');
+      REQUIRE((actual[j]) == ('x'));
     root = read_record();
     actual = yyjson_get_str(yyjson_obj_get(yyjson_obj_get(root, "body"), "message"));
-    ASCIICHAT_REQUIRE_NOT_NULL(actual);
-    ASCIICHAT_REQUIRE_EQ(strlen(actual), 511);
-    ASCIICHAT_REQUIRE_STR_EQ(actual + 511 - strlen(characters[i]), characters[i]);
+    REQUIRE((actual) != nullptr);
+    REQUIRE((strlen(actual)) == (511));
+    REQUIRE(std::strcmp((actual + 511 - strlen(characters[i])), (characters[i])) == 0);
   }
 }
 
@@ -146,7 +146,7 @@ TEST_CASE("json_log/level_names_and_invalid_inputs", "[json_log]") {
   rewind(fixture_stream);
   for (size_t i = 0; i < sizeof(levels) / sizeof(levels[0]); ++i) {
     yyjson_val *root = read_record();
-    ASCIICHAT_REQUIRE_STR_EQ(yyjson_get_str(yyjson_obj_get(yyjson_obj_get(root, "header"), "level")), names[i]);
+    REQUIRE(std::strcmp((yyjson_get_str(yyjson_obj_get(yyjson_obj_get(root, "header"), "level"))), (names[i])) == 0);
   }
-  ASCIICHAT_REQUIRE_EQ(fgetc(fixture_stream), EOF);
+  REQUIRE((fgetc(fixture_stream)) == (EOF));
 }

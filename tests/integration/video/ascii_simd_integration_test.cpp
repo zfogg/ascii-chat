@@ -1,10 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file ascii_simd_integration_test.c
  * @brief SIMD ASCII rendering integration tests
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
@@ -29,8 +28,8 @@ TEST_CASE("ascii_simd_integration/quality_metrics_collection", "[ascii_simd_inte
   video_frame_stats_t stats;
   video_frame_get_stats(vfb, &stats);
 
-  ASCIICHAT_REQUIRE_EQ(stats.total_frames, 10, "Should have 10 frames");
-  ASCIICHAT_REQUIRE_EQ(stats.dropped_frames, 0, "Should have no dropped frames");
+  REQUIRE((stats.total_frames) == (10));
+  REQUIRE((stats.dropped_frames) == (0));
 
   video_frame_buffer_destroy(vfb);
 }

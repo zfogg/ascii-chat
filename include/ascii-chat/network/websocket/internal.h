@@ -14,6 +14,10 @@
 #include <stddef.h>
 #include <libplatform/atomic.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Owned WebSocket frame queued for sending or reassembly
  * @brief Private state for one libwebsockets-backed ACIP transport
@@ -88,3 +92,7 @@ typedef struct {
 void websocket_transport_write_pending(struct lws *wsi, websocket_transport_data_t *ws_data);
 
 #endif // ASCIICHAT_NETWORK_WEBSOCKET_INTERNAL_H
+
+#ifdef __cplusplus
+}
+#endif

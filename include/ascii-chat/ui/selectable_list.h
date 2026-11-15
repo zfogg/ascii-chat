@@ -2,6 +2,10 @@
 
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Shared cursor and viewport state for selectable terminal lists. */
 /**
  * @brief ui selectable list keeps the values that move through the subsystem: `selected`, `first_visible`. Some members
@@ -16,3 +20,7 @@ typedef struct {
 void ui_selectable_list_reset(ui_selectable_list_t *list);
 void ui_selectable_list_move(ui_selectable_list_t *list, int count, int rows, int delta);
 void ui_selectable_list_keep_visible(ui_selectable_list_t *list, int count, int rows);
+
+#ifdef __cplusplus
+}
+#endif

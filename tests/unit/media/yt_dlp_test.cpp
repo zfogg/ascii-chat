@@ -1,9 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file tests/unit/yt_dlp_test.c
  * @brief Unit tests for yt_dlp module
  */
 
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/media/yt_dlp.h>
 #include <ascii-chat/tests/logging.h>
@@ -18,7 +18,7 @@ TEST_CASE("yt_dlp/is_available_returns_bool", "[yt_dlp]") {
   // Test that yt_dlp_is_available returns a boolean value
   // (The actual result depends on whether yt-dlp is installed on the system)
   bool available = yt_dlp_is_available();
-  ASCIICHAT_REQUIRE(available || !available, "yt_dlp_is_available should return a boolean");
+  REQUIRE((available || !available));
 }
 
 /* ============================================================================
@@ -29,29 +29,29 @@ TEST_CASE("yt_dlp/extract_rejects_null_url", "[yt_dlp]") {
   char output[256] = {0};
 
   asciichat_error_t err = yt_dlp_extract_stream_url(NULL, NULL, output, sizeof(output));
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Should fail with NULL URL");
-  ASCIICHAT_REQUIRE_EQ(err, ERROR_INVALID_PARAM, "Should return ERROR_INVALID_PARAM");
+  REQUIRE((err) != (ASCIICHAT_OK));
+  REQUIRE((err) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("yt_dlp/extract_rejects_null_output_buffer", "[yt_dlp]") {
   asciichat_error_t err = yt_dlp_extract_stream_url("http://example.com/video.mp4", NULL, NULL, 256);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Should fail with NULL output buffer");
-  ASCIICHAT_REQUIRE_EQ(err, ERROR_INVALID_PARAM, "Should return ERROR_INVALID_PARAM");
+  REQUIRE((err) != (ASCIICHAT_OK));
+  REQUIRE((err) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("yt_dlp/extract_rejects_output_buffer_too_small", "[yt_dlp]") {
   char small_buf[10] = {0};
 
   asciichat_error_t err = yt_dlp_extract_stream_url("http://example.com/video.mp4", NULL, small_buf, 10);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Should fail with output buffer < 256");
-  ASCIICHAT_REQUIRE_EQ(err, ERROR_INVALID_PARAM, "Should return ERROR_INVALID_PARAM");
+  REQUIRE((err) != (ASCIICHAT_OK));
+  REQUIRE((err) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("yt_dlp/extract_rejects_empty_url", "[yt_dlp]") {
   char output[256] = {0};
 
   asciichat_error_t err = yt_dlp_extract_stream_url("", NULL, output, sizeof(output));
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Should fail with empty URL");
+  REQUIRE((err) != (ASCIICHAT_OK));
 }
 
 /* ============================================================================
@@ -66,7 +66,7 @@ TEST_CASE("yt_dlp/extract_handles_invalid_url", "[yt_dlp]") {
 
   // May succeed or fail depending on yt-dlp's behavior
   // What matters is that it returns a valid error code
-  ASCIICHAT_REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK, "Should return a valid error code");
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("yt_dlp/extract_output_buffer_populated_or_clear", "[yt_dlp]") {
@@ -81,7 +81,7 @@ TEST_CASE("yt_dlp/extract_output_buffer_populated_or_clear", "[yt_dlp]") {
   // If error, buffer should be empty or contain error result
   // If success, buffer should contain valid URL
   if (err == ASCIICHAT_OK) {
-    ASCIICHAT_REQUIRE_NE(strlen(output), 0, "Output should not be empty on success");
+    REQUIRE((strlen(output)) != (0));
   }
 }
 
@@ -95,7 +95,7 @@ TEST_CASE("yt_dlp/extract_accepts_null_options", "[yt_dlp]") {
   // Test that NULL options are handled gracefully
   asciichat_error_t err = yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", NULL, output, sizeof(output));
 
-  ASCIICHAT_REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK, "Should handle NULL options");
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("yt_dlp/extract_accepts_empty_options", "[yt_dlp]") {
@@ -104,7 +104,7 @@ TEST_CASE("yt_dlp/extract_accepts_empty_options", "[yt_dlp]") {
   // Test that empty string options are handled gracefully
   asciichat_error_t err = yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", "", output, sizeof(output));
 
-  ASCIICHAT_REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK, "Should handle empty options");
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("yt_dlp/extract_accepts_custom_options", "[yt_dlp]") {
@@ -113,7 +113,7 @@ TEST_CASE("yt_dlp/extract_accepts_custom_options", "[yt_dlp]") {
   // Test that custom options are accepted (may fail if yt-dlp not available or URL invalid)
   asciichat_error_t err = yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", "--no-warnings", output, sizeof(output));
 
-  ASCIICHAT_REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK, "Should accept custom options");
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 /* ============================================================================
@@ -130,7 +130,7 @@ TEST_CASE("yt_dlp/extract_null_terminates_output", "[yt_dlp]") {
 
   // Regardless of success/failure, output should be null-terminated
   // (The test framework will detect buffer overrun if not)
-  ASCIICHAT_REQUIRE_NOT_NULL(memchr(output, '\0', sizeof(output)), "Output should be null-terminated, including on failure");
+  REQUIRE((memchr(output, '\0', sizeof(output))) != nullptr);
 }
 
 TEST_CASE("yt_dlp/extract_respects_buffer_size", "[yt_dlp]") {
@@ -144,8 +144,8 @@ TEST_CASE("yt_dlp/extract_respects_buffer_size", "[yt_dlp]") {
   asciichat_error_t err2 = yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", NULL, large_buffer, sizeof(large_buffer));
 
   // Both should return valid error codes
-  ASCIICHAT_REQUIRE(err1 == ASCIICHAT_OK || err1 != ASCIICHAT_OK, "Small buffer test should return valid code");
-  ASCIICHAT_REQUIRE(err2 == ASCIICHAT_OK || err2 != ASCIICHAT_OK, "Large buffer test should return valid code");
+  REQUIRE((err1 == ASCIICHAT_OK || err1 != ASCIICHAT_OK));
+  REQUIRE((err2 == ASCIICHAT_OK || err2 != ASCIICHAT_OK));
 }
 
 /* ============================================================================
@@ -161,10 +161,10 @@ TEST_CASE("yt_dlp/extract_cache_same_url_twice", "[yt_dlp]") {
   asciichat_error_t err2 = yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", NULL, output2, sizeof(output2));
 
   // Both calls should return the same result (cached)
-  ASCIICHAT_REQUIRE_EQ(err1, err2, "Cached result should match original");
+  REQUIRE((err1) == (err2));
 
   if (err1 == ASCIICHAT_OK) {
-    ASCIICHAT_REQUIRE_STR_EQ(output1, output2, "Cached URL should match original");
+    REQUIRE(std::strcmp((output1), (output2)) == 0);
   }
 }
 
@@ -177,8 +177,8 @@ TEST_CASE("yt_dlp/extract_cache_different_url", "[yt_dlp]") {
   asciichat_error_t err2 = yt_dlp_extract_stream_url("http://invalid.invalid/fake2.mp4", NULL, output2, sizeof(output2));
 
   // Different URLs should be handled independently
-  ASCIICHAT_REQUIRE(err1 == ASCIICHAT_OK || err1 != ASCIICHAT_OK, "First URL should return valid code");
-  ASCIICHAT_REQUIRE(err2 == ASCIICHAT_OK || err2 != ASCIICHAT_OK, "Second URL should return valid code");
+  REQUIRE((err1 == ASCIICHAT_OK || err1 != ASCIICHAT_OK));
+  REQUIRE((err2 == ASCIICHAT_OK || err2 != ASCIICHAT_OK));
 }
 
 TEST_CASE("yt_dlp/extract_cache_different_options", "[yt_dlp]") {
@@ -190,8 +190,8 @@ TEST_CASE("yt_dlp/extract_cache_different_options", "[yt_dlp]") {
   asciichat_error_t err2 = yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", "--no-warnings", output2, sizeof(output2));
 
   // Different options should be handled independently
-  ASCIICHAT_REQUIRE(err1 == ASCIICHAT_OK || err1 != ASCIICHAT_OK, "No-options call should return valid code");
-  ASCIICHAT_REQUIRE(err2 == ASCIICHAT_OK || err2 != ASCIICHAT_OK, "With-options call should return valid code");
+  REQUIRE((err1 == ASCIICHAT_OK || err1 != ASCIICHAT_OK));
+  REQUIRE((err2 == ASCIICHAT_OK || err2 != ASCIICHAT_OK));
 }
 
 /* ============================================================================
@@ -201,7 +201,7 @@ TEST_CASE("yt_dlp/extract_cache_different_options", "[yt_dlp]") {
 TEST_CASE("yt_dlp/extract_with_yt_dlp_if_available", "[yt_dlp]") {
   // Skip this test if yt-dlp is not available
   if (!yt_dlp_is_available()) {
-    ASCIICHAT_SKIP("yt-dlp not installed");
+    SKIP("test skipped");
   }
 
   char output[8192] = {0};
@@ -210,7 +210,7 @@ TEST_CASE("yt_dlp/extract_with_yt_dlp_if_available", "[yt_dlp]") {
   asciichat_error_t err = yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", NULL, output, sizeof(output));
 
   // Just verify we get a valid error code back
-  ASCIICHAT_REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK, "Should return valid error code");
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 /* ============================================================================
@@ -235,7 +235,7 @@ TEST_CASE("yt_dlp/extract_long_url", "[yt_dlp]") {
   asciichat_error_t err = yt_dlp_extract_stream_url(long_url, NULL, output, sizeof(output));
 
   // Should handle long URLs gracefully (may fail for invalid URL, but shouldn't crash)
-  ASCIICHAT_REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK, "Should handle long URL");
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("yt_dlp/extract_long_options", "[yt_dlp]") {
@@ -249,7 +249,7 @@ TEST_CASE("yt_dlp/extract_long_options", "[yt_dlp]") {
   asciichat_error_t err = yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", long_options, output, sizeof(output));
 
   // Should handle long options gracefully
-  ASCIICHAT_REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK, "Should handle long options");
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("yt_dlp/extract_special_characters_in_url", "[yt_dlp]") {
@@ -264,6 +264,6 @@ TEST_CASE("yt_dlp/extract_special_characters_in_url", "[yt_dlp]") {
     memset(output, 0, sizeof(output));
     asciichat_error_t err = yt_dlp_extract_stream_url(special_urls[i], NULL, output, sizeof(output));
 
-    ASCIICHAT_REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK, "Should handle special characters in URL");
+    REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
   }
 }

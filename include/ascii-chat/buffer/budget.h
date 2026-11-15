@@ -1,6 +1,10 @@
 #pragma once
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Non-copyable process budget lease for platform-owned storage. */
 /**
  * @brief Owns the temporary storage used by buffer budget. The data pointers and size or cursor fields describe the
@@ -10,3 +14,7 @@
 typedef struct {
   size_t bytes;
 } buffer_budget_t;
+
+#ifdef __cplusplus
+}
+#endif

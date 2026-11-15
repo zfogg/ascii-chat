@@ -13,6 +13,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Opaque ring topology handle
  */
@@ -99,3 +103,7 @@ asciichat_error_t consensus_topology_get_leader(const consensus_topology_t *topo
 asciichat_error_t consensus_topology_get_all(const consensus_topology_t *topology,
                                              uint8_t out_ids[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE],
                                              int *out_count);
+
+#ifdef __cplusplus
+}
+#endif

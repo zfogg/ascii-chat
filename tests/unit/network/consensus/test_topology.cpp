@@ -1,9 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file tests/unit/network/consensus/test_topology.c
  * @brief Ring topology unit tests
  */
 
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/network/consensus/topology.h>
 #include <ascii-chat/tests/logging.h>
@@ -28,8 +28,8 @@ TEST_CASE("topology/create_and_destroy", "[topology]") {
   consensus_topology_t *topo = NULL;
   asciichat_error_t err = consensus_topology_create(participants, 4, my_id, &topo);
 
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NE(topo, NULL);
+  REQUIRE((err) == (ASCIICHAT_OK));
+  REQUIRE((topo) != (NULL));
   consensus_topology_destroy(topo);
 }
 
@@ -48,8 +48,8 @@ TEST_CASE("topology/positions_sorted_lexicographically", "[topology]") {
   consensus_topology_create(participants, 4, my_id, &topo);
 
   // B should be at position 1
-  ASCIICHAT_REQUIRE_EQ(consensus_topology_get_position(topo), 1);
-  ASCIICHAT_REQUIRE_EQ(consensus_topology_am_leader(topo), false);
+  REQUIRE((consensus_topology_get_position(topo)) == (1));
+  REQUIRE((consensus_topology_am_leader(topo)) == (false));
 
   consensus_topology_destroy(topo);
 }
@@ -67,8 +67,8 @@ TEST_CASE("topology/leader_is_last", "[topology]") {
   consensus_topology_t *topo = NULL;
   consensus_topology_create(participants, 4, my_id, &topo);
 
-  ASCIICHAT_REQUIRE_EQ(consensus_topology_get_position(topo), 3);
-  ASCIICHAT_REQUIRE_EQ(consensus_topology_am_leader(topo), true);
+  REQUIRE((consensus_topology_get_position(topo)) == (3));
+  REQUIRE((consensus_topology_am_leader(topo)) == (true));
 
   consensus_topology_destroy(topo);
 }
@@ -94,8 +94,8 @@ TEST_CASE("topology/next_prev_circular", "[topology]") {
   make_uuid(expected_next, 3); // C
   make_uuid(expected_prev, 1); // A
 
-  ASCIICHAT_REQUIRE_EQ(memcmp(next, expected_next, 16), 0);
-  ASCIICHAT_REQUIRE_EQ(memcmp(prev, expected_prev, 16), 0);
+  REQUIRE((memcmp(next, expected_next, 16)) == (0));
+  REQUIRE((memcmp(prev, expected_prev, 16)) == (0));
 
   consensus_topology_destroy(topo);
 }
@@ -116,11 +116,11 @@ TEST_CASE("topology/get_leader", "[topology]") {
   uint8_t leader[16];
   asciichat_error_t err = consensus_topology_get_leader(topo, leader);
 
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   uint8_t expected_leader[16];
   make_uuid(expected_leader, 4); // D (last)
-  ASCIICHAT_REQUIRE_EQ(memcmp(leader, expected_leader, 16), 0);
+  REQUIRE((memcmp(leader, expected_leader, 16)) == (0));
 
   consensus_topology_destroy(topo);
 }
@@ -142,8 +142,8 @@ TEST_CASE("topology/get_all", "[topology]") {
   int count = 0;
   asciichat_error_t err = consensus_topology_get_all(topo, all_ids, &count);
 
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(count, 4);
+  REQUIRE((err) == (ASCIICHAT_OK));
+  REQUIRE((count) == (4));
 
   // Should be sorted: A(1), B(2), C(3), D(4)
   uint8_t expected[4][16];
@@ -153,7 +153,7 @@ TEST_CASE("topology/get_all", "[topology]") {
   make_uuid(expected[3], 4);
 
   for (int i = 0; i < 4; i++) {
-    ASCIICHAT_REQUIRE_EQ(memcmp(all_ids[i], expected[i], 16), 0, "Participant %d mismatch", i);
+    REQUIRE((memcmp(all_ids[i], expected[i], 16)) == (0));
   }
 
   consensus_topology_destroy(topo);
@@ -170,7 +170,7 @@ TEST_CASE("topology/invalid_my_id", "[topology]") {
   consensus_topology_t *topo = NULL;
   asciichat_error_t err = consensus_topology_create(participants, 2, my_id, &topo);
 
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK);
+  REQUIRE((err) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("topology/circular_wrap_first_to_last", "[topology]") {
@@ -190,7 +190,7 @@ TEST_CASE("topology/circular_wrap_first_to_last", "[topology]") {
 
   uint8_t expected[16];
   make_uuid(expected, 3); // Last participant wraps to first
-  ASCIICHAT_REQUIRE_EQ(memcmp(prev, expected, 16), 0);
+  REQUIRE((memcmp(prev, expected, 16)) == (0));
 
   consensus_topology_destroy(topo);
 }
@@ -212,7 +212,7 @@ TEST_CASE("topology/circular_wrap_last_to_first", "[topology]") {
 
   uint8_t expected[16];
   make_uuid(expected, 1); // First participant wraps from last
-  ASCIICHAT_REQUIRE_EQ(memcmp(next, expected, 16), 0);
+  REQUIRE((memcmp(next, expected, 16)) == (0));
 
   consensus_topology_destroy(topo);
 }

@@ -65,6 +65,10 @@
 #include <stdint.h>
 #include <ascii-chat/video/rgba/image.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Device Information
  * @{
@@ -288,3 +292,7 @@ asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *
 double webcam_get_fps(webcam_context_t *ctx);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

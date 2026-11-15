@@ -1,7 +1,4 @@
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -9,7 +6,6 @@
 #include <string.h>
 #include <locale.h>
 #include <ascii-chat/video/ascii/palette.h>
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
@@ -34,10 +30,10 @@ TEST_CASE("palette_tests/builtin_palette_tests", "[palette_tests]") {
   auto *tc = &generated_case;
   const palette_def_t *palette = get_builtin_palette(tc->type);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(palette, "Palette %s should not be null", tc->expected_name);
-  ASCIICHAT_REQUIRE_STR_EQ(palette->name, tc->expected_name, "Palette name should match for %s", tc->expected_name);
-  ASCIICHAT_REQUIRE_STR_EQ(palette->chars, tc->expected_chars, "Palette chars should match for %s", tc->expected_name);
-  ASCIICHAT_REQUIRE_EQ(palette->requires_utf8, tc->expected_utf8, "UTF-8 requirement should match for %s", tc->expected_name);
+  REQUIRE((palette) != nullptr);
+  REQUIRE(std::strcmp((palette->name), (tc->expected_name)) == 0);
+  REQUIRE(std::strcmp((palette->chars), (tc->expected_chars)) == 0);
+  REQUIRE((palette->requires_utf8) == (tc->expected_utf8));
 }
 
 // Test case structure for invalid palette tests
@@ -52,7 +48,7 @@ TEST_CASE("palette_tests/invalid_palette_tests", "[palette_tests]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(invalid_palette_cases));
   auto *tc = &generated_case;
   const palette_def_t *palette = get_builtin_palette(tc->type);
-  ASCIICHAT_REQUIRE_NULL(palette, "Palette should be null for %s", tc->description);
+  REQUIRE((palette) == nullptr);
 }
 
 // Test case structure for UTF-8 encoding tests
@@ -73,7 +69,7 @@ TEST_CASE("palette_tests/utf8_encoding_tests", "[palette_tests]") {
   auto *tc = &generated_case;
   size_t len = strlen(tc->palette_chars);
   bool requires_utf8 = palette_requires_utf8_encoding(tc->palette_chars, len);
-  ASCIICHAT_REQUIRE_EQ(requires_utf8, tc->expected_utf8, "UTF-8 requirement should match for %s (got %d, expected %d)", tc->description, requires_utf8, tc->expected_utf8);
+  REQUIRE((requires_utf8) == (tc->expected_utf8));
 }
 
 // Test case structure for palette validation tests
@@ -96,7 +92,7 @@ TEST_CASE("palette_tests/validation_tests", "[palette_tests]") {
   // Handle empty string case - pass NULL to test NULL handling
   const char *chars_to_test = (tc->palette_chars[0] == '\0') ? NULL : tc->palette_chars;
   bool valid = validate_palette_chars(chars_to_test, tc->palette_len);
-  ASCIICHAT_REQUIRE_EQ(valid, tc->expected_valid, "Validation should match for %s", tc->description);
+  REQUIRE((valid) == (tc->expected_valid));
 }
 
 // Test case structure for palette compatibility tests
@@ -117,7 +113,7 @@ TEST_CASE("palette_tests/compatibility_tests", "[palette_tests]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(compatibility_test_cases));
   auto *tc = &generated_case;
   palette_type_t selected = select_compatible_palette(tc->requested_type, tc->has_utf8_support);
-  ASCIICHAT_REQUIRE_EQ(selected, tc->expected_type, "Compatibility selection should match for %s", tc->description);
+  REQUIRE((selected) == (tc->expected_type));
 }
 
 // Test case structure for UTF-8 palette creation tests
@@ -143,15 +139,15 @@ TEST_CASE("palette_tests/utf8_palette_creation_tests", "[palette_tests]") {
   utf8_palette_t *palette = utf8_palette_create(str_to_test);
 
   if (tc->should_succeed) {
-    ASCIICHAT_REQUIRE_NOT_NULL(palette, "Palette creation should succeed for %s", tc->description);
-    ASCIICHAT_REQUIRE_EQ(utf8_palette_get_char_count(palette), tc->expected_char_count, "Char count should match for %s", tc->description);
-    ASCIICHAT_REQUIRE_EQ(palette->total_bytes, tc->expected_total_bytes, "Total bytes should match for %s", tc->description);
+    REQUIRE((palette) != nullptr);
+    REQUIRE((utf8_palette_get_char_count(palette)) == (tc->expected_char_count));
+    REQUIRE((palette->total_bytes) == (tc->expected_total_bytes));
     if (str_to_test) {
-      ASCIICHAT_REQUIRE_STR_EQ(palette->raw_string, str_to_test, "Raw string should match for %s", tc->description);
+      REQUIRE(std::strcmp((palette->raw_string), (str_to_test)) == 0);
     }
     utf8_palette_destroy(palette);
   } else {
-    ASCIICHAT_REQUIRE_NULL(palette, "Palette creation should fail for %s", tc->description);
+    REQUIRE((palette) == nullptr);
   }
 }
 
@@ -172,15 +168,15 @@ TEST_CASE("palette_tests/utf8_char_access_tests", "[palette_tests]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(utf8_char_test_cases));
   auto *tc = &generated_case;
   utf8_palette_t *palette = utf8_palette_create(tc->palette_string);
-  ASCIICHAT_REQUIRE_NOT_NULL(palette, "Palette should be created for %s", tc->description);
+  REQUIRE((palette) != nullptr);
 
   const utf8_char_info_t *char_info = utf8_palette_get_char(palette, tc->char_index);
 
   if (tc->should_succeed) {
-    ASCIICHAT_REQUIRE_NOT_NULL(char_info, "Char info should exist for %s", tc->description);
-    ASCIICHAT_REQUIRE_EQ(char_info->byte_len, tc->expected_byte_len, "Byte length should match for %s", tc->description);
+    REQUIRE((char_info) != nullptr);
+    REQUIRE((char_info->byte_len) == (tc->expected_byte_len));
   } else {
-    ASCIICHAT_REQUIRE_NULL(char_info, "Char info should be null for %s", tc->description);
+    REQUIRE((char_info) == nullptr);
   }
 
   utf8_palette_destroy(palette);
@@ -204,14 +200,14 @@ TEST_CASE("palette_tests/utf8_search_tests", "[palette_tests]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(utf8_search_test_cases));
   auto *tc = &generated_case;
   utf8_palette_t *palette = utf8_palette_create(tc->palette_string);
-  ASCIICHAT_REQUIRE_NOT_NULL(palette, "Palette should be created for %s", tc->description);
+  REQUIRE((palette) != nullptr);
 
   bool contains = utf8_palette_contains_char(palette, tc->search_char, tc->search_len);
-  ASCIICHAT_REQUIRE_EQ(contains, tc->should_contain, "Contains should match for %s", tc->description);
+  REQUIRE((contains) == (tc->should_contain));
 
   if (tc->should_contain) {
     size_t index = utf8_palette_find_char_index(palette, tc->search_char, tc->search_len);
-    ASCIICHAT_REQUIRE_EQ(index, tc->expected_index, "Index should match for %s", tc->description);
+    REQUIRE((index) == (tc->expected_index));
   }
 
   utf8_palette_destroy(palette);
@@ -248,13 +244,13 @@ TEST_CASE("palette_tests/client_palette_initialization_tests", "[palette_tests]"
   int result = initialize_client_palette(tc->palette_type, custom_to_test, client_palette_chars, &client_palette_len, client_luminance_palette);
 
   if (tc->should_succeed) {
-    ASCIICHAT_REQUIRE_EQ(result, 0, "Initialization should succeed for %s", tc->description);
+    REQUIRE((result) == (0));
     if (expected_to_check) {
-      ASCIICHAT_REQUIRE_EQ(client_palette_len, strlen(expected_to_check), "Palette length should match for %s", tc->description);
-      ASCIICHAT_REQUIRE_STR_EQ(client_palette_chars, expected_to_check, "Palette chars should match for %s", tc->description);
+      REQUIRE((client_palette_len) == (strlen(expected_to_check)));
+      REQUIRE(std::strcmp((client_palette_chars), (expected_to_check)) == 0);
     }
   } else {
-    ASCIICHAT_REQUIRE_EQ(result, -1, "Initialization should fail for %s", tc->description);
+    REQUIRE((result) == (-1));
   }
 }
 
@@ -266,11 +262,11 @@ TEST_CASE("palette/detect_client_utf8_support", "[palette]") {
   (void)detect_client_utf8_support(&caps);
 
   // Verify structure is populated
-  ASCIICHAT_REQUIRE(caps.terminal_type[0] != '\0' || caps.locale_encoding[0] != '\0', "Should populate at least one field");
+  REQUIRE((caps.terminal_type[0] != '\0' || caps.locale_encoding[0] != '\0'));
 
   // NULL caps should return false
   bool supports = detect_client_utf8_support(NULL);
-  ASCIICHAT_REQUIRE_EQ(supports, false);
+  REQUIRE((supports) == (false));
 }
 
 // Theory: Palette length property - luminance palettes should work for various lengths
@@ -278,11 +274,11 @@ static constexpr int palette_length_cases[] = {2, 5, 10, 15, 20, 30, 50, 70};
 
 TEST_CASE("palette/palette_length_property", "[palette]") {
   const int palette_len = GENERATE(Catch::Generators::from_range(palette_length_cases));
-  ASCIICHAT_ASSUME(palette_len >= 2 && palette_len <= 70);
+  if (!(palette_len >= 2 && palette_len <= 70)) SKIP("assumption not satisfied");
 
   char luminance_mapping[256];
   char *test_palette = SAFE_MALLOC(palette_len + 1, char *);
-  ASCIICHAT_ASSUME(test_palette != NULL);
+  if (!(test_palette != NULL)) SKIP("assumption not satisfied");
 
   // Create a palette of increasing complexity
   for (int i = 0; i < palette_len; i++) {
@@ -292,11 +288,11 @@ TEST_CASE("palette/palette_length_property", "[palette]") {
 
   // PROPERTY: Should successfully build luminance palette for any valid length
   int result = build_client_luminance_palette(test_palette, palette_len, luminance_mapping);
-  ASCIICHAT_REQUIRE_EQ(result, 0, "Should build luminance palette for length %d", palette_len);
+  REQUIRE((result) == (0));
 
   // PROPERTY: Darkest should map to first char, brightest to last
-  ASCIICHAT_REQUIRE_EQ(luminance_mapping[0], test_palette[0], "Darkest should map to first char for length %d", palette_len);
-  ASCIICHAT_REQUIRE_EQ(luminance_mapping[255], test_palette[palette_len - 1], "Brightest should map to last char for length %d", palette_len);
+  REQUIRE((luminance_mapping[0]) == (test_palette[0]));
+  REQUIRE((luminance_mapping[255]) == (test_palette[palette_len - 1]));
 
   SAFE_FREE(test_palette);
 }
@@ -321,12 +317,12 @@ TEST_CASE("palette_tests/luminance_palette_error_tests", "[palette_tests]") {
   char *output_buffer = tc->pass_null_output ? NULL : luminance_mapping;
 
   int result = build_client_luminance_palette(palette_to_test, tc->palette_len, output_buffer);
-  ASCIICHAT_REQUIRE_EQ(result, tc->expected_result, "Result should match for %s", tc->description);
+  REQUIRE((result) == (tc->expected_result));
 
   // For valid case, verify the mappings (only when output_buffer was non-NULL)
   if (tc->expected_result == 0 && !tc->pass_null_output) {
-    ASCIICHAT_REQUIRE_EQ(luminance_mapping[0], ' ', "Darkest should map to first char for %s", tc->description);
-    ASCIICHAT_REQUIRE_EQ(luminance_mapping[255], '@', "Brightest should map to last char for %s", tc->description);
+    REQUIRE((luminance_mapping[0]) == (' '));
+    REQUIRE((luminance_mapping[255]) == ('@'));
   }
 }
 
@@ -353,18 +349,18 @@ TEST_CASE("palette_tests/duplicate_character_tests", "[palette_tests]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(duplicate_test_cases));
   auto *tc = &generated_case;
   utf8_palette_t *palette = utf8_palette_create(tc->palette_string);
-  ASCIICHAT_REQUIRE_NOT_NULL(palette, "Palette should be created for %s", tc->description);
+  REQUIRE((palette) != nullptr);
 
   // Verify total character count
   size_t char_count = utf8_palette_get_char_count(palette);
-  ASCIICHAT_REQUIRE_EQ(char_count, tc->expected_total_count, "Total char count should match for %s", tc->description);
+  REQUIRE((char_count) == (tc->expected_total_count));
 
   // Verify duplicate characters (skip emoji check if expected_duplicate_char is '\0')
   if (tc->expected_duplicate_char != '\0') {
     for (size_t i = tc->duplicate_start_index; i < tc->duplicate_start_index + tc->duplicate_count; i++) {
       const utf8_char_info_t *char_info = utf8_palette_get_char(palette, i);
-      ASCIICHAT_REQUIRE_EQ(char_info->byte_len, 1, "Duplicate char should be 1 byte for %s at index %zu", tc->description, i);
-      ASCIICHAT_REQUIRE_EQ(char_info->bytes[0], tc->expected_duplicate_char, "Duplicate char should match for %s at index %zu", tc->description, i);
+      REQUIRE((char_info->byte_len) == (1));
+      REQUIRE((char_info->bytes[0]) == (tc->expected_duplicate_char));
     }
   }
 
@@ -387,13 +383,13 @@ TEST_CASE("palette_tests/emoji_palette_tests", "[palette_tests]") {
   auto *tc = &generated_case;
   utf8_palette_t *palette = utf8_palette_create(tc->emoji_palette);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(palette, "Palette should be created for %s", tc->description);
-  ASCIICHAT_REQUIRE_EQ(utf8_palette_get_char_count(palette), tc->expected_count, "Emoji count should match for %s", tc->description);
+  REQUIRE((palette) != nullptr);
+  REQUIRE((utf8_palette_get_char_count(palette)) == (tc->expected_count));
 
   // Each emoji should be expected_bytes_per_char bytes
   for (size_t i = 0; i < tc->expected_count; i++) {
     const utf8_char_info_t *char_info = utf8_palette_get_char(palette, i);
-    ASCIICHAT_REQUIRE_EQ(char_info->byte_len, tc->expected_bytes_per_char, "Emoji byte length should match for %s at index %zu", tc->description, i);
+    REQUIRE((char_info->byte_len) == (tc->expected_bytes_per_char));
   }
 
   utf8_palette_destroy(palette);
@@ -418,17 +414,17 @@ TEST_CASE("palette_tests/null_handling_tests", "[palette_tests]") {
   switch (tc->function) {
   case NULL_TEST_REQUIRES_UTF8: {
     bool requires_utf8 = palette_requires_utf8_encoding(NULL, 10);
-    ASCIICHAT_REQUIRE_EQ(requires_utf8, false, "%s should return false", tc->description);
+    REQUIRE((requires_utf8) == (false));
     break;
   }
   case NULL_TEST_VALIDATE_CHARS: {
     bool valid = validate_palette_chars(NULL, 10);
-    ASCIICHAT_REQUIRE_EQ(valid, false, "%s should return false", tc->description);
+    REQUIRE((valid) == (false));
     break;
   }
   case NULL_TEST_CREATE_PALETTE: {
     utf8_palette_t *palette = utf8_palette_create(NULL);
-    ASCIICHAT_REQUIRE_NULL(palette, "%s should return NULL", tc->description);
+    REQUIRE((palette) == nullptr);
     break;
   }
   case NULL_TEST_INIT_CUSTOM_PALETTE: {
@@ -436,7 +432,7 @@ TEST_CASE("palette_tests/null_handling_tests", "[palette_tests]") {
     size_t client_palette_len;
     char client_luminance_palette[256];
     int result = initialize_client_palette(PALETTE_CUSTOM, NULL, client_palette_chars, &client_palette_len, client_luminance_palette);
-    ASCIICHAT_REQUIRE_EQ(result, -1, "%s should return -1", tc->description);
+    REQUIRE((result) == (-1));
     break;
   }
   }
@@ -447,10 +443,10 @@ static constexpr const char *utf8_boundary_cases[] = {"ABC", "→→→", "🌑�
 
 TEST_CASE("palette/utf8_boundary_property", "[palette]") {
   const char *palette_string = GENERATE(Catch::Generators::from_range(utf8_boundary_cases));
-  ASCIICHAT_ASSUME(palette_string != NULL);
+  if (!(palette_string != NULL)) SKIP("assumption not satisfied");
 
   utf8_palette_t *palette = utf8_palette_create(palette_string);
-  ASCIICHAT_ASSUME(palette != NULL);
+  if (!(palette != NULL)) SKIP("assumption not satisfied");
 
   size_t char_count = utf8_palette_get_char_count(palette);
 
@@ -458,18 +454,18 @@ TEST_CASE("palette/utf8_boundary_property", "[palette]") {
   size_t calculated_total = 0;
   for (size_t i = 0; i < char_count; i++) {
     const utf8_char_info_t *char_info = utf8_palette_get_char(palette, i);
-    ASCIICHAT_REQUIRE_NOT_NULL(char_info, "Every character should be accessible at index %zu", i);
-    ASCIICHAT_REQUIRE(char_info->byte_len > 0 && char_info->byte_len <= 4, "Character byte length should be 1-4 at index %zu (got %zu)", i, char_info->byte_len);
+    REQUIRE((char_info) != nullptr);
+    REQUIRE((char_info->byte_len > 0 && char_info->byte_len <= 4));
     calculated_total += char_info->byte_len;
   }
-  ASCIICHAT_REQUIRE_EQ(calculated_total, palette->total_bytes, "Sum of character bytes should equal total bytes for '%s'", palette_string);
+  REQUIRE((calculated_total) == (palette->total_bytes));
 
   // PROPERTY: Raw string should match input
-  ASCIICHAT_REQUIRE_STR_EQ(palette->raw_string, palette_string, "Raw string should be preserved for '%s'", palette_string);
+  REQUIRE(std::strcmp((palette->raw_string), (palette_string)) == 0);
 
   // PROPERTY: Out-of-bounds access should return NULL
   const utf8_char_info_t *out_of_bounds = utf8_palette_get_char(palette, char_count);
-  ASCIICHAT_REQUIRE_NULL(out_of_bounds, "Out-of-bounds access should return NULL for '%s'", palette_string);
+  REQUIRE((out_of_bounds) == nullptr);
 
   utf8_palette_destroy(palette);
 }

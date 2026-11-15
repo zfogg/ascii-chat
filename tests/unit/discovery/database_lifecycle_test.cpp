@@ -1,7 +1,6 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/discovery/database.h>
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <libplatform/thread.h>
 #include <libplatform/system.h>
@@ -13,7 +12,7 @@ static acds_config_t config;
 static acip_session_created_t session;
 
 static void setup(void) {
-  ASCIICHAT_REQUIRE_EQ(database_init(":memory:", &db), ASCIICHAT_OK);
+  REQUIRE((database_init(":memory:", &db)) == (ASCIICHAT_OK));
   memset(&config, 0, sizeof(config));
   acip_session_create_t request = {0};
   request.session_type = SESSION_TYPE_DIRECT_TCP;
@@ -21,7 +20,7 @@ static void setup(void) {
   request.expose_ip_publicly = true;
   SAFE_STRNCPY(request.server_address, "127.0.0.1", sizeof(request.server_address));
   request.server_port = 27224;
-  ASCIICHAT_REQUIRE_EQ(database_session_create(db, &request, &config, &session), ASCIICHAT_OK);
+  REQUIRE((database_session_create(db, &request, &config, &session)) == (ASCIICHAT_OK));
 }
 
 static void teardown(void) {
@@ -29,7 +28,7 @@ static void teardown(void) {
   db = NULL;
 }
 TEST_CASE("database_lifecycle/shared_connection_is_serialized", "[database_lifecycle]") {
-  ASCIICHAT_REQUIRE_NOT_NULL(sqlite3_db_mutex(db), "Discovery's shared SQLite connection must have a mutex");
+  REQUIRE((sqlite3_db_mutex(db)) != nullptr);
 }
 
 typedef struct {
@@ -69,94 +68,93 @@ TEST_CASE("database_lifecycle/shared_connection_handles_concurrent_session_looku
   }
   atomic_store(&start, true);
   for (int i = 0; i < created; ++i)
-    ASCIICHAT_REQUIRE_EQ(thread_join(&threads[i], NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(created, WORKERS, "Could not start all lookup workers");
+    REQUIRE((thread_join(&threads[i], NULL)) == (ASCIICHAT_OK));
+  REQUIRE((created) == (WORKERS));
   for (int i = 0; i < WORKERS; ++i)
-    ASCIICHAT_REQUIRE(lookups[i].success, "Concurrent discovery lookup failed");
+    REQUIRE(lookups[i].success);
 }
 
 TEST_CASE("database_lifecycle/key_rotation_is_ordered_bounded_and_revocation_cannot_be_undone_by_readding", "[database_lifecycle]") {
   uint8_t first[32] = {1}, second[32] = {2}, missing[32] = {3}, keys[3][32] = {{0}};
   const char *name = session.session_string;
-  ASCIICHAT_REQUIRE_NOT(database_session_verify_key(db, name, first));
-  ASCIICHAT_REQUIRE_EQ(database_session_add_key(db, name, second, 20), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(database_session_add_key(db, name, first, 10), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(database_session_verify_key(db, name, first));
-  ASCIICHAT_REQUIRE_NOT(database_session_verify_key(db, name, missing));
+  REQUIRE(!(database_session_verify_key(db, name, first)));
+  REQUIRE((database_session_add_key(db, name, second, 20)) == (ASCIICHAT_OK));
+  REQUIRE((database_session_add_key(db, name, first, 10)) == (ASCIICHAT_OK));
+  REQUIRE(database_session_verify_key(db, name, first));
+  REQUIRE(!(database_session_verify_key(db, name, missing)));
   size_t count = 99;
-  ASCIICHAT_REQUIRE_EQ(database_session_get_keys(db, name, keys, 1, &count), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(count, 1);
-  ASCIICHAT_REQUIRE_ARRAY_EQ(keys[0], first, 32);
-  ASCIICHAT_REQUIRE_EQ(database_session_get_keys(db, name, keys, 3, &count), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(count, 2);
-  ASCIICHAT_REQUIRE_ARRAY_EQ(keys[1], second, 32);
-  ASCIICHAT_REQUIRE_EQ(database_session_revoke_key(db, name, first), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(database_session_add_key(db, name, first, 30), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NOT(database_session_verify_key(db, name, first));
-  ASCIICHAT_REQUIRE_EQ(database_session_get_keys(db, name, keys, 3, &count), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(count, 1);
-  ASCIICHAT_REQUIRE_ARRAY_EQ(keys[0], second, 32);
-  ASCIICHAT_REQUIRE_EQ(database_session_get_keys(db, name, keys, 0, &count), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(count, 0);
-  ASCIICHAT_REQUIRE_EQ(database_session_add_key(NULL, name, first, 1), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_NOT(database_session_verify_key(NULL, name, first));
+  REQUIRE((database_session_get_keys(db, name, keys, 1, &count)) == (ASCIICHAT_OK));
+  REQUIRE((count) == (1));
+  REQUIRE(std::memcmp((keys[0]), (first), (32)) == 0);
+  REQUIRE((database_session_get_keys(db, name, keys, 3, &count)) == (ASCIICHAT_OK));
+  REQUIRE((count) == (2));
+  REQUIRE(std::memcmp((keys[1]), (second), (32)) == 0);
+  REQUIRE((database_session_revoke_key(db, name, first)) == (ASCIICHAT_OK));
+  REQUIRE((database_session_add_key(db, name, first, 30)) == (ASCIICHAT_OK));
+  REQUIRE(!(database_session_verify_key(db, name, first)));
+  REQUIRE((database_session_get_keys(db, name, keys, 3, &count)) == (ASCIICHAT_OK));
+  REQUIRE((count) == (1));
+  REQUIRE(std::memcmp((keys[0]), (second), (32)) == 0);
+  REQUIRE((database_session_get_keys(db, name, keys, 0, &count)) == (ASCIICHAT_OK));
+  REQUIRE((count) == (0));
+  REQUIRE((database_session_add_key(NULL, name, first, 1)) == (ERROR_INVALID_PARAM));
+  REQUIRE(!(database_session_verify_key(NULL, name, first)));
 }
 
 TEST_CASE("database_lifecycle/host_migration_and_inactivity_cleanup_update_the_persisted_session", "[database_lifecycle]") {
   uint8_t host[16] = {42};
-  ASCIICHAT_REQUIRE_EQ(database_session_update_host(db, session.session_id, host, "127.0.0.2", 30000, 0), ASCIICHAT_OK);
+  REQUIRE((database_session_update_host(db, session.session_id, host, "127.0.0.2", 30000, 0)) == (ASCIICHAT_OK));
   session_entry_t *entry = database_session_find_by_id(db, session.session_id);
-  ASCIICHAT_REQUIRE_NOT_NULL(entry);
-  ASCIICHAT_REQUIRE(entry->host_established);
-  ASCIICHAT_REQUIRE_STR_EQ(entry->host_address, "127.0.0.2");
-  ASCIICHAT_REQUIRE_EQ(entry->host_port, 30000);
+  REQUIRE((entry) != nullptr);
+  REQUIRE(entry->host_established);
+  REQUIRE(std::strcmp((entry->host_address), ("127.0.0.2")) == 0);
+  REQUIRE((entry->host_port) == (30000));
   session_entry_destroy(entry);
-  ASCIICHAT_REQUIRE_EQ(database_session_start_migration(db, session.session_id), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(database_session_is_migration_ready(db, session.session_id, 0));
-  ASCIICHAT_REQUIRE_EQ(database_session_clear_host(db, session.session_id), ASCIICHAT_OK);
+  REQUIRE((database_session_start_migration(db, session.session_id)) == (ASCIICHAT_OK));
+  REQUIRE(database_session_is_migration_ready(db, session.session_id, 0));
+  REQUIRE((database_session_clear_host(db, session.session_id)) == (ASCIICHAT_OK));
   entry = database_session_find_by_string(db, session.session_string);
-  ASCIICHAT_REQUIRE_NOT_NULL(entry);
-  ASCIICHAT_REQUIRE_NOT(entry->host_established);
+  REQUIRE((entry) != nullptr);
+  REQUIRE(!(entry->host_established));
   session_entry_destroy(entry);
   database_session_stats_t rows[2];
   size_t count;
   uint64_t sessions, participants;
-  ASCIICHAT_REQUIRE_EQ(database_stats_snapshot(db, rows, 2, &count, &sessions, &participants), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(count, 1);
-  ASCIICHAT_REQUIRE_EQ(sessions, 1);
-  ASCIICHAT_REQUIRE_STR_EQ(rows[0].session_string, session.session_string);
-  ASCIICHAT_REQUIRE_EQ(sqlite3_exec(db, "UPDATE sessions SET last_activity_at = 0", NULL, NULL, NULL), SQLITE_OK);
+  REQUIRE((database_stats_snapshot(db, rows, 2, &count, &sessions, &participants)) == (ASCIICHAT_OK));
+  REQUIRE((count) == (1));
+  REQUIRE((sessions) == (1));
+  REQUIRE(std::strcmp((rows[0].session_string), (session.session_string)) == 0);
+  REQUIRE((sqlite3_exec(db, "UPDATE sessions SET last_activity_at = 0", NULL, NULL, NULL)) == (SQLITE_OK));
   database_session_cleanup_expired(db);
-  ASCIICHAT_REQUIRE_NULL(database_session_find_by_id(db, session.session_id));
+  REQUIRE((database_session_find_by_id(db, session.session_id)) == nullptr);
 }
 
 TEST_CASE("database_lifecycle/transport_endpoints_are_hidden_after_host_changes", "[database_lifecycle]") {
   uint8_t metadata[10] = {'A', 'C', 'Q', 'T', 1}, output[10], new_host[16] = {42};
   size_t length = 0;
-  ASCIICHAT_REQUIRE_EQ(database_session_transport_set(db, session.session_id, metadata, sizeof(metadata)), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(database_session_transport_get(db, session.session_id, output, sizeof(output), &length), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(length, sizeof(metadata));
-  ASCIICHAT_REQUIRE_ARRAY_EQ(output, metadata, sizeof(metadata));
-  ASCIICHAT_REQUIRE_EQ(database_session_update_host(db, session.session_id, new_host, "127.0.0.2", 30000, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(database_session_transport_get(db, session.session_id, output, sizeof(output), &length), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(length, 0);
+  REQUIRE((database_session_transport_set(db, session.session_id, metadata, sizeof(metadata))) == (ASCIICHAT_OK));
+  REQUIRE((database_session_transport_get(db, session.session_id, output, sizeof(output), &length)) == (ASCIICHAT_OK));
+  REQUIRE((length) == (sizeof(metadata)));
+  REQUIRE(std::memcmp((output), (metadata), (sizeof(metadata))) == 0);
+  REQUIRE((database_session_update_host(db, session.session_id, new_host, "127.0.0.2", 30000, 0)) == (ASCIICHAT_OK));
+  REQUIRE((database_session_transport_get(db, session.session_id, output, sizeof(output), &length)) == (ASCIICHAT_OK));
+  REQUIRE((length) == (0));
 }
 
 TEST_CASE("database_lifecycle/transport_storage_failure_rolls_back_session_creation", "[database_lifecycle]") {
-  ASCIICHAT_REQUIRE_EQ((sqlite3_exec(db,
+  REQUIRE(((sqlite3_exec(db,
                                      "CREATE TRIGGER reject_transport BEFORE INSERT ON session_transports BEGIN SELECT "
                                      "RAISE(FAIL, 'test rejection'); END;",
-                                     NULL, NULL, NULL)),
-                       SQLITE_OK);
+                                     NULL, NULL, NULL))) == (SQLITE_OK));
   acip_session_create_t request = {.session_type = SESSION_TYPE_WEBRTC, .max_participants = 4};
   uint8_t keys[1][32] = {{0}}, metadata[10] = {'A', 'C', 'Q', 'T', 1};
   acip_session_created_t response;
-  ASCIICHAT_REQUIRE_NE(database_session_create_keys_with_transport(db, &request, keys, 1, &config, &response, metadata, sizeof(metadata)), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(response.session_string[0], 0);
+  REQUIRE((database_session_create_keys_with_transport(db, &request, keys, 1, &config, &response, metadata, sizeof(metadata))) != (ASCIICHAT_OK));
+  REQUIRE((response.session_string[0]) == (0));
   sqlite3_stmt *statement = NULL;
-  ASCIICHAT_REQUIRE_EQ(sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM sessions", -1, &statement, NULL), SQLITE_OK);
-  ASCIICHAT_REQUIRE_EQ(sqlite3_step(statement), SQLITE_ROW);
-  ASCIICHAT_REQUIRE_EQ(sqlite3_column_int(statement, 0), 1);
+  REQUIRE((sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM sessions", -1, &statement, NULL)) == (SQLITE_OK));
+  REQUIRE((sqlite3_step(statement)) == (SQLITE_ROW));
+  REQUIRE((sqlite3_column_int(statement, 0)) == (1));
   sqlite3_finalize(statement);
 }
 
@@ -165,46 +163,45 @@ TEST_CASE("database_lifecycle/successor_transports_follow_the_host_and_failed_re
   uint8_t fresh_metadata[10] = {'A', 'C', 'Q', 'T', 1, 0, 0x75, 0x32, 0, 0};
   uint8_t first[16] = {42}, second[16] = {43}, output[10];
   size_t length = 0;
-  ASCIICHAT_REQUIRE_EQ(database_session_transport_set(db, session.session_id, old_metadata, 10), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(database_session_update_host(db, session.session_id, first, "127.0.0.2", 30000, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(length, 0);
-  ASCIICHAT_REQUIRE_EQ((database_session_update_host_with_transport(db, session.session_id, first, "127.0.0.2", 30000, 0, fresh_metadata, 10)), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(length, 10);
-  ASCIICHAT_REQUIRE_ARRAY_EQ(output, fresh_metadata, 10);
-  ASCIICHAT_REQUIRE_EQ((sqlite3_exec(db,
+  REQUIRE((database_session_transport_set(db, session.session_id, old_metadata, 10)) == (ASCIICHAT_OK));
+  REQUIRE((database_session_update_host(db, session.session_id, first, "127.0.0.2", 30000, 0)) == (ASCIICHAT_OK));
+  REQUIRE((database_session_transport_get(db, session.session_id, output, 10, &length)) == (ASCIICHAT_OK));
+  REQUIRE((length) == (0));
+  REQUIRE(((database_session_update_host_with_transport(db, session.session_id, first, "127.0.0.2", 30000, 0, fresh_metadata, 10))) == (ASCIICHAT_OK));
+  REQUIRE((database_session_transport_get(db, session.session_id, output, 10, &length)) == (ASCIICHAT_OK));
+  REQUIRE((length) == (10));
+  REQUIRE(std::memcmp((output), (fresh_metadata), (10)) == 0);
+  REQUIRE(((sqlite3_exec(db,
                                      "CREATE TRIGGER reject_host_transport BEFORE INSERT ON session_transport_hosts "
                                      "BEGIN SELECT RAISE(FAIL, 'test rejection'); END;",
-                                     NULL, NULL, NULL)),
-                       SQLITE_OK);
-  ASCIICHAT_REQUIRE_NE((database_session_update_host_with_transport(db, session.session_id, second, "127.0.0.3", 31000, 0, old_metadata, 10)), ASCIICHAT_OK);
+                                     NULL, NULL, NULL))) == (SQLITE_OK));
+  REQUIRE(((database_session_update_host_with_transport(db, session.session_id, second, "127.0.0.3", 31000, 0, old_metadata, 10))) != (ASCIICHAT_OK));
   session_entry_t *stored = database_session_find_by_id(db, session.session_id);
-  ASCIICHAT_REQUIRE_NOT_NULL(stored);
-  ASCIICHAT_REQUIRE_ARRAY_EQ(stored->host_participant_id, first, 16);
-  ASCIICHAT_REQUIRE_EQ(stored->host_port, 30000);
+  REQUIRE((stored) != nullptr);
+  REQUIRE(std::memcmp((stored->host_participant_id), (first), (16)) == 0);
+  REQUIRE((stored->host_port) == (30000));
   session_entry_destroy(stored);
-  ASCIICHAT_REQUIRE_EQ(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_ARRAY_EQ(output, fresh_metadata, 10);
-  ASCIICHAT_REQUIRE_EQ(database_session_start_migration(db, session.session_id), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(length, 0);
-  ASCIICHAT_REQUIRE_EQ(database_session_clear_host(db, session.session_id), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(length, 0);
+  REQUIRE((database_session_transport_get(db, session.session_id, output, 10, &length)) == (ASCIICHAT_OK));
+  REQUIRE(std::memcmp((output), (fresh_metadata), (10)) == 0);
+  REQUIRE((database_session_start_migration(db, session.session_id)) == (ASCIICHAT_OK));
+  REQUIRE((database_session_transport_get(db, session.session_id, output, 10, &length)) == (ASCIICHAT_OK));
+  REQUIRE((length) == (0));
+  REQUIRE((database_session_clear_host(db, session.session_id)) == (ASCIICHAT_OK));
+  REQUIRE((database_session_transport_get(db, session.session_id, output, 10, &length)) == (ASCIICHAT_OK));
+  REQUIRE((length) == (0));
 }
 
 TEST_CASE("database_lifecycle/clearing_a_failed_host_cannot_republish_its_old_transport", "[database_lifecycle]") {
   uint8_t metadata[10] = {'A', 'C', 'Q', 'T', 1}, host[16] = {42}, output[10];
   size_t length = 0;
-  ASCIICHAT_REQUIRE_EQ(database_session_update_host_with_transport(db, session.session_id, host, "127.0.0.2", 30000, 0, metadata, 10), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(database_session_clear_host(db, session.session_id), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(length, 0);
+  REQUIRE((database_session_update_host_with_transport(db, session.session_id, host, "127.0.0.2", 30000, 0, metadata, 10)) == (ASCIICHAT_OK));
+  REQUIRE((database_session_clear_host(db, session.session_id)) == (ASCIICHAT_OK));
+  REQUIRE((database_session_transport_get(db, session.session_id, output, 10, &length)) == (ASCIICHAT_OK));
+  REQUIRE((length) == (0));
   sqlite3_stmt *statement = NULL;
-  ASCIICHAT_REQUIRE_EQ(sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM session_transports", -1, &statement, NULL), SQLITE_OK);
-  ASCIICHAT_REQUIRE_EQ(sqlite3_step(statement), SQLITE_ROW);
-  ASCIICHAT_REQUIRE_EQ(sqlite3_column_int(statement, 0), 0);
+  REQUIRE((sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM session_transports", -1, &statement, NULL)) == (SQLITE_OK));
+  REQUIRE((sqlite3_step(statement)) == (SQLITE_ROW));
+  REQUIRE((sqlite3_column_int(statement, 0)) == (0));
   sqlite3_finalize(statement);
 }
 
@@ -252,25 +249,24 @@ static void *concurrent_session_creation(void *data) {
 }
 
 TEST_CASE("database_lifecycle/failed_host_refresh_preserves_concurrent_session_creations", "[database_lifecycle]") {
-  ASCIICHAT_REQUIRE_EQ((sqlite3_exec(db,
+  REQUIRE(((sqlite3_exec(db,
                                      "CREATE TRIGGER reject_host_refresh BEFORE INSERT ON session_transport_hosts "
                                      "BEGIN SELECT RAISE(FAIL, 'test rejection'); END;",
-                                     NULL, NULL, NULL)),
-                       SQLITE_OK);
+                                     NULL, NULL, NULL))) == (SQLITE_OK));
   host_refresh_race_t race = {0};
   platform_thread_t refresh, creation;
-  ASCIICHAT_REQUIRE_EQ(platform_thread_create(&refresh, "host_refresh", concurrent_failed_host_refresh, &race), ASCIICHAT_OK);
+  REQUIRE((platform_thread_create(&refresh, "host_refresh", concurrent_failed_host_refresh, &race)) == (ASCIICHAT_OK));
   int result = platform_thread_create(&creation, "session_create", concurrent_session_creation, &race);
   atomic_store(&race.start, true);
-  ASCIICHAT_REQUIRE_EQ(thread_join(&refresh, NULL), ASCIICHAT_OK);
+  REQUIRE((thread_join(&refresh, NULL)) == (ASCIICHAT_OK));
   if (result == ASCIICHAT_OK)
-    ASCIICHAT_REQUIRE_EQ(thread_join(&creation, NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(race.refresh_ok, "The injected host refresh failure was not observed");
-  ASCIICHAT_REQUIRE(race.creation_ok, "A concurrent session creation failed");
+    REQUIRE((thread_join(&creation, NULL)) == (ASCIICHAT_OK));
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE(race.refresh_ok);
+  REQUIRE(race.creation_ok);
   for (int i = 0; i < CONCURRENT_HOST_REFRESHES; ++i) {
     session_entry_t *stored = database_session_find_by_id(db, race.created[i]);
-    ASCIICHAT_REQUIRE_NOT_NULL(stored, "Successful session creation %d was rolled back by another caller", i);
+    REQUIRE((stored) != nullptr);
     session_entry_destroy(stored);
   }
 }

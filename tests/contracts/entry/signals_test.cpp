@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
 #include <libplatform/system.h>
@@ -77,7 +77,7 @@ static void setup(void) {
   signal_console[0] = '\0';
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
-  ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
+  REQUIRE((options_state_init()) == (ASCIICHAT_OK));
   set_interrupt_callback(interrupted);
 }
 static void teardown(void) {
@@ -87,68 +87,68 @@ static void teardown(void) {
   log_destroy();
 }
 TEST_CASE("entry_signals/signal_exit_sets_the_global_flag_before_notifying_the_mode_owner", "[entry_signals]") {
-  ASCIICHAT_REQUIRE_NOT(should_exit());
+  REQUIRE(!(should_exit()));
   signal_exit();
-  ASCIICHAT_REQUIRE(should_exit());
-  ASCIICHAT_REQUIRE_EQ(interrupts, 1);
+  REQUIRE(should_exit());
+  REQUIRE((interrupts) == (1));
   set_interrupt_callback(NULL);
   atomic_store_bool(&g_should_exit, false);
   signal_exit();
-  ASCIICHAT_REQUIRE(should_exit());
-  ASCIICHAT_REQUIRE_EQ(interrupts, 1);
+  REQUIRE(should_exit());
+  REQUIRE((interrupts) == (1));
 }
 TEST_CASE("entry_signals/console_close_and_break_follow_help_dismissal_then_shutdown_then_forced_exit", "[entry_signals]") {
-  ASCIICHAT_REQUIRE_NOT(console_ctrl_handler((console_ctrl_event_t)999));
-  ASCIICHAT_REQUIRE_NOT(should_exit());
-  ASCIICHAT_REQUIRE_EQ(interrupts, 0);
+  REQUIRE(!(console_ctrl_handler((console_ctrl_event_t)999)));
+  REQUIRE(!(should_exit()));
+  REQUIRE((interrupts) == (0));
   help_active = true;
-  ASCIICHAT_REQUIRE(console_ctrl_handler(CONSOLE_CTRL_C));
-  ASCIICHAT_REQUIRE_NOT(help_active);
-  ASCIICHAT_REQUIRE_EQ(help_toggles, 1);
-  ASCIICHAT_REQUIRE_NOT(should_exit());
-  ASCIICHAT_REQUIRE(console_ctrl_handler(CONSOLE_CTRL_BREAK));
-  ASCIICHAT_REQUIRE(should_exit());
-  ASCIICHAT_REQUIRE_EQ(interrupts, 1);
+  REQUIRE(console_ctrl_handler(CONSOLE_CTRL_C));
+  REQUIRE(!(help_active));
+  REQUIRE((help_toggles) == (1));
+  REQUIRE(!(should_exit()));
+  REQUIRE(console_ctrl_handler(CONSOLE_CTRL_BREAK));
+  REQUIRE(should_exit());
+  REQUIRE((interrupts) == (1));
   if (setjmp(forced_jump) == 0) {
     console_ctrl_handler(CONSOLE_CLOSE);
-    ASCIICHAT_FAIL("Repeated console interrupt did not force exit");
+    FAIL("Repeated console interrupt did not force exit");
   }
-  ASCIICHAT_REQUIRE_EQ(forced_exit, 1);
-  ASCIICHAT_REQUIRE_EQ(interrupts, 1);
+  REQUIRE((forced_exit) == (1));
+  REQUIRE((interrupts) == (1));
 }
 #ifndef _WIN32
 TEST_CASE("entry_signals/posix_interrupt_dismisses_help_and_termination_interrupts_the_owner", "[entry_signals]") {
   help_active = true;
   handle_sigterm(SIGINT);
-  ASCIICHAT_REQUIRE_NOT(should_exit());
-  ASCIICHAT_REQUIRE_EQ(help_toggles, 1);
+  REQUIRE(!(should_exit()));
+  REQUIRE((help_toggles) == (1));
   const int signals[] = {SIGINT, SIGTERM, SIGHUP};
   const char *names[] = {"SIGINT", "SIGTERM", "SIGHUP"};
   for (unsigned i = 0; i < ARRAY_SIZE(signals); ++i) {
     atomic_store_bool(&g_should_exit, false);
     handle_sigterm(signals[i]);
-    ASCIICHAT_REQUIRE(should_exit());
-    ASCIICHAT_REQUIRE_EQ(interrupts, i + 1);
-    ASCIICHAT_REQUIRE(strstr(signal_console, names[i]), "Missing signal name in shutdown diagnostic: %s", signal_console);
-    ASCIICHAT_REQUIRE(strstr(signal_console, "shutting down"));
+    REQUIRE(should_exit());
+    REQUIRE((interrupts) == (i + 1));
+    REQUIRE(strstr(signal_console, names[i]));
+    REQUIRE(strstr(signal_console, "shutting down"));
   }
 }
 #endif
 TEST_CASE("entry_signals/mode_lookup_rejects_out_of_range_values_and_log_paths_keep_mode_names", "[entry_signals]") {
   const char *names[] = {"server.log", "client.log", "mirror.log", "acds.log", "discovery.log", "mcp-server.log"};
   for (int mode = MODE_SERVER; mode < MODE_INVALID; ++mode) {
-    ASCIICHAT_REQUIRE_NOT_NULL(find_mode((asciichat_mode_t)mode));
-    ASCIICHAT_REQUIRE_STR_EQ(get_mode_log_filename((asciichat_mode_t)mode), names[mode]);
+    REQUIRE((find_mode((asciichat_mode_t)mode)) != nullptr);
+    REQUIRE(std::strcmp((get_mode_log_filename((asciichat_mode_t)mode)), (names[mode])) == 0);
   }
-  ASCIICHAT_REQUIRE_NULL(find_mode(MODE_INVALID));
-  ASCIICHAT_REQUIRE_NULL(find_mode((asciichat_mode_t)-1));
-  ASCIICHAT_REQUIRE_NULL(find_mode((asciichat_mode_t)INT_MAX));
-  ASCIICHAT_REQUIRE_STR_EQ(get_mode_log_filename(MODE_INVALID), "ascii-chat.log");
+  REQUIRE((find_mode(MODE_INVALID)) == nullptr);
+  REQUIRE((find_mode((asciichat_mode_t)-1)) == nullptr);
+  REQUIRE((find_mode((asciichat_mode_t)INT_MAX)) == nullptr);
+  REQUIRE(std::strcmp((get_mode_log_filename(MODE_INVALID)), ("ascii-chat.log")) == 0);
   char path[PLATFORM_MAX_PATH_LENGTH];
   generate_default_log_path(MODE_DISCOVERY, path, sizeof(path));
-  ASCIICHAT_REQUIRE(strstr(path, "discovery.log"));
+  REQUIRE(strstr(path, "discovery.log"));
   path[0] = 'X';
   generate_default_log_path(MODE_SERVER, path, 0);
-  ASCIICHAT_REQUIRE_EQ(path[0], 'X');
+  REQUIRE((path[0]) == ('X'));
   generate_default_log_path(MODE_SERVER, NULL, sizeof(path));
 }

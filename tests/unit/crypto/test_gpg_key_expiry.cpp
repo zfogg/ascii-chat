@@ -1,9 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file tests/unit/crypto/test_gpg_key_expiry.c
  * @brief Unit tests for GPG key expiry checking
  */
 
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -32,9 +32,9 @@ static void setup_expired_key(void) {
 
   // Create temporary directory for test GPG home
   static char directory[PLATFORM_MAX_PATH_LENGTH];
-  ASCIICHAT_REQUIRE_EQ(platform_mkdtemp(directory, sizeof(directory), "gpg-expiry"), ASCIICHAT_OK);
+  REQUIRE((platform_mkdtemp(directory, sizeof(directory), "gpg-expiry")) == (ASCIICHAT_OK));
   test_gnupghome = strdup(directory);
-  ASCIICHAT_REQUIRE_NOT_NULL(test_gnupghome);
+  REQUIRE((test_gnupghome) != nullptr);
   platform_setenv("GNUPGHOME", test_gnupghome);
 
   // Import the expired test key fixture
@@ -55,11 +55,11 @@ static void setup_expired_key(void) {
       }
     }
   }
-  ASCIICHAT_REQUIRE_EQ(result, 0, "Failed to import expired test key fixture");
+  REQUIRE((result) == (0));
 
   // The key ID is 7EA791B86506BCF2 (last 16 chars of fingerprint)
   expired_key_id = strdup("7EA791B86506BCF2");
-  ASCIICHAT_REQUIRE_NOT_NULL(expired_key_id, "Failed to set expired key ID");
+  REQUIRE((expired_key_id) != nullptr);
 }
 
 // Teardown: Clean up temporary GPG home
@@ -93,8 +93,8 @@ TEST_CASE("gpg_key_expiry/check_valid_key_not_expired", "[gpg_key_expiry]") {
   // Test with full 40-character fingerprint
   asciichat_error_t result = check_gpg_key_expiry("897607FA43DC66F612710AF97FE90A79F2E80ED3", &is_expired);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "check_gpg_key_expiry should succeed");
-  ASCIICHAT_REQUIRE_EQ(is_expired, false, "Key 7FE90A79F2E80ED3 should not be expired");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((is_expired) == (false));
 }
 
 TEST_CASE("gpg_key_expiry/check_with_16_char_key_id", "[gpg_key_expiry]") {
@@ -103,8 +103,8 @@ TEST_CASE("gpg_key_expiry/check_with_16_char_key_id", "[gpg_key_expiry]") {
   // Test with 16-character long key ID
   asciichat_error_t result = check_gpg_key_expiry("7FE90A79F2E80ED3", &is_expired);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "check_gpg_key_expiry should succeed with 16-char key ID");
-  ASCIICHAT_REQUIRE_EQ(is_expired, false, "Key should not be expired");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((is_expired) == (false));
 }
 
 TEST_CASE("gpg_key_expiry/check_with_8_char_key_id", "[gpg_key_expiry]") {
@@ -113,7 +113,7 @@ TEST_CASE("gpg_key_expiry/check_with_8_char_key_id", "[gpg_key_expiry]") {
   // Test with 8-character short key ID
   asciichat_error_t result = check_gpg_key_expiry("F2E80ED3", &is_expired);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "check_gpg_key_expiry should succeed with 8-char key ID");
+  REQUIRE((result) == (ASCIICHAT_OK));
   // Note: 8-char key IDs are ambiguous and may not find the right key
 }
 
@@ -122,11 +122,11 @@ TEST_CASE("gpg_key_expiry/invalid_null_parameters", "[gpg_key_expiry]") {
 
   // Test NULL key_text
   asciichat_error_t result = check_gpg_key_expiry(NULL, &is_expired);
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should return ERROR_INVALID_PARAM for NULL key_text");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 
   // Test NULL is_expired pointer
   result = check_gpg_key_expiry("7FE90A79F2E80ED3", NULL);
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should return ERROR_INVALID_PARAM for NULL is_expired");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("gpg_key_expiry/invalid_key_format_non_hex", "[gpg_key_expiry]") {
@@ -136,8 +136,8 @@ TEST_CASE("gpg_key_expiry/invalid_key_format_non_hex", "[gpg_key_expiry]") {
   asciichat_error_t result = check_gpg_key_expiry("ZZZZZZZZZZZZZZZZ", &is_expired);
 
   // Should succeed but warn and assume not expired
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should succeed with invalid format");
-  ASCIICHAT_REQUIRE_EQ(is_expired, false, "Should assume not expired for invalid format");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((is_expired) == (false));
 }
 
 TEST_CASE("gpg_key_expiry/invalid_key_format_wrong_length", "[gpg_key_expiry]") {
@@ -146,12 +146,12 @@ TEST_CASE("gpg_key_expiry/invalid_key_format_wrong_length", "[gpg_key_expiry]") 
   // Test with wrong length (not 8, 16, or 40)
   asciichat_error_t result = check_gpg_key_expiry("ABCD1234", &is_expired);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should succeed with 8-char hex");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Test with 12 characters (invalid length)
   result = check_gpg_key_expiry("ABCD12345678", &is_expired);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should succeed but warn for wrong length");
-  ASCIICHAT_REQUIRE_EQ(is_expired, false, "Should assume not expired for wrong length");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((is_expired) == (false));
 }
 
 TEST_CASE("gpg_key_expiry/nonexistent_key", "[gpg_key_expiry]") {
@@ -160,18 +160,18 @@ TEST_CASE("gpg_key_expiry/nonexistent_key", "[gpg_key_expiry]") {
   // Test with a key that doesn't exist in keyring
   asciichat_error_t result = check_gpg_key_expiry("AAAAAAAAAAAAAAAA", &is_expired);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should succeed even if key not found");
-  ASCIICHAT_REQUIRE_EQ(is_expired, false, "Should assume not expired if key not found");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((is_expired) == (false));
 }
 
 TEST_CASE("gpg_key_expiry/check_expired_key_detected", "[gpg_key_expiry]") {
   bool is_expired = false; // Start with false to ensure it gets set to true
 
-  ASCIICHAT_REQUIRE_NOT_NULL(expired_key_id, "Expired key ID should be set by fixture");
+  REQUIRE((expired_key_id) != nullptr);
 
   // Test with the expired key ID
   asciichat_error_t result = check_gpg_key_expiry(expired_key_id, &is_expired);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "check_gpg_key_expiry should succeed");
-  ASCIICHAT_REQUIRE_EQ(is_expired, true, "Key with past expiry date should be detected as expired");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((is_expired) == (true));
 }

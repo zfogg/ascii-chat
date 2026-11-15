@@ -2,6 +2,10 @@
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/common/limits.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Connection-local ordered Ed25519 create sequence. Never persists partial sets.
  * @brief The useful part of acds create key set is in `request`, `count`: together they describe what is pending, who
  * owns it, and how much data is valid. Keep the object with its parent operation and use the parent cleanup path.
@@ -17,3 +21,7 @@ typedef struct {
  * Errors clear the sequence. complete is true only when every key is present. */
 asciichat_error_t acds_create_key_set_collect(acds_create_key_set_t *set, const acip_session_create_t *req,
                                               bool require_identity, bool *complete);
+
+#ifdef __cplusplus
+}
+#endif

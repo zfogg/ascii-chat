@@ -1,7 +1,4 @@
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -11,7 +8,7 @@
 
 #include <libplatform/terminal.h>
 #include <libplatform/system.h>
-#include <ascii-chat/tests/common.h>
+#include <ascii-chat/options/options.h>
 #include <ascii-chat/tests/logging.h>
 
 #define setenv(name, value, overwrite) platform_setenv((name), (value))
@@ -29,24 +26,24 @@ static inline terminal_capabilities_t detect_terminal_capabilities_test(const te
 TEST_CASE("terminal_detect/hyperlink_format_and_plain_fallback", "[terminal_detect]") {
   char output[128];
   int length = terminal_format_hyperlink(output, sizeof(output), "https://ascii-chat.com", "ascii-chat.com", true);
-  ASCIICHAT_REQUIRE_GT(length, 0);
-  ASCIICHAT_REQUIRE_EQ((size_t)length, strlen(output));
-  ASCIICHAT_REQUIRE_STR_EQ(output, "\033]8;;https://ascii-chat.com\033\\\033[4mascii-chat.com\033[24m\033]8;;\033\\");
-  ASCIICHAT_REQUIRE_EQ(terminal_format_hyperlink(output, sizeof(output), "https://ascii-chat.com", "ascii-chat.com", false), 14);
-  ASCIICHAT_REQUIRE_STR_EQ(output, "ascii-chat.com");
+  REQUIRE((length) > (0));
+  REQUIRE(((size_t)length) == (strlen(output)));
+  REQUIRE(std::strcmp((output), ("\033]8;;https://ascii-chat.com\033\\\033[4mascii-chat.com\033[24m\033]8;;\033\\")) == 0);
+  REQUIRE((terminal_format_hyperlink(output, sizeof(output), "https://ascii-chat.com", "ascii-chat.com", false)) == (14));
+  REQUIRE(std::strcmp((output), ("ascii-chat.com")) == 0);
 }
 
 TEST_CASE("terminal_detect/hyperlink_rejects_controls_and_partial_output", "[terminal_detect]") {
   char output[128] = "unchanged";
-  ASCIICHAT_REQUIRE_EQ(terminal_format_hyperlink(output, sizeof(output), "https://example.com\033]8;;evil", "site", true), -1);
-  ASCIICHAT_REQUIRE_STR_EQ(output, "");
-  ASCIICHAT_REQUIRE_EQ(terminal_format_hyperlink(output, sizeof(output), "https://example.com", "site\n", true), -1);
-  ASCIICHAT_REQUIRE_STR_EQ(output, "");
-  ASCIICHAT_REQUIRE_EQ(terminal_format_hyperlink(output, 4, "https://example.com", "site", true), -1);
-  ASCIICHAT_REQUIRE_STR_EQ(output, "");
-  ASCIICHAT_REQUIRE_EQ(terminal_format_hyperlink(output, 4, "https://example.com", "site", false), -1);
-  ASCIICHAT_REQUIRE_STR_EQ(output, "");
-  ASCIICHAT_REQUIRE_EQ(terminal_format_hyperlink(NULL, 0, "https://example.com", "site", true), -1);
+  REQUIRE((terminal_format_hyperlink(output, sizeof(output), "https://example.com\033]8;;evil", "site", true)) == (-1));
+  REQUIRE(std::strcmp((output), ("")) == 0);
+  REQUIRE((terminal_format_hyperlink(output, sizeof(output), "https://example.com", "site\n", true)) == (-1));
+  REQUIRE(std::strcmp((output), ("")) == 0);
+  REQUIRE((terminal_format_hyperlink(output, 4, "https://example.com", "site", true)) == (-1));
+  REQUIRE(std::strcmp((output), ("")) == 0);
+  REQUIRE((terminal_format_hyperlink(output, 4, "https://example.com", "site", false)) == (-1));
+  REQUIRE(std::strcmp((output), ("")) == 0);
+  REQUIRE((terminal_format_hyperlink(NULL, 0, "https://example.com", "site", true)) == (-1));
 }
 
 /* ============================================================================
@@ -59,15 +56,15 @@ TEST_CASE("terminal_detect/get_terminal_size_basic", "[terminal_detect]") {
   int result = get_terminal_size(&width, &height);
 
   // Should return valid dimensions (may be 0 if not in terminal)
-  ASCIICHAT_REQUIRE_GE(width, 0);
-  ASCIICHAT_REQUIRE_GE(height, 0);
+  REQUIRE((width) >= (0));
+  REQUIRE((height) >= (0));
 
   // If we're in a terminal, dimensions should be reasonable
   if (result == 0) {
-    ASCIICHAT_REQUIRE_GT(width, 0);
-    ASCIICHAT_REQUIRE_GT(height, 0);
-    ASCIICHAT_REQUIRE_LE(width, 1000); // Reasonable upper bound
-    ASCIICHAT_REQUIRE_LE(height, 1000);
+    REQUIRE((width) > (0));
+    REQUIRE((height) > (0));
+    REQUIRE((width) <= (1000)); // Reasonable upper bound
+    REQUIRE((height) <= (1000));
   }
 }
 
@@ -84,12 +81,12 @@ TEST_CASE("terminal_detect/detect_terminal_capabilities_basic", "[terminal_detec
   terminal_capabilities_t caps = detect_terminal_capabilities();
 
   // Basic sanity checks
-  ASCIICHAT_REQUIRE_NOT_NULL(caps.term_type);
-  ASCIICHAT_REQUIRE_LE(caps.color_level, TERM_COLOR_TRUECOLOR);
-  ASCIICHAT_REQUIRE_GE(caps.color_count, 0);
+  REQUIRE((caps.term_type) != nullptr);
+  REQUIRE((caps.color_level) <= (TERM_COLOR_TRUECOLOR));
+  REQUIRE((caps.color_count) >= (0));
 
   // Render mode should be valid
-  ASCIICHAT_REQUIRE(caps.render_mode == RENDER_MODE_FOREGROUND || caps.render_mode == RENDER_MODE_BACKGROUND || caps.render_mode == RENDER_MODE_HALF_BLOCK);
+  REQUIRE((caps.render_mode == RENDER_MODE_FOREGROUND || caps.render_mode == RENDER_MODE_BACKGROUND || caps.render_mode == RENDER_MODE_HALF_BLOCK));
 }
 
 // Parameterized test for COLORTERM variable detection
@@ -127,15 +124,15 @@ TEST_CASE("terminal_detect/colorterm_variable_detection_parameterized", "[termin
 
   terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
 
-  ASCIICHAT_REQUIRE_EQ(caps.color_level, tc->expected_color_level, "%s: expected color level %d, got %d", tc->description, tc->expected_color_level, caps.color_level);
+  REQUIRE((caps.color_level) == (tc->expected_color_level));
 
   if (tc->expected_color_count > 0) {
-    ASCIICHAT_REQUIRE_EQ(caps.color_count, tc->expected_color_count, "%s: expected %d colors, got %d", tc->description, tc->expected_color_count, caps.color_count);
+    REQUIRE((caps.color_count) == (tc->expected_color_count));
   }
 
   if (tc->should_have_truecolor_cap) {
     uint32_t result = caps.capabilities & TERM_CAP_COLOR_TRUE;
-    ASCIICHAT_REQUIRE_NE(result, 0, "%s: expected TERM_CAP_COLOR_TRUE capability", tc->description);
+    REQUIRE((result) != (0));
   }
 
   // Restore original environment
@@ -186,14 +183,14 @@ TEST_CASE("terminal_detect/term_variable_color_detection_parameterized", "[termi
 
   terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
 
-  ASCIICHAT_REQUIRE_EQ(caps.color_level, tc->expected_color_level, "%s: expected color level %d, got %d", tc->description, tc->expected_color_level, caps.color_level);
+  REQUIRE((caps.color_level) == (tc->expected_color_level));
 
   if (tc->expected_color_count > 0) {
-    ASCIICHAT_REQUIRE_EQ(caps.color_count, tc->expected_color_count, "%s: expected %d colors, got %d", tc->description, tc->expected_color_count, caps.color_count);
+    REQUIRE((caps.color_count) == (tc->expected_color_count));
   }
 
   if (tc->expected_capability_flag != 0) {
-    ASCIICHAT_REQUIRE_NE(caps.capabilities & tc->expected_capability_flag, 0, "%s: expected capability flag 0x%x", tc->description, tc->expected_capability_flag);
+    REQUIRE((caps.capabilities & tc->expected_capability_flag) != (0));
   }
 
   // Restore original environment
@@ -253,10 +250,10 @@ TEST_CASE("terminal_detect/utf8_support_detection_parameterized", "[terminal_det
 
   terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
 
-  ASCIICHAT_REQUIRE_EQ(caps.utf8_support, tc->expected_utf8_support, "%s: expected UTF-8 support=%d, got %d", tc->description, tc->expected_utf8_support, caps.utf8_support);
+  REQUIRE((caps.utf8_support) == (tc->expected_utf8_support));
 
   if (tc->expected_utf8_support) {
-    ASCIICHAT_REQUIRE_NE(caps.capabilities & TERM_CAP_UTF8, 0, "%s: expected TERM_CAP_UTF8 capability", tc->description);
+    REQUIRE((caps.capabilities & TERM_CAP_UTF8) != (0));
   }
 
   // Restore original environment
@@ -291,8 +288,8 @@ TEST_CASE("terminal_detect/render_mode_selection", "[terminal_detect]") {
   setenv("TERM", "xterm-256color", 1);
   setenv("LANG", "en_US.UTF-8", 1);
   terminal_capabilities_t caps = detect_terminal_capabilities();
-  ASCIICHAT_REQUIRE_EQ(caps.render_mode, RENDER_MODE_FOREGROUND); // Always defaults to foreground
-  ASCIICHAT_REQUIRE_NE(caps.capabilities & TERM_CAP_BACKGROUND, 0);
+  REQUIRE((caps.render_mode) == (RENDER_MODE_FOREGROUND)); // Always defaults to foreground
+  REQUIRE((caps.capabilities & TERM_CAP_BACKGROUND) != (0));
 
   // Test foreground mode (color without UTF-8)
   setenv("TERM", "xterm-color", 1);
@@ -300,14 +297,14 @@ TEST_CASE("terminal_detect/render_mode_selection", "[terminal_detect]") {
   unsetenv("LC_ALL");   // Clear LC_ALL which takes precedence
   unsetenv("LC_CTYPE"); // Clear LC_CTYPE which also affects UTF-8 detection
   caps = detect_terminal_capabilities();
-  ASCIICHAT_REQUIRE_EQ(caps.render_mode, RENDER_MODE_FOREGROUND);
+  REQUIRE((caps.render_mode) == (RENDER_MODE_FOREGROUND));
 
   // Test monochrome fallback
   setenv("TERM", "dumb", 1);
   setenv("LANG", "C", 1);
   caps = detect_terminal_capabilities();
-  ASCIICHAT_REQUIRE_EQ(caps.render_mode, RENDER_MODE_FOREGROUND);
-  ASCIICHAT_REQUIRE_EQ(caps.color_level, TERM_COLOR_NONE);
+  REQUIRE((caps.render_mode) == (RENDER_MODE_FOREGROUND));
+  REQUIRE((caps.color_level) == (TERM_COLOR_NONE));
 
   // Restore original environment
   if (original_term) {
@@ -338,13 +335,13 @@ TEST_CASE("terminal_detect/capability_flags", "[terminal_detect]") {
   // Test truecolor capabilities
   setenv("COLORTERM", "truecolor", 1);
   terminal_capabilities_t caps = detect_terminal_capabilities();
-  ASCIICHAT_REQUIRE_NE(caps.capabilities & TERM_CAP_COLOR_TRUE, 0);
-  ASCIICHAT_REQUIRE_NE(caps.capabilities & TERM_CAP_COLOR_256, 0);
-  ASCIICHAT_REQUIRE_NE(caps.capabilities & TERM_CAP_COLOR_16, 0);
+  REQUIRE((caps.capabilities & TERM_CAP_COLOR_TRUE) != (0));
+  REQUIRE((caps.capabilities & TERM_CAP_COLOR_256) != (0));
+  REQUIRE((caps.capabilities & TERM_CAP_COLOR_16) != (0));
 
   // Test UTF-8 capability
   if (caps.utf8_support) {
-    ASCIICHAT_REQUIRE_NE(caps.capabilities & TERM_CAP_UTF8, 0);
+    REQUIRE((caps.capabilities & TERM_CAP_UTF8) != (0));
   }
 
   // Restore original environment
@@ -370,15 +367,15 @@ TEST_CASE("terminal_detect/terminal_type_storage", "[terminal_detect]") {
   setenv("TERM", "xterm-256color", 1);
   setenv("COLORTERM", "truecolor", 1);
   terminal_capabilities_t caps = detect_terminal_capabilities();
-  ASCIICHAT_REQUIRE_STR_EQ(caps.term_type, "xterm-256color");
-  ASCIICHAT_REQUIRE_STR_EQ(caps.colorterm, "truecolor");
+  REQUIRE(std::strcmp((caps.term_type), ("xterm-256color")) == 0);
+  REQUIRE(std::strcmp((caps.colorterm), ("truecolor")) == 0);
 
   // Test unknown terminal
   unsetenv("TERM");
   unsetenv("COLORTERM");
   caps = detect_terminal_capabilities();
-  ASCIICHAT_REQUIRE_STR_EQ(caps.term_type, "unknown");
-  ASCIICHAT_REQUIRE_STR_EQ(caps.colorterm, "");
+  REQUIRE(std::strcmp((caps.term_type), ("unknown")) == 0);
+  REQUIRE(std::strcmp((caps.colorterm), ("")) == 0);
 
   // Restore original environment
   if (original_term) {
@@ -395,14 +392,14 @@ TEST_CASE("terminal_detect/terminal_type_storage", "[terminal_detect]") {
  * ============================================================================ */
 
 TEST_CASE("terminal_detect/color_level_names", "[terminal_detect]") {
-  ASCIICHAT_REQUIRE_STR_EQ(terminal_color_level_name(TERM_COLOR_NONE), "none");
-  ASCIICHAT_REQUIRE_STR_EQ(terminal_color_level_name(TERM_COLOR_16), "16-color");
-  ASCIICHAT_REQUIRE_STR_EQ(terminal_color_level_name(TERM_COLOR_256), "256-color");
-  ASCIICHAT_REQUIRE_STR_EQ(terminal_color_level_name(TERM_COLOR_TRUECOLOR), "truecolor");
+  REQUIRE(std::strcmp((terminal_color_level_name(TERM_COLOR_NONE)), ("none")) == 0);
+  REQUIRE(std::strcmp((terminal_color_level_name(TERM_COLOR_16)), ("16-color")) == 0);
+  REQUIRE(std::strcmp((terminal_color_level_name(TERM_COLOR_256)), ("256-color")) == 0);
+  REQUIRE(std::strcmp((terminal_color_level_name(TERM_COLOR_TRUECOLOR)), ("truecolor")) == 0);
 }
 
 TEST_CASE("terminal_detect/detection_reliability", "[terminal_detect]") {
   terminal_capabilities_t caps = detect_terminal_capabilities();
   // POSIX systems should generally have reliable detection
-  ASCIICHAT_REQUIRE(caps.detection_reliable);
+  REQUIRE(caps.detection_reliable);
 }

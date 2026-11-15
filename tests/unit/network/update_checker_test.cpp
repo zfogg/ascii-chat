@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 
 #include <ascii-chat/common.h>
@@ -19,15 +19,15 @@ static char *saved_xdg_config_home;
 
 static void set_test_config_root(void) {
   char directory[256];
-  ASCIICHAT_REQUIRE_EQ(platform_mkdtemp(directory, sizeof(directory), "ascii-chat-update-check"), ASCIICHAT_OK);
+  REQUIRE((platform_mkdtemp(directory, sizeof(directory), "ascii-chat-update-check")) == (ASCIICHAT_OK));
   test_config_root = platform_strdup(directory);
-  ASCIICHAT_REQUIRE_NOT_NULL(test_config_root, "strdup failed");
+  REQUIRE((test_config_root) != nullptr);
 
   const char *current = getenv("XDG_CONFIG_HOME");
   if (current) {
     saved_xdg_config_home = strdup(current);
   }
-  ASCIICHAT_REQUIRE_EQ(platform_setenv("XDG_CONFIG_HOME", test_config_root), 0);
+  REQUIRE((platform_setenv("XDG_CONFIG_HOME", test_config_root)) == (0));
 }
 
 static void restore_test_config_root(void) {
@@ -59,15 +59,15 @@ TEST_CASE("update_checker/cache_round_trip_preserves_release_link", "[update_che
   snprintf(expected.release_url, sizeof(expected.release_url), "https://github.com/zfogg/ascii-chat/releases/tag/v99.0.0");
   expected.last_check_time = time(NULL);
 
-  ASCIICHAT_REQUIRE_EQ(update_check_save_cache(&expected), ASCIICHAT_OK);
+  REQUIRE((update_check_save_cache(&expected)) == (ASCIICHAT_OK));
 
   update_check_result_t loaded = {0};
-  ASCIICHAT_REQUIRE_EQ(update_check_load_cache(&loaded), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_STR_EQ(loaded.latest_version, expected.latest_version);
-  ASCIICHAT_REQUIRE_STR_EQ(loaded.latest_sha, expected.latest_sha);
-  ASCIICHAT_REQUIRE_STR_EQ(loaded.release_url, expected.release_url);
-  ASCIICHAT_REQUIRE(loaded.update_available, "a newer cached release must be reported");
-  ASCIICHAT_REQUIRE(loaded.check_succeeded, "a valid cached release must be marked successful");
+  REQUIRE((update_check_load_cache(&loaded)) == (ASCIICHAT_OK));
+  REQUIRE(std::strcmp((loaded.latest_version), (expected.latest_version)) == 0);
+  REQUIRE(std::strcmp((loaded.latest_sha), (expected.latest_sha)) == 0);
+  REQUIRE(std::strcmp((loaded.release_url), (expected.release_url)) == 0);
+  REQUIRE(loaded.update_available);
+  REQUIRE(loaded.check_succeeded);
 
   restore_test_config_root();
 }
@@ -80,12 +80,12 @@ TEST_CASE("update_checker/cached_current_release_does_not_report_update", "[upda
   snprintf(expected.release_url, sizeof(expected.release_url), "https://github.com/zfogg/ascii-chat/releases/tag/%s", ASCII_CHAT_VERSION_STRING);
   expected.last_check_time = time(NULL);
 
-  ASCIICHAT_REQUIRE_EQ(update_check_save_cache(&expected), ASCIICHAT_OK);
+  REQUIRE((update_check_save_cache(&expected)) == (ASCIICHAT_OK));
 
   update_check_result_t loaded = {0};
-  ASCIICHAT_REQUIRE_EQ(update_check_load_cache(&loaded), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NOT(loaded.update_available, "the current cached release must not trigger an update notice");
-  ASCIICHAT_REQUIRE(loaded.check_succeeded, "a valid current-release cache must be marked successful");
+  REQUIRE((update_check_load_cache(&loaded)) == (ASCIICHAT_OK));
+  REQUIRE(!(loaded.update_available));
+  REQUIRE(loaded.check_succeeded);
 
   restore_test_config_root();
 }
@@ -95,17 +95,17 @@ TEST_CASE("update_checker/cache_without_release_link_is_rejected", "[update_chec
 
   char cache_dir[1024];
   snprintf(cache_dir, sizeof(cache_dir), "%s/ascii-chat", test_config_root);
-  ASCIICHAT_REQUIRE_EQ(platform_mkdir(cache_dir, 0700), 0);
+  REQUIRE((platform_mkdir(cache_dir, 0700)) == (0));
   char cache_path[1024];
   snprintf(cache_path, sizeof(cache_path), "%s/last_update_check", cache_dir);
   FILE *cache = fopen(cache_path, "w");
-  ASCIICHAT_REQUIRE_NOT_NULL(cache);
+  REQUIRE((cache) != nullptr);
   fprintf(cache, "%lld\nv99.0.0\n\n", (long long)time(NULL));
   fclose(cache);
 
   update_check_result_t loaded = {0};
-  ASCIICHAT_REQUIRE_NE(update_check_load_cache(&loaded), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(platform_access(cache_path, PLATFORM_ACCESS_EXISTS) != 0, "legacy cache should be deleted and treated as missing");
+  REQUIRE((update_check_load_cache(&loaded)) != (ASCIICHAT_OK));
+  REQUIRE(platform_access(cache_path, PLATFORM_ACCESS_EXISTS) != 0);
 
   restore_test_config_root();
 }
@@ -113,13 +113,13 @@ TEST_CASE("update_checker/cache_without_release_link_is_rejected", "[update_chec
 TEST_CASE("update_checker/cache_freshness_obeys_one_week_window", "[update_checker]") {
   update_check_result_t result = {0};
   result.last_check_time = time(NULL);
-  ASCIICHAT_REQUIRE(update_check_is_cache_fresh(&result));
+  REQUIRE(update_check_is_cache_fresh(&result));
 
   result.last_check_time = time(NULL) - (7 * 24 * 60 * 60);
-  ASCIICHAT_REQUIRE_NOT(update_check_is_cache_fresh(&result));
+  REQUIRE(!(update_check_is_cache_fresh(&result)));
 
   result.last_check_time = 0;
-  ASCIICHAT_REQUIRE_NOT(update_check_is_cache_fresh(&result));
+  REQUIRE(!(update_check_is_cache_fresh(&result)));
 }
 
 TEST_CASE("update_checker/notification_contains_action_and_exact_release_source", "[update_checker]") {
@@ -131,10 +131,10 @@ TEST_CASE("update_checker/notification_contains_action_and_exact_release_source"
   char notification[2048];
   update_check_format_notification(&result, notification, sizeof(notification));
 
-  ASCIICHAT_REQUIRE(strstr(notification, "v1.0.0") != NULL);
-  ASCIICHAT_REQUIRE(strstr(notification, "v2.0.0") != NULL);
-  ASCIICHAT_REQUIRE(strstr(notification, "https://github.com/zfogg/ascii-chat/releases/tag/v2.0.0") != NULL);
-  ASCIICHAT_REQUIRE(strstr(notification, "Download:") != NULL || strstr(notification, "Run:") != NULL);
+  REQUIRE(strstr(notification, "v1.0.0") != NULL);
+  REQUIRE(strstr(notification, "v2.0.0") != NULL);
+  REQUIRE(strstr(notification, "https://github.com/zfogg/ascii-chat/releases/tag/v2.0.0") != NULL);
+  REQUIRE((strstr(notification, "Download:") != NULL || strstr(notification, "Run:") != NULL));
 }
 
 TEST_CASE("update_checker/override_cache_directory_accepts_a_missing_or_existing_separator", "[update_checker]") {
@@ -150,18 +150,18 @@ TEST_CASE("update_checker/override_cache_directory_accepts_a_missing_or_existing
   expected.last_check_time = time(NULL);
   for (unsigned trailing = 0; trailing < 2; ++trailing) {
     snprintf(override, sizeof(override), "%s%s", directory, trailing ? "/" : "");
-    ASCIICHAT_REQUIRE_EQ(platform_setenv("ASCII_CHAT_UPDATE_CACHE_DIR", override), 0);
-    ASCIICHAT_REQUIRE_EQ(update_check_save_cache(&expected), ASCIICHAT_OK);
+    REQUIRE((platform_setenv("ASCII_CHAT_UPDATE_CACHE_DIR", override)) == (0));
+    REQUIRE((update_check_save_cache(&expected)) == (ASCIICHAT_OK));
     platform_stat_t status;
-    ASCIICHAT_REQUIRE_EQ(platform_stat(cache_path, &status), 0, "Cache must be inside the requested directory");
+    REQUIRE((platform_stat(cache_path, &status)) == (0));
     update_check_result_t loaded;
-    ASCIICHAT_REQUIRE_EQ(update_check_load_cache(&loaded), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_STR_EQ(loaded.latest_version, expected.latest_version);
+    REQUIRE((update_check_load_cache(&loaded)) == (ASCIICHAT_OK));
+    REQUIRE(std::strcmp((loaded.latest_version), (expected.latest_version)) == 0);
   }
   if (saved)
-    ASCIICHAT_REQUIRE_EQ(platform_setenv("ASCII_CHAT_UPDATE_CACHE_DIR", saved), 0);
+    REQUIRE((platform_setenv("ASCII_CHAT_UPDATE_CACHE_DIR", saved)) == (0));
   else
-    ASCIICHAT_REQUIRE_EQ(platform_unsetenv("ASCII_CHAT_UPDATE_CACHE_DIR"), 0);
+    REQUIRE((platform_unsetenv("ASCII_CHAT_UPDATE_CACHE_DIR")) == (0));
   SAFE_FREE(saved);
   (void)platform_unlink(cache_path);
   (void)platform_rmdir_recursive(directory);

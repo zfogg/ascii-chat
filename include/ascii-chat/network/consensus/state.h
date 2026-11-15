@@ -13,6 +13,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief State machine lifecycle states
  */
@@ -175,3 +179,7 @@ asciichat_error_t consensus_state_get_metric_at(const consensus_state_t *state, 
 
 /** Store a selector result while completing the current election. */
 asciichat_error_t consensus_state_store_election(consensus_state_t *state, int best, int backup);
+
+#ifdef __cplusplus
+}
+#endif

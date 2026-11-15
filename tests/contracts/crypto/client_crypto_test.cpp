@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include "client/connection_internal.h"
 #include "client/crypto.h"
@@ -24,7 +24,7 @@ static void crypto_discovery_disconnect(acds_client_t *client) {
 }
 static asciichat_error_t crypto_discovery_lookup(acds_client_t *client, const char *name, acds_session_lookup_result_t *result) {
   (void)client;
-  ASCIICHAT_REQUIRE_STR_EQ(name, "river-cloud-tree");
+  REQUIRE(std::strcmp((name), ("river-cloud-tree")) == 0);
   ++startup_lookups;
   memset(result, 0, sizeof(*result));
   result->found = !startup_session_missing;
@@ -33,8 +33,8 @@ static asciichat_error_t crypto_discovery_lookup(acds_client_t *client, const ch
   return startup_lookup_fails ? ERROR_NETWORK : ASCIICHAT_OK;
 }
 static asciichat_error_t crypto_discovery_verify(const char *host, const char *path, uint8_t key[32]) {
-  ASCIICHAT_REQUIRE_STR_EQ(host, "127.0.0.2");
-  ASCIICHAT_REQUIRE_STR_EQ(path, "fixture-discovery-key");
+  REQUIRE(std::strcmp((host), ("127.0.0.2")) == 0);
+  REQUIRE(std::strcmp((path), ("fixture-discovery-key")) == 0);
   ++startup_verifications;
   memset(key, 0x42, 32);
   return startup_key_fails ? ERROR_CRYPTO_AUTH : ASCIICHAT_OK;
@@ -56,7 +56,7 @@ static crypto_handshake_context_t local, peer;
 
 // The client adapter borrows its transport from the connection owner.
 asciichat_error_t client_connection_checkpoint(const char *stage) {
-  ASCIICHAT_REQUIRE_STR_EQ(stage, "crypto");
+  REQUIRE(std::strcmp((stage), ("crypto")) == 0);
   return startup_checkpoint_fails ? ERROR_THREAD : ASCIICHAT_OK;
 }
 
@@ -66,11 +66,11 @@ static acip_transport_t transport = {.methods = &methods};
 static void setup(void) {
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
-  ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(crypto_init(&local.crypto_ctx), CRYPTO_OK);
-  ASCIICHAT_REQUIRE_EQ(crypto_init(&peer.crypto_ctx), CRYPTO_OK);
-  ASCIICHAT_REQUIRE_EQ(crypto_set_peer_public_key(&local.crypto_ctx, peer.crypto_ctx.public_key), CRYPTO_OK);
-  ASCIICHAT_REQUIRE_EQ(crypto_set_peer_public_key(&peer.crypto_ctx, local.crypto_ctx.public_key), CRYPTO_OK);
+  REQUIRE((options_state_init()) == (ASCIICHAT_OK));
+  REQUIRE((crypto_init(&local.crypto_ctx)) == (CRYPTO_OK));
+  REQUIRE((crypto_init(&peer.crypto_ctx)) == (CRYPTO_OK));
+  REQUIRE((crypto_set_peer_public_key(&local.crypto_ctx, peer.crypto_ctx.public_key)) == (CRYPTO_OK));
+  REQUIRE((crypto_set_peer_public_key(&peer.crypto_ctx, local.crypto_ctx.public_key)) == (CRYPTO_OK));
   local.state = peer.state = CRYPTO_HANDSHAKE_READY;
   local.crypto_ctx.handshake_complete = peer.crypto_ctx.handshake_complete = true;
   local.crypto_ctx.rekey_last_time = peer.crypto_ctx.rekey_last_time = 0;
@@ -97,73 +97,73 @@ static void startup_security(bool verify_key) {
   v->discovery_port = 27002;
   if (verify_key)
     SAFE_STRNCPY(v->discovery_service_key, "fixture-discovery-key", sizeof(v->discovery_service_key));
-  ASCIICHAT_REQUIRE_EQ(options_state_set(v), ASCIICHAT_OK);
+  REQUIRE((options_state_set(v)) == (ASCIICHAT_OK));
   SAFE_FREE(v);
-  ASCIICHAT_REQUIRE_EQ(socket_init(), ASCIICHAT_OK);
+  REQUIRE((socket_init()) == (ASCIICHAT_OK));
   startup_listener = socket_create("crypto-startup-listener", AF_INET, SOCK_STREAM, 0);
-  ASCIICHAT_REQUIRE_NE(startup_listener, INVALID_SOCKET_VALUE);
+  REQUIRE((startup_listener) != (INVALID_SOCKET_VALUE));
   struct sockaddr_in address = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
-  ASCIICHAT_REQUIRE_EQ(socket_bind(startup_listener, (struct sockaddr *)&address, sizeof(address)), 0);
-  ASCIICHAT_REQUIRE_EQ(socket_listen(startup_listener, 1), 0);
+  REQUIRE((socket_bind(startup_listener, (struct sockaddr *)&address, sizeof(address))) == (0));
+  REQUIRE((socket_listen(startup_listener, 1)) == (0));
   socklen_t length = sizeof(address);
-  ASCIICHAT_REQUIRE_EQ(socket_getsockname(startup_listener, (struct sockaddr *)&address, &length), 0);
+  REQUIRE((socket_getsockname(startup_listener, (struct sockaddr *)&address, &length)) == (0));
   network_connect_config_t settings = {.timeout_ms = 1000};
-  ASCIICHAT_REQUIRE_EQ(network_connection_open("crypto-startup-peer", "127.0.0.1", NET_TO_HOST_U16(address.sin_port), &settings, &startup_owner, NULL), ASCIICHAT_OK);
+  REQUIRE((network_connection_open("crypto-startup-peer", "127.0.0.1", NET_TO_HOST_U16(address.sin_port), &settings, &startup_owner, NULL)) == (ASCIICHAT_OK));
   connection.network = startup_owner;
 }
 TEST_CASE("client_crypto/discovery_identity_is_verified_and_bound_to_the_expected_server_key", "[client_crypto]") {
   startup_security(true);
-  ASCIICHAT_REQUIRE_EQ(client_crypto_init(&connection, NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(startup_verifications, 1);
-  ASCIICHAT_REQUIRE_EQ(startup_connects, 1);
-  ASCIICHAT_REQUIRE_EQ(startup_lookups, 1);
-  ASCIICHAT_REQUIRE_EQ(startup_disconnects, 1);
-  ASCIICHAT_REQUIRE_STR_EQ(startup_observed.server_address, "127.0.0.2");
-  ASCIICHAT_REQUIRE_EQ(startup_observed.server_port, 27002);
-  ASCIICHAT_REQUIRE_EQ(startup_observed.timeout_ms, 5000);
-  ASCIICHAT_REQUIRE_EQ(connection.crypto_ctx, network_connection_handshake(startup_owner));
-  ASCIICHAT_REQUIRE(connection.crypto_ctx->verify_server_key);
-  ASCIICHAT_REQUIRE_STR_EQ(connection.crypto_ctx->expected_server_key, "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+  REQUIRE((client_crypto_init(&connection, NULL)) == (ASCIICHAT_OK));
+  REQUIRE((startup_verifications) == (1));
+  REQUIRE((startup_connects) == (1));
+  REQUIRE((startup_lookups) == (1));
+  REQUIRE((startup_disconnects) == (1));
+  REQUIRE(std::strcmp((startup_observed.server_address), ("127.0.0.2")) == 0);
+  REQUIRE((startup_observed.server_port) == (27002));
+  REQUIRE((startup_observed.timeout_ms) == (5000));
+  REQUIRE((connection.crypto_ctx) == (network_connection_handshake(startup_owner)));
+  REQUIRE(connection.crypto_ctx->verify_server_key);
+  REQUIRE(std::strcmp((connection.crypto_ctx->expected_server_key), ("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")) == 0);
 }
 TEST_CASE("client_crypto/failed_discovery_key_verification_does_not_attempt_an_untrusted_lookup", "[client_crypto]") {
   startup_security(true);
   startup_key_fails = true;
-  ASCIICHAT_REQUIRE_EQ(client_crypto_init(&connection, NULL), ERROR_CRYPTO_AUTH);
-  ASCIICHAT_REQUIRE_EQ(startup_verifications, 1);
-  ASCIICHAT_REQUIRE_EQ(startup_connects, 0);
-  ASCIICHAT_REQUIRE_EQ(startup_lookups, 0);
-  ASCIICHAT_REQUIRE_NOT(connection.crypto_ctx->verify_server_key);
+  REQUIRE((client_crypto_init(&connection, NULL)) == (ERROR_CRYPTO_AUTH));
+  REQUIRE((startup_verifications) == (1));
+  REQUIRE((startup_connects) == (0));
+  REQUIRE((startup_lookups) == (0));
+  REQUIRE(!(connection.crypto_ctx->verify_server_key));
 }
 TEST_CASE("client_crypto/discovery_connection_failure_is_fatal_to_required_identity_verification", "[client_crypto]") {
   startup_security(false);
   startup_connect_fails = true;
-  ASCIICHAT_REQUIRE_EQ(client_crypto_init(&connection, NULL), ERROR_CRYPTO_AUTH);
-  ASCIICHAT_REQUIRE_EQ(startup_connects, 1);
-  ASCIICHAT_REQUIRE_EQ(startup_lookups, 0);
-  ASCIICHAT_REQUIRE_EQ(startup_disconnects, 0);
+  REQUIRE((client_crypto_init(&connection, NULL)) == (ERROR_CRYPTO_AUTH));
+  REQUIRE((startup_connects) == (1));
+  REQUIRE((startup_lookups) == (0));
+  REQUIRE((startup_disconnects) == (0));
 }
 TEST_CASE("client_crypto/failed_discovery_lookup_does_not_publish_an_expected_key", "[client_crypto]") {
   startup_security(false);
   startup_lookup_fails = true;
-  ASCIICHAT_REQUIRE_EQ(client_crypto_init(&connection, NULL), ERROR_CRYPTO_AUTH);
-  ASCIICHAT_REQUIRE_EQ(startup_disconnects, 1);
-  ASCIICHAT_REQUIRE_NOT(connection.crypto_ctx->verify_server_key);
+  REQUIRE((client_crypto_init(&connection, NULL)) == (ERROR_CRYPTO_AUTH));
+  REQUIRE((startup_disconnects) == (1));
+  REQUIRE(!(connection.crypto_ctx->verify_server_key));
 }
 TEST_CASE("client_crypto/missing_discovery_session_does_not_publish_an_expected_key", "[client_crypto]") {
   startup_security(false);
   startup_session_missing = true;
-  ASCIICHAT_REQUIRE_EQ(client_crypto_init(&connection, NULL), ERROR_CRYPTO_AUTH);
-  ASCIICHAT_REQUIRE_EQ(startup_disconnects, 1);
-  ASCIICHAT_REQUIRE_NOT(connection.crypto_ctx->verify_server_key);
+  REQUIRE((client_crypto_init(&connection, NULL)) == (ERROR_CRYPTO_AUTH));
+  REQUIRE((startup_disconnects) == (1));
+  REQUIRE(!(connection.crypto_ctx->verify_server_key));
 }
 TEST_CASE("client_crypto/security_preparation_and_checkpoint_failures_do_not_start_identity_lookup", "[client_crypto]") {
   connection.network = NULL;
-  ASCIICHAT_REQUIRE_NE(client_crypto_init(&connection, NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(startup_connects, 0);
+  REQUIRE((client_crypto_init(&connection, NULL)) != (ASCIICHAT_OK));
+  REQUIRE((startup_connects) == (0));
   startup_security(false);
   startup_checkpoint_fails = true;
   CLEAR_ERRNO_ALL();
-  ASCIICHAT_REQUIRE_EQ(client_crypto_init(&connection, NULL), ERROR_THREAD);
-  ASCIICHAT_REQUIRE_EQ(startup_connects, 0);
-  ASCIICHAT_REQUIRE_EQ(connection.crypto_ctx, network_connection_handshake(startup_owner));
+  REQUIRE((client_crypto_init(&connection, NULL)) == (ERROR_THREAD));
+  REQUIRE((startup_connects) == (0));
+  REQUIRE((connection.crypto_ctx) == (network_connection_handshake(startup_owner)));
 }

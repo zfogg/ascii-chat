@@ -27,6 +27,10 @@
 #include "../common.h"
 #include <ascii-chat/ui/frame_buffer.h>
 #include <libplatform/terminal.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef struct network_server network_server_t;
 
 /**
@@ -148,3 +152,7 @@ void ui_status_log_append(const char *message);
  * Used to clear initialization logs before status screen starts rendering.
  */
 void ui_status_log_clear(void);
+
+#ifdef __cplusplus
+}
+#endif

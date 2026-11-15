@@ -1,5 +1,6 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
+#include <ascii-chat/common.h>
 #include "../../../src/common/session/client_like.h"
 #include "../../../src/common/session/capture.h"
 #include "../../../src/common/session/display.h"
@@ -95,23 +96,23 @@ static bool lifecycle_exit(void) {
   return exit_requested;
 }
 static bool lifecycle_custom_exit(void *data) {
-  ASCIICHAT_REQUIRE_EQ(data, &exit_requested);
+  REQUIRE((data) == (&exit_requested));
   return exit_requested;
 }
 static void lifecycle_sleep(unsigned ms) {
   slept += ms;
 }
 static asciichat_error_t lifecycle_attempt(session_capture_ctx_t *capture, session_display_ctx_t *display, void *data) {
-  ASCIICHAT_REQUIRE_EQ(capture, state.capture);
-  ASCIICHAT_REQUIRE_EQ(display, state.display);
-  ASCIICHAT_REQUIRE_EQ(data, &attempts);
+  REQUIRE((capture) == (state.capture));
+  REQUIRE((display) == (state.display));
+  REQUIRE((data) == (&attempts));
   ++attempts;
   return attempts >= 3 ? ASCIICHAT_OK : attempt_result;
 }
 static void setup(void) {
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
-  ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
+  REQUIRE((options_state_init()) == (ASCIICHAT_OK));
   static app_callbacks_t callbacks = {.should_exit = lifecycle_exit, .platform_sleep_ms = lifecycle_sleep};
   app_callbacks_register(&callbacks);
 }
@@ -150,22 +151,22 @@ TEST_CASE("client_lifecycle/optional_keepawake_failure_preserves_prior_errors_wi
   size_t notifications = errno_notifications_snapshot(NULL, ASCIICHAT_ERRNO_HISTORY_SIZE, NULL);
   asciichat_errno_scope_t scope = errno_scope_begin();
   keepawake_failure = true;
-  ASCIICHAT_REQUIRE_EQ(client_like_setup_keepawake(), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(keepawake_calls, 1);
-  ASCIICHAT_REQUIRE(errno_scope_is_clean(scope));
-  ASCIICHAT_REQUIRE(HAS_ERRNO_CODE(ERROR_NETWORK));
-  ASCIICHAT_REQUIRE_EQ(errno_notifications_snapshot(NULL, ASCIICHAT_ERRNO_HISTORY_SIZE, NULL), notifications);
+  REQUIRE((client_like_setup_keepawake()) == (ASCIICHAT_OK));
+  REQUIRE((keepawake_calls) == (1));
+  REQUIRE(errno_scope_is_clean(scope));
+  REQUIRE(HAS_ERRNO_CODE(ERROR_NETWORK));
+  REQUIRE((errno_notifications_snapshot(NULL, ASCIICHAT_ERRNO_HISTORY_SIZE, NULL)) == (notifications));
 }
 TEST_CASE("client_lifecycle/successful_keepawake_restores_error_cause_scope", "[client_lifecycle]") {
   SET_ERRNO(ERROR_NETWORK, "Earlier failure");
   asciichat_error_context_t previous, next;
-  ASCIICHAT_REQUIRE(errno_has(&previous));
+  REQUIRE(errno_has(&previous));
   keepawake_failure = false;
-  ASCIICHAT_REQUIRE_EQ(client_like_setup_keepawake(), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(keepawake_calls, 1);
+  REQUIRE((client_like_setup_keepawake()) == (ASCIICHAT_OK));
+  REQUIRE((keepawake_calls) == (1));
   SET_ERRNO(ERROR_INVALID_STATE, "Later failure");
-  ASCIICHAT_REQUIRE(errno_has(&next));
-  ASCIICHAT_REQUIRE_EQ(next.cause_id, previous.error_id);
+  REQUIRE(errno_has(&next));
+  REQUIRE((next.cause_id) == (previous.error_id));
 }
 static options_t *lifecycle_options(void) {
   options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
@@ -173,7 +174,7 @@ static options_t *lifecycle_options(void) {
   return v;
 }
 static void lifecycle_publish(options_t *v) {
-  ASCIICHAT_REQUIRE_EQ(options_state_set(v), ASCIICHAT_OK);
+  REQUIRE((options_state_set(v)) == (ASCIICHAT_OK));
   SAFE_FREE(v);
 }
 TEST_CASE("client_lifecycle/mirror_webcam_selection_validates_devices_but_explicit_sources_bypass_enumeration", "[client_lifecycle]") {
@@ -185,55 +186,55 @@ TEST_CASE("client_lifecycle/mirror_webcam_selection_validates_devices_but_explic
   v->webcam_index = 0;
   lifecycle_publish(v);
   fail_enumeration = true;
-  ASCIICHAT_REQUIRE_EQ(client_like_validate_mirror_webcam_selection(&c), ERROR_WEBCAM);
-  ASCIICHAT_REQUIRE_EQ(freed_lists, 0);
+  REQUIRE((client_like_validate_mirror_webcam_selection(&c)) == (ERROR_WEBCAM));
+  REQUIRE((freed_lists) == (0));
   fail_enumeration = false;
-  ASCIICHAT_REQUIRE_EQ(client_like_validate_mirror_webcam_selection(&c), ERROR_WEBCAM);
-  ASCIICHAT_REQUIRE_EQ(freed_lists, 1);
+  REQUIRE((client_like_validate_mirror_webcam_selection(&c)) == (ERROR_WEBCAM));
+  REQUIRE((freed_lists) == (1));
   devices_available = 1;
-  ASCIICHAT_REQUIRE_EQ(client_like_validate_mirror_webcam_selection(&c), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(freed_lists, 2);
+  REQUIRE((client_like_validate_mirror_webcam_selection(&c)) == (ASCIICHAT_OK));
+  REQUIRE((freed_lists) == (2));
   v = lifecycle_options();
   v->webcam_index = 2;
   lifecycle_publish(v);
-  ASCIICHAT_REQUIRE_EQ(client_like_validate_mirror_webcam_selection(&c), ERROR_WEBCAM);
-  ASCIICHAT_REQUIRE_EQ(freed_lists, 3);
+  REQUIRE((client_like_validate_mirror_webcam_selection(&c)) == (ERROR_WEBCAM));
+  REQUIRE((freed_lists) == (3));
   v = lifecycle_options();
   SAFE_STRNCPY(v->media_file, "explicit.ppm", sizeof(v->media_file));
   lifecycle_publish(v);
   unsigned before = enumerations;
-  ASCIICHAT_REQUIRE_EQ(client_like_validate_mirror_webcam_selection(&c), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(enumerations, before);
+  REQUIRE((client_like_validate_mirror_webcam_selection(&c)) == (ASCIICHAT_OK));
+  REQUIRE((enumerations) == (before));
   v = lifecycle_options();
   v->media_file[0] = 0;
   SAFE_STRNCPY(v->media_url, "http://127.0.0.1/test", sizeof(v->media_url));
   lifecycle_publish(v);
-  ASCIICHAT_REQUIRE_EQ(client_like_validate_mirror_webcam_selection(&c), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(enumerations, before);
+  REQUIRE((client_like_validate_mirror_webcam_selection(&c)) == (ASCIICHAT_OK));
+  REQUIRE((enumerations) == (before));
 }
 TEST_CASE("client_lifecycle/absent_required_run_and_conflicting_keepawake_fail_before_creating_display", "[client_lifecycle]") {
-  ASCIICHAT_REQUIRE_EQ(session_client_like_run(NULL), ERROR_INVALID_PARAM);
+  REQUIRE((session_client_like_run(NULL)) == (ERROR_INVALID_PARAM));
   session_client_like_config_t c = {0};
-  ASCIICHAT_REQUIRE_EQ(session_client_like_run(&c), ERROR_INVALID_PARAM);
+  REQUIRE((session_client_like_run(&c)) == (ERROR_INVALID_PARAM));
   options_t *v = lifecycle_options();
   v->enable_keepawake = v->disable_keepawake = true;
   lifecycle_publish(v);
-  ASCIICHAT_REQUIRE_EQ(client_like_setup_keepawake(), ERROR_INVALID_PARAM);
+  REQUIRE((client_like_setup_keepawake()) == (ERROR_INVALID_PARAM));
   fail_display = true;
-  ASCIICHAT_REQUIRE_EQ(client_like_create_session_display(&state), ERROR_DISPLAY);
-  ASCIICHAT_REQUIRE_NULL(state.display);
-  ASCIICHAT_REQUIRE_NULL(session_display_get_global_context());
+  REQUIRE((client_like_create_session_display(&state)) == (ERROR_DISPLAY));
+  REQUIRE((state.display) == nullptr);
+  REQUIRE((session_display_get_global_context()) == nullptr);
 }
 TEST_CASE("client_lifecycle/exit_adapters_combine_global_and_per_session_cancellation", "[client_lifecycle]") {
   g_current_config = (session_client_like_config_t){0};
-  ASCIICHAT_REQUIRE_NOT(client_like_capture_should_exit_adapter(NULL));
-  ASCIICHAT_REQUIRE_NOT(client_like_display_should_exit_adapter(NULL));
+  REQUIRE(!(client_like_capture_should_exit_adapter(NULL)));
+  REQUIRE(!(client_like_display_should_exit_adapter(NULL)));
   g_current_config.custom_should_exit = lifecycle_custom_exit;
   g_current_config.exit_user_data = &exit_requested;
-  ASCIICHAT_REQUIRE_NOT(client_like_capture_should_exit_adapter(NULL));
+  REQUIRE(!(client_like_capture_should_exit_adapter(NULL)));
   exit_requested = true;
-  ASCIICHAT_REQUIRE(client_like_capture_should_exit_adapter(NULL));
-  ASCIICHAT_REQUIRE(client_like_display_should_exit_adapter(NULL));
+  REQUIRE(client_like_capture_should_exit_adapter(NULL));
+  REQUIRE(client_like_display_should_exit_adapter(NULL));
   g_current_config = (session_client_like_config_t){0};
 }
 TEST_CASE("client_lifecycle/stdin_render_constraints_reject_width_and_reader_failure_before_allocating_capture", "[client_lifecycle]") {
@@ -246,16 +247,16 @@ TEST_CASE("client_lifecycle/stdin_render_constraints_reject_width_and_reader_fai
   v->width = 40;
   v->height = 12;
   lifecycle_publish(v);
-  ASCIICHAT_REQUIRE_EQ(client_like_create_network_capture(&c, &state), ERROR_USAGE);
-  ASCIICHAT_REQUIRE_NULL(state.capture);
-  ASCIICHAT_REQUIRE_NULL(g_stdin_reader);
+  REQUIRE((client_like_create_network_capture(&c, &state)) == (ERROR_USAGE));
+  REQUIRE((state.capture) == nullptr);
+  REQUIRE((g_stdin_reader) == nullptr);
   v = lifecycle_options();
   v->width = OPT_WIDTH_DEFAULT;
   lifecycle_publish(v);
   fail_reader = true;
-  ASCIICHAT_REQUIRE_EQ(client_like_create_network_capture(&c, &state), ERROR_MEDIA_INIT);
-  ASCIICHAT_REQUIRE_NULL(g_stdin_reader);
-  ASCIICHAT_REQUIRE_NULL(state.capture);
+  REQUIRE((client_like_create_network_capture(&c, &state)) == (ERROR_MEDIA_INIT));
+  REQUIRE((g_stdin_reader) == nullptr);
+  REQUIRE((state.capture) == nullptr);
 }
 TEST_CASE("client_lifecycle/capture_factory_failure_propagates_for_network_capture_without_creating_local_devices", "[client_lifecycle]") {
   session_client_like_config_t c = {.kind = SESSION_CLIENT_LIKE_KIND_CLIENT};
@@ -264,12 +265,12 @@ TEST_CASE("client_lifecycle/capture_factory_failure_propagates_for_network_captu
   options_t *v = lifecycle_options();
   v->render_file[0] = 0;
   lifecycle_publish(v);
-  ASCIICHAT_REQUIRE_EQ(client_like_create_network_capture(&c, &state), ERROR_MEDIA_INIT);
-  ASCIICHAT_REQUIRE_NULL(state.capture);
+  REQUIRE((client_like_create_network_capture(&c, &state)) == (ERROR_MEDIA_INIT));
+  REQUIRE((state.capture) == nullptr);
   fail_capture = false;
-  ASCIICHAT_REQUIRE_EQ(client_like_create_network_capture(&c, &state), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NOT_NULL(state.capture);
-  ASCIICHAT_REQUIRE_NULL(session_capture_get_media_source(state.capture));
+  REQUIRE((client_like_create_network_capture(&c, &state)) == (ASCIICHAT_OK));
+  REQUIRE((state.capture) != nullptr);
+  REQUIRE((session_capture_get_media_source(state.capture)) == nullptr);
 }
 TEST_CASE("client_lifecycle/mirror_audio_start_failure_retains_context_and_retries_only_after_options_change", "[client_lifecycle]") {
   options_t *v = lifecycle_options();
@@ -278,36 +279,36 @@ TEST_CASE("client_lifecycle/mirror_audio_start_failure_retains_context_and_retri
   v->audio_no_playback = true;
   lifecycle_publish(v);
   media_source_t *source = media_source_create(MEDIA_SOURCE_TEST, NULL);
-  ASCIICHAT_REQUIRE_NOT_NULL(source);
+  REQUIRE((source) != nullptr);
   state.probe_source = source;
   fail_audio_start = true;
   audio_context_t *audio = client_like_update_mirror_audio(source, &state);
-  ASCIICHAT_REQUIRE_NOT_NULL(audio);
-  ASCIICHAT_REQUIRE_NOT(state.audio_available);
-  ASCIICHAT_REQUIRE_NOT(audio->running);
-  ASCIICHAT_REQUIRE_EQ(audio_starts, 1);
-  ASCIICHAT_REQUIRE_EQ(client_like_update_mirror_audio(source, &state), audio);
-  ASCIICHAT_REQUIRE_EQ(audio_starts, 1);
+  REQUIRE((audio) != nullptr);
+  REQUIRE(!(state.audio_available));
+  REQUIRE(!(audio->running));
+  REQUIRE((audio_starts) == (1));
+  REQUIRE((client_like_update_mirror_audio(source, &state)) == (audio));
+  REQUIRE((audio_starts) == (1));
   v = lifecycle_options();
   v->fps = 45;
   lifecycle_publish(v);
   fail_audio_start = false;
-  ASCIICHAT_REQUIRE_EQ(client_like_update_mirror_audio(source, &state), audio);
-  ASCIICHAT_REQUIRE_EQ(audio_starts, 2);
-  ASCIICHAT_REQUIRE(state.audio_available);
-  ASCIICHAT_REQUIRE(audio->running);
-  ASCIICHAT_REQUIRE_EQ(client_like_update_mirror_audio(source, &state), audio);
-  ASCIICHAT_REQUIRE_EQ(audio_starts, 2);
+  REQUIRE((client_like_update_mirror_audio(source, &state)) == (audio));
+  REQUIRE((audio_starts) == (2));
+  REQUIRE(state.audio_available);
+  REQUIRE(audio->running);
+  REQUIRE((client_like_update_mirror_audio(source, &state)) == (audio));
+  REQUIRE((audio_starts) == (2));
   v = lifecycle_options();
   v->audio_enabled = false;
   lifecycle_publish(v);
   fail_audio_stop = true;
   client_like_update_mirror_audio(source, &state);
-  ASCIICHAT_REQUIRE(audio->running);
+  REQUIRE(audio->running);
   fail_audio_stop = false;
   client_like_update_mirror_audio(source, &state);
-  ASCIICHAT_REQUIRE_NOT(audio->running);
-  ASCIICHAT_REQUIRE_EQ(audio_stops, 2);
+  REQUIRE(!(audio->running));
+  REQUIRE((audio_stops) == (2));
 }
 TEST_CASE("client_lifecycle/mirror_audio_init_failure_has_no_context_and_file_audio_selection_preserves_source_ownership", "[client_lifecycle]") {
   options_t *v = lifecycle_options();
@@ -317,33 +318,33 @@ TEST_CASE("client_lifecycle/mirror_audio_init_failure_has_no_context_and_file_au
   v->audio_capture_source = AUDIO_CAPTURE_SOURCE_MEDIA;
   lifecycle_publish(v);
   media_source_t *source = media_source_create(MEDIA_SOURCE_TEST, NULL);
-  ASCIICHAT_REQUIRE_NOT_NULL(source);
+  REQUIRE((source) != nullptr);
   state.probe_source = source;
   fail_audio_init = true;
-  ASCIICHAT_REQUIRE_NULL(client_like_update_mirror_audio(source, &state));
-  ASCIICHAT_REQUIRE_NULL(state.audio_ctx);
-  ASCIICHAT_REQUIRE_EQ(audio_starts, 0);
+  REQUIRE((client_like_update_mirror_audio(source, &state)) == nullptr);
+  REQUIRE((state.audio_ctx) == nullptr);
+  REQUIRE((audio_starts) == (0));
   fail_audio_init = false;
   file_audio = true;
   v = lifecycle_options();
   v->fps = 45;
   lifecycle_publish(v);
   audio_context_t *audio = client_like_update_mirror_audio(source, &state);
-  ASCIICHAT_REQUIRE_NOT_NULL(audio);
-  ASCIICHAT_REQUIRE_EQ(audio->capture_media_source, source);
-  ASCIICHAT_REQUIRE(audio->monitor_local_media);
-  ASCIICHAT_REQUIRE(audio->playback_only);
+  REQUIRE((audio) != nullptr);
+  REQUIRE((audio->capture_media_source) == (source));
+  REQUIRE(audio->monitor_local_media);
+  REQUIRE(audio->playback_only);
 }
 TEST_CASE("client_lifecycle/default_retry_policy_obeys_limits_and_success_and_uses_bounded_rejection_backoff", "[client_lifecycle]") {
   session_client_like_config_t c = {.kind = SESSION_CLIENT_LIKE_KIND_CLIENT, .run_fn = lifecycle_attempt, .run_user_data = &attempts, .max_reconnect_attempts = 2, .reconnect_delay_ms = 125};
   attempt_result = ERROR_NETWORK;
-  ASCIICHAT_REQUIRE_EQ(client_like_run_session_attempts(&c, &state), ERROR_NETWORK);
-  ASCIICHAT_REQUIRE_EQ(attempts, 2);
-  ASCIICHAT_REQUIRE_EQ(slept, 125);
+  REQUIRE((client_like_run_session_attempts(&c, &state)) == (ERROR_NETWORK));
+  REQUIRE((attempts) == (2));
+  REQUIRE((slept) == (125));
   attempts = slept = 0;
   c.max_reconnect_attempts = -1;
   attempt_result = ERROR_SESSION_FULL;
-  ASCIICHAT_REQUIRE_EQ(client_like_run_session_attempts(&c, &state), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(attempts, 3);
-  ASCIICHAT_REQUIRE_EQ(slept, 6000);
+  REQUIRE((client_like_run_session_attempts(&c, &state)) == (ASCIICHAT_OK));
+  REQUIRE((attempts) == (3));
+  REQUIRE((slept) == (6000));
 }

@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file tests/integration/webrtc/test_turn_fallback.c
  * @brief Integration test for TURN relay fallback (symmetric NAT scenario)
@@ -13,10 +14,7 @@
  * @date February 2026
  */
 
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 
@@ -33,7 +31,7 @@
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 TEST_CASE("webrtc_turn_fallback/force_turn_relay", "[webrtc_turn_fallback]") {
-  ASCIICHAT_INFO("=== Testing TURN Relay Fallback (Symmetric NAT Simulation) ===");
+  INFO("=== Testing TURN Relay Fallback (Symmetric NAT Simulation) ===");
 
   // This test is disabled by default because it requires:
   // 1. A working TURN server with credentials
@@ -49,8 +47,8 @@ TEST_CASE("webrtc_turn_fallback/force_turn_relay", "[webrtc_turn_fallback]") {
   //
   // For now, this serves as documentation of what needs testing.
 
-  ASCIICHAT_WARN("TURN fallback test disabled - requires TURN server setup");
-  ASCIICHAT_INFO("See test source for setup instructions");
+  WARN("TURN fallback test disabled - requires TURN server setup");
+  INFO("See test source for setup instructions");
 }
 
 /**
@@ -60,7 +58,7 @@ TEST_CASE("webrtc_turn_fallback/force_turn_relay", "[webrtc_turn_fallback]") {
  * the ICE negotiation falls back to using TURN relay candidates.
  */
 TEST_CASE("webrtc_turn_fallback/relay_candidate_selection", "[webrtc_turn_fallback]") {
-  ASCIICHAT_INFO("=== Testing Relay Candidate Selection ===");
+  INFO("=== Testing Relay Candidate Selection ===");
 
   // Test would verify:
   // 1. ICE gathers relay candidates from TURN server
@@ -68,7 +66,7 @@ TEST_CASE("webrtc_turn_fallback/relay_candidate_selection", "[webrtc_turn_fallba
   // 3. Logs show "typ relay" candidates were used
   // 4. No host or srflx candidates present
 
-  ASCIICHAT_WARN("Relay candidate test disabled - requires TURN server");
+  WARN("Relay candidate test disabled - requires TURN server");
 }
 
 /**
@@ -80,7 +78,7 @@ TEST_CASE("webrtc_turn_fallback/relay_candidate_selection", "[webrtc_turn_fallba
  * - Handle packet loss gracefully
  */
 TEST_CASE("webrtc_turn_fallback/relay_performance", "[webrtc_turn_fallback]") {
-  ASCIICHAT_INFO("=== Testing TURN Relay Performance ===");
+  INFO("=== Testing TURN Relay Performance ===");
 
   // Test would verify:
   // 1. Data transmission works through relay
@@ -88,7 +86,7 @@ TEST_CASE("webrtc_turn_fallback/relay_performance", "[webrtc_turn_fallback]") {
   // 3. Connection stays stable for 30+ seconds
   // 4. Packet loss is within acceptable range (< 5%)
 
-  ASCIICHAT_WARN("Relay performance test disabled - requires TURN server");
+  WARN("Relay performance test disabled - requires TURN server");
 }
 
 /**
@@ -100,7 +98,7 @@ TEST_CASE("webrtc_turn_fallback/relay_performance", "[webrtc_turn_fallback]") {
  * - Graceful fallback if possible
  */
 TEST_CASE("webrtc_turn_fallback/turn_server_unreachable", "[webrtc_turn_fallback]") {
-  ASCIICHAT_INFO("=== Testing TURN Server Unreachable ===");
+  INFO("=== Testing TURN Server Unreachable ===");
 
   // This test can run without real TURN server (negative test)
   // It verifies that connection fails gracefully with clear error
@@ -113,8 +111,8 @@ TEST_CASE("webrtc_turn_fallback/turn_server_unreachable", "[webrtc_turn_fallback
   // 4. Verify clear error message
   // 5. Verify no memory leaks
 
-  ASCIICHAT_INFO("Testing graceful failure when TURN unreachable");
+  INFO("Testing graceful failure when TURN unreachable");
 
   // For now, just document expected behavior
-  ASCIICHAT_REQUIRE_STR_EQ("documented", "documented", "Test documents expected behavior");
+  REQUIRE(std::strcmp(("documented"), ("documented")) == 0);
 }

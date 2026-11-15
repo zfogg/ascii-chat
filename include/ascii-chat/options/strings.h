@@ -17,6 +17,10 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/enums.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // ============================================================================
 // Mode String Conversions
 // ============================================================================
@@ -85,3 +89,7 @@ const char *palette_type_to_string(palette_type_t type);
  * @return Suggested enum value, or NULL if no close match
  */
 const char *asciichat_suggest_enum_value(const char *option_name, const char *input);
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,9 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file tests/unit/network/consensus/test_metrics.c
  * @brief Tests for metrics collection and wire protocol
  */
 
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/network/consensus/metrics.h>
 #include <ascii-chat/tests/logging.h>
@@ -32,12 +32,12 @@ TEST_CASE("consensus_metrics/measure_basic", "[consensus_metrics]") {
   participant_metrics_t metrics;
   asciichat_error_t err = consensus_metrics_measure(my_id, &metrics);
 
-  ASCIICHAT_REQUIRE_EQ(err, ERROR_INVALID_STATE, "A session observation provider is required");
-  ASCIICHAT_REQUIRE_EQ(memcmp(metrics.participant_id, my_id, 16), 0, "ID should match");
-  ASCIICHAT_REQUIRE(metrics.nat_tier >= 0 && metrics.nat_tier <= 4, "NAT tier should be 0-4 range");
-  ASCIICHAT_REQUIRE_EQ(metrics.upload_kbps, 0, "Unknown upload must not become an observation");
-  ASCIICHAT_REQUIRE_EQ(metrics.measurement_window_ns, 0, "Missing observations have no measurement window");
-  ASCIICHAT_REQUIRE(metrics.stun_probe_success_pct >= 0 && metrics.stun_probe_success_pct <= 100, "Success rate should be 0-100 range");
+  REQUIRE((err) == (ERROR_INVALID_STATE));
+  REQUIRE((memcmp(metrics.participant_id, my_id, 16)) == (0));
+  REQUIRE((metrics.nat_tier >= 0 && metrics.nat_tier <= 4));
+  REQUIRE((metrics.upload_kbps) == (0));
+  REQUIRE((metrics.measurement_window_ns) == (0));
+  REQUIRE((metrics.stun_probe_success_pct >= 0 && metrics.stun_probe_success_pct <= 100));
 }
 
 /**
@@ -64,30 +64,30 @@ TEST_CASE("consensus_metrics/wire_format_roundtrip", "[consensus_metrics]") {
   // Serialize to wire format
   participant_metrics_t wire;
   asciichat_error_t err = consensus_metrics_to_wire(&original, &wire);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Serialization should succeed");
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   // Verify wire format has network byte order
-  ASCIICHAT_REQUIRE_EQ(wire.upload_kbps, endian_pack_u32(50000), "Upload should be in network order");
-  ASCIICHAT_REQUIRE_EQ(wire.rtt_ns, endian_pack_u32(25000000), "RTT should be in network order");
-  ASCIICHAT_REQUIRE_EQ(wire.public_port, endian_pack_u16(8080), "Port should be in network order");
-  ASCIICHAT_REQUIRE_EQ(wire.measurement_time_ns, endian_pack_u64(1704067200000000000ULL), "Time should be in network order");
-  ASCIICHAT_REQUIRE_EQ(wire.measurement_window_ns, endian_pack_u64(1000000000), "Window should be in network order");
+  REQUIRE((wire.upload_kbps) == (endian_pack_u32(50000)));
+  REQUIRE((wire.rtt_ns) == (endian_pack_u32(25000000)));
+  REQUIRE((wire.public_port) == (endian_pack_u16(8080)));
+  REQUIRE((wire.measurement_time_ns) == (endian_pack_u64(1704067200000000000ULL)));
+  REQUIRE((wire.measurement_window_ns) == (endian_pack_u64(1000000000)));
 
   // Deserialize back
   participant_metrics_t deserialized;
   err = consensus_metrics_from_wire(&wire, &deserialized);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Deserialization should succeed");
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   // Verify roundtrip matches original
-  ASCIICHAT_REQUIRE_EQ(memcmp(deserialized.participant_id, original.participant_id, 16), 0, "ID should match after roundtrip");
-  ASCIICHAT_REQUIRE_EQ(deserialized.nat_tier, original.nat_tier, "NAT tier should match");
-  ASCIICHAT_REQUIRE_EQ(deserialized.upload_kbps, original.upload_kbps, "Upload should match");
-  ASCIICHAT_REQUIRE_EQ(deserialized.rtt_ns, original.rtt_ns, "RTT should match");
-  ASCIICHAT_REQUIRE_EQ(deserialized.stun_probe_success_pct, original.stun_probe_success_pct, "Success rate should match");
-  ASCIICHAT_REQUIRE_EQ(strcmp(deserialized.public_address, original.public_address), 0, "Address should match");
-  ASCIICHAT_REQUIRE_EQ(deserialized.public_port, original.public_port, "Port should match");
-  ASCIICHAT_REQUIRE_EQ(deserialized.measurement_time_ns, original.measurement_time_ns, "Time should match");
-  ASCIICHAT_REQUIRE_EQ(deserialized.measurement_window_ns, original.measurement_window_ns, "Window should match");
+  REQUIRE((memcmp(deserialized.participant_id, original.participant_id, 16)) == (0));
+  REQUIRE((deserialized.nat_tier) == (original.nat_tier));
+  REQUIRE((deserialized.upload_kbps) == (original.upload_kbps));
+  REQUIRE((deserialized.rtt_ns) == (original.rtt_ns));
+  REQUIRE((deserialized.stun_probe_success_pct) == (original.stun_probe_success_pct));
+  REQUIRE((strcmp(deserialized.public_address, original.public_address)) == (0));
+  REQUIRE((deserialized.public_port) == (original.public_port));
+  REQUIRE((deserialized.measurement_time_ns) == (original.measurement_time_ns));
+  REQUIRE((deserialized.measurement_window_ns) == (original.measurement_window_ns));
 }
 
 /**
@@ -106,15 +106,15 @@ TEST_CASE("consensus_metrics/wire_format_byte_order", "[consensus_metrics]") {
   consensus_metrics_to_wire(&original, &wire);
 
   // Verify byte swaps occurred
-  ASCIICHAT_REQUIRE_NE(wire.upload_kbps, original.upload_kbps, "Upload should be byte-swapped");
-  ASCIICHAT_REQUIRE_NE(wire.rtt_ns, original.rtt_ns, "RTT should be byte-swapped");
-  ASCIICHAT_REQUIRE_NE(wire.public_port, original.public_port, "Port should be byte-swapped");
-  ASCIICHAT_REQUIRE_NE(wire.measurement_time_ns, original.measurement_time_ns, "Time should be byte-swapped");
-  ASCIICHAT_REQUIRE_NE(wire.measurement_window_ns, original.measurement_window_ns, "Window should be byte-swapped");
+  REQUIRE((wire.upload_kbps) != (original.upload_kbps));
+  REQUIRE((wire.rtt_ns) != (original.rtt_ns));
+  REQUIRE((wire.public_port) != (original.public_port));
+  REQUIRE((wire.measurement_time_ns) != (original.measurement_time_ns));
+  REQUIRE((wire.measurement_window_ns) != (original.measurement_window_ns));
 
   // Verify single-byte fields are NOT modified
-  ASCIICHAT_REQUIRE_EQ(wire.nat_tier, original.nat_tier, "Single-byte field should not change");
-  ASCIICHAT_REQUIRE_EQ(wire.stun_probe_success_pct, original.stun_probe_success_pct, "Single-byte field should not change");
+  REQUIRE((wire.nat_tier) == (original.nat_tier));
+  REQUIRE((wire.stun_probe_success_pct) == (original.stun_probe_success_pct));
 }
 
 /**
@@ -124,8 +124,8 @@ TEST_CASE("consensus_metrics/collection_create_destroy", "[consensus_metrics]") 
   consensus_metrics_collection_t *collection = NULL;
   asciichat_error_t err = consensus_metrics_collection_create(&collection);
 
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Creation should succeed");
-  ASCIICHAT_REQUIRE_NE(collection, NULL, "Collection should be allocated");
+  REQUIRE((err) == (ASCIICHAT_OK));
+  REQUIRE((collection) != (NULL));
 
   consensus_metrics_collection_destroy(collection);
   // Safe to destroy NULL
@@ -149,7 +149,7 @@ TEST_CASE("consensus_metrics/accumulate_metrics", "[consensus_metrics]") {
     metrics[i].stun_probe_success_pct = 90 + i;
 
     asciichat_error_t err = consensus_metrics_collection_add(collection, &metrics[i]);
-    ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Addition should succeed");
+    REQUIRE((err) == (ASCIICHAT_OK));
   }
 
   // Retrieve all metrics
@@ -157,15 +157,15 @@ TEST_CASE("consensus_metrics/accumulate_metrics", "[consensus_metrics]") {
   int count = 0;
   asciichat_error_t err = consensus_metrics_collection_get(collection, &stored_metrics, &count);
 
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Get should succeed");
-  ASCIICHAT_REQUIRE_EQ(count, 3, "Should have 3 metrics");
-  ASCIICHAT_REQUIRE_NE(stored_metrics, NULL, "Metrics pointer should be valid");
+  REQUIRE((err) == (ASCIICHAT_OK));
+  REQUIRE((count) == (3));
+  REQUIRE((stored_metrics) != (NULL));
 
   // Verify each metric
   for (int i = 0; i < 3; i++) {
-    ASCIICHAT_REQUIRE_EQ(stored_metrics[i].nat_tier, metrics[i].nat_tier, "NAT tier should match for participant %d", i);
-    ASCIICHAT_REQUIRE_EQ(stored_metrics[i].upload_kbps, metrics[i].upload_kbps, "Upload should match for participant %d", i);
-    ASCIICHAT_REQUIRE_EQ(stored_metrics[i].rtt_ns, metrics[i].rtt_ns, "RTT should match for participant %d", i);
+    REQUIRE((stored_metrics[i].nat_tier) == (metrics[i].nat_tier));
+    REQUIRE((stored_metrics[i].upload_kbps) == (metrics[i].upload_kbps));
+    REQUIRE((stored_metrics[i].rtt_ns) == (metrics[i].rtt_ns));
   }
 
   consensus_metrics_collection_destroy(collection);
@@ -186,7 +186,7 @@ TEST_CASE("consensus_metrics/collection_resize", "[consensus_metrics]") {
     metrics.upload_kbps = 1000 + i * 100;
 
     asciichat_error_t err = consensus_metrics_collection_add(collection, &metrics);
-    ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK, "Addition should succeed even after resize");
+    REQUIRE((err) == (ASCIICHAT_OK));
   }
 
   // Verify all metrics were added
@@ -194,12 +194,12 @@ TEST_CASE("consensus_metrics/collection_resize", "[consensus_metrics]") {
   int count = 0;
   consensus_metrics_collection_get(collection, &stored_metrics, &count);
 
-  ASCIICHAT_REQUIRE_EQ(count, 20, "Should have 20 metrics after resize");
+  REQUIRE((count) == (20));
 
   // Spot-check some metrics
-  ASCIICHAT_REQUIRE_EQ(stored_metrics[0].nat_tier, 0, "First metric should match");
-  ASCIICHAT_REQUIRE_EQ(stored_metrics[19].nat_tier, 4, "Last metric should match");
-  ASCIICHAT_REQUIRE_EQ(stored_metrics[10].upload_kbps, 2000, "Middle metric should match");
+  REQUIRE((stored_metrics[0].nat_tier) == (0));
+  REQUIRE((stored_metrics[19].nat_tier) == (4));
+  REQUIRE((stored_metrics[10].upload_kbps) == (2000));
 
   consensus_metrics_collection_destroy(collection);
 }
@@ -215,10 +215,10 @@ TEST_CASE("consensus_metrics/stun_probe_success", "[consensus_metrics]") {
   consensus_metrics_measure(my_id, &metrics);
 
   // Verify success rate is valid
-  ASCIICHAT_REQUIRE(metrics.stun_probe_success_pct >= 0 && metrics.stun_probe_success_pct <= 100, "Success rate should be 0-100 percent");
+  REQUIRE((metrics.stun_probe_success_pct >= 0 && metrics.stun_probe_success_pct <= 100));
 
   // In current implementation, should be exactly 90
-  ASCIICHAT_REQUIRE_EQ(metrics.stun_probe_success_pct, 0, "No probes means no observed successes");
+  REQUIRE((metrics.stun_probe_success_pct) == (0));
 }
 
 /**
@@ -230,16 +230,16 @@ TEST_CASE("consensus_metrics/invalid_parameters", "[consensus_metrics]") {
 
   // NULL output
   asciichat_error_t err = consensus_metrics_measure(id, NULL);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Should reject NULL output");
+  REQUIRE((err) != (ASCIICHAT_OK));
 
   // NULL input
   err = consensus_metrics_measure(NULL, &metrics);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Should reject NULL input");
+  REQUIRE((err) != (ASCIICHAT_OK));
 
   // Collection operations with NULL
   err = consensus_metrics_collection_add(NULL, &metrics);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Should reject NULL collection");
+  REQUIRE((err) != (ASCIICHAT_OK));
 
   err = consensus_metrics_collection_get(NULL, NULL, NULL);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK, "Should reject NULL collection");
+  REQUIRE((err) != (ASCIICHAT_OK));
 }

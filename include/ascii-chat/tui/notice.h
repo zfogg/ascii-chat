@@ -6,6 +6,10 @@
 #include <stdbool.h>
 #include <libplatform/question.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
   UI_NOTICE_INFO,
   UI_NOTICE_WARNING,
@@ -75,3 +79,7 @@ void ui_notice_announce(const char *file, int line, const char *func, const char
 
 /** Controller teardown writes pending notices to scrollback before releasing them. */
 void ui_notice_flush_snapshot(int fd, const void *snapshot);
+
+#ifdef __cplusplus
+}
+#endif

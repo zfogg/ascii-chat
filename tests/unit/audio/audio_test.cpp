@@ -1,7 +1,4 @@
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -10,7 +7,6 @@
 #include <math.h>
 #include <time.h>
 
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/buffer.h> // For buffer_system_init
 #include <ascii-chat/tests/logging.h>
@@ -28,7 +24,7 @@ TEST_CASE("audio/initialization_and_cleanup", "[audio]") {
   int result = audio_init(&ctx);
   // May fail if no audio device available - that's OK
   if (result == 0) {
-    ASCIICHAT_REQUIRE(ctx.initialized, "Context should be marked as initialized");
+    REQUIRE(ctx.initialized);
   }
 
   // Even if initialization fails (no audio device), cleanup should work
@@ -53,19 +49,19 @@ TEST_CASE("audio/multiple_init_cleanup_cycles", "[audio]") {
 TEST_CASE("audio/discard_pending_audio_on_consumer_read", "[audio]") {
   buffer_system_init();
   audio_ring_buffer_t *rb = audio_ring_buffer_create_for_capture();
-  ASCIICHAT_REQUIRE_NOT_NULL(rb);
+  REQUIRE((rb) != nullptr);
 
   float queued[4] = {0.25f, -0.25f, 0.5f, -0.5f};
   float readback[4] = {0};
-  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_write(rb, queued, 4), ASCIICHAT_OK);
+  REQUIRE((audio_ring_buffer_write(rb, queued, 4)) == (ASCIICHAT_OK));
 
   audio_ring_buffer_discard_pending(rb);
-  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_read(rb, readback, 4), 0);
+  REQUIRE((audio_ring_buffer_read(rb, readback, 4)) == (0));
 
-  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_write(rb, queued, 4), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_read(rb, readback, 4), 4);
+  REQUIRE((audio_ring_buffer_write(rb, queued, 4)) == (ASCIICHAT_OK));
+  REQUIRE((audio_ring_buffer_read(rb, readback, 4)) == (4));
   for (size_t i = 0; i < 4; i++) {
-    ASCIICHAT_REQUIRE_FLOAT_EQ(readback[i], queued[i], 0.0001f);
+    REQUIRE((readback[i]) == Catch::Approx(queued[i]));
   }
   audio_ring_buffer_destroy(rb);
 }
@@ -78,24 +74,24 @@ TEST_CASE("audio/flush_playback_buffers_discards_queued_audio", "[audio]") {
   ctx.processed_playback_rb = audio_ring_buffer_create();
   ctx.render_buffer = audio_ring_buffer_create();
   ctx.raw_render_rb = audio_ring_buffer_create();
-  ASCIICHAT_REQUIRE_NOT_NULL(ctx.playback_buffer);
-  ASCIICHAT_REQUIRE_NOT_NULL(ctx.processed_playback_rb);
-  ASCIICHAT_REQUIRE_NOT_NULL(ctx.render_buffer);
-  ASCIICHAT_REQUIRE_NOT_NULL(ctx.raw_render_rb);
+  REQUIRE((ctx.playback_buffer) != nullptr);
+  REQUIRE((ctx.processed_playback_rb) != nullptr);
+  REQUIRE((ctx.render_buffer) != nullptr);
+  REQUIRE((ctx.raw_render_rb) != nullptr);
 
   const float queued[] = {0.25f, -0.25f, 0.5f, -0.5f};
   float readback[sizeof(queued) / sizeof(queued[0])] = {0};
-  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_write(ctx.playback_buffer, queued, 4), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_write(ctx.processed_playback_rb, queued, 4), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_write(ctx.render_buffer, queued, 4), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_write(ctx.raw_render_rb, queued, 4), ASCIICHAT_OK);
+  REQUIRE((audio_ring_buffer_write(ctx.playback_buffer, queued, 4)) == (ASCIICHAT_OK));
+  REQUIRE((audio_ring_buffer_write(ctx.processed_playback_rb, queued, 4)) == (ASCIICHAT_OK));
+  REQUIRE((audio_ring_buffer_write(ctx.render_buffer, queued, 4)) == (ASCIICHAT_OK));
+  REQUIRE((audio_ring_buffer_write(ctx.raw_render_rb, queued, 4)) == (ASCIICHAT_OK));
 
   audio_flush_playback_buffers(&ctx);
 
-  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_read(ctx.playback_buffer, readback, 4), 0);
-  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_read(ctx.processed_playback_rb, readback, 4), 0);
-  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_read(ctx.render_buffer, readback, 4), 0);
-  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_read(ctx.raw_render_rb, readback, 4), 0);
+  REQUIRE((audio_ring_buffer_read(ctx.playback_buffer, readback, 4)) == (0));
+  REQUIRE((audio_ring_buffer_read(ctx.processed_playback_rb, readback, 4)) == (0));
+  REQUIRE((audio_ring_buffer_read(ctx.render_buffer, readback, 4)) == (0));
+  REQUIRE((audio_ring_buffer_read(ctx.raw_render_rb, readback, 4)) == (0));
   audio_ring_buffer_destroy(ctx.playback_buffer);
   audio_ring_buffer_destroy(ctx.processed_playback_rb);
   audio_ring_buffer_destroy(ctx.render_buffer);
@@ -129,7 +125,7 @@ TEST_CASE("audio/ringbuffer_operations", "[audio]") {
   buffer_system_init(); // Initialize buffer domain for ring buffer allocation
 
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
-  ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed");
+  REQUIRE((rb) != nullptr);
 
   // Prepare test data
   float *write_data = NULL;
@@ -150,21 +146,21 @@ TEST_CASE("audio/ringbuffer_operations", "[audio]") {
   int written = 0;
   if (tc->write_size > 0) {
     written = audio_ring_buffer_write(rb, write_data, tc->write_size);
-    ASCIICHAT_REQUIRE_GE(written, 0, "Write should not return negative for %s", tc->description);
-    ASCIICHAT_REQUIRE_LE(written, (int)tc->write_size, "Should not write more than requested for %s", tc->description);
+    REQUIRE((written) >= (0));
+    REQUIRE((written) <= ((int)tc->write_size));
   }
 
   // Test read operation
   int read = 0;
   if (tc->read_size > 0) {
     read = audio_ring_buffer_read(rb, read_data, tc->read_size);
-    ASCIICHAT_REQUIRE_GE(read, 0, "Read should not return negative for %s", tc->description);
-    ASCIICHAT_REQUIRE_LE(read, written, "Should not read more than written for %s", tc->description);
+    REQUIRE((read) >= (0));
+    REQUIRE((read) <= (written));
 
     if (tc->should_succeed && read > 0) {
       // Verify data integrity for what was actually read
       for (int i = 0; i < read; i++) {
-        ASCIICHAT_REQUIRE_FLOAT_EQ(read_data[i], write_data[i], 0.0001f, "Sample %d should match for %s", i, tc->description);
+        REQUIRE((read_data[i]) == Catch::Approx(write_data[i]));
       }
     }
   }
@@ -195,7 +191,7 @@ TEST_CASE("audio/ringbuffer_capacity_scenarios", "[audio]") {
   buffer_system_init(); // Initialize buffer domain for ring buffer allocation
 
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
-  ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed");
+  REQUIRE((rb) != nullptr);
 
   float *write_data = NULL;
   float *read_data = NULL;
@@ -214,19 +210,19 @@ TEST_CASE("audio/ringbuffer_capacity_scenarios", "[audio]") {
   // Perform write cycles
   for (size_t cycle = 0; cycle < tc->write_cycles; cycle++) {
     int written = audio_ring_buffer_write(rb, write_data, tc->buffer_size);
-    ASCIICHAT_REQUIRE_GE(written, 0, "Write cycle %zu should not fail for %s", cycle, tc->description);
+    REQUIRE((written) >= (0));
     total_written += written;
   }
 
   // Perform read cycles
   for (size_t cycle = 0; cycle < tc->read_cycles; cycle++) {
     int read = audio_ring_buffer_read(rb, read_data, tc->buffer_size);
-    ASCIICHAT_REQUIRE_GE(read, 0, "Read cycle %zu should not fail for %s", cycle, tc->description);
+    REQUIRE((read) >= (0));
     total_read += read;
   }
 
   // Verify we didn't read more than we wrote
-  ASCIICHAT_REQUIRE_LE(total_read, total_written, "Should not read more than written for %s", tc->description);
+  REQUIRE((total_read) <= (total_written));
 
   // Clean up
   SAFE_FREE(write_data);
@@ -243,11 +239,11 @@ TEST_CASE("audio/ringbuffer_roundtrip_property", "[audio]") {
 
   // Use capture buffer which disables jitter buffering for basic roundtrip testing
   audio_ring_buffer_t *rb = audio_ring_buffer_create_for_capture();
-  ASCIICHAT_ASSUME(rb != NULL);
+  if (!(rb != NULL)) SKIP("assumption not satisfied");
 
   float *test_data = SAFE_MALLOC(sample_count * sizeof(float), float *);
   float *read_data = SAFE_MALLOC(sample_count * sizeof(float), float *);
-  ASCIICHAT_ASSUME(test_data != NULL && read_data != NULL);
+  if (!(test_data != NULL && read_data != NULL)) SKIP("assumption not satisfied");
 
   // Fill test data with sine wave
   for (int i = 0; i < sample_count; i++) {
@@ -256,15 +252,15 @@ TEST_CASE("audio/ringbuffer_roundtrip_property", "[audio]") {
 
   // Write data
   asciichat_error_t result = audio_ring_buffer_write(rb, test_data, sample_count);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should write samples successfully for count=%d", sample_count);
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Read data back
   int read = audio_ring_buffer_read(rb, read_data, sample_count);
-  ASCIICHAT_REQUIRE_EQ(read, sample_count, "Should read all written samples for count=%d", sample_count);
+  REQUIRE((read) == (sample_count));
 
   // PROPERTY: Roundtrip must preserve data
   for (int i = 0; i < read; i++) {
-    ASCIICHAT_REQUIRE_FLOAT_EQ(read_data[i], test_data[i], 0.0001f, "Ringbuffer roundtrip must preserve sample %d/%d (expected %.6f, got %.6f)", i, read, test_data[i], read_data[i]);
+    REQUIRE((read_data[i]) == Catch::Approx(test_data[i]));
   }
 
   SAFE_FREE(test_data);
@@ -276,11 +272,11 @@ TEST_CASE("audio/ringbuffer_basic_operations", "[audio]") {
   buffer_system_init(); // Initialize buffer domain for ring buffer allocation
 
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
-  ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed");
+  REQUIRE((rb) != nullptr);
 
   // Test empty buffer properties
-  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_available_read(rb), 0, "Empty buffer should have 0 read space");
-  ASCIICHAT_REQUIRE_GT(audio_ring_buffer_available_write(rb), 0, "Empty buffer should have write space");
+  REQUIRE((audio_ring_buffer_available_read(rb)) == (0));
+  REQUIRE((audio_ring_buffer_available_write(rb)) > (0));
 
   audio_ring_buffer_destroy(rb);
 }
@@ -290,7 +286,7 @@ TEST_CASE("audio/ringbuffer_write_read", "[audio]") {
 
   // Use capture buffer which disables jitter buffering for basic read/write testing
   audio_ring_buffer_t *rb = audio_ring_buffer_create_for_capture();
-  ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed");
+  REQUIRE((rb) != nullptr);
 
   // Test basic write/read functionality without jitter buffer overhead
   const int num_samples = 3000;
@@ -304,16 +300,16 @@ TEST_CASE("audio/ringbuffer_write_read", "[audio]") {
 
   // Write data (this will fill the jitter buffer)
   asciichat_error_t write_result = audio_ring_buffer_write(rb, test_data, num_samples);
-  ASCIICHAT_REQUIRE_EQ(write_result, ASCIICHAT_OK, "Should write samples successfully");
-  ASCIICHAT_REQUIRE_GT(audio_ring_buffer_available_read(rb), 0, "Should have samples available to read");
+  REQUIRE((write_result) == (ASCIICHAT_OK));
+  REQUIRE((audio_ring_buffer_available_read(rb)) > (0));
 
   // Read data back (read returns number of samples read)
   int read = audio_ring_buffer_read(rb, read_data, num_samples);
-  ASCIICHAT_REQUIRE_EQ(read, num_samples, "Should read all written samples");
+  REQUIRE((read) == (num_samples));
 
   // Verify data integrity
   for (int i = 0; i < read; i++) {
-    ASCIICHAT_REQUIRE_FLOAT_EQ(read_data[i], test_data[i], 0.0001f, "Sample %d should match (expected %.6f, got %.6f)", i, test_data[i], read_data[i]);
+    REQUIRE((read_data[i]) == Catch::Approx(test_data[i]));
   }
 
   SAFE_FREE(test_data);
@@ -325,22 +321,22 @@ TEST_CASE("audio/ringbuffer_overflow_property", "[audio]") {
   int write_size = GENERATE(500, 1000, 2000, 4000, 8000);
 
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
-  ASCIICHAT_ASSUME(rb != NULL);
+  if (!(rb != NULL)) SKIP("assumption not satisfied");
 
   float *test_data = SAFE_MALLOC(write_size * sizeof(float), float *);
-  ASCIICHAT_ASSUME(test_data != NULL);
+  if (!(test_data != NULL)) SKIP("assumption not satisfied");
 
   for (int i = 0; i < write_size; i++) {
     test_data[i] = i * 0.001f;
   }
 
   int available_space = audio_ring_buffer_available_write(rb);
-  ASCIICHAT_REQUIRE_GT(available_space, 0, "Buffer should have write space");
+  REQUIRE((available_space) > (0));
 
   // PROPERTY: Write should not exceed available space
   int written = audio_ring_buffer_write(rb, test_data, write_size);
-  ASCIICHAT_REQUIRE_LE(written, available_space, "Should not write more than available space (requested=%d, available=%d)", write_size, available_space);
-  ASCIICHAT_REQUIRE_GE(written, 0, "Should not return negative for write_size=%d", write_size);
+  REQUIRE((written) <= (available_space));
+  REQUIRE((written) >= (0));
 
   SAFE_FREE(test_data);
   audio_ring_buffer_destroy(rb);
@@ -348,7 +344,7 @@ TEST_CASE("audio/ringbuffer_overflow_property", "[audio]") {
 
 TEST_CASE("audio/ringbuffer_overflow_behavior", "[audio]") {
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
-  ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed");
+  REQUIRE((rb) != nullptr);
 
   float test_data[2000]; // More than likely buffer capacity
 
@@ -357,12 +353,12 @@ TEST_CASE("audio/ringbuffer_overflow_behavior", "[audio]") {
   }
 
   int available_space = audio_ring_buffer_available_write(rb);
-  ASCIICHAT_REQUIRE_GT(available_space, 0, "Buffer should have write space");
+  REQUIRE((available_space) > (0));
 
   // Try to write more than buffer capacity
   int written = audio_ring_buffer_write(rb, test_data, 2000);
-  ASCIICHAT_REQUIRE_LE(written, available_space, "Should not write more than available space");
-  ASCIICHAT_REQUIRE_GE(written, 0, "Should not return negative");
+  REQUIRE((written) <= (available_space));
+  REQUIRE((written) >= (0));
 
   audio_ring_buffer_destroy(rb);
 }
@@ -370,7 +366,7 @@ TEST_CASE("audio/ringbuffer_overflow_behavior", "[audio]") {
 TEST_CASE("audio/ringbuffer_wrap_around", "[audio]") {
   // Use capture buffer which disables jitter buffering for basic wrap-around testing
   audio_ring_buffer_t *rb = audio_ring_buffer_create_for_capture();
-  ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed");
+  REQUIRE((rb) != nullptr);
 
   // Test wrap-around behavior without jitter buffer overhead
   const int batch_size = 3000;
@@ -386,20 +382,20 @@ TEST_CASE("audio/ringbuffer_wrap_around", "[audio]") {
 
   // Write first batch (fills jitter buffer)
   asciichat_error_t write_result1 = audio_ring_buffer_write(rb, data1, batch_size);
-  ASCIICHAT_REQUIRE_EQ(write_result1, ASCIICHAT_OK, "Should write first batch");
+  REQUIRE((write_result1) == (ASCIICHAT_OK));
 
   // Now jitter buffer is filled, we can read
   // Read partial data to make space
   int read1 = audio_ring_buffer_read(rb, read_data, batch_size / 2);
-  ASCIICHAT_REQUIRE_GT(read1, 0, "Should read partial data");
+  REQUIRE((read1) > (0));
 
   // Write second batch (may wrap around internally)
   asciichat_error_t write_result2 = audio_ring_buffer_write(rb, data2, batch_size);
-  ASCIICHAT_REQUIRE_EQ(write_result2, ASCIICHAT_OK, "Second write should succeed");
+  REQUIRE((write_result2) == (ASCIICHAT_OK));
 
   // Verify we can still read remaining data
   int remaining = audio_ring_buffer_available_read(rb);
-  ASCIICHAT_REQUIRE_GT(remaining, 0, "Should have data available after operations");
+  REQUIRE((remaining) > (0));
 
   SAFE_FREE(data1);
   SAFE_FREE(data2);
@@ -409,7 +405,7 @@ TEST_CASE("audio/ringbuffer_wrap_around", "[audio]") {
 
 TEST_CASE("audio/ringbuffer_concurrent_access_simulation", "[audio]") {
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
-  ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed");
+  REQUIRE((rb) != nullptr);
 
   float write_data[50], read_data[30];
 
@@ -420,12 +416,12 @@ TEST_CASE("audio/ringbuffer_concurrent_access_simulation", "[audio]") {
       write_data[i] = cycle * 100 + i;
     }
     int written = audio_ring_buffer_write(rb, write_data, 50);
-    ASCIICHAT_REQUIRE_GE(written, 0, "Should write some data in cycle %d (wrote %d)", cycle, written);
+    REQUIRE((written) >= (0));
 
     // Consumer reads (less than written to build up buffer)
     if (audio_ring_buffer_available_read(rb) >= 30) {
       int read = audio_ring_buffer_read(rb, read_data, 30);
-      ASCIICHAT_REQUIRE_GE(read, 0, "Should read samples in cycle %d (read %d)", cycle, read);
+      REQUIRE((read) >= (0));
     }
   }
 
@@ -447,13 +443,13 @@ TEST_CASE("audio/audio_context_operations", "[audio]") {
     return;
   }
 
-  ASCIICHAT_REQUIRE(ctx.initialized, "Context should be initialized");
-  ASCIICHAT_REQUIRE_NOT_NULL(ctx.capture_buffer, "Should have capture buffer");
-  ASCIICHAT_REQUIRE_NOT_NULL(ctx.playback_buffer, "Should have playback buffer");
+  REQUIRE(ctx.initialized);
+  REQUIRE((ctx.capture_buffer) != nullptr);
+  REQUIRE((ctx.playback_buffer) != nullptr);
 
   // Test cleanup
   audio_destroy(&ctx);
-  ASCIICHAT_REQUIRE(ctx.initialized == false, "Context should be marked uninitialized");
+  REQUIRE(ctx.initialized == false);
 }
 
 TEST_CASE("audio/audio_sample_buffer_operations", "[audio]") {
@@ -474,11 +470,11 @@ TEST_CASE("audio/audio_sample_buffer_operations", "[audio]") {
 
   // Test writing samples to playback buffer
   int written = audio_write_samples(&ctx, test_samples, 256);
-  ASCIICHAT_REQUIRE_GE(written, 0, "Should write samples successfully or return 0");
+  REQUIRE((written) >= (0));
 
   // Test reading samples (may return 0 if no input available)
   int read = audio_read_samples(&ctx, read_samples, 256);
-  ASCIICHAT_REQUIRE_GE(read, 0, "Should read samples or return 0");
+  REQUIRE((read) >= (0));
 
   audio_destroy(&ctx);
 }
@@ -488,7 +484,7 @@ TEST_CASE("audio/audio_sample_buffer_operations", "[audio]") {
 // =============================================================================
 
 TEST_CASE("audio/audio_duplex_operations", "[audio]") {
-  ASCIICHAT_SKIP("Skipped: audio device tests require audio hardware");
+  SKIP("test skipped");
 }
 
 // =============================================================================
@@ -497,13 +493,13 @@ TEST_CASE("audio/audio_duplex_operations", "[audio]") {
 
 TEST_CASE("audio/audio_constants", "[audio]") {
   // Test that audio constants are sensible
-  ASCIICHAT_REQUIRE_EQ(AUDIO_SAMPLE_RATE, 48000, "Sample rate should be 48kHz for Opus compatibility");
-  ASCIICHAT_REQUIRE_EQ(AUDIO_CHANNELS, 2, "Internal PCM preserves stereo audio");
-  ASCIICHAT_REQUIRE_GT(AUDIO_FRAMES_PER_BUFFER, 0, "Frame buffer size should be positive");
-  ASCIICHAT_REQUIRE_LE(AUDIO_FRAMES_PER_BUFFER, 2048, "Frame buffer should be reasonable size");
+  REQUIRE((AUDIO_SAMPLE_RATE) == (48000));
+  REQUIRE((AUDIO_CHANNELS) == (2));
+  REQUIRE((AUDIO_FRAMES_PER_BUFFER) > (0));
+  REQUIRE((AUDIO_FRAMES_PER_BUFFER) <= (2048));
 
   // Verify buffer size calculation
-  ASCIICHAT_REQUIRE_EQ(AUDIO_BUFFER_SIZE, AUDIO_FRAMES_PER_BUFFER * AUDIO_CHANNELS, "Buffer size should match frames × channels");
+  REQUIRE((AUDIO_BUFFER_SIZE) == (AUDIO_FRAMES_PER_BUFFER * AUDIO_CHANNELS));
 }
 
 TEST_CASE("audio/audio_realtime_priority", "[audio]") {
@@ -514,16 +510,16 @@ TEST_CASE("audio/audio_realtime_priority", "[audio]") {
   // In Docker/CI environments without CAP_SYS_NICE, this will fail
   // Skip the test if we can't set realtime priority (expected in containers)
   if (result != ASCIICHAT_OK) {
-    ASCIICHAT_SKIP("Cannot set realtime priority (likely running in Docker/container without CAP_SYS_NICE capability)");
+    SKIP("test skipped");
   }
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should set real-time priority on Linux with proper permissions");
+  REQUIRE((result) == (ASCIICHAT_OK));
 #elif defined(__APPLE__)
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should set real-time priority on macOS");
+  REQUIRE((result) == (ASCIICHAT_OK));
 #elif defined(_WIN32)
   log_warn("THIS DOESN'T ACTUALLY WORK");
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should set real-time priority on Windows");
+  REQUIRE((result) == (ASCIICHAT_OK));
 #else
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should set real-time priority on other platforms");
+  REQUIRE((result) != (ASCIICHAT_OK));
 #endif
 }
 
@@ -533,7 +529,7 @@ TEST_CASE("audio/audio_realtime_priority", "[audio]") {
 
 TEST_CASE("audio/audio_ring_buffer_stress_test", "[audio]") {
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
-  ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed");
+  REQUIRE((rb) != nullptr);
 
   float test_data[64];
   float read_data[64];
@@ -546,11 +542,11 @@ TEST_CASE("audio/audio_ring_buffer_stress_test", "[audio]") {
   // Perform many write/read cycles to stress test
   for (int cycle = 0; cycle < 100; cycle++) {
     int written = audio_ring_buffer_write(rb, test_data, 64);
-    ASCIICHAT_REQUIRE_GE(written, 0, "Write should not fail in cycle %d", cycle);
+    REQUIRE((written) >= (0));
 
     if (written > 0) {
       int read = audio_ring_buffer_read(rb, read_data, written);
-      ASCIICHAT_REQUIRE_EQ(read, written, "Should read what was written in cycle %d", cycle);
+      REQUIRE((read) == (written));
     }
   }
 
@@ -559,7 +555,7 @@ TEST_CASE("audio/audio_ring_buffer_stress_test", "[audio]") {
 
 TEST_CASE("audio/audio_ring_buffer_partial_operations", "[audio]") {
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
-  ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed");
+  REQUIRE((rb) != nullptr);
 
   float large_data[1024];
 
@@ -570,7 +566,7 @@ TEST_CASE("audio/audio_ring_buffer_partial_operations", "[audio]") {
 
   // Try to write large amount - may only write partial
   int written = audio_ring_buffer_write(rb, large_data, 1024);
-  ASCIICHAT_REQUIRE_GE(written, 0, "Should handle large writes gracefully");
+  REQUIRE((written) >= (0));
 
   // If something was written, we should be able to read it back
   if (written > 0) {
@@ -578,11 +574,11 @@ TEST_CASE("audio/audio_ring_buffer_partial_operations", "[audio]") {
     read_data = SAFE_MALLOC(written * sizeof(float), float *);
 
     int read = audio_ring_buffer_read(rb, read_data, written);
-    ASCIICHAT_REQUIRE_EQ(read, written, "Should read back all written data");
+    REQUIRE((read) == (written));
 
     // Verify data integrity
     for (int i = 0; i < read; i++) {
-      ASCIICHAT_REQUIRE_FLOAT_EQ(read_data[i], large_data[i], 0.0001f, "Sample %d should match", i);
+      REQUIRE((read_data[i]) == Catch::Approx(large_data[i]));
     }
 
     SAFE_FREE(read_data);
@@ -596,21 +592,21 @@ TEST_CASE("audio/audio_ring_buffer_partial_operations", "[audio]") {
 // =============================================================================
 
 TEST_CASE("audio/audio_context_integration", "[audio]") {
-  ASCIICHAT_SKIP("Skipped: audio device tests require audio hardware");
+  SKIP("test skipped");
 }
 
 TEST_CASE("audio/audio_buffer_size_consistency", "[audio]") {
   // Test that audio constants are consistent
-  ASCIICHAT_REQUIRE_GT(AUDIO_BUFFER_SIZE, 0, "Buffer size should be positive");
-  ASCIICHAT_REQUIRE_EQ(AUDIO_BUFFER_SIZE, AUDIO_FRAMES_PER_BUFFER * AUDIO_CHANNELS, "Buffer size should equal frames × channels");
+  REQUIRE((AUDIO_BUFFER_SIZE) > (0));
+  REQUIRE((AUDIO_BUFFER_SIZE) == (AUDIO_FRAMES_PER_BUFFER * AUDIO_CHANNELS));
 
   // Test reasonable buffer sizes for real-time audio
-  ASCIICHAT_REQUIRE_GE(AUDIO_FRAMES_PER_BUFFER, 64, "Frame buffer should be at least 64 samples");
-  ASCIICHAT_REQUIRE_LE(AUDIO_FRAMES_PER_BUFFER, 4096, "Frame buffer should not exceed 4096 samples");
+  REQUIRE((AUDIO_FRAMES_PER_BUFFER) >= (64));
+  REQUIRE((AUDIO_FRAMES_PER_BUFFER) <= (4096));
 
   // Test that sample rate is reasonable
-  ASCIICHAT_REQUIRE_GE(AUDIO_SAMPLE_RATE, 8000, "Sample rate should be at least 8kHz");
-  ASCIICHAT_REQUIRE_LE(AUDIO_SAMPLE_RATE, 192000, "Sample rate should not exceed 192kHz");
+  REQUIRE((AUDIO_SAMPLE_RATE) >= (8000));
+  REQUIRE((AUDIO_SAMPLE_RATE) <= (192000));
 }
 
 // =============================================================================
@@ -623,19 +619,19 @@ TEST_CASE("audio/null_pointer_handling", "[audio]") {
 
   // Test audio functions with NULL context
   int result = audio_read_samples(NULL, samples, 100);
-  ASCIICHAT_REQUIRE_NE(result, 100, "Reading with NULL context should fail or return 0");
+  REQUIRE((result) != (100));
 
   result = audio_write_samples(NULL, samples, 100);
-  ASCIICHAT_REQUIRE_NE(result, 100, "Writing with NULL context should fail or return 0");
+  REQUIRE((result) != (100));
 
   // Test with NULL buffer
   memset(&ctx, 0, sizeof(ctx));
   if (audio_init(&ctx) == 0) {
     result = audio_read_samples(&ctx, NULL, 100);
-    ASCIICHAT_REQUIRE_NE(result, 100, "Reading with NULL buffer should fail");
+    REQUIRE((result) != (100));
 
     result = audio_write_samples(&ctx, NULL, 100);
-    ASCIICHAT_REQUIRE_NE(result, 100, "Writing with NULL buffer should fail");
+    REQUIRE((result) != (100));
 
     audio_destroy(&ctx);
   }
@@ -649,10 +645,10 @@ TEST_CASE("audio/zero_sample_count_handling", "[audio]") {
   if (audio_init(&ctx) == 0) {
     // Functions should handle zero sample count gracefully
     asciichat_error_t result = audio_read_samples(&ctx, samples, 0);
-    ASCIICHAT_REQUIRE(result != ASCIICHAT_OK, "Zero sample read should return error");
+    REQUIRE(result != ASCIICHAT_OK);
 
     result = audio_write_samples(&ctx, samples, 0);
-    ASCIICHAT_REQUIRE(result != ASCIICHAT_OK, "Zero sample write should return error");
+    REQUIRE(result != ASCIICHAT_OK);
 
     audio_destroy(&ctx);
   }
@@ -660,23 +656,23 @@ TEST_CASE("audio/zero_sample_count_handling", "[audio]") {
 
 TEST_CASE("audio/ringbuffer_edge_cases", "[audio]") {
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
-  ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed");
+  REQUIRE((rb) != nullptr);
 
   float samples[100];
 
   // Test with NULL data pointer
   asciichat_error_t result = audio_ring_buffer_write(rb, NULL, 100);
-  ASCIICHAT_REQUIRE(result != ASCIICHAT_OK, "Writing NULL data should fail");
+  REQUIRE(result != ASCIICHAT_OK);
 
   int read_result = audio_ring_buffer_read(rb, NULL, 100);
-  ASCIICHAT_REQUIRE_EQ(read_result, 0, "Reading to NULL buffer should return 0");
+  REQUIRE((read_result) == (0));
 
   // Test with zero sample count
   result = audio_ring_buffer_write(rb, samples, 0);
-  ASCIICHAT_REQUIRE(result != ASCIICHAT_OK, "Writing zero samples should fail");
+  REQUIRE(result != ASCIICHAT_OK);
 
   read_result = audio_ring_buffer_read(rb, samples, 0);
-  ASCIICHAT_REQUIRE_EQ(read_result, 0, "Reading zero samples should return 0");
+  REQUIRE((read_result) == (0));
 
   audio_ring_buffer_destroy(rb);
 }
@@ -697,12 +693,12 @@ TEST_CASE("audio/buffer_sizes", "[audio]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(audio_buffer_cases));
   auto *tc = &generated_case;
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
-  ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed for %s", tc->description);
+  REQUIRE((rb) != nullptr);
 
   float *test_data = SAFE_MALLOC(tc->buffer_size * sizeof(float), float *);
   float *read_data = SAFE_MALLOC(tc->buffer_size * sizeof(float), float *);
-  ASCIICHAT_REQUIRE_NOT_NULL(test_data);
-  ASCIICHAT_REQUIRE_NOT_NULL(read_data);
+  REQUIRE((test_data) != nullptr);
+  REQUIRE((read_data) != nullptr);
 
   // Fill with test pattern
   for (size_t i = 0; i < tc->buffer_size; i++) {
@@ -710,15 +706,15 @@ TEST_CASE("audio/buffer_sizes", "[audio]") {
   }
 
   int written = audio_ring_buffer_write(rb, test_data, tc->buffer_size);
-  ASCIICHAT_REQUIRE_GE(written, 0, "Should write some data for %s", tc->description);
+  REQUIRE((written) >= (0));
 
   if (written > 0) {
     int read = audio_ring_buffer_read(rb, read_data, written);
-    ASCIICHAT_REQUIRE_EQ(read, written, "Should read all written data for %s", tc->description);
+    REQUIRE((read) == (written));
 
     // Verify data integrity for what was actually written/read
     for (int i = 0; i < read; i++) {
-      ASCIICHAT_REQUIRE_FLOAT_EQ(read_data[i], test_data[i], 0.0001f, "Sample %d should match for %s", i, tc->description);
+      REQUIRE((read_data[i]) == Catch::Approx(test_data[i]));
     }
   }
 
@@ -740,13 +736,13 @@ TEST_CASE("audio/frequency_tests", "[audio]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(audio_frequency_cases));
   auto *tc = &generated_case;
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
-  ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed for %s", tc->description);
+  REQUIRE((rb) != nullptr);
 
   const size_t sample_count = 256;
   float *test_data = SAFE_MALLOC(sample_count * sizeof(float), float *);
   float *read_data = SAFE_MALLOC(sample_count * sizeof(float), float *);
-  ASCIICHAT_REQUIRE_NOT_NULL(test_data);
-  ASCIICHAT_REQUIRE_NOT_NULL(read_data);
+  REQUIRE((test_data) != nullptr);
+  REQUIRE((read_data) != nullptr);
 
   // Generate sine wave at specified frequency
   for (size_t i = 0; i < sample_count; i++) {
@@ -754,11 +750,11 @@ TEST_CASE("audio/frequency_tests", "[audio]") {
   }
 
   int written = audio_ring_buffer_write(rb, test_data, sample_count);
-  ASCIICHAT_REQUIRE_GE(written, 0, "Should write some data for %s", tc->description);
+  REQUIRE((written) >= (0));
 
   if (written > 0) {
     int read = audio_ring_buffer_read(rb, read_data, written);
-    ASCIICHAT_REQUIRE_EQ(read, written, "Should read all written data for %s", tc->description);
+    REQUIRE((read) == (written));
   }
 
   SAFE_FREE(test_data);
@@ -778,13 +774,13 @@ TEST_CASE("audio/stress_tests", "[audio]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(audio_stress_cases));
   auto *tc = &generated_case;
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
-  ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed for %s", tc->description);
+  REQUIRE((rb) != nullptr);
 
   const size_t sample_count = 64;
   float *test_data = SAFE_MALLOC(sample_count * sizeof(float), float *);
   float *read_data = SAFE_MALLOC(sample_count * sizeof(float), float *);
-  ASCIICHAT_REQUIRE_NOT_NULL(test_data);
-  ASCIICHAT_REQUIRE_NOT_NULL(read_data);
+  REQUIRE((test_data) != nullptr);
+  REQUIRE((read_data) != nullptr);
 
   // Generate test pattern
   for (size_t i = 0; i < sample_count; i++) {
@@ -794,11 +790,11 @@ TEST_CASE("audio/stress_tests", "[audio]") {
   // Perform many write/read cycles
   for (int cycle = 0; cycle < tc->num_cycles; cycle++) {
     int written = audio_ring_buffer_write(rb, test_data, sample_count);
-    ASCIICHAT_REQUIRE_GE(written, 0, "Write should not fail in cycle %d for %s", cycle, tc->description);
+    REQUIRE((written) >= (0));
 
     if (written > 0) {
       int read = audio_ring_buffer_read(rb, read_data, written);
-      ASCIICHAT_REQUIRE_EQ(read, written, "Should read what was written in cycle %d for %s", cycle, tc->description);
+      REQUIRE((read) == (written));
     }
   }
 
@@ -822,14 +818,14 @@ TEST_CASE("audio/edge_cases", "[audio]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(audio_edge_cases));
   auto *tc = &generated_case;
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
-  ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed for %s", tc->description);
+  REQUIRE((rb) != nullptr);
 
   float *write_data = NULL;
   float *read_data = NULL;
 
   if (tc->write_size > 0) {
     write_data = SAFE_MALLOC(tc->write_size * sizeof(float), float *);
-    ASCIICHAT_REQUIRE_NOT_NULL(write_data);
+    REQUIRE((write_data) != nullptr);
 
     // Fill with test pattern
     for (size_t i = 0; i < tc->write_size; i++) {
@@ -839,22 +835,22 @@ TEST_CASE("audio/edge_cases", "[audio]") {
 
   if (tc->read_size > 0) {
     read_data = SAFE_MALLOC(tc->read_size * sizeof(float), float *);
-    ASCIICHAT_REQUIRE_NOT_NULL(read_data);
+    REQUIRE((read_data) != nullptr);
   }
 
   // Test write operation
   int written = 0;
   if (tc->write_size > 0) {
     written = audio_ring_buffer_write(rb, write_data, tc->write_size);
-    ASCIICHAT_REQUIRE_GE(written, 0, "Write should not fail for %s", tc->description);
+    REQUIRE((written) >= (0));
   }
 
   // Test read operation
   int read = 0;
   if (tc->read_size > 0 && written > 0) {
     read = audio_ring_buffer_read(rb, read_data, tc->read_size);
-    ASCIICHAT_REQUIRE_GE(read, 0, "Read should not fail for %s", tc->description);
-    ASCIICHAT_REQUIRE_LE(read, written, "Should not read more than written for %s", tc->description);
+    REQUIRE((read) >= (0));
+    REQUIRE((read) <= (written));
   }
 
   SAFE_FREE(write_data);

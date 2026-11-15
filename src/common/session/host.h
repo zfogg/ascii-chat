@@ -59,6 +59,10 @@
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/video/rgba/image.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Session Host Types
  * ============================================================================ */
@@ -559,3 +563,7 @@ asciichat_error_t session_host_render_video(session_host_t *host);
 asciichat_error_t session_host_accept_peer(session_host_t *, acip_transport_t *);
 /** Mix and distribute one 20 ms audio frame without starting a thread. */
 asciichat_error_t session_host_render_audio(session_host_t *host);
+
+#ifdef __cplusplus
+}
+#endif

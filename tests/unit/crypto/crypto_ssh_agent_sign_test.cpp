@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file crypto_ssh_agent_sign_test.c
  * @brief Comprehensive edge case tests for SSH agent signing
@@ -12,8 +13,6 @@
  * - Network errors
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/ssh/ssh_agent.h>
@@ -32,8 +31,8 @@ TEST_CASE("crypto_ssh_agent_sign/null_public_key", "[crypto_ssh_agent_sign]") {
   uint8_t signature[64] = {0};
 
   asciichat_error_t result = ssh_agent_sign(NULL, message, 32, signature);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail with NULL public key");
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should return ERROR_INVALID_PARAM");
+  REQUIRE((result) != (ASCIICHAT_OK));
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_ssh_agent_sign/null_message", "[crypto_ssh_agent_sign]") {
@@ -43,8 +42,8 @@ TEST_CASE("crypto_ssh_agent_sign/null_message", "[crypto_ssh_agent_sign]") {
   uint8_t signature[64] = {0};
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, NULL, 32, signature);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail with NULL message");
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should return ERROR_INVALID_PARAM");
+  REQUIRE((result) != (ASCIICHAT_OK));
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_ssh_agent_sign/null_signature", "[crypto_ssh_agent_sign]") {
@@ -54,8 +53,8 @@ TEST_CASE("crypto_ssh_agent_sign/null_signature", "[crypto_ssh_agent_sign]") {
   uint8_t message[32] = {0};
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, NULL);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail with NULL signature");
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should return ERROR_INVALID_PARAM");
+  REQUIRE((result) != (ASCIICHAT_OK));
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_ssh_agent_sign/zero_message_length", "[crypto_ssh_agent_sign]") {
@@ -70,7 +69,7 @@ TEST_CASE("crypto_ssh_agent_sign/zero_message_length", "[crypto_ssh_agent_sign]"
 
   // Should either succeed (if agent is available) or fail gracefully
   if (result != ASCIICHAT_OK) {
-    ASCIICHAT_REQUIRE(result == ERROR_CRYPTO || result == ERROR_NETWORK, "Should return appropriate error for zero-length message");
+    REQUIRE((result == ERROR_CRYPTO || result == ERROR_NETWORK));
   }
 }
 
@@ -82,7 +81,7 @@ TEST_CASE("crypto_ssh_agent_sign/very_large_message", "[crypto_ssh_agent_sign]")
   // Test with a very large message (10MB - exceeds 1MB agent limit)
   size_t large_size = 10 * 1024 * 1024;
   uint8_t *large_message = SAFE_MALLOC(large_size, uint8_t *);
-  ASCIICHAT_REQUIRE_NOT_NULL(large_message, "Failed to allocate large message");
+  REQUIRE((large_message) != nullptr);
 
   memset(large_message, 0xAA, large_size);
   uint8_t signature[64] = {0};
@@ -90,8 +89,8 @@ TEST_CASE("crypto_ssh_agent_sign/very_large_message", "[crypto_ssh_agent_sign]")
   asciichat_error_t result = ssh_agent_sign(&pub_key, large_message, large_size, signature);
 
   // Should fail gracefully (message too large for agent protocol - max 1MB)
-  ASCIICHAT_REQUIRE(result != ASCIICHAT_OK, "Should reject messages larger than 1MB");
-  ASCIICHAT_REQUIRE(result == ERROR_CRYPTO, "Should return ERROR_CRYPTO for oversized messages");
+  REQUIRE(result != ASCIICHAT_OK);
+  REQUIRE(result == ERROR_CRYPTO);
 
   SAFE_FREE(large_message);
 }
@@ -108,8 +107,8 @@ TEST_CASE("crypto_ssh_agent_sign/wrong_key_type_x25519", "[crypto_ssh_agent_sign
   uint8_t signature[64] = {0};
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail with X25519 key");
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO_KEY, "Should return ERROR_CRYPTO_KEY");
+  REQUIRE((result) != (ASCIICHAT_OK));
+  REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
 TEST_CASE("crypto_ssh_agent_sign/wrong_key_type_gpg", "[crypto_ssh_agent_sign]") {
@@ -120,8 +119,8 @@ TEST_CASE("crypto_ssh_agent_sign/wrong_key_type_gpg", "[crypto_ssh_agent_sign]")
   uint8_t signature[64] = {0};
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail with GPG key");
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO_KEY, "Should return ERROR_CRYPTO_KEY");
+  REQUIRE((result) != (ASCIICHAT_OK));
+  REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
 TEST_CASE("crypto_ssh_agent_sign/uninitialized_key_type", "[crypto_ssh_agent_sign]") {
@@ -132,8 +131,8 @@ TEST_CASE("crypto_ssh_agent_sign/uninitialized_key_type", "[crypto_ssh_agent_sig
   uint8_t signature[64] = {0};
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail with invalid key type");
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO_KEY, "Should return ERROR_CRYPTO_KEY");
+  REQUIRE((result) != (ASCIICHAT_OK));
+  REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
 // =============================================================================
@@ -161,8 +160,8 @@ TEST_CASE("crypto_ssh_agent_sign/agent_not_available", "[crypto_ssh_agent_sign]"
   uint8_t signature[64] = {0};
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail when agent not available");
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO, "Should return ERROR_CRYPTO");
+  REQUIRE((result) != (ASCIICHAT_OK));
+  REQUIRE((result) == (ERROR_CRYPTO));
 
   // Restore environment
   if (strlen(saved_value) > 0) {
@@ -200,7 +199,7 @@ TEST_CASE("crypto_ssh_agent_sign/invalid_agent_socket_path", "[crypto_ssh_agent_
   uint8_t signature[64] = {0};
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail with invalid socket path");
+  REQUIRE((result) != (ASCIICHAT_OK));
 
   // Restore environment
   if (strlen(saved_value) > 0) {
@@ -226,7 +225,7 @@ TEST_CASE("crypto_ssh_agent_sign/invalid_agent_socket_path", "[crypto_ssh_agent_
 TEST_CASE("crypto_ssh_agent_sign/key_not_in_agent", "[crypto_ssh_agent_sign]") {
   // Skip if agent not available
   if (!ssh_agent_is_available()) {
-    ASCIICHAT_SKIP("SSH agent not available");
+    SKIP("test skipped");
     return;
   }
 
@@ -246,7 +245,7 @@ TEST_CASE("crypto_ssh_agent_sign/key_not_in_agent", "[crypto_ssh_agent_sign]") {
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
 
   // Should fail because this key is not in the agent
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail when key not in agent");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 // =============================================================================
@@ -256,7 +255,7 @@ TEST_CASE("crypto_ssh_agent_sign/key_not_in_agent", "[crypto_ssh_agent_sign]") {
 TEST_CASE("crypto_ssh_agent_sign/all_zero_message", "[crypto_ssh_agent_sign]") {
   // Skip if agent not available
   if (!ssh_agent_is_available()) {
-    ASCIICHAT_SKIP("SSH agent not available");
+    SKIP("test skipped");
     return;
   }
 
@@ -270,13 +269,13 @@ TEST_CASE("crypto_ssh_agent_sign/all_zero_message", "[crypto_ssh_agent_sign]") {
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
 
   // Should handle all-zero message gracefully (either succeed or fail gracefully)
-  ASCIICHAT_REQUIRE(result == ASCIICHAT_OK || result != ASCIICHAT_OK, "Should handle all-zero message without crashing");
+  REQUIRE((result == ASCIICHAT_OK || result != ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_ssh_agent_sign/all_ff_message", "[crypto_ssh_agent_sign]") {
   // Skip if agent not available
   if (!ssh_agent_is_available()) {
-    ASCIICHAT_SKIP("SSH agent not available");
+    SKIP("test skipped");
     return;
   }
 
@@ -291,7 +290,7 @@ TEST_CASE("crypto_ssh_agent_sign/all_ff_message", "[crypto_ssh_agent_sign]") {
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
 
   // Should handle all-0xFF message gracefully
-  ASCIICHAT_REQUIRE(result == ASCIICHAT_OK || result != ASCIICHAT_OK, "Should handle all-0xFF message without crashing");
+  REQUIRE((result == ASCIICHAT_OK || result != ASCIICHAT_OK));
 }
 
 // =============================================================================
@@ -309,7 +308,7 @@ TEST_CASE("crypto_ssh_agent_sign/signature_buffer_unchanged_on_error", "[crypto_
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail with wrong key type");
+  REQUIRE((result) != (ASCIICHAT_OK));
 
   // Signature buffer should not be modified on error
   // (implementation may or may not preserve buffer on error - this documents behavior)
@@ -322,14 +321,14 @@ TEST_CASE("crypto_ssh_agent_sign/signature_buffer_unchanged_on_error", "[crypto_
 TEST_CASE("crypto_ssh_agent_sign/successful_signing_if_key_available", "[crypto_ssh_agent_sign]") {
   // Skip if agent not available
   if (!ssh_agent_is_available()) {
-    ASCIICHAT_SKIP("SSH agent not available");
+    SKIP("test skipped");
     return;
   }
 
   // Try to load user's actual SSH key for integration test
   const char *home = SAFE_GETENV("HOME");
   if (!home) {
-    ASCIICHAT_SKIP("HOME not set");
+    SKIP("test skipped");
     return;
   }
 
@@ -342,7 +341,7 @@ TEST_CASE("crypto_ssh_agent_sign/successful_signing_if_key_available", "[crypto_
   // Try to load the key
   asciichat_error_t load_result = parse_private_key(key_path, &priv_key);
   if (load_result != ASCIICHAT_OK) {
-    ASCIICHAT_SKIP("Could not load %s (may not exist or may be passphrase protected)", key_path);
+    SKIP("test skipped");
     return;
   }
 
@@ -352,7 +351,7 @@ TEST_CASE("crypto_ssh_agent_sign/successful_signing_if_key_available", "[crypto_
   memcpy(pub_key.key, priv_key.public_key, 32);
 
   if (!ssh_agent_has_key(&pub_key)) {
-    ASCIICHAT_SKIP("Test key not found in ssh-agent");
+    SKIP("test skipped");
     return;
   }
 
@@ -361,7 +360,7 @@ TEST_CASE("crypto_ssh_agent_sign/successful_signing_if_key_available", "[crypto_
   uint8_t signature[64] = {0};
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, test_message, 32, signature);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should successfully sign with key in agent");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Verify signature is not all zeros
   bool all_zero = true;
@@ -371,11 +370,11 @@ TEST_CASE("crypto_ssh_agent_sign/successful_signing_if_key_available", "[crypto_
       break;
     }
   }
-  ASCIICHAT_REQUIRE_EQ(all_zero, false, "Signature should not be all zeros");
+  REQUIRE((all_zero) == (false));
 
   // Verify signature using libsodium
   int verify_result = crypto_sign_verify_detached(signature, test_message, 32, pub_key.key);
-  ASCIICHAT_REQUIRE_EQ(verify_result, 0, "Signature should verify with libsodium");
+  REQUIRE((verify_result) == (0));
 
   log_info("Successfully signed and verified message with SSH agent");
 }

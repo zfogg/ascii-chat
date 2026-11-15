@@ -3,6 +3,10 @@
 #include <stddef.h>
 #include <libplatform/keyboard.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Selection is an absolute item index; first_visible is relative to its page.
  * @brief For ui viewport, this is the live record that ties `selected`, `first_visible`, `page_size` together. The
  * owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before
@@ -18,3 +22,7 @@ typedef struct {
 } ui_viewport_range_t;
 ui_viewport_range_t ui_viewport_update(ui_viewport_t *view, size_t count, size_t rows);
 bool ui_viewport_key(ui_viewport_t *view, size_t count, size_t rows, keyboard_key_t key);
+
+#ifdef __cplusplus
+}
+#endif

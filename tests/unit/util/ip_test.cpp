@@ -1,6 +1,4 @@
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -10,7 +8,6 @@
 #include <stdint.h>
 
 #include <ascii-chat/util/ip.h>
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 
 // Use quiet logging for tests
@@ -18,26 +15,26 @@ TEST_CASE("ip_utils/mapped_addresses_round_trip_and_ipv6_formatting_rejects_inva
   char mapped[64], ipv4[16], expanded[64], compact[64];
   const char *addresses[] = {"0.0.0.0", "127.0.0.1", "192.0.2.17", "255.255.255.255"};
   for (size_t i = 0; i < sizeof(addresses) / sizeof(addresses[0]); ++i) {
-    ASCIICHAT_REQUIRE_EQ(ipv4_to_ipv6_mapped(addresses[i], mapped, sizeof(mapped)), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE(is_ipv4_mapped_ipv6(mapped));
-    ASCIICHAT_REQUIRE_EQ(extract_ipv4_from_mapped_ipv6(mapped, ipv4, sizeof(ipv4)), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_STR_EQ(ipv4, addresses[i]);
+    REQUIRE((ipv4_to_ipv6_mapped(addresses[i], mapped, sizeof(mapped))) == (ASCIICHAT_OK));
+    REQUIRE(is_ipv4_mapped_ipv6(mapped));
+    REQUIRE((extract_ipv4_from_mapped_ipv6(mapped, ipv4, sizeof(ipv4))) == (ASCIICHAT_OK));
+    REQUIRE(std::strcmp((ipv4), (addresses[i])) == 0);
   }
-  ASCIICHAT_REQUIRE_EQ(expand_ipv6("[2001:DB8::1]", expanded, sizeof(expanded)), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_STR_EQ(expanded, "2001:0db8:0000:0000:0000:0000:0000:0001");
-  ASCIICHAT_REQUIRE_EQ(compact_ipv6(expanded, compact, sizeof(compact)), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_STR_EQ(compact, "2001:db8::1");
-  ASCIICHAT_REQUIRE_EQ(canonicalize_ipv6("2001:db8::1", compact, 2), ERROR_NETWORK);
-  ASCIICHAT_REQUIRE_EQ(extract_ipv4_from_mapped_ipv6("::ffff:192.0.2.17", ipv4, 2), ERROR_NETWORK);
-  ASCIICHAT_REQUIRE_EQ(ipv4_to_ipv6_mapped(NULL, mapped, sizeof(mapped)), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(ipv4_to_ipv6_mapped("256.0.0.1", mapped, sizeof(mapped)), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(extract_ipv4_from_mapped_ipv6(NULL, ipv4, sizeof(ipv4)), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(extract_ipv4_from_mapped_ipv6("2001:db8::1", ipv4, sizeof(ipv4)), ERROR_INVALID_PARAM);
+  REQUIRE((expand_ipv6("[2001:DB8::1]", expanded, sizeof(expanded))) == (ASCIICHAT_OK));
+  REQUIRE(std::strcmp((expanded), ("2001:0db8:0000:0000:0000:0000:0000:0001")) == 0);
+  REQUIRE((compact_ipv6(expanded, compact, sizeof(compact))) == (ASCIICHAT_OK));
+  REQUIRE(std::strcmp((compact), ("2001:db8::1")) == 0);
+  REQUIRE((canonicalize_ipv6("2001:db8::1", compact, 2)) == (ERROR_NETWORK));
+  REQUIRE((extract_ipv4_from_mapped_ipv6("::ffff:192.0.2.17", ipv4, 2)) == (ERROR_NETWORK));
+  REQUIRE((ipv4_to_ipv6_mapped(NULL, mapped, sizeof(mapped))) == (ERROR_INVALID_PARAM));
+  REQUIRE((ipv4_to_ipv6_mapped("256.0.0.1", mapped, sizeof(mapped))) == (ERROR_INVALID_PARAM));
+  REQUIRE((extract_ipv4_from_mapped_ipv6(NULL, ipv4, sizeof(ipv4))) == (ERROR_INVALID_PARAM));
+  REQUIRE((extract_ipv4_from_mapped_ipv6("2001:db8::1", ipv4, sizeof(ipv4))) == (ERROR_INVALID_PARAM));
   const char *invalid[] = {NULL, "[bad", "not-an-ip"};
   for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
-    ASCIICHAT_REQUIRE_EQ(expand_ipv6(invalid[i], expanded, sizeof(expanded)), ERROR_INVALID_PARAM);
-    ASCIICHAT_REQUIRE_EQ(canonicalize_ipv6(invalid[i], compact, sizeof(compact)), ERROR_INVALID_PARAM);
-    ASCIICHAT_REQUIRE_NOT(is_ipv4_mapped_ipv6(invalid[i]));
+    REQUIRE((expand_ipv6(invalid[i], expanded, sizeof(expanded))) == (ERROR_INVALID_PARAM));
+    REQUIRE((canonicalize_ipv6(invalid[i], compact, sizeof(compact))) == (ERROR_INVALID_PARAM));
+    REQUIRE(!(is_ipv4_mapped_ipv6(invalid[i])));
   }
 }
 
@@ -45,29 +42,29 @@ TEST_CASE("ip_utils/discovery_rejects_special_use_addresses_as_public_endpoints"
   const char *non_public_v4[] = {"10.0.0.1",        "172.31.255.255", "192.168.1.1", "127.0.0.2",  "169.254.1.2",    "255.255.255.255", "224.0.0.1",   "0.1.2.3",   "100.64.0.1",
                                  "100.127.255.255", "192.0.0.1",      "192.0.2.1",   "198.18.0.1", "198.19.255.255", "198.51.100.1",    "203.0.113.1", "240.0.0.1", "invalid"};
   for (size_t i = 0; i < sizeof(non_public_v4) / sizeof(non_public_v4[0]); ++i) {
-    ASCIICHAT_REQUIRE_NOT(is_internet_ipv4(non_public_v4[i]), "%s", non_public_v4[i]);
+    REQUIRE(!(is_internet_ipv4(non_public_v4[i])));
   }
   const char *public_v4[] = {"8.8.8.8", "100.63.255.255", "100.128.0.0", "198.17.255.255", "198.20.0.0"};
   for (size_t i = 0; i < sizeof(public_v4) / sizeof(public_v4[0]); ++i) {
-    ASCIICHAT_REQUIRE(is_internet_ipv4(public_v4[i]), "%s", public_v4[i]);
+    REQUIRE(is_internet_ipv4(public_v4[i]));
   }
   const char *non_public_v6[] = {"::1", "[::1]", "fe80::1", "fc00::1", "fdff::1", "ff02::1", "::", "::ffff:8.8.8.8", "::8.8.8.8", "2001:db8::1", "2002:0808:0808::1", "[bad", "invalid", NULL};
   for (size_t i = 0; i < sizeof(non_public_v6) / sizeof(non_public_v6[0]); ++i) {
-    ASCIICHAT_REQUIRE_NOT(is_internet_ipv6(non_public_v6[i]));
+    REQUIRE(!(is_internet_ipv6(non_public_v6[i])));
   }
-  ASCIICHAT_REQUIRE(is_internet_ipv6("2001:4860:4860::8888"));
-  ASCIICHAT_REQUIRE(is_internet_ipv6("[2606:4700:4700::1111]"));
+  REQUIRE(is_internet_ipv6("2001:4860:4860::8888"));
+  REQUIRE(is_internet_ipv6("[2606:4700:4700::1111]"));
 }
 
 TEST_CASE("ip_utils/endpoint_identity_normalizes_ipv6_but_preserves_port_and_family", "[ip_utils]") {
-  ASCIICHAT_REQUIRE(compare_ip_port_strings("[2001:4860::1]:27224", "[2001:4860:0:0:0:0:0:1]:27224"));
-  ASCIICHAT_REQUIRE(compare_ip_port_strings("8.8.8.8:27224", "8.8.8.8:27224"));
-  ASCIICHAT_REQUIRE_NOT(compare_ip_port_strings("[2001:4860::1]:27224", "[2001:4860::1]:27225"));
-  ASCIICHAT_REQUIRE_NOT(compare_ip_port_strings("[2001:4860::1]:27224", "[2001:4860::2]:27224"));
-  ASCIICHAT_REQUIRE_NOT(compare_ip_port_strings("8.8.8.8:27224", "[::ffff:8.8.8.8]:27224"));
-  ASCIICHAT_REQUIRE_NOT(compare_ip_port_strings("bad", "8.8.8.8:27224"));
-  ASCIICHAT_REQUIRE_NOT(compare_ip_port_strings("8.8.8.8:27224", "bad"));
-  ASCIICHAT_REQUIRE_NOT(compare_ip_port_strings(NULL, "8.8.8.8:27224"));
+  REQUIRE(compare_ip_port_strings("[2001:4860::1]:27224", "[2001:4860:0:0:0:0:0:1]:27224"));
+  REQUIRE(compare_ip_port_strings("8.8.8.8:27224", "8.8.8.8:27224"));
+  REQUIRE(!(compare_ip_port_strings("[2001:4860::1]:27224", "[2001:4860::1]:27225")));
+  REQUIRE(!(compare_ip_port_strings("[2001:4860::1]:27224", "[2001:4860::2]:27224")));
+  REQUIRE(!(compare_ip_port_strings("8.8.8.8:27224", "[::ffff:8.8.8.8]:27224")));
+  REQUIRE(!(compare_ip_port_strings("bad", "8.8.8.8:27224")));
+  REQUIRE(!(compare_ip_port_strings("8.8.8.8:27224", "bad")));
+  REQUIRE(!(compare_ip_port_strings(NULL, "8.8.8.8:27224")));
   const struct {
     const char *ip;
     const char *label;
@@ -77,7 +74,7 @@ TEST_CASE("ip_utils/endpoint_identity_normalizes_ipv6_but_preserves_port_and_fam
                 {"8.8.8.8", "Internet"},       {"2606:4700:4700::1111", "Internet"},
                 {"invalid", "Unknown"},        {NULL, ""}};
   for (size_t i = 0; i < sizeof(labels) / sizeof(labels[0]); ++i) {
-    ASCIICHAT_REQUIRE_STR_EQ(get_ip_type_string(labels[i].ip), labels[i].label);
+    REQUIRE(std::strcmp((get_ip_type_string(labels[i].ip)), (labels[i].label)) == 0);
   }
 }
 
@@ -128,7 +125,7 @@ TEST_CASE("ip_utils/ipv4_validation", "[ip_utils]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(ipv4_cases));
   auto *tc = &generated_case;
   int result = is_valid_ipv4(tc->ip);
-  ASCIICHAT_REQUIRE_EQ(result, tc->expected_result, "is_valid_ipv4(\"%s\") = %d, expected %d (%s)", tc->ip, result, tc->expected_result, tc->description);
+  REQUIRE((result) == (tc->expected_result));
 }
 
 // =============================================================================
@@ -177,7 +174,7 @@ TEST_CASE("ip_utils/ipv6_validation", "[ip_utils]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(ipv6_cases));
   auto *tc = &generated_case;
   int result = is_valid_ipv6(tc->ip);
-  ASCIICHAT_REQUIRE_EQ(result, tc->expected_result, "is_valid_ipv6(\"%s\") = %d, expected %d (%s)", tc->ip, result, tc->expected_result, tc->description);
+  REQUIRE((result) == (tc->expected_result));
 }
 
 // =============================================================================
@@ -217,22 +214,22 @@ TEST_CASE("ip_utils/ipv6_parsing", "[ip_utils]") {
 
   int result = parse_ipv6_address(tc->input, output, sizeof(output));
 
-  ASCIICHAT_REQUIRE_EQ(result, tc->expected_result, "parse_ipv6_address(\"%s\") returned %d, expected %d (%s)", tc->input, result, tc->expected_result, tc->description);
+  REQUIRE((result) == (tc->expected_result));
 
   if (tc->expected_result == 0) {
-    ASCIICHAT_REQUIRE_STR_EQ(output, tc->expected_output, "parse_ipv6_address(\"%s\") output mismatch (%s)", tc->input, tc->description);
+    REQUIRE(std::strcmp((output), (tc->expected_output)) == 0);
   }
 }
 
 TEST_CASE("ip_utils/ipv6_parsing_buffer_too_small", "[ip_utils]") {
   char small_output[3]; // Too small for "::1" (3 chars) + null terminator
   int result = parse_ipv6_address("[::1]", small_output, sizeof(small_output));
-  ASCIICHAT_REQUIRE_EQ(result, -1, "Should fail with buffer too small");
+  REQUIRE((result) == (-1));
 }
 
 TEST_CASE("ip_utils/ipv6_parsing_null_output", "[ip_utils]") {
   int result = parse_ipv6_address("[::1]", NULL, 256);
-  ASCIICHAT_REQUIRE_EQ(result, -1, "Should fail with NULL output buffer");
+  REQUIRE((result) == (-1));
 }
 
 // =============================================================================
@@ -271,28 +268,28 @@ TEST_CASE("ip_utils/format_ip_with_port", "[ip_utils]") {
 
   int result = format_ip_with_port(tc->ip, tc->port, output, sizeof(output));
 
-  ASCIICHAT_REQUIRE_EQ(result, tc->expected_result, "format_ip_with_port(\"%s\", %u) returned %d, expected %d (%s)", tc->ip, tc->port, result, tc->expected_result, tc->description);
+  REQUIRE((result) == (tc->expected_result));
 
   if (tc->expected_result == 0) {
-    ASCIICHAT_REQUIRE_STR_EQ(output, tc->expected_output, "format_ip_with_port(\"%s\", %u) output mismatch (%s)", tc->ip, tc->port, tc->description);
+    REQUIRE(std::strcmp((output), (tc->expected_output)) == 0);
   }
 }
 
 TEST_CASE("ip_utils/format_ip_with_port_buffer_too_small", "[ip_utils]") {
   char small_output[10];
   asciichat_error_t result = format_ip_with_port("192.168.1.1", 8080, small_output, sizeof(small_output));
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail with buffer too small");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("ip_utils/format_ip_with_port_null_output", "[ip_utils]") {
   asciichat_error_t result = format_ip_with_port("192.168.1.1", 8080, NULL, 512);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail with NULL output buffer");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("ip_utils/format_ip_with_port_zero_size", "[ip_utils]") {
   char output[512];
   asciichat_error_t result = format_ip_with_port("192.168.1.1", 8080, output, 0);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail with zero size buffer");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 // =============================================================================
@@ -345,11 +342,11 @@ TEST_CASE("ip_utils/parse_ip_with_port", "[ip_utils]") {
 
   int result = parse_ip_with_port(tc->input, ip_output, sizeof(ip_output), &port_output);
 
-  ASCIICHAT_REQUIRE_EQ(result, tc->expected_result, "parse_ip_with_port(\"%s\") returned %d, expected %d (%s)", tc->input, result, tc->expected_result, tc->description);
+  REQUIRE((result) == (tc->expected_result));
 
   if (tc->expected_result == 0) {
-    ASCIICHAT_REQUIRE_STR_EQ(ip_output, tc->expected_ip, "parse_ip_with_port(\"%s\") IP mismatch (%s)", tc->input, tc->description);
-    ASCIICHAT_REQUIRE_EQ(port_output, tc->expected_port, "parse_ip_with_port(\"%s\") port mismatch: got %u, expected %u (%s)", tc->input, port_output, tc->expected_port, tc->description);
+    REQUIRE(std::strcmp((ip_output), (tc->expected_ip)) == 0);
+    REQUIRE((port_output) == (tc->expected_port));
   }
 }
 
@@ -357,19 +354,19 @@ TEST_CASE("ip_utils/parse_ip_with_port_buffer_too_small", "[ip_utils]") {
   char small_output[5];
   uint16_t port = 0;
   int result = parse_ip_with_port("192.168.1.1:8080", small_output, sizeof(small_output), &port);
-  ASCIICHAT_REQUIRE_EQ(result, -1, "Should fail with buffer too small");
+  REQUIRE((result) == (-1));
 }
 
 TEST_CASE("ip_utils/parse_ip_with_port_null_output", "[ip_utils]") {
   uint16_t port = 0;
   int result = parse_ip_with_port("192.168.1.1:8080", NULL, 256, &port);
-  ASCIICHAT_REQUIRE_EQ(result, -1, "Should fail with NULL IP output buffer");
+  REQUIRE((result) == (-1));
 }
 
 TEST_CASE("ip_utils/parse_ip_with_port_null_port", "[ip_utils]") {
   char ip_output[256];
   int result = parse_ip_with_port("192.168.1.1:8080", ip_output, sizeof(ip_output), NULL);
-  ASCIICHAT_REQUIRE_EQ(result, -1, "Should fail with NULL port output");
+  REQUIRE((result) == (-1));
 }
 
 // =============================================================================
@@ -396,15 +393,15 @@ TEST_CASE("ip_utils/format_parse_roundtrip", "[ip_utils]") {
 
   // Format
   int format_result = format_ip_with_port(tc->ip, tc->port, formatted, sizeof(formatted));
-  ASCIICHAT_REQUIRE_EQ(format_result, 0, "format_ip_with_port(\"%s\", %u) should succeed (%s)", tc->ip, tc->port, tc->description);
+  REQUIRE((format_result) == (0));
 
   // Parse
   int parse_result = parse_ip_with_port(formatted, parsed_ip, sizeof(parsed_ip), &parsed_port);
-  ASCIICHAT_REQUIRE_EQ(parse_result, 0, "parse_ip_with_port(\"%s\") should succeed (%s)", formatted, tc->description);
+  REQUIRE((parse_result) == (0));
 
   // Verify roundtrip
-  ASCIICHAT_REQUIRE_STR_EQ(parsed_ip, tc->ip, "Roundtrip IP mismatch for %s:%u (%s)", tc->ip, tc->port, tc->description);
-  ASCIICHAT_REQUIRE_EQ(parsed_port, tc->port, "Roundtrip port mismatch for %s:%u (%s)", tc->ip, tc->port, tc->description);
+  REQUIRE(std::strcmp((parsed_ip), (tc->ip)) == 0);
+  REQUIRE((parsed_port) == (tc->port));
 }
 
 // =============================================================================
@@ -416,8 +413,8 @@ TEST_CASE("ip_utils/format_ipv6_very_long_address", "[ip_utils]") {
   const char *long_ipv6 = "2001:0db8:0000:0000:0000:ff00:0042:8329";
   char output[512];
   int result = format_ip_with_port(long_ipv6, 8080, output, sizeof(output));
-  ASCIICHAT_REQUIRE_EQ(result, 0, "Should format long IPv6 address");
-  ASCIICHAT_REQUIRE_STR_EQ(output, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8080", "Long IPv6 format mismatch");
+  REQUIRE((result) == (0));
+  REQUIRE(std::strcmp((output), ("[2001:0db8:0000:0000:0000:ff00:0042:8329]:8080")) == 0);
 }
 
 TEST_CASE("ip_utils/parse_ipv6_very_long_formatted", "[ip_utils]") {
@@ -425,24 +422,24 @@ TEST_CASE("ip_utils/parse_ipv6_very_long_formatted", "[ip_utils]") {
   char ip_output[256];
   uint16_t port = 0;
   int result = parse_ip_with_port(long_formatted, ip_output, sizeof(ip_output), &port);
-  ASCIICHAT_REQUIRE_EQ(result, 0, "Should parse long IPv6 address");
-  ASCIICHAT_REQUIRE_STR_EQ(ip_output, "2001:0db8:0000:0000:0000:ff00:0042:8329", "Long IPv6 parse IP mismatch");
-  ASCIICHAT_REQUIRE_EQ(port, 8080, "Long IPv6 parse port mismatch");
+  REQUIRE((result) == (0));
+  REQUIRE(std::strcmp((ip_output), ("2001:0db8:0000:0000:0000:ff00:0042:8329")) == 0);
+  REQUIRE((port) == (8080));
 }
 
 TEST_CASE("ip_utils/ipv4_validation_boundary_cases", "[ip_utils]") {
   // Test boundary values
-  ASCIICHAT_REQUIRE_EQ(is_valid_ipv4("0.0.0.0"), 1, "Should accept 0.0.0.0");
-  ASCIICHAT_REQUIRE_EQ(is_valid_ipv4("255.255.255.255"), 1, "Should accept 255.255.255.255");
-  ASCIICHAT_REQUIRE_EQ(is_valid_ipv4("256.0.0.0"), 0, "Should reject 256.x.x.x");
-  ASCIICHAT_REQUIRE_EQ(is_valid_ipv4("0.256.0.0"), 0, "Should reject x.256.x.x");
-  ASCIICHAT_REQUIRE_EQ(is_valid_ipv4("0.0.256.0"), 0, "Should reject x.x.256.x");
-  ASCIICHAT_REQUIRE_EQ(is_valid_ipv4("0.0.0.256"), 0, "Should reject x.x.x.256");
+  REQUIRE((is_valid_ipv4("0.0.0.0")) == (1));
+  REQUIRE((is_valid_ipv4("255.255.255.255")) == (1));
+  REQUIRE((is_valid_ipv4("256.0.0.0")) == (0));
+  REQUIRE((is_valid_ipv4("0.256.0.0")) == (0));
+  REQUIRE((is_valid_ipv4("0.0.256.0")) == (0));
+  REQUIRE((is_valid_ipv4("0.0.0.256")) == (0));
 }
 
 TEST_CASE("ip_utils/ipv6_special_addresses", "[ip_utils]") {
   // Test special IPv6 addresses
-  ASCIICHAT_REQUIRE_EQ(is_valid_ipv6("::"), 1, "Should accept :: (all zeros)");
-  ASCIICHAT_REQUIRE_EQ(is_valid_ipv6("::1"), 1, "Should accept ::1 (loopback)");
-  ASCIICHAT_REQUIRE_EQ(is_valid_ipv6("::ffff:0:0"), 1, "Should accept ::ffff:0:0 (IPv4-mapped prefix)");
+  REQUIRE((is_valid_ipv6("::")) == (1));
+  REQUIRE((is_valid_ipv6("::1")) == (1));
+  REQUIRE((is_valid_ipv6("::ffff:0:0")) == (1));
 }

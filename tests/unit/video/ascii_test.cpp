@@ -1,7 +1,4 @@
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -40,11 +37,11 @@ void ascii_test_fini(void) {
 TEST_CASE("ascii/image_size_property", "[ascii]") {
   int width = GENERATE(1, 2, 4, 8, 16, 32, 64);
   int height = GENERATE(1, 2, 4, 8, 16, 32, 64);
-  ASCIICHAT_ASSUME(width > 0 && width <= 64);
-  ASCIICHAT_ASSUME(height > 0 && height <= 64);
+  if (!(width > 0 && width <= 64)) SKIP("assumption not satisfied");
+  if (!(height > 0 && height <= 64)) SKIP("assumption not satisfied");
 
   image_t *img = image_new(width, height);
-  ASCIICHAT_ASSUME(img != NULL);
+  if (!(img != NULL)) SKIP("assumption not satisfied");
 
   // Fill with gradient pattern
   for (int i = 0; i < width * height; i++) {
@@ -60,8 +57,8 @@ TEST_CASE("ascii/image_size_property", "[ascii]") {
   luminance_palette[256] = '\0';
 
   char *result = ascii_convert(img, width, height, false, false, false, palette, luminance_palette);
-  ASCIICHAT_REQUIRE_NOT_NULL(result, "ascii_convert should not return NULL for %dx%d image", width, height);
-  ASCIICHAT_REQUIRE_GT(strlen(result), 0, "ascii_convert should not return empty string for %dx%d image", width, height);
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) > (0));
 
   SAFE_FREE(result);
   image_destroy(img);
@@ -69,7 +66,7 @@ TEST_CASE("ascii/image_size_property", "[ascii]") {
 
 TEST_CASE("ascii/ascii_convert_basic", "[ascii]") {
   image_t *img = image_new(4, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(img, "Failed to create 4x4 image");
+  REQUIRE((img) != nullptr);
 
   // Fill with a simple pattern
   for (int i = 0; i < 16; i++) {
@@ -84,8 +81,8 @@ TEST_CASE("ascii/ascii_convert_basic", "[ascii]") {
   luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert(img, 4, 4, false, false, false, palette, luminance_palette);
-  ASCIICHAT_REQUIRE_NOT_NULL(result, "ascii_convert returned NULL for valid 4x4 image");
-  ASCIICHAT_REQUIRE_GT(strlen(result), 0, "ascii_convert returned empty string");
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) > (0));
 
   SAFE_FREE(result);
   image_destroy(img);
@@ -93,7 +90,7 @@ TEST_CASE("ascii/ascii_convert_basic", "[ascii]") {
 
 TEST_CASE("ascii/ascii_convert_color", "[ascii]") {
   image_t *img = image_new(4, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   // Fill with different colors
   img->pixels[0] = (rgb_pixel_t){255, 0, 0};     // Red
@@ -109,8 +106,8 @@ TEST_CASE("ascii/ascii_convert_color", "[ascii]") {
   luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert(img, 4, 4, true, false, false, palette, luminance_palette);
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_GT(strlen(result), 0);
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) > (0));
 
   SAFE_FREE(result);
   image_destroy(img);
@@ -125,12 +122,12 @@ TEST_CASE("ascii/ascii_convert_null_image", "[ascii]") {
   luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert(NULL, 4, 4, false, false, false, palette, luminance_palette);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 }
 
 TEST_CASE("ascii/ascii_convert_null_palette", "[ascii]") {
   image_t *img = image_new(4, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   char luminance_palette[257]; // Extra byte for null terminator
   for (int i = 0; i < 256; i++) {
@@ -139,19 +136,19 @@ TEST_CASE("ascii/ascii_convert_null_palette", "[ascii]") {
   luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert(img, 4, 4, false, false, false, NULL, luminance_palette);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 
   image_destroy(img);
 }
 
 TEST_CASE("ascii/ascii_convert_null_luminance_palette", "[ascii]") {
   image_t *img = image_new(4, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   const char *palette = "@#$%&*+=-:. ";
 
   char *result = ascii_convert(img, 4, 4, false, false, false, palette, NULL);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 
   image_destroy(img);
 }
@@ -162,7 +159,7 @@ TEST_CASE("ascii/ascii_convert_zero_dimensions", "[ascii]") {
 
   // Skip test if image_new correctly rejects zero dimensions
   if (img == NULL) {
-    ASCIICHAT_SKIP("image_new correctly rejects zero dimensions");
+    SKIP("test skipped");
   }
 
   const char *palette = "@#$%&*+=-:. ";
@@ -182,7 +179,7 @@ TEST_CASE("ascii/ascii_convert_zero_dimensions", "[ascii]") {
 
 TEST_CASE("ascii/ascii_convert_different_sizes", "[ascii]") {
   image_t *img = image_new(8, 8);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   // Fill with pattern
   for (int i = 0; i < 64; i++) {
@@ -198,15 +195,15 @@ TEST_CASE("ascii/ascii_convert_different_sizes", "[ascii]") {
 
   // Test different output sizes
   char *result1 = ascii_convert(img, 4, 4, false, false, false, palette, luminance_palette);
-  ASCIICHAT_REQUIRE_NOT_NULL(result1);
+  REQUIRE((result1) != nullptr);
   SAFE_FREE(result1);
 
   char *result2 = ascii_convert(img, 8, 8, false, false, false, palette, luminance_palette);
-  ASCIICHAT_REQUIRE_NOT_NULL(result2);
+  REQUIRE((result2) != nullptr);
   SAFE_FREE(result2);
 
   char *result3 = ascii_convert(img, 2, 2, false, false, false, palette, luminance_palette);
-  ASCIICHAT_REQUIRE_NOT_NULL(result3);
+  REQUIRE((result3) != nullptr);
   SAFE_FREE(result3);
 
   image_destroy(img);
@@ -214,7 +211,7 @@ TEST_CASE("ascii/ascii_convert_different_sizes", "[ascii]") {
 
 TEST_CASE("ascii/ascii_convert_with_aspect_ratio", "[ascii]") {
   image_t *img = image_new(8, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   // Fill with pattern
   for (int i = 0; i < 32; i++) {
@@ -229,8 +226,8 @@ TEST_CASE("ascii/ascii_convert_with_aspect_ratio", "[ascii]") {
   luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert(img, 4, 4, false, true, false, palette, luminance_palette);
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_GT(strlen(result), 0);
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) > (0));
 
   SAFE_FREE(result);
   image_destroy(img);
@@ -238,7 +235,7 @@ TEST_CASE("ascii/ascii_convert_with_aspect_ratio", "[ascii]") {
 
 TEST_CASE("ascii/ascii_convert_with_stretch", "[ascii]") {
   image_t *img = image_new(4, 8);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   // Fill with pattern
   for (int i = 0; i < 32; i++) {
@@ -253,8 +250,8 @@ TEST_CASE("ascii/ascii_convert_with_stretch", "[ascii]") {
   luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert(img, 4, 4, false, false, true, palette, luminance_palette);
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_GT(strlen(result), 0);
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) > (0));
 
   SAFE_FREE(result);
   image_destroy(img);
@@ -266,7 +263,7 @@ TEST_CASE("ascii/ascii_convert_with_stretch", "[ascii]") {
 
 TEST_CASE("ascii/ascii_convert_with_capabilities_basic", "[ascii]") {
   image_t *img = image_new(4, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   // Fill with pattern
   for (int i = 0; i < 16; i++) {
@@ -292,8 +289,8 @@ TEST_CASE("ascii/ascii_convert_with_capabilities_basic", "[ascii]") {
   luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert_with_capabilities(img, 4, 4, &caps, false, false, palette);
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_GT(strlen(result), 0);
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) > (0));
 
   SAFE_FREE(result);
   image_destroy(img);
@@ -319,12 +316,12 @@ TEST_CASE("ascii/ascii_convert_with_capabilities_null_image", "[ascii]") {
   luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert_with_capabilities(NULL, 4, 4, &caps, false, false, palette);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 }
 
 TEST_CASE("ascii/ascii_convert_with_capabilities_null_caps", "[ascii]") {
   image_t *img = image_new(4, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   const char *palette = "@#$%&*+=-:. ";
   char luminance_palette[257]; // Extra byte for null terminator
@@ -334,14 +331,14 @@ TEST_CASE("ascii/ascii_convert_with_capabilities_null_caps", "[ascii]") {
   luminance_palette[256] = '\0'; // Null terminate
 
   char *result = ascii_convert_with_capabilities(img, 4, 4, NULL, false, false, palette);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 
   image_destroy(img);
 }
 
 TEST_CASE("ascii/ascii_convert_with_capabilities_different_color_support", "[ascii]") {
   image_t *img = image_new(4, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   // Fill with pattern
   for (int i = 0; i < 16; i++) {
@@ -368,7 +365,7 @@ TEST_CASE("ascii/ascii_convert_with_capabilities_different_color_support", "[asc
                                    .palette_custom = ""};
 
   char *result1 = ascii_convert_with_capabilities(img, 4, 4, &caps1, false, false, palette);
-  ASCIICHAT_REQUIRE_NOT_NULL(result1);
+  REQUIRE((result1) != nullptr);
   SAFE_FREE(result1);
 
   terminal_capabilities_t caps2 = {.capabilities = TERM_CAP_COLOR_16 | TERM_CAP_UTF8,
@@ -383,7 +380,7 @@ TEST_CASE("ascii/ascii_convert_with_capabilities_different_color_support", "[asc
                                    .palette_custom = ""};
 
   char *result2 = ascii_convert_with_capabilities(img, 4, 4, &caps2, false, false, palette);
-  ASCIICHAT_REQUIRE_NOT_NULL(result2);
+  REQUIRE((result2) != nullptr);
   SAFE_FREE(result2);
 
   terminal_capabilities_t caps3 = {.capabilities = TERM_CAP_COLOR_TRUE | TERM_CAP_UTF8,
@@ -398,7 +395,7 @@ TEST_CASE("ascii/ascii_convert_with_capabilities_different_color_support", "[asc
                                    .palette_custom = ""};
 
   char *result3 = ascii_convert_with_capabilities(img, 4, 4, &caps3, false, false, palette);
-  ASCIICHAT_REQUIRE_NOT_NULL(result3);
+  REQUIRE((result3) != nullptr);
   SAFE_FREE(result3);
 
   image_destroy(img);
@@ -411,18 +408,18 @@ TEST_CASE("ascii/ascii_convert_with_capabilities_different_color_support", "[asc
 // Theory: Width padding property - padding should preserve content and add correct spacing
 TEST_CASE("ascii/width_padding_property", "[ascii]") {
   int pad_width = GENERATE(0, 1, 3, 5, 10, 20);
-  ASCIICHAT_ASSUME(pad_width >= 0 && pad_width <= 20);
+  if (!(pad_width >= 0 && pad_width <= 20)) SKIP("assumption not satisfied");
 
   const char *frame = "Hello\nWorld\nTest";
   char *result = ascii_pad_frame_width(frame, pad_width);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(result, "Padding should not return NULL for pad_width=%d", pad_width);
+  REQUIRE((result) != nullptr);
 
   if (pad_width == 0) {
-    ASCIICHAT_REQUIRE_EQ(strlen(result), strlen(frame), "Zero padding should preserve length");
-    ASCIICHAT_REQUIRE_STR_EQ(result, frame, "Zero padding should preserve content");
+    REQUIRE((strlen(result)) == (strlen(frame)));
+    REQUIRE(std::strcmp((result), (frame)) == 0);
   } else {
-    ASCIICHAT_REQUIRE_GT(strlen(result), strlen(frame), "Non-zero padding should increase length for pad_width=%d", pad_width);
+    REQUIRE((strlen(result)) > (strlen(frame)));
   }
 
   SAFE_FREE(result);
@@ -431,18 +428,18 @@ TEST_CASE("ascii/width_padding_property", "[ascii]") {
 // Theory: Height padding property - padding should preserve content and add correct spacing
 TEST_CASE("ascii/height_padding_property", "[ascii]") {
   int pad_height = GENERATE(0, 1, 2, 5, 10);
-  ASCIICHAT_ASSUME(pad_height >= 0 && pad_height <= 10);
+  if (!(pad_height >= 0 && pad_height <= 10)) SKIP("assumption not satisfied");
 
   const char *frame = "Hello\nWorld\nTest";
   char *result = ascii_pad_frame_height(frame, pad_height);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(result, "Height padding should not return NULL for pad_height=%d", pad_height);
+  REQUIRE((result) != nullptr);
 
   if (pad_height == 0) {
-    ASCIICHAT_REQUIRE_EQ(strlen(result), strlen(frame), "Zero padding should preserve length");
-    ASCIICHAT_REQUIRE_STR_EQ(result, frame, "Zero padding should preserve content");
+    REQUIRE((strlen(result)) == (strlen(frame)));
+    REQUIRE(std::strcmp((result), (frame)) == 0);
   } else {
-    ASCIICHAT_REQUIRE_GT(strlen(result), strlen(frame), "Non-zero padding should increase length for pad_height=%d", pad_height);
+    REQUIRE((strlen(result)) > (strlen(frame)));
   }
 
   SAFE_FREE(result);
@@ -452,8 +449,8 @@ TEST_CASE("ascii/ascii_pad_frame_width_basic", "[ascii]") {
   const char *frame = "Hello\nWorld\nTest";
   char *result = ascii_pad_frame_width(frame, 5);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_GT(strlen(result), strlen(frame));
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) > (strlen(frame)));
 
   SAFE_FREE(result);
 }
@@ -462,24 +459,24 @@ TEST_CASE("ascii/ascii_pad_frame_width_zero_pad", "[ascii]") {
   const char *frame = "Hello\nWorld\nTest";
   char *result = ascii_pad_frame_width(frame, 0);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_EQ(strlen(result), strlen(frame));
-  ASCIICHAT_REQUIRE_STR_EQ(result, frame);
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) == (strlen(frame)));
+  REQUIRE(std::strcmp((result), (frame)) == 0);
 
   SAFE_FREE(result);
 }
 
 TEST_CASE("ascii/ascii_pad_frame_width_null_frame", "[ascii]") {
   char *result = ascii_pad_frame_width(NULL, 5);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 }
 
 TEST_CASE("ascii/ascii_pad_frame_width_empty_frame", "[ascii]") {
   const char *frame = "";
   char *result = ascii_pad_frame_width(frame, 5);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_EQ(strlen(result), 0);
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) == (0));
 
   SAFE_FREE(result);
 }
@@ -488,8 +485,8 @@ TEST_CASE("ascii/ascii_pad_frame_width_single_line", "[ascii]") {
   const char *frame = "Hello";
   char *result = ascii_pad_frame_width(frame, 3);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_GT(strlen(result), strlen(frame));
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) > (strlen(frame)));
 
   SAFE_FREE(result);
 }
@@ -498,8 +495,8 @@ TEST_CASE("ascii/ascii_pad_frame_height_basic", "[ascii]") {
   const char *frame = "Hello\nWorld\nTest";
   char *result = ascii_pad_frame_height(frame, 2);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_GT(strlen(result), strlen(frame));
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) > (strlen(frame)));
 
   SAFE_FREE(result);
 }
@@ -508,24 +505,24 @@ TEST_CASE("ascii/ascii_pad_frame_height_zero_pad", "[ascii]") {
   const char *frame = "Hello\nWorld\nTest";
   char *result = ascii_pad_frame_height(frame, 0);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_EQ(strlen(result), strlen(frame));
-  ASCIICHAT_REQUIRE_STR_EQ(result, frame);
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) == (strlen(frame)));
+  REQUIRE(std::strcmp((result), (frame)) == 0);
 
   SAFE_FREE(result);
 }
 
 TEST_CASE("ascii/ascii_pad_frame_height_null_frame", "[ascii]") {
   char *result = ascii_pad_frame_height(NULL, 2);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 }
 
 TEST_CASE("ascii/ascii_pad_frame_height_empty_frame", "[ascii]") {
   const char *frame = "";
   char *result = ascii_pad_frame_height(frame, 2);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_GT(strlen(result), 0);
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) > (0));
 
   SAFE_FREE(result);
 }
@@ -534,8 +531,8 @@ TEST_CASE("ascii/ascii_pad_frame_height_single_line", "[ascii]") {
   const char *frame = "Hello";
   char *result = ascii_pad_frame_height(frame, 1);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_GT(strlen(result), strlen(frame));
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) > (strlen(frame)));
 
   SAFE_FREE(result);
 }
@@ -554,9 +551,9 @@ TEST_CASE("ascii/ascii_create_grid_basic", "[ascii]") {
   size_t out_size;
   char *result = ascii_create_grid(sources, 2, 2, 1, &out_size);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_GT(out_size, 0);
-  ASCIICHAT_REQUIRE_GT(strlen(result), 0);
+  REQUIRE((result) != nullptr);
+  REQUIRE((out_size) > (0));
+  REQUIRE((strlen(result)) > (0));
 
   SAFE_FREE(result);
 }
@@ -569,8 +566,8 @@ TEST_CASE("ascii/ascii_create_grid_single_source", "[ascii]") {
   size_t out_size;
   char *result = ascii_create_grid(sources, 1, 1, 1, &out_size);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_GT(out_size, 0);
+  REQUIRE((result) != nullptr);
+  REQUIRE((out_size) > (0));
 
   SAFE_FREE(result);
 }
@@ -578,7 +575,7 @@ TEST_CASE("ascii/ascii_create_grid_single_source", "[ascii]") {
 TEST_CASE("ascii/ascii_create_grid_null_sources", "[ascii]") {
   size_t out_size;
   char *result = ascii_create_grid(NULL, 2, 2, 1, &out_size);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 }
 
 TEST_CASE("ascii/ascii_create_grid_zero_count", "[ascii]") {
@@ -588,7 +585,7 @@ TEST_CASE("ascii/ascii_create_grid_zero_count", "[ascii]") {
 
   size_t out_size;
   char *result = ascii_create_grid(sources, 0, 2, 1, &out_size);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 }
 
 TEST_CASE("ascii/ascii_create_grid_null_out_size", "[ascii]") {
@@ -599,7 +596,7 @@ TEST_CASE("ascii/ascii_create_grid_null_out_size", "[ascii]") {
   sources[1].frame_size = strlen(sources[1].frame_data);
 
   char *result = ascii_create_grid(sources, 2, 2, 1, NULL);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 }
 
 TEST_CASE("ascii/ascii_create_grid_zero_dimensions", "[ascii]") {
@@ -611,7 +608,7 @@ TEST_CASE("ascii/ascii_create_grid_zero_dimensions", "[ascii]") {
 
   size_t out_size;
   char *result = ascii_create_grid(sources, 2, 0, 0, &out_size);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 }
 
 TEST_CASE("ascii/ascii_create_grid_empty_frames", "[ascii]") {
@@ -624,8 +621,8 @@ TEST_CASE("ascii/ascii_create_grid_empty_frames", "[ascii]") {
   size_t out_size;
   char *result = ascii_create_grid(sources, 2, 2, 1, &out_size);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_EQ(out_size, 0);
+  REQUIRE((result) != nullptr);
+  REQUIRE((out_size) == (0));
 
   SAFE_FREE(result);
 }
@@ -640,10 +637,10 @@ TEST_CASE("ascii/ascii_create_grid_null_frame_data", "[ascii]") {
   size_t out_size;
   char *result = ascii_create_grid(sources, 2, 2, 1, &out_size);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
+  REQUIRE((result) != nullptr);
   // When first source has NULL data and grid is too small, out_size will be 0
   // This is expected behavior - the function handles NULL gracefully
-  ASCIICHAT_REQUIRE(out_size >= 0);
+  REQUIRE(out_size >= 0);
 
   SAFE_FREE(result);
 }
@@ -657,13 +654,13 @@ TEST_CASE("ascii/ascii_write_basic", "[ascii]") {
   asciichat_error_t result = ascii_write(data);
 
   // Should succeed or fail gracefully
-  ASCIICHAT_REQUIRE(result == ASCIICHAT_OK || result < 0);
+  REQUIRE((result == ASCIICHAT_OK || result < 0));
 }
 
 TEST_CASE("ascii/ascii_write_null_data", "[ascii]") {
   asciichat_error_t result = ascii_write(NULL);
   // Should return an error code (non-zero asciichat_error_t value)
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "ascii_write(NULL) should return an error");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("ascii/ascii_write_empty_data", "[ascii]") {
@@ -671,7 +668,7 @@ TEST_CASE("ascii/ascii_write_empty_data", "[ascii]") {
   asciichat_error_t result = ascii_write(data);
 
   // Should succeed or fail gracefully
-  ASCIICHAT_REQUIRE(result == ASCIICHAT_OK || result < 0);
+  REQUIRE((result == ASCIICHAT_OK || result < 0));
 }
 
 /* ============================================================================
@@ -684,7 +681,7 @@ TEST_CASE("ascii/ascii_write_init_basic", "[ascii]") {
   asciichat_error_t result = ascii_write_init(STDOUT_FILENO, reset_terminal);
 
   // Should succeed or fail gracefully
-  ASCIICHAT_REQUIRE(result == ASCIICHAT_OK || result < 0);
+  REQUIRE((result == ASCIICHAT_OK || result < 0));
 
   ascii_write_destroy(STDOUT_FILENO, reset_terminal);
 }
@@ -694,7 +691,7 @@ TEST_CASE("ascii/ascii_write_init_invalid_fd", "[ascii]") {
   asciichat_error_t result = ascii_write_init(-1, reset_terminal);
 
   // Should fail with invalid file descriptor (return non-zero error code)
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "ascii_write_init(-1) should return an error");
+  REQUIRE((result) != (ASCIICHAT_OK));
 
   ascii_write_destroy(-1, reset_terminal);
 }
@@ -716,29 +713,29 @@ TEST_CASE("ascii/ascii_operations_with_invalid_parameters", "[ascii]") {
 
   // ascii_convert with invalid parameters
   result = ascii_convert(NULL, -1, -1, false, false, false, NULL, NULL);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 
   // ascii_convert_with_capabilities with invalid parameters
   result = ascii_convert_with_capabilities(NULL, -1, -1, NULL, false, false, NULL);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 
   // ascii_pad_frame_width with invalid parameters
   result = ascii_pad_frame_width(NULL, 0);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 
   // ascii_pad_frame_height with invalid parameters
   result = ascii_pad_frame_height(NULL, 0);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 
   // ascii_create_grid with invalid parameters
   size_t out_size;
   result = ascii_create_grid(NULL, -1, -1, -1, &out_size);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 }
 
 TEST_CASE("ascii/ascii_operations_with_extreme_values", "[ascii]") {
   image_t *img = image_new(1, 1);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   const char *palette = "@#$%&*+=-:. ";
   char luminance_palette[257]; // Extra byte for null terminator
@@ -782,7 +779,7 @@ TEST_CASE("ascii/palette_tests", "[ascii]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(ascii_palette_cases));
   auto *tc = &generated_case;
   image_t *img = image_new(4, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(img, "Image creation should succeed for %s", tc->description);
+  REQUIRE((img) != nullptr);
 
   // Fill with test pattern
   for (int i = 0; i < 16; i++) {
@@ -803,11 +800,11 @@ TEST_CASE("ascii/palette_tests", "[ascii]") {
   char *result = ascii_convert(img, 4, 4, false, false, false, palette_to_use, luminance_palette);
 
   if (tc->should_succeed) {
-    ASCIICHAT_REQUIRE_NOT_NULL(result, "ASCII conversion should succeed for %s", tc->description);
-    ASCIICHAT_REQUIRE_GT(strlen(result), 0, "Result should not be empty for %s", tc->description);
+    REQUIRE((result) != nullptr);
+    REQUIRE((strlen(result)) > (0));
     SAFE_FREE(result);
   } else {
-    ASCIICHAT_REQUIRE_NULL(result, "ASCII conversion should fail for %s", tc->description);
+    REQUIRE((result) == nullptr);
   }
 
   image_destroy(img);
@@ -827,7 +824,7 @@ TEST_CASE("ascii/size_tests", "[ascii]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(ascii_size_cases));
   auto *tc = &generated_case;
   image_t *img = image_new(tc->width, tc->height);
-  ASCIICHAT_REQUIRE_NOT_NULL(img, "Image creation should succeed for %s", tc->description);
+  REQUIRE((img) != nullptr);
 
   // Fill with gradient pattern
   for (int y = 0; y < tc->height; y++) {
@@ -847,7 +844,7 @@ TEST_CASE("ascii/size_tests", "[ascii]") {
   luminance_palette[256] = '\0';
 
   char *result = ascii_convert(img, tc->width, tc->height, false, false, false, palette, luminance_palette);
-  ASCIICHAT_REQUIRE_NOT_NULL(result, "ASCII conversion should succeed for %s", tc->description);
+  REQUIRE((result) != nullptr);
 
   // Verify result dimensions
   // Count lines by counting newlines, and add 1 if string doesn't end with newline
@@ -865,7 +862,7 @@ TEST_CASE("ascii/size_tests", "[ascii]") {
   if (result_len > 0 && result[result_len - 1] != '\n') {
     line_count++;
   }
-  ASCIICHAT_REQUIRE_EQ(line_count, expected_lines, "Result should have correct number of lines for %s", tc->description);
+  REQUIRE((line_count) == (expected_lines));
 
   SAFE_FREE(result);
   image_destroy(img);
@@ -887,7 +884,7 @@ TEST_CASE("ascii/option_tests", "[ascii]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(ascii_option_cases));
   auto *tc = &generated_case;
   image_t *img = image_new(4, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(img, "Image creation should succeed for %s", tc->description);
+  REQUIRE((img) != nullptr);
 
   // Fill with colorful pattern
   for (int i = 0; i < 16; i++) {
@@ -902,8 +899,8 @@ TEST_CASE("ascii/option_tests", "[ascii]") {
   luminance_palette[256] = '\0';
 
   char *result = ascii_convert(img, 4, 4, tc->use_color, tc->use_bold, tc->use_italic, palette, luminance_palette);
-  ASCIICHAT_REQUIRE_NOT_NULL(result, "ASCII conversion should succeed for %s", tc->description);
-  ASCIICHAT_REQUIRE_GT(strlen(result), 0, "Result should not be empty for %s", tc->description);
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) > (0));
 
   SAFE_FREE(result);
   image_destroy(img);
@@ -929,7 +926,7 @@ TEST_CASE("ascii/stress_tests", "[ascii]") {
 
   for (int i = 0; i < tc->num_iterations; i++) {
     image_t *img = image_new(8, 8);
-    ASCIICHAT_REQUIRE_NOT_NULL(img, "Image creation should succeed for iteration %d in %s", i, tc->description);
+    REQUIRE((img) != nullptr);
 
     // Fill with random pattern
     for (int j = 0; j < 64; j++) {
@@ -937,8 +934,8 @@ TEST_CASE("ascii/stress_tests", "[ascii]") {
     }
 
     char *result = ascii_convert(img, 8, 8, false, false, false, palette, luminance_palette);
-    ASCIICHAT_REQUIRE_NOT_NULL(result, "ASCII conversion should succeed for iteration %d in %s", i, tc->description);
-    ASCIICHAT_REQUIRE_GT(strlen(result), 0, "Result should not be empty for iteration %d in %s", i, tc->description);
+    REQUIRE((result) != nullptr);
+    REQUIRE((strlen(result)) > (0));
 
     SAFE_FREE(result);
     image_destroy(img);
@@ -947,7 +944,7 @@ TEST_CASE("ascii/stress_tests", "[ascii]") {
 
 TEST_CASE("ascii/halfblock_cover_uses_cell_geometry", "[ascii]") {
   image_t *img = image_new(8, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
   for (int y = 0; y < 4; ++y) {
     for (int x = 0; x < 8; ++x) {
       img->pixels[y * 8 + x] = x < 2 ? (rgb_pixel_t){255, 0, 0} : x >= 6 ? (rgb_pixel_t){0, 255, 0} : (rgb_pixel_t){0, 0, 255};
@@ -956,38 +953,38 @@ TEST_CASE("ascii/halfblock_cover_uses_cell_geometry", "[ascii]") {
   terminal_capabilities_t caps = {.color_level = TERM_COLOR_TRUECOLOR, .render_mode = RENDER_MODE_HALF_BLOCK};
   // Eight columns by two double-height cells have the source's 2:1 aspect.
   char *wide = ascii_convert_with_capabilities(img, 8, 2, &caps, true, false, " .#");
-  ASCIICHAT_REQUIRE_NOT_NULL(wide);
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(wide, "38;2;255;0;0m"), "Left edge was incorrectly cropped");
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(wide, "38;2;0;255;0m"), "Right edge was incorrectly cropped");
+  REQUIRE((wide) != nullptr);
+  REQUIRE((strstr(wide, "38;2;255;0;0m")) != nullptr);
+  REQUIRE((strstr(wide, "38;2;0;255;0m")) != nullptr);
   SAFE_FREE(wide);
   // A square physical viewport should crop both edge bands, preserving cover semantics.
   char *square = ascii_convert_with_capabilities(img, 8, 4, &caps, true, false, " .#");
-  ASCIICHAT_REQUIRE_NOT_NULL(square);
-  ASCIICHAT_REQUIRE_NULL(strstr(square, "38;2;255;0;0m"));
-  ASCIICHAT_REQUIRE_NULL(strstr(square, "38;2;0;255;0m"));
+  REQUIRE((square) != nullptr);
+  REQUIRE((strstr(square, "38;2;255;0;0m")) == nullptr);
+  REQUIRE((strstr(square, "38;2;0;255;0m")) == nullptr);
   SAFE_FREE(square);
   // Contain preserves both source edges and adds black bars instead of cropping.
   char *contained = ascii_convert_with_capabilities_fit(img, 8, 4, &caps, true, false, " .#", true);
-  ASCIICHAT_REQUIRE_NOT_NULL(contained);
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(contained, "38;2;255;0;0m"));
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(contained, "38;2;0;255;0m"));
+  REQUIRE((contained) != nullptr);
+  REQUIRE((strstr(contained, "38;2;255;0;0m")) != nullptr);
+  REQUIRE((strstr(contained, "38;2;0;255;0m")) != nullptr);
   // Black half-block pairs are blank cells with default colors, so validate
   // the letterbox rows rather than requiring an explicit black foreground.
   char *expanded = ansi_expand_rle(contained, strlen(contained));
-  ASCIICHAT_REQUIRE_NOT_NULL(expanded);
+  REQUIRE((expanded) != nullptr);
   char *plain = ansi_strip_escapes(expanded, strlen(expanded));
   SAFE_FREE(expanded);
-  ASCIICHAT_REQUIRE_NOT_NULL(plain);
+  REQUIRE((plain) != nullptr);
   const char *last_row = strrchr(plain, '\n');
-  ASCIICHAT_REQUIRE_NOT_NULL(last_row);
+  REQUIRE((last_row) != nullptr);
   ++last_row;
-  ASCIICHAT_REQUIRE_EQ(strspn(plain, " "), 8, "Top letterbox row must contain eight blank cells");
-  ASCIICHAT_REQUIRE_EQ(plain[8], '\n');
-  ASCIICHAT_REQUIRE_STR_EQ(last_row, "        ", "Bottom letterbox row must contain eight blank cells");
+  REQUIRE((strspn(plain, " ")) == (8));
+  REQUIRE((plain[8]) == ('\n'));
+  REQUIRE(std::strcmp((last_row), ("        ")) == 0);
   size_t rows = 1;
   for (const char *cursor = plain; *cursor; ++cursor)
     rows += *cursor == '\n';
-  ASCIICHAT_REQUIRE_EQ(rows, 4, "Contain must preserve the terminal row count");
+  REQUIRE((rows) == (4));
   SAFE_FREE(plain);
   SAFE_FREE(contained);
   image_destroy(img);
@@ -998,12 +995,12 @@ TEST_CASE("ascii/ascii_create_grid_colored_single_source", "[ascii]") {
   ascii_frame_source_t source = {.frame_data = frame, .frame_size = strlen(frame)};
   size_t size = 0;
   char *grid = ascii_create_grid(&source, 1, 12, 3, &size);
-  ASCIICHAT_REQUIRE_NOT_NULL(grid);
-  ASCIICHAT_REQUIRE_EQ(size, strlen(grid));
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(grid, "\033[38;2;255;0;0mABCDEF"));
+  REQUIRE((grid) != nullptr);
+  REQUIRE((size) == (strlen(grid)));
+  REQUIRE((strstr(grid, "\033[38;2;255;0;0mABCDEF")) != nullptr);
   char plain[128];
   strip_ansi_codes(grid, plain, sizeof(plain));
-  ASCIICHAT_REQUIRE_STR_EQ(plain, "            \r\n   ABCDEF   \r\n            ");
+  REQUIRE(std::strcmp((plain), ("            \r\n   ABCDEF   \r\n            ")) == 0);
   SAFE_FREE(grid);
 }
 
@@ -1018,14 +1015,14 @@ TEST_CASE("ascii/ascii_create_grid_colored_rows_do_not_overlap", "[ascii]") {
   ascii_frame_source_t sources[] = {{left_frame, strlen(left_frame)}, {right_frame, strlen(right_frame)}};
   size_t size = 0;
   char *grid = ascii_create_grid(sources, 2, 21, 6, &size);
-  ASCIICHAT_REQUIRE_NOT_NULL(grid);
-  ASCIICHAT_REQUIRE_EQ(size, strlen(grid));
+  REQUIRE((grid) != nullptr);
+  REQUIRE((size) == (strlen(grid)));
   char plain[256];
   strip_ansi_codes(grid, plain, sizeof(plain));
-  ASCIICHAT_REQUIRE_STR_EQ(plain, "AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB\r\n"
+  REQUIRE(std::strcmp((plain), ("AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB\r\n"
                                   "AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB\r\n"
-                                  "AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB");
-  ASCIICHAT_REQUIRE_EQ(grid[size - 1], 'm'); // Ends with a complete reset, without a scrolling newline.
+                                  "AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB")) == 0);
+  REQUIRE((grid[size - 1]) == ('m')); // Ends with a complete reset, without a scrolling newline.
   SAFE_FREE(grid);
 }
 
@@ -1034,8 +1031,8 @@ TEST_CASE("ascii/ascii_create_grid_unicode_centering", "[ascii]") {
   ascii_frame_source_t source = {.frame_data = frame, .frame_size = strlen(frame)};
   size_t size;
   char *grid = ascii_create_grid(&source, 1, 9, 1, &size);
-  ASCIICHAT_REQUIRE_NOT_NULL(grid);
-  ASCIICHAT_REQUIRE_STR_EQ(grid, "  \033[31mé中😀\033[0m\033[0m  ");
+  REQUIRE((grid) != nullptr);
+  REQUIRE(std::strcmp((grid), ("  \033[31mé中😀\033[0m\033[0m  ")) == 0);
   SAFE_FREE(grid);
 }
 
@@ -1044,8 +1041,8 @@ TEST_CASE("ascii/ascii_create_grid_unicode_clipping", "[ascii]") {
   ascii_frame_source_t source = {.frame_data = frame, .frame_size = strlen(frame)};
   size_t size;
   char *grid = ascii_create_grid(&source, 1, 4, 1, &size);
-  ASCIICHAT_REQUIRE_NOT_NULL(grid);
-  ASCIICHAT_REQUIRE_STR_EQ(grid, "\033[31mé中\033[0m ");
+  REQUIRE((grid) != nullptr);
+  REQUIRE(std::strcmp((grid), ("\033[31mé中\033[0m ")) == 0);
   SAFE_FREE(grid);
 }
 
@@ -1060,18 +1057,18 @@ TEST_CASE("ascii/ascii_create_grid_unicode_separators", "[ascii]") {
   ascii_frame_source_t sources[] = {{left_frame, strlen(left_frame)}, {right_frame, strlen(right_frame)}};
   size_t size;
   char *grid = ascii_create_grid(sources, 2, 21, 6, &size);
-  ASCIICHAT_REQUIRE_NOT_NULL(grid);
+  REQUIRE((grid) != nullptr);
   const char *expected = "\033[31mé中😀ABCDE\033[0m|\033[32m中é😀12345\033[0m";
   const char *row = grid;
   for (int i = 0; i < 6; ++i) {
-    ASCIICHAT_REQUIRE_EQ(strncmp(row, expected, strlen(expected)), 0);
+    REQUIRE((strncmp(row, expected, strlen(expected))) == (0));
     row += strlen(expected);
     if (i < 5) {
-      ASCIICHAT_REQUIRE_EQ(strncmp(row, "\r\n", 2), 0);
+      REQUIRE((strncmp(row, "\r\n", 2)) == (0));
       row += 2;
     }
   }
-  ASCIICHAT_REQUIRE_EQ(*row, '\0');
+  REQUIRE((*row) == ('\0'));
   SAFE_FREE(grid);
 }
 
@@ -1081,7 +1078,7 @@ TEST_CASE("ascii/grid_layout_sizes_source_tiles_to_viewport", "[ascii]") {
     for (int count = 1; count <= 6; ++count) {
       int columns, rows;
       int width = sizes[viewport][0], height = sizes[viewport][1];
-      ASCIICHAT_REQUIRE_EQ(ascii_grid_layout(count, width, height, &columns, &rows), ASCIICHAT_OK);
+      REQUIRE((ascii_grid_layout(count, width, height, &columns, &rows)) == (ASCIICHAT_OK));
       int cell_width = (width - columns + 1) / columns;
       int cell_height = (height - rows + 1) / rows;
       size_t length = (size_t)(cell_width + 1) * cell_height;
@@ -1096,13 +1093,13 @@ TEST_CASE("ascii/grid_layout_sizes_source_tiles_to_viewport", "[ascii]") {
         sources[i] = (ascii_frame_source_t){tile, length};
       size_t grid_size;
       char *grid = ascii_create_grid(sources, count, width, height, &grid_size);
-      ASCIICHAT_REQUIRE_NOT_NULL(grid);
+      REQUIRE((grid) != nullptr);
       for (int i = 0; i < count; ++i) {
         for (int y = 0; y < cell_height; ++y) {
           size_t row_offset = (size_t)((i / columns) * (cell_height + 1) + y) * (width + 2);
           size_t start = row_offset + (i % columns) * (cell_width + 1);
           for (int x = 0; x < cell_width; ++x)
-            ASCIICHAT_REQUIRE_EQ(grid[start + x], 'X', "Missing tile cell at viewport %dx%d, tile %d, %d,%d", width, height, i, x, y);
+            REQUIRE((grid[start + x]) == ('X'));
         }
       }
       SAFE_FREE(grid);

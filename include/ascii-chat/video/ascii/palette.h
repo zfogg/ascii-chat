@@ -73,6 +73,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name ASCII Palette Types
  * @{
@@ -575,3 +579,7 @@ size_t utf8_palette_find_all_char_indices(const utf8_palette_t *palette, const c
                                           size_t *indices, size_t max_indices);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

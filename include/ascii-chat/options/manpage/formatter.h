@@ -19,6 +19,10 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Escape special characters for groff output
  *
@@ -127,3 +131,7 @@ void manpage_fmt_write_text(FILE *f, const char *text);
 void manpage_fmt_write_title(FILE *f, const char *program_name, const char *mode_name, const char *brief_description);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

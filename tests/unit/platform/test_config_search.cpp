@@ -1,10 +1,10 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file tests/unit/platform/test_config_search.c
  * @brief Tests for platform_find_config_file() API
  * @ingroup tests
  */
 
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,9 +51,9 @@ TEST_CASE("platform_config_search/list_cleanup_with_entries", "[platform_config_
   config_file_list_destroy(&list);
 
   // Verify cleanup
-  ASCIICHAT_REQUIRE_EQ(list.count, 0, "Count should be reset");
-  ASCIICHAT_REQUIRE_EQ(list.capacity, 0, "Capacity should be reset");
-  ASCIICHAT_REQUIRE_NULL(list.files, "Files should be NULL");
+  REQUIRE((list.count) == (0));
+  REQUIRE((list.capacity) == (0));
+  REQUIRE((list.files) == nullptr);
 }
 
 TEST_CASE("platform_config_search/basic_allocation", "[platform_config_search]") {
@@ -63,9 +63,9 @@ TEST_CASE("platform_config_search/basic_allocation", "[platform_config_search]")
   list.files = SAFE_MALLOC(sizeof(config_file_result_t), config_file_result_t *);
   list.count = 0;
 
-  ASCIICHAT_REQUIRE_NOT_NULL(list.files, "Files array should be allocated");
-  ASCIICHAT_REQUIRE_EQ(list.capacity, 1, "Capacity should be set");
-  ASCIICHAT_REQUIRE_EQ(list.count, 0, "Count should be 0");
+  REQUIRE((list.files) != nullptr);
+  REQUIRE((list.capacity) == (1));
+  REQUIRE((list.count) == (0));
 
   config_file_list_destroy(&list);
 }

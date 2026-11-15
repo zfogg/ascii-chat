@@ -1,10 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file tests/unit/mmap_logging_test.c
  * @brief Unit tests for mmap-based lock-free logging
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/log/mmap.h>
@@ -28,13 +27,13 @@ TEST_CASE("mmap_logging/init_destroy", "[mmap_logging]") {
   cleanup_files(log_path);
 
   asciichat_error_t result = log_mmap_init_simple(log_path, 0);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Failed to initialize mmap logging");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
-  ASCIICHAT_REQUIRE(log_mmap_is_active(), "Mmap logging should be active after init");
+  REQUIRE(log_mmap_is_active());
 
   log_mmap_destroy();
 
-  ASCIICHAT_REQUIRE(!log_mmap_is_active(), "Mmap logging should not be active after destroy");
+  REQUIRE(!log_mmap_is_active());
 
   cleanup_files(log_path);
 }
@@ -45,15 +44,15 @@ TEST_CASE("mmap_logging/creates_log_file", "[mmap_logging]") {
   cleanup_files(log_path);
 
   asciichat_error_t result = log_mmap_init_simple(log_path, 0);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "log_mmap_init_simple failed with error %d", result);
+  REQUIRE((result) == (ASCIICHAT_OK));
 
-  ASCIICHAT_REQUIRE(log_mmap_is_active(), "Mmap logging should be active after successful init");
+  REQUIRE(log_mmap_is_active());
 
   // Check log file exists
   struct stat st;
   int stat_result = stat(log_path, &st);
-  ASCIICHAT_REQUIRE_EQ(stat_result, 0, "Log file should exist after init at %s (errno=%d)", log_path, errno);
-  ASCIICHAT_REQUIRE_GT(st.st_size, 0, "Log file should have non-zero size");
+  REQUIRE((stat_result) == (0));
+  REQUIRE((st.st_size) > (0));
 
   log_mmap_destroy();
   cleanup_files(log_path);
@@ -65,7 +64,7 @@ TEST_CASE("mmap_logging/text_is_readable", "[mmap_logging]") {
   cleanup_files(log_path);
 
   asciichat_error_t result = log_mmap_init_simple(log_path, 0);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK);
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Write some entries
   log_mmap_write(LOG_INFO, __FILE__, __LINE__, __func__, "Test message for reading");
@@ -74,8 +73,8 @@ TEST_CASE("mmap_logging/text_is_readable", "[mmap_logging]") {
   // Check log file has content
   struct stat st;
   int stat_result = stat(log_path, &st);
-  ASCIICHAT_REQUIRE_EQ(stat_result, 0, "Log file should exist after write");
-  ASCIICHAT_REQUIRE_GT(st.st_size, (off_t)0, "Log file should have content");
+  REQUIRE((stat_result) == (0));
+  REQUIRE((st.st_size) > ((off_t)0));
 
   log_mmap_destroy();
   cleanup_files(log_path);
@@ -87,7 +86,7 @@ TEST_CASE("mmap_logging/write_and_stats", "[mmap_logging]") {
   cleanup_files(log_path);
 
   asciichat_error_t result = log_mmap_init_simple(log_path, 0);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK);
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Write some entries
   for (int i = 0; i < 10; i++) {
@@ -98,8 +97,8 @@ TEST_CASE("mmap_logging/write_and_stats", "[mmap_logging]") {
   uint64_t bytes_written, wrap_count;
   log_mmap_get_stats(&bytes_written, &wrap_count);
 
-  ASCIICHAT_REQUIRE_GT(bytes_written, (uint64_t)0, "Should have written some bytes");
-  ASCIICHAT_REQUIRE_EQ(wrap_count, (uint64_t)0, "Should not have wrapped yet");
+  REQUIRE((bytes_written) > ((uint64_t)0));
+  REQUIRE((wrap_count) == ((uint64_t)0));
 
   log_mmap_destroy();
   cleanup_files(log_path);
@@ -111,7 +110,7 @@ TEST_CASE("mmap_logging/error_triggers_sync", "[mmap_logging]") {
   cleanup_files(log_path);
 
   asciichat_error_t result = log_mmap_init_simple(log_path, 0);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK);
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Write an error - should trigger sync
   log_mmap_write(LOG_ERROR, __FILE__, __LINE__, __func__, "Error message test");
@@ -120,7 +119,7 @@ TEST_CASE("mmap_logging/error_triggers_sync", "[mmap_logging]") {
   uint64_t bytes_written, wrap_count;
   log_mmap_get_stats(&bytes_written, &wrap_count);
 
-  ASCIICHAT_REQUIRE_GT(bytes_written, (uint64_t)0, "Error entry should be written");
+  REQUIRE((bytes_written) > ((uint64_t)0));
 
   log_mmap_destroy();
   cleanup_files(log_path);
@@ -137,16 +136,16 @@ TEST_CASE("mmap_logging/config_struct_init", "[mmap_logging]") {
   };
 
   asciichat_error_t result = log_mmap_init(&config);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK);
+  REQUIRE((result) == (ASCIICHAT_OK));
 
-  ASCIICHAT_REQUIRE(log_mmap_is_active());
+  REQUIRE(log_mmap_is_active());
 
   // Write some entries
   log_mmap_write(LOG_INFO, __FILE__, __LINE__, __func__, "Test with config struct");
 
   uint64_t bytes_written, wrap_count;
   log_mmap_get_stats(&bytes_written, &wrap_count);
-  ASCIICHAT_REQUIRE_GT(bytes_written, (uint64_t)0);
+  REQUIRE((bytes_written) > ((uint64_t)0));
 
   log_mmap_destroy();
 
@@ -159,13 +158,13 @@ TEST_CASE("mmap_logging/double_init", "[mmap_logging]") {
   cleanup_files(log_path);
 
   asciichat_error_t result1 = log_mmap_init_simple(log_path, 0);
-  ASCIICHAT_REQUIRE_EQ(result1, ASCIICHAT_OK);
+  REQUIRE((result1) == (ASCIICHAT_OK));
 
   // Second init should succeed (destroys first, reinits)
   asciichat_error_t result2 = log_mmap_init_simple(log_path, 0);
-  ASCIICHAT_REQUIRE_EQ(result2, ASCIICHAT_OK);
+  REQUIRE((result2) == (ASCIICHAT_OK));
 
-  ASCIICHAT_REQUIRE(log_mmap_is_active());
+  REQUIRE(log_mmap_is_active());
 
   log_mmap_destroy();
   cleanup_files(log_path);
@@ -177,7 +176,7 @@ TEST_CASE("mmap_logging/lock_free_sanity", "[mmap_logging]") {
   cleanup_files(log_path);
 
   asciichat_error_t result = log_mmap_init_simple(log_path, 0);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK);
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Write many entries quickly - should not deadlock
   for (int i = 0; i < 1000; i++) {
@@ -186,7 +185,7 @@ TEST_CASE("mmap_logging/lock_free_sanity", "[mmap_logging]") {
 
   uint64_t bytes_written, wrap_count;
   log_mmap_get_stats(&bytes_written, &wrap_count);
-  ASCIICHAT_REQUIRE_GT(bytes_written, (uint64_t)0, "Should have written entries");
+  REQUIRE((bytes_written) > ((uint64_t)0));
 
   log_mmap_destroy();
   cleanup_files(log_path);

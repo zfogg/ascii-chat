@@ -39,6 +39,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Digit Counting
  * ============================================================================
@@ -318,3 +322,7 @@ static inline char *write_u32(char *p, uint32_t n) {
 }
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

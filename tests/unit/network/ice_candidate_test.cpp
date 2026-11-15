@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/network/webrtc/ice.h>
 #include <ascii-chat/common.h>
@@ -21,21 +21,21 @@ TEST_CASE("ice_candidate/parses_and_formats_all_candidate_types_and_tcp_modes", 
   };
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
     ice_candidate_t candidate;
-    ASCIICHAT_REQUIRE_EQ(ice_parse_candidate(cases[i].line, &candidate), ASCIICHAT_OK, "%s", cases[i].line);
-    ASCIICHAT_REQUIRE_EQ(candidate.type, cases[i].type);
-    ASCIICHAT_REQUIRE_EQ(candidate.protocol, cases[i].protocol);
-    ASCIICHAT_REQUIRE_GE(candidate.component_id, 1);
-    ASCIICHAT_REQUIRE_LE(candidate.component_id, 2);
-    ASCIICHAT_REQUIRE_NE(candidate.port, 0);
-    ASCIICHAT_REQUIRE_NE(candidate.ip_address[0], '\0');
+    REQUIRE((ice_parse_candidate(cases[i].line, &candidate)) == (ASCIICHAT_OK));
+    REQUIRE((candidate.type) == (cases[i].type));
+    REQUIRE((candidate.protocol) == (cases[i].protocol));
+    REQUIRE((candidate.component_id) >= (1));
+    REQUIRE((candidate.component_id) <= (2));
+    REQUIRE((candidate.port) != (0));
+    REQUIRE((candidate.ip_address[0]) != ('\0'));
     if (candidate.protocol == ICE_PROTOCOL_TCP)
-      ASCIICHAT_REQUIRE_EQ(candidate.tcp_type, cases[i].tcp_type);
+      REQUIRE((candidate.tcp_type) == (cases[i].tcp_type));
     char line[512];
-    ASCIICHAT_REQUIRE_EQ(ice_format_candidate(&candidate, line, sizeof(line)), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_STR_EQ(line, cases[i].line, "wire fields must survive a round trip");
+    REQUIRE((ice_format_candidate(&candidate, line, sizeof(line))) == (ASCIICHAT_OK));
+    REQUIRE(std::strcmp((line), (cases[i].line)) == 0);
     char exact[512];
-    ASCIICHAT_REQUIRE_EQ(ice_format_candidate(&candidate, exact, strlen(line) + 1), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(ice_format_candidate(&candidate, exact, strlen(line)), ERROR_BUFFER_FULL);
+    REQUIRE((ice_format_candidate(&candidate, exact, strlen(line) + 1)) == (ASCIICHAT_OK));
+    REQUIRE((ice_format_candidate(&candidate, exact, strlen(line))) == (ERROR_BUFFER_FULL));
   }
 }
 
@@ -43,18 +43,18 @@ TEST_CASE("ice_candidate/rejects_malformed_input_and_missing_outputs", "[ice_can
   const char *invalid[] = {"", "host 1 udp", "f 1 sctp 1 127.0.0.1 9 typ host", "f 1 udp 1 127.0.0.1 9 typ other", "f one udp 1 127.0.0.1 9 typ host", "f 1 udp 1 not-an-ip 9 typ host"};
   ice_candidate_t candidate = {0};
   for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i)
-    ASCIICHAT_REQUIRE_EQ(ice_parse_candidate(invalid[i], &candidate), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(ice_parse_candidate(NULL, &candidate), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(ice_parse_candidate("f 1 udp 1 ::1 9 typ host", NULL), ERROR_INVALID_PARAM);
+    REQUIRE((ice_parse_candidate(invalid[i], &candidate)) == (ERROR_INVALID_PARAM));
+  REQUIRE((ice_parse_candidate(NULL, &candidate)) == (ERROR_INVALID_PARAM));
+  REQUIRE((ice_parse_candidate("f 1 udp 1 ::1 9 typ host", NULL)) == (ERROR_INVALID_PARAM));
   char line[512];
-  ASCIICHAT_REQUIRE_EQ(ice_format_candidate(NULL, line, sizeof(line)), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(ice_format_candidate(&candidate, NULL, sizeof(line)), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(ice_format_candidate(&candidate, line, 0), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(ice_add_remote_candidate(NULL, &candidate, "video"), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_NOT(ice_is_connected(NULL));
-  ASCIICHAT_REQUIRE_EQ(ice_calculate_priority_for_candidate(NULL), 0);
-  ASCIICHAT_REQUIRE_STR_EQ(ice_candidate_type_name((ice_candidate_type_t)99), "unknown");
-  ASCIICHAT_REQUIRE_STR_EQ(ice_protocol_name((ice_protocol_t)99), "unknown");
+  REQUIRE((ice_format_candidate(NULL, line, sizeof(line))) == (ERROR_INVALID_PARAM));
+  REQUIRE((ice_format_candidate(&candidate, NULL, sizeof(line))) == (ERROR_INVALID_PARAM));
+  REQUIRE((ice_format_candidate(&candidate, line, 0)) == (ERROR_INVALID_PARAM));
+  REQUIRE((ice_add_remote_candidate(NULL, &candidate, "video")) == (ERROR_INVALID_PARAM));
+  REQUIRE(!(ice_is_connected(NULL)));
+  REQUIRE((ice_calculate_priority_for_candidate(NULL)) == (0));
+  REQUIRE(std::strcmp((ice_candidate_type_name((ice_candidate_type_t)99)), ("unknown")) == 0);
+  REQUIRE(std::strcmp((ice_protocol_name((ice_protocol_t)99)), ("unknown")) == 0);
 }
 
 TEST_CASE("ice_candidate/formats_extensions_without_overwriting_short_buffers", "[ice_candidate]") {
@@ -67,19 +67,19 @@ TEST_CASE("ice_candidate/formats_extensions_without_overwriting_short_buffers", 
   char output[sizeof(expected) + 1];
   for (size_t size = 1; size < sizeof(expected); ++size) {
     memset(output, '!', sizeof(output));
-    ASCIICHAT_REQUIRE_EQ(ice_format_candidate(&candidate, output, size), ERROR_BUFFER_FULL, "capacity %zu", size);
-    ASCIICHAT_REQUIRE_EQ(output[size], '!', "formatter must stay within capacity");
+    REQUIRE((ice_format_candidate(&candidate, output, size)) == (ERROR_BUFFER_FULL));
+    REQUIRE((output[size]) == ('!'));
   }
-  ASCIICHAT_REQUIRE_EQ(ice_format_candidate(&candidate, output, sizeof(expected)), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_STR_EQ(output, expected);
+  REQUIRE((ice_format_candidate(&candidate, output, sizeof(expected))) == (ASCIICHAT_OK));
+  REQUIRE(std::strcmp((output), (expected)) == 0);
 }
 
 TEST_CASE("ice_candidate/priority_follows_rfc_and_prefers_lan_then_loopback_then_internet", "[ice_candidate]") {
-  ASCIICHAT_REQUIRE_EQ(ice_calculate_priority(ICE_CANDIDATE_HOST, 65535, 1), UINT32_C(2130706431));
-  ASCIICHAT_REQUIRE_EQ(ice_calculate_priority(ICE_CANDIDATE_SRFLX, 65535, 2), UINT32_C(1694498814));
-  ASCIICHAT_REQUIRE_EQ(ice_calculate_priority(ICE_CANDIDATE_PRFLX, 0, 1), UINT32_C(1845494015));
-  ASCIICHAT_REQUIRE_EQ(ice_calculate_priority(ICE_CANDIDATE_RELAY, 0, 1), 255);
-  ASCIICHAT_REQUIRE_EQ(ice_calculate_priority((ice_candidate_type_t)99, 0, 1), 255);
+  REQUIRE((ice_calculate_priority(ICE_CANDIDATE_HOST, 65535, 1)) == (UINT32_C(2130706431)));
+  REQUIRE((ice_calculate_priority(ICE_CANDIDATE_SRFLX, 65535, 2)) == (UINT32_C(1694498814)));
+  REQUIRE((ice_calculate_priority(ICE_CANDIDATE_PRFLX, 0, 1)) == (UINT32_C(1845494015)));
+  REQUIRE((ice_calculate_priority(ICE_CANDIDATE_RELAY, 0, 1)) == (255));
+  REQUIRE((ice_calculate_priority((ice_candidate_type_t)99, 0, 1)) == (255));
   const struct {
     const char *ip;
     uint32_t expected;
@@ -88,6 +88,6 @@ TEST_CASE("ice_candidate/priority_follows_rfc_and_prefers_lan_then_loopback_then
   ice_candidate_t candidate = {.type = ICE_CANDIDATE_HOST, .component_id = 1};
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
     SAFE_STRNCPY(candidate.ip_address, cases[i].ip, sizeof(candidate.ip_address));
-    ASCIICHAT_REQUIRE_EQ(ice_calculate_priority_for_candidate(&candidate), cases[i].expected, "%s", cases[i].ip);
+    REQUIRE((ice_calculate_priority_for_candidate(&candidate)) == (cases[i].expected));
   }
 }

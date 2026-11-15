@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file test_consensus_e2e.c
  * @brief End-to-end integration test for ring consensus protocol
@@ -168,7 +169,7 @@ static void start_server(void) {
   }
 
   // Parent process
-  ASCIICHAT_REQUIRE(server_proc.pid > 0, "Failed to fork server process");
+  REQUIRE(server_proc.pid > 0);
 
   // Wait for server to start listening
   sleep(2);
@@ -180,8 +181,8 @@ static void start_server(void) {
   if (ret != 0) {
     // Server exited, read its error output
     read_from_pipe(server_proc.stderr_pipe[0], server_proc.stderr_buf, &server_proc.stderr_len, LOG_BUFFER_SIZE);
-    ASCIICHAT_INFO("Server stderr: %s", server_proc.stderr_buf);
-    ASCIICHAT_REQUIRE(ret == 0, "Server process exited immediately");
+    INFO("Server stderr: %s");
+    REQUIRE(ret == 0);
   }
 }
 
@@ -240,7 +241,7 @@ static void start_client(int client_num) {
     exit(127);
   }
 
-  ASCIICHAT_REQUIRE(proc->pid > 0, "Failed to fork client process");
+  REQUIRE(proc->pid > 0);
 }
 
 /**
@@ -369,7 +370,7 @@ TEST_CASE("consensus_e2e/consensus_ring_formation", "[consensus_e2e]") {
   read_from_pipe(server_proc.stderr_pipe[0], server_proc.stderr_buf, &server_proc.stderr_len, LOG_BUFFER_SIZE);
 
   // Verify server received connections
-  ASCIICHAT_REQUIRE(strlen(server_proc.stdout_buf) > 0 || strlen(server_proc.stderr_buf) > 0, "Server should have output from client connections");
+  REQUIRE(strlen(server_proc.stdout_buf) > 0 || strlen(server_proc.stderr_buf) > 0);
 
   cleanup_processes();
 }
@@ -410,11 +411,11 @@ TEST_CASE("consensus_e2e/consensus_protocol_execution", "[consensus_e2e]") {
 
   // Log combined output for inspection
   if (strlen(combined) > 0) {
-    ASCIICHAT_INFO("\n=== Combined Output ===\n%s\n=== End Output ===\n", combined);
+    INFO("\n=== Combined Output ===\n%s\n=== End Output ===\n");
   }
 
   // Verify connections were made (basic smoke test)
-  ASCIICHAT_REQUIRE(strlen(server_proc.stdout_buf) > 0 || strlen(server_proc.stderr_buf) > 0, "Server should produce output");
+  REQUIRE(strlen(server_proc.stdout_buf) > 0 || strlen(server_proc.stderr_buf) > 0);
 
   cleanup_processes();
 }

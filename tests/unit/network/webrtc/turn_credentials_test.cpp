@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file turn_credentials_test.c
  * @brief Unit tests for TURN credential generation
@@ -6,7 +7,6 @@
 #include <ascii-chat/network/webrtc/turn_credentials.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <string.h>
 #include <time.h>
@@ -21,10 +21,10 @@ TEST_CASE("turn_credentials/basic_generation", "[turn_credentials]") {
   turn_credentials_t creds;
   asciichat_error_t result = turn_generate_credentials("swift-river-mountain", "my-secret-key", 86400, &creds);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Credential generation should succeed");
-  ASCIICHAT_REQUIRE_NE(creds.username[0], '\0', "Username should not be empty");
-  ASCIICHAT_REQUIRE_NE(creds.password[0], '\0', "Password should not be empty");
-  ASCIICHAT_REQUIRE_GT(creds.expires_at, time(NULL), "Expiration should be in the future");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((creds.username[0]) != ('\0'));
+  REQUIRE((creds.password[0]) != ('\0'));
+  REQUIRE((creds.expires_at) > (time(NULL)));
 }
 
 /**
@@ -35,14 +35,14 @@ TEST_CASE("turn_credentials/username_format", "[turn_credentials]") {
   const char *session_id = "swift-river-mountain";
   asciichat_error_t result = turn_generate_credentials(session_id, "secret", 3600, &creds);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK);
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Username should contain a colon separator
   char *colon = strchr(creds.username, ':');
-  ASCIICHAT_REQUIRE_NOT_NULL(colon, "Username should contain ':' separator");
+  REQUIRE((colon) != nullptr);
 
   // After the colon should be the session_id
-  ASCIICHAT_REQUIRE_STR_EQ(colon + 1, session_id, "Username should end with session_id");
+  REQUIRE(std::strcmp((colon + 1), (session_id)) == 0);
 
   // Before the colon should be a timestamp
   char timestamp_str[32] = {0};
@@ -50,8 +50,8 @@ TEST_CASE("turn_credentials/username_format", "[turn_credentials]") {
   memcpy(timestamp_str, creds.username, timestamp_len);
 
   long timestamp = atol(timestamp_str);
-  ASCIICHAT_REQUIRE_GT(timestamp, 0, "Timestamp should be positive");
-  ASCIICHAT_REQUIRE_GT(timestamp, time(NULL), "Timestamp should be expiration time (future)");
+  REQUIRE((timestamp) > (0));
+  REQUIRE((timestamp) > (time(NULL)));
 }
 
 /**
@@ -61,13 +61,13 @@ TEST_CASE("turn_credentials/password_base64", "[turn_credentials]") {
   turn_credentials_t creds;
   asciichat_error_t result = turn_generate_credentials("test-session", "secret", 3600, &creds);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK);
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Base64 characters: A-Za-z0-9+/= (and padding)
   for (size_t i = 0; creds.password[i] != '\0'; i++) {
     char c = creds.password[i];
     bool valid = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '+' || c == '/' || c == '=';
-    ASCIICHAT_REQUIRE(valid, "Password character '%c' is not valid base64", c);
+    REQUIRE(valid);
   }
 }
 
@@ -80,7 +80,7 @@ TEST_CASE("turn_credentials/different_secrets", "[turn_credentials]") {
   turn_generate_credentials("session-1", "secret-A", 3600, &creds1);
   turn_generate_credentials("session-1", "secret-B", 3600, &creds2);
 
-  ASCIICHAT_REQUIRE_STR_NE(creds1.password, creds2.password, "Different secrets should produce different passwords");
+  REQUIRE(std::strcmp((creds1.password), (creds2.password)) != 0);
 }
 
 /**
@@ -92,8 +92,8 @@ TEST_CASE("turn_credentials/different_sessions", "[turn_credentials]") {
   turn_generate_credentials("session-A", "same-secret", 3600, &creds1);
   turn_generate_credentials("session-B", "same-secret", 3600, &creds2);
 
-  ASCIICHAT_REQUIRE_STR_NE(creds1.username, creds2.username, "Different sessions should produce different usernames");
-  ASCIICHAT_REQUIRE_STR_NE(creds1.password, creds2.password, "Different sessions should produce different passwords");
+  REQUIRE(std::strcmp((creds1.username), (creds2.username)) != 0);
+  REQUIRE(std::strcmp((creds1.password), (creds2.password)) != 0);
 }
 
 /**
@@ -106,12 +106,12 @@ TEST_CASE("turn_credentials/expiration_time", "[turn_credentials]") {
   turn_credentials_t creds;
   asciichat_error_t result = turn_generate_credentials("test", "secret", validity, &creds);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK);
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Expiration should be approximately now + validity (allow 2 second tolerance)
   time_t expected_expiration = now + validity;
   time_t diff = creds.expires_at > expected_expiration ? creds.expires_at - expected_expiration : expected_expiration - creds.expires_at;
-  ASCIICHAT_REQUIRE_LT(diff, 2, "Expiration time should be approximately now + validity");
+  REQUIRE((diff) < (2));
 }
 
 /**
@@ -122,7 +122,7 @@ TEST_CASE("turn_credentials/not_expired_immediately", "[turn_credentials]") {
   turn_generate_credentials("test", "secret", 3600, &creds);
 
   bool expired = turn_credentials_expired(&creds);
-  ASCIICHAT_REQUIRE_NOT(expired, "Freshly generated credentials should not be expired");
+  REQUIRE(!(expired));
 }
 
 /**
@@ -133,19 +133,19 @@ TEST_CASE("turn_credentials/null_parameters", "[turn_credentials]") {
 
   // NULL session_id
   asciichat_error_t result = turn_generate_credentials(NULL, "secret", 3600, &creds);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should reject NULL session_id");
+  REQUIRE((result) != (ASCIICHAT_OK));
 
   // NULL secret
   result = turn_generate_credentials("session", NULL, 3600, &creds);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should reject NULL secret");
+  REQUIRE((result) != (ASCIICHAT_OK));
 
   // NULL output
   result = turn_generate_credentials("session", "secret", 3600, NULL);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should reject NULL output");
+  REQUIRE((result) != (ASCIICHAT_OK));
 
   // Zero validity
   result = turn_generate_credentials("session", "secret", 0, &creds);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should reject zero validity");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 /**
@@ -159,8 +159,8 @@ TEST_CASE("turn_credentials/password_length", "[turn_credentials]") {
 
   // SHA1 produces 20 bytes -> base64 encoding = 28 bytes (no padding needed for 20 bytes)
   // Allow some flexibility in case padding is included
-  ASCIICHAT_REQUIRE_GE(password_len, 27, "Password should be at least 27 chars (base64 of SHA1)");
-  ASCIICHAT_REQUIRE_LE(password_len, 30, "Password should not exceed 30 chars");
+  REQUIRE((password_len) >= (27));
+  REQUIRE((password_len) <= (30));
 }
 
 /**
@@ -174,8 +174,8 @@ TEST_CASE("turn_credentials/deterministic", "[turn_credentials]") {
   turn_generate_credentials("session-1", "secret-key", 3600, &creds2);
 
   // Usernames should match (same timestamp since generated at same time)
-  ASCIICHAT_REQUIRE_STR_EQ(creds1.username, creds2.username, "Same inputs should produce same username");
+  REQUIRE(std::strcmp((creds1.username), (creds2.username)) == 0);
 
   // Passwords should match (deterministic HMAC)
-  ASCIICHAT_REQUIRE_STR_EQ(creds1.password, creds2.password, "Same inputs should produce same password");
+  REQUIRE(std::strcmp((creds1.password), (creds2.password)) == 0);
 }

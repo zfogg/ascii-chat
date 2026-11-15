@@ -1,7 +1,8 @@
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/tests/logging.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/log.h>
 #include <ascii-chat/tooling/panic/instrument_log.h>
 #include <libplatform/system.h>
 #include <libplatform/thread.h>
@@ -54,7 +55,7 @@ static void make_unique_directory(char *buffer, size_t buffer_size) {
 
   for (int attempt = 0; attempt < 64; ++attempt) {
     int written = snprintf(buffer, buffer_size, "%s/ascii-instr-test-%d-%" PRIu64 "-%d", base, pid, tid, attempt);
-    ASCIICHAT_REQUIRE_LT(written, (int)buffer_size, "Temporary path truncated");
+    REQUIRE((written) < ((int)buffer_size));
     if (written < 0) {
       continue;
     }
@@ -69,11 +70,11 @@ static void make_unique_directory(char *buffer, size_t buffer_size) {
     }
 #endif
     if (errno != EEXIST) {
-      ASCIICHAT_REQUIRE(false, "Failed to create temporary directory '%s': %s", buffer, strerror(errno));
+      REQUIRE(false);
     }
   }
 
-  ASCIICHAT_REQUIRE(false, "Unable to allocate unique temporary directory after multiple attempts");
+  REQUIRE(false);
 }
 
 #if defined(_WIN32)
@@ -265,17 +266,17 @@ TEST_CASE("instrument_log/writes_log_with_defaults", "[instrument_log]") {
   write_sample_record("lib/runtime_test.c");
 
   char log_path[PATH_MAX];
-  ASCIICHAT_REQUIRE(find_log_file(temp_dir, log_path, sizeof(log_path)), "Expected instrumentation log file to be created");
+  REQUIRE(find_log_file(temp_dir, log_path, sizeof(log_path)));
 
   FILE *log_file = fopen(log_path, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(log_file, "Failed to open instrumentation log file");
+  REQUIRE((log_file) != nullptr);
 
   char buffer[4096];
-  ASCIICHAT_REQUIRE_NOT_NULL(fgets(buffer, sizeof(buffer), log_file), "Instrumentation log should contain data");
+  REQUIRE((fgets(buffer, sizeof(buffer), log_file)) != nullptr);
   fclose(log_file);
 
-  ASCIICHAT_CHECK(strstr(buffer, "file=lib/runtime_test.c") != NULL, "Log should include original file path");
-  ASCIICHAT_CHECK(strstr(buffer, "snippet=value = 42;") != NULL, "Log should include statement snippet");
+  CHECK(strstr(buffer, "file=lib/runtime_test.c") != NULL);
+  CHECK(strstr(buffer, "snippet=value = 42;") != NULL);
 
   remove_directory_recursively(temp_dir);
   clear_filter_environment();
@@ -292,7 +293,7 @@ TEST_CASE("instrument_log/include_filter_drops_non_matching_files", "[instrument
   write_sample_record("lib/client.c");
 
   char log_path[PATH_MAX];
-  ASCIICHAT_CHECK(!find_log_file(temp_dir, log_path, sizeof(log_path)), "Include filter should suppress non-matching file");
+  CHECK(!find_log_file(temp_dir, log_path, sizeof(log_path)));
 
   remove_directory_recursively(temp_dir);
   clear_filter_environment();
@@ -313,7 +314,7 @@ TEST_CASE("instrument_log/thread_filter_blocks_unlisted_thread", "[instrument_lo
   write_sample_record("lib/runtime_test.c");
 
   char log_path[PATH_MAX];
-  ASCIICHAT_CHECK(!find_log_file(temp_dir, log_path, sizeof(log_path)), "Thread filter should block non-listed thread");
+  CHECK(!find_log_file(temp_dir, log_path, sizeof(log_path)));
 
   remove_directory_recursively(temp_dir);
   clear_filter_environment();
@@ -334,14 +335,14 @@ TEST_CASE("instrument_log/thread_filter_allows_matching_thread", "[instrument_lo
   write_sample_record("lib/runtime_test.c");
 
   char log_path[PATH_MAX];
-  ASCIICHAT_REQUIRE(find_log_file(temp_dir, log_path, sizeof(log_path)), "Thread filter should allow listed thread");
+  REQUIRE(find_log_file(temp_dir, log_path, sizeof(log_path)));
 
   FILE *log_file = fopen(log_path, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(log_file);
+  REQUIRE((log_file) != nullptr);
   char buffer[4096];
-  ASCIICHAT_REQUIRE_NOT_NULL(fgets(buffer, sizeof(buffer), log_file));
+  REQUIRE((fgets(buffer, sizeof(buffer), log_file)) != nullptr);
   fclose(log_file);
-  ASCIICHAT_CHECK(strstr(buffer, "tid=") != NULL, "Log should contain thread identifier");
+  CHECK(strstr(buffer, "tid=") != NULL);
 
   remove_directory_recursively(temp_dir);
   clear_filter_environment();
@@ -406,14 +407,14 @@ TEST_CASE("instrument_log/selector_and_regex_filters_write_only_the_selected_rec
     bool found = find_log_file(directory, path, sizeof(path));
     if (found) {
       FILE *file = fopen(path, "r");
-      ASCIICHAT_REQUIRE_NOT_NULL(file);
+      REQUIRE((file) != nullptr);
       size_t length = fread(contents, 1, sizeof(contents) - 1, file);
-      ASCIICHAT_REQUIRE_NOT(ferror(file));
+      REQUIRE(!(ferror(file)));
       fclose(file);
       contents[length] = 0;
     }
     for (size_t i = 0; i < 4; ++i)
-      ASCIICHAT_REQUIRE_EQ(strstr(contents, markers[i]) != NULL, (cases[c].mask & (1u << i)) != 0, "%s=%s record %zu", cases[c].key, cases[c].value, i);
+      REQUIRE((strstr(contents, markers[i]) != NULL) == ((cases[c].mask & (1u << i)) != 0));
     remove_directory_recursively(directory);
   }
   reset_extended_filters();
@@ -429,7 +430,7 @@ TEST_CASE("instrument_log/sampling_and_disabled_values_control_persisted_records
     set_env_variable("ASCII_INSTR_SOURCE_PRINT_ENABLE", values[i]);
     asciichat_instr_log_line("sample.c", 1, "sample", "must-not-appear", 0);
     asciichat_instr_runtime_global_destroy();
-    ASCIICHAT_REQUIRE_NOT(find_log_file(directory, path, sizeof(path)));
+    REQUIRE(!(find_log_file(directory, path, sizeof(path))));
     remove_directory_recursively(directory);
   }
   reset_extended_filters();
@@ -441,15 +442,15 @@ TEST_CASE("instrument_log/sampling_and_disabled_values_control_persisted_records
   for (size_t i = 0; i < 7; ++i)
     asciichat_instr_log_line("sample.c", 1, "sample", markers[i], 0);
   asciichat_instr_runtime_global_destroy();
-  ASCIICHAT_REQUIRE(find_log_file(directory, path, sizeof(path)));
+  REQUIRE(find_log_file(directory, path, sizeof(path)));
   FILE *file = fopen(path, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(file);
+  REQUIRE((file) != nullptr);
   char contents[16384] = {0};
   size_t length = fread(contents, 1, sizeof(contents) - 1, file);
   fclose(file);
   contents[length] = 0;
   for (size_t i = 0; i < 7; ++i)
-    ASCIICHAT_REQUIRE_EQ(strstr(contents, markers[i]) != NULL, i % 3 == 0, "sample %zu", i);
+    REQUIRE((strstr(contents, markers[i]) != NULL) == (i % 3 == 0));
   remove_directory_recursively(directory);
   reset_extended_filters();
 }
@@ -461,33 +462,33 @@ TEST_CASE("instrument_log/custom_trace_files_append_escape_snippets_and_record_p
   safe_snprintf(path, sizeof(path), "%s/selected.log", directory);
   set_env_variable("ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_FILE", path);
   set_env_variable("ASCII_INSTR_SOURCE_PRINT_ENABLE_COVERAGE", "yes");
-  ASCIICHAT_REQUIRE(asciichat_instr_coverage_enabled());
+  REQUIRE(asciichat_instr_coverage_enabled());
   asciichat_instr_log_line(NULL, 17, NULL, "first\nsecond\rthird\tend", ASCII_INSTR_SOURCE_PRINT_MACRO_EXPANSION);
   asciichat_instr_log_pc((uintptr_t)0x1234);
   asciichat_instr_runtime_global_destroy();
   asciichat_instr_log_line("append.c", 18, "append", "append-marker", ASCII_INSTR_SOURCE_PRINT_MACRO_INVOCATION);
   asciichat_instr_runtime_global_destroy();
   FILE *file = fopen(path, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(file);
+  REQUIRE((file) != nullptr);
   char line[4096];
   unsigned count = 0;
   while (fgets(line, sizeof(line), file)) {
     if (count == 0) {
-      ASCIICHAT_REQUIRE_NOT_NULL(strstr(line, "file=<unknown> line=17 func=<unknown> macro=1"));
-      ASCIICHAT_REQUIRE_NOT_NULL(strstr(line, "snippet=first\\nsecond\\rthird\\tend\n"));
+      REQUIRE((strstr(line, "file=<unknown> line=17 func=<unknown> macro=1")) != nullptr);
+      REQUIRE((strstr(line, "snippet=first\\nsecond\\rthird\\tend\n")) != nullptr);
     } else if (count == 1) {
-      ASCIICHAT_REQUIRE_NOT_NULL(strstr(line, "file=__coverage__"));
-      ASCIICHAT_REQUIRE_NOT_NULL(strstr(line, "snippet=pc=0x1234"));
+      REQUIRE((strstr(line, "file=__coverage__")) != nullptr);
+      REQUIRE((strstr(line, "snippet=pc=0x1234")) != nullptr);
     } else if (count == 2) {
-      ASCIICHAT_REQUIRE_NOT_NULL(strstr(line, "file=append.c line=18 func=append macro=2 snippet=append-marker"));
+      REQUIRE((strstr(line, "file=append.c line=18 func=append macro=2 snippet=append-marker")) != nullptr);
     }
     ++count;
   }
-  ASCIICHAT_REQUIRE_NOT(ferror(file));
+  REQUIRE(!(ferror(file)));
   fclose(file);
-  ASCIICHAT_REQUIRE_EQ(count, 3);
+  REQUIRE((count) == (3));
   remove_directory_recursively(directory);
   reset_extended_filters();
-  ASCIICHAT_REQUIRE_NOT(asciichat_instr_coverage_enabled());
+  REQUIRE(!(asciichat_instr_coverage_enabled()));
   asciichat_instr_runtime_global_destroy();
 }

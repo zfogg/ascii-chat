@@ -1,9 +1,10 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdbool.h>
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/log.h>
 
 // Global setup to reduce verbose output during tests
 void setup_quiet_logging(void);
@@ -66,7 +67,7 @@ TEST_CASE("logging/log_message_variations", "[logging]") {
     log_error("%s", tc->message);
   }
 
-  ASCIICHAT_REQUIRE(true, "%s should not crash", tc->description);
+  REQUIRE(true);
 }
 
 // =============================================================================
@@ -103,7 +104,7 @@ TEST_CASE("logging/log_special_characters", "[logging]") {
     log_error("%s", tc->message);
   }
 
-  ASCIICHAT_REQUIRE(true, "%s should work", tc->description);
+  REQUIRE(true);
 }
 
 TEST_CASE("logging/log_null_safety", "[logging]") {
@@ -116,7 +117,7 @@ TEST_CASE("logging/log_null_safety", "[logging]") {
   log_warn("Warning with null: %s", null_string ? null_string : "(null)");
   log_error("Error with null: %s", null_string ? null_string : "(null)");
 
-  ASCIICHAT_REQUIRE(true, "NULL-safe logging should work");
+  REQUIRE(true);
 }
 
 // =============================================================================
@@ -132,7 +133,7 @@ TEST_CASE("logging/log_performance", "[logging]") {
     }
   }
 
-  ASCIICHAT_REQUIRE(true, "High-volume logging should work");
+  REQUIRE(true);
 }
 
 TEST_CASE("logging/mixed_log_levels", "[logging]") {
@@ -154,7 +155,7 @@ TEST_CASE("logging/mixed_log_levels", "[logging]") {
     }
   }
 
-  ASCIICHAT_REQUIRE(true, "Mixed level logging should work");
+  REQUIRE(true);
 }
 
 // =============================================================================
@@ -173,7 +174,7 @@ TEST_CASE("logging/log_with_context", "[logging]") {
 
   log_info("Values: size=%zu, uint=0x%08x, float=%.2f", size_val, uint_val, float_val);
 
-  ASCIICHAT_REQUIRE(true, "Context logging should work");
+  REQUIRE(true);
 }
 
 TEST_CASE("logging/concurrent_logging", "[logging]") {
@@ -185,7 +186,7 @@ TEST_CASE("logging/concurrent_logging", "[logging]") {
     log_error("Thread-like error %d", i);
   }
 
-  ASCIICHAT_REQUIRE(true, "Concurrent-like logging should work");
+  REQUIRE(true);
 }
 
 // =============================================================================
@@ -199,7 +200,7 @@ TEST_CASE("logging/log_with_extreme_formats", "[logging]") {
   log_warn("Pointer format: %p", (void *)0x12345678);
   log_error("Character codes: %c %c %c", 'A', 'B', 'C');
 
-  ASCIICHAT_REQUIRE(true, "Complex format logging should work");
+  REQUIRE(true);
 }
 
 // =============================================================================
@@ -223,7 +224,7 @@ TEST_CASE("logging/log_memory_operations", "[logging]") {
     log_debug("Freed memory");
   }
 
-  ASCIICHAT_REQUIRE(true, "Logging during memory operations should work");
+  REQUIRE(true);
 }
 
 TEST_CASE("logging/log_error_codes", "[logging]") {
@@ -234,7 +235,7 @@ TEST_CASE("logging/log_error_codes", "[logging]") {
   log_warn("Buffer full error: %d", ERROR_BUFFER_FULL);
   log_info("Test numeric value: %d", 42);
 
-  ASCIICHAT_REQUIRE(true, "Error code logging should work");
+  REQUIRE(true);
 }
 
 // =============================================================================
@@ -268,7 +269,7 @@ TEST_CASE("logging/simulate_application_logging", "[logging]") {
   log_info("Shutting down gracefully");
   log_debug("Cleanup completed");
 
-  ASCIICHAT_REQUIRE(true, "Application-style logging should work");
+  REQUIRE(true);
 }
 
 TEST_CASE("logging/network_simulation_logging", "[logging]") {
@@ -288,7 +289,7 @@ TEST_CASE("logging/network_simulation_logging", "[logging]") {
 
   log_info("Client %s disconnected", client_ip);
 
-  ASCIICHAT_REQUIRE(true, "Network simulation logging should work");
+  REQUIRE(true);
 }
 
 /* ============================================================================
@@ -306,7 +307,7 @@ TEST_CASE("logging/log_level_setting_and_getting", "[logging]") {
   for (int i = 0; i < num_levels; i++) {
     log_set_level(levels[i]);
     log_level_t retrieved_level = log_get_level();
-    ASCIICHAT_REQUIRE_EQ(retrieved_level, levels[i], "Log level should be set correctly");
+    REQUIRE((retrieved_level) == (levels[i]));
   }
 
   // Restore original level
@@ -331,7 +332,7 @@ TEST_CASE("logging/log_level_filtering", "[logging]") {
   log_warn("This warning should now be filtered");
   log_error("This error should still be shown");
 
-  ASCIICHAT_REQUIRE(true, "Log level filtering should work");
+  REQUIRE(true);
 }
 
 TEST_CASE("logging/log_level_edge_cases", "[logging]") {
@@ -346,7 +347,7 @@ TEST_CASE("logging/log_level_edge_cases", "[logging]") {
   log_error("Error message at most restrictive level (should be filtered)");
   log_fatal("Fatal message at most restrictive level (should be shown)");
 
-  ASCIICHAT_REQUIRE(true, "Log level edge cases should work");
+  REQUIRE(true);
 }
 
 /* ============================================================================
@@ -371,8 +372,8 @@ TEST_CASE("logging/log_file_operations", "[logging]") {
   // Check that file was created and has content
   struct stat st;
   int result = stat(test_log_file, &st);
-  ASCIICHAT_REQUIRE_EQ(result, 0, "Log file should be created");
-  ASCIICHAT_REQUIRE_GT(st.st_size, 0, "Log file should have content");
+  REQUIRE((result) == (0));
+  REQUIRE((st.st_size) > (0));
 
   // Test log destruction
   log_destroy();
@@ -392,7 +393,7 @@ TEST_CASE("logging/log_file_initialization_failure", "[logging]") {
   log_info("This should go to stderr due to file failure");
 
   log_destroy();
-  ASCIICHAT_REQUIRE(true, "Log initialization failure should be handled gracefully");
+  REQUIRE(true);
 }
 
 TEST_CASE("logging/log_file_reinitialization", "[logging]") {
@@ -414,8 +415,8 @@ TEST_CASE("logging/log_file_reinitialization", "[logging]") {
 
   // Check both files exist
   struct stat st1, st2;
-  ASCIICHAT_REQUIRE_EQ(stat(test_log_file1, &st1), 0, "First log file should exist");
-  ASCIICHAT_REQUIRE_EQ(stat(test_log_file2, &st2), 0, "Second log file should exist");
+  REQUIRE((stat(test_log_file1, &st1)) == (0));
+  REQUIRE((stat(test_log_file2, &st2)) == (0));
 
   // Clean up
   log_destroy();
@@ -439,7 +440,7 @@ TEST_CASE("logging/log_file_null_filename", "[logging]") {
   log_set_level(original_level);
   log_set_terminal_output(original_terminal_output);
   log_destroy();
-  ASCIICHAT_REQUIRE(true, "Logging with NULL filename should work");
+  REQUIRE(true);
 }
 
 /* ============================================================================
@@ -454,7 +455,7 @@ TEST_CASE("logging/terminal_output_control", "[logging]") {
   log_set_terminal_output(true);
   log_info("This should appear on terminal");
 
-  ASCIICHAT_REQUIRE(true, "Terminal output control should work");
+  REQUIRE(true);
 }
 
 TEST_CASE("logging/terminal_output_with_file_logging", "[logging]") {
@@ -476,8 +477,8 @@ TEST_CASE("logging/terminal_output_with_file_logging", "[logging]") {
 
   // Check that file has content
   struct stat st;
-  ASCIICHAT_REQUIRE_EQ(stat(test_log_file, &st), 0, "Log file should exist");
-  ASCIICHAT_REQUIRE_GT(st.st_size, 0, "Log file should have content");
+  REQUIRE((stat(test_log_file, &st)) == (0));
+  REQUIRE((st.st_size) > (0));
 
   log_destroy();
   unlink(test_log_file);
@@ -503,18 +504,18 @@ TEST_CASE("logging/log_truncation_manual", "[logging]") {
 
   // Check initial size
   struct stat st;
-  ASCIICHAT_REQUIRE_EQ(stat(test_log_file, &st), 0, "Log file should exist");
+  REQUIRE((stat(test_log_file, &st)) == (0));
   size_t initial_size = (size_t)st.st_size;
 
   // Call truncation (should not do anything for small files)
   log_truncate_if_large();
 
   // Check size after truncation (should be same for small files)
-  ASCIICHAT_REQUIRE_EQ(stat(test_log_file, &st), 0, "Log file should still exist");
+  REQUIRE((stat(test_log_file, &st)) == (0));
   size_t after_size = (size_t)st.st_size;
 
   // For small files, size should be the same
-  ASCIICHAT_REQUIRE_EQ(after_size, initial_size, "Small log file should not be truncated");
+  REQUIRE((after_size) == (initial_size));
 
   // Clean up
   log_destroy();
@@ -538,7 +539,7 @@ TEST_CASE("logging/log_message_formatting_complex", "[logging]") {
 
   log_error("Error code: %d, message: %s", 404, "Not found");
 
-  ASCIICHAT_REQUIRE(true, "Complex log message formatting should work");
+  REQUIRE(true);
 }
 
 TEST_CASE("logging/log_message_formatting_edge_cases", "[logging]") {
@@ -549,7 +550,7 @@ TEST_CASE("logging/log_message_formatting_edge_cases", "[logging]") {
   log_info("Negative values: %d, %f", -42, -3.14);
   log_info("Large values: %d, %zu", INT32_MAX, SIZE_MAX);
 
-  ASCIICHAT_REQUIRE(true, "Edge case log message formatting should work");
+  REQUIRE(true);
 }
 
 TEST_CASE("logging/log_message_formatting_long_strings", "[logging]") {
@@ -563,7 +564,7 @@ TEST_CASE("logging/log_message_formatting_long_strings", "[logging]") {
   // Test with very long format string
   log_info("Very long format string with many parameters: %s %d %s %d %s %d %s %d %s %d", "param1", 1, "param2", 2, "param3", 3, "param4", 4, "param5", 5);
 
-  ASCIICHAT_REQUIRE(true, "Long string log message formatting should work");
+  REQUIRE(true);
 }
 
 /* ============================================================================
@@ -579,11 +580,11 @@ TEST_CASE("logging/thread_safety_basic", "[logging]") {
     log_error("Thread safety test message %d", i);
   }
 
-  ASCIICHAT_REQUIRE(true, "Basic thread safety should work");
+  REQUIRE(true);
 }
 
 TEST_CASE("logging/thread_safety_level_changes", "[logging]") {
-  ASCIICHAT_SKIP("Skipping thread safety level changes test");
+  SKIP("test skipped");
   // Test thread safety with level changes
 
   for (int i = 0; i < 50; i++) {
@@ -597,7 +598,7 @@ TEST_CASE("logging/thread_safety_level_changes", "[logging]") {
     log_info("Info message %d", i);
   }
 
-  ASCIICHAT_REQUIRE(true, "Thread safety with level changes should work");
+  REQUIRE(true);
 }
 
 /* ============================================================================
@@ -620,8 +621,8 @@ TEST_CASE("logging/log_rotation_simulation", "[logging]") {
 
   // Check that file exists and has content
   struct stat st;
-  ASCIICHAT_REQUIRE_EQ(stat(test_log_file, &st), 0, "Log file should exist");
-  ASCIICHAT_REQUIRE_GT(st.st_size, 0, "Log file should have content");
+  REQUIRE((stat(test_log_file, &st)) == (0));
+  REQUIRE((st.st_size) > (0));
 
   // Clean up
   log_destroy();
@@ -671,7 +672,7 @@ TEST_CASE("logging/log_initialization_variations", "[logging]") {
   }
 
   log_destroy();
-  ASCIICHAT_REQUIRE(true, "%s should work", tc->description);
+  REQUIRE(true);
 }
 
 TEST_CASE("logging/log_destroy_without_init", "[logging]") {
@@ -682,7 +683,7 @@ TEST_CASE("logging/log_destroy_without_init", "[logging]") {
   // Should still be able to log after destroy
   log_info("Message after destroy");
 
-  ASCIICHAT_REQUIRE(true, "Log destroy without init should work");
+  REQUIRE(true);
 }
 
 /* ============================================================================
@@ -702,7 +703,7 @@ TEST_CASE("logging/log_message_edge_cases", "[logging]") {
   very_long_param[sizeof(very_long_param) - 1] = '\0';
   log_info("Very long parameter: %s", very_long_param);
 
-  ASCIICHAT_REQUIRE(true, "Log message edge cases should work");
+  REQUIRE(true);
 }
 
 TEST_CASE("logging/log_message_format_specifiers", "[logging]") {
@@ -712,7 +713,7 @@ TEST_CASE("logging/log_message_format_specifiers", "[logging]") {
   log_info("String: %s, char: %c, percent: %%", "hello", 'A');
   log_info("Pointer: %p, size_t: %zu", (void *)0x12345678, (size_t)1000);
 
-  ASCIICHAT_REQUIRE(true, "Log message format specifiers should work");
+  REQUIRE(true);
 }
 
 /* ============================================================================
@@ -750,7 +751,7 @@ TEST_CASE("logging/log_level_env_string_values", "[logging]") {
 
   // Check that debug message was logged
   FILE *f = fopen(test_log_file, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(f, "Log file should exist");
+  REQUIRE((f) != nullptr);
   char buf[512];
   bool found_debug = false;
   while (fgets(buf, sizeof(buf), f)) {
@@ -761,7 +762,7 @@ TEST_CASE("logging/log_level_env_string_values", "[logging]") {
   }
   fclose(f);
   unlink(test_log_file);
-  ASCIICHAT_REQUIRE(found_debug, "DEBUG level from LOG_LEVEL should log debug messages");
+  REQUIRE(found_debug);
 
   // Test INFO
   safe_setenv("LOG_LEVEL", "INFO");
@@ -772,7 +773,7 @@ TEST_CASE("logging/log_level_env_string_values", "[logging]") {
   log_destroy();
 
   f = fopen(test_log_file, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(f, "Log file should exist");
+  REQUIRE((f) != nullptr);
   bool found_info = false;
   while (fgets(buf, sizeof(buf), f)) {
     if (strstr(buf, "Info message")) {
@@ -782,7 +783,7 @@ TEST_CASE("logging/log_level_env_string_values", "[logging]") {
   }
   fclose(f);
   unlink(test_log_file);
-  ASCIICHAT_REQUIRE(found_info, "INFO level from LOG_LEVEL should log info messages");
+  REQUIRE(found_info);
 
   // Test WARN
   safe_setenv("LOG_LEVEL", "WARN");
@@ -793,7 +794,7 @@ TEST_CASE("logging/log_level_env_string_values", "[logging]") {
   log_destroy();
 
   f = fopen(test_log_file, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(f, "Log file should exist");
+  REQUIRE((f) != nullptr);
   bool found_warn = false;
   while (fgets(buf, sizeof(buf), f)) {
     if (strstr(buf, "Warn message")) {
@@ -803,7 +804,7 @@ TEST_CASE("logging/log_level_env_string_values", "[logging]") {
   }
   fclose(f);
   unlink(test_log_file);
-  ASCIICHAT_REQUIRE(found_warn, "WARN level from LOG_LEVEL should log warn messages");
+  REQUIRE(found_warn);
 
   // Test ERROR
   safe_setenv("LOG_LEVEL", "ERROR");
@@ -814,7 +815,7 @@ TEST_CASE("logging/log_level_env_string_values", "[logging]") {
   log_destroy();
 
   f = fopen(test_log_file, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(f, "Log file should exist");
+  REQUIRE((f) != nullptr);
   bool found_error = false;
   while (fgets(buf, sizeof(buf), f)) {
     if (strstr(buf, "Error message")) {
@@ -824,7 +825,7 @@ TEST_CASE("logging/log_level_env_string_values", "[logging]") {
   }
   fclose(f);
   unlink(test_log_file);
-  ASCIICHAT_REQUIRE(found_error, "ERROR level from LOG_LEVEL should log error messages");
+  REQUIRE(found_error);
 
   // Cleanup
   safe_setenv("LOG_LEVEL", NULL);
@@ -843,7 +844,7 @@ TEST_CASE("logging/log_level_env_case_insensitive", "[logging]") {
   log_destroy();
 
   FILE *f = fopen(test_log_file, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(f, "Log file should exist");
+  REQUIRE((f) != nullptr);
   char buf[512];
   bool found = false;
   while (fgets(buf, sizeof(buf), f)) {
@@ -854,7 +855,7 @@ TEST_CASE("logging/log_level_env_case_insensitive", "[logging]") {
   }
   fclose(f);
   unlink(test_log_file);
-  ASCIICHAT_REQUIRE(found, "Lowercase 'debug' should work");
+  REQUIRE(found);
 
   // Test mixed case "DeBuG"
   safe_setenv("LOG_LEVEL", "DeBuG");
@@ -865,7 +866,7 @@ TEST_CASE("logging/log_level_env_case_insensitive", "[logging]") {
   log_destroy();
 
   f = fopen(test_log_file, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(f, "Log file should exist");
+  REQUIRE((f) != nullptr);
   found = false;
   while (fgets(buf, sizeof(buf), f)) {
     if (strstr(buf, "Debug mixed case")) {
@@ -875,7 +876,7 @@ TEST_CASE("logging/log_level_env_case_insensitive", "[logging]") {
   }
   fclose(f);
   unlink(test_log_file);
-  ASCIICHAT_REQUIRE(found, "Mixed case 'DeBuG' should work");
+  REQUIRE(found);
 
   // Cleanup
   safe_setenv("LOG_LEVEL", NULL);
@@ -894,7 +895,7 @@ TEST_CASE("logging/log_level_env_numeric_values", "[logging]") {
   log_destroy();
 
   FILE *f = fopen(test_log_file, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(f, "Log file should exist");
+  REQUIRE((f) != nullptr);
   char buf[512];
   bool found = false;
   while (fgets(buf, sizeof(buf), f)) {
@@ -905,7 +906,7 @@ TEST_CASE("logging/log_level_env_numeric_values", "[logging]") {
   }
   fclose(f);
   unlink(test_log_file);
-  ASCIICHAT_REQUIRE(found, "Numeric '0' should set DEBUG level");
+  REQUIRE(found);
 
   // Test "2" (WARN)
   safe_setenv("LOG_LEVEL", "2");
@@ -917,7 +918,7 @@ TEST_CASE("logging/log_level_env_numeric_values", "[logging]") {
   log_destroy();
 
   f = fopen(test_log_file, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(f, "Log file should exist");
+  REQUIRE((f) != nullptr);
   bool found_warn = false;
   bool found_debug = false;
   while (fgets(buf, sizeof(buf), f)) {
@@ -930,8 +931,8 @@ TEST_CASE("logging/log_level_env_numeric_values", "[logging]") {
   }
   fclose(f);
   unlink(test_log_file);
-  ASCIICHAT_REQUIRE(found_warn, "Numeric '2' should log WARN messages");
-  ASCIICHAT_REQUIRE_NOT(found_debug, "Numeric '2' should not log DEBUG messages");
+  REQUIRE(found_warn);
+  REQUIRE(!(found_debug));
 
   // Cleanup
   safe_setenv("LOG_LEVEL", NULL);
@@ -952,7 +953,7 @@ TEST_CASE("logging/log_level_env_unset_uses_default", "[logging]") {
   log_destroy();
 
   FILE *f = fopen(test_log_file, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(f, "Log file should exist");
+  REQUIRE((f) != nullptr);
   char buf[512];
   bool found_warn = false;
   bool found_info = false;
@@ -967,8 +968,8 @@ TEST_CASE("logging/log_level_env_unset_uses_default", "[logging]") {
   fclose(f);
   unlink(test_log_file);
 
-  ASCIICHAT_REQUIRE(found_warn, "Without LOG_LEVEL, should use log_init parameter (WARN)");
-  ASCIICHAT_REQUIRE_NOT(found_info, "Without LOG_LEVEL, should respect log_init parameter");
+  REQUIRE(found_warn);
+  REQUIRE(!(found_info));
 }
 
 TEST_CASE("logging/log_level_env_invalid_uses_default", "[logging]") {
@@ -986,7 +987,7 @@ TEST_CASE("logging/log_level_env_invalid_uses_default", "[logging]") {
   log_destroy();
 
   FILE *f = fopen(test_log_file, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(f, "Log file should exist");
+  REQUIRE((f) != nullptr);
   char buf[512];
   bool found_info = false;
   bool found_debug = false;
@@ -1003,11 +1004,11 @@ TEST_CASE("logging/log_level_env_invalid_uses_default", "[logging]") {
 
   // In debug builds, default is DEBUG. In release builds, default is INFO.
 #ifdef NDEBUG
-  ASCIICHAT_REQUIRE(found_info, "Invalid LOG_LEVEL should use default INFO level (release build)");
-  ASCIICHAT_REQUIRE_NOT(found_debug, "Invalid LOG_LEVEL should not log DEBUG (release build)");
+  REQUIRE(found_info);
+  REQUIRE(!(found_debug));
 #else
-  ASCIICHAT_REQUIRE(found_info, "Invalid LOG_LEVEL should use default DEBUG level (debug build)");
-  ASCIICHAT_REQUIRE(found_debug, "Invalid LOG_LEVEL should log DEBUG (debug build)");
+  REQUIRE(found_info);
+  REQUIRE(found_debug);
 #endif
 
   // Cleanup
@@ -1034,7 +1035,7 @@ TEST_CASE("logging/log_level_env_dos_protection", "[logging]") {
   log_destroy();
 
   FILE *f = fopen(test_log_file, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(f, "Log file should exist");
+  REQUIRE((f) != nullptr);
   char buf[512];
   bool found_info = false;
   bool found_debug = false;
@@ -1051,11 +1052,11 @@ TEST_CASE("logging/log_level_env_dos_protection", "[logging]") {
 
   // In debug builds, default is DEBUG. In release builds, default is INFO.
 #ifdef NDEBUG
-  ASCIICHAT_REQUIRE(found_info, "Large LOG_LEVEL (64+ chars) should use default INFO (release build)");
-  ASCIICHAT_REQUIRE_NOT(found_debug, "Large LOG_LEVEL should use default INFO (release build)");
+  REQUIRE(found_info);
+  REQUIRE(!(found_debug));
 #else
-  ASCIICHAT_REQUIRE(found_info, "Large LOG_LEVEL (64+ chars) should use default DEBUG (debug build)");
-  ASCIICHAT_REQUIRE(found_debug, "Large LOG_LEVEL should use default DEBUG (debug build)");
+  REQUIRE(found_info);
+  REQUIRE(found_debug);
 #endif
 
   // Cleanup
@@ -1079,7 +1080,7 @@ TEST_CASE("logging/log_level_env_boundary_64_chars", "[logging]") {
   log_destroy();
 
   FILE *f = fopen(test_log_file, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(f, "Log file should exist");
+  REQUIRE((f) != nullptr);
   char buf[512];
   bool found = false;
   while (fgets(buf, sizeof(buf), f)) {
@@ -1090,7 +1091,7 @@ TEST_CASE("logging/log_level_env_boundary_64_chars", "[logging]") {
   }
   fclose(f);
   unlink(test_log_file);
-  ASCIICHAT_REQUIRE(found, "64 character LOG_LEVEL should use default INFO");
+  REQUIRE(found);
 
   // Test 63 characters (should still be invalid but processed)
   char exactly_63[64];
@@ -1105,7 +1106,7 @@ TEST_CASE("logging/log_level_env_boundary_64_chars", "[logging]") {
   log_destroy();
 
   f = fopen(test_log_file, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(f, "Log file should exist");
+  REQUIRE((f) != nullptr);
   found = false;
   while (fgets(buf, sizeof(buf), f)) {
     if (strstr(buf, "Info with 63 char env")) {
@@ -1115,7 +1116,7 @@ TEST_CASE("logging/log_level_env_boundary_64_chars", "[logging]") {
   }
   fclose(f);
   unlink(test_log_file);
-  ASCIICHAT_REQUIRE(found, "63 character LOG_LEVEL (invalid value) should use default INFO");
+  REQUIRE(found);
 
   // Cleanup
   safe_setenv("LOG_LEVEL", NULL);
@@ -1140,7 +1141,7 @@ TEST_CASE("logging/log_level_env_before_init", "[logging]") {
   log_destroy();
 
   FILE *f = fopen(test_log_file, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(f, "Log file should exist");
+  REQUIRE((f) != nullptr);
   char buf[512];
   bool found_after = false;
   while (fgets(buf, sizeof(buf), f)) {
@@ -1152,7 +1153,7 @@ TEST_CASE("logging/log_level_env_before_init", "[logging]") {
   fclose(f);
   unlink(test_log_file);
 
-  ASCIICHAT_REQUIRE(found_after, "LOG_LEVEL should be respected even when log_msg called before init");
+  REQUIRE(found_after);
 
   // Cleanup
   safe_setenv("LOG_LEVEL", NULL);
@@ -1178,5 +1179,5 @@ TEST_CASE("logging/log_once_compiles_and_runs", "[logging]") {
   log_info_once("Should compile");
   log_warn_once("Should compile");
 
-  ASCIICHAT_REQUIRE(true, "log_once macros should compile and run without crash");
+  REQUIRE(true);
 }

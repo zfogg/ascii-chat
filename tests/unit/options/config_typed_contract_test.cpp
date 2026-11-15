@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/options/config.h>
 #include <ascii-chat/options/schema.h>
@@ -13,9 +13,9 @@ static options_config_t *schema;
 static void setup(void) {
   log_init(NULL, LOG_FATAL, false, false);
   log_set_terminal_output(false);
-  ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
+  REQUIRE((options_state_init()) == (ASCIICHAT_OK));
   options_builder_t *b = options_builder_create(sizeof(options_t));
-  ASCIICHAT_REQUIRE_NOT_NULL(b);
+  REQUIRE((b) != nullptr);
   const struct {
     const char *name;
     size_t offset;
@@ -36,12 +36,12 @@ static void setup(void) {
   options_builder_set_mode_bitmask(b, OPTION_MODE_ALL);
   schema = options_builder_build(b);
   options_builder_destroy(b);
-  ASCIICHAT_REQUIRE_NOT_NULL(schema);
+  REQUIRE((schema) != nullptr);
   const options_config_t *configs[] = {schema};
-  ASCIICHAT_REQUIRE_EQ(config_schema_build_from_configs(configs, 1), ASCIICHAT_OK);
+  REQUIRE((config_schema_build_from_configs(configs, 1)) == (ASCIICHAT_OK));
   int fd = -1;
-  ASCIICHAT_REQUIRE_EQ(platform_create_temp_file(path, sizeof(path), "typed-config", &fd), 0);
-  ASCIICHAT_REQUIRE_EQ(platform_close(fd), 0);
+  REQUIRE((platform_create_temp_file(path, sizeof(path), "typed-config", &fd)) == (0));
+  REQUIRE((platform_close(fd)) == (0));
 }
 static void teardown(void) {
   platform_delete_temp_file(path);
@@ -52,27 +52,27 @@ static void teardown(void) {
 }
 static asciichat_error_t load(const char *toml, bool strict, options_t *options) {
   FILE *file = fopen(path, "w");
-  ASCIICHAT_REQUIRE_NOT_NULL(file);
-  ASCIICHAT_REQUIRE_EQ(fwrite(toml, 1, strlen(toml), file), strlen(toml));
-  ASCIICHAT_REQUIRE_EQ(fclose(file), 0);
+  REQUIRE((file) != nullptr);
+  REQUIRE((fwrite(toml, 1, strlen(toml), file)) == (strlen(toml)));
+  REQUIRE((fclose(file)) == (0));
   return config_load_and_apply(MODE_MIRROR, path, strict, options);
 }
 TEST_CASE("config_typed_contract/typed_toml_loads_enum_names_scalars_and_escaped_strings", "[config_typed_contract]") {
   options_t options = options_t_new();
   const char *toml = "[contract]\ncolor_mode='truecolor'\nrender_mode='background'\npalette_type='blocks'\ncolor_filter='none'\n"
                      "fps=24\nstretch=true\nsnapshot_delay=1.25\nlog_file=\"folder\\\\trace\\\"name.log\"\n";
-  ASCIICHAT_REQUIRE_EQ(load(toml, true, &options), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(options.color_mode, TERM_COLOR_TRUECOLOR);
-  ASCIICHAT_REQUIRE_EQ(options.render_mode, RENDER_MODE_BACKGROUND);
-  ASCIICHAT_REQUIRE_EQ(options.palette_type, PALETTE_BLOCKS);
-  ASCIICHAT_REQUIRE_EQ(options.color_filter, COLOR_FILTER_NONE);
-  ASCIICHAT_REQUIRE_EQ(options.fps, 24);
-  ASCIICHAT_REQUIRE(options.stretch);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(options.snapshot_delay, 1.25, 1e-9);
-  ASCIICHAT_REQUIRE_STR_EQ(options.log_file, "folder\\trace\"name.log");
-  ASCIICHAT_REQUIRE_EQ(options_get()->fps, 24);
-  ASCIICHAT_REQUIRE_EQ(load("[contract]\ncolor_mode='auto'\n", true, &options), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(options.color_mode, TERM_COLOR_AUTO);
+  REQUIRE((load(toml, true, &options)) == (ASCIICHAT_OK));
+  REQUIRE((options.color_mode) == (TERM_COLOR_TRUECOLOR));
+  REQUIRE((options.render_mode) == (RENDER_MODE_BACKGROUND));
+  REQUIRE((options.palette_type) == (PALETTE_BLOCKS));
+  REQUIRE((options.color_filter) == (COLOR_FILTER_NONE));
+  REQUIRE((options.fps) == (24));
+  REQUIRE(options.stretch);
+  REQUIRE((options.snapshot_delay) == Catch::Approx(1.25));
+  REQUIRE(std::strcmp((options.log_file), ("folder\\trace\"name.log")) == 0);
+  REQUIRE((options_get()->fps) == (24));
+  REQUIRE((load("[contract]\ncolor_mode='auto'\n", true, &options)) == (ASCIICHAT_OK));
+  REQUIRE((options.color_mode) == (TERM_COLOR_AUTO));
 }
 TEST_CASE("config_typed_contract/numeric_enum_compatibility_and_invalid_values_preserve_fields", "[config_typed_contract]") {
   const struct {
@@ -89,18 +89,18 @@ TEST_CASE("config_typed_contract/numeric_enum_compatibility_and_invalid_values_p
     char toml[256];
     int actual;
     safe_snprintf(toml, sizeof(toml), "[contract]\n%s=%d\n", fields[i].key, fields[i].valid);
-    ASCIICHAT_REQUIRE_EQ(load(toml, true, &options), ASCIICHAT_OK, "%s", fields[i].key);
+    REQUIRE((load(toml, true, &options)) == (ASCIICHAT_OK));
     memcpy(&actual, (char *)&options + fields[i].offset, sizeof(actual));
-    ASCIICHAT_REQUIRE_EQ(actual, fields[i].valid);
+    REQUIRE((actual) == (fields[i].valid));
     const char *invalid[] = {"9999", "-9999", "'invalid'", "'99999999999999999999999999'", "'12suffix'"};
     for (size_t j = 0; j < sizeof(invalid) / sizeof(*invalid); ++j) {
       safe_snprintf(toml, sizeof(toml), "[contract]\n%s=%s\n", fields[i].key, invalid[j]);
-      ASCIICHAT_REQUIRE_EQ(load(toml, true, &options), ERROR_CONFIG, "%s=%s", fields[i].key, invalid[j]);
+      REQUIRE((load(toml, true, &options)) == (ERROR_CONFIG));
       memcpy(&actual, (char *)&options + fields[i].offset, sizeof(actual));
-      ASCIICHAT_REQUIRE_EQ(actual, fields[i].valid);
-      ASCIICHAT_REQUIRE_EQ(load(toml, false, &options), ASCIICHAT_OK);
+      REQUIRE((actual) == (fields[i].valid));
+      REQUIRE((load(toml, false, &options)) == (ASCIICHAT_OK));
       memcpy(&actual, (char *)&options + fields[i].offset, sizeof(actual));
-      ASCIICHAT_REQUIRE_EQ(actual, fields[i].valid);
+      REQUIRE((actual) == (fields[i].valid));
     }
   }
 }
@@ -112,11 +112,11 @@ TEST_CASE("config_typed_contract/malformed_scalars_and_wrong_toml_types_do_not_r
   for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
     char toml[256];
     safe_snprintf(toml, sizeof(toml), "[contract]\n%s\n", invalid[i]);
-    ASCIICHAT_REQUIRE_EQ(load(toml, true, &options), ERROR_CONFIG, "%s", invalid[i]);
-    ASCIICHAT_REQUIRE_EQ(options.fps, 30);
-    ASCIICHAT_REQUIRE_FLOAT_EQ(options.snapshot_delay, 2, 1e-9);
+    REQUIRE((load(toml, true, &options)) == (ERROR_CONFIG));
+    REQUIRE((options.fps) == (30));
+    REQUIRE((options.snapshot_delay) == Catch::Approx(2));
   }
-  ASCIICHAT_REQUIRE_EQ(load("[contract]\nfps=[1,2]\nstretch={x=1}\nlog_file=[1]\n", false, &options), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(options.fps, 30);
-  ASCIICHAT_REQUIRE_NOT(options.stretch);
+  REQUIRE((load("[contract]\nfps=[1,2]\nstretch={x=1}\nlog_file=[1]\n", false, &options)) == (ASCIICHAT_OK));
+  REQUIRE((options.fps) == (30));
+  REQUIRE(!(options.stretch));
 }

@@ -1,6 +1,4 @@
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -9,7 +7,7 @@
 #include <stdlib.h>
 
 #include <ascii-chat/video/ascii/output_buffer.h>
-#include <ascii-chat/tests/common.h>
+#include <ascii-chat/common.h>
 #include <ascii-chat/tests/logging.h>
 
 // Use the enhanced macro to create complete test suite with default log levels
@@ -21,9 +19,9 @@ TEST_CASE("output_buffer/ob_reserve_basic", "[output_buffer]") {
   outbuf_t ob = {0};
 
   ob_reserve(&ob, 100);
-  ASCIICHAT_REQUIRE_NOT_NULL(ob.buf);
-  ASCIICHAT_REQUIRE(ob.cap >= 100);
-  ASCIICHAT_REQUIRE_EQ(ob.len, 0);
+  REQUIRE((ob.buf) != nullptr);
+  REQUIRE(ob.cap >= 100);
+  REQUIRE((ob.len) == (0));
 
   SAFE_FREE(ob.buf);
 }
@@ -32,9 +30,9 @@ TEST_CASE("output_buffer/ob_reserve_zero", "[output_buffer]") {
   outbuf_t ob = {0};
 
   ob_reserve(&ob, 0);
-  ASCIICHAT_REQUIRE_NOT_NULL(ob.buf);
-  ASCIICHAT_REQUIRE(ob.cap >= 4096); // Default capacity
-  ASCIICHAT_REQUIRE_EQ(ob.len, 0);
+  REQUIRE((ob.buf) != nullptr);
+  REQUIRE(ob.cap >= 4096); // Default capacity
+  REQUIRE((ob.len) == (0));
 
   SAFE_FREE(ob.buf);
 }
@@ -48,8 +46,8 @@ TEST_CASE("output_buffer/ob_reserve_expansion", "[output_buffer]") {
 
   // Reserve much larger amount
   ob_reserve(&ob, 10000);
-  ASCIICHAT_REQUIRE_GT(ob.cap, initial_cap);
-  ASCIICHAT_REQUIRE(ob.cap >= 10000);
+  REQUIRE((ob.cap) > (initial_cap));
+  REQUIRE(ob.cap >= 10000);
 
   SAFE_FREE(ob.buf);
 }
@@ -58,12 +56,12 @@ TEST_CASE("output_buffer/ob_putc_basic", "[output_buffer]") {
   outbuf_t ob = {0};
 
   ob_putc(&ob, 'A');
-  ASCIICHAT_REQUIRE_EQ(ob.len, 1);
-  ASCIICHAT_REQUIRE_EQ(ob.buf[0], 'A');
+  REQUIRE((ob.len) == (1));
+  REQUIRE((ob.buf[0]) == ('A'));
 
   ob_putc(&ob, 'B');
-  ASCIICHAT_REQUIRE_EQ(ob.len, 2);
-  ASCIICHAT_REQUIRE_EQ(ob.buf[1], 'B');
+  REQUIRE((ob.len) == (2));
+  REQUIRE((ob.buf[1]) == ('B'));
 
   SAFE_FREE(ob.buf);
 }
@@ -75,8 +73,8 @@ TEST_CASE("output_buffer/ob_putc_multiple", "[output_buffer]") {
     ob_putc(&ob, 'A' + (i % 26));
   }
 
-  ASCIICHAT_REQUIRE_EQ(ob.len, 100);
-  ASCIICHAT_REQUIRE(ob.cap >= 100);
+  REQUIRE((ob.len) == (100));
+  REQUIRE(ob.cap >= 100);
 
   SAFE_FREE(ob.buf);
 }
@@ -86,8 +84,8 @@ TEST_CASE("output_buffer/ob_write_basic", "[output_buffer]") {
   const char *data = "Hello World";
 
   ob_write(&ob, data, strlen(data));
-  ASCIICHAT_REQUIRE_EQ(ob.len, strlen(data));
-  ASCIICHAT_REQUIRE_EQ(memcmp(ob.buf, data, strlen(data)), 0);
+  REQUIRE((ob.len) == (strlen(data)));
+  REQUIRE((memcmp(ob.buf, data, strlen(data))) == (0));
 
   SAFE_FREE(ob.buf);
 }
@@ -96,7 +94,7 @@ TEST_CASE("output_buffer/ob_write_empty", "[output_buffer]") {
   outbuf_t ob = {0};
 
   ob_write(&ob, "", 0);
-  ASCIICHAT_REQUIRE_EQ(ob.len, 0);
+  REQUIRE((ob.len) == (0));
 
   SAFE_FREE(ob.buf);
 }
@@ -110,8 +108,8 @@ TEST_CASE("output_buffer/ob_write_large", "[output_buffer]") {
   }
 
   ob_write(&ob, data, 1000);
-  ASCIICHAT_REQUIRE_EQ(ob.len, 1000);
-  ASCIICHAT_REQUIRE_EQ(memcmp(ob.buf, data, 1000), 0);
+  REQUIRE((ob.len) == (1000));
+  REQUIRE((memcmp(ob.buf, data, 1000)) == (0));
 
   SAFE_FREE(ob.buf);
 }
@@ -123,9 +121,9 @@ TEST_CASE("output_buffer/ob_term_basic", "[output_buffer]") {
   ob_putc(&ob, 'i');
   ob_term(&ob);
 
-  ASCIICHAT_REQUIRE_EQ(ob.len, 2);
-  ASCIICHAT_REQUIRE_EQ(ob.buf[2], '\0');
-  ASCIICHAT_REQUIRE_STR_EQ(ob.buf, "Hi");
+  REQUIRE((ob.len) == (2));
+  REQUIRE((ob.buf[2]) == ('\0'));
+  REQUIRE(std::strcmp((ob.buf), ("Hi")) == 0);
 
   SAFE_FREE(ob.buf);
 }
@@ -159,7 +157,7 @@ TEST_CASE("output_buffer/ob_u8_values", "[output_buffer]") {
 
   ob_u8(&ob, tc->value);
   ob_term(&ob);
-  ASCIICHAT_REQUIRE_STR_EQ(ob.buf, tc->expected_output, "%s: Expected '%s', got '%s'", tc->description, tc->expected_output, ob.buf);
+  REQUIRE(std::strcmp((ob.buf), (tc->expected_output)) == 0);
 
   SAFE_FREE(ob.buf);
 }
@@ -192,7 +190,7 @@ TEST_CASE("output_buffer/ob_u32_values", "[output_buffer]") {
 
   ob_u32(&ob, tc->value);
   ob_term(&ob);
-  ASCIICHAT_REQUIRE_STR_EQ(ob.buf, tc->expected_output, "%s: Expected '%s', got '%s'", tc->description, tc->expected_output, ob.buf);
+  REQUIRE(std::strcmp((ob.buf), (tc->expected_output)) == 0);
 
   SAFE_FREE(ob.buf);
 }
@@ -207,8 +205,8 @@ TEST_CASE("output_buffer/emit_set_truecolor_fg_basic", "[output_buffer]") {
   emit_set_truecolor_fg(&ob, 255, 128, 64);
   ob_term(&ob);
 
-  ASCIICHAT_REQUIRE_GT(ob.len, 0);
-  ASCIICHAT_REQUIRE(strstr(ob.buf, "38;2;255;128;64") != NULL);
+  REQUIRE((ob.len) > (0));
+  REQUIRE(strstr(ob.buf, "38;2;255;128;64") != NULL);
 
   SAFE_FREE(ob.buf);
 }
@@ -219,8 +217,8 @@ TEST_CASE("output_buffer/emit_set_truecolor_bg_basic", "[output_buffer]") {
   emit_set_truecolor_bg(&ob, 0, 255, 128);
   ob_term(&ob);
 
-  ASCIICHAT_REQUIRE_GT(ob.len, 0);
-  ASCIICHAT_REQUIRE(strstr(ob.buf, "48;2;0;255;128") != NULL);
+  REQUIRE((ob.len) > (0));
+  REQUIRE(strstr(ob.buf, "48;2;0;255;128") != NULL);
 
   SAFE_FREE(ob.buf);
 }
@@ -231,8 +229,8 @@ TEST_CASE("output_buffer/emit_set_256_color_fg_basic", "[output_buffer]") {
   emit_set_256_color_fg(&ob, 42);
   ob_term(&ob);
 
-  ASCIICHAT_REQUIRE_GT(ob.len, 0);
-  ASCIICHAT_REQUIRE(strstr(ob.buf, "38;5;42") != NULL);
+  REQUIRE((ob.len) > (0));
+  REQUIRE(strstr(ob.buf, "38;5;42") != NULL);
 
   SAFE_FREE(ob.buf);
 }
@@ -243,8 +241,8 @@ TEST_CASE("output_buffer/emit_set_256_color_bg_basic", "[output_buffer]") {
   emit_set_256_color_bg(&ob, 200);
   ob_term(&ob);
 
-  ASCIICHAT_REQUIRE_GT(ob.len, 0);
-  ASCIICHAT_REQUIRE(strstr(ob.buf, "48;5;200") != NULL);
+  REQUIRE((ob.len) > (0));
+  REQUIRE(strstr(ob.buf, "48;5;200") != NULL);
 
   SAFE_FREE(ob.buf);
 }
@@ -255,8 +253,8 @@ TEST_CASE("output_buffer/emit_reset_basic", "[output_buffer]") {
   emit_reset(&ob);
   ob_term(&ob);
 
-  ASCIICHAT_REQUIRE_GT(ob.len, 0);
-  ASCIICHAT_REQUIRE(strstr(ob.buf, "0m") != NULL);
+  REQUIRE((ob.len) > (0));
+  REQUIRE(strstr(ob.buf, "0m") != NULL);
 
   SAFE_FREE(ob.buf);
 }
@@ -267,7 +265,7 @@ TEST_CASE("output_buffer/emit_set_fg_basic", "[output_buffer]") {
   emit_set_fg(&ob, 255, 0, 0);
   ob_term(&ob);
 
-  ASCIICHAT_REQUIRE_GT(ob.len, 0);
+  REQUIRE((ob.len) > (0));
 
   SAFE_FREE(ob.buf);
 }
@@ -278,7 +276,7 @@ TEST_CASE("output_buffer/emit_set_bg_basic", "[output_buffer]") {
   emit_set_bg(&ob, 0, 255, 0);
   ob_term(&ob);
 
-  ASCIICHAT_REQUIRE_GT(ob.len, 0);
+  REQUIRE((ob.len) > (0));
 
   SAFE_FREE(ob.buf);
 }
@@ -289,15 +287,15 @@ TEST_CASE("output_buffer/emit_set_bg_basic", "[output_buffer]") {
 
 TEST_CASE("output_buffer/rep_is_profitable_basic", "[output_buffer]") {
   // Test various run lengths
-  ASCIICHAT_REQUIRE_EQ(rep_is_profitable(0), false);
-  ASCIICHAT_REQUIRE_EQ(rep_is_profitable(1), false);
-  ASCIICHAT_REQUIRE_EQ(rep_is_profitable(2), false);
-  ASCIICHAT_REQUIRE_EQ(rep_is_profitable(3), false); // 3 total chars: manual=3, REP=5
-  ASCIICHAT_REQUIRE_EQ(rep_is_profitable(4), false); // 4 total chars: manual=4, REP=5
-  ASCIICHAT_REQUIRE_EQ(rep_is_profitable(5), false); // 5 total chars: manual=5, REP=5 (equal)
-  ASCIICHAT_REQUIRE_EQ(rep_is_profitable(6), true);  // 6 total chars: manual=6, REP=5
-  ASCIICHAT_REQUIRE_EQ(rep_is_profitable(10), true);
-  ASCIICHAT_REQUIRE_EQ(rep_is_profitable(100), true);
+  REQUIRE((rep_is_profitable(0)) == (false));
+  REQUIRE((rep_is_profitable(1)) == (false));
+  REQUIRE((rep_is_profitable(2)) == (false));
+  REQUIRE((rep_is_profitable(3)) == (false)); // 3 total chars: manual=3, REP=5
+  REQUIRE((rep_is_profitable(4)) == (false)); // 4 total chars: manual=4, REP=5
+  REQUIRE((rep_is_profitable(5)) == (false)); // 5 total chars: manual=5, REP=5 (equal)
+  REQUIRE((rep_is_profitable(6)) == (true));  // 6 total chars: manual=6, REP=5
+  REQUIRE((rep_is_profitable(10)) == (true));
+  REQUIRE((rep_is_profitable(100)) == (true));
 }
 
 TEST_CASE("output_buffer/emit_rep_basic", "[output_buffer]") {
@@ -306,8 +304,8 @@ TEST_CASE("output_buffer/emit_rep_basic", "[output_buffer]") {
   emit_rep(&ob, 5);
   ob_term(&ob);
 
-  ASCIICHAT_REQUIRE_GT(ob.len, 0);
-  ASCIICHAT_REQUIRE(strstr(ob.buf, "5") != NULL);
+  REQUIRE((ob.len) > (0));
+  REQUIRE(strstr(ob.buf, "5") != NULL);
 
   SAFE_FREE(ob.buf);
 }
@@ -318,8 +316,8 @@ TEST_CASE("output_buffer/emit_rep_large", "[output_buffer]") {
   emit_rep(&ob, 1000);
   ob_term(&ob);
 
-  ASCIICHAT_REQUIRE_GT(ob.len, 0);
-  ASCIICHAT_REQUIRE(strstr(ob.buf, "1000") != NULL);
+  REQUIRE((ob.len) > (0));
+  REQUIRE(strstr(ob.buf, "1000") != NULL);
 
   SAFE_FREE(ob.buf);
 }
@@ -329,21 +327,21 @@ TEST_CASE("output_buffer/emit_rep_large", "[output_buffer]") {
  * ============================================================================ */
 
 TEST_CASE("output_buffer/digits_u32_basic", "[output_buffer]") {
-  ASCIICHAT_REQUIRE_EQ(digits_u32(0), 1);
-  ASCIICHAT_REQUIRE_EQ(digits_u32(9), 1);
-  ASCIICHAT_REQUIRE_EQ(digits_u32(10), 2);
-  ASCIICHAT_REQUIRE_EQ(digits_u32(99), 2);
-  ASCIICHAT_REQUIRE_EQ(digits_u32(100), 3);
-  ASCIICHAT_REQUIRE_EQ(digits_u32(999), 3);
-  ASCIICHAT_REQUIRE_EQ(digits_u32(1000), 4);
-  ASCIICHAT_REQUIRE_EQ(digits_u32(9999), 4);
-  ASCIICHAT_REQUIRE_EQ(digits_u32(10000), 5);
-  ASCIICHAT_REQUIRE_EQ(digits_u32(100000), 6);
-  ASCIICHAT_REQUIRE_EQ(digits_u32(1000000), 7);
-  ASCIICHAT_REQUIRE_EQ(digits_u32(10000000), 8);
-  ASCIICHAT_REQUIRE_EQ(digits_u32(100000000), 9);
-  ASCIICHAT_REQUIRE_EQ(digits_u32(1000000000), 10);
-  ASCIICHAT_REQUIRE_EQ(digits_u32(4294967295U), 10);
+  REQUIRE((digits_u32(0)) == (1));
+  REQUIRE((digits_u32(9)) == (1));
+  REQUIRE((digits_u32(10)) == (2));
+  REQUIRE((digits_u32(99)) == (2));
+  REQUIRE((digits_u32(100)) == (3));
+  REQUIRE((digits_u32(999)) == (3));
+  REQUIRE((digits_u32(1000)) == (4));
+  REQUIRE((digits_u32(9999)) == (4));
+  REQUIRE((digits_u32(10000)) == (5));
+  REQUIRE((digits_u32(100000)) == (6));
+  REQUIRE((digits_u32(1000000)) == (7));
+  REQUIRE((digits_u32(10000000)) == (8));
+  REQUIRE((digits_u32(100000000)) == (9));
+  REQUIRE((digits_u32(1000000000)) == (10));
+  REQUIRE((digits_u32(4294967295U)) == (10));
 }
 
 /* ============================================================================
@@ -361,10 +359,10 @@ TEST_CASE("output_buffer/complex_ansi_sequence", "[output_buffer]") {
   emit_reset(&ob);
   ob_term(&ob);
 
-  ASCIICHAT_REQUIRE_GT(ob.len, 0);
-  ASCIICHAT_REQUIRE(strstr(ob.buf, "38;2;255;0;0") != NULL);
-  ASCIICHAT_REQUIRE(strstr(ob.buf, "48;2;0;255;0") != NULL);
-  ASCIICHAT_REQUIRE(strstr(ob.buf, "0m") != NULL);
+  REQUIRE((ob.len) > (0));
+  REQUIRE(strstr(ob.buf, "38;2;255;0;0") != NULL);
+  REQUIRE(strstr(ob.buf, "48;2;0;255;0") != NULL);
+  REQUIRE(strstr(ob.buf, "0m") != NULL);
 
   SAFE_FREE(ob.buf);
 }
@@ -381,9 +379,9 @@ TEST_CASE("output_buffer/mixed_operations", "[output_buffer]") {
   emit_reset(&ob);
   ob_term(&ob);
 
-  ASCIICHAT_REQUIRE_GT(ob.len, 0);
-  ASCIICHAT_REQUIRE(strstr(ob.buf, "Count: 42") != NULL);
-  ASCIICHAT_REQUIRE(strstr(ob.buf, "Color text") != NULL);
+  REQUIRE((ob.len) > (0));
+  REQUIRE(strstr(ob.buf, "Count: 42") != NULL);
+  REQUIRE(strstr(ob.buf, "Color text") != NULL);
 
   SAFE_FREE(ob.buf);
 }
@@ -398,8 +396,8 @@ TEST_CASE("output_buffer/large_buffer_operations", "[output_buffer]") {
   }
   ob_term(&ob);
 
-  ASCIICHAT_REQUIRE_GT(ob.len, 1000);
-  ASCIICHAT_REQUIRE(ob.cap >= ob.len);
+  REQUIRE((ob.len) > (1000));
+  REQUIRE(ob.cap >= ob.len);
 
   SAFE_FREE(ob.buf);
 }
@@ -430,7 +428,7 @@ TEST_CASE("output_buffer/zero_length_operations", "[output_buffer]") {
   outbuf_t ob = {0};
 
   ob_write(&ob, "test", 0);
-  ASCIICHAT_REQUIRE_EQ(ob.len, 0);
+  REQUIRE((ob.len) == (0));
 
   SAFE_FREE(ob.buf);
 }
@@ -445,7 +443,7 @@ TEST_CASE("output_buffer/extreme_values", "[output_buffer]") {
   ob_u32(&ob, 4294967295U);
   ob_term(&ob);
 
-  ASCIICHAT_REQUIRE_GT(ob.len, 0);
+  REQUIRE((ob.len) > (0));
 
   SAFE_FREE(ob.buf);
 }

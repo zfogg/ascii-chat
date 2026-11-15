@@ -2,6 +2,10 @@
 #include <ascii-chat/crypto/rekey.h>
 #include <libplatform/mutex.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define CRYPTO_SESSION_MESSAGES 16
 
 typedef struct {
@@ -40,3 +44,7 @@ void crypto_session_unlock(crypto_session_t *);
 asciichat_error_t crypto_session_tick(crypto_session_t *, uint64_t now_ns);
 asciichat_error_t crypto_session_receive(crypto_session_t *, unsigned, unsigned, crypto_rekey_message_t, const void *,
                                          size_t, uint64_t now_ns, bool *consumed);
+
+#ifdef __cplusplus
+}
+#endif

@@ -9,6 +9,10 @@
 #include <libplatform/socket.h>
 #include <ascii-chat/uthash.h> // For UT_hash_handle
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Forward declarations
 typedef struct tcp_client_entry tcp_client_entry_t;
 typedef struct tcp_server tcp_server_t;
@@ -48,3 +52,7 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
 asciichat_error_t tcp_server_run(tcp_server_t *server);
 
 void tcp_server_destroy(tcp_server_t *server);
+
+#ifdef __cplusplus
+}
+#endif

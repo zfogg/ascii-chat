@@ -1,5 +1,6 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
+#include <ascii-chat/common.h>
 #include "../../../src/common/session/capture.h"
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/options/rcu.h>
@@ -111,30 +112,30 @@ static session_capture_ctx_t *current;
 static audio_context_t borrowed_audio;
 static void transaction_file(char *path, rgb_pixel_t color) {
   int fd = -1;
-  ASCIICHAT_REQUIRE_EQ(platform_create_temp_file(path, PLATFORM_MAX_PATH_LENGTH, "capture-transaction", &fd), 0);
-  ASCIICHAT_REQUIRE_EQ(platform_close(fd), 0);
+  REQUIRE((platform_create_temp_file(path, PLATFORM_MAX_PATH_LENGTH, "capture-transaction", &fd)) == (0));
+  REQUIRE((platform_close(fd)) == (0));
   FILE *file = platform_fopen("transaction", path, "wb");
-  ASCIICHAT_REQUIRE_NOT_NULL(file);
+  REQUIRE((file) != nullptr);
   const char header[] = "P6\n2 2\n255\n";
   for (unsigned i = 0; i < 20; ++i) {
-    ASCIICHAT_REQUIRE_EQ(fwrite(header, 1, sizeof(header) - 1, file), sizeof(header) - 1);
+    REQUIRE((fwrite(header, 1, sizeof(header) - 1, file)) == (sizeof(header) - 1));
     for (unsigned p = 0; p < 4; ++p)
-      ASCIICHAT_REQUIRE_EQ(fwrite(&color, sizeof(color), 1, file), 1);
+      REQUIRE((fwrite(&color, sizeof(color), 1, file)) == (1));
   }
-  ASCIICHAT_REQUIRE_EQ(fclose(file), 0);
+  REQUIRE((fclose(file)) == (0));
 }
 static void transaction_setup(void) {
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   errno_suppress(true);
-  ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
+  REQUIRE((options_state_init()) == (ASCIICHAT_OK));
   options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
   *v = options_t_new();
   v->audio_enabled = false;
   v->test_pattern = true;
   v->width = 40;
   v->height = 12;
-  ASCIICHAT_REQUIRE_EQ(options_state_set(v), ASCIICHAT_OK);
+  REQUIRE((options_state_set(v)) == (ASCIICHAT_OK));
   SAFE_FREE(v);
   transaction_file(first_path, (rgb_pixel_t){255, 0, 0});
   transaction_file(second_path, (rgb_pixel_t){0, 0, 255});
@@ -170,17 +171,17 @@ static image_t *transaction_await_frame(void) {
 static void open_first(void) {
   session_capture_config_t config = {.type = MEDIA_SOURCE_FILE, .path = first_path, .target_fps = 30};
   current = session_capture_create(&config);
-  ASCIICHAT_REQUIRE_NOT_NULL(current);
-  ASCIICHAT_REQUIRE_NOT_NULL(transaction_await_frame());
+  REQUIRE((current) != nullptr);
+  REQUIRE((transaction_await_frame()) != nullptr);
   media_source_pause(current->source);
 }
 static void pending_replacement(void) {
-  ASCIICHAT_REQUIRE_EQ(session_capture_open_media(current, second_path), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NOT_NULL(loader_worker);
+  REQUIRE((session_capture_open_media(current, second_path)) == (ASCIICHAT_OK));
+  REQUIRE((loader_worker) != nullptr);
   loader_worker(loader_arg);
-  ASCIICHAT_REQUIRE(current->loader_done);
-  ASCIICHAT_REQUIRE_NOT_NULL(current->loaded_source);
-  ASCIICHAT_REQUIRE_NOT_NULL(current->loaded_frame);
+  REQUIRE(current->loader_done);
+  REQUIRE((current->loaded_source) != nullptr);
+  REQUIRE((current->loaded_frame) != nullptr);
 }
 TEST_CASE("capture_transactions/automatic_configuration_selects_each_source_kind_and_preserves_explicit_paths", "[capture_transactions]") {
   for (unsigned mode = 0; mode < 4; ++mode) {
@@ -199,17 +200,17 @@ TEST_CASE("capture_transactions/automatic_configuration_selects_each_source_kind
       v->webcam_index = 7;
       camera_available = true;
     }
-    ASCIICHAT_REQUIRE_EQ(options_state_set(v), ASCIICHAT_OK);
+    REQUIRE((options_state_set(v)) == (ASCIICHAT_OK));
     SAFE_FREE(v);
     current = session_capture_create(NULL);
-    ASCIICHAT_REQUIRE_NOT_NULL(current);
+    REQUIRE((current) != nullptr);
     const media_source_type_t kinds[] = {MEDIA_SOURCE_FILE, MEDIA_SOURCE_STDIN, MEDIA_SOURCE_TEST, MEDIA_SOURCE_WEBCAM};
-    ASCIICHAT_REQUIRE_EQ(requested_type, kinds[mode]);
+    REQUIRE((requested_type) == (kinds[mode]));
     if (mode == 0)
-      ASCIICHAT_REQUIRE_STR_EQ(requested_path, first_path);
+      REQUIRE(std::strcmp((requested_path), (first_path)) == 0);
     if (mode == 3)
-      ASCIICHAT_REQUIRE_STR_EQ(requested_path, "7");
-    ASCIICHAT_REQUIRE_EQ(session_capture_get_target_fps(current), 60);
+      REQUIRE(std::strcmp((requested_path), ("7")) == 0);
+    REQUIRE((session_capture_get_target_fps(current)) == (60));
     session_capture_destroy(current);
     current = NULL;
     camera_source = NULL;
@@ -218,22 +219,22 @@ TEST_CASE("capture_transactions/automatic_configuration_selects_each_source_kind
 TEST_CASE("capture_transactions/source_and_video_start_failures_release_partial_context_and_preserve_error_cause", "[capture_transactions]") {
   session_capture_config_t config = {.type = MEDIA_SOURCE_FILE, .path = first_path};
   fail_source = true;
-  ASCIICHAT_REQUIRE_NULL(session_capture_create(&config));
-  ASCIICHAT_REQUIRE_EQ(GET_ERRNO(), ERROR_MEDIA_INIT);
+  REQUIRE((session_capture_create(&config)) == nullptr);
+  REQUIRE((GET_ERRNO()) == (ERROR_MEDIA_INIT));
   CLEAR_ERRNO_ALL();
   source_sets_error = true;
-  ASCIICHAT_REQUIRE_NULL(session_capture_create(&config));
-  ASCIICHAT_REQUIRE_EQ(GET_ERRNO(), ERROR_MEDIA_OPEN);
+  REQUIRE((session_capture_create(&config)) == nullptr);
+  REQUIRE((GET_ERRNO()) == (ERROR_MEDIA_OPEN));
   CLEAR_ERRNO_ALL();
   fail_source = false;
   fail_video = true;
-  ASCIICHAT_REQUIRE_NULL(session_capture_create(&config));
-  ASCIICHAT_REQUIRE_EQ(source_destroys, 1);
+  REQUIRE((session_capture_create(&config)) == nullptr);
+  REQUIRE((source_destroys) == (1));
   CLEAR_ERRNO_ALL();
   fail_video = false;
   current = session_capture_create(&config);
-  ASCIICHAT_REQUIRE_NOT_NULL(current);
-  ASCIICHAT_REQUIRE_EQ(current->target_fps, 60);
+  REQUIRE((current) != nullptr);
+  REQUIRE((current->target_fps) == (60));
 }
 TEST_CASE("capture_transactions/join_failure_defers_commit_without_releasing_either_source", "[capture_transactions]") {
   open_first();
@@ -244,20 +245,20 @@ TEST_CASE("capture_transactions/join_failure_defers_commit_without_releasing_eit
   unsigned before = source_destroys;
   join_failures = 1;
   capture_commit_media(current);
-  ASCIICHAT_REQUIRE_EQ(current->source, original);
-  ASCIICHAT_REQUIRE_EQ(current->loaded_source, replacement);
-  ASCIICHAT_REQUIRE(current->loader_created);
-  ASCIICHAT_REQUIRE_EQ(source_destroys, before);
+  REQUIRE((current->source) == (original));
+  REQUIRE((current->loaded_source) == (replacement));
+  REQUIRE(current->loader_created);
+  REQUIRE((source_destroys) == (before));
   capture_commit_media(current);
-  ASCIICHAT_REQUIRE_EQ(current->source, replacement);
-  ASCIICHAT_REQUIRE_NULL(current->loaded_source);
-  ASCIICHAT_REQUIRE_EQ(session_capture_source_epoch(current), epoch + 1);
-  ASCIICHAT_REQUIRE_NOT(current->loader_created);
-  ASCIICHAT_REQUIRE_EQ(source_destroys, before + 1);
+  REQUIRE((current->source) == (replacement));
+  REQUIRE((current->loaded_source) == nullptr);
+  REQUIRE((session_capture_source_epoch(current)) == (epoch + 1));
+  REQUIRE(!(current->loader_created));
+  REQUIRE((source_destroys) == (before + 1));
 }
 TEST_CASE("capture_transactions/audio_stop_failure_discards_candidate_and_retains_presented_source", "[capture_transactions]") {
   open_first();
-  ASCIICHAT_REQUIRE_EQ(audio_init(&borrowed_audio), ASCIICHAT_OK);
+  REQUIRE((audio_init(&borrowed_audio)) == (ASCIICHAT_OK));
   session_capture_set_audio_context(current, &borrowed_audio);
   media_source_t *original = current->source;
   uint64_t epoch = session_capture_source_epoch(current);
@@ -265,16 +266,16 @@ TEST_CASE("capture_transactions/audio_stop_failure_discards_candidate_and_retain
   stop_failure_at = 1;
   unsigned before = source_destroys;
   capture_commit_media(current);
-  ASCIICHAT_REQUIRE_EQ(current->source, original);
-  ASCIICHAT_REQUIRE_EQ(session_capture_source_epoch(current), epoch);
-  ASCIICHAT_REQUIRE_NULL(current->loaded_source);
-  ASCIICHAT_REQUIRE_EQ(source_destroys, before + 1);
-  ASCIICHAT_REQUIRE_NOT(current->loader_created);
-  ASCIICHAT_REQUIRE_EQ(start_calls, 0);
+  REQUIRE((current->source) == (original));
+  REQUIRE((session_capture_source_epoch(current)) == (epoch));
+  REQUIRE((current->loaded_source) == nullptr);
+  REQUIRE((source_destroys) == (before + 1));
+  REQUIRE(!(current->loader_created));
+  REQUIRE((start_calls) == (0));
 }
 TEST_CASE("capture_transactions/replacement_audio_start_failure_restores_previous_audio_and_video", "[capture_transactions]") {
   open_first();
-  ASCIICHAT_REQUIRE_EQ(audio_init(&borrowed_audio), ASCIICHAT_OK);
+  REQUIRE((audio_init(&borrowed_audio)) == (ASCIICHAT_OK));
   session_capture_set_audio_context(current, &borrowed_audio);
   media_source_t *original = current->source;
   borrowed_audio.capture_media_source = original;
@@ -282,16 +283,16 @@ TEST_CASE("capture_transactions/replacement_audio_start_failure_restores_previou
   pending_replacement();
   start_failure_at = 1;
   capture_commit_media(current);
-  ASCIICHAT_REQUIRE_EQ(current->source, original);
-  ASCIICHAT_REQUIRE_EQ(borrowed_audio.capture_media_source, original);
-  ASCIICHAT_REQUIRE(borrowed_audio.playback_only);
-  ASCIICHAT_REQUIRE_EQ(start_calls, 2);
-  ASCIICHAT_REQUIRE_EQ(stop_calls, 2);
-  ASCIICHAT_REQUIRE_NULL(current->loaded_source);
+  REQUIRE((current->source) == (original));
+  REQUIRE((borrowed_audio.capture_media_source) == (original));
+  REQUIRE(borrowed_audio.playback_only);
+  REQUIRE((start_calls) == (2));
+  REQUIRE((stop_calls) == (2));
+  REQUIRE((current->loaded_source) == nullptr);
 }
 TEST_CASE("capture_transactions/failed_stop_of_replacement_audio_retains_the_borrowed_candidate_until_teardown", "[capture_transactions]") {
   open_first();
-  ASCIICHAT_REQUIRE_EQ(audio_init(&borrowed_audio), ASCIICHAT_OK);
+  REQUIRE((audio_init(&borrowed_audio)) == (ASCIICHAT_OK));
   session_capture_set_audio_context(current, &borrowed_audio);
   media_source_t *original = current->source;
   pending_replacement();
@@ -299,15 +300,15 @@ TEST_CASE("capture_transactions/failed_stop_of_replacement_audio_retains_the_bor
   start_failure_at = 1;
   stop_failure_at = 2;
   capture_commit_media(current);
-  ASCIICHAT_REQUIRE_EQ(current->source, original);
-  ASCIICHAT_REQUIRE_EQ(current->loaded_source, replacement);
-  ASCIICHAT_REQUIRE_NOT(current->loader_created);
-  ASCIICHAT_REQUIRE_EQ(start_calls, 1);
-  ASCIICHAT_REQUIRE_EQ(stop_calls, 2);
+  REQUIRE((current->source) == (original));
+  REQUIRE((current->loaded_source) == (replacement));
+  REQUIRE(!(current->loader_created));
+  REQUIRE((start_calls) == (1));
+  REQUIRE((stop_calls) == (2));
 }
 static void toggle_roundtrip(bool camera) {
   open_first();
-  ASCIICHAT_REQUIRE_EQ(audio_init(&borrowed_audio), ASCIICHAT_OK);
+  REQUIRE((audio_init(&borrowed_audio)) == (ASCIICHAT_OK));
   session_capture_set_audio_context(current, &borrowed_audio);
   media_source_t *original = current->source;
   media_source_resume(original);
@@ -317,25 +318,25 @@ static void toggle_roundtrip(bool camera) {
   camera_available = camera;
   session_capture_toggle_media(current);
   image_t *alternate = session_capture_read_frame(current);
-  ASCIICHAT_REQUIRE_NOT_NULL(alternate);
-  ASCIICHAT_REQUIRE_NOT(session_capture_media_active(current));
-  ASCIICHAT_REQUIRE(media_source_is_paused(original));
-  ASCIICHAT_REQUIRE_EQ(current->source, original);
-  ASCIICHAT_REQUIRE_NULL(borrowed_audio.capture_media_source);
-  ASCIICHAT_REQUIRE_NOT(borrowed_audio.monitor_local_media);
+  REQUIRE((alternate) != nullptr);
+  REQUIRE(!(session_capture_media_active(current)));
+  REQUIRE(media_source_is_paused(original));
+  REQUIRE((current->source) == (original));
+  REQUIRE((borrowed_audio.capture_media_source) == nullptr);
+  REQUIRE(!(borrowed_audio.monitor_local_media));
   if (camera)
-    ASCIICHAT_REQUIRE_NOT_NULL(current->webcam_source);
+    REQUIRE((current->webcam_source) != nullptr);
   else {
-    ASCIICHAT_REQUIRE_NULL(current->webcam_source);
-    ASCIICHAT_REQUIRE_NOT_NULL(current->empty_frame);
+    REQUIRE((current->webcam_source) == nullptr);
+    REQUIRE((current->empty_frame) != nullptr);
   }
   session_capture_toggle_media(current);
-  ASCIICHAT_REQUIRE_NOT_NULL(transaction_await_frame());
-  ASCIICHAT_REQUIRE(session_capture_media_active(current));
-  ASCIICHAT_REQUIRE_NOT(media_source_is_paused(original));
-  ASCIICHAT_REQUIRE_EQ(borrowed_audio.capture_media_source, original);
-  ASCIICHAT_REQUIRE(borrowed_audio.playback_only);
-  ASCIICHAT_REQUIRE(borrowed_audio.monitor_local_media);
+  REQUIRE((transaction_await_frame()) != nullptr);
+  REQUIRE(session_capture_media_active(current));
+  REQUIRE(!(media_source_is_paused(original)));
+  REQUIRE((borrowed_audio.capture_media_source) == (original));
+  REQUIRE(borrowed_audio.playback_only);
+  REQUIRE(borrowed_audio.monitor_local_media);
 }
 TEST_CASE("capture_transactions/hiding_file_media_uses_a_synthetic_camera_and_restores_playback", "[capture_transactions]") {
   toggle_roundtrip(true);
@@ -347,13 +348,13 @@ TEST_CASE("capture_transactions/file_audio_selection_and_bounded_reads_use_the_s
   has_audio = true;
   session_capture_config_t config = {.type = MEDIA_SOURCE_FILE, .path = first_path, .enable_audio = true, .target_fps = 30};
   current = session_capture_create(&config);
-  ASCIICHAT_REQUIRE_NOT_NULL(current);
-  ASCIICHAT_REQUIRE(session_capture_has_audio(current));
-  ASCIICHAT_REQUIRE(session_capture_using_file_audio(current));
+  REQUIRE((current) != nullptr);
+  REQUIRE(session_capture_has_audio(current));
+  REQUIRE(session_capture_using_file_audio(current));
   float samples[32] = {0};
-  ASCIICHAT_REQUIRE_EQ(session_capture_read_audio(current, samples, 32), 32);
+  REQUIRE((session_capture_read_audio(current, samples, 32)) == (32));
   for (unsigned i = 0; i < ARRAY_SIZE(samples); ++i)
-    ASCIICHAT_REQUIRE_FLOAT_EQ(samples[i], 0.25f, 1e-6);
-  ASCIICHAT_REQUIRE_EQ(session_capture_read_audio(current, NULL, 32), 0);
-  ASCIICHAT_REQUIRE_EQ(session_capture_read_audio(current, samples, 0), 0);
+    REQUIRE((samples[i]) == Catch::Approx(0.25f));
+  REQUIRE((session_capture_read_audio(current, NULL, 32)) == (0));
+  REQUIRE((session_capture_read_audio(current, samples, 0)) == (0));
 }

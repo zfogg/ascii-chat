@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file test_server_like_lifecycle.c
  * @brief Integration tests for server_like lifecycle refactoring
@@ -19,7 +20,6 @@
  * @date April 2026
  */
 
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <stdio.h>
 #include <stdlib.h>
@@ -111,7 +111,7 @@ static void *mock_tcp_handler(void *arg __attribute__((unused))) {
 TEST_CASE("server_like_lifecycle/websocket_thread_starts_after_init", "[server_like_lifecycle]") {
   memset(&g_test_state, 0, sizeof(g_test_state));
 
-  ASCIICHAT_REQUIRE(g_test_state.init_called == false, "Init should not be called yet");
+  REQUIRE(g_test_state.init_called == false);
 
   // Verify WebSocket startup ordering:
   // 1. WebSocket object constructed early (step 7)
@@ -137,7 +137,7 @@ TEST_CASE("server_like_lifecycle/early_sigterm_during_init_handled", "[server_li
   memset(&g_test_state, 0, sizeof(g_test_state));
 
   // Verify initial state
-  ASCIICHAT_REQUIRE(session_server_like_shutdown_requested() == false, "Shutdown should not be requested at start");
+  REQUIRE(session_server_like_shutdown_requested() == false);
 
   // Verify that mode init can detect early SIGTERM via session_server_like_shutdown_requested()
   // Regression test for commit 6f79aa6e1 (discovery-service SIGTERM responsiveness)
@@ -160,7 +160,7 @@ TEST_CASE("server_like_lifecycle/signal_handler_signature_correct", "[server_lik
   //   typedef void (*signal_handler_t)(int);
   //
   // If interrupt_fn had void(*)(void) signature, this would not compile.
-  ASCIICHAT_REQUIRE(true, "Signal handler signature is correct (compile-time check)");
+  REQUIRE(true);
 }
 
 /**
@@ -182,7 +182,7 @@ TEST_CASE("server_like_lifecycle/partial_init_cleanup_safe", "[server_like_lifec
   // - g_client_manager_rwlock_initialized flag prevents cleanup without init
   // - g_websocket_initialized flag prevents WebSocket destroy without init
 
-  ASCIICHAT_REQUIRE(true, "Partial init cleanup is guarded by initialization flags");
+  REQUIRE(true);
 }
 
 /**
@@ -199,5 +199,5 @@ TEST_CASE("server_like_lifecycle/shutdown_flag_persistence", "[server_like_lifec
   // and persists from signal handler through mode init completion.
   // Modes can check session_server_like_shutdown_requested() at any point.
 
-  ASCIICHAT_REQUIRE(session_server_like_shutdown_requested() == false, "Shutdown flag should start as false");
+  REQUIRE(session_server_like_shutdown_requested() == false);
 }

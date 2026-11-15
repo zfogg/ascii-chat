@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file test_url_validator.c
  * @brief Comprehensive test suite for PCRE2-based URL validation
@@ -20,7 +21,6 @@
  * - Integration tests (real-world URLs)
  */
 
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/network/webrtc/turn.h>
@@ -48,36 +48,36 @@ static void cleanup(void) {}
 TEST_CASE("url_validator/diagnostic_redaction_hides_credentials_and_query_values", "[url_validator]") {
   char text[] = "Fetch https://alice:secret@example.com/media?token=private#fragment and http://other/path";
   url_redact_diagnostic(text, false);
-  ASCIICHAT_REQUIRE_NULL(strstr(text, "alice"));
-  ASCIICHAT_REQUIRE_NULL(strstr(text, "secret"));
-  ASCIICHAT_REQUIRE_NULL(strstr(text, "private"));
-  ASCIICHAT_REQUIRE_NULL(strstr(text, "fragment"));
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(text, "@example.com/media?"));
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(text, "http://other/path"));
+  REQUIRE((strstr(text, "alice")) == nullptr);
+  REQUIRE((strstr(text, "secret")) == nullptr);
+  REQUIRE((strstr(text, "private")) == nullptr);
+  REQUIRE((strstr(text, "fragment")) == nullptr);
+  REQUIRE((strstr(text, "@example.com/media?")) != nullptr);
+  REQUIRE((strstr(text, "http://other/path")) != nullptr);
 }
 
 TEST_CASE("url_validator/diagnostic_redaction_handles_truncated_authority", "[url_validator]") {
   char text[] = "Fetch https://alice:secr";
   url_redact_diagnostic(text, true);
-  ASCIICHAT_REQUIRE_NULL(strstr(text, "alice"));
-  ASCIICHAT_REQUIRE_NULL(strstr(text, "secr"));
+  REQUIRE((strstr(text, "alice")) == nullptr);
+  REQUIRE((strstr(text, "secr")) == nullptr);
   char complete[] = "Fetch https://example.com";
   url_redact_diagnostic(complete, false);
-  ASCIICHAT_REQUIRE_STR_EQ(complete, "Fetch https://example.com");
+  REQUIRE(std::strcmp((complete), ("Fetch https://example.com")) == 0);
 }
 
 /**
  * Verify that a URL is validated correctly
  */
 static void assert_url_valid(const char *url, const char *note) {
-  ASCIICHAT_CHECK(url_is_valid(url), "Expected valid URL: %s %s", url, note ? note : "");
+  CHECK(url_is_valid(url));
 }
 
 /**
  * Verify that a URL is rejected correctly
  */
 static void assert_url_invalid(const char *url, const char *note) {
-  ASCIICHAT_CHECK_NOT(url_is_valid(url), "Expected invalid URL: %s %s", url, note ? note : "");
+  CHECK(!(url_is_valid(url)));
 }
 
 /* ============================================================================
@@ -841,31 +841,31 @@ TEST_CASE("url_validator/tcp_urls", "[url_validator]") {
 
 TEST_CASE("url_validator/tcp_detection_url_is_tcp", "[url_validator]") {
   // Test url_is_tcp()
-  ASCIICHAT_REQUIRE(url_is_tcp("tcp://example.com:5000"), "Should detect valid TCP URL");
-  ASCIICHAT_REQUIRE(url_is_tcp("tcp://localhost:8080"), "Should detect TCP localhost");
-  ASCIICHAT_REQUIRE(url_is_tcp("TCP://EXAMPLE.COM:5000"), "Should detect case-insensitive TCP");
-  ASCIICHAT_REQUIRE_NOT(url_is_tcp("http://example.com:5000"), "Should reject HTTP URL");
-  ASCIICHAT_REQUIRE_NOT(url_is_tcp("https://example.com:443"), "Should reject HTTPS URL");
-  ASCIICHAT_REQUIRE_NOT(url_is_tcp("ws://example.com:8000"), "Should reject WebSocket URL");
+  REQUIRE(url_is_tcp("tcp://example.com:5000"));
+  REQUIRE(url_is_tcp("tcp://localhost:8080"));
+  REQUIRE(url_is_tcp("TCP://EXAMPLE.COM:5000"));
+  REQUIRE(!(url_is_tcp("http://example.com:5000")));
+  REQUIRE(!(url_is_tcp("https://example.com:443")));
+  REQUIRE(!(url_is_tcp("ws://example.com:8000")));
 }
 
 TEST_CASE("url_validator/tcp_detection_url_looks_like_tcp", "[url_validator]") {
   // Test url_looks_like_tcp() - fast check without full parsing
-  ASCIICHAT_REQUIRE(url_looks_like_tcp("tcp://example.com:5000"), "Should detect tcp:// prefix");
-  ASCIICHAT_REQUIRE(url_looks_like_tcp("TCP://EXAMPLE.COM:5000"), "Should detect case-insensitive");
-  ASCIICHAT_REQUIRE_NOT(url_looks_like_tcp("http://example.com:5000"), "Should reject HTTP");
-  ASCIICHAT_REQUIRE_NOT(url_looks_like_tcp("https://example.com:443"), "Should reject HTTPS");
-  ASCIICHAT_REQUIRE_NOT(url_looks_like_tcp("http:///example.com:5000"), "Should reject malformed");
+  REQUIRE(url_looks_like_tcp("tcp://example.com:5000"));
+  REQUIRE(url_looks_like_tcp("TCP://EXAMPLE.COM:5000"));
+  REQUIRE(!(url_looks_like_tcp("http://example.com:5000")));
+  REQUIRE(!(url_looks_like_tcp("https://example.com:443")));
+  REQUIRE(!(url_looks_like_tcp("http:///example.com:5000")));
 }
 
 TEST_CASE("url_validator/tcp_detection_url_is_tcp_scheme", "[url_validator]") {
   // Test url_is_tcp_scheme()
-  ASCIICHAT_REQUIRE(url_is_tcp_scheme("tcp"), "Should detect 'tcp' scheme");
-  ASCIICHAT_REQUIRE(url_is_tcp_scheme("TCP"), "Should detect case-insensitive 'TCP'");
-  ASCIICHAT_REQUIRE(url_is_tcp_scheme("TcP"), "Should detect mixed case 'TcP'");
-  ASCIICHAT_REQUIRE_NOT(url_is_tcp_scheme("http"), "Should reject 'http'");
-  ASCIICHAT_REQUIRE_NOT(url_is_tcp_scheme("https"), "Should reject 'https'");
-  ASCIICHAT_REQUIRE_NOT(url_is_tcp_scheme("ws"), "Should reject 'ws'");
+  REQUIRE(url_is_tcp_scheme("tcp"));
+  REQUIRE(url_is_tcp_scheme("TCP"));
+  REQUIRE(url_is_tcp_scheme("TcP"));
+  REQUIRE(!(url_is_tcp_scheme("http")));
+  REQUIRE(!(url_is_tcp_scheme("https")));
+  REQUIRE(!(url_is_tcp_scheme("ws")));
 }
 
 /* ============================================================================
@@ -909,14 +909,14 @@ TEST_CASE("url_validator/normalized_schemeless_url_byte_boundary", "[url_validat
   memset(input + strlen(prefix), 'a', limit - strlen(prefix));
   input[limit] = '\0';
   url_parts_t parts = {0};
-  ASCIICHAT_REQUIRE(url_is_valid(input));
-  ASCIICHAT_REQUIRE_EQ(url_parse(input, &parts), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(strlen(parts.path), limit - strlen("example.com"));
+  REQUIRE(url_is_valid(input));
+  REQUIRE((url_parse(input, &parts)) == (ASCIICHAT_OK));
+  REQUIRE((strlen(parts.path)) == (limit - strlen("example.com")));
   url_parts_destroy(&parts);
   input[limit] = 'a';
   input[limit + 1] = '\0';
-  ASCIICHAT_REQUIRE_NOT(url_is_valid(input));
-  ASCIICHAT_REQUIRE_EQ(url_parse(input, &parts), ERROR_INVALID_PARAM);
+  REQUIRE(!(url_is_valid(input)));
+  REQUIRE((url_parse(input, &parts)) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("url_validator/explicit_url_retains_allocated_component_support_beyond_scratch_limit", "[url_validator]") {
@@ -926,9 +926,9 @@ TEST_CASE("url_validator/explicit_url_retains_allocated_component_support_beyond
   memset(input + strlen(prefix), 'a', sizeof(input) - strlen(prefix) - 1);
   input[sizeof(input) - 1] = '\0';
   url_parts_t parts = {0};
-  ASCIICHAT_REQUIRE(url_is_valid(input));
-  ASCIICHAT_REQUIRE_EQ(url_parse(input, &parts), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(strlen(parts.path), strlen(input) - strlen("https://example.com"));
+  REQUIRE(url_is_valid(input));
+  REQUIRE((url_parse(input, &parts)) == (ASCIICHAT_OK));
+  REQUIRE((strlen(parts.path)) == (strlen(input) - strlen("https://example.com")));
   url_parts_destroy(&parts);
 }
 
@@ -938,14 +938,14 @@ TEST_CASE("url_validator/stun_wire_capacity_includes_terminator", "[url_validato
   memset(url + 5, 'a', sizeof(url) - 6);
   url[STUN_URL_BUFFER_SIZE - 1] = '\0';
   stun_server_t server = {0};
-  ASCIICHAT_REQUIRE_EQ(stun_servers_parse(url, NULL, &server, 1), 1);
-  ASCIICHAT_REQUIRE_EQ(server.host_len, STUN_URL_BUFFER_SIZE - 1);
-  ASCIICHAT_REQUIRE_STR_EQ(server.host, url);
+  REQUIRE((stun_servers_parse(url, NULL, &server, 1)) == (1));
+  REQUIRE((server.host_len) == (STUN_URL_BUFFER_SIZE - 1));
+  REQUIRE(std::strcmp((server.host), (url)) == 0);
   url[STUN_URL_BUFFER_SIZE - 1] = 'a';
   url[STUN_URL_BUFFER_SIZE] = '\0';
-  ASCIICHAT_REQUIRE_EQ(stun_servers_parse(url, NULL, &server, 1), -1);
-  ASCIICHAT_REQUIRE_EQ(sizeof(stun_server_t), 65, "STUN wire layout must remain compatible");
-  ASCIICHAT_REQUIRE_EQ(sizeof(turn_server_t), 163, "TURN wire layout must remain compatible");
+  REQUIRE((stun_servers_parse(url, NULL, &server, 1)) == (-1));
+  REQUIRE((sizeof(stun_server_t)) == (65));
+  REQUIRE((sizeof(turn_server_t)) == (163));
 }
 
 TEST_CASE("url_validator/icu_normalizes_international_hosts_without_rewriting_paths", "[url_validator]") {
@@ -963,15 +963,15 @@ TEST_CASE("url_validator/icu_normalizes_international_hosts_without_rewriting_pa
                {"xn--bcher-kva.de", "xn--bcher-kva.de"}};
   for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
     char output[HOSTNAME_BUFFER_SIZE];
-    ASCIICHAT_REQUIRE_EQ(hostname_to_ascii(cases[i].input, output, sizeof(output)), ASCIICHAT_OK, "%s", cases[i].input);
-    ASCIICHAT_REQUIRE_STR_EQ(output, cases[i].ascii);
+    REQUIRE((hostname_to_ascii(cases[i].input, output, sizeof(output))) == (ASCIICHAT_OK));
+    REQUIRE(std::strcmp((output), (cases[i].ascii)) == 0);
     char url[URL_BUFFER_SIZE];
     snprintf(url, sizeof(url), "https://%s/日本語?q=café#été", cases[i].input);
     url_parts_t parts = {0};
-    ASCIICHAT_REQUIRE(url_is_valid(url));
-    ASCIICHAT_REQUIRE_EQ(url_parse(url, &parts), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_STR_EQ(parts.host, cases[i].ascii);
-    ASCIICHAT_REQUIRE_STR_EQ(parts.path, "/日本語?q=café#été");
+    REQUIRE(url_is_valid(url));
+    REQUIRE((url_parse(url, &parts)) == (ASCIICHAT_OK));
+    REQUIRE(std::strcmp((parts.host), (cases[i].ascii)) == 0);
+    REQUIRE(std::strcmp((parts.path), ("/日本語?q=café#été")) == 0);
     url_parts_destroy(&parts);
   }
 }
@@ -983,14 +983,14 @@ TEST_CASE("url_validator/icu_rejects_invalid_names_and_preserves_output_on_error
                            "אa.de"};
   for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
     char output[HOSTNAME_BUFFER_SIZE] = "unchanged";
-    ASCIICHAT_REQUIRE_EQ(hostname_to_ascii(invalid[i], output, sizeof(output)), ERROR_INVALID_PARAM);
-    ASCIICHAT_REQUIRE_STR_EQ(output, "unchanged");
+    REQUIRE((hostname_to_ascii(invalid[i], output, sizeof(output))) == (ERROR_INVALID_PARAM));
+    REQUIRE(std::strcmp((output), ("unchanged")) == 0);
   }
   char output[17] = "unchanged";
-  ASCIICHAT_REQUIRE_EQ(hostname_to_ascii("bücher.de", output, sizeof(output) - 1), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_STR_EQ(output, "unchanged");
-  ASCIICHAT_REQUIRE_EQ(hostname_to_ascii("bücher.de", output, sizeof(output)), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_STR_EQ(output, "xn--bcher-kva.de");
+  REQUIRE((hostname_to_ascii("bücher.de", output, sizeof(output) - 1)) == (ERROR_INVALID_PARAM));
+  REQUIRE(std::strcmp((output), ("unchanged")) == 0);
+  REQUIRE((hostname_to_ascii("bücher.de", output, sizeof(output))) == (ASCIICHAT_OK));
+  REQUIRE(std::strcmp((output), ("xn--bcher-kva.de")) == 0);
 }
 
 TEST_CASE("url_validator/icu_checks_dns_label_bytes_after_punycode_expansion", "[url_validator]") {
@@ -1000,24 +1000,24 @@ TEST_CASE("url_validator/icu_checks_dns_label_bytes_after_punycode_expansion", "
     host[2 * i + 1] = (char)0xBC;
   }
   host[114] = '\0'; // 57 ü characters encode to one 63-byte DNS label.
-  ASCIICHAT_REQUIRE_EQ(hostname_to_ascii(host, output, sizeof(output)), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(strlen(output), MAX_HOSTNAME_LABEL_LENGTH);
+  REQUIRE((hostname_to_ascii(host, output, sizeof(output))) == (ASCIICHAT_OK));
+  REQUIRE((strlen(output)) == (MAX_HOSTNAME_LABEL_LENGTH));
   host[114] = (char)0xC3;
   host[115] = (char)0xBC;
   host[116] = '\0';
-  ASCIICHAT_REQUIRE_EQ(hostname_to_ascii(host, output, sizeof(output)), ERROR_INVALID_PARAM);
+  REQUIRE((hostname_to_ascii(host, output, sizeof(output))) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("url_validator/explicit_port_bounds_are_not_confused_with_missing_port", "[url_validator]") {
   const char *valid[] = {"ws://example.com", "ws://example.com:1", "wss://example.com:65535"};
   for (size_t i = 0; i < sizeof(valid) / sizeof(*valid); ++i)
-    ASCIICHAT_REQUIRE(url_is_valid(valid[i]));
+    REQUIRE(url_is_valid(valid[i]));
   const char *invalid[] = {"ws://example.com:0", "wss://example.com:0", "ws://example.com:65536"};
   for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
     url_parts_t parts = {0};
-    ASCIICHAT_REQUIRE_NOT(url_is_valid(invalid[i]));
-    ASCIICHAT_REQUIRE_EQ(url_parse(invalid[i], &parts), ERROR_INVALID_PARAM);
-    ASCIICHAT_REQUIRE_NULL(parts.host);
-    ASCIICHAT_REQUIRE_NULL(parts.scheme);
+    REQUIRE(!(url_is_valid(invalid[i])));
+    REQUIRE((url_parse(invalid[i], &parts)) == (ERROR_INVALID_PARAM));
+    REQUIRE((parts.host) == nullptr);
+    REQUIRE((parts.scheme) == nullptr);
   }
 }

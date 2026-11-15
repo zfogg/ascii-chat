@@ -26,6 +26,10 @@
 
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Check if an option was explicitly set by the user
  *
@@ -57,3 +61,7 @@
 #define IS_OPTION_EXPLICIT(name, opts) ((opts) && (opts)->name##_explicit)
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

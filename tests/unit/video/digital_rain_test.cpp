@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/common.h>
 #include <math.h>
@@ -6,12 +7,9 @@
 #ifdef __EMSCRIPTEN__
 #include <assert.h>
 #define Test(suite, name) static void test_##name(void)
-#define ASCIICHAT_REQUIRE(condition) assert(condition)
-#define ASCIICHAT_REQUIRE_NOT_NULL(value) assert((value) != NULL)
-#define ASCIICHAT_REQUIRE_FLOAT_EQ(a, b, epsilon) assert(fabsf((a) - (b)) <= (epsilon))
-#define ASCIICHAT_REQUIRE_STR_EQ(a, b) assert(strcmp((a), (b)) == 0)
+#define REQUIRE(condition) assert(condition)
+#define REQUIRE((a) == Catch::Approx(b)) assert(fabsf((a) - (b)) <= (epsilon))
 #else
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #endif
 
@@ -34,10 +32,10 @@ TEST_CASE("digital_rain/ansi_encoding_does_not_change_smoothing", "[digital_rain
   for (int frame = 0; frame < 15; frame++) {
     char *x = digital_rain_apply(a, "\033[38;2;255;255;255mxx", 1.0f / 60);
     char *y = digital_rain_apply(b, "\033[38;2;255;255;255mx\033[38;2;255;255;255mx", 1.0f / 60);
-    ASCIICHAT_REQUIRE_NOT_NULL(x);
-    ASCIICHAT_REQUIRE_NOT_NULL(y);
-    ASCIICHAT_REQUIRE_STR_EQ(x, y);
-    ASCIICHAT_REQUIRE_FLOAT_EQ(a->previous_brightness[1], b->previous_brightness[1], 1e-6f);
+    REQUIRE((x) != nullptr);
+    REQUIRE((y) != nullptr);
+    REQUIRE(std::strcmp((x), (y)) == 0);
+    REQUIRE((a->previous_brightness[1]) == Catch::Approx(b->previous_brightness[1]));
     SAFE_FREE(x);
     SAFE_FREE(y);
   }
@@ -57,7 +55,7 @@ TEST_CASE("digital_rain/smoothing_tracks_elapsed_time", "[digital_rain]") {
     SAFE_FREE(output);
   }
   for (int i = 0; i < 16; i++)
-    ASCIICHAT_REQUIRE_FLOAT_EQ(a->previous_brightness[i], b->previous_brightness[i], .005f);
+    REQUIRE((a->previous_brightness[i]) == Catch::Approx(b->previous_brightness[i]));
   digital_rain_destroy(a);
   digital_rain_destroy(b);
 }
@@ -75,15 +73,15 @@ TEST_CASE("digital_rain/mutation_preserves_shading_spaces_and_unicode", "[digita
     glyphs(output, current);
     SAFE_FREE(output);
     for (int col = 0; col < 8; col++)
-      ASCIICHAT_REQUIRE(digital_rain_glyph_group(input[col]) == digital_rain_glyph_group(current[col]));
-    ASCIICHAT_REQUIRE_STR_EQ(current + 8, input + 8);
+      REQUIRE(digital_rain_glyph_group(input[col]) == digital_rain_glyph_group(current[col]));
+    REQUIRE(std::strcmp((current + 8), (input + 8)) == 0);
     changed |= strcmp(previous, current) != 0;
   }
-  ASCIICHAT_REQUIRE(changed);
+  REQUIRE(changed);
   output = digital_rain_apply(rain, input, 0);
   glyphs(output, previous);
   SAFE_FREE(output);
-  ASCIICHAT_REQUIRE_STR_EQ(previous, current);
+  REQUIRE(std::strcmp((previous), (current)) == 0);
   digital_rain_destroy(rain);
 }
 
@@ -94,15 +92,15 @@ TEST_CASE("digital_rain/source_luminance_and_colored_heads", "[digital_rain]") {
   char *light = digital_rain_apply(rain, "\033[38;2;255;255;255mX", 0);
   char *dark = digital_rain_apply(rain, "\033[38;2;8;8;8mX", 0);
   int lr, lg, lb, dr, dg, db;
-  ASCIICHAT_REQUIRE(sscanf(light, "\033[38;2;%d;%d;%dm", &lr, &lg, &lb) == 3);
-  ASCIICHAT_REQUIRE(sscanf(dark, "\033[38;2;%d;%d;%dm", &dr, &dg, &db) == 3);
+  REQUIRE(sscanf(light, "\033[38;2;%d;%d;%dm", &lr, &lg, &lb) == 3);
+  REQUIRE(sscanf(dark, "\033[38;2;%d;%d;%dm", &dr, &dg, &db) == 3);
   // Heads remain bright while retaining visibly green saturation.
-  ASCIICHAT_REQUIRE(lg > 240 && lr > 60 && lr < lg * 0.45f && lb < lg * 0.65f);
-  ASCIICHAT_REQUIRE(lg > dg * 1.1f);
+  REQUIRE((lg > 240 && lr > 60 && lr < lg * 0.45f && lb < lg * 0.65f));
+  REQUIRE(lg > dg * 1.1f);
   rain->cursor_brightness = 8.0f;
   char *boosted = digital_rain_apply(rain, "\033[38;2;255;255;255mX", 0);
-  ASCIICHAT_REQUIRE(sscanf(boosted, "\033[38;2;%d;%d;%dm", &lr, &lg, &lb) == 3);
-  ASCIICHAT_REQUIRE(lr < lg * 0.45f && lb < lg * 0.65f);
+  REQUIRE(sscanf(boosted, "\033[38;2;%d;%d;%dm", &lr, &lg, &lb) == 3);
+  REQUIRE((lr < lg * 0.45f && lb < lg * 0.65f));
   SAFE_FREE(boosted);
   SAFE_FREE(light);
   SAFE_FREE(dark);

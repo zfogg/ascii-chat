@@ -3,6 +3,10 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/crypto/key_types.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define KEY_IDENTITY_BUFFER_SIZE 2048
 
 /** Format public identity with full fingerprint and optional Keymask v2.
@@ -21,3 +25,7 @@ const char *key_identity_art_end(const char *text);
 
 /** Announce a public identity using the existing notice/logging policy. */
 void key_identity_announce(const char *label, const public_key_t *key);
+
+#ifdef __cplusplus
+}
+#endif

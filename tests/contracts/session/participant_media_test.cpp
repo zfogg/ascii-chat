@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 /** Production participant lifecycle with deterministic device/startup failures and real workers. */
 #include "session/participant.h"
@@ -35,7 +35,7 @@ static session_capture_ctx_t *test_capture_create(const session_capture_config_t
   return (session_capture_ctx_t *)SAFE_CALLOC(1, 1, char *);
 }
 static void test_capture_destroy(session_capture_ctx_t *ctx) {
-  ASCIICHAT_REQUIRE_EQ(workers, 0);
+  REQUIRE((workers) == (0));
   capture_count--;
   SAFE_FREE(ctx);
 }
@@ -56,7 +56,7 @@ static void *test_media_source(session_capture_ctx_t *ctx) {
   return ctx;
 }
 static bool test_media_has_audio(media_source_t *source) {
-  ASCIICHAT_REQUIRE_NOT_NULL(source);
+  REQUIRE((source) != nullptr);
   return false;
 }
 static session_audio_ctx_t *test_audio_create(bool host) {
@@ -69,7 +69,7 @@ static session_audio_ctx_t *test_audio_create(bool host) {
   return (session_audio_ctx_t *)SAFE_CALLOC(1, 1, char *);
 }
 static void test_audio_destroy(session_audio_ctx_t *ctx) {
-  ASCIICHAT_REQUIRE(workers <= 1); // Video may still be running; audio has already joined.
+  REQUIRE(workers <= 1); // Video may still be running; audio has already joined.
   audio_count--;
   SAFE_FREE(ctx);
 }
@@ -92,9 +92,9 @@ static opus_codec_t *test_codec_create(opus_application_t app, int rate, int bit
     SET_ERRNO(ERROR_MEMORY, "Injected allocation failure");
     return NULL;
   }
-  ASCIICHAT_REQUIRE_EQ(channels, 2);
+  REQUIRE((channels) == (2));
   opus_codec_t *codec = opus_codec_create_encoder_channels(app, rate, bitrate, channels);
-  ASCIICHAT_REQUIRE(codec);
+  REQUIRE(codec);
   codec_count++;
   return codec;
 }
@@ -182,9 +182,9 @@ static bool connected(acip_transport_t *transport) {
 }
 static asciichat_error_t test_transport_send(acip_transport_t *transport, const void *data, size_t len) {
   (void)transport;
-  ASCIICHAT_REQUIRE(data && len);
+  REQUIRE(data && len);
   atomic_fetch_add_int(&packets, 1);
-  ASCIICHAT_REQUIRE(len >= sizeof(packet_header_t));
+  REQUIRE(len >= sizeof(packet_header_t));
   const packet_header_t *header = data;
   uint16_t type = NET_TO_HOST_U16(header->type);
   if (type == PACKET_TYPE_IMAGE_FRAME)
@@ -194,7 +194,7 @@ static asciichat_error_t test_transport_send(acip_transport_t *transport, const 
   return ASCIICHAT_OK;
 }
 static void clean(void) {
-  ASCIICHAT_REQUIRE(!workers && !capture_count && !audio_count && !codec_count);
+  REQUIRE(!workers && !capture_count && !audio_count && !codec_count);
 }
 static void destroy_transport_impl(acip_transport_t *transport) {
   (void)transport;
@@ -250,36 +250,36 @@ static void *fixture_run(void *arg) {
 TEST_CASE("participant_media/startup_failures_and_worker_lifecycle", "[participant_media]") {
   log_init(NULL, LOG_WARN, false, false);
   log_set_terminal_output(true);
-  ASCIICHAT_REQUIRE_EQ(platform_setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1"), 0);
-  ASCIICHAT_REQUIRE_EQ(socket_init(), ASCIICHAT_OK);
+  REQUIRE((platform_setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1")) == (0));
+  REQUIRE((socket_init()) == (ASCIICHAT_OK));
   options_t options = options_t_new();
-  ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(options_state_set(&options), ASCIICHAT_OK);
+  REQUIRE((options_state_init()) == (ASCIICHAT_OK));
+  REQUIRE((options_state_set(&options)) == (ASCIICHAT_OK));
   frame = image_new(2, 2);
-  ASCIICHAT_REQUIRE(frame);
+  REQUIRE(frame);
   acip_transport_methods_t methods = {.send = test_transport_send, .is_connected = connected};
   acip_transport_t transport = {.methods = &methods};
   session_participant_config_t config = {.enable_video = true, .enable_audio = true};
   // Refusing cleanup on another thread must retain even a workerless owner.
   session_participant_t *retained = session_participant_create(&config);
-  ASCIICHAT_REQUIRE_EQ(session_participant_set_transport(retained, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
+  REQUIRE((session_participant_set_transport(retained, &transport, ACIP_TRANSPORT_BORROWED)) == (ASCIICHAT_OK));
   platform_thread_t foreign;
-  ASCIICHAT_REQUIRE_EQ(platform_thread_create(&foreign, "foreign_destroy", destroy_from_foreign_thread, retained), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(thread_join(&foreign, NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(retained->initialized && session_participant_get_transport(retained) == &transport);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&retained->connection.state), SESSION_CONNECTION_STOPPING);
+  REQUIRE((platform_thread_create(&foreign, "foreign_destroy", destroy_from_foreign_thread, retained)) == (ASCIICHAT_OK));
+  REQUIRE((thread_join(&foreign, NULL)) == (ASCIICHAT_OK));
+  REQUIRE(retained->initialized && session_participant_get_transport(retained) == &transport);
+  REQUIRE((atomic_load_int(&retained->connection.state)) == (SESSION_CONNECTION_STOPPING));
   session_participant_destroy(retained);
   clean();
-  ASCIICHAT_REQUIRE_EQ(session_participant_start_video(NULL), ERROR_INVALID_PARAM);
+  REQUIRE((session_participant_start_video(NULL)) == (ERROR_INVALID_PARAM));
   session_participant_destroy(NULL);
   for (fail_stage = 1; fail_stage <= 6; fail_stage++) {
     session_participant_t *p = session_participant_create(&config);
-    ASCIICHAT_REQUIRE(p);
-    ASCIICHAT_REQUIRE_EQ(session_participant_start_video(p), ERROR_INVALID_STATE);
-    ASCIICHAT_REQUIRE_EQ(session_participant_set_transport(p, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
+    REQUIRE(p);
+    REQUIRE((session_participant_start_video(p)) == (ERROR_INVALID_STATE));
+    REQUIRE((session_participant_set_transport(p, &transport, ACIP_TRANSPORT_BORROWED)) == (ASCIICHAT_OK));
     asciichat_error_t error = fail_stage <= 2 ? session_participant_start_video(p) : session_participant_start_audio(p);
-    ASCIICHAT_REQUIRE_EQ(error, (fail_stage == 1 || fail_stage == 3 || fail_stage == 5 ? ERROR_MEMORY : fail_stage == 2 || fail_stage == 6 ? ERROR_THREAD : ERROR_INVALID_STATE));
-    ASCIICHAT_REQUIRE(!session_participant_is_video_active(p) && !session_participant_is_audio_active(p));
+    REQUIRE((error) == ((fail_stage == 1 || fail_stage == 3 || fail_stage == 5 ? ERROR_MEMORY : fail_stage == 2 || fail_stage == 6 ? ERROR_THREAD : ERROR_INVALID_STATE)));
+    REQUIRE(!session_participant_is_video_active(p) && !session_participant_is_audio_active(p));
     clean();
     session_participant_disconnect(p);
     session_participant_disconnect(p);
@@ -289,25 +289,25 @@ TEST_CASE("participant_media/startup_failures_and_worker_lifecycle", "[participa
   fail_stage = 0;
   for (int cycle = 0; cycle < 20; cycle++) {
     session_participant_t *p = session_participant_create(&config);
-    ASCIICHAT_REQUIRE_EQ(session_participant_set_transport(p, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(session_participant_start_video(p), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(session_participant_start_video(p), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(session_participant_start_audio(p), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(session_participant_start_audio(p), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE(workers == 2 && session_participant_is_video_active(p) && session_participant_is_audio_active(p));
-    ASCIICHAT_REQUIRE_EQ(session_participant_set_transport(p, NULL, ACIP_TRANSPORT_BORROWED), ERROR_INVALID_STATE);
+    REQUIRE((session_participant_set_transport(p, &transport, ACIP_TRANSPORT_BORROWED)) == (ASCIICHAT_OK));
+    REQUIRE((session_participant_start_video(p)) == (ASCIICHAT_OK));
+    REQUIRE((session_participant_start_video(p)) == (ASCIICHAT_OK));
+    REQUIRE((session_participant_start_audio(p)) == (ASCIICHAT_OK));
+    REQUIRE((session_participant_start_audio(p)) == (ASCIICHAT_OK));
+    REQUIRE(workers == 2 && session_participant_is_video_active(p) && session_participant_is_audio_active(p));
+    REQUIRE((session_participant_set_transport(p, NULL, ACIP_TRANSPORT_BORROWED)) == (ERROR_INVALID_STATE));
     network_connection_t *unchanged = (network_connection_t *)&transport;
-    ASCIICHAT_REQUIRE_EQ(session_participant_take_connection(p, &unchanged), ERROR_INVALID_STATE);
-    ASCIICHAT_REQUIRE_EQ(unchanged, (network_connection_t *)&transport);
+    REQUIRE((session_participant_take_connection(p, &unchanged)) == (ERROR_INVALID_STATE));
+    REQUIRE((unchanged) == ((network_connection_t *)&transport));
     int before = atomic_load_int(&packets);
     for (int i = 0; i < 200 && atomic_load_int(&packets) < before + 4; i++)
       platform_sleep_ms(1);
-    ASCIICHAT_REQUIRE(atomic_load_int(&packets) >= before + 4);
+    REQUIRE(atomic_load_int(&packets) >= before + 4);
     if (cycle % 3 == 0) {
       session_participant_stop_video(p); // Joins audio before releasing its borrowed source.
       clean();
       session_participant_stop_video(p);
-      ASCIICHAT_REQUIRE_EQ(session_participant_start_video(p), ASCIICHAT_OK);
+      REQUIRE((session_participant_start_video(p)) == (ASCIICHAT_OK));
     }
     if (cycle % 3 == 1)
       p->connected = false; // Partial/disconnected state still owns workers.
@@ -318,62 +318,62 @@ TEST_CASE("participant_media/startup_failures_and_worker_lifecycle", "[participa
     }
     session_participant_disconnect(p);
     clean();
-    ASCIICHAT_REQUIRE(!session_participant_is_video_active(p) && !session_participant_is_audio_active(p));
+    REQUIRE(!session_participant_is_video_active(p) && !session_participant_is_audio_active(p));
     session_participant_destroy(p);
     clean();
   }
-  ASCIICHAT_REQUIRE(atomic_load_int(&video_packets) > 0 && atomic_load_int(&audio_packets) > 0);
+  REQUIRE(atomic_load_int(&video_packets) > 0 && atomic_load_int(&audio_packets) > 0);
   // Discovery retains a borrowed transport until all workers join, then frees
   // it exactly once on teardown. A failed join permits retry without dangling pointers.
   discovery_session_t *session = SAFE_CALLOC(1, sizeof(*session), discovery_session_t *);
-  ASCIICHAT_REQUIRE_EQ(mutex_init(&session->nat_quality_mutex, "test_nat_quality"), ASCIICHAT_OK);
+  REQUIRE((mutex_init(&session->nat_quality_mutex, "test_nat_quality")) == (ASCIICHAT_OK));
   session->participant_ctx = session_participant_create(&config);
   acip_transport_t *owned = SAFE_CALLOC(1, sizeof(*owned), acip_transport_t *);
   methods.destroy_impl = destroy_transport_impl;
   owned->methods = &methods;
-  ASCIICHAT_REQUIRE_EQ(session_participant_set_transport(session->participant_ctx, owned, ACIP_TRANSPORT_OWNED), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session_participant_start_video(session->participant_ctx), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session_participant_start_audio(session->participant_ctx), ASCIICHAT_OK);
+  REQUIRE((session_participant_set_transport(session->participant_ctx, owned, ACIP_TRANSPORT_OWNED)) == (ASCIICHAT_OK));
+  REQUIRE((session_participant_start_video(session->participant_ctx)) == (ASCIICHAT_OK));
+  REQUIRE((session_participant_start_audio(session->participant_ctx)) == (ASCIICHAT_OK));
   fail_join = true;
   discovery_session_destroy(session);
-  ASCIICHAT_REQUIRE(transports_destroyed == 0 && workers == 2);
+  REQUIRE(transports_destroyed == 0 && workers == 2);
   session->participant_ctx->connected = false;
-  ASCIICHAT_REQUIRE_EQ(session_participant_connect(session->participant_ctx), ERROR_THREAD);
-  ASCIICHAT_REQUIRE(transports_destroyed == 0 && workers == 2);
-  ASCIICHAT_REQUIRE_EQ(session_participant_get_transport(session->participant_ctx), owned);
+  REQUIRE((session_participant_connect(session->participant_ctx)) == (ERROR_THREAD));
+  REQUIRE(transports_destroyed == 0 && workers == 2);
+  REQUIRE((session_participant_get_transport(session->participant_ctx)) == (owned));
   fail_join = false;
   discovery_session_destroy(session);
   session = NULL;
   owned = NULL;
-  ASCIICHAT_REQUIRE_EQ(transports_destroyed, 1);
+  REQUIRE((transports_destroyed) == (1));
   clean();
   session = SAFE_CALLOC(1, sizeof(*session), discovery_session_t *);
-  ASCIICHAT_REQUIRE_EQ(mutex_init(&session->nat_quality_mutex, "test_nat_quality"), ASCIICHAT_OK);
+  REQUIRE((mutex_init(&session->nat_quality_mutex, "test_nat_quality")) == (ASCIICHAT_OK));
   session->participant_ctx = session_participant_create(&config);
   owned = SAFE_CALLOC(1, sizeof(*owned), acip_transport_t *);
   owned->methods = &methods;
-  ASCIICHAT_REQUIRE_EQ(session_participant_set_transport(session->participant_ctx, owned, ACIP_TRANSPORT_OWNED), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session_participant_start_video(session->participant_ctx), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session_participant_start_audio(session->participant_ctx), ASCIICHAT_OK);
+  REQUIRE((session_participant_set_transport(session->participant_ctx, owned, ACIP_TRANSPORT_OWNED)) == (ASCIICHAT_OK));
+  REQUIRE((session_participant_start_video(session->participant_ctx)) == (ASCIICHAT_OK));
+  REQUIRE((session_participant_start_audio(session->participant_ctx)) == (ASCIICHAT_OK));
   // The same release operation is used before WebRTC recovery and host migration.
-  ASCIICHAT_REQUIRE_EQ(release_participant_transport(session), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(!session_participant_get_transport(session->participant_ctx));
-  ASCIICHAT_REQUIRE_EQ(release_participant_transport(session), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(transports_destroyed, 2);
+  REQUIRE((release_participant_transport(session)) == (ASCIICHAT_OK));
+  REQUIRE(!session_participant_get_transport(session->participant_ctx));
+  REQUIRE((release_participant_transport(session)) == (ASCIICHAT_OK));
+  REQUIRE((transports_destroyed) == (2));
   discovery_session_destroy(session);
   session = NULL;
   owned = NULL;
-  ASCIICHAT_REQUIRE_EQ(transports_destroyed, 2);
+  REQUIRE((transports_destroyed) == (2));
   clean();
   // Exercise real establishment, negotiation, media and retained fallback ownership.
   options.no_encrypt = true;
-  ASCIICHAT_REQUIRE_EQ(options_state_set(&options), ASCIICHAT_OK);
+  REQUIRE((options_state_set(&options)) == (ASCIICHAT_OK));
   socket_t probe = socket_create("participant-port", AF_INET, SOCK_STREAM, 0);
-  ASCIICHAT_REQUIRE_NE(probe, INVALID_SOCKET_VALUE);
+  REQUIRE((probe) != (INVALID_SOCKET_VALUE));
   struct sockaddr_in address = {.sin_family = AF_INET, .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
-  ASCIICHAT_REQUIRE_EQ(socket_bind(probe, (struct sockaddr *)&address, sizeof(address)), 0);
+  REQUIRE((socket_bind(probe, (struct sockaddr *)&address, sizeof(address))) == (0));
   socklen_t address_size = sizeof(address);
-  ASCIICHAT_REQUIRE_EQ(socket_getsockname(probe, (struct sockaddr *)&address, &address_size), 0);
+  REQUIRE((socket_getsockname(probe, (struct sockaddr *)&address, &address_size)) == (0));
   socket_close(probe);
   config.address = "127.0.0.1";
   config.port = NET_TO_HOST_U16(address.sin_port);
@@ -381,80 +381,80 @@ TEST_CASE("participant_media/startup_failures_and_worker_lifecycle", "[participa
   network_fixture_t fixture = {.password = config.password};
   network_server_config_t server_config = {
       .port = config.port, .ipv4_address = "127.0.0.1", .bind_ipv4 = true, .callbacks = {.open = fixture_open, .packet = fixture_packet, .closed = fixture_closed}, .user_data = &fixture};
-  ASCIICHAT_REQUIRE_EQ(network_server_create(&server_config, &fixture.server), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(network_server_start(fixture.server), ASCIICHAT_OK);
+  REQUIRE((network_server_create(&server_config, &fixture.server)) == (ASCIICHAT_OK));
+  REQUIRE((network_server_start(fixture.server)) == (ASCIICHAT_OK));
   platform_thread_t server_thread;
-  ASCIICHAT_REQUIRE_EQ(fixture_start(&server_thread, fixture_run, &fixture), ASCIICHAT_OK);
+  REQUIRE((fixture_start(&server_thread, fixture_run, &fixture)) == (ASCIICHAT_OK));
   session_participant_t *tcp_participant = session_participant_create(&config);
   fail_tcp_transport = true;
-  ASCIICHAT_REQUIRE_EQ(session_participant_connect(tcp_participant), ERROR_MEMORY);
-  ASCIICHAT_REQUIRE(!session_participant_is_connected(tcp_participant));
-  ASCIICHAT_REQUIRE(!session_participant_has_transport(tcp_participant));
+  REQUIRE((session_participant_connect(tcp_participant)) == (ERROR_MEMORY));
+  REQUIRE(!session_participant_is_connected(tcp_participant));
+  REQUIRE(!session_participant_has_transport(tcp_participant));
   fail_tcp_transport = false;
   for (int cycle = 0; cycle < 2; cycle++) {
-    ASCIICHAT_REQUIRE_EQ(session_participant_connect(tcp_participant), ASCIICHAT_OK);
+    REQUIRE((session_participant_connect(tcp_participant)) == (ASCIICHAT_OK));
     acip_transport_t *tcp = session_participant_get_transport(tcp_participant);
-    ASCIICHAT_REQUIRE(tcp && acip_transport_get_type(tcp) == ACIP_TRANSPORT_TCP);
-    ASCIICHAT_REQUIRE_EQ(session_participant_connect(tcp_participant), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(session_participant_get_transport(tcp_participant), tcp);
+    REQUIRE(tcp && acip_transport_get_type(tcp) == ACIP_TRANSPORT_TCP);
+    REQUIRE((session_participant_connect(tcp_participant)) == (ASCIICHAT_OK));
+    REQUIRE((session_participant_get_transport(tcp_participant)) == (tcp));
     network_connection_t *taken = NULL;
-    ASCIICHAT_REQUIRE_EQ(session_participant_take_connection(tcp_participant, &taken), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(network_connection_transport(taken), tcp);
-    ASCIICHAT_REQUIRE(!session_participant_has_transport(tcp_participant));
-    ASCIICHAT_REQUIRE_EQ(session_participant_set_connection(tcp_participant, &taken), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_NULL(taken);
-    ASCIICHAT_REQUIRE_EQ(session_participant_take_connection(tcp_participant, &taken), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(session_participant_set_transport(tcp_participant, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(session_participant_set_connection(tcp_participant, &taken), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE(!taken);
+    REQUIRE((session_participant_take_connection(tcp_participant, &taken)) == (ASCIICHAT_OK));
+    REQUIRE((network_connection_transport(taken)) == (tcp));
+    REQUIRE(!session_participant_has_transport(tcp_participant));
+    REQUIRE((session_participant_set_connection(tcp_participant, &taken)) == (ASCIICHAT_OK));
+    REQUIRE((taken) == nullptr);
+    REQUIRE((session_participant_take_connection(tcp_participant, &taken)) == (ASCIICHAT_OK));
+    REQUIRE((session_participant_set_transport(tcp_participant, &transport, ACIP_TRANSPORT_BORROWED)) == (ASCIICHAT_OK));
+    REQUIRE((session_participant_set_connection(tcp_participant, &taken)) == (ASCIICHAT_OK));
+    REQUIRE(!taken);
     int video_before = atomic_load_int(&fixture.video), audio_before = atomic_load_int(&fixture.audio);
-    ASCIICHAT_REQUIRE_EQ(session_participant_start_video(tcp_participant), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(session_participant_start_audio(tcp_participant), ASCIICHAT_OK);
+    REQUIRE((session_participant_start_video(tcp_participant)) == (ASCIICHAT_OK));
+    REQUIRE((session_participant_start_audio(tcp_participant)) == (ASCIICHAT_OK));
     for (int i = 0; i < 2000 && (atomic_load_int(&fixture.video) == video_before || atomic_load_int(&fixture.audio) == audio_before); ++i)
       platform_sleep_ms(1);
-    ASCIICHAT_REQUIRE(atomic_load_int(&fixture.video) > video_before && atomic_load_int(&fixture.audio) > audio_before);
+    REQUIRE(atomic_load_int(&fixture.video) > video_before && atomic_load_int(&fixture.audio) > audio_before);
     session = SAFE_CALLOC(1, sizeof(*session), discovery_session_t *);
-    ASCIICHAT_REQUIRE_EQ(mutex_init(&session->nat_quality_mutex, "test_tcp_nat_quality"), ASCIICHAT_OK);
+    REQUIRE((mutex_init(&session->nat_quality_mutex, "test_tcp_nat_quality")) == (ASCIICHAT_OK));
     session->participant_ctx = tcp_participant;
     owned = SAFE_CALLOC(1, sizeof(*owned), acip_transport_t *);
     owned->methods = &methods;
     // A failed restart still leaves the successfully attached transport owned.
     fail_stage = cycle == 1 ? 1 : 0;
-    ASCIICHAT_REQUIRE_EQ(select_participant_transport(session, owned), ASCIICHAT_OK);
+    REQUIRE((select_participant_transport(session, owned)) == (ASCIICHAT_OK));
     fail_stage = 0;
-    ASCIICHAT_REQUIRE_EQ(session_participant_is_video_active(tcp_participant), (cycle == 0));
-    ASCIICHAT_REQUIRE(session_participant_is_audio_active(tcp_participant));
+    REQUIRE((session_participant_is_video_active(tcp_participant)) == ((cycle == 0)));
+    REQUIRE(session_participant_is_audio_active(tcp_participant));
     int audio_before_switch = atomic_load_int(&audio_packets);
     int video_before_switch = atomic_load_int(&video_packets);
     for (int i = 0; i < 200 && (atomic_load_int(&audio_packets) <= audio_before_switch || (cycle == 0 && atomic_load_int(&video_packets) <= video_before_switch)); ++i)
       platform_sleep_ms(1);
-    ASCIICHAT_REQUIRE(atomic_load_int(&audio_packets) > audio_before_switch);
-    ASCIICHAT_REQUIRE(cycle == 1 || atomic_load_int(&video_packets) > video_before_switch);
-    ASCIICHAT_REQUIRE_EQ(session->host_control_transport, tcp);
-    ASCIICHAT_REQUIRE(session->host_control_connection);
-    ASCIICHAT_REQUIRE_EQ(session_participant_get_transport(tcp_participant), owned);
+    REQUIRE(atomic_load_int(&audio_packets) > audio_before_switch);
+    REQUIRE(cycle == 1 || atomic_load_int(&video_packets) > video_before_switch);
+    REQUIRE((session->host_control_transport) == (tcp));
+    REQUIRE(session->host_control_connection);
+    REQUIRE((session_participant_get_transport(tcp_participant)) == (owned));
     int destroyed_before_release = transports_destroyed;
-    ASCIICHAT_REQUIRE_EQ(release_participant_transport(session), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(transports_destroyed, destroyed_before_release + 1);
-    ASCIICHAT_REQUIRE(!session_participant_has_transport(tcp_participant));
-    ASCIICHAT_REQUIRE_EQ(session->host_control_transport, tcp);
+    REQUIRE((release_participant_transport(session)) == (ASCIICHAT_OK));
+    REQUIRE((transports_destroyed) == (destroyed_before_release + 1));
+    REQUIRE(!session_participant_has_transport(tcp_participant));
+    REQUIRE((session->host_control_transport) == (tcp));
     if (cycle == 0) {
       session->participant_ctx = NULL;
       session_participant_disconnect(tcp_participant);
-      ASCIICHAT_REQUIRE(!session_participant_has_transport(tcp_participant));
+      REQUIRE(!session_participant_has_transport(tcp_participant));
     }
     discovery_session_destroy(session);
     session = NULL;
     uint64_t close_deadline = time_get_ns() + 2 * NS_PER_SEC_INT;
     while (atomic_load_int(&fixture.closed) < cycle + 1 && time_get_ns() < close_deadline)
       platform_sleep_ms(1);
-    ASCIICHAT_REQUIRE_EQ(atomic_load_int(&fixture.closed), cycle + 1);
+    REQUIRE((atomic_load_int(&fixture.closed)) == (cycle + 1));
     clean();
   }
   tcp_participant = NULL;
   network_server_request_stop(fixture.server);
-  ASCIICHAT_REQUIRE_EQ(fixture_join(&server_thread), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(network_server_stop(fixture.server), ASCIICHAT_OK);
+  REQUIRE((fixture_join(&server_thread)) == (ASCIICHAT_OK));
+  REQUIRE((network_server_stop(fixture.server)) == (ASCIICHAT_OK));
   network_server_destroy(&fixture.server);
   image_destroy(frame);
   options_state_destroy();
@@ -464,17 +464,17 @@ TEST_CASE("participant_media/startup_failures_and_worker_lifecycle", "[participa
 TEST_CASE("participant_media/stale_startup_tokens_cannot_reactivate_streams", "[participant_media]") {
   // Async host startup tokens cannot reactivate a stopped or replaced stream.
   session_av_state_t *state = session_av_state_create();
-  ASCIICHAT_REQUIRE(state && session_av_state_generation(state) == 0);
+  REQUIRE(state && session_av_state_generation(state) == 0);
   uint32_t old = session_av_state_begin(state);
-  ASCIICHAT_REQUIRE(old && !session_av_state_is_active(state) && !session_av_state_begin(state));
+  REQUIRE(old && !session_av_state_is_active(state) && !session_av_state_begin(state));
   session_av_state_begin_stop(state);
-  ASCIICHAT_REQUIRE(!session_av_state_complete(state, old));
+  REQUIRE(!session_av_state_complete(state, old));
   session_av_state_finish_stop(state);
   uint32_t next = session_av_state_begin(state);
-  ASCIICHAT_REQUIRE(next != old && !session_av_state_complete(state, old));
-  ASCIICHAT_REQUIRE(session_av_state_complete(state, next) && session_av_state_is_active(state));
+  REQUIRE(next != old && !session_av_state_complete(state, old));
+  REQUIRE(session_av_state_complete(state, next) && session_av_state_is_active(state));
   session_av_state_begin_stop(state);
   session_av_state_finish_stop(state);
-  ASCIICHAT_REQUIRE_EQ(session_av_state_generation(state), next);
+  REQUIRE((session_av_state_generation(state)) == (next));
   session_av_state_destroy(state);
 }

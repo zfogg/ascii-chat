@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file webrtc_discovery_e2e_test.c
  * @brief End-to-end integration test for WebRTC connection via discovery service
@@ -346,11 +347,11 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
                        NULL};
 
   pid_t acds_pid = spawn_process_with_log(binary_path, acds_argv, "acds", acds_log);
-  ASCIICHAT_REQUIRE_GT(acds_pid, 0, "Failed to spawn discovery-service");
+  REQUIRE((acds_pid) > (0));
 
   // Wait for discovery service to be ready
   bool acds_ready = wait_for_log_pattern(acds_log, "Listening on", ACDS_STARTUP_TIMEOUT_MS, NULL, 0);
-  ASCIICHAT_REQUIRE(acds_ready, "Discovery service failed to start (log: %s)", acds_log);
+  REQUIRE(acds_ready);
 
   // ============================================================
   // Step 2: Start host to create session
@@ -370,18 +371,18 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
                        NULL};
 
   pid_t host_pid = spawn_process_with_log(binary_path, host_argv, "host", host_log);
-  ASCIICHAT_REQUIRE_GT(host_pid, 0, "Failed to spawn host");
+  REQUIRE((host_pid) > (0));
 
   // Wait for session string in host logs (server mode uses "Session String:")
   char session_line[MAX_LOG_LINE_LENGTH] = {0};
   bool session_found = wait_for_log_pattern(host_log, "Session String:", HOST_STARTUP_TIMEOUT_MS, session_line, sizeof(session_line));
-  ASCIICHAT_REQUIRE(session_found, "Host failed to create session (log: %s)", host_log);
+  REQUIRE(session_found);
 
   // Extract session string
   char session_string[64] = {0};
   bool extracted = extract_session_string(session_line, session_string, sizeof(session_string));
-  ASCIICHAT_REQUIRE(extracted, "Failed to extract session string from: %s", session_line);
-  ASCIICHAT_REQUIRE_GT(strlen(session_string), 10, "Session string too short: %s", session_string);
+  REQUIRE(extracted);
+  REQUIRE((strlen(session_string)) > (10));
 
   fprintf(stderr, "Test: Extracted session string: %s\n", session_string);
 
@@ -411,7 +412,7 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
                         NULL};
 
   pid_t guest_pid = spawn_process_with_log(binary_path, guest_argv, "guest", guest_log);
-  ASCIICHAT_REQUIRE_GT(guest_pid, 0, "Failed to spawn guest");
+  REQUIRE((guest_pid) > (0));
 
   // ============================================================
   // Step 4: Verify WebRTC connection establishment
@@ -425,11 +426,11 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
     webrtc_connected = wait_for_log_pattern(guest_log, webrtc_patterns[i], WEBRTC_CONNECTION_TIMEOUT_MS, NULL, 0);
   }
 
-  ASCIICHAT_REQUIRE(webrtc_connected, "WebRTC connection failed to establish (logs: host=%s, guest=%s)", host_log, guest_log);
+  REQUIRE(webrtc_connected);
 
   // Also verify host sees the connection
   bool host_connected = wait_for_log_pattern(host_log, "WebRTC", WEBRTC_CONNECTION_TIMEOUT_MS, NULL, 0);
-  ASCIICHAT_REQUIRE(host_connected, "Host did not detect WebRTC connection (log: %s)", host_log);
+  REQUIRE(host_connected);
 
   // ============================================================
   // Step 5: Wait for guest to complete (server stays running)
@@ -439,8 +440,8 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
   // Wait for guest to complete snapshot and exit
   bool guest_exited = wait_for_process_exit(guest_pid, 15000, &guest_exit_code);
 
-  ASCIICHAT_REQUIRE(guest_exited, "Guest did not exit cleanly");
-  ASCIICHAT_REQUIRE_EQ(guest_exit_code, 0, "Guest exited with error: %d", guest_exit_code);
+  REQUIRE(guest_exited);
+  REQUIRE((guest_exit_code) == (0));
 
   // ============================================================
   // Step 6: Clean shutdown (logs preserved for debugging)
@@ -450,14 +451,14 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
 
   // Verify log files exist and are not empty
   struct stat st;
-  ASCIICHAT_REQUIRE_EQ(stat(acds_log, &st), 0, "ACDS log missing: %s", acds_log);
-  ASCIICHAT_REQUIRE_GT(st.st_size, 0, "ACDS log is empty");
+  REQUIRE((stat(acds_log, &st)) == (0));
+  REQUIRE((st.st_size) > (0));
 
-  ASCIICHAT_REQUIRE_EQ(stat(host_log, &st), 0, "Host log missing: %s", host_log);
-  ASCIICHAT_REQUIRE_GT(st.st_size, 0, "Host log is empty");
+  REQUIRE((stat(host_log, &st)) == (0));
+  REQUIRE((st.st_size) > (0));
 
-  ASCIICHAT_REQUIRE_EQ(stat(guest_log, &st), 0, "Guest log missing: %s", guest_log);
-  ASCIICHAT_REQUIRE_GT(st.st_size, 0, "Guest log is empty");
+  REQUIRE((stat(guest_log, &st)) == (0));
+  REQUIRE((st.st_size) > (0));
 
   fprintf(stderr, "Test complete. Logs preserved:\n");
   fprintf(stderr, "  ACDS:  %s\n", acds_log);

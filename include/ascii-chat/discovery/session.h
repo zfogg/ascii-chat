@@ -20,6 +20,10 @@
 #include <stdbool.h>
 #include "../discovery/strings.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Host migration state for collecting HOST_LOST packets
  * @brief Maximum participants per session
@@ -103,3 +107,7 @@ typedef struct session_entry {
  * @param entry Session entry to free
  */
 void session_entry_destroy(session_entry_t *entry);
+
+#ifdef __cplusplus
+}
+#endif

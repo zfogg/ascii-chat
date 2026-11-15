@@ -1,7 +1,4 @@
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -11,7 +8,6 @@
 #include <stdlib.h>
 #include <limits.h>
 
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/ascii.h>
@@ -54,13 +50,13 @@ TEST_CASE("image/image_new_dimensions", "[image]") {
   image_t *img = image_new(tc->width, tc->height);
 
   if (tc->should_succeed) {
-    ASCIICHAT_REQUIRE_NOT_NULL(img, "%s: image should be created", tc->description);
-    ASCIICHAT_REQUIRE_EQ((size_t)img->w, tc->width, "%s: width should match", tc->description);
-    ASCIICHAT_REQUIRE_EQ((size_t)img->h, tc->height, "%s: height should match", tc->description);
-    ASCIICHAT_REQUIRE_NOT_NULL(img->pixels, "%s: pixels should be allocated", tc->description);
+    REQUIRE((img) != nullptr);
+    REQUIRE(((size_t)img->w) == (tc->width));
+    REQUIRE(((size_t)img->h) == (tc->height));
+    REQUIRE((img->pixels) != nullptr);
     image_destroy(img);
   } else {
-    ASCIICHAT_REQUIRE_NULL(img, "%s: image should be NULL", tc->description);
+    REQUIRE((img) == nullptr);
   }
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
@@ -72,7 +68,7 @@ TEST_CASE("image/image_destroy_null", "[image]") {
 
 TEST_CASE("image/image_destroy_multiple_times", "[image]") {
   image_t *img = image_new(10, 10);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   image_destroy(img);
   // Second destroy should not crash (though it's undefined behavior)
@@ -85,17 +81,17 @@ TEST_CASE("image/image_destroy_multiple_times", "[image]") {
 
 TEST_CASE("image/image_new_basic", "[image]") {
   image_t *img = image_new(10, 10);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
-  ASCIICHAT_REQUIRE_EQ(img->w, 10);
-  ASCIICHAT_REQUIRE_EQ(img->h, 10);
-  ASCIICHAT_REQUIRE_NOT_NULL(img->pixels);
+  REQUIRE((img) != nullptr);
+  REQUIRE((img->w) == (10));
+  REQUIRE((img->h) == (10));
+  REQUIRE((img->pixels) != nullptr);
 
   image_destroy(img);
 }
 
 TEST_CASE("image/image_new_zero_dimensions", "[image]") {
   image_t *img = image_new(0, 0);
-  ASCIICHAT_REQUIRE_NULL(img); // Should return NULL for zero dimensions
+  REQUIRE((img) == nullptr); // Should return NULL for zero dimensions
 }
 
 /* ============================================================================
@@ -104,7 +100,7 @@ TEST_CASE("image/image_new_zero_dimensions", "[image]") {
 
 TEST_CASE("image/image_clear_basic", "[image]") {
   image_t *img = image_new(10, 10);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   // Fill with some data
   memset(img->pixels, 0xFF, img->w * img->h * sizeof(rgb_pixel_t));
@@ -114,9 +110,9 @@ TEST_CASE("image/image_clear_basic", "[image]") {
 
   // Check that all pixels are zero
   for (int i = 0; i < img->w * img->h; i++) {
-    ASCIICHAT_REQUIRE_EQ(img->pixels[i].r, 0);
-    ASCIICHAT_REQUIRE_EQ(img->pixels[i].g, 0);
-    ASCIICHAT_REQUIRE_EQ(img->pixels[i].b, 0);
+    REQUIRE((img->pixels[i].r) == (0));
+    REQUIRE((img->pixels[i].g) == (0));
+    REQUIRE((img->pixels[i].b) == (0));
   }
 
   image_destroy(img);
@@ -130,11 +126,11 @@ TEST_CASE("image/image_clear_null", "[image]") {
 TEST_CASE("image/image_clear_zero_dimensions", "[image]") {
   // Zero dimensions are invalid - image_new will return NULL
   image_t *img = image_new(0, 0);
-  ASCIICHAT_REQUIRE_NULL(img, "Zero dimensions should return NULL");
+  REQUIRE((img) == nullptr);
 
   // If image_new fails for zero dimensions, test with a valid small image instead
   img = image_new(1, 1);
-  ASCIICHAT_REQUIRE_NOT_NULL(img, "1x1 image should be valid");
+  REQUIRE((img) != nullptr);
 
   // Should not crash
   image_clear(img);
@@ -148,7 +144,7 @@ TEST_CASE("image/image_clear_zero_dimensions", "[image]") {
 
 TEST_CASE("image/image_print_basic", "[image]") {
   image_t *img = image_new(2, 2);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   // Set up a simple 2x2 image with different colors
   img->pixels[0] = (rgb_pixel_t){255, 0, 0};     // Red
@@ -159,8 +155,8 @@ TEST_CASE("image/image_print_basic", "[image]") {
   const char *palette = "@#$%&*+=-:. ";
   char *result = image_print(img, palette);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_GT(strlen(result), 0);
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) > (0));
 
   SAFE_FREE(result);
   image_destroy(img);
@@ -168,7 +164,7 @@ TEST_CASE("image/image_print_basic", "[image]") {
 
 TEST_CASE("image/image_print_color_basic", "[image]") {
   image_t *img = image_new(2, 2);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   // Set up a simple 2x2 image with different colors
   img->pixels[0] = (rgb_pixel_t){255, 0, 0};     // Red
@@ -179,8 +175,8 @@ TEST_CASE("image/image_print_color_basic", "[image]") {
   const char *palette = "@#$%&*+=-:. ";
   char *result = image_print_color(img, palette);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(result);
-  ASCIICHAT_REQUIRE_GT(strlen(result), 0);
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) > (0));
 
   SAFE_FREE(result);
   image_destroy(img);
@@ -189,25 +185,25 @@ TEST_CASE("image/image_print_color_basic", "[image]") {
 TEST_CASE("image/image_print_null_image", "[image]") {
   const char *palette = "@#$%&*+=-:. ";
   char *result = image_print(NULL, palette);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 }
 
 TEST_CASE("image/image_print_null_palette", "[image]") {
   image_t *img = image_new(2, 2);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   char *result = image_print(img, NULL);
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 
   image_destroy(img);
 }
 
 TEST_CASE("image/image_print_empty_palette", "[image]") {
   image_t *img = image_new(2, 2);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   char *result = image_print(img, "");
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 
   image_destroy(img);
 }
@@ -215,17 +211,17 @@ TEST_CASE("image/image_print_empty_palette", "[image]") {
 TEST_CASE("image/image_print_zero_dimensions", "[image]") {
   // Zero dimensions are invalid - image_new will return NULL
   image_t *img = image_new(0, 0);
-  ASCIICHAT_REQUIRE_NULL(img, "Zero dimensions should return NULL");
+  REQUIRE((img) == nullptr);
 
   // If image_new fails for zero dimensions, test with a valid small image instead
   img = image_new(1, 1);
-  ASCIICHAT_REQUIRE_NOT_NULL(img, "1x1 image should be valid");
+  REQUIRE((img) != nullptr);
 
   const char *palette = "@#$%&*+=-:. ";
   char *result = image_print(img, palette);
 
   // Should return a valid string for a 1x1 image
-  ASCIICHAT_REQUIRE_NOT_NULL(result, "image_print should return a string for 1x1 image");
+  REQUIRE((result) != nullptr);
   if (result) {
     SAFE_FREE(result);
   }
@@ -239,7 +235,7 @@ TEST_CASE("image/image_print_zero_dimensions", "[image]") {
 
 TEST_CASE("image/image_resize_basic", "[image]") {
   image_t *source = image_new(4, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(source);
+  REQUIRE((source) != nullptr);
 
   // Fill with pattern
   for (int i = 0; i < 16; i++) {
@@ -247,12 +243,12 @@ TEST_CASE("image/image_resize_basic", "[image]") {
   }
 
   image_t *dest = image_new(2, 2);
-  ASCIICHAT_REQUIRE_NOT_NULL(dest);
+  REQUIRE((dest) != nullptr);
 
   image_resize(source, dest);
 
-  ASCIICHAT_REQUIRE_EQ(dest->w, 2);
-  ASCIICHAT_REQUIRE_EQ(dest->h, 2);
+  REQUIRE((dest->w) == (2));
+  REQUIRE((dest->h) == (2));
 
   image_destroy(source);
   image_destroy(dest);
@@ -260,7 +256,7 @@ TEST_CASE("image/image_resize_basic", "[image]") {
 
 TEST_CASE("image/image_resize_null_source", "[image]") {
   image_t *dest = image_new(2, 2);
-  ASCIICHAT_REQUIRE_NOT_NULL(dest);
+  REQUIRE((dest) != nullptr);
 
   // Should not crash
   image_resize(NULL, dest);
@@ -270,7 +266,7 @@ TEST_CASE("image/image_resize_null_source", "[image]") {
 
 TEST_CASE("image/image_resize_null_dest", "[image]") {
   image_t *source = image_new(4, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(source);
+  REQUIRE((source) != nullptr);
 
   // Should not crash
   image_resize(source, NULL);
@@ -280,10 +276,10 @@ TEST_CASE("image/image_resize_null_dest", "[image]") {
 
 TEST_CASE("image/image_resize_same_size", "[image]") {
   image_t *source = image_new(2, 2);
-  ASCIICHAT_REQUIRE_NOT_NULL(source);
+  REQUIRE((source) != nullptr);
 
   image_t *dest = image_new(2, 2);
-  ASCIICHAT_REQUIRE_NOT_NULL(dest);
+  REQUIRE((dest) != nullptr);
 
   // Fill source with pattern
   source->pixels[0] = (rgb_pixel_t){255, 0, 0};
@@ -294,8 +290,8 @@ TEST_CASE("image/image_resize_same_size", "[image]") {
   image_resize(source, dest);
 
   // Should copy the data
-  ASCIICHAT_REQUIRE_EQ(dest->w, 2);
-  ASCIICHAT_REQUIRE_EQ(dest->h, 2);
+  REQUIRE((dest->w) == (2));
+  REQUIRE((dest->h) == (2));
 
   image_destroy(source);
   image_destroy(dest);
@@ -303,7 +299,7 @@ TEST_CASE("image/image_resize_same_size", "[image]") {
 
 TEST_CASE("image/image_resize_interpolation_basic", "[image]") {
   image_t *source = image_new(4, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(source);
+  REQUIRE((source) != nullptr);
 
   // Fill with pattern
   for (int i = 0; i < 16; i++) {
@@ -311,12 +307,12 @@ TEST_CASE("image/image_resize_interpolation_basic", "[image]") {
   }
 
   image_t *dest = image_new(2, 2);
-  ASCIICHAT_REQUIRE_NOT_NULL(dest);
+  REQUIRE((dest) != nullptr);
 
   image_resize_interpolation(source, dest);
 
-  ASCIICHAT_REQUIRE_EQ(dest->w, 2);
-  ASCIICHAT_REQUIRE_EQ(dest->h, 2);
+  REQUIRE((dest->w) == (2));
+  REQUIRE((dest->h) == (2));
 
   image_destroy(source);
   image_destroy(dest);
@@ -324,7 +320,7 @@ TEST_CASE("image/image_resize_interpolation_basic", "[image]") {
 
 TEST_CASE("image/image_resize_interpolation_null_source", "[image]") {
   image_t *dest = image_new(2, 2);
-  ASCIICHAT_REQUIRE_NOT_NULL(dest);
+  REQUIRE((dest) != nullptr);
 
   // Should not crash
   image_resize_interpolation(NULL, dest);
@@ -334,7 +330,7 @@ TEST_CASE("image/image_resize_interpolation_null_source", "[image]") {
 
 TEST_CASE("image/image_resize_interpolation_null_dest", "[image]") {
   image_t *source = image_new(4, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(source);
+  REQUIRE((source) != nullptr);
 
   // Should not crash
   image_resize_interpolation(source, NULL);
@@ -351,12 +347,12 @@ TEST_CASE("image/quantize_color_basic", "[image]") {
   quantize_color(&r, &g, &b, 8);
 
   // Should quantize to 8 levels
-  ASCIICHAT_REQUIRE(r >= 0);
-  ASCIICHAT_REQUIRE(r <= 255);
-  ASCIICHAT_REQUIRE(g >= 0);
-  ASCIICHAT_REQUIRE(g <= 255);
-  ASCIICHAT_REQUIRE(b >= 0);
-  ASCIICHAT_REQUIRE(b <= 255);
+  REQUIRE(r >= 0);
+  REQUIRE(r <= 255);
+  REQUIRE(g >= 0);
+  REQUIRE(g <= 255);
+  REQUIRE(b >= 0);
+  REQUIRE(b <= 255);
 }
 
 TEST_CASE("image/quantize_color_null_pointers", "[image]") {
@@ -374,8 +370,8 @@ TEST_CASE("image/quantize_color_single_level", "[image]") {
   quantize_color(&r, &g, &b, 1);
 
   // Should quantize to single level
-  ASCIICHAT_REQUIRE(r >= 0);
-  ASCIICHAT_REQUIRE(r <= 255);
+  REQUIRE(r >= 0);
+  REQUIRE(r <= 255);
 }
 
 TEST_CASE("image/quantize_color_256_levels", "[image]") {
@@ -383,8 +379,8 @@ TEST_CASE("image/quantize_color_256_levels", "[image]") {
   quantize_color(&r, &g, &b, 256);
 
   // Should quantize to 256 levels (essentially no quantization)
-  ASCIICHAT_REQUIRE(r >= 0);
-  ASCIICHAT_REQUIRE(r <= 255);
+  REQUIRE(r >= 0);
+  REQUIRE(r <= 255);
 }
 
 /* ============================================================================
@@ -407,8 +403,8 @@ TEST_CASE("image/rgb_to_ansi_fg_variations", "[image]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(rgb_color_cases));
   auto *tc = &generated_case;
   char *result = rgb_to_ansi_fg(tc->r, tc->g, tc->b);
-  ASCIICHAT_REQUIRE_NOT_NULL(result, "%s: FG result should not be NULL", tc->description);
-  ASCIICHAT_REQUIRE_GT(strlen(result), 0, "%s: FG result should not be empty", tc->description);
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) > (0));
   // Note: result points to static buffer, no need to free
 }
 
@@ -416,8 +412,8 @@ TEST_CASE("image/rgb_to_ansi_bg_variations", "[image]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(rgb_color_cases));
   auto *tc = &generated_case;
   char *result = rgb_to_ansi_bg(tc->r, tc->g, tc->b);
-  ASCIICHAT_REQUIRE_NOT_NULL(result, "%s: BG result should not be NULL", tc->description);
-  ASCIICHAT_REQUIRE_GT(strlen(result), 0, "%s: BG result should not be empty", tc->description);
+  REQUIRE((result) != nullptr);
+  REQUIRE((strlen(result)) > (0));
   // Note: result points to static buffer, no need to free
 }
 
@@ -427,10 +423,10 @@ TEST_CASE("image/rgb_to_ansi_8bit_variations", "[image]") {
   int fg_code, bg_code;
   rgb_to_ansi_8bit(tc->r, tc->g, tc->b, &fg_code, &bg_code);
 
-  ASCIICHAT_REQUIRE(fg_code >= 0, "%s: FG code should be >= 0", tc->description);
-  ASCIICHAT_REQUIRE(fg_code <= 255, "%s: FG code should be <= 255", tc->description);
-  ASCIICHAT_REQUIRE(bg_code >= 0, "%s: BG code should be >= 0", tc->description);
-  ASCIICHAT_REQUIRE(bg_code <= 255, "%s: BG code should be <= 255", tc->description);
+  REQUIRE(fg_code >= 0);
+  REQUIRE(fg_code <= 255);
+  REQUIRE(bg_code >= 0);
+  REQUIRE(bg_code <= 255);
 }
 
 TEST_CASE("image/rgb_to_ansi_8bit_null_pointers", "[image]") {
@@ -461,7 +457,7 @@ TEST_CASE("image/precalc_rgb_palettes_variations", "[image]") {
   auto *tc = &generated_case;
   // Should not crash with any values
   precalc_rgb_palettes(tc->r_factor, tc->g_factor, tc->b_factor);
-  ASCIICHAT_REQUIRE(true, "%s should not crash", tc->description);
+  REQUIRE(true);
 }
 
 /* ============================================================================
@@ -474,10 +470,10 @@ TEST_CASE("image/image_operations_with_null_image", "[image]") {
   image_destroy(NULL);
 
   char *result = image_print(NULL, "test");
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 
   result = image_print_color(NULL, "test");
-  ASCIICHAT_REQUIRE_NULL(result);
+  REQUIRE((result) == nullptr);
 
   image_resize(NULL, NULL);
   image_resize_interpolation(NULL, NULL);
@@ -486,7 +482,7 @@ TEST_CASE("image/image_operations_with_null_image", "[image]") {
 
   // Create a valid image to test resize operations with one NULL parameter
   image_t *img = image_new(100, 100);
-  ASCIICHAT_REQUIRE_NOT_NULL(img);
+  REQUIRE((img) != nullptr);
 
   // Should handle NULL gracefully (no crash)
   image_resize(NULL, img);
@@ -498,11 +494,11 @@ TEST_CASE("image/image_operations_with_null_image", "[image]") {
 TEST_CASE("image/image_operations_with_zero_dimensions", "[image]") {
   // Zero dimensions are invalid - image_new will return NULL
   image_t *img = image_new(0, 0);
-  ASCIICHAT_REQUIRE_NULL(img, "Zero dimensions should return NULL");
+  REQUIRE((img) == nullptr);
 
   // If image_new fails for zero dimensions, test with a valid small image instead
   img = image_new(1, 1);
-  ASCIICHAT_REQUIRE_NOT_NULL(img, "1x1 image should be valid");
+  REQUIRE((img) != nullptr);
 
   // Should handle small dimensions gracefully
   image_clear(img);
@@ -520,5 +516,5 @@ TEST_CASE("image/image_memory_allocation_failure_simulation", "[image]") {
   // This is hard to test reliably, but we can test the error handling paths
   // by using very large dimensions that might cause allocation failure
   image_t *img = image_new(SIZE_MAX, SIZE_MAX);
-  ASCIICHAT_REQUIRE_NULL(img);
+  REQUIRE((img) == nullptr);
 }

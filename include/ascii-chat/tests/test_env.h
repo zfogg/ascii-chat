@@ -22,6 +22,10 @@
 #include <stdlib.h>
 #include <libplatform/system.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Check if we're running in a test environment
  *
@@ -45,3 +49,7 @@ static inline bool is_test_environment(void) {
 }
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

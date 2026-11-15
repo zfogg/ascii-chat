@@ -17,6 +17,10 @@
 #include "../../asciichat_errno.h"
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // =============================================================================
 // ACDS Handler Callbacks
 // =============================================================================
@@ -104,3 +108,7 @@ typedef struct {
 asciichat_error_t acip_handle_acds_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
                                           size_t payload_len, const char *client_ip,
                                           const acip_acds_callbacks_t *callbacks);
+
+#ifdef __cplusplus
+}
+#endif

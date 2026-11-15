@@ -1,9 +1,8 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
+#include <ascii-chat/common.h>
 #include <libplatform/symbols.h>
 
-extern "C" bool symbol_module_is_project(const char *module_name);
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
 #include <libplatform/filesystem.h>
@@ -35,11 +34,11 @@ static void fallback_setup(void) {
     if (value)
       SAFE_STRDUP(fallback_old_env[i], value);
   }
-  ASCIICHAT_REQUIRE_EQ(platform_mkdtemp(fallback_directory, sizeof(fallback_directory), "symbol-fallback"), ASCIICHAT_OK);
+  REQUIRE((platform_mkdtemp(fallback_directory, sizeof(fallback_directory), "symbol-fallback")) == (ASCIICHAT_OK));
   char script[PLATFORM_MAX_PATH_LENGTH];
   safe_snprintf(script, sizeof(script), "%s/addr2line", fallback_directory);
   FILE *file = platform_fopen("addr2line-fixture", script, "w");
-  ASCIICHAT_REQUIRE_NOT_NULL(file);
+  REQUIRE((file) != nullptr);
   const char *program = "#!/bin/sh\n"
                         "for argument do\n"
                         " case \"$argument\" in\n"
@@ -49,30 +48,30 @@ static void fallback_setup(void) {
                         "  0x4444) printf '??\\n??:?\\n';;\n"
                         " esac\n"
                         "done\n";
-  ASCIICHAT_REQUIRE_EQ(fwrite(program, 1, strlen(program), file), strlen(program));
-  ASCIICHAT_REQUIRE_EQ(fclose(file), 0);
-  ASCIICHAT_REQUIRE_EQ(platform_chmod(script, 0700), 0);
-  ASCIICHAT_REQUIRE_EQ(platform_setenv("PATH", fallback_directory), 0);
-  ASCIICHAT_REQUIRE_EQ(platform_setenv("LLVM_SYMBOLIZER_PATH", "/missing/llvm-symbolizer"), 0);
-  ASCIICHAT_REQUIRE_EQ(platform_setenv("ADDR2LINE_PATH", script), 0);
+  REQUIRE((fwrite(program, 1, strlen(program), file)) == (strlen(program)));
+  REQUIRE((fclose(file)) == (0));
+  REQUIRE((platform_chmod(script, 0700)) == (0));
+  REQUIRE((platform_setenv("PATH", fallback_directory)) == (0));
+  REQUIRE((platform_setenv("LLVM_SYMBOLIZER_PATH", "/missing/llvm-symbolizer")) == (0));
+  REQUIRE((platform_setenv("ADDR2LINE_PATH", script)) == (0));
 }
 TEST_CASE("symbol_cache_fallback/addr2line_handles_mixed_resolution_and_caches_owned_results", "[symbol_cache_fallback]") {
-  ASCIICHAT_REQUIRE_EQ(symbol_cache_init(), ASCIICHAT_OK);
+  REQUIRE((symbol_cache_init()) == (ASCIICHAT_OK));
   void *addresses[] = {(void *)0x1111, (void *)0x2222, (void *)0x3333, (void *)0x4444};
   char **symbols = symbol_cache_resolve_batch(addresses, 4, NULL);
-  ASCIICHAT_REQUIRE_NOT_NULL(symbols);
+  REQUIRE((symbols) != nullptr);
   for (int i = 0; i < 4; ++i)
-    ASCIICHAT_REQUIRE_NOT_NULL(symbols[i]);
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(symbols[0], "source.c:42"));
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(symbols[0], "both_known()"));
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(symbols[1], "function_only() at 0x2222"));
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(symbols[2], "source.c:73"));
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(symbols[2], "unknown function"));
-  ASCIICHAT_REQUIRE_STR_EQ(symbols[3], "0x4444");
+    REQUIRE((symbols[i]) != nullptr);
+  REQUIRE((strstr(symbols[0], "source.c:42")) != nullptr);
+  REQUIRE((strstr(symbols[0], "both_known()")) != nullptr);
+  REQUIRE((strstr(symbols[1], "function_only() at 0x2222")) != nullptr);
+  REQUIRE((strstr(symbols[2], "source.c:73")) != nullptr);
+  REQUIRE((strstr(symbols[2], "unknown function")) != nullptr);
+  REQUIRE(std::strcmp((symbols[3]), ("0x4444")) == 0);
   char **cached = symbol_cache_resolve_batch(addresses, 4, NULL);
-  ASCIICHAT_REQUIRE_NOT_NULL(cached);
+  REQUIRE((cached) != nullptr);
   for (int i = 0; i < 4; ++i)
-    ASCIICHAT_REQUIRE_STR_EQ(cached[i], symbols[i]);
+    REQUIRE(std::strcmp((cached[i]), (symbols[i])) == 0);
   symbol_cache_free_symbols(cached);
   symbol_cache_free_symbols(symbols);
 }
@@ -83,67 +82,68 @@ TEST_CASE("symbol_cache_lifecycle/batch_resolution_identifies_exported_functions
   SUCCEED("Windows resolves native symbols through the platform debugger API rather than the POSIX symbolizer names tested here");
   return;
 #endif
-  ASCIICHAT_REQUIRE_EQ(symbol_cache_init(), ASCIICHAT_OK);
+  REQUIRE((symbol_cache_init()) == (ASCIICHAT_OK));
   void *addresses[] = {(void *)symbol_cache_init, (void *)symbol_cache_destroy, (void *)symbol_cache_insert};
   char **first = symbol_cache_resolve_batch(addresses, 3, NULL);
-  ASCIICHAT_REQUIRE_NOT_NULL(first);
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(first[0], "symbol_cache_init"), "Resolved: %s", first[0]);
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(first[1], "symbol_cache_destroy"), "Resolved: %s", first[1]);
+  REQUIRE((first) != nullptr);
+  REQUIRE((strstr(first[0], "symbol_cache_init")) != nullptr);
+  REQUIRE((strstr(first[1], "symbol_cache_destroy")) != nullptr);
   char **second = symbol_cache_resolve_batch(addresses, 3, NULL);
-  ASCIICHAT_REQUIRE_NOT_NULL(second);
+  REQUIRE((second) != nullptr);
   for (int i = 0; i < 3; ++i)
-    ASCIICHAT_REQUIRE_STR_EQ(first[i], second[i]);
+    REQUIRE(std::strcmp((first[i]), (second[i])) == 0);
   symbol_cache_free_symbols(first);
   symbol_cache_free_symbols(second);
-  ASCIICHAT_REQUIRE_NULL(symbol_cache_resolve_batch(NULL, 0, NULL));
+  REQUIRE((symbol_cache_resolve_batch(NULL, 0, NULL)) == nullptr);
   symbol_cache_destroy();
 }
 
 TEST_CASE("symbol_cache_lifecycle/cached_names_are_copied_and_updates_do_not_invalidate_previous_results", "[symbol_cache_lifecycle]") {
-  ASCIICHAT_REQUIRE_EQ(symbol_cache_init(), ASCIICHAT_OK);
+  REQUIRE((symbol_cache_init()) == (ASCIICHAT_OK));
   int key, absent;
-  ASCIICHAT_REQUIRE_NULL(symbol_cache_lookup(&absent));
+  REQUIRE((symbol_cache_lookup(&absent)) == nullptr);
   char name[] = "original_symbol";
-  ASCIICHAT_REQUIRE(symbol_cache_insert(&key, name));
+  REQUIRE(symbol_cache_insert(&key, name));
   name[0] = 'X';
   char *before = (char *)symbol_cache_lookup(&key);
-  ASCIICHAT_REQUIRE_NOT_NULL(before);
-  ASCIICHAT_REQUIRE_STR_EQ(before, "original_symbol");
-  ASCIICHAT_REQUIRE(symbol_cache_insert(&key, "updated_symbol"));
+  REQUIRE((before) != nullptr);
+  REQUIRE(std::strcmp((before), ("original_symbol")) == 0);
+  REQUIRE(symbol_cache_insert(&key, "updated_symbol"));
   char *after = (char *)symbol_cache_lookup(&key);
-  ASCIICHAT_REQUIRE_STR_EQ(after, "updated_symbol");
-  ASCIICHAT_REQUIRE_STR_EQ(before, "original_symbol");
+  REQUIRE(std::strcmp((after), ("updated_symbol")) == 0);
+  REQUIRE(std::strcmp((before), ("original_symbol")) == 0);
   uint64_t hits, misses;
   size_t entries;
   symbol_cache_get_stats(&hits, &misses, &entries);
-  ASCIICHAT_REQUIRE_GE(hits, 2);
-  ASCIICHAT_REQUIRE_GE(misses, 1);
-  ASCIICHAT_REQUIRE_GE(entries, 1);
-  ASCIICHAT_REQUIRE_NOT(symbol_cache_insert(NULL, "invalid"));
-  ASCIICHAT_REQUIRE_NOT(symbol_cache_insert(&key, NULL));
+  REQUIRE((hits) >= (2));
+  REQUIRE((misses) >= (1));
+  REQUIRE((entries) >= (1));
+  REQUIRE(!(symbol_cache_insert(NULL, "invalid")));
+  REQUIRE(!(symbol_cache_insert(&key, NULL)));
   // symbol_cache_lookup returns duplicated strings owned by the caller. The
   // platform layer uses malloc for these results, so release them directly.
   free(before);
   free(after);
   symbol_cache_destroy();
-  ASCIICHAT_REQUIRE_NULL(symbol_cache_lookup(&key));
+  REQUIRE((symbol_cache_lookup(&key)) == nullptr);
 }
 
 TEST_CASE("symbol_cache_lifecycle/source_paths_classify_project_external_and_truncation_without_partial_writes", "[symbol_cache_lifecycle]") {
+  const char *const libraries[] = {"libasciichat.so", "asciichat.dll", "libasciichat.dylib", NULL};
   const char *project[] = {"ascii-chat", "C:\\tools\\ASCII-CHAT.EXE", "libasciichat.so.0.1.0"};
   for (size_t i = 0; i < 3; ++i)
-    ASCIICHAT_REQUIRE(symbol_module_is_project(project[i]));
-  ASCIICHAT_REQUIRE_NOT(symbol_module_is_project("libc.so.6"));
-  ASCIICHAT_REQUIRE_NOT(symbol_module_is_project(NULL));
+    REQUIRE(symbol_module_is_project(project[i], "ascii-chat", libraries));
+  REQUIRE(!(symbol_module_is_project("libc.so.6", "ascii-chat", libraries)));
+  REQUIRE(!(symbol_module_is_project(NULL, "ascii-chat", libraries)));
   char output[256];
   bool external;
-  ASCIICHAT_REQUIRE_EQ(symbol_format_source_path("libasciichat.so", "lib/audio/audio.c", output, sizeof(output), &external, NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NOT(external);
-  ASCIICHAT_REQUIRE_STR_EQ(output, "lib/audio/audio.c");
-  ASCIICHAT_REQUIRE_EQ(symbol_format_source_path("libc.so", "/a/b/c/d/e/f/source.c", output, sizeof(output), &external, NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(external);
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(output, "c/d/e/f/source.c"));
+  REQUIRE(symbol_format_source_path("libasciichat.so", "ascii-chat", libraries, "lib/audio/audio.c", output, sizeof(output), &external, NULL) == 0);
+  REQUIRE(!(external));
+  REQUIRE(std::strcmp((output), ("lib/audio/audio.c")) == 0);
+  REQUIRE(symbol_format_source_path("libc.so", "ascii-chat", libraries, "/a/b/c/d/e/f/source.c", output, sizeof(output), &external, NULL) == 0);
+  REQUIRE(external);
+  REQUIRE((strstr(output, "c/d/e/f/source.c")) != nullptr);
   strcpy(output, "unchanged");
-  ASCIICHAT_REQUIRE_EQ(symbol_format_source_path("libc.so", "/a/b/source.c", output, 2, &external, NULL), ERROR_BUFFER_OVERFLOW);
-  ASCIICHAT_REQUIRE_STR_EQ(output, "unchanged");
+  REQUIRE(symbol_format_source_path("libc.so", "ascii-chat", libraries, "/a/b/source.c", output, 2, &external, NULL) != 0);
+  REQUIRE(std::strcmp((output), ("unchanged")) == 0);
 }

@@ -38,6 +38,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef _WIN32
 #ifdef BUILDING_ASCIICHAT_DLL
 /**
@@ -83,3 +87,7 @@
 #endif
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

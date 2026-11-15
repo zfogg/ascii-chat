@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/network/consensus/election.h>
 #include <ascii-chat/tests/logging.h>
@@ -27,7 +27,7 @@ TEST_CASE("election/score_computation", "[election]") {
   // (4-0)*1000 + 100000/10 + (500-20) + 98
   // = 4000 + 10000 + 480 + 98 = 14578
   uint32_t score = consensus_election_compute_score(&m);
-  ASCIICHAT_REQUIRE_EQ(score, 14578);
+  REQUIRE((score) == (14578));
 }
 
 TEST_CASE("election/stun_only_network", "[election]") {
@@ -37,7 +37,7 @@ TEST_CASE("election/stun_only_network", "[election]") {
   // Expected: (4-3)*1000 + 10000/10 + (500-50) + 85
   // = 1000 + 1000 + 450 + 85 = 2535
   uint32_t score = consensus_election_compute_score(&m);
-  ASCIICHAT_REQUIRE_EQ(score, 2535);
+  REQUIRE((score) == (2535));
 }
 
 TEST_CASE("election/choose_best_two", "[election]") {
@@ -57,9 +57,9 @@ TEST_CASE("election/choose_best_two", "[election]") {
   int best, backup;
   asciichat_error_t err = consensus_election_choose_hosts(metrics, 4, &best, &backup);
 
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(best, 2);   // Participant 2 has highest score
-  ASCIICHAT_REQUIRE_EQ(backup, 3); // Participant 3 has second-highest
+  REQUIRE((err) == (ASCIICHAT_OK));
+  REQUIRE((best) == (2));   // Participant 2 has highest score
+  REQUIRE((backup) == (3)); // Participant 3 has second-highest
 }
 
 TEST_CASE("election/verify_correct", "[election]") {
@@ -80,8 +80,8 @@ TEST_CASE("election/verify_correct", "[election]") {
   bool valid = false;
   asciichat_error_t err = consensus_election_verify(metrics, 2, announced_host, announced_backup, &valid);
 
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(valid, true);
+  REQUIRE((err) == (ASCIICHAT_OK));
+  REQUIRE((valid) == (true));
 }
 
 TEST_CASE("election/verify_incorrect", "[election]") {
@@ -102,5 +102,5 @@ TEST_CASE("election/verify_incorrect", "[election]") {
   bool valid = false;
   consensus_election_verify(metrics, 2, announced_host, announced_backup, &valid);
 
-  ASCIICHAT_REQUIRE_EQ(valid, false);
+  REQUIRE((valid) == (false));
 }

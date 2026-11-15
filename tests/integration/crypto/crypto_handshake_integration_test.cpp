@@ -1,10 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file crypto_handshake_integration_test.c
  * @brief Integration tests for end-to-end crypto handshake via ACIP transport
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <stdio.h>
@@ -15,7 +14,6 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/crypto/handshake/server.h>
@@ -40,7 +38,7 @@ static void setup_test_network(void) {
 
   int sv[2];
   if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0) {
-    ASCIICHAT_REQUIRE(false, "Failed to create socket pair: %s", strerror(errno));
+    REQUIRE(false);
     return;
   }
   g_network.server_fd = sv[0];
@@ -49,8 +47,8 @@ static void setup_test_network(void) {
   g_network.server_transport = acip_tcp_transport_create("test-server", sv[0], NULL);
   g_network.client_transport = acip_tcp_transport_create("test-client", sv[1], NULL);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(g_network.server_transport, "Server transport should be created");
-  ASCIICHAT_REQUIRE_NOT_NULL(g_network.client_transport, "Client transport should be created");
+  REQUIRE((g_network.server_transport) != nullptr);
+  REQUIRE((g_network.client_transport) != nullptr);
 
   setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1", 1);
 }
@@ -240,8 +238,8 @@ TEST_CASE("crypto_handshake_integration/complete_handshake_flow", "[crypto_hands
   setup_test_network();
 
   crypto_handshake_context_t server_ctx, client_ctx;
-  ASCIICHAT_REQUIRE_EQ(crypto_handshake_init("test-server", &server_ctx, true), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(crypto_handshake_init("test-client", &client_ctx, false), ASCIICHAT_OK);
+  REQUIRE((crypto_handshake_init("test-server", &server_ctx, true)) == (ASCIICHAT_OK));
+  REQUIRE((crypto_handshake_init("test-client", &client_ctx, false)) == (ASCIICHAT_OK));
   setup_client_ctx_for_socketpair(&client_ctx);
 
   // Start client thread
@@ -255,34 +253,34 @@ TEST_CASE("crypto_handshake_integration/complete_handshake_flow", "[crypto_hands
   pthread_create(&client_thread, NULL, handshake_client_thread, &client_args);
 
   // Server: protocol negotiation
-  ASCIICHAT_REQUIRE_EQ(server_protocol_negotiation(g_network.server_fd, &server_ctx), ASCIICHAT_OK);
+  REQUIRE((server_protocol_negotiation(g_network.server_fd, &server_ctx)) == (ASCIICHAT_OK));
 
   // Server: send key exchange init
-  ASCIICHAT_REQUIRE_EQ(crypto_handshake_server_start(&server_ctx, g_network.server_transport), ASCIICHAT_OK);
+  REQUIRE((crypto_handshake_server_start(&server_ctx, g_network.server_transport)) == (ASCIICHAT_OK));
 
   // Server: receive client's key exchange response
   packet_type_t pkt_type;
   void *payload = NULL;
   size_t payload_len = 0;
-  ASCIICHAT_REQUIRE_EQ(recv_packet(g_network.server_fd, &pkt_type, &payload, &payload_len), ASCIICHAT_OK);
+  REQUIRE((recv_packet(g_network.server_fd, &pkt_type, &payload, &payload_len)) == (ASCIICHAT_OK));
 
   // Server: process client key and send auth challenge (or complete)
   asciichat_error_t auth_result = crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len);
-  ASCIICHAT_REQUIRE_EQ(auth_result, ASCIICHAT_OK);
+  REQUIRE((auth_result) == (ASCIICHAT_OK));
   buffer_release(payload);
 
   // If authenticating, receive client auth response and complete
   if (server_ctx.state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
     payload = NULL;
-    ASCIICHAT_REQUIRE_EQ(recv_packet(g_network.server_fd, &pkt_type, &payload, &payload_len), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(crypto_handshake_server_complete(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len), ASCIICHAT_OK);
+    REQUIRE((recv_packet(g_network.server_fd, &pkt_type, &payload, &payload_len)) == (ASCIICHAT_OK));
+    REQUIRE((crypto_handshake_server_complete(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len)) == (ASCIICHAT_OK));
     buffer_release(payload);
   }
 
   pthread_join(client_thread, NULL);
-  ASCIICHAT_REQUIRE_EQ(client_args.result, 0, "Client handshake should succeed");
-  ASCIICHAT_REQUIRE_EQ(server_ctx.state, CRYPTO_HANDSHAKE_READY);
-  ASCIICHAT_REQUIRE_EQ(client_ctx.state, CRYPTO_HANDSHAKE_READY);
+  REQUIRE((client_args.result) == (0));
+  REQUIRE((server_ctx.state) == (CRYPTO_HANDSHAKE_READY));
+  REQUIRE((client_ctx.state) == (CRYPTO_HANDSHAKE_READY));
 
   crypto_handshake_destroy(&server_ctx);
   crypto_handshake_destroy(&client_ctx);
@@ -304,7 +302,7 @@ TEST_CASE("crypto_handshake_integration/key_type_parsing", "[crypto_handshake_in
     public_key_t key;
     int parse_result = parse_public_key(test_cases[i].key_data, &key);
     if (parse_result == 0) {
-      ASCIICHAT_REQUIRE_EQ(key.type, test_cases[i].expected_type, "Key type should match for: %s", test_cases[i].description);
+      REQUIRE((key.type) == (test_cases[i].expected_type));
     }
   }
 }
@@ -346,9 +344,9 @@ TEST_CASE("crypto_handshake_integration/encryption_after_handshake", "[crypto_ha
   }
 
   pthread_join(client_thread, NULL);
-  ASCIICHAT_REQUIRE_EQ(client_args.result, 0);
-  ASCIICHAT_REQUIRE_EQ(server_ctx.state, CRYPTO_HANDSHAKE_READY);
-  ASCIICHAT_REQUIRE_EQ(client_ctx.state, CRYPTO_HANDSHAKE_READY);
+  REQUIRE((client_args.result) == (0));
+  REQUIRE((server_ctx.state) == (CRYPTO_HANDSHAKE_READY));
+  REQUIRE((client_ctx.state) == (CRYPTO_HANDSHAKE_READY));
 
   // Test encryption/decryption
   const char *plaintext = "Hello, encrypted world!";
@@ -356,12 +354,12 @@ TEST_CASE("crypto_handshake_integration/encryption_after_handshake", "[crypto_ha
   uint8_t decrypted[256];
   size_t ciphertext_len, decrypted_len;
 
-  ASCIICHAT_REQUIRE_EQ(crypto_encrypt(&server_ctx.crypto_ctx, (const uint8_t *)plaintext, strlen(plaintext), ciphertext, sizeof(ciphertext), &ciphertext_len), 0);
-  ASCIICHAT_REQUIRE_GT(ciphertext_len, 0);
+  REQUIRE((crypto_encrypt(&server_ctx.crypto_ctx, (const uint8_t *)plaintext, strlen(plaintext), ciphertext, sizeof(ciphertext), &ciphertext_len)) == (0));
+  REQUIRE((ciphertext_len) > (0));
 
-  ASCIICHAT_REQUIRE_EQ(crypto_decrypt(&client_ctx.crypto_ctx, ciphertext, ciphertext_len, decrypted, sizeof(decrypted), &decrypted_len), 0);
-  ASCIICHAT_REQUIRE_EQ(decrypted_len, strlen(plaintext));
-  ASCIICHAT_REQUIRE_EQ(memcmp(decrypted, plaintext, strlen(plaintext)), 0);
+  REQUIRE((crypto_decrypt(&client_ctx.crypto_ctx, ciphertext, ciphertext_len, decrypted, sizeof(decrypted), &decrypted_len)) == (0));
+  REQUIRE((decrypted_len) == (strlen(plaintext)));
+  REQUIRE((memcmp(decrypted, plaintext, strlen(plaintext))) == (0));
 
   crypto_handshake_destroy(&server_ctx);
   crypto_handshake_destroy(&client_ctx);

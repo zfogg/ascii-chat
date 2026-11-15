@@ -1,7 +1,6 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/audio/limits.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/media/ffmpeg_encoder.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
@@ -9,7 +8,6 @@
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <math.h>
 #include <string.h>
@@ -20,11 +18,11 @@ static ffmpeg_decoder_t *decoder;
 static media_source_t *source;
 
 static void setup(void) {
-  ASCIICHAT_REQUIRE_EQ(platform_mkdtemp(directory, sizeof(directory), "ascii-codec-roundtrip"), ASCIICHAT_OK);
+  REQUIRE((platform_mkdtemp(directory, sizeof(directory), "ascii-codec-roundtrip")) == (ASCIICHAT_OK));
   options_t *options = SAFE_MALLOC(sizeof(*options), options_t *);
   *options = *options_get();
   options->snapshot_mode = false;
-  ASCIICHAT_REQUIRE_EQ(options_state_set(options), ASCIICHAT_OK);
+  REQUIRE((options_state_set(options)) == (ASCIICHAT_OK));
   SAFE_FREE(options);
 }
 
@@ -46,13 +44,13 @@ static image_t *next_frame(bool from_source) {
       return image;
     platform_sleep_ms(1);
   } while (platform_get_monotonic_time_us() < deadline);
-  ASCIICHAT_REQUIRE_NOT_NULL(image, "No decoded frame arrived before the deadline");
+  REQUIRE((image) != nullptr);
   return image;
 }
 
 static void encode_fixture(const char *extension, int frames, bool audio) {
   safe_snprintf(path, sizeof(path), "%s/fixture.%s", directory, extension);
-  ASCIICHAT_REQUIRE_EQ(ffmpeg_encoder_create(path, 64, 48, 24, &encoder), ASCIICHAT_OK, "Format: %s", extension);
+  REQUIRE((ffmpeg_encoder_create(path, 64, 48, 24, &encoder)) == (ASCIICHAT_OK));
   uint8_t rgba[64 * 48 * 4];
   float samples[2000];
   for (int frame = 0; frame < frames; ++frame) {
@@ -62,14 +60,14 @@ static void encode_fixture(const char *extension, int frames, bool audio) {
       rgba[4 * pixel + 2] = 170;
       rgba[4 * pixel + 3] = 255;
     }
-    ASCIICHAT_REQUIRE_EQ(ffmpeg_encoder_write_frame(encoder, rgba, 64 * 4, 1000000000ULL + frame * 41666667ULL), ASCIICHAT_OK);
+    REQUIRE((ffmpeg_encoder_write_frame(encoder, rgba, 64 * 4, 1000000000ULL + frame * 41666667ULL)) == (ASCIICHAT_OK));
     if (audio) {
       for (int i = 0; i < 2000; ++i)
         samples[i] = 0.2f * sinf(6.283185307f * 480.0f * (frame * 2000 + i) / 48000.0f);
-      ASCIICHAT_REQUIRE_EQ(ffmpeg_encoder_write_audio(encoder, samples, 2000), ASCIICHAT_OK);
+      REQUIRE((ffmpeg_encoder_write_audio(encoder, samples, 2000)) == (ASCIICHAT_OK));
     }
   }
-  ASCIICHAT_REQUIRE_EQ(ffmpeg_encoder_destroy(encoder), ASCIICHAT_OK);
+  REQUIRE((ffmpeg_encoder_destroy(encoder)) == (ASCIICHAT_OK));
   encoder = NULL;
 }
 
@@ -88,75 +86,75 @@ TEST_CASE("codec_roundtrip/encoded_frames_and_audio_decode_to_the_original_signa
   format_case_t *format = formats;
   encode_fixture(format->extension, format->image ? 1 : 12, format->audio);
   decoder = ffmpeg_decoder_create(path);
-  ASCIICHAT_REQUIRE_NOT_NULL(decoder);
-  ASCIICHAT_REQUIRE(ffmpeg_decoder_has_video(decoder));
+  REQUIRE((decoder) != nullptr);
+  REQUIRE(ffmpeg_decoder_has_video(decoder));
   int width, height;
-  ASCIICHAT_REQUIRE_EQ(ffmpeg_decoder_get_video_dimensions(decoder, &width, &height), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(width, 64);
-  ASCIICHAT_REQUIRE_EQ(height, 48);
-  ASCIICHAT_REQUIRE_EQ(ffmpeg_decoder_start_prefetch(decoder), ASCIICHAT_OK);
+  REQUIRE((ffmpeg_decoder_get_video_dimensions(decoder, &width, &height)) == (ASCIICHAT_OK));
+  REQUIRE((width) == (64));
+  REQUIRE((height) == (48));
+  REQUIRE((ffmpeg_decoder_start_prefetch(decoder)) == (ASCIICHAT_OK));
   image_t *image = next_frame(false);
-  ASCIICHAT_REQUIRE_NOT_NULL(image);
+  REQUIRE((image) != nullptr);
   for (size_t i = 0; i < 64 * 48; ++i) {
-    ASCIICHAT_REQUIRE_LE(abs((int)image->pixels[i].r - 36), format->tolerance, "%s RGB=%u,%u,%u", format->extension, image->pixels[i].r, image->pixels[i].g, image->pixels[i].b);
-    ASCIICHAT_REQUIRE_LE(abs((int)image->pixels[i].g - 146), format->tolerance, "%s RGB=%u,%u,%u", format->extension, image->pixels[i].r, image->pixels[i].g, image->pixels[i].b);
-    ASCIICHAT_REQUIRE_LE(abs((int)image->pixels[i].b - 170), format->tolerance, "%s blue=%u", format->extension, image->pixels[i].b);
+    REQUIRE((abs((int)image->pixels[i].r - 36)) <= (format->tolerance));
+    REQUIRE((abs((int)image->pixels[i].g - 146)) <= (format->tolerance));
+    REQUIRE((abs((int)image->pixels[i].b - 170)) <= (format->tolerance));
   }
-  ASCIICHAT_REQUIRE_EQ(ffmpeg_decoder_has_audio(decoder), format->audio);
+  REQUIRE((ffmpeg_decoder_has_audio(decoder)) == (format->audio));
   if (format->audio) {
-    ASCIICHAT_REQUIRE_GT(ffmpeg_decoder_get_duration(decoder), 0.35);
-    ASCIICHAT_REQUIRE_EQ(ffmpeg_decoder_seek_to_timestamp(decoder, 0.2), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_NOT_NULL(next_frame(false));
-    ASCIICHAT_REQUIRE_EQ(ffmpeg_decoder_rewind(decoder), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_NOT_NULL(next_frame(false));
+    REQUIRE((ffmpeg_decoder_get_duration(decoder)) > (0.35));
+    REQUIRE((ffmpeg_decoder_seek_to_timestamp(decoder, 0.2)) == (ASCIICHAT_OK));
+    REQUIRE((next_frame(false)) != nullptr);
+    REQUIRE((ffmpeg_decoder_rewind(decoder)) == (ASCIICHAT_OK));
+    REQUIRE((next_frame(false)) != nullptr);
     ffmpeg_decoder_destroy(decoder);
     decoder = ffmpeg_decoder_create(path);
-    ASCIICHAT_REQUIRE_NOT_NULL(decoder);
+    REQUIRE((decoder) != nullptr);
     float samples[4096];
     size_t count = ffmpeg_decoder_read_audio_samples(decoder, samples, 4096);
-    ASCIICHAT_REQUIRE_GT(count, 960);
+    REQUIRE((count) > (960));
     double energy = 0, in_phase = 0, quadrature = 0;
     for (size_t i = 0; i < count; ++i) {
-      ASCIICHAT_REQUIRE(isfinite(samples[i]));
+      REQUIRE(isfinite(samples[i]));
       energy += samples[i] * samples[i];
       in_phase += samples[i] * cos(6.283185307 * 480 * i / 48000);
       quadrature += samples[i] * sin(6.283185307 * 480 * i / 48000);
     }
-    ASCIICHAT_REQUIRE_GT(2 * hypot(in_phase, quadrature) / count, 0.08, "%s lost the 480 Hz tone", format->extension);
-    ASCIICHAT_REQUIRE_GT(sqrt(energy / count), 0.02);
-    ASCIICHAT_REQUIRE_LT(sqrt(energy / count), 0.3, "%s RMS=%g", format->extension, sqrt(energy / count));
-    ASCIICHAT_REQUIRE_EQ(ffmpeg_decoder_seek_to_timestamp(decoder, 0.2), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_GT(ffmpeg_decoder_read_audio_samples(decoder, samples, 4096), 0);
-    ASCIICHAT_REQUIRE_EQ(ffmpeg_decoder_rewind(decoder), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_GT(ffmpeg_decoder_read_audio_samples(decoder, samples, 4096), 0);
+    REQUIRE((2 * hypot(in_phase, quadrature) / count) > (0.08));
+    REQUIRE((sqrt(energy / count)) > (0.02));
+    REQUIRE((sqrt(energy / count)) < (0.3));
+    REQUIRE((ffmpeg_decoder_seek_to_timestamp(decoder, 0.2)) == (ASCIICHAT_OK));
+    REQUIRE((ffmpeg_decoder_read_audio_samples(decoder, samples, 4096)) > (0));
+    REQUIRE((ffmpeg_decoder_rewind(decoder)) == (ASCIICHAT_OK));
+    REQUIRE((ffmpeg_decoder_read_audio_samples(decoder, samples, 4096)) > (0));
   }
 }
 
 TEST_CASE("codec_roundtrip/media_source_pause_seek_rewind_and_loop_preserve_a_playable_stream", "[codec_roundtrip]") {
   encode_fixture("avi", 12, true);
   source = media_source_create(MEDIA_SOURCE_FILE, path);
-  ASCIICHAT_REQUIRE_NOT_NULL(source);
-  ASCIICHAT_REQUIRE_EQ(media_source_get_type(source), MEDIA_SOURCE_FILE);
-  ASCIICHAT_REQUIRE(media_source_has_video(source));
-  ASCIICHAT_REQUIRE(media_source_has_audio(source));
-  ASCIICHAT_REQUIRE_NOT(media_source_uses_webcam(source));
-  ASCIICHAT_REQUIRE_GT(media_source_get_duration(source), 0.35);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(media_source_get_video_fps(source), 24, 0.01, "FPS: %g", media_source_get_video_fps(source));
+  REQUIRE((source) != nullptr);
+  REQUIRE((media_source_get_type(source)) == (MEDIA_SOURCE_FILE));
+  REQUIRE(media_source_has_video(source));
+  REQUIRE(media_source_has_audio(source));
+  REQUIRE(!(media_source_uses_webcam(source)));
+  REQUIRE((media_source_get_duration(source)) > (0.35));
+  REQUIRE((media_source_get_video_fps(source)) == Catch::Approx(24));
   media_source_pause(source);
-  ASCIICHAT_REQUIRE(media_source_is_paused(source));
-  ASCIICHAT_REQUIRE_NULL(media_source_read_video(source));
+  REQUIRE(media_source_is_paused(source));
+  REQUIRE((media_source_read_video(source)) == nullptr);
   media_source_toggle_pause(source);
-  ASCIICHAT_REQUIRE_NOT(media_source_is_paused(source));
-  ASCIICHAT_REQUIRE_NOT_NULL(next_frame(true));
-  ASCIICHAT_REQUIRE_EQ(media_source_seek(source, 0.2), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_GE(media_source_get_position(source), 0);
-  ASCIICHAT_REQUIRE_EQ(media_source_rewind(source), ASCIICHAT_OK);
+  REQUIRE(!(media_source_is_paused(source)));
+  REQUIRE((next_frame(true)) != nullptr);
+  REQUIRE((media_source_seek(source, 0.2)) == (ASCIICHAT_OK));
+  REQUIRE((media_source_get_position(source)) >= (0));
+  REQUIRE((media_source_rewind(source)) == (ASCIICHAT_OK));
   media_source_set_loop(source, true);
   for (int i = 0; i < 30; ++i) {
-    ASCIICHAT_REQUIRE_NOT_NULL(next_frame(true), "Loop stopped at frame %d", i);
+    REQUIRE((next_frame(true)) != nullptr);
   }
   media_source_resume(source);
-  ASCIICHAT_REQUIRE_NOT(media_source_at_end(source));
+  REQUIRE(!(media_source_at_end(source)));
 }
 
 static void put_le16(uint8_t *out, uint16_t value) {
@@ -191,24 +189,24 @@ TEST_CASE("codec_roundtrip/independent_stereo_pcm_is_resampled_and_rewound", "[c
   }
   safe_snprintf(path, sizeof(path), "%s/stereo.wav", directory);
   int fd = platform_open("stereo-wav", path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC | PLATFORM_O_BINARY, 0600);
-  ASCIICHAT_REQUIRE_GE(fd, 0);
+  REQUIRE((fd) >= (0));
   ssize_t written = platform_write(fd, wav, sizeof(wav));
   int closed = platform_close(fd);
-  ASCIICHAT_REQUIRE_EQ(written, sizeof(wav));
-  ASCIICHAT_REQUIRE_EQ(closed, 0);
+  REQUIRE((written) == (sizeof(wav)));
+  REQUIRE((closed) == (0));
   decoder = ffmpeg_decoder_create(path);
-  ASCIICHAT_REQUIRE_NOT_NULL(decoder);
-  ASCIICHAT_REQUIRE(ffmpeg_decoder_has_audio(decoder));
-  ASCIICHAT_REQUIRE_NOT(ffmpeg_decoder_has_video(decoder));
-  ASCIICHAT_REQUIRE_FLOAT_EQ(ffmpeg_decoder_get_duration(decoder), 0.25, 0.001);
+  REQUIRE((decoder) != nullptr);
+  REQUIRE(ffmpeg_decoder_has_audio(decoder));
+  REQUIRE(!(ffmpeg_decoder_has_video(decoder)));
+  REQUIRE((ffmpeg_decoder_get_duration(decoder)) == Catch::Approx(0.25));
   float samples[257];
   size_t total = 0, count;
   double in_phase[AUDIO_CHANNELS] = {0}, quadrature[AUDIO_CHANNELS] = {0};
   while ((count = ffmpeg_decoder_read_audio_samples(decoder, samples, ARRAY_SIZE(samples))) != 0) {
-    ASCIICHAT_REQUIRE_LE(total + count, 12000 * AUDIO_CHANNELS);
-    ASCIICHAT_REQUIRE_EQ(count % AUDIO_CHANNELS, 0);
+    REQUIRE((total + count) <= (12000 * AUDIO_CHANNELS));
+    REQUIRE((count % AUDIO_CHANNELS) == (0));
     for (size_t i = 0; i < count; ++i) {
-      ASCIICHAT_REQUIRE(isfinite(samples[i]));
+      REQUIRE(isfinite(samples[i]));
       size_t sample = total + i;
       size_t channel = sample % AUDIO_CHANNELS;
       double phase = 6.283185307 * 480 * (sample / AUDIO_CHANNELS) / AUDIO_SAMPLE_RATE;
@@ -219,14 +217,14 @@ TEST_CASE("codec_roundtrip/independent_stereo_pcm_is_resampled_and_rewound", "[c
   }
   // Scalar sample counts include both channels; each retains its independent amplitude.
   // A resampler may retain a short filter tail at EOF.
-  ASCIICHAT_REQUIRE_GE(total, 11900 * AUDIO_CHANNELS);
-  ASCIICHAT_REQUIRE_EQ(total % AUDIO_CHANNELS, 0);
+  REQUIRE((total) >= (11900 * AUDIO_CHANNELS));
+  REQUIRE((total % AUDIO_CHANNELS) == (0));
   double frames = (double)total / AUDIO_CHANNELS;
-  ASCIICHAT_REQUIRE_FLOAT_EQ(2 * hypot(in_phase[0], quadrature[0]) / frames, 0.2, 0.01);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(2 * hypot(in_phase[1], quadrature[1]) / frames, 0.1, 0.01);
-  ASCIICHAT_REQUIRE(ffmpeg_decoder_at_end(decoder));
-  ASCIICHAT_REQUIRE_EQ(ffmpeg_decoder_rewind(decoder), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NOT(ffmpeg_decoder_at_end(decoder));
+  REQUIRE((2 * hypot(in_phase[0], quadrature[0]) / frames) == Catch::Approx(0.2));
+  REQUIRE((2 * hypot(in_phase[1], quadrature[1]) / frames) == Catch::Approx(0.1));
+  REQUIRE(ffmpeg_decoder_at_end(decoder));
+  REQUIRE((ffmpeg_decoder_rewind(decoder)) == (ASCIICHAT_OK));
+  REQUIRE(!(ffmpeg_decoder_at_end(decoder)));
   // An odd scalar capacity holds 128 complete stereo frames.
-  ASCIICHAT_REQUIRE_EQ(ffmpeg_decoder_read_audio_samples(decoder, samples, 257), 256);
+  REQUIRE((ffmpeg_decoder_read_audio_samples(decoder, samples, 257)) == (256));
 }

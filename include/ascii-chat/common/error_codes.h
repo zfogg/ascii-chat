@@ -31,6 +31,10 @@
 // Preserve Windows error values and remove conflicting macros before the enum.
 #ifdef _WIN32
 #include <libplatform/windows_compat.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 #endif
 
 /**
@@ -429,3 +433,7 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
 }
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

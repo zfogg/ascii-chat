@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file gpg_handshake_test.c
  * @brief Integration test for GPG authentication in crypto handshake
@@ -6,7 +7,6 @@
  * Requires TEST_GPG_KEY_ID environment variable to be set.
  */
 
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,7 +16,6 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/crypto/handshake/server.h>
@@ -48,7 +47,7 @@ static void setup_gpg_test_network(void) {
 
   int sv[2];
   if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0) {
-    ASCIICHAT_REQUIRE(false, "Failed to create socket pair: %s", strerror(errno));
+    REQUIRE(false);
     return;
   }
   g_network.server_fd = sv[0];
@@ -233,13 +232,13 @@ static void *client_handshake_thread(void *arg) {
 TEST_CASE("gpg_handshake/complete_gpg_handshake_with_authentication", "[gpg_handshake]") {
   const char *test_key_id = get_test_gpg_key_id();
   if (!test_key_id)
-    ASCIICHAT_SKIP("TEST_GPG_KEY_ID environment variable not set");
+    SKIP("test skipped");
 
   setup_gpg_test_network();
 
   crypto_handshake_context_t server_ctx, client_ctx;
-  ASCIICHAT_REQUIRE_EQ(crypto_handshake_init("gpg-server", &server_ctx, true), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(crypto_handshake_init("gpg-client", &client_ctx, false), ASCIICHAT_OK);
+  REQUIRE((crypto_handshake_init("gpg-server", &server_ctx, true)) == (ASCIICHAT_OK));
+  REQUIRE((crypto_handshake_init("gpg-client", &client_ctx, false)) == (ASCIICHAT_OK));
 
   SAFE_STRNCPY(client_ctx.server_ip, "127.0.0.1", sizeof(client_ctx.server_ip));
   client_ctx.server_port = 27224;
@@ -247,8 +246,8 @@ TEST_CASE("gpg_handshake/complete_gpg_handshake_with_authentication", "[gpg_hand
   // Configure server with GPG key
   char key_input[128];
   snprintf(key_input, sizeof(key_input), "gpg:%s", test_key_id);
-  ASCIICHAT_REQUIRE_EQ(parse_private_key(key_input, &server_ctx.server_private_key), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(parse_private_key(key_input, &client_ctx.client_private_key), ASCIICHAT_OK);
+  REQUIRE((parse_private_key(key_input, &server_ctx.server_private_key)) == (ASCIICHAT_OK));
+  REQUIRE((parse_private_key(key_input, &client_ctx.client_private_key)) == (ASCIICHAT_OK));
 
   // Start client thread
   client_thread_args_t client_args = {
@@ -261,30 +260,30 @@ TEST_CASE("gpg_handshake/complete_gpg_handshake_with_authentication", "[gpg_hand
   pthread_create(&client_thread, NULL, client_handshake_thread, &client_args);
 
   // Server: protocol negotiation
-  ASCIICHAT_REQUIRE_EQ(server_protocol_negotiation(g_network.server_fd, &server_ctx), ASCIICHAT_OK);
+  REQUIRE((server_protocol_negotiation(g_network.server_fd, &server_ctx)) == (ASCIICHAT_OK));
 
   // Server: send key exchange init
-  ASCIICHAT_REQUIRE_EQ(crypto_handshake_server_start(&server_ctx, g_network.server_transport), ASCIICHAT_OK);
+  REQUIRE((crypto_handshake_server_start(&server_ctx, g_network.server_transport)) == (ASCIICHAT_OK));
 
   // Server: receive client's key exchange response
   packet_type_t pkt_type;
   void *payload = NULL;
   size_t payload_len = 0;
-  ASCIICHAT_REQUIRE_EQ(receive_packet(g_network.server_fd, &pkt_type, &payload, &payload_len), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len), ASCIICHAT_OK);
+  REQUIRE((receive_packet(g_network.server_fd, &pkt_type, &payload, &payload_len)) == (ASCIICHAT_OK));
+  REQUIRE((crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len)) == (ASCIICHAT_OK));
   buffer_release(payload);
 
   if (server_ctx.state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
     payload = NULL;
-    ASCIICHAT_REQUIRE_EQ(receive_packet(g_network.server_fd, &pkt_type, &payload, &payload_len), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(crypto_handshake_server_complete(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len), ASCIICHAT_OK);
+    REQUIRE((receive_packet(g_network.server_fd, &pkt_type, &payload, &payload_len)) == (ASCIICHAT_OK));
+    REQUIRE((crypto_handshake_server_complete(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len)) == (ASCIICHAT_OK));
     buffer_release(payload);
   }
 
   pthread_join(client_thread, NULL);
-  ASCIICHAT_REQUIRE_EQ(client_args.result, 0, "Client handshake failed");
-  ASCIICHAT_REQUIRE_EQ(server_ctx.state, CRYPTO_HANDSHAKE_READY);
-  ASCIICHAT_REQUIRE_EQ(client_ctx.state, CRYPTO_HANDSHAKE_READY);
+  REQUIRE((client_args.result) == (0));
+  REQUIRE((server_ctx.state) == (CRYPTO_HANDSHAKE_READY));
+  REQUIRE((client_ctx.state) == (CRYPTO_HANDSHAKE_READY));
 
   crypto_handshake_destroy(&server_ctx);
   crypto_handshake_destroy(&client_ctx);
@@ -294,15 +293,15 @@ TEST_CASE("gpg_handshake/complete_gpg_handshake_with_authentication", "[gpg_hand
 TEST_CASE("gpg_handshake/gpg_key_parsing_and_verification", "[gpg_handshake]") {
   const char *test_key_id = get_test_gpg_key_id();
   if (!test_key_id)
-    ASCIICHAT_SKIP("TEST_GPG_KEY_ID environment variable not set");
+    SKIP("test skipped");
 
   char pub_key_input[128];
   snprintf(pub_key_input, sizeof(pub_key_input), "gpg:%s", test_key_id);
 
   public_key_t public_key;
   memset(&public_key, 0, sizeof(public_key));
-  ASCIICHAT_REQUIRE_EQ(parse_public_key(pub_key_input, &public_key), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(public_key.type, KEY_TYPE_GPG);
+  REQUIRE((parse_public_key(pub_key_input, &public_key)) == (ASCIICHAT_OK));
+  REQUIRE((public_key.type) == (KEY_TYPE_GPG));
 
   bool all_zeros = true;
   for (int i = 0; i < 32; i++) {
@@ -311,15 +310,15 @@ TEST_CASE("gpg_handshake/gpg_key_parsing_and_verification", "[gpg_handshake]") {
       break;
     }
   }
-  ASCIICHAT_REQUIRE_EQ(all_zeros, false, "Public key should not be all zeros");
+  REQUIRE((all_zeros) == (false));
 
   char priv_key_input[128];
   snprintf(priv_key_input, sizeof(priv_key_input), "gpg:%s", test_key_id);
 
   private_key_t private_key;
   memset(&private_key, 0, sizeof(private_key));
-  ASCIICHAT_REQUIRE_EQ(parse_private_key(priv_key_input, &private_key), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(private_key.type, KEY_TYPE_ED25519);
-  ASCIICHAT_REQUIRE_EQ(private_key.use_gpg_agent, true);
-  ASCIICHAT_REQUIRE_EQ(strlen(private_key.gpg_keygrip), 40);
+  REQUIRE((parse_private_key(priv_key_input, &private_key)) == (ASCIICHAT_OK));
+  REQUIRE((private_key.type) == (KEY_TYPE_ED25519));
+  REQUIRE((private_key.use_gpg_agent) == (true));
+  REQUIRE((strlen(private_key.gpg_keygrip)) == (40));
 }

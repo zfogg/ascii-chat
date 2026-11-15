@@ -58,6 +58,10 @@
 #include <stdint.h>
 #include <ascii-chat/util/number.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Data Structures
  * ============================================================================
@@ -413,3 +417,7 @@ void emit_set_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
 void emit_glyph_run(outbuf_t *out, const void *glyph, size_t bytes, uint32_t count);
 /** Reset colored state before moving to the next row. */
 void emit_row_end(outbuf_t *out, bool colored, bool newline);
+
+#ifdef __cplusplus
+}
+#endif

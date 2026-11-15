@@ -1,5 +1,5 @@
+#include <catch2/catch_test_macros.hpp>
 #include "../worker_assert.h"
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/transport.h>
@@ -82,7 +82,7 @@ static acip_transport_t *create(void) {
   acip_transport_t *transport = SAFE_CALLOC(1, sizeof(*transport), acip_transport_t *);
   transport->methods = &methods;
   transport->impl_data = SAFE_CALLOC(1, sizeof(backend_t), backend_t *);
-  ASCIICHAT_REQUIRE_EQ(acip_outbound_create(transport), ASCIICHAT_OK);
+  REQUIRE((acip_outbound_create(transport)) == (ASCIICHAT_OK));
   return transport;
 }
 static acip_admission_t submit(acip_transport_t *transport, uint16_t type, uint32_t stream, size_t size, bool keyframe) {
@@ -101,10 +101,10 @@ static void await_submitted(acip_transport_t *transport, uint64_t expected) {
   uint64_t start = time_get_ns();
   for (;;) {
     acip_outbound_stats_t stats;
-    ASCIICHAT_REQUIRE_EQ(acip_outbound_snapshot(transport, &stats), ASCIICHAT_OK);
+    REQUIRE((acip_outbound_snapshot(transport, &stats)) == (ASCIICHAT_OK));
     if (stats.submitted >= expected)
       return;
-    ASCIICHAT_REQUIRE(time_get_ns() - start < 2 * NS_PER_SEC_INT);
+    REQUIRE(time_get_ns() - start < 2 * NS_PER_SEC_INT);
     platform_sleep_ms(1);
   }
 }
@@ -115,7 +115,7 @@ TEST_CASE("transport_backpressure/plaintext_class_reaches_backend_and_unsupporte
   static const acip_transport_methods_t classified_methods = {.sendv_ex = backend_send_classified, .close = close_backend, .queued_bytes = queued};
   backend_t backend = {0};
   acip_transport_t transport = {.methods = &classified_methods, .impl_data = &backend};
-  ASCIICHAT_REQUIRE_EQ(acip_outbound_create(&transport), ASCIICHAT_OK);
+  REQUIRE((acip_outbound_create(&transport)) == (ASCIICHAT_OK));
   const struct {
     uint16_t type;
     acip_traffic_class_t expected;
@@ -124,19 +124,19 @@ TEST_CASE("transport_backpressure/plaintext_class_reaches_backend_and_unsupporte
                {PACKET_TYPE_AUDIO_OPUS_BATCH, ACIP_TRAFFIC_AUDIO, false}, {PACKET_TYPE_ASCII_FRAME, ACIP_TRAFFIC_VISUAL, false},    {PACKET_TYPE_IMAGE_FRAME, ACIP_TRAFFIC_VISUAL, false},
                {PACKET_TYPE_IMAGE_FRAME_H264, ACIP_TRAFFIC_VISUAL, true}, {PACKET_TYPE_IMAGE_FRAME_H265, ACIP_TRAFFIC_VISUAL, true}};
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
-    ASCIICHAT_REQUIRE_EQ(submit(&transport, cases[i].type, (uint32_t)i, 1, cases[i].keyframe), ACIP_ADMISSION_ACCEPTED);
+    REQUIRE((submit(&transport, cases[i].type, (uint32_t)i, 1, cases[i].keyframe)) == (ACIP_ADMISSION_ACCEPTED));
     await_submitted(&transport, i + 1);
-    ASCIICHAT_REQUIRE_EQ(atomic_load_u64(&backend.traffic_class), (uint64_t)cases[i].expected);
+    REQUIRE((atomic_load_u64(&backend.traffic_class)) == ((uint64_t)cases[i].expected));
   }
 
   packet_header_t header = {.type = HOST_TO_NET_U16(PACKET_TYPE_AUDIO_BATCH)};
   socket_buffer_t buffer = {&header, sizeof(header)};
   acip_send_options_t options = {.traffic_class = ACIP_TRAFFIC_AUDIO, .delivery = ACIP_DELIVERY_DATAGRAM};
-  ASCIICHAT_REQUIRE_EQ(acip_transport_sendv_ex(&transport, &buffer, 1, &options), ERROR_NOT_SUPPORTED);
+  REQUIRE((acip_transport_sendv_ex(&transport, &buffer, 1, &options)) == (ERROR_NOT_SUPPORTED));
   options.delivery = ACIP_DELIVERY_RELIABLE;
   options.deadline_ns = 1;
-  ASCIICHAT_REQUIRE_EQ(acip_transport_sendv_ex(&transport, &buffer, 1, &options), ERROR_NOT_SUPPORTED);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_u64(&backend.sent), sizeof(cases) / sizeof(cases[0]));
+  REQUIRE((acip_transport_sendv_ex(&transport, &buffer, 1, &options)) == (ERROR_NOT_SUPPORTED));
+  REQUIRE((atomic_load_u64(&backend.sent)) == (sizeof(cases) / sizeof(cases[0])));
   acip_outbound_destroy(&transport);
   buffer_system_cleanup();
   log_destroy();
@@ -146,17 +146,17 @@ TEST_CASE("transport_backpressure/destruction_serializes_backend_close_after_a_b
   static const acip_transport_methods_t shutdown_methods = {.send = blocked_shutdown_send, .close = close_shutdown_backend, .interrupt = interrupt_shutdown_backend};
   shutdown_backend_t backend = {0};
   acip_transport_t transport = {.methods = &shutdown_methods, .impl_data = &backend};
-  ASCIICHAT_REQUIRE_EQ(acip_outbound_create(&transport), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(submit(&transport, PACKET_TYPE_IMAGE_FRAME, 0, 100, false), ACIP_ADMISSION_ACCEPTED);
+  REQUIRE((acip_outbound_create(&transport)) == (ASCIICHAT_OK));
+  REQUIRE((submit(&transport, PACKET_TYPE_IMAGE_FRAME, 0, 100, false)) == (ACIP_ADMISSION_ACCEPTED));
   uint64_t started = time_get_ns();
   while (!atomic_load_bool(&backend.entered)) {
-    ASCIICHAT_REQUIRE(time_get_ns() - started < 2 * NS_PER_SEC_INT);
+    REQUIRE(time_get_ns() - started < 2 * NS_PER_SEC_INT);
     platform_sleep_ms(1);
   }
   acip_outbound_destroy(&transport);
-  ASCIICHAT_REQUIRE_NULL(transport.outbound);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_u64(&backend.closes), 2);
-  ASCIICHAT_REQUIRE_NOT(atomic_load_bool(&backend.overlaps), "Destructor and worker must never close a backend concurrently");
+  REQUIRE((transport.outbound) == nullptr);
+  REQUIRE((atomic_load_u64(&backend.closes)) == (2));
+  REQUIRE(!(atomic_load_bool(&backend.overlaps)));
 }
 typedef struct {
   acip_transport_t *transport;
@@ -176,22 +176,22 @@ TEST_CASE("transport_backpressure/slow_peer_does_not_block_healthy_peer", "[tran
   backend_t *backend = slow->impl_data;
   atomic_store_u64(&backend->bytes, 300000);
   for (int i = 0; i < 100; ++i)
-    ASCIICHAT_REQUIRE_EQ(submit(slow, PACKET_TYPE_IMAGE_FRAME, 0, 10000, false), ACIP_ADMISSION_ACCEPTED);
-  ASCIICHAT_REQUIRE_EQ(submit(healthy, PACKET_TYPE_IMAGE_FRAME, 0, 10000, false), ACIP_ADMISSION_ACCEPTED);
+    REQUIRE((submit(slow, PACKET_TYPE_IMAGE_FRAME, 0, 10000, false)) == (ACIP_ADMISSION_ACCEPTED));
+  REQUIRE((submit(healthy, PACKET_TYPE_IMAGE_FRAME, 0, 10000, false)) == (ACIP_ADMISSION_ACCEPTED));
   await_submitted(healthy, 1);
-  ASCIICHAT_REQUIRE_EQ(submit(slow, PACKET_TYPE_PING, 0, 1, false), ACIP_ADMISSION_ACCEPTED);
-  ASCIICHAT_REQUIRE_EQ(submit(slow, PACKET_TYPE_AUDIO_BATCH, 0, 100, false), ACIP_ADMISSION_ACCEPTED);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_u64(&backend->sent), 0);
+  REQUIRE((submit(slow, PACKET_TYPE_PING, 0, 1, false)) == (ACIP_ADMISSION_ACCEPTED));
+  REQUIRE((submit(slow, PACKET_TYPE_AUDIO_BATCH, 0, 100, false)) == (ACIP_ADMISSION_ACCEPTED));
+  REQUIRE((atomic_load_u64(&backend->sent)) == (0));
   acip_outbound_stats_t stats;
-  ASCIICHAT_REQUIRE_EQ(acip_outbound_snapshot(slow, &stats), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(stats.dropped == 99 && stats.application_bytes > 0);
+  REQUIRE((acip_outbound_snapshot(slow, &stats)) == (ASCIICHAT_OK));
+  REQUIRE(stats.dropped == 99 && stats.application_bytes > 0);
   platform_sleep_ms(120);
-  ASCIICHAT_REQUIRE_EQ(submit(slow, PACKET_TYPE_IMAGE_FRAME, 0, 10000, false), ACIP_ADMISSION_ACCEPTED);
-  ASCIICHAT_REQUIRE(acip_outbound_snapshot(slow, &stats) == ASCIICHAT_OK && stats.dropped == 100);
+  REQUIRE((submit(slow, PACKET_TYPE_IMAGE_FRAME, 0, 10000, false)) == (ACIP_ADMISSION_ACCEPTED));
+  REQUIRE(acip_outbound_snapshot(slow, &stats) == ASCIICHAT_OK && stats.dropped == 100);
   for (uint32_t stream = 1; stream < 100; ++stream)
     submit(slow, PACKET_TYPE_IMAGE_FRAME, stream, 100000, false);
-  ASCIICHAT_REQUIRE_EQ(acip_outbound_snapshot(slow, &stats), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(stats.congestion > 0 && stats.application_bytes + stats.backend_bytes <= ACIP_OUTBOUND_BUDGET);
+  REQUIRE((acip_outbound_snapshot(slow, &stats)) == (ASCIICHAT_OK));
+  REQUIRE(stats.congestion > 0 && stats.application_bytes + stats.backend_bytes <= ACIP_OUTBOUND_BUDGET);
   acip_transport_destroy(slow); // Teardown releases queued owners without a writable callback.
   acip_transport_destroy(healthy);
 
@@ -209,17 +209,17 @@ TEST_CASE("transport_backpressure/codec_recovery_requires_keyframe", "[transport
     acip_transport_t *transport = create();
     backend = transport->impl_data;
     atomic_store_u64(&backend->bytes, 300000);
-    ASCIICHAT_REQUIRE_EQ(submit(transport, type, 0, 1000, false), ACIP_ADMISSION_NEEDS_KEYFRAME);
-    ASCIICHAT_REQUIRE_EQ(submit(transport, type, 0, 1000, true), ACIP_ADMISSION_ACCEPTED);
-    ASCIICHAT_REQUIRE_EQ(submit(transport, type, 0, 1000, false), ACIP_ADMISSION_ACCEPTED);
+    REQUIRE((submit(transport, type, 0, 1000, false)) == (ACIP_ADMISSION_NEEDS_KEYFRAME));
+    REQUIRE((submit(transport, type, 0, 1000, true)) == (ACIP_ADMISSION_ACCEPTED));
+    REQUIRE((submit(transport, type, 0, 1000, false)) == (ACIP_ADMISSION_ACCEPTED));
     platform_sleep_ms(120);
-    ASCIICHAT_REQUIRE_EQ(submit(transport, type, 0, 1000, false), ACIP_ADMISSION_NEEDS_KEYFRAME);
-    ASCIICHAT_REQUIRE(acip_outbound_needs_keyframe(transport, type, 0));
-    ASCIICHAT_REQUIRE_EQ(submit(transport, type, 0, 1000, true), ACIP_ADMISSION_ACCEPTED);
+    REQUIRE((submit(transport, type, 0, 1000, false)) == (ACIP_ADMISSION_NEEDS_KEYFRAME));
+    REQUIRE(acip_outbound_needs_keyframe(transport, type, 0));
+    REQUIRE((submit(transport, type, 0, 1000, true)) == (ACIP_ADMISSION_ACCEPTED));
     atomic_store_u64(&backend->bytes, 0);
     await_submitted(transport, 1);
-    ASCIICHAT_REQUIRE_EQ(acip_outbound_snapshot(transport, &stats), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE(stats.recovery_frames == 1 && stats.dropped == 4);
+    REQUIRE((acip_outbound_snapshot(transport, &stats)) == (ASCIICHAT_OK));
+    REQUIRE(stats.recovery_frames == 1 && stats.dropped == 4);
     acip_transport_destroy(transport);
   }
   buffer_system_cleanup();
@@ -236,20 +236,20 @@ TEST_CASE("transport_backpressure/concurrent_streams_obey_budget_and_keep_contro
   producer_t producers[4];
   for (uint32_t i = 0; i < 4; ++i) {
     producers[i] = (producer_t){concurrent, i};
-    ASCIICHAT_REQUIRE_EQ(platform_thread_create(&threads[i], "outbound_producer", produce, &producers[i]), ASCIICHAT_OK);
+    REQUIRE((platform_thread_create(&threads[i], "outbound_producer", produce, &producers[i])) == (ASCIICHAT_OK));
   }
   for (size_t i = 0; i < 4; ++i)
-    ASCIICHAT_REQUIRE_EQ(thread_join(&threads[i], NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(submit(concurrent, PACKET_TYPE_PING, 0, 1, false), ACIP_ADMISSION_ACCEPTED);
-  ASCIICHAT_REQUIRE_EQ(acip_outbound_snapshot(concurrent, &stats), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(stats.accepted == 1001 && stats.dropped >= 996);
-  ASCIICHAT_REQUIRE(stats.application_bytes + stats.backend_bytes <= ACIP_OUTBOUND_BUDGET);
-  ASCIICHAT_REQUIRE_EQ(submit(concurrent, PACKET_TYPE_IMAGE_FRAME, 42, 3 * 1024 * 1024, false), ACIP_ADMISSION_CONGESTED);
+    REQUIRE((thread_join(&threads[i], NULL)) == (ASCIICHAT_OK));
+  REQUIRE((submit(concurrent, PACKET_TYPE_PING, 0, 1, false)) == (ACIP_ADMISSION_ACCEPTED));
+  REQUIRE((acip_outbound_snapshot(concurrent, &stats)) == (ASCIICHAT_OK));
+  REQUIRE(stats.accepted == 1001 && stats.dropped >= 996);
+  REQUIRE(stats.application_bytes + stats.backend_bytes <= ACIP_OUTBOUND_BUDGET);
+  REQUIRE((submit(concurrent, PACKET_TYPE_IMAGE_FRAME, 42, 3 * 1024 * 1024, false)) == (ACIP_ADMISSION_CONGESTED));
   acip_transport_destroy(concurrent);
 
   buffer_stats_t buffers;
   buffer_domain_stats(buffer_default_domain(), &buffers);
-  ASCIICHAT_REQUIRE_EQ(buffers.outstanding, 0);
+  REQUIRE((buffers.outstanding) == (0));
   buffer_system_cleanup();
   log_destroy();
 }
@@ -289,30 +289,30 @@ static void check_stopped_control(bool interrupt) {
   atomic_store_u64(&backend->bytes, 1);
   failing_producer_t producer = {.transport = transport};
   platform_thread_t thread;
-  ASCIICHAT_REQUIRE_EQ(platform_thread_create(&thread, "closing_control", submit_control, &producer), ASCIICHAT_OK);
+  REQUIRE((platform_thread_create(&thread, "closing_control", submit_control, &producer)) == (ASCIICHAT_OK));
   uint64_t start = time_get_ns();
   for (;;) {
     acip_outbound_stats_t stats;
-    ASCIICHAT_REQUIRE_EQ(acip_outbound_snapshot(transport, &stats), ASCIICHAT_OK);
+    REQUIRE((acip_outbound_snapshot(transport, &stats)) == (ASCIICHAT_OK));
     if (stats.accepted == 1)
       break;
-    ASCIICHAT_REQUIRE_LT(time_get_ns() - start, NS_PER_SEC_INT);
+    REQUIRE((time_get_ns() - start) < (NS_PER_SEC_INT));
     platform_sleep_ms(1);
   }
   if (interrupt)
     acip_transport_interrupt(transport);
   else
-    ASCIICHAT_REQUIRE_EQ(acip_transport_close(transport), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(thread_join(&thread, NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(producer.result, ERROR_NETWORK);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_u64(&backend->sent), 0);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_bool(&backend->closed), !interrupt);
+    REQUIRE((acip_transport_close(transport)) == (ASCIICHAT_OK));
+  REQUIRE((thread_join(&thread, NULL)) == (ASCIICHAT_OK));
+  REQUIRE((producer.result) == (ERROR_NETWORK));
+  REQUIRE((atomic_load_u64(&backend->sent)) == (0));
+  REQUIRE((atomic_load_bool(&backend->closed)) == (!interrupt));
   acip_outbound_stats_t stats;
-  ASCIICHAT_REQUIRE_EQ(acip_outbound_snapshot(transport, &stats), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(stats.application_bytes, 0);
+  REQUIRE((acip_outbound_snapshot(transport, &stats)) == (ASCIICHAT_OK));
+  REQUIRE((stats.application_bytes) == (0));
   failing_producer_t later = {.transport = transport};
   submit_control(&later);
-  ASCIICHAT_REQUIRE_EQ(later.result, ERROR_NETWORK);
+  REQUIRE((later.result) == (ERROR_NETWORK));
   acip_transport_destroy(transport);
   buffer_system_cleanup();
   log_destroy();
@@ -338,46 +338,46 @@ static void check_backend_failure(asciichat_error_t code, bool omit_context, boo
   failing_producer_t producers[2] = {{.transport = transport}, {.transport = transport}};
   platform_thread_t threads[2];
   for (size_t i = 0; i < 2; ++i)
-    ASCIICHAT_REQUIRE_EQ(platform_thread_create(&threads[i], "failing_control", submit_control, &producers[i]), ASCIICHAT_OK);
+    REQUIRE((platform_thread_create(&threads[i], "failing_control", submit_control, &producers[i])) == (ASCIICHAT_OK));
   uint64_t start = time_get_ns();
   for (;;) {
     acip_outbound_stats_t stats;
-    ASCIICHAT_REQUIRE_EQ(acip_outbound_snapshot(transport, &stats), ASCIICHAT_OK);
+    REQUIRE((acip_outbound_snapshot(transport, &stats)) == (ASCIICHAT_OK));
     if (stats.accepted == 2)
       break;
-    ASCIICHAT_REQUIRE(time_get_ns() - start < 2 * NS_PER_SEC_INT);
+    REQUIRE(time_get_ns() - start < 2 * NS_PER_SEC_INT);
     platform_sleep_ms(1);
   }
   atomic_store_u64(&backend->bytes, 0);
   for (size_t i = 0; i < 2; ++i) {
-    ASCIICHAT_REQUIRE_EQ(thread_join(&threads[i], NULL), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(producers[i].result, code);
-    ASCIICHAT_REQUIRE(producers[i].has_cause);
-    ASCIICHAT_REQUIRE_EQ(producers[i].cause.code, code);
-    ASCIICHAT_REQUIRE_STR_EQ(producers[i].cause.context_message, omit_context ? "Outbound backend submission failed" : wrap_context ? "Backend failure wrapper" : "Backend rejected outgoing packet");
+    REQUIRE((thread_join(&threads[i], NULL)) == (ASCIICHAT_OK));
+    REQUIRE((producers[i].result) == (code));
+    REQUIRE(producers[i].has_cause);
+    REQUIRE((producers[i].cause.code) == (code));
+    REQUIRE(std::strcmp((producers[i].cause.context_message), (omit_context ? "Outbound backend submission failed" : wrap_context ? "Backend failure wrapper" : "Backend rejected outgoing packet")) == 0);
     if (!omit_context) {
-      ASCIICHAT_REQUIRE(producers[i].detail.has_system_error);
-      ASCIICHAT_REQUIRE_EQ(producers[i].detail.system_errno, EPIPE);
-      ASCIICHAT_REQUIRE_STR_EQ(producers[i].detail.function, "backend_send");
-      ASCIICHAT_REQUIRE_STR_EQ(producers[i].detail.context_message, "Backend rejected outgoing packet");
+      REQUIRE(producers[i].detail.has_system_error);
+      REQUIRE((producers[i].detail.system_errno) == (EPIPE));
+      REQUIRE(std::strcmp((producers[i].detail.function), ("backend_send")) == 0);
+      REQUIRE(std::strcmp((producers[i].detail.context_message), ("Backend rejected outgoing packet")) == 0);
       if (wrap_context)
-        ASCIICHAT_REQUIRE_EQ(producers[i].cause.cause_id, producers[i].detail.error_id);
+        REQUIRE((producers[i].cause.cause_id) == (producers[i].detail.error_id));
     }
   }
-  ASCIICHAT_REQUIRE_EQ(atomic_load_u64(&backend->sent), 1); // No retry of a possibly partial packet.
+  REQUIRE((atomic_load_u64(&backend->sent)) == (1)); // No retry of a possibly partial packet.
   failing_producer_t later = {.transport = transport};
   submit_control(&later);
-  ASCIICHAT_REQUIRE_EQ(later.result, code);
-  ASCIICHAT_REQUIRE(later.has_cause);
-  ASCIICHAT_REQUIRE_STR_EQ(later.cause.context_message, producers[0].cause.context_message);
+  REQUIRE((later.result) == (code));
+  REQUIRE(later.has_cause);
+  REQUIRE(std::strcmp((later.cause.context_message), (producers[0].cause.context_message)) == 0);
   if (wrap_context) {
-    ASCIICHAT_REQUIRE_EQ(later.cause.cause_id, later.detail.error_id);
-    ASCIICHAT_REQUIRE_EQ(later.detail.cause_id, producers[0].detail.cause_id);
+    REQUIRE((later.cause.cause_id) == (later.detail.error_id));
+    REQUIRE((later.detail.cause_id) == (producers[0].detail.cause_id));
   } else {
-    ASCIICHAT_REQUIRE_EQ(later.cause.cause_id, producers[0].cause.cause_id);
+    REQUIRE((later.cause.cause_id) == (producers[0].cause.cause_id));
   }
   if (!omit_context)
-    ASCIICHAT_REQUIRE_EQ(later.detail.system_errno, EPIPE);
+    REQUIRE((later.detail.system_errno) == (EPIPE));
   acip_transport_destroy(transport);
   buffer_system_cleanup();
   log_destroy();
@@ -405,21 +405,21 @@ TEST_CASE("transport_backpressure/asynchronous_media_failure_reaches_next_produc
   acip_transport_t *transport = create();
   backend_t *backend = transport->impl_data;
   backend->failure = ERROR_NOT_SUPPORTED;
-  ASCIICHAT_REQUIRE_EQ(submit(transport, PACKET_TYPE_IMAGE_FRAME, 0, 1000, false), ACIP_ADMISSION_ACCEPTED);
+  REQUIRE((submit(transport, PACKET_TYPE_IMAGE_FRAME, 0, 1000, false)) == (ACIP_ADMISSION_ACCEPTED));
   uint64_t start = time_get_ns();
   while (!atomic_load_bool(&backend->closed)) {
-    ASCIICHAT_REQUIRE(time_get_ns() - start < 2 * NS_PER_SEC_INT);
+    REQUIRE(time_get_ns() - start < 2 * NS_PER_SEC_INT);
     platform_sleep_ms(1);
   }
   acip_outbound_stats_t failed_stats;
-  ASCIICHAT_REQUIRE_EQ(acip_outbound_snapshot(transport, &failed_stats), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(failed_stats.application_bytes, 0);
+  REQUIRE((acip_outbound_snapshot(transport, &failed_stats)) == (ASCIICHAT_OK));
+  REQUIRE((failed_stats.application_bytes) == (0));
   failing_producer_t later = {.transport = transport};
   submit_control(&later);
-  ASCIICHAT_REQUIRE_EQ(later.result, ERROR_NOT_SUPPORTED);
-  ASCIICHAT_REQUIRE(later.has_cause);
-  ASCIICHAT_REQUIRE_STR_EQ(later.cause.context_message, "Backend rejected outgoing packet");
-  ASCIICHAT_REQUIRE_EQ(atomic_load_u64(&backend->sent), 1);
+  REQUIRE((later.result) == (ERROR_NOT_SUPPORTED));
+  REQUIRE(later.has_cause);
+  REQUIRE(std::strcmp((later.cause.context_message), ("Backend rejected outgoing packet")) == 0);
+  REQUIRE((atomic_load_u64(&backend->sent)) == (1));
   acip_transport_destroy(transport);
   buffer_system_cleanup();
   log_destroy();
@@ -433,11 +433,11 @@ TEST_CASE("transport_backpressure/expired_control_reports_timeout_without_backen
   atomic_store_u64(&backend->bytes, 1);
   failing_producer_t producer = {.transport = transport};
   submit_control(&producer);
-  ASCIICHAT_REQUIRE_EQ(producer.result, ERROR_NETWORK_TIMEOUT);
-  ASCIICHAT_REQUIRE(producer.has_cause);
-  ASCIICHAT_REQUIRE_EQ(producer.cause.code, ERROR_NETWORK_TIMEOUT);
-  ASCIICHAT_REQUIRE_STR_EQ(producer.cause.context_message, "Outbound reliable packet expired before submission");
-  ASCIICHAT_REQUIRE_EQ(atomic_load_u64(&backend->sent), 0);
+  REQUIRE((producer.result) == (ERROR_NETWORK_TIMEOUT));
+  REQUIRE(producer.has_cause);
+  REQUIRE((producer.cause.code) == (ERROR_NETWORK_TIMEOUT));
+  REQUIRE(std::strcmp((producer.cause.context_message), ("Outbound reliable packet expired before submission")) == 0);
+  REQUIRE((atomic_load_u64(&backend->sent)) == (0));
   acip_transport_destroy(transport);
   buffer_system_cleanup();
   log_destroy();
@@ -451,14 +451,14 @@ TEST_CASE("transport_backpressure/congestion_recovers_without_terminal_error", "
   atomic_store_u64(&backend->bytes, ACIP_OUTBOUND_BUDGET);
   CLEAR_ERRNO_ALL();
   asciichat_errno_scope_t scope = errno_checkpoint();
-  ASCIICHAT_REQUIRE_EQ(submit(transport, PACKET_TYPE_IMAGE_FRAME, 0, 1000, false), ACIP_ADMISSION_CONGESTED);
-  ASCIICHAT_REQUIRE_NOT(errno_peek_since(scope, NULL));
-  ASCIICHAT_REQUIRE_NOT(atomic_load_bool(&backend->closed));
+  REQUIRE((submit(transport, PACKET_TYPE_IMAGE_FRAME, 0, 1000, false)) == (ACIP_ADMISSION_CONGESTED));
+  REQUIRE(!(errno_peek_since(scope, NULL)));
+  REQUIRE(!(atomic_load_bool(&backend->closed)));
   atomic_store_u64(&backend->bytes, 0);
-  ASCIICHAT_REQUIRE_EQ(submit(transport, PACKET_TYPE_IMAGE_FRAME, 0, 1000, false), ACIP_ADMISSION_ACCEPTED);
+  REQUIRE((submit(transport, PACKET_TYPE_IMAGE_FRAME, 0, 1000, false)) == (ACIP_ADMISSION_ACCEPTED));
   await_submitted(transport, 1);
-  ASCIICHAT_REQUIRE_NOT(errno_peek_since(scope, NULL));
-  ASCIICHAT_REQUIRE_NOT(atomic_load_bool(&backend->closed));
+  REQUIRE(!(errno_peek_since(scope, NULL)));
+  REQUIRE(!(atomic_load_bool(&backend->closed)));
   acip_transport_destroy(transport);
   buffer_system_cleanup();
   log_destroy();
@@ -469,10 +469,10 @@ TEST_CASE("transport_backpressure/evicts_oldest_inactive_encoded_stream_state", 
   errno_suppress(true);
   acip_transport_t *transport = create();
   for (uint32_t stream = 0; stream < 65; ++stream) {
-    ASCIICHAT_REQUIRE_EQ(submit(transport, PACKET_TYPE_IMAGE_FRAME_H264, stream, 1, true), ACIP_ADMISSION_ACCEPTED);
+    REQUIRE((submit(transport, PACKET_TYPE_IMAGE_FRAME_H264, stream, 1, true)) == (ACIP_ADMISSION_ACCEPTED));
     await_submitted(transport, stream + 1);
   }
-  ASCIICHAT_REQUIRE_EQ(submit(transport, PACKET_TYPE_IMAGE_FRAME_H264, 0, 1, false), ACIP_ADMISSION_NEEDS_KEYFRAME);
+  REQUIRE((submit(transport, PACKET_TYPE_IMAGE_FRAME_H264, 0, 1, false)) == (ACIP_ADMISSION_NEEDS_KEYFRAME));
   acip_transport_destroy(transport);
   buffer_system_cleanup();
   log_destroy();

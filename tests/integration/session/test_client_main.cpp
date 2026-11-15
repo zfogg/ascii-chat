@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 // Integration test that runs the actual client main() with --help
 // This verifies the client binary works and shows help correctly
 
@@ -50,9 +51,9 @@ TEST_CASE("client_main/test_client_help", "[client_main]") {
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
 
-    ASCIICHAT_REQUIRE_EQ(exitCode, 0, "Help should exit with 0");
+    REQUIRE((exitCode) == (0));
   } else {
-    ASCIICHAT_SKIP("Client binary not available");
+    SKIP("test skipped");
   }
 #else
   // Unix version - use fork/exec
@@ -71,9 +72,9 @@ TEST_CASE("client_main/test_client_help", "[client_main]") {
 
   // Use parentheses to avoid macro expansion issues in C2X mode
   if (WIFEXITED(status)) {
-    ASCIICHAT_REQUIRE_EQ(WEXITSTATUS(status), 0, "Help should exit with 0");
+    REQUIRE((WEXITSTATUS(status)) == (0));
   } else {
-    ASCIICHAT_FAIL("Client did not exit normally");
+    FAIL("Client did not exit normally");
   }
 #endif
 }

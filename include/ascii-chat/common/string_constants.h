@@ -12,6 +12,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief String literal: "0" (zero)
  *
@@ -85,3 +89,7 @@
 #define STR_YES "yes"
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/options/builder.h>
 #include <libplatform/system.h>
@@ -38,7 +38,7 @@ static bool parse_custom(const char *argument, void *destination, char **error) 
 
 static options_builder_t *builder(void) {
   options_builder_t *b = options_builder_create(sizeof(sample_t));
-  ASCIICHAT_REQUIRE_NOT_NULL(b);
+  REQUIRE((b) != nullptr);
   options_builder_add_bool(b, "enabled", 'e', offsetof(sample_t, enabled), false, "Enable", "Test", false, "ASCII_TEST_BUILDER_BOOL");
   options_builder_set_mode_bitmask(b, OPTION_MODE_ALL);
   options_builder_add_bool(b, "companion", 0, offsetof(sample_t, companion), false, "Companion", "Test", false, NULL);
@@ -61,7 +61,7 @@ static options_config_t *config(void) {
   options_builder_t *b = builder();
   options_config_t *c = options_builder_build(b);
   options_builder_destroy(b);
-  ASCIICHAT_REQUIRE_NOT_NULL(c);
+  REQUIRE((c) != nullptr);
   return c;
 }
 
@@ -78,19 +78,19 @@ TEST_CASE("builder_contract/typed_cli_values_short_flags_and_optional_callback",
   int remaining = -1;
   char **remainder = args;
   actions = 0;
-  ASCIICHAT_REQUIRE_EQ(options_config_parse(c, sizeof(args) / sizeof(args[0]), args, &sample, OPTION_MODE_CLIENT, &remaining, &remainder), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(sample.enabled);
-  ASCIICHAT_REQUIRE_EQ(sample.count, -12);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(sample.ratio, 1.25, 1e-9);
-  ASCIICHAT_REQUIRE_STR_EQ(sample.label, "-");
-  ASCIICHAT_REQUIRE_EQ(sample.custom, 99);
-  ASCIICHAT_REQUIRE_EQ(actions, 1);
-  ASCIICHAT_REQUIRE_EQ(remaining, 0);
-  ASCIICHAT_REQUIRE_NULL(remainder);
+  REQUIRE((options_config_parse(c, sizeof(args) / sizeof(args[0]), args, &sample, OPTION_MODE_CLIENT, &remaining, &remainder)) == (ASCIICHAT_OK));
+  REQUIRE(sample.enabled);
+  REQUIRE((sample.count) == (-12));
+  REQUIRE((sample.ratio) == Catch::Approx(1.25));
+  REQUIRE(std::strcmp((sample.label), ("-")) == 0);
+  REQUIRE((sample.custom) == (99));
+  REQUIRE((actions) == (1));
+  REQUIRE((remaining) == (0));
+  REQUIRE((remainder) == nullptr);
   char *second[] = {"program", "-e", "false", "-u", "42"};
-  ASCIICHAT_REQUIRE_EQ(options_config_parse(c, 5, second, &sample, OPTION_MODE_CLIENT, NULL, NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NOT(sample.enabled);
-  ASCIICHAT_REQUIRE_EQ(sample.custom, 42);
+  REQUIRE((options_config_parse(c, 5, second, &sample, OPTION_MODE_CLIENT, NULL, NULL)) == (ASCIICHAT_OK));
+  REQUIRE(!(sample.enabled));
+  REQUIRE((sample.custom) == (42));
   options_config_destroy(c);
 }
 
@@ -101,11 +101,11 @@ TEST_CASE("builder_contract/malformed_cli_values_do_not_replace_their_fields", "
   for (size_t i = 0; i < sizeof(bad) / sizeof(bad[0]); ++i) {
     sample_t sample = defaults();
     char *args[] = {"program", (char *)bad[i][0], (char *)bad[i][1]};
-    ASCIICHAT_REQUIRE_NE(options_config_parse(c, bad[i][1] ? 3 : 2, args, &sample, OPTION_MODE_CLIENT, NULL, NULL), ASCIICHAT_OK, "%s %s", bad[i][0], bad[i][1] ? bad[i][1] : "");
-    ASCIICHAT_REQUIRE_EQ(sample.count, 7);
-    ASCIICHAT_REQUIRE_FLOAT_EQ(sample.ratio, .5, 1e-9);
-    ASCIICHAT_REQUIRE_EQ(sample.custom, 17);
-    ASCIICHAT_REQUIRE_NOT(sample.enabled);
+    REQUIRE((options_config_parse(c, bad[i][1] ? 3 : 2, args, &sample, OPTION_MODE_CLIENT, NULL, NULL)) != (ASCIICHAT_OK));
+    REQUIRE((sample.count) == (7));
+    REQUIRE((sample.ratio) == Catch::Approx(.5));
+    REQUIRE((sample.custom) == (17));
+    REQUIRE(!(sample.enabled));
     CLEAR_ERRNO_ALL();
   }
   options_config_destroy(c);
@@ -122,28 +122,28 @@ TEST_CASE("builder_contract/environment_then_explicit_cli_and_already_set_values
   sample.ratio = 7.0;
   SAFE_STRNCPY(sample.label, "from-config", sizeof(sample.label));
   platform_setenv("ASCII_TEST_BUILDER_BOOL", "false");
-  ASCIICHAT_REQUIRE_EQ(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NOT(sample.enabled);
+  REQUIRE((options_config_set_defaults(c, &sample)) == (ASCIICHAT_OK));
+  REQUIRE(!(sample.enabled));
   platform_setenv("ASCII_TEST_BUILDER_BOOL", "yes");
-  ASCIICHAT_REQUIRE_EQ(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(sample.enabled);
-  ASCIICHAT_REQUIRE_EQ(sample.count, 12);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(sample.ratio, 2.5, 1e-9);
-  ASCIICHAT_REQUIRE_STR_EQ(sample.label, "from-env");
+  REQUIRE((options_config_set_defaults(c, &sample)) == (ASCIICHAT_OK));
+  REQUIRE(sample.enabled);
+  REQUIRE((sample.count) == (12));
+  REQUIRE((sample.ratio) == Catch::Approx(2.5));
+  REQUIRE(std::strcmp((sample.label), ("from-env")) == 0);
   char *args[] = {"program", "--count=25", "--ratio=4.5", "--label=from-cli", "--enabled=false"};
-  ASCIICHAT_REQUIRE_EQ(options_config_parse(c, 5, args, &sample, OPTION_MODE_CLIENT, NULL, NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(sample.count, 25);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(sample.ratio, 4.5, 1e-9);
-  ASCIICHAT_REQUIRE_STR_EQ(sample.label, "from-cli");
-  ASCIICHAT_REQUIRE_NOT(sample.enabled);
+  REQUIRE((options_config_parse(c, 5, args, &sample, OPTION_MODE_CLIENT, NULL, NULL)) == (ASCIICHAT_OK));
+  REQUIRE((sample.count) == (25));
+  REQUIRE((sample.ratio) == Catch::Approx(4.5));
+  REQUIRE(std::strcmp((sample.label), ("from-cli")) == 0);
+  REQUIRE(!(sample.enabled));
   platform_unsetenv("ASCII_TEST_BUILDER_BOOL");
   platform_unsetenv("ASCII_TEST_BUILDER_INT");
   platform_unsetenv("ASCII_TEST_BUILDER_DOUBLE");
   platform_unsetenv("ASCII_TEST_BUILDER_STRING");
-  ASCIICHAT_REQUIRE_EQ(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(sample.count, 25);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(sample.ratio, 4.5, 1e-9);
-  ASCIICHAT_REQUIRE_STR_EQ(sample.label, "from-cli");
+  REQUIRE((options_config_set_defaults(c, &sample)) == (ASCIICHAT_OK));
+  REQUIRE((sample.count) == (25));
+  REQUIRE((sample.ratio) == Catch::Approx(4.5));
+  REQUIRE(std::strcmp((sample.label), ("from-cli")) == 0);
   options_config_destroy(c);
 }
 
@@ -154,8 +154,8 @@ TEST_CASE("builder_contract/invalid_double_environment_preserves_value_and_retur
     sample_t sample = defaults();
     sample.ratio = 7.0;
     platform_setenv("ASCII_TEST_BUILDER_DOUBLE", invalid[i]);
-    ASCIICHAT_REQUIRE_EQ(options_config_set_defaults(c, &sample), ERROR_USAGE);
-    ASCIICHAT_REQUIRE_FLOAT_EQ(sample.ratio, 7.0, 1e-9);
+    REQUIRE((options_config_set_defaults(c, &sample)) == (ERROR_USAGE));
+    REQUIRE((sample.ratio) == Catch::Approx(7.0));
     CLEAR_ERRNO_ALL();
   }
   platform_unsetenv("ASCII_TEST_BUILDER_DOUBLE");
@@ -174,15 +174,15 @@ TEST_CASE("builder_contract/requires_and_conflicts_validate_the_final_option_set
     options_builder_destroy(b);
     sample_t sample = defaults();
     char *error = NULL;
-    ASCIICHAT_REQUIRE_EQ(options_config_validate(c, &sample, &error), ASCIICHAT_OK);
+    REQUIRE((options_config_validate(c, &sample, &error)) == (ASCIICHAT_OK));
     sample.enabled = true;
     sample.companion = conflict;
-    ASCIICHAT_REQUIRE_EQ(options_config_validate(c, &sample, &error), ERROR_USAGE);
-    ASCIICHAT_REQUIRE_NOT_NULL(error);
-    ASCIICHAT_REQUIRE_NOT_NULL(strstr(error, variant == 1 ? "Explicit conflict" : conflict ? "conflicts" : "requires"));
+    REQUIRE((options_config_validate(c, &sample, &error)) == (ERROR_USAGE));
+    REQUIRE((error) != nullptr);
+    REQUIRE((strstr(error, variant == 1 ? "Explicit conflict" : conflict ? "conflicts" : "requires")) != nullptr);
     SAFE_FREE(error);
     sample.companion = !conflict;
-    ASCIICHAT_REQUIRE_EQ(options_config_validate(c, &sample, NULL), ASCIICHAT_OK);
+    REQUIRE((options_config_validate(c, &sample, NULL)) == (ASCIICHAT_OK));
     options_config_destroy(c);
   }
 }
@@ -204,22 +204,22 @@ TEST_CASE("builder_contract/positional_parser_consumes_pairs_and_rejects_missing
   options_builder_add_positional(b, "pair", "A two-word pair", true, NULL, NULL, 0, OPTION_MODE_ALL, parse_pair);
   options_config_t *c = options_builder_build(b);
   options_builder_destroy(b);
-  ASCIICHAT_REQUIRE_NOT_NULL(c);
+  REQUIRE((c) != nullptr);
   sample_t sample = defaults();
   char *valid[] = {"name", "value"};
-  ASCIICHAT_REQUIRE_EQ(options_config_parse_positional(c, 2, valid, &sample), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_STR_EQ(sample.label, "name");
-  ASCIICHAT_REQUIRE_EQ(sample.count, 1);
-  ASCIICHAT_REQUIRE_EQ(options_config_parse_positional(c, 0, NULL, &sample), ERROR_USAGE);
-  ASCIICHAT_REQUIRE_EQ(options_config_parse_positional(c, 1, valid, &sample), ERROR_USAGE);
+  REQUIRE((options_config_parse_positional(c, 2, valid, &sample)) == (ASCIICHAT_OK));
+  REQUIRE(std::strcmp((sample.label), ("name")) == 0);
+  REQUIRE((sample.count) == (1));
+  REQUIRE((options_config_parse_positional(c, 0, NULL, &sample)) == (ERROR_USAGE));
+  REQUIRE((options_config_parse_positional(c, 1, valid, &sample)) == (ERROR_USAGE));
   char *rejected[] = {"reject", "value"};
-  ASCIICHAT_REQUIRE_EQ(options_config_parse_positional(c, 2, rejected, &sample), ERROR_USAGE);
+  REQUIRE((options_config_parse_positional(c, 2, rejected, &sample)) == (ERROR_USAGE));
   char *extra[] = {"name", "value", "unexpected"};
-  ASCIICHAT_REQUIRE_EQ(options_config_parse_positional(c, 3, extra, &sample), ERROR_USAGE);
-  ASCIICHAT_REQUIRE_EQ(options_config_parse_positional(c, -1, valid, &sample), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(options_config_parse_positional(c, 1, NULL, &sample), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(options_config_parse_positional(NULL, 2, valid, &sample), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(options_config_parse_positional(c, 2, valid, NULL), ERROR_INVALID_PARAM);
+  REQUIRE((options_config_parse_positional(c, 3, extra, &sample)) == (ERROR_USAGE));
+  REQUIRE((options_config_parse_positional(c, -1, valid, &sample)) == (ERROR_INVALID_PARAM));
+  REQUIRE((options_config_parse_positional(c, 1, NULL, &sample)) == (ERROR_INVALID_PARAM));
+  REQUIRE((options_config_parse_positional(NULL, 2, valid, &sample)) == (ERROR_INVALID_PARAM));
+  REQUIRE((options_config_parse_positional(c, 2, valid, NULL)) == (ERROR_INVALID_PARAM));
   options_config_destroy(c);
 }
 static bool validate_count(const void *destination) {
@@ -232,50 +232,50 @@ static bool validate_count(const void *destination) {
 }
 TEST_CASE("builder_contract/custom_validator_propagates_fresh_errors_and_ignores_stale_ones", "[builder_contract]") {
   options_builder_t *b = options_builder_create(sizeof(sample_t));
-  ASCIICHAT_REQUIRE_NOT_NULL(b);
+  REQUIRE((b) != nullptr);
   options_builder_add_int(b, "count", 'c', offsetof(sample_t, count), 7, "Count", "Test", false, NULL, validate_count);
   options_config_t *c = options_builder_build(b);
   options_builder_destroy(b);
-  ASCIICHAT_REQUIRE_NOT_NULL(c);
+  REQUIRE((c) != nullptr);
   sample_t sample = defaults();
-  ASCIICHAT_REQUIRE_EQ(options_config_validate(c, &sample, NULL), ASCIICHAT_OK);
+  REQUIRE((options_config_validate(c, &sample, NULL)) == (ASCIICHAT_OK));
   sample.count = -1;
-  ASCIICHAT_REQUIRE_EQ(options_config_validate(c, &sample, NULL), ERROR_INVALID_PARAM);
+  REQUIRE((options_config_validate(c, &sample, NULL)) == (ERROR_INVALID_PARAM));
   sample.count = 12;
-  ASCIICHAT_REQUIRE_EQ(options_config_validate(c, &sample, NULL), ERROR_USAGE);
+  REQUIRE((options_config_validate(c, &sample, NULL)) == (ERROR_USAGE));
   sample.count = 9;
-  ASCIICHAT_REQUIRE_EQ(options_config_validate(c, &sample, NULL), ASCIICHAT_OK);
+  REQUIRE((options_config_validate(c, &sample, NULL)) == (ASCIICHAT_OK));
   options_config_destroy(c);
 }
 TEST_CASE("builder_contract/required_fields_report_the_cli_and_environment_routes", "[builder_contract]") {
   for (unsigned with_environment = 0; with_environment < 2; ++with_environment) {
     options_builder_t *b = options_builder_create(sizeof(sample_t));
-    ASCIICHAT_REQUIRE_NOT_NULL(b);
+    REQUIRE((b) != nullptr);
     options_builder_add_string(b, "label", 'l', offsetof(sample_t, label), NULL, "Label", "Test", true, with_environment ? "ASCII_TEST_REQUIRED_LABEL" : NULL, NULL);
     options_config_t *c = options_builder_build(b);
     options_builder_destroy(b);
-    ASCIICHAT_REQUIRE_NOT_NULL(c);
+    REQUIRE((c) != nullptr);
     sample_t sample{};
     char *error = NULL;
-    ASCIICHAT_REQUIRE_EQ(options_config_validate(c, &sample, &error), ERROR_USAGE);
-    ASCIICHAT_REQUIRE_NOT_NULL(error);
-    ASCIICHAT_REQUIRE_NOT_NULL(strstr(error, "--label"));
+    REQUIRE((options_config_validate(c, &sample, &error)) == (ERROR_USAGE));
+    REQUIRE((error) != nullptr);
+    REQUIRE((strstr(error, "--label")) != nullptr);
     if (with_environment)
-      ASCIICHAT_REQUIRE_NOT_NULL(strstr(error, "ASCII_TEST_REQUIRED_LABEL"));
+      REQUIRE((strstr(error, "ASCII_TEST_REQUIRED_LABEL")) != nullptr);
     SAFE_FREE(error);
-    ASCIICHAT_REQUIRE_EQ(options_config_validate(c, &sample, NULL), ERROR_USAGE);
+    REQUIRE((options_config_validate(c, &sample, NULL)) == (ERROR_USAGE));
     SAFE_STRNCPY(sample.label, "supplied", sizeof(sample.label));
-    ASCIICHAT_REQUIRE_EQ(options_config_validate(c, &sample, &error), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_NULL(error);
+    REQUIRE((options_config_validate(c, &sample, &error)) == (ASCIICHAT_OK));
+    REQUIRE((error) == nullptr);
     options_config_destroy(c);
   }
 }
 
 static int parse_literals(const char *argument, void *destination, char **remaining, int count, char **error) {
   (void)error;
-  ASCIICHAT_REQUIRE_STR_EQ(argument, "-literal");
-  ASCIICHAT_REQUIRE_EQ(count, 1);
-  ASCIICHAT_REQUIRE_STR_EQ(remaining[0], "client");
+  REQUIRE(std::strcmp((argument), ("-literal")) == 0);
+  REQUIRE((count) == (1));
+  REQUIRE(std::strcmp((remaining[0]), ("client")) == 0);
   SAFE_STRNCPY(((sample_t *)destination)->label, argument, sizeof(((sample_t *)destination)->label));
   return 2;
 }
@@ -284,23 +284,23 @@ TEST_CASE("builder_contract/boolean_spellings_and_end_of_options_preserve_positi
   options_builder_add_positional(b, "literals", "Literal words", false, NULL, NULL, 0, OPTION_MODE_CLIENT, parse_literals);
   options_config_t *c = options_builder_build(b);
   options_builder_destroy(b);
-  ASCIICHAT_REQUIRE_NOT_NULL(c);
+  REQUIRE((c) != nullptr);
   const char *values[] = {"true", "YES", "1", "On", "false", "NO", "0", "off"};
   for (size_t i = 0; i < 8; ++i) {
     sample_t sample = defaults();
     char *args[] = {"program", "--enabled", (char *)values[i], "--", "-literal", "client"};
     int remaining = 0;
     char **rest = NULL;
-    ASCIICHAT_REQUIRE_EQ(options_config_parse(c, 6, args, &sample, OPTION_MODE_CLIENT, &remaining, &rest), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(sample.enabled, i < 4);
-    ASCIICHAT_REQUIRE_EQ(remaining, 0);
-    ASCIICHAT_REQUIRE_NULL(rest);
-    ASCIICHAT_REQUIRE_STR_EQ(sample.label, "-literal");
+    REQUIRE((options_config_parse(c, 6, args, &sample, OPTION_MODE_CLIENT, &remaining, &rest)) == (ASCIICHAT_OK));
+    REQUIRE((sample.enabled) == (i < 4));
+    REQUIRE((remaining) == (0));
+    REQUIRE((rest) == nullptr);
+    REQUIRE(std::strcmp((sample.label), ("-literal")) == 0);
   }
   sample_t sample = defaults();
   char *toggles[] = {"program", "--enabled", "--enabled"};
-  ASCIICHAT_REQUIRE_EQ(options_config_parse(c, 3, toggles, &sample, OPTION_MODE_CLIENT, NULL, NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NOT(sample.enabled);
+  REQUIRE((options_config_parse(c, 3, toggles, &sample, OPTION_MODE_CLIENT, NULL, NULL)) == (ASCIICHAT_OK));
+  REQUIRE(!(sample.enabled));
   options_config_destroy(c);
 }
 TEST_CASE("builder_contract/primary_port_environment_overrides_short_aliases", "[builder_contract]") {
@@ -315,21 +315,21 @@ TEST_CASE("builder_contract/primary_port_environment_overrides_short_aliases", "
     platform_unsetenv(primary[i]);
     platform_setenv(alias[i], "1234");
     options_builder_t *b = options_builder_create(sizeof(sample_t));
-    ASCIICHAT_REQUIRE_NOT_NULL(b);
+    REQUIRE((b) != nullptr);
     options_builder_add_int(b, "port", 'p', offsetof(sample_t, count), 7, "Port", "Test", false, primary[i], NULL);
     options_config_t *c = options_builder_build(b);
     options_builder_destroy(b);
     sample_t sample = defaults();
-    ASCIICHAT_REQUIRE_EQ(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(sample.count, 1234);
+    REQUIRE((options_config_set_defaults(c, &sample)) == (ASCIICHAT_OK));
+    REQUIRE((sample.count) == (1234));
     platform_setenv(primary[i], "4321");
-    ASCIICHAT_REQUIRE_EQ(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(sample.count, 4321);
+    REQUIRE((options_config_set_defaults(c, &sample)) == (ASCIICHAT_OK));
+    REQUIRE((sample.count) == (4321));
     const char *invalid[] = {"invalid", "12suffix", "2147483648", "-2147483649"};
     for (size_t j = 0; j < 4; ++j) {
       platform_setenv(primary[i], invalid[j]);
-      ASCIICHAT_REQUIRE_EQ(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
-      ASCIICHAT_REQUIRE_EQ(sample.count, 4321);
+      REQUIRE((options_config_set_defaults(c, &sample)) == (ASCIICHAT_OK));
+      REQUIRE((sample.count) == (4321));
     }
     options_config_destroy(c);
     if (old_primary)
@@ -351,13 +351,13 @@ TEST_CASE("builder_contract/conflicting_color_options_return_an_owned_error_mess
   sample.base.color = true;
   sample.base.color_mode = TERM_COLOR_NONE;
   char *error = NULL;
-  ASCIICHAT_REQUIRE_EQ(options_config_validate(c, &sample, &error), ERROR_USAGE);
-  ASCIICHAT_REQUIRE_NOT_NULL(error);
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(error, "--color-mode=none"));
+  REQUIRE((options_config_validate(c, &sample, &error)) == (ERROR_USAGE));
+  REQUIRE((error) != nullptr);
+  REQUIRE((strstr(error, "--color-mode=none")) != nullptr);
   SAFE_FREE(error);
-  ASCIICHAT_REQUIRE_EQ(options_config_validate(c, &sample, NULL), ERROR_USAGE);
+  REQUIRE((options_config_validate(c, &sample, NULL)) == (ERROR_USAGE));
   sample.base.color = false;
-  ASCIICHAT_REQUIRE_EQ(options_config_validate(c, &sample, NULL), ASCIICHAT_OK);
+  REQUIRE((options_config_validate(c, &sample, NULL)) == (ASCIICHAT_OK));
   options_config_destroy(c);
 }
 
@@ -367,7 +367,7 @@ TEST_CASE("builder_contract/string_defaults_belong_to_each_builder_and_survive_t
     char initial[] = "owned default";
     options_builder_add_string(b, "label", 0, offsetof(sample_t, label), initial, "Label", "Test", false, NULL, NULL);
     memset(initial, 'x', sizeof(initial) - 1);
-    ASCIICHAT_REQUIRE_EQ(b->num_descriptors, 1);
+    REQUIRE((b->num_descriptors) == (1));
     if (i % 2) {
       options_builder_destroy(b);
       continue;
@@ -375,9 +375,9 @@ TEST_CASE("builder_contract/string_defaults_belong_to_each_builder_and_survive_t
     options_config_t *c = options_builder_build(b);
     options_builder_destroy(b);
     sample_t sample{};
-    ASCIICHAT_REQUIRE_NOT_NULL(c);
-    ASCIICHAT_REQUIRE_EQ(options_config_set_defaults(c, &sample), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_STR_EQ(sample.label, "owned default");
+    REQUIRE((c) != nullptr);
+    REQUIRE((options_config_set_defaults(c, &sample)) == (ASCIICHAT_OK));
+    REQUIRE(std::strcmp((sample.label), ("owned default")) == 0);
     options_config_destroy(c);
   }
 }

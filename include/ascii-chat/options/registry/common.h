@@ -14,6 +14,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Temporary builder for a help/category index. `name` identifies the category and `entries` points at the
  * entries accumulated for it; the builder is discarded after the final index is emitted.
@@ -86,3 +90,7 @@ typedef struct {
    .optional_arg = false,                                                                                              \
    .mode_bitmask = OPTION_MODE_NONE,                                                                                   \
    .metadata = {0}}
+
+#ifdef __cplusplus
+}
+#endif

@@ -80,6 +80,10 @@
 #include <libplatform/cond.h>
 #include <libplatform/thread.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Forward declaration
 /**
  * @brief One queued function call waiting for a thread-pool worker
@@ -300,3 +304,7 @@ bool thread_pool_has_threads(const thread_pool_t *pool);
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t thread_pool_interrupt_all(thread_pool_t *pool, int sig);
+
+#ifdef __cplusplus
+}
+#endif

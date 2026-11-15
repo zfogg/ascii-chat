@@ -9,6 +9,10 @@
 #include <ascii-chat/video/ascii/simd/cells.h>
 #include <ascii-chat/video/ascii/render/render.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Prepare history for a viewport and rendering contract, resetting it on change. */
 asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height, uint64_t configuration);
 void ascii_stabilizer_reset(ascii_stabilizer_t *state);
@@ -74,4 +78,8 @@ DECLARE_HALF_PROCESSOR(sve);
  * Returns the prior target so capability conversion can restore its scope.
  */
 outbuf_t *ascii_render_set_output_target(outbuf_t *target);
+#endif
+
+#ifdef __cplusplus
+}
 #endif

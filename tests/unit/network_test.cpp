@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdlib.h>
@@ -6,7 +6,6 @@
 #include <stdint.h>
 #include <libplatform/socket.h>
 
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/packet/packet.h>
@@ -105,15 +104,15 @@ TEST_CASE("network/invalid_socket_operations", "[network]") {
   switch (tc->operation) {
   case OP_SET_TIMEOUT:
     error_result = set_socket_timeout(-1, 1ULL * NS_PER_SEC_INT);
-    ASCIICHAT_REQUIRE_NE(error_result, ASCIICHAT_OK, "%s should fail", tc->description);
+    REQUIRE((error_result) != (ASCIICHAT_OK));
     break;
   case OP_SET_KEEPALIVE:
     error_result = set_socket_keepalive(-1);
-    ASCIICHAT_REQUIRE_NE(error_result, ASCIICHAT_OK, "%s should fail", tc->description);
+    REQUIRE((error_result) != (ASCIICHAT_OK));
     break;
   case OP_SET_NONBLOCKING:
     error_result = set_socket_nonblocking(-1);
-    ASCIICHAT_REQUIRE_NE(error_result, ASCIICHAT_OK, "%s should fail", tc->description);
+    REQUIRE((error_result) != (ASCIICHAT_OK));
     break;
   case OP_CONNECT_TIMEOUT: {
     struct sockaddr_in addr;
@@ -122,25 +121,25 @@ TEST_CASE("network/invalid_socket_operations", "[network]") {
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     addr.sin_port = htons(8080);
     bresult = connect_with_timeout(-1, (struct sockaddr *)&addr, sizeof(addr), 1);
-    ASCIICHAT_REQUIRE_EQ(bresult, false, "%s should fail", tc->description);
+    REQUIRE((bresult) == (false));
     break;
   }
   case OP_SEND_TIMEOUT: {
     const char *data = "test data";
     sresult = send_with_timeout(-1, data, strlen(data), 1);
-    ASCIICHAT_REQUIRE_EQ(sresult, -1, "%s should fail", tc->description);
+    REQUIRE((sresult) == (-1));
     break;
   }
   case OP_RECV_TIMEOUT: {
     char buffer[1024];
     sresult = recv_with_timeout(-1, buffer, sizeof(buffer), 1);
-    ASCIICHAT_REQUIRE_EQ(sresult, -1, "%s should fail", tc->description);
+    REQUIRE((sresult) == (-1));
     break;
   }
   case OP_SEND_PACKET: {
     const char *data = "test data";
     result = send_packet(-1, PACKET_TYPE_PING, data, strlen(data));
-    ASCIICHAT_REQUIRE_EQ(result, -1, "%s should fail", tc->description);
+    REQUIRE((result) == (-1));
     break;
   }
   case OP_RECEIVE_PACKET: {
@@ -148,33 +147,33 @@ TEST_CASE("network/invalid_socket_operations", "[network]") {
     void *data;
     size_t len;
     result = receive_packet(-1, &type, &data, &len);
-    ASCIICHAT_REQUIRE_EQ(result, -1, "%s should fail", tc->description);
+    REQUIRE((result) == (-1));
     break;
   }
   case OP_SEND_AUDIO: {
     float samples[256];
     memset(samples, 0, sizeof(samples));
     result = send_audio_data(-1, samples, 256);
-    ASCIICHAT_REQUIRE_EQ(result, -1, "%s should fail", tc->description);
+    REQUIRE((result) == (-1));
     break;
   }
   case OP_RECEIVE_AUDIO: {
     float samples[256];
     result = receive_audio_data(-1, samples, 256);
-    ASCIICHAT_REQUIRE_EQ(result, -1, "%s should fail", tc->description);
+    REQUIRE((result) == (-1));
     break;
   }
   case OP_SEND_CLIENT_JOIN:
     result = send_client_join_packet(-1, "TestUser", CLIENT_CAP_VIDEO);
-    ASCIICHAT_REQUIRE_EQ(result, -1, "%s should fail", tc->description);
+    REQUIRE((result) == (-1));
     break;
   case OP_SEND_PING:
     result = send_ping_packet(-1);
-    ASCIICHAT_REQUIRE_EQ(result, -1, "%s should fail", tc->description);
+    REQUIRE((result) == (-1));
     break;
   case OP_SEND_PONG:
     result = send_pong_packet(-1);
-    ASCIICHAT_REQUIRE_EQ(result, -1, "%s should fail", tc->description);
+    REQUIRE((result) == (-1));
     break;
   }
 }
@@ -185,10 +184,10 @@ TEST_CASE("network/invalid_socket_operations", "[network]") {
 
 TEST_CASE("network/set_socket_timeout_valid", "[network]") {
   int sockfd = create_test_socket();
-  ASCIICHAT_REQUIRE_GE(sockfd, 0);
+  REQUIRE((sockfd) >= (0));
 
   int result = set_socket_timeout(sockfd, 1ULL * NS_PER_SEC_INT);
-  ASCIICHAT_REQUIRE_EQ(result, 0);
+  REQUIRE((result) == (0));
 
   close(sockfd);
 }
@@ -197,10 +196,10 @@ TEST_CASE("network/set_socket_timeout_valid", "[network]") {
 
 TEST_CASE("network/set_socket_keepalive_valid", "[network]") {
   int sockfd = create_test_socket();
-  ASCIICHAT_REQUIRE_GE(sockfd, 0);
+  REQUIRE((sockfd) >= (0));
 
   int result = set_socket_keepalive(sockfd);
-  ASCIICHAT_REQUIRE_EQ(result, 0);
+  REQUIRE((result) == (0));
 
   close(sockfd);
 }
@@ -209,10 +208,10 @@ TEST_CASE("network/set_socket_keepalive_valid", "[network]") {
 
 TEST_CASE("network/set_socket_nonblocking_valid", "[network]") {
   int sockfd = create_test_socket();
-  ASCIICHAT_REQUIRE_GE(sockfd, 0);
+  REQUIRE((sockfd) >= (0));
 
   int result = set_socket_nonblocking(sockfd);
-  ASCIICHAT_REQUIRE_EQ(result, 0);
+  REQUIRE((result) == (0));
 
   close(sockfd);
 }
@@ -253,11 +252,11 @@ TEST_CASE("network/parse_size_message_variations", "[network]") {
     result = parse_size_message(tc->message, &width, &height);
   }
 
-  ASCIICHAT_REQUIRE_EQ(result, tc->expected_result, "%s: expected result %d, got %d", tc->description, tc->expected_result, result);
+  REQUIRE((result) == (tc->expected_result));
 
   if (tc->expected_result == 0 && !tc->use_null_pointers) {
-    ASCIICHAT_REQUIRE_EQ(width, tc->expected_width, "%s: expected width %d, got %d", tc->description, tc->expected_width, width);
-    ASCIICHAT_REQUIRE_EQ(height, tc->expected_height, "%s: expected height %d, got %d", tc->description, tc->expected_height, height);
+    REQUIRE((width) == (tc->expected_width));
+    REQUIRE((height) == (tc->expected_height));
   }
 }
 
@@ -277,7 +276,7 @@ TEST_CASE("network/parse_size_message_variations", "[network]") {
 
 TEST_CASE("network/network_error_string_valid_codes", "[network]") {
   const char *error = network_error_string();
-  ASCIICHAT_REQUIRE_NOT_NULL(error);
+  REQUIRE((error) != nullptr);
 }
 
 TEST_CASE("network/random_size_messages", "[network]") {
@@ -297,9 +296,9 @@ TEST_CASE("network/random_size_messages", "[network]") {
     unsigned short parsed_width, parsed_height;
     int result = parse_size_message(message, &parsed_width, &parsed_height);
 
-    ASCIICHAT_REQUIRE_EQ(result, 0);
-    ASCIICHAT_REQUIRE_EQ(parsed_width, width);
-    ASCIICHAT_REQUIRE_EQ(parsed_height, height);
+    REQUIRE((result) == (0));
+    REQUIRE((parsed_width) == (width));
+    REQUIRE((parsed_height) == (height));
   }
   log_debug("random_size_messages test completed");
 }

@@ -36,6 +36,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Check if the global server should exit.
  * Requires g_should_exit to be declared as atomic_t in the compilation unit.
@@ -222,4 +226,8 @@
  */
 #define ATOMIC_SUB_UINT32(ptr, delta) atomic_fetch_sub((atomic_uint32_t *)(ptr), (delta))
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif

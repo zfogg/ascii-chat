@@ -1,5 +1,4 @@
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <float.h>
@@ -124,22 +123,22 @@ TEST_CASE("grid_layout/single_client_full_terminal", "[grid_layout]") {
 
   // Test various terminal sizes with single client
   calculate_optimal_grid(80, 24, 1, &cols, &rows, &cell_width, &cell_height);
-  ASCIICHAT_CHECK_EQ(cols, 1, "Single client should use 1 column");
-  ASCIICHAT_CHECK_EQ(rows, 1, "Single client should use 1 row");
-  ASCIICHAT_CHECK_EQ(cell_width, 80, "Single client should use full width");
-  ASCIICHAT_CHECK_EQ(cell_height, 24, "Single client should use full height");
+  CHECK((cols) == (1));
+  CHECK((rows) == (1));
+  CHECK((cell_width) == (80));
+  CHECK((cell_height) == (24));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 80, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 24, "Should use all vertical space");
+  CHECK((cols * cell_width) == (80));
+  CHECK((rows * cell_height) == (24));
 
   calculate_optimal_grid(120, 40, 1, &cols, &rows, &cell_width, &cell_height);
-  ASCIICHAT_CHECK_EQ(cols, 1);
-  ASCIICHAT_CHECK_EQ(rows, 1);
-  ASCIICHAT_CHECK_EQ(cell_width, 120);
-  ASCIICHAT_CHECK_EQ(cell_height, 40);
+  CHECK((cols) == (1));
+  CHECK((rows) == (1));
+  CHECK((cell_width) == (120));
+  CHECK((cell_height) == (40));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 120, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 40, "Should use all vertical space");
+  CHECK((cols * cell_width) == (120));
+  CHECK((rows * cell_height) == (40));
 }
 
 TEST_CASE("grid_layout/two_clients_horizontal_vs_vertical", "[grid_layout]") {
@@ -147,35 +146,35 @@ TEST_CASE("grid_layout/two_clients_horizontal_vs_vertical", "[grid_layout]") {
 
   // Wide terminal - should prefer 2x1 (side by side)
   calculate_optimal_grid(160, 24, 2, &cols, &rows, &cell_width, &cell_height);
-  ASCIICHAT_CHECK_EQ(cols, 2, "Wide terminal with 2 clients should use 2 columns");
-  ASCIICHAT_CHECK_EQ(rows, 1, "Wide terminal with 2 clients should use 1 row");
-  ASCIICHAT_CHECK_EQ(cell_width, 80, "Each cell should be half width");
-  ASCIICHAT_CHECK_EQ(cell_height, 24, "Each cell should be full height");
+  CHECK((cols) == (2));
+  CHECK((rows) == (1));
+  CHECK((cell_width) == (80));
+  CHECK((cell_height) == (24));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 160, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 24, "Should use all vertical space");
+  CHECK((cols * cell_width) == (160));
+  CHECK((rows * cell_height) == (24));
 
   // Tall terminal - actually prefers 2x1 because it's closer to target aspect 2.0
   // 1x2 gives aspect 3.33, 2x1 gives aspect 0.83, so 2x1 is closer to 2.0
   calculate_optimal_grid(80, 48, 2, &cols, &rows, &cell_width, &cell_height);
-  ASCIICHAT_CHECK_EQ(cols, 2, "Tall terminal with 2 clients should use 2 columns (better aspect)");
-  ASCIICHAT_CHECK_EQ(rows, 1, "Tall terminal with 2 clients should use 1 row");
-  ASCIICHAT_CHECK_EQ(cell_width, 40, "Each cell should be half width");
-  ASCIICHAT_CHECK_EQ(cell_height, 48, "Each cell should be full height");
+  CHECK((cols) == (2));
+  CHECK((rows) == (1));
+  CHECK((cell_width) == (40));
+  CHECK((cell_height) == (48));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 80, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 48, "Should use all vertical space");
+  CHECK((cols * cell_width) == (80));
+  CHECK((rows * cell_height) == (48));
 
   // Square-ish terminal - should prefer layout that gives better aspect ratio
   calculate_optimal_grid(100, 50, 2, &cols, &rows, &cell_width, &cell_height);
   // 2x1: cells would be 50x50 (aspect 1.0) - far from target 2.0
   // 1x2: cells would be 100x25 (aspect 4.0) - also far from target 2.0
   // Should choose 2x1 as it's closer to target
-  ASCIICHAT_CHECK_EQ(cols, 2, "Square terminal should prefer 2x1 for better aspect");
-  ASCIICHAT_CHECK_EQ(rows, 1);
+  CHECK((cols) == (2));
+  CHECK((rows) == (1));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 100, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 50, "Should use all vertical space");
+  CHECK((cols * cell_width) == (100));
+  CHECK((rows * cell_height) == (50));
 }
 
 TEST_CASE("grid_layout/three_clients_optimal", "[grid_layout]") {
@@ -183,34 +182,34 @@ TEST_CASE("grid_layout/three_clients_optimal", "[grid_layout]") {
 
   // Wide terminal with 3 clients - try 3x1
   calculate_optimal_grid(180, 24, 3, &cols, &rows, &cell_width, &cell_height);
-  ASCIICHAT_CHECK_EQ(cols, 3, "Very wide terminal with 3 clients should use 3x1");
-  ASCIICHAT_CHECK_EQ(rows, 1);
-  ASCIICHAT_CHECK_EQ(cell_width, 60);
-  ASCIICHAT_CHECK_EQ(cell_height, 24);
+  CHECK((cols) == (3));
+  CHECK((rows) == (1));
+  CHECK((cell_width) == (60));
+  CHECK((cell_height) == (24));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 180, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 24, "Should use all vertical space");
+  CHECK((cols * cell_width) == (180));
+  CHECK((rows * cell_height) == (24));
 
   // Medium terminal with 3 clients - might prefer 2x2 (with one empty)
   calculate_optimal_grid(120, 48, 3, &cols, &rows, &cell_width, &cell_height);
   // 3x1: cells 40x48 (aspect 0.83)
   // 2x2: cells 60x24 (aspect 2.5) - closer to target 2.0
-  ASCIICHAT_CHECK_EQ(cols, 2, "Medium terminal with 3 clients should use 2x2 grid");
-  ASCIICHAT_CHECK_EQ(rows, 2);
+  CHECK((cols) == (2));
+  CHECK((rows) == (2));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 120, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 48, "Should use all vertical space");
+  CHECK((cols * cell_width) == (120));
+  CHECK((rows * cell_height) == (48));
 
   // Tall terminal with 3 clients - uses 2x2 for better aspect ratio
   // 1x3 gives aspect 3.33, 2x2 gives aspect 2.22, so 2x2 is closer to target 2.0
   calculate_optimal_grid(80, 72, 3, &cols, &rows, &cell_width, &cell_height);
-  ASCIICHAT_CHECK_EQ(cols, 2, "Tall terminal with 3 clients should use 2x2 (better aspect)");
-  ASCIICHAT_CHECK_EQ(rows, 2);
-  ASCIICHAT_CHECK_EQ(cell_width, 40);
-  ASCIICHAT_CHECK_EQ(cell_height, 36);
+  CHECK((cols) == (2));
+  CHECK((rows) == (2));
+  CHECK((cell_width) == (40));
+  CHECK((cell_height) == (36));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 80, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 72, "Should use all vertical space");
+  CHECK((cols * cell_width) == (80));
+  CHECK((rows * cell_height) == (72));
 }
 
 TEST_CASE("grid_layout/four_clients_2x2", "[grid_layout]") {
@@ -219,30 +218,30 @@ TEST_CASE("grid_layout/four_clients_2x2", "[grid_layout]") {
   // Standard terminal with 4 clients - uses 3x2 for better aspect ratio
   // 2x2 gives aspect 2.5, 3x2 gives aspect 1.67, 3x2 is closer to target 2.0
   calculate_optimal_grid(120, 48, 4, &cols, &rows, &cell_width, &cell_height);
-  ASCIICHAT_CHECK_EQ(cols, 3, "4 clients should use 3x2 grid (better aspect)");
-  ASCIICHAT_CHECK_EQ(rows, 2);
-  ASCIICHAT_CHECK_EQ(cell_width, 40);
-  ASCIICHAT_CHECK_EQ(cell_height, 24);
+  CHECK((cols) == (3));
+  CHECK((rows) == (2));
+  CHECK((cell_width) == (40));
+  CHECK((cell_height) == (24));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 120, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 48, "Should use all vertical space");
+  CHECK((cols * cell_width) == (120));
+  CHECK((rows * cell_height) == (48));
 
   // Wide terminal with 4 clients - uses 4x1 (good aspect)
   calculate_optimal_grid(240, 24, 4, &cols, &rows, &cell_width, &cell_height);
-  ASCIICHAT_CHECK_EQ(cols, 4, "Very wide terminal with 4 clients should use 4x1");
-  ASCIICHAT_CHECK_EQ(rows, 1);
+  CHECK((cols) == (4));
+  CHECK((rows) == (1));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 240, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 24, "Should use all vertical space");
+  CHECK((cols * cell_width) == (240));
+  CHECK((rows * cell_height) == (24));
 
   // Tall terminal with 4 clients - uses 2x2 for better aspect ratio
   // 1x4 gives aspect 8.33, 2x2 gives aspect 1.67, so 2x2 is closer to target 2.0
   calculate_optimal_grid(80, 96, 4, &cols, &rows, &cell_width, &cell_height);
-  ASCIICHAT_CHECK_EQ(cols, 2, "Very tall terminal with 4 clients should use 2x2 (better aspect)");
-  ASCIICHAT_CHECK_EQ(rows, 2);
+  CHECK((cols) == (2));
+  CHECK((rows) == (2));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 80, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 96, "Should use all vertical space");
+  CHECK((cols * cell_width) == (80));
+  CHECK((rows * cell_height) == (96));
 }
 
 TEST_CASE("grid_layout/five_to_six_clients", "[grid_layout]") {
@@ -251,27 +250,27 @@ TEST_CASE("grid_layout/five_to_six_clients", "[grid_layout]") {
   // 5 clients - uses 4x2 for better aspect ratio
   // 3x2 gives aspect 2.5, 4x2 gives aspect 1.875, 4x2 is closer to target 2.0
   calculate_optimal_grid(180, 48, 5, &cols, &rows, &cell_width, &cell_height);
-  ASCIICHAT_CHECK_EQ(cols, 4, "Wide terminal with 5 clients should use 4x2 (better aspect)");
-  ASCIICHAT_CHECK_EQ(rows, 2);
+  CHECK((cols) == (4));
+  CHECK((rows) == (2));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 180, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 48, "Should use all vertical space");
+  CHECK((cols * cell_width) == (180));
+  CHECK((rows * cell_height) == (48));
 
   calculate_optimal_grid(120, 72, 5, &cols, &rows, &cell_width, &cell_height);
-  ASCIICHAT_CHECK_EQ(cols, 2, "Tall terminal with 5 clients should use 2x3");
-  ASCIICHAT_CHECK_EQ(rows, 3);
+  CHECK((cols) == (2));
+  CHECK((rows) == (3));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 120, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 72, "Should use all vertical space");
+  CHECK((cols * cell_width) == (120));
+  CHECK((rows * cell_height) == (72));
 
   // 6 clients - uses 4x2 for better aspect ratio
   // 3x2 gives aspect 2.5, 4x2 gives aspect 1.875, 4x2 is closer to target 2.0
   calculate_optimal_grid(180, 48, 6, &cols, &rows, &cell_width, &cell_height);
-  ASCIICHAT_CHECK_EQ(cols, 4, "6 clients should use 4x2 for better aspect");
-  ASCIICHAT_CHECK_EQ(rows, 2);
+  CHECK((cols) == (4));
+  CHECK((rows) == (2));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 180, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 48, "Should use all vertical space");
+  CHECK((cols * cell_width) == (180));
+  CHECK((rows * cell_height) == (48));
 }
 
 TEST_CASE("grid_layout/seven_to_nine_clients", "[grid_layout]") {
@@ -279,30 +278,30 @@ TEST_CASE("grid_layout/seven_to_nine_clients", "[grid_layout]") {
 
   // 7 clients - 3x3 with 2 empty
   calculate_optimal_grid(150, 60, 7, &cols, &rows, &cell_width, &cell_height);
-  ASCIICHAT_CHECK_EQ(cols, 3, "7 clients should use 3x3 grid");
-  ASCIICHAT_CHECK_EQ(rows, 3);
+  CHECK((cols) == (3));
+  CHECK((rows) == (3));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 150, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 60, "Should use all vertical space");
+  CHECK((cols * cell_width) == (150));
+  CHECK((rows * cell_height) == (60));
 
   // 8 clients - 3x3 with 1 empty
   calculate_optimal_grid(150, 60, 8, &cols, &rows, &cell_width, &cell_height);
-  ASCIICHAT_CHECK_EQ(cols, 3, "8 clients should use 3x3 grid");
-  ASCIICHAT_CHECK_EQ(rows, 3);
+  CHECK((cols) == (3));
+  CHECK((rows) == (3));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 150, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 60, "Should use all vertical space");
+  CHECK((cols * cell_width) == (150));
+  CHECK((rows * cell_height) == (60));
 
   // 9 clients - uses 4x3 for better aspect ratio (closer to target 2.0)
   // 3x3 gives aspect 2.5, 4x3 gives aspect 1.85, 4x3 is closer to target 2.0
   calculate_optimal_grid(150, 60, 9, &cols, &rows, &cell_width, &cell_height);
-  ASCIICHAT_CHECK_EQ(cols, 4, "9 clients should use 4x3 grid for better aspect");
-  ASCIICHAT_CHECK_EQ(rows, 3);
-  ASCIICHAT_CHECK_EQ(cell_width, 37); // 150 / 4 = 37
-  ASCIICHAT_CHECK_EQ(cell_height, 20);
+  CHECK((cols) == (4));
+  CHECK((rows) == (3));
+  CHECK((cell_width) == (37)); // 150 / 4 = 37
+  CHECK((cell_height) == (20));
   // NOTE: Due to integer division, 4*37 = 148, not 150 (off by 2)
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 148, "Integer division causes rounding");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 60, "Should use all vertical space");
+  CHECK((cols * cell_width) == (148));
+  CHECK((rows * cell_height) == (60));
 }
 
 TEST_CASE("grid_layout/edge_cases", "[grid_layout]") {
@@ -310,23 +309,23 @@ TEST_CASE("grid_layout/edge_cases", "[grid_layout]") {
 
   // Zero clients
   calculate_optimal_grid(100, 40, 0, &cols, &rows, &cell_width, &cell_height);
-  ASCIICHAT_CHECK_EQ(cols, 0, "Zero clients should have 0 columns");
-  ASCIICHAT_CHECK_EQ(rows, 0, "Zero clients should have 0 rows");
-  ASCIICHAT_CHECK_EQ(cell_width, 0);
-  ASCIICHAT_CHECK_EQ(cell_height, 0);
+  CHECK((cols) == (0));
+  CHECK((rows) == (0));
+  CHECK((cell_width) == (0));
+  CHECK((cell_height) == (0));
 
   // Very small terminal - ensure minimum cell sizes
   calculate_optimal_grid(40, 20, 4, &cols, &rows, &cell_width, &cell_height);
   // Should avoid making cells too small (< 20x10)
   // With 40x20 terminal and 4 clients, 2x2 gives 20x10 cells (at minimum)
-  ASCIICHAT_CHECK_EQ(cols, 2, "Small terminal should still try 2x2 for 4 clients");
-  ASCIICHAT_CHECK_EQ(rows, 2);
+  CHECK((cols) == (2));
+  CHECK((rows) == (2));
 
   // Many clients in small terminal - should handle gracefully
   calculate_optimal_grid(60, 30, 10, &cols, &rows, &cell_width, &cell_height);
   // Should find best possible grid even if cells are small
-  ASCIICHAT_CHECK(cols > 0 && rows > 0, "Should always produce valid grid");
-  ASCIICHAT_CHECK_EQ(cols * rows >= 10, 1, "Grid should fit all clients");
+  CHECK((cols > 0 && rows > 0));
+  CHECK((cols * rows >= 10) == (1));
 }
 
 TEST_CASE("grid_layout/aspect_ratio_preferences", "[grid_layout]") {
@@ -340,11 +339,11 @@ TEST_CASE("grid_layout/aspect_ratio_preferences", "[grid_layout]") {
   // Option 4: 1x4 = cells 200x12.5 (aspect 16.0) - diff 14.0
   calculate_optimal_grid(200, 50, 4, &cols, &rows, &cell_width, &cell_height);
   // Should pick 3x2 as it's closest to target aspect of 2.0
-  ASCIICHAT_CHECK_EQ(cols, 3, "Should pick 3x2 for best aspect ratio (2.67 closest to 2.0)");
-  ASCIICHAT_CHECK_EQ(rows, 2);
+  CHECK((cols) == (3));
+  CHECK((rows) == (2));
   // NOTE: Due to integer division, 3*66 = 198, not 200 (off by 2)
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 198, "Integer division causes rounding");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 50, "Should use all vertical space");
+  CHECK((cols * cell_width) == (198));
+  CHECK((rows * cell_height) == (50));
 
   // Terminal 100x100 with 4 clients
   // Option 1: 2x2 = cells 50x50 (aspect 1.0)
@@ -352,11 +351,11 @@ TEST_CASE("grid_layout/aspect_ratio_preferences", "[grid_layout]") {
   // Option 3: 1x4 = cells 100x25 (aspect 4.0)
   calculate_optimal_grid(100, 100, 4, &cols, &rows, &cell_width, &cell_height);
   // 2x2 with aspect 1.0 is closest to target 2.0
-  ASCIICHAT_CHECK_EQ(cols, 2, "Square terminal should use 2x2 for 4 clients");
-  ASCIICHAT_CHECK_EQ(rows, 2);
+  CHECK((cols) == (2));
+  CHECK((rows) == (2));
   // Assert full space utilization
-  ASCIICHAT_CHECK_EQ(cols * cell_width, 100, "Should use all horizontal space");
-  ASCIICHAT_CHECK_EQ(rows * cell_height, 100, "Should use all vertical space");
+  CHECK((cols * cell_width) == (100));
+  CHECK((rows * cell_height) == (100));
 }
 
 // Parameterized test for comprehensive coverage
@@ -385,12 +384,10 @@ TEST_CASE("grid_layout/parameterized_comprehensive", "[grid_layout]") {
 
   calculate_optimal_grid(tc->terminal_width, tc->terminal_height, tc->num_clients, &cols, &rows, &cell_width, &cell_height);
 
-  ASCIICHAT_CHECK_EQ(cols, tc->expected_cols, "Terminal %dx%d, %d clients: Expected %d cols, got %d", tc->terminal_width, tc->terminal_height, tc->num_clients, tc->expected_cols, cols);
-  ASCIICHAT_CHECK_EQ(rows, tc->expected_rows, "Terminal %dx%d, %d clients: Expected %d rows, got %d", tc->terminal_width, tc->terminal_height, tc->num_clients, tc->expected_rows, rows);
-  ASCIICHAT_CHECK_EQ(cell_width, tc->expected_cell_width, "Terminal %dx%d, %d clients: Expected cell width %d, got %d", tc->terminal_width, tc->terminal_height, tc->num_clients,
-                     tc->expected_cell_width, cell_width);
-  ASCIICHAT_CHECK_EQ(cell_height, tc->expected_cell_height, "Terminal %dx%d, %d clients: Expected cell height %d, got %d", tc->terminal_width, tc->terminal_height, tc->num_clients,
-                     tc->expected_cell_height, cell_height);
+  CHECK((cols) == (tc->expected_cols));
+  CHECK((rows) == (tc->expected_rows));
+  CHECK((cell_width) == (tc->expected_cell_width));
+  CHECK((cell_height) == (tc->expected_cell_height));
 
   // NOTE: We don't assert full space utilization here because integer division can cause
   // off-by-one or off-by-two rounding (e.g., 160/3=53, so 3*53=159 not 160).

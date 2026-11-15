@@ -1,10 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file acds_signatures_test.c
  * @brief Unit tests for ACDS Ed25519 signature verification
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
@@ -17,7 +16,7 @@
 // Test suite setup - initialize libsodium
 static void acds_signatures_init(void) {
   if (sodium_init() < 0) {
-    ASCIICHAT_REQUIRE(false, "Failed to initialize libsodium");
+    REQUIRE(false);
   }
 }
 // =============================================================================
@@ -39,11 +38,11 @@ TEST_CASE("acds_signatures/session_create_sign_and_verify", "[acds_signatures]")
   // Sign the message
   uint8_t signature[64];
   asciichat_error_t sign_result = acds_sign_session_create(seckey, timestamp, capabilities, max_participants, signature);
-  ASCIICHAT_REQUIRE_EQ(sign_result, ASCIICHAT_OK, "Signing should succeed");
+  REQUIRE((sign_result) == (ASCIICHAT_OK));
 
   // Verify the signature
   asciichat_error_t verify_result = acds_verify_session_create(pubkey, timestamp, capabilities, max_participants, signature);
-  ASCIICHAT_REQUIRE_EQ(verify_result, ASCIICHAT_OK, "Signature verification should succeed");
+  REQUIRE((verify_result) == (ASCIICHAT_OK));
 }
 
 TEST_CASE("acds_signatures/session_create_wrong_pubkey", "[acds_signatures]") {
@@ -63,7 +62,7 @@ TEST_CASE("acds_signatures/session_create_wrong_pubkey", "[acds_signatures]") {
 
   // Verify with wrong pubkey (pubkey2)
   asciichat_error_t verify_result = acds_verify_session_create(pubkey2, timestamp, capabilities, max_participants, signature);
-  ASCIICHAT_REQUIRE_NE(verify_result, ASCIICHAT_OK, "Verification should fail with wrong public key");
+  REQUIRE((verify_result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("acds_signatures/session_create_tampered_timestamp", "[acds_signatures]") {
@@ -81,7 +80,7 @@ TEST_CASE("acds_signatures/session_create_tampered_timestamp", "[acds_signatures
   // Verify with tampered timestamp
   uint64_t tampered_timestamp = timestamp + 1;
   asciichat_error_t verify_result = acds_verify_session_create(pubkey, tampered_timestamp, capabilities, max_participants, signature);
-  ASCIICHAT_REQUIRE_NE(verify_result, ASCIICHAT_OK, "Verification should fail with tampered timestamp");
+  REQUIRE((verify_result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("acds_signatures/session_create_tampered_capabilities", "[acds_signatures]") {
@@ -99,7 +98,7 @@ TEST_CASE("acds_signatures/session_create_tampered_capabilities", "[acds_signatu
   // Verify with tampered capabilities
   uint8_t tampered_capabilities = 0x01; // Changed from 0x03 to 0x01
   asciichat_error_t verify_result = acds_verify_session_create(pubkey, timestamp, tampered_capabilities, max_participants, signature);
-  ASCIICHAT_REQUIRE_NE(verify_result, ASCIICHAT_OK, "Verification should fail with tampered capabilities");
+  REQUIRE((verify_result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("acds_signatures/session_create_tampered_max_participants", "[acds_signatures]") {
@@ -117,7 +116,7 @@ TEST_CASE("acds_signatures/session_create_tampered_max_participants", "[acds_sig
   // Verify with tampered max_participants
   uint8_t tampered_max = 8;
   asciichat_error_t verify_result = acds_verify_session_create(pubkey, timestamp, capabilities, tampered_max, signature);
-  ASCIICHAT_REQUIRE_NE(verify_result, ASCIICHAT_OK, "Verification should fail with tampered max_participants");
+  REQUIRE((verify_result) != (ASCIICHAT_OK));
 }
 
 // =============================================================================
@@ -137,11 +136,11 @@ TEST_CASE("acds_signatures/session_join_sign_and_verify", "[acds_signatures]") {
   // Sign the message
   uint8_t signature[64];
   asciichat_error_t sign_result = acds_sign_session_join(seckey, timestamp, session_string, signature);
-  ASCIICHAT_REQUIRE_EQ(sign_result, ASCIICHAT_OK, "Signing should succeed");
+  REQUIRE((sign_result) == (ASCIICHAT_OK));
 
   // Verify the signature
   asciichat_error_t verify_result = acds_verify_session_join(pubkey, timestamp, session_string, signature);
-  ASCIICHAT_REQUIRE_EQ(verify_result, ASCIICHAT_OK, "Signature verification should succeed");
+  REQUIRE((verify_result) == (ASCIICHAT_OK));
 }
 
 TEST_CASE("acds_signatures/session_join_wrong_pubkey", "[acds_signatures]") {
@@ -159,7 +158,7 @@ TEST_CASE("acds_signatures/session_join_wrong_pubkey", "[acds_signatures]") {
 
   // Verify with wrong pubkey
   asciichat_error_t verify_result = acds_verify_session_join(pubkey2, timestamp, session_string, signature);
-  ASCIICHAT_REQUIRE_NE(verify_result, ASCIICHAT_OK, "Verification should fail with wrong public key");
+  REQUIRE((verify_result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("acds_signatures/session_join_tampered_timestamp", "[acds_signatures]") {
@@ -176,7 +175,7 @@ TEST_CASE("acds_signatures/session_join_tampered_timestamp", "[acds_signatures]"
   // Verify with tampered timestamp
   uint64_t tampered_timestamp = timestamp + 1;
   asciichat_error_t verify_result = acds_verify_session_join(pubkey, tampered_timestamp, session_string, signature);
-  ASCIICHAT_REQUIRE_NE(verify_result, ASCIICHAT_OK, "Verification should fail with tampered timestamp");
+  REQUIRE((verify_result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("acds_signatures/session_join_tampered_session_string", "[acds_signatures]") {
@@ -193,7 +192,7 @@ TEST_CASE("acds_signatures/session_join_tampered_session_string", "[acds_signatu
   // Verify with tampered session string
   const char *tampered_string = "swift-river-ocean";
   asciichat_error_t verify_result = acds_verify_session_join(pubkey, timestamp, tampered_string, signature);
-  ASCIICHAT_REQUIRE_NE(verify_result, ASCIICHAT_OK, "Verification should fail with tampered session string");
+  REQUIRE((verify_result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("acds_signatures/session_join_empty_session_string", "[acds_signatures]") {
@@ -206,11 +205,11 @@ TEST_CASE("acds_signatures/session_join_empty_session_string", "[acds_signatures
   // Sign with empty string
   uint8_t signature[64];
   asciichat_error_t sign_result = acds_sign_session_join(seckey, timestamp, session_string, signature);
-  ASCIICHAT_REQUIRE_EQ(sign_result, ASCIICHAT_OK, "Signing empty session string should succeed");
+  REQUIRE((sign_result) == (ASCIICHAT_OK));
 
   // Verify with empty string
   asciichat_error_t verify_result = acds_verify_session_join(pubkey, timestamp, session_string, signature);
-  ASCIICHAT_REQUIRE_EQ(verify_result, ASCIICHAT_OK, "Verification should succeed with empty session string");
+  REQUIRE((verify_result) == (ASCIICHAT_OK));
 }
 
 // =============================================================================
@@ -223,7 +222,7 @@ TEST_CASE("acds_signatures/timestamp_validation_current_time", "[acds_signatures
 
   // Current time should be valid within 5 minute window
   bool is_valid = acds_validate_timestamp(now_ms, 300);
-  ASCIICHAT_REQUIRE(is_valid, "Current timestamp should be valid");
+  REQUIRE(is_valid);
 }
 
 TEST_CASE("acds_signatures/timestamp_validation_recent_past", "[acds_signatures]") {
@@ -233,7 +232,7 @@ TEST_CASE("acds_signatures/timestamp_validation_recent_past", "[acds_signatures]
 
   // Should be valid within 5 minute window
   bool is_valid = acds_validate_timestamp(two_min_ago, 300);
-  ASCIICHAT_REQUIRE(is_valid, "Recent past timestamp should be valid");
+  REQUIRE(is_valid);
 }
 
 TEST_CASE("acds_signatures/timestamp_validation_too_old", "[acds_signatures]") {
@@ -243,7 +242,7 @@ TEST_CASE("acds_signatures/timestamp_validation_too_old", "[acds_signatures]") {
 
   // Should be invalid for 5 minute window
   bool is_valid = acds_validate_timestamp(ten_min_ago, 300);
-  ASCIICHAT_REQUIRE_NOT(is_valid, "Old timestamp should be invalid");
+  REQUIRE(!(is_valid));
 }
 
 TEST_CASE("acds_signatures/timestamp_validation_future", "[acds_signatures]") {
@@ -253,7 +252,7 @@ TEST_CASE("acds_signatures/timestamp_validation_future", "[acds_signatures]") {
 
   // Future timestamps beyond clock skew should be rejected
   bool is_valid = acds_validate_timestamp(future, 300);
-  ASCIICHAT_REQUIRE_NOT(is_valid, "Future timestamp should be invalid");
+  REQUIRE(!(is_valid));
 }
 
 TEST_CASE("acds_signatures/timestamp_validation_edge_of_window", "[acds_signatures]") {
@@ -263,7 +262,7 @@ TEST_CASE("acds_signatures/timestamp_validation_edge_of_window", "[acds_signatur
 
   // Should be valid within window
   bool is_valid = acds_validate_timestamp(edge, 300);
-  ASCIICHAT_REQUIRE(is_valid, "Timestamp within window should be valid");
+  REQUIRE(is_valid);
 }
 
 // =============================================================================
@@ -275,7 +274,7 @@ TEST_CASE("acds_signatures/session_create_null_signature_output", "[acds_signatu
   memset(seckey, 0, sizeof(seckey));
 
   asciichat_error_t result = acds_sign_session_create(seckey, 12345, 0x03, 4, NULL);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Signing should fail with NULL signature output");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("acds_signatures/session_join_null_session_string", "[acds_signatures]") {
@@ -284,5 +283,5 @@ TEST_CASE("acds_signatures/session_join_null_session_string", "[acds_signatures]
   memset(seckey, 0, sizeof(seckey));
 
   asciichat_error_t result = acds_sign_session_join(seckey, 12345, NULL, signature);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Signing should fail with NULL session string");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }

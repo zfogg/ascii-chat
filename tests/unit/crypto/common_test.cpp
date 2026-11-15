@@ -1,6 +1,5 @@
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
+#include <ascii-chat/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -8,7 +7,6 @@
 #include <stdlib.h>
 #include <limits.h>
 
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
@@ -19,13 +17,13 @@
 TEST_CASE("common/safe_malloc_basic", "[common]") {
   void *ptr;
   ptr = SAFE_MALLOC(1024, void *);
-  ASCIICHAT_REQUIRE_NOT_NULL(ptr, "SAFE_MALLOC should return valid pointer");
+  REQUIRE((ptr) != nullptr);
 
   // Write to memory to ensure it's accessible
   memset(ptr, 0xAA, 1024);
   uint8_t *byte_ptr = (uint8_t *)ptr;
-  ASCIICHAT_REQUIRE_EQ(byte_ptr[0], 0xAA, "Memory should be writable");
-  ASCIICHAT_REQUIRE_EQ(byte_ptr[1023], 0xAA, "All allocated memory should be accessible");
+  REQUIRE((byte_ptr[0]) == (0xAA));
+  REQUIRE((byte_ptr[1023]) == (0xAA));
 
   SAFE_FREE(ptr);
 }
@@ -40,11 +38,11 @@ TEST_CASE("common/safe_calloc_basic", "[common]") {
   size_t size = sizeof(int);
 
   ptr = SAFE_CALLOC(count, size, int *);
-  ASCIICHAT_REQUIRE_NOT_NULL(ptr, "SAFE_CALLOC should return valid pointer");
+  REQUIRE((ptr) != nullptr);
 
   // Verify memory is zeroed
   for (size_t i = 0; i < count; i++) {
-    ASCIICHAT_REQUIRE_EQ(ptr[i], 0, "CALLOC memory should be zeroed at index %zu", i);
+    REQUIRE((ptr[i]) == (0));
   }
 
   SAFE_FREE(ptr);
@@ -58,19 +56,19 @@ TEST_CASE("common/safe_realloc_basic", "[common]") {
   void *ptr;
   // Initial allocation
   ptr = SAFE_MALLOC(512, void *);
-  ASCIICHAT_REQUIRE_NOT_NULL(ptr, "Initial malloc should succeed");
+  REQUIRE((ptr) != nullptr);
 
   // Write pattern to memory
   memset(ptr, 0xBB, 512);
 
   // Realloc to larger size
   ptr = SAFE_REALLOC(ptr, 1024, void *);
-  ASCIICHAT_REQUIRE_NOT_NULL(ptr, "SAFE_REALLOC should return valid pointer");
+  REQUIRE((ptr) != nullptr);
 
   // Verify original data is preserved
   uint8_t *byte_ptr = (uint8_t *)ptr;
   for (int i = 0; i < 512; i++) {
-    ASCIICHAT_REQUIRE_EQ(byte_ptr[i], 0xBB, "Original data should be preserved at index %d", i);
+    REQUIRE((byte_ptr[i]) == (0xBB));
   }
 
   SAFE_FREE(ptr);
@@ -98,12 +96,12 @@ TEST_CASE("common/error_code_definitions", "[common]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(error_code_cases));
   auto *tc = &generated_case;
   // Error codes should be defined
-  ASCIICHAT_REQUIRE(tc->error_code != -999999, "%s should be defined", tc->error_name);
+  REQUIRE(tc->error_code != -999999);
 
   // Get error string
   const char *error_str = asciichat_error_string(static_cast<asciichat_error_t>(tc->error_code));
-  ASCIICHAT_REQUIRE_NOT_NULL(error_str, "%s error string should not be NULL", tc->error_name);
-  ASCIICHAT_REQUIRE(strlen(error_str) > 0, "%s error string should not be empty", tc->error_name);
+  REQUIRE((error_str) != nullptr);
+  REQUIRE(strlen(error_str) > 0);
 }
 
 TEST_CASE("common/error_codes_are_distinct", "[common]") {
@@ -113,7 +111,7 @@ TEST_CASE("common/error_codes_are_distinct", "[common]") {
 
   for (size_t i = 0; i < count; i++) {
     for (size_t j = i + 1; j < count; j++) {
-      ASCIICHAT_REQUIRE_NE(codes[i], codes[j], "Error codes at index %zu and %zu should be distinct", i, j);
+      REQUIRE((codes[i]) != (codes[j]));
     }
   }
 }
@@ -165,16 +163,16 @@ TEST_CASE("common/min_max_macros", "[common]") {
   int min_result = MIN(tc->a, tc->b);
   int max_result = MAX(tc->a, tc->b);
 
-  ASCIICHAT_REQUIRE_EQ(min_result, tc->expected_min, "%s: MIN(%d, %d) should be %d", tc->description, tc->a, tc->b, tc->expected_min);
-  ASCIICHAT_REQUIRE_EQ(max_result, tc->expected_max, "%s: MAX(%d, %d) should be %d", tc->description, tc->a, tc->b, tc->expected_max);
+  REQUIRE((min_result) == (tc->expected_min));
+  REQUIRE((max_result) == (tc->expected_max));
 }
 
 TEST_CASE("common/array_size_macro", "[common]") {
   int test_array[42];
-  ASCIICHAT_REQUIRE_EQ(ARRAY_SIZE(test_array), 42, "ARRAY_SIZE should return correct size");
+  REQUIRE((ARRAY_SIZE(test_array)) == (42));
 
   char string_array[] = "hello";
-  ASCIICHAT_REQUIRE_EQ(ARRAY_SIZE(string_array), 6, "ARRAY_SIZE should include null terminator");
+  REQUIRE((ARRAY_SIZE(string_array)) == (6));
 }
 
 // =============================================================================
@@ -188,7 +186,7 @@ TEST_CASE("common/concurrent_allocations", "[common]") {
   // Allocate multiple blocks
   for (int i = 0; i < 10; i++) {
     ptrs[i] = SAFE_MALLOC(1024 * (i + 1), void *);
-    ASCIICHAT_REQUIRE_NOT_NULL(ptrs[i], "Allocation %d should succeed", i);
+    REQUIRE((ptrs[i]) != nullptr);
 
     // Write unique pattern to each block
     memset(ptrs[i], 0x10 + i, 1024 * (i + 1));
@@ -197,8 +195,8 @@ TEST_CASE("common/concurrent_allocations", "[common]") {
   // Verify patterns are intact
   for (int i = 0; i < 10; i++) {
     uint8_t *byte_ptr = (uint8_t *)ptrs[i];
-    ASCIICHAT_REQUIRE_EQ(byte_ptr[0], 0x10 + i, "Pattern should be intact in block %d", i);
-    ASCIICHAT_REQUIRE_EQ(byte_ptr[1023 * (i + 1)], 0x10 + i, "Pattern should be intact at end of block %d", i);
+    REQUIRE((byte_ptr[0]) == (0x10 + i));
+    REQUIRE((byte_ptr[1023 * (i + 1)]) == (0x10 + i));
   }
 
   // Free all blocks
@@ -222,8 +220,8 @@ TEST_CASE("common/large_allocations", "[common]") {
   byte_ptr[0] = 0xFF;
   byte_ptr[large_size - 1] = 0xEE;
 
-  ASCIICHAT_REQUIRE_EQ(byte_ptr[0], 0xFF, "First byte should be writable");
-  ASCIICHAT_REQUIRE_EQ(byte_ptr[large_size - 1], 0xEE, "Last byte should be writable");
+  REQUIRE((byte_ptr[0]) == (0xFF));
+  REQUIRE((byte_ptr[large_size - 1]) == (0xEE));
 
   SAFE_FREE(ptr);
 }
@@ -236,18 +234,18 @@ TEST_CASE("common/alignment_checks", "[common]") {
   ptr2 = SAFE_MALLOC(3, void *);
   ptr3 = SAFE_MALLOC(7, void *);
 
-  ASCIICHAT_REQUIRE_NOT_NULL(ptr1, "Small allocation should succeed");
-  ASCIICHAT_REQUIRE_NOT_NULL(ptr2, "Small allocation should succeed");
-  ASCIICHAT_REQUIRE_NOT_NULL(ptr3, "Small allocation should succeed");
+  REQUIRE((ptr1) != nullptr);
+  REQUIRE((ptr2) != nullptr);
+  REQUIRE((ptr3) != nullptr);
 
   // Check alignment (should be at least pointer-aligned)
   uintptr_t addr1 = (uintptr_t)ptr1;
   uintptr_t addr2 = (uintptr_t)ptr2;
   uintptr_t addr3 = (uintptr_t)ptr3;
 
-  ASCIICHAT_REQUIRE_EQ(addr1 % sizeof(void *), 0, "Memory should be pointer-aligned");
-  ASCIICHAT_REQUIRE_EQ(addr2 % sizeof(void *), 0, "Memory should be pointer-aligned");
-  ASCIICHAT_REQUIRE_EQ(addr3 % sizeof(void *), 0, "Memory should be pointer-aligned");
+  REQUIRE((addr1 % sizeof(void *)) == (0));
+  REQUIRE((addr2 % sizeof(void *)) == (0));
+  REQUIRE((addr3 % sizeof(void *)) == (0));
 
   SAFE_FREE(ptr1);
   SAFE_FREE(ptr2);
@@ -276,5 +274,5 @@ TEST_CASE("common/log_memory_operations", "[common]") {
     log_debug("Freed memory");
   }
 
-  ASCIICHAT_REQUIRE(true, "Logging during memory operations should work");
+  REQUIRE(true);
 }

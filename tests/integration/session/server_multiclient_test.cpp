@@ -1,10 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file server_multiclient_test.c
  * @brief Server multi-client integration tests
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
@@ -18,7 +17,7 @@
 
 TEST_CASE("server_multiclient/create_frame_buffer", "[server_multiclient]") {
   video_frame_buffer_t *vfb = video_frame_buffer_create("client_1");
-  ASCIICHAT_REQUIRE_NOT_NULL(vfb, "Should create frame buffer");
+  REQUIRE((vfb) != nullptr);
 
   video_frame_buffer_destroy(vfb);
 }
@@ -31,7 +30,7 @@ TEST_CASE("server_multiclient/create_multiple_frame_buffers", "[server_multiclie
     char client_id[32];
     snprintf(client_id, sizeof(client_id), "client_%d", i);
     buffers[i] = video_frame_buffer_create(client_id);
-    ASCIICHAT_REQUIRE_NOT_NULL(buffers[i], "Should create buffer for client %d", i);
+    REQUIRE((buffers[i]) != nullptr);
   }
 
   for (int i = 0; i < num_clients; i++) {
@@ -41,7 +40,7 @@ TEST_CASE("server_multiclient/create_multiple_frame_buffers", "[server_multiclie
 
 TEST_CASE("server_multiclient/destroy_null_buffer", "[server_multiclient]") {
   video_frame_buffer_destroy(NULL);
-  ASCIICHAT_REQUIRE(true, "Destroying NULL buffer should not crash");
+  REQUIRE(true);
 }
 
 // =============================================================================
@@ -52,7 +51,7 @@ TEST_CASE("server_multiclient/begin_write_and_commit", "[server_multiclient]") {
   video_frame_buffer_t *vfb = video_frame_buffer_create("client_1");
 
   video_frame_t *frame = video_frame_begin_write(vfb);
-  ASCIICHAT_REQUIRE_NOT_NULL(frame, "Should get writable frame");
+  REQUIRE((frame) != nullptr);
 
   frame->width = 640;
   frame->height = 480;
@@ -70,7 +69,7 @@ TEST_CASE("server_multiclient/multiple_writes", "[server_multiclient]") {
   // Write multiple frames
   for (int i = 0; i < 5; i++) {
     video_frame_t *frame = video_frame_begin_write(vfb);
-    ASCIICHAT_REQUIRE_NOT_NULL(frame, "Should get writable frame on iteration %d", i);
+    REQUIRE((frame) != nullptr);
 
     frame->width = 640 + i;
     frame->height = 480 + i;
@@ -99,9 +98,9 @@ TEST_CASE("server_multiclient/get_latest_frame", "[server_multiclient]") {
 
   // Read the frame
   const video_frame_t *read_frame = video_frame_get_latest(vfb);
-  ASCIICHAT_REQUIRE_NOT_NULL(read_frame, "Should get latest frame after write");
-  ASCIICHAT_REQUIRE_EQ(read_frame->width, 640, "Frame width should match");
-  ASCIICHAT_REQUIRE_EQ(read_frame->height, 480, "Frame height should match");
+  REQUIRE((read_frame) != nullptr);
+  REQUIRE((read_frame->width) == (640));
+  REQUIRE((read_frame->height) == (480));
 
   video_frame_buffer_destroy(vfb);
 }
@@ -111,7 +110,7 @@ TEST_CASE("server_multiclient/no_frame_initially", "[server_multiclient]") {
 
   // No write yet, should return NULL
   const video_frame_t *frame = video_frame_get_latest(vfb);
-  ASCIICHAT_REQUIRE_NULL(frame, "Should return NULL when no frame written");
+  REQUIRE((frame) == nullptr);
 
   video_frame_buffer_destroy(vfb);
 }
@@ -131,8 +130,8 @@ TEST_CASE("server_multiclient/latest_frame_wins", "[server_multiclient]") {
 
   // Should get second frame
   const video_frame_t *latest = video_frame_get_latest(vfb);
-  ASCIICHAT_REQUIRE_NOT_NULL(latest, "Should get frame");
-  ASCIICHAT_REQUIRE_EQ(latest->sequence_number, 2, "Should have second frame");
+  REQUIRE((latest) != nullptr);
+  REQUIRE((latest->sequence_number) == (2));
 
   video_frame_buffer_destroy(vfb);
 }
@@ -149,15 +148,15 @@ TEST_CASE("server_multiclient/get_frame_stats", "[server_multiclient]") {
     video_frame_t *frame = video_frame_begin_write(vfb);
     frame->sequence_number = i + 1;
     video_frame_commit(vfb);
-    ASCIICHAT_REQUIRE_NOT_NULL(video_frame_get_latest(vfb), "Should consume committed frame %d", i + 1);
+    REQUIRE((video_frame_get_latest(vfb)) != nullptr);
   }
 
   // Get stats
   video_frame_stats_t stats;
   video_frame_get_stats(vfb, &stats);
 
-  ASCIICHAT_REQUIRE_EQ(stats.total_frames, 3, "Should have 3 total frames");
-  ASCIICHAT_REQUIRE_EQ(stats.dropped_frames, 0, "Should have no dropped frames");
+  REQUIRE((stats.total_frames) == (3));
+  REQUIRE((stats.dropped_frames) == (0));
 
   video_frame_buffer_destroy(vfb);
 }
@@ -168,8 +167,8 @@ TEST_CASE("server_multiclient/stats_initially_zero", "[server_multiclient]") {
   video_frame_stats_t stats;
   video_frame_get_stats(vfb, &stats);
 
-  ASCIICHAT_REQUIRE_EQ(stats.total_frames, 0, "Should start with 0 frames");
-  ASCIICHAT_REQUIRE_EQ(stats.dropped_frames, 0, "Should start with 0 dropped");
+  REQUIRE((stats.total_frames) == (0));
+  REQUIRE((stats.dropped_frames) == (0));
 
   video_frame_buffer_destroy(vfb);
 }
@@ -180,7 +179,7 @@ TEST_CASE("server_multiclient/stats_initially_zero", "[server_multiclient]") {
 
 TEST_CASE("server_multiclient/create_simple_frame_swap", "[server_multiclient]") {
   simple_frame_swap_t *sfs = simple_frame_swap_create();
-  ASCIICHAT_REQUIRE_NOT_NULL(sfs, "Should create simple frame swap");
+  REQUIRE((sfs) != nullptr);
 
   simple_frame_swap_destroy(sfs);
 }
@@ -194,8 +193,8 @@ TEST_CASE("server_multiclient/simple_frame_swap_update", "[server_multiclient]")
   simple_frame_swap_update(sfs, data, sizeof(data));
 
   const video_frame_t *frame = simple_frame_swap_get(sfs);
-  ASCIICHAT_REQUIRE_NOT_NULL(frame, "Should get frame after update");
-  ASCIICHAT_REQUIRE_EQ(frame->size, sizeof(data), "Frame size should match");
+  REQUIRE((frame) != nullptr);
+  REQUIRE((frame->size) == (sizeof(data)));
 
   simple_frame_swap_destroy(sfs);
 }
@@ -204,7 +203,7 @@ TEST_CASE("server_multiclient/simple_frame_swap_null_initially", "[server_multic
   simple_frame_swap_t *sfs = simple_frame_swap_create();
 
   const video_frame_t *frame = simple_frame_swap_get(sfs);
-  ASCIICHAT_REQUIRE_NULL(frame, "Should return NULL initially");
+  REQUIRE((frame) == nullptr);
 
   simple_frame_swap_destroy(sfs);
 }
@@ -227,7 +226,7 @@ TEST_CASE("server_multiclient/simple_frame_swap_multiple_updates", "[server_mult
     }
 
     const video_frame_t *frame = simple_frame_swap_get(sfs);
-    ASCIICHAT_REQUIRE_NOT_NULL(frame, "Should have frame at iteration %d", i);
+    REQUIRE((frame) != nullptr);
   }
 
   simple_frame_swap_destroy(sfs);
@@ -252,7 +251,7 @@ TEST_CASE("server_multiclient/multiclient_concurrent_writes", "[server_multiclie
   for (int round = 0; round < 3; round++) {
     for (int i = 0; i < num_clients; i++) {
       video_frame_t *frame = video_frame_begin_write(buffers[i]);
-      ASCIICHAT_REQUIRE_NOT_NULL(frame, "Should write frame for client %d round %d", i, round);
+      REQUIRE((frame) != nullptr);
 
       frame->width = 640 + i;
       frame->height = 480 + i;
@@ -265,8 +264,8 @@ TEST_CASE("server_multiclient/multiclient_concurrent_writes", "[server_multiclie
   // Verify all clients have latest frames
   for (int i = 0; i < num_clients; i++) {
     const video_frame_t *frame = video_frame_get_latest(buffers[i]);
-    ASCIICHAT_REQUIRE_NOT_NULL(frame, "Client %d should have frame", i);
-    ASCIICHAT_REQUIRE_EQ(frame->width, 640 + i, "Client %d width should match", i);
+    REQUIRE((frame) != nullptr);
+    REQUIRE((frame->width) == (640 + i));
   }
 
   // Cleanup
@@ -296,7 +295,7 @@ TEST_CASE("server_multiclient/multiclient_stats_aggregation", "[server_multiclie
   for (int i = 0; i < num_clients; i++) {
     video_frame_stats_t stats;
     video_frame_get_stats(buffers[i], &stats);
-    ASCIICHAT_REQUIRE_EQ(stats.total_frames, i + 2, "Client %d should have %d frames", i, i + 2);
+    REQUIRE((stats.total_frames) == (i + 2));
   }
 
   // Cleanup

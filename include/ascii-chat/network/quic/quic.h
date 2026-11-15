@@ -2,6 +2,10 @@
 
 #include <ascii-chat/network/acip/transport.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** QUIC endpoint for native ACIP and HTTP/3/WebTransport. Native
  * ACIP transports are returned by quic_accept(); generic HTTP/3 request
  * connections are consumed by the configured http_server and are never
@@ -79,3 +83,7 @@ asciichat_error_t quic_endpoint_destroy(quic_endpoint_t **endpoint);
  * The new address must have the same family as the existing remote address. */
 asciichat_error_t quic_endpoint_migrate(quic_endpoint_t *endpoint, const struct sockaddr *local_address,
                                         socklen_t length);
+
+#ifdef __cplusplus
+}
+#endif

@@ -79,6 +79,10 @@ using std::memory_order_relaxed;
 // Headers can include this even before common.h is fully processed
 #include <ascii-chat/uthash.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // ============================================================================
 // Core Monotonic Timing API (Nanosecond Precision)
 // ============================================================================
@@ -888,3 +892,7 @@ uint64_t time_timespec_to_ns(const struct timespec *ts);
  *
  * Useful for nanosleep() or other system calls that require struct timespec.
  */
+
+#ifdef __cplusplus
+}
+#endif

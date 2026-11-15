@@ -8,6 +8,10 @@
 
 #include "builder.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Build unified options config with ALL options (binary + all modes)
  *
@@ -18,3 +22,7 @@
 options_config_t *options_preset_unified(const char *program_name, const char *description);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file query_test.c
  * @brief Unit tests for the query tool runtime API
@@ -12,8 +13,6 @@
  * These unit tests focus on the C API and macro behavior.
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <stdlib.h>
@@ -41,7 +40,7 @@ TEST_CASE("query_api/macros_compile_in_debug", "[query_api]") {
 TEST_CASE("query_api/shutdown_safe_when_not_initialized", "[query_api]") {
   // Shutdown should be safe to call even if init was never called
   QUERY_SHUTDOWN();
-  ASCIICHAT_REQUIRE(true, "Shutdown did not crash when called without init");
+  REQUIRE(true);
 }
 
 TEST_CASE("query_api/shutdown_multiple_calls_safe", "[query_api]") {
@@ -49,17 +48,17 @@ TEST_CASE("query_api/shutdown_multiple_calls_safe", "[query_api]") {
   QUERY_SHUTDOWN();
   QUERY_SHUTDOWN();
   QUERY_SHUTDOWN();
-  ASCIICHAT_REQUIRE(true, "Multiple shutdown calls did not crash");
+  REQUIRE(true);
 }
 
 TEST_CASE("query_api/active_returns_false_when_not_initialized", "[query_api]") {
   // Before init, active should return false
-  ASCIICHAT_REQUIRE_EQ(QUERY_ACTIVE(), false, "Expected QUERY_ACTIVE() to return false before init");
+  REQUIRE((QUERY_ACTIVE()) == (false));
 }
 
 TEST_CASE("query_api/port_returns_negative_when_not_initialized", "[query_api]") {
   // Before init, port should return -1
-  ASCIICHAT_REQUIRE_EQ(QUERY_PORT(), -1, "Expected QUERY_PORT() to return -1 before init");
+  REQUIRE((QUERY_PORT()) == (-1));
 }
 
 // ============================================================================
@@ -77,9 +76,9 @@ TEST_CASE("query_api/init_returns_negative_without_controller", "[query_api]") {
   // Should fail because controller binary not in standard paths
   // (unless actually present in .deps-cache, which is fine - it would pass)
   if (result < 0) {
-    ASCIICHAT_REQUIRE_EQ(result, -1, "Expected -1 on init failure");
-    ASCIICHAT_REQUIRE_EQ(QUERY_ACTIVE(), false, "Should not be active after failed init");
-    ASCIICHAT_REQUIRE_EQ(QUERY_PORT(), -1, "Port should be -1 after failed init");
+    REQUIRE((result) == (-1));
+    REQUIRE((QUERY_ACTIVE()) == (false));
+    REQUIRE((QUERY_PORT()) == (-1));
   } else {
     // Controller was found and initialized - clean up
     INFO("Controller binary was found and initialized");
@@ -98,7 +97,7 @@ TEST_CASE("query_api/init_with_invalid_port_zero", "[query_api]") {
   QUERY_SHUTDOWN();
 
   // Just verify it didn't crash - port 0 behavior depends on controller
-  ASCIICHAT_REQUIRE(true, "Init with port 0 did not crash");
+  REQUIRE(true);
 }
 
 // ============================================================================
@@ -109,8 +108,8 @@ TEST_CASE("query_api/state_consistent_after_shutdown", "[query_api]") {
   // Ensure state is reset properly after shutdown
   QUERY_SHUTDOWN();
 
-  ASCIICHAT_REQUIRE_EQ(QUERY_ACTIVE(), false, "Should not be active after shutdown");
-  ASCIICHAT_REQUIRE_EQ(QUERY_PORT(), -1, "Port should be -1 after shutdown");
+  REQUIRE((QUERY_ACTIVE()) == (false));
+  REQUIRE((QUERY_PORT()) == (-1));
 }
 
 TEST_CASE("query_api/active_reflects_port_state", "[query_api]") {
@@ -119,9 +118,9 @@ TEST_CASE("query_api/active_reflects_port_state", "[query_api]") {
   int port = QUERY_PORT();
 
   if (active) {
-    ASCIICHAT_REQUIRE(port > 0, "If active, port should be positive");
+    REQUIRE(port > 0);
   } else {
-    ASCIICHAT_REQUIRE_EQ(port, -1, "If not active, port should be -1");
+    REQUIRE((port) == (-1));
   }
 }
 
@@ -134,16 +133,16 @@ TEST_CASE("query_api_release/macros_are_noops_in_release", "[query_api_release]"
   // In release builds, macros should be no-ops that don't call functions
   // QUERY_INIT should return -1
   int result = QUERY_INIT(9999);
-  ASCIICHAT_REQUIRE_EQ(result, -1, "QUERY_INIT should return -1 in release builds");
+  REQUIRE((result) == (-1));
 
   // QUERY_ACTIVE should return false
-  ASCIICHAT_REQUIRE_EQ(QUERY_ACTIVE(), false, "QUERY_ACTIVE should return false in release builds");
+  REQUIRE((QUERY_ACTIVE()) == (false));
 
   // QUERY_PORT should return -1
-  ASCIICHAT_REQUIRE_EQ(QUERY_PORT(), -1, "QUERY_PORT should return -1 in release builds");
+  REQUIRE((QUERY_PORT()) == (-1));
 
   // QUERY_SHUTDOWN should be safe
   QUERY_SHUTDOWN();
-  ASCIICHAT_REQUIRE(true, "QUERY_SHUTDOWN is safe no-op in release builds");
+  REQUIRE(true);
 }
 #endif

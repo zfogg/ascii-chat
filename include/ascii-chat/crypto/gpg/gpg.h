@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file crypto/gpg/gpg.h
  * @brief GPG operations - main header
@@ -23,3 +27,7 @@
 #include "verification.h"
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

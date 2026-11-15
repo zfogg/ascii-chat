@@ -12,6 +12,10 @@
 #include <pcre2.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Compile a pattern owned by the caller, who must call pcre2_code_free(). */
 pcre2_code *asciichat_pcre2_compile(const char *pattern, uint32_t flags);
 
@@ -120,3 +124,7 @@ bool asciichat_pcre2_extract_group_ulong(pcre2_match_data *match_data, int group
  */
 int asciichat_pcre2_match(const pcre2_code *code, PCRE2_SPTR subject, PCRE2_SIZE length, PCRE2_SIZE startoffset,
                           uint32_t options, pcre2_match_data *match_data, pcre2_match_context *context);
+
+#ifdef __cplusplus
+}
+#endif

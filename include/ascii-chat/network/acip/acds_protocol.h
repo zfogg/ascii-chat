@@ -6,6 +6,10 @@
 
 #include <ascii-chat/network/acip/acds_client.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Event-driven discovery protocol. Callbacks consume borrowed data before returning.
  * The caller owns transport I/O, deadlines, and serialization of calls to this object.
  * No function waits for input or owns the transport.
@@ -63,3 +67,7 @@ asciichat_error_t acds_handshake_receive(crypto_handshake_context_t *context, ac
 /** Receive discovery traffic, including WS application encryption. TCP decrypts in its transport. */
 asciichat_error_t acds_receive_packet(acip_transport_t *transport, packet_type_t *type, void **payload, size_t *length,
                                       void **allocation);
+
+#ifdef __cplusplus
+}
+#endif

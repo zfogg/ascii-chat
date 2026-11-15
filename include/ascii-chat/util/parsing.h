@@ -118,10 +118,6 @@ asciichat_error_t safe_parse_audio_message(const char *message, unsigned int *nu
 
 /** @} */
 
-#ifdef __cplusplus
-}
-#endif
-
 /* ============================================================================
  * Integer Parsing Functions
  * @{
@@ -190,3 +186,7 @@ asciichat_error_t parse_int32(const char *str, int32_t *out_value, int32_t min_v
 asciichat_error_t parse_uint32(const char *str, uint32_t *out_value, uint32_t min_value, uint32_t max_value);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

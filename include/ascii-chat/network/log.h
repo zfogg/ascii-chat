@@ -25,6 +25,10 @@ typedef enum remote_log_direction {
 
 #include "../log/log.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Network Logging Macros
  * ============================================================================
@@ -101,3 +105,7 @@ typedef enum remote_log_direction {
 #define log_fatal_server(transport, fmt, ...) LOG_SERVER_IMPL(transport, LOG_FATAL, fmt, ##__VA_ARGS__)
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

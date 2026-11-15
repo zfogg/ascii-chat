@@ -1,12 +1,9 @@
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <time.h>
 #include <math.h>
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/util/aspect_ratio.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
@@ -24,10 +21,10 @@ TEST_CASE("aspect_ratio/basic_functionality", "[aspect_ratio]") {
   // With CHAR_ASPECT = 2.0, the calculation should be:
   // height = 24, so width = 24 * (1920/1080) * 2.0 = 24 * 1.777 * 2.0 = 85.33
   // But it should fit within 80x24, so it will be width-constrained
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 80);
-  ASCIICHAT_REQUIRE_LE(out_height, 24);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (80));
+  REQUIRE((out_height) <= (24));
 }
 
 TEST_CASE("aspect_ratio/stretch_mode", "[aspect_ratio]") {
@@ -36,8 +33,8 @@ TEST_CASE("aspect_ratio/stretch_mode", "[aspect_ratio]") {
   // Test stretch mode - should use full terminal dimensions
   aspect_ratio(1920, 1080, 80, 24, true, &out_width, &out_height);
 
-  ASCIICHAT_REQUIRE_EQ(out_width, 80);
-  ASCIICHAT_REQUIRE_EQ(out_height, 24);
+  REQUIRE((out_width) == (80));
+  REQUIRE((out_height) == (24));
 }
 
 TEST_CASE("aspect_ratio/square_image", "[aspect_ratio]") {
@@ -47,10 +44,10 @@ TEST_CASE("aspect_ratio/square_image", "[aspect_ratio]") {
   aspect_ratio(100, 100, 80, 24, false, &out_width, &out_height);
 
   // Should fit within bounds while maintaining square aspect
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 80);
-  ASCIICHAT_REQUIRE_LE(out_height, 24);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (80));
+  REQUIRE((out_height) <= (24));
 }
 
 TEST_CASE("aspect_ratio/tall_image", "[aspect_ratio]") {
@@ -59,10 +56,10 @@ TEST_CASE("aspect_ratio/tall_image", "[aspect_ratio]") {
   // Test tall image (portrait)
   aspect_ratio(100, 200, 80, 24, false, &out_width, &out_height);
 
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 80);
-  ASCIICHAT_REQUIRE_LE(out_height, 24);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (80));
+  REQUIRE((out_height) <= (24));
 }
 
 TEST_CASE("aspect_ratio/wide_image", "[aspect_ratio]") {
@@ -71,10 +68,10 @@ TEST_CASE("aspect_ratio/wide_image", "[aspect_ratio]") {
   // Test wide image (landscape)
   aspect_ratio(200, 100, 80, 24, false, &out_width, &out_height);
 
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 80);
-  ASCIICHAT_REQUIRE_LE(out_height, 24);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (80));
+  REQUIRE((out_height) <= (24));
 }
 
 TEST_CASE("aspect_ratio/null_output_pointers", "[aspect_ratio]") {
@@ -82,7 +79,7 @@ TEST_CASE("aspect_ratio/null_output_pointers", "[aspect_ratio]") {
   aspect_ratio(1920, 1080, 80, 24, false, NULL, NULL);
   aspect_ratio(1920, 1080, 80, 24, false, NULL, NULL);
   // If we get here without crashing, the test passes
-  ASCIICHAT_REQUIRE(true);
+  REQUIRE(true);
 }
 
 // Parameterized test for invalid dimensions across all three functions
@@ -137,8 +134,8 @@ TEST_CASE("aspect_ratio/invalid_dimensions_parameterized", "[aspect_ratio]") {
     aspect_ratio(test_case->img_w, test_case->img_h, test_case->target_w, test_case->target_h, false, &out_width, &out_height);
   }
 
-  ASCIICHAT_REQUIRE_EQ(out_width, test_case->expected_w, "%s: expected width %zd, got %zd", test_case->description, test_case->expected_w, out_width);
-  ASCIICHAT_REQUIRE_EQ(out_height, test_case->expected_h, "%s: expected height %zd, got %zd", test_case->description, test_case->expected_h, out_height);
+  REQUIRE((out_width) == (test_case->expected_w));
+  REQUIRE((out_height) == (test_case->expected_h));
 }
 
 TEST_CASE("aspect_ratio/very_small_image", "[aspect_ratio]") {
@@ -147,10 +144,10 @@ TEST_CASE("aspect_ratio/very_small_image", "[aspect_ratio]") {
   // Test with very small image
   aspect_ratio(1, 1, 80, 24, false, &out_width, &out_height);
 
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 80);
-  ASCIICHAT_REQUIRE_LE(out_height, 24);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (80));
+  REQUIRE((out_height) <= (24));
 }
 
 TEST_CASE("aspect_ratio/very_large_image", "[aspect_ratio]") {
@@ -159,10 +156,10 @@ TEST_CASE("aspect_ratio/very_large_image", "[aspect_ratio]") {
   // Test with very large image
   aspect_ratio(10000, 10000, 80, 24, false, &out_width, &out_height);
 
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 80);
-  ASCIICHAT_REQUIRE_LE(out_height, 24);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (80));
+  REQUIRE((out_height) <= (24));
 }
 
 /* ============================================================================
@@ -176,17 +173,17 @@ TEST_CASE("aspect_ratio2/basic_functionality", "[aspect_ratio2]") {
   aspect_ratio2(1920, 1080, 80, 24, &out_width, &out_height);
 
   // Should maintain aspect ratio and fit within target dimensions
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 80);
-  ASCIICHAT_REQUIRE_LE(out_height, 24);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (80));
+  REQUIRE((out_height) <= (24));
 }
 
 TEST_CASE("aspect_ratio2/null_output_pointers", "[aspect_ratio2]") {
   // Test with NULL output pointers - should not crash
   aspect_ratio2(1920, 1080, 80, 24, NULL, NULL);
   // If we get here without crashing, the test passes
-  ASCIICHAT_REQUIRE(true);
+  REQUIRE(true);
 }
 
 TEST_CASE("aspect_ratio2/square_image", "[aspect_ratio2]") {
@@ -196,10 +193,10 @@ TEST_CASE("aspect_ratio2/square_image", "[aspect_ratio2]") {
   aspect_ratio2(100, 100, 80, 24, &out_width, &out_height);
 
   // Should maintain square aspect ratio
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 80);
-  ASCIICHAT_REQUIRE_LE(out_height, 24);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (80));
+  REQUIRE((out_height) <= (24));
 }
 
 TEST_CASE("aspect_ratio2/tall_image", "[aspect_ratio2]") {
@@ -208,10 +205,10 @@ TEST_CASE("aspect_ratio2/tall_image", "[aspect_ratio2]") {
   // Test tall image (portrait)
   aspect_ratio2(100, 200, 80, 24, &out_width, &out_height);
 
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 80);
-  ASCIICHAT_REQUIRE_LE(out_height, 24);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (80));
+  REQUIRE((out_height) <= (24));
 }
 
 TEST_CASE("aspect_ratio2/wide_image", "[aspect_ratio2]") {
@@ -220,10 +217,10 @@ TEST_CASE("aspect_ratio2/wide_image", "[aspect_ratio2]") {
   // Test wide image (landscape)
   aspect_ratio2(200, 100, 80, 24, &out_width, &out_height);
 
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 80);
-  ASCIICHAT_REQUIRE_LE(out_height, 24);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (80));
+  REQUIRE((out_height) <= (24));
 }
 
 /* ============================================================================
@@ -236,17 +233,17 @@ TEST_CASE("calculate_fit_dimensions_pixel/basic_functionality", "[calculate_fit_
   // Test basic functionality
   calculate_fit_dimensions_pixel(1920, 1080, 80, 24, &out_width, &out_height);
 
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 80);
-  ASCIICHAT_REQUIRE_LE(out_height, 24);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (80));
+  REQUIRE((out_height) <= (24));
 }
 
 TEST_CASE("calculate_fit_dimensions_pixel/null_output_pointers", "[calculate_fit_dimensions_pixel]") {
   // Test with NULL output pointers - should not crash
   calculate_fit_dimensions_pixel(1920, 1080, 80, 24, NULL, NULL);
   // If we get here without crashing, the test passes
-  ASCIICHAT_REQUIRE(true);
+  REQUIRE(true);
 }
 
 TEST_CASE("calculate_fit_dimensions_pixel/square_image", "[calculate_fit_dimensions_pixel]") {
@@ -256,10 +253,10 @@ TEST_CASE("calculate_fit_dimensions_pixel/square_image", "[calculate_fit_dimensi
   calculate_fit_dimensions_pixel(100, 100, 80, 24, &out_width, &out_height);
 
   // Should maintain square aspect ratio
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 80);
-  ASCIICHAT_REQUIRE_LE(out_height, 24);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (80));
+  REQUIRE((out_height) <= (24));
 }
 
 TEST_CASE("calculate_fit_dimensions_pixel/tall_image", "[calculate_fit_dimensions_pixel]") {
@@ -268,10 +265,10 @@ TEST_CASE("calculate_fit_dimensions_pixel/tall_image", "[calculate_fit_dimension
   // Test tall image (portrait)
   calculate_fit_dimensions_pixel(100, 200, 80, 24, &out_width, &out_height);
 
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 80);
-  ASCIICHAT_REQUIRE_LE(out_height, 24);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (80));
+  REQUIRE((out_height) <= (24));
 }
 
 TEST_CASE("calculate_fit_dimensions_pixel/wide_image", "[calculate_fit_dimensions_pixel]") {
@@ -280,10 +277,10 @@ TEST_CASE("calculate_fit_dimensions_pixel/wide_image", "[calculate_fit_dimension
   // Test wide image (landscape)
   calculate_fit_dimensions_pixel(200, 100, 80, 24, &out_width, &out_height);
 
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 80);
-  ASCIICHAT_REQUIRE_LE(out_height, 24);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (80));
+  REQUIRE((out_height) <= (24));
 }
 
 TEST_CASE("calculate_fit_dimensions_pixel/exact_fit", "[calculate_fit_dimensions_pixel]") {
@@ -292,8 +289,8 @@ TEST_CASE("calculate_fit_dimensions_pixel/exact_fit", "[calculate_fit_dimensions
   // Test image that exactly fits the target dimensions
   calculate_fit_dimensions_pixel(80, 24, 80, 24, &out_width, &out_height);
 
-  ASCIICHAT_REQUIRE_EQ(out_width, 80);
-  ASCIICHAT_REQUIRE_EQ(out_height, 24);
+  REQUIRE((out_width) == (80));
+  REQUIRE((out_height) == (24));
 }
 
 TEST_CASE("calculate_fit_dimensions_pixel/very_small_target", "[calculate_fit_dimensions_pixel]") {
@@ -302,8 +299,8 @@ TEST_CASE("calculate_fit_dimensions_pixel/very_small_target", "[calculate_fit_di
   // Test with very small target dimensions
   calculate_fit_dimensions_pixel(1920, 1080, 1, 1, &out_width, &out_height);
 
-  ASCIICHAT_REQUIRE_EQ(out_width, 1);
-  ASCIICHAT_REQUIRE_EQ(out_height, 1);
+  REQUIRE((out_width) == (1));
+  REQUIRE((out_height) == (1));
 }
 
 TEST_CASE("calculate_fit_dimensions_pixel/very_large_image", "[calculate_fit_dimensions_pixel]") {
@@ -312,10 +309,10 @@ TEST_CASE("calculate_fit_dimensions_pixel/very_large_image", "[calculate_fit_dim
   // Test with very large image
   calculate_fit_dimensions_pixel(10000, 10000, 80, 24, &out_width, &out_height);
 
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 80);
-  ASCIICHAT_REQUIRE_LE(out_height, 24);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (80));
+  REQUIRE((out_height) <= (24));
 }
 
 /* ============================================================================
@@ -336,15 +333,15 @@ TEST_CASE("aspect_ratio/random_values_comprehensive", "[aspect_ratio]") {
 
     aspect_ratio(img_w, img_h, term_w, term_h, stretch, &out_width, &out_height);
 
-    ASCIICHAT_REQUIRE_GT(out_width, 0, "Random test %d: img_w=%zd, img_h=%zd, term_w=%zd, term_h=%zd, stretch=%d", i, img_w, img_h, term_w, term_h, stretch);
-    ASCIICHAT_REQUIRE_GT(out_height, 0, "Random test %d: img_w=%zd, img_h=%zd, term_w=%zd, term_h=%zd, stretch=%d", i, img_w, img_h, term_w, term_h, stretch);
+    REQUIRE((out_width) > (0));
+    REQUIRE((out_height) > (0));
 
     if (stretch) {
-      ASCIICHAT_REQUIRE_EQ(out_width, term_w);
-      ASCIICHAT_REQUIRE_EQ(out_height, term_h);
+      REQUIRE((out_width) == (term_w));
+      REQUIRE((out_height) == (term_h));
     } else {
-      ASCIICHAT_REQUIRE_LE(out_width, term_w);
-      ASCIICHAT_REQUIRE_LE(out_height, term_h);
+      REQUIRE((out_width) <= (term_w));
+      REQUIRE((out_height) <= (term_h));
     }
   }
 }
@@ -362,10 +359,10 @@ TEST_CASE("aspect_ratio2/random_values_comprehensive", "[aspect_ratio2]") {
 
     aspect_ratio2(img_w, img_h, target_w, target_h, &out_width, &out_height);
 
-    ASCIICHAT_REQUIRE_GT(out_width, 0, "Random test %d: img_w=%zd, img_h=%zd, target_w=%zd, target_h=%zd", i, img_w, img_h, target_w, target_h);
-    ASCIICHAT_REQUIRE_GT(out_height, 0, "Random test %d: img_w=%zd, img_h=%zd, target_w=%zd, target_h=%zd", i, img_w, img_h, target_w, target_h);
-    ASCIICHAT_REQUIRE_LE(out_width, target_w);
-    ASCIICHAT_REQUIRE_LE(out_height, target_h);
+    REQUIRE((out_width) > (0));
+    REQUIRE((out_height) > (0));
+    REQUIRE((out_width) <= (target_w));
+    REQUIRE((out_height) <= (target_h));
   }
 }
 
@@ -382,10 +379,10 @@ TEST_CASE("calculate_fit_dimensions_pixel/random_values_comprehensive", "[calcul
 
     calculate_fit_dimensions_pixel(img_w, img_h, max_w, max_h, &out_width, &out_height);
 
-    ASCIICHAT_REQUIRE_GT(out_width, 0, "Random test %d: img_w=%d, img_h=%d, max_w=%d, max_h=%d", i, img_w, img_h, max_w, max_h);
-    ASCIICHAT_REQUIRE_GT(out_height, 0, "Random test %d: img_w=%d, img_h=%d, max_w=%d, max_h=%d", i, img_w, img_h, max_w, max_h);
-    ASCIICHAT_REQUIRE_LE(out_width, max_w);
-    ASCIICHAT_REQUIRE_LE(out_height, max_h);
+    REQUIRE((out_width) > (0));
+    REQUIRE((out_height) > (0));
+    REQUIRE((out_width) <= (max_w));
+    REQUIRE((out_height) <= (max_h));
   }
 }
 
@@ -398,28 +395,28 @@ TEST_CASE("aspect_ratio/boundary_values", "[aspect_ratio]") {
 
   // Test with minimum valid dimensions
   aspect_ratio(1, 1, 1, 1, false, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
 
   // Test with very large terminal dimensions
   aspect_ratio(1920, 1080, 1000, 1000, false, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 1000);
-  ASCIICHAT_REQUIRE_LE(out_height, 1000);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (1000));
+  REQUIRE((out_height) <= (1000));
 
   // Test with extreme aspect ratios
   aspect_ratio(10000, 1, 100, 100, false, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 100);
-  ASCIICHAT_REQUIRE_LE(out_height, 100);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (100));
+  REQUIRE((out_height) <= (100));
 
   aspect_ratio(1, 10000, 100, 100, false, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 100);
-  ASCIICHAT_REQUIRE_LE(out_height, 100);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (100));
+  REQUIRE((out_height) <= (100));
 }
 
 TEST_CASE("aspect_ratio2/boundary_values", "[aspect_ratio2]") {
@@ -427,28 +424,28 @@ TEST_CASE("aspect_ratio2/boundary_values", "[aspect_ratio2]") {
 
   // Test with minimum valid dimensions
   aspect_ratio2(1, 1, 1, 1, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
 
   // Test with very large target dimensions
   aspect_ratio2(1920, 1080, 1000, 1000, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 1000);
-  ASCIICHAT_REQUIRE_LE(out_height, 1000);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (1000));
+  REQUIRE((out_height) <= (1000));
 
   // Test with extreme aspect ratios
   aspect_ratio2(10000, 1, 100, 100, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 100);
-  ASCIICHAT_REQUIRE_LE(out_height, 100);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (100));
+  REQUIRE((out_height) <= (100));
 
   aspect_ratio2(1, 10000, 100, 100, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 100);
-  ASCIICHAT_REQUIRE_LE(out_height, 100);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (100));
+  REQUIRE((out_height) <= (100));
 }
 
 TEST_CASE("calculate_fit_dimensions_pixel/boundary_values", "[calculate_fit_dimensions_pixel]") {
@@ -456,28 +453,28 @@ TEST_CASE("calculate_fit_dimensions_pixel/boundary_values", "[calculate_fit_dime
 
   // Test with minimum valid dimensions
   calculate_fit_dimensions_pixel(1, 1, 1, 1, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_EQ(out_width, 1);
-  ASCIICHAT_REQUIRE_EQ(out_height, 1);
+  REQUIRE((out_width) == (1));
+  REQUIRE((out_height) == (1));
 
   // Test with very large target dimensions
   calculate_fit_dimensions_pixel(1920, 1080, 1000, 1000, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 1000);
-  ASCIICHAT_REQUIRE_LE(out_height, 1000);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (1000));
+  REQUIRE((out_height) <= (1000));
 
   // Test with extreme aspect ratios
   calculate_fit_dimensions_pixel(10000, 1, 100, 100, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 100);
-  ASCIICHAT_REQUIRE_LE(out_height, 100);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (100));
+  REQUIRE((out_height) <= (100));
 
   calculate_fit_dimensions_pixel(1, 10000, 100, 100, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 100);
-  ASCIICHAT_REQUIRE_LE(out_height, 100);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (100));
+  REQUIRE((out_height) <= (100));
 }
 
 /* ============================================================================
@@ -499,50 +496,50 @@ TEST_CASE("aspect_ratio/aspect_ratio_preservation_property", "[aspect_ratio]") {
   const ssize_t target_w = aspect_ratio_target_widths[index];
   const ssize_t target_h = aspect_ratio_target_heights[index];
   // Skip invalid combinations
-  ASCIICHAT_ASSUME(img_w > 0);
-  ASCIICHAT_ASSUME(img_h > 0);
-  ASCIICHAT_ASSUME(target_w > 0);
-  ASCIICHAT_ASSUME(target_h > 0);
+  if (!(img_w > 0)) SKIP("assumption not satisfied");
+  if (!(img_h > 0)) SKIP("assumption not satisfied");
+  if (!(target_w > 0)) SKIP("assumption not satisfied");
+  if (!(target_h > 0)) SKIP("assumption not satisfied");
 
   // Skip extreme aspect ratios that can't be preserved accurately in small target dimensions
   float input_aspect_ratio = (float)img_w / (float)img_h;
-  ASCIICHAT_ASSUME(input_aspect_ratio >= 0.1f);  // Skip very tall images (>10:1 height:width)
-  ASCIICHAT_ASSUME(input_aspect_ratio <= 10.0f); // Skip very wide images (>10:1 width:height)
+  if (!(input_aspect_ratio >= 0.1f)) SKIP("assumption not satisfied");  // Skip very tall images (>10:1 height:width)
+  if (!(input_aspect_ratio <= 10.0f)) SKIP("assumption not satisfied"); // Skip very wide images (>10:1 width:height)
 
   // Skip cases where target dimensions are too small to preserve aspect ratio
-  ASCIICHAT_ASSUME(target_w >= 10); // Need reasonable minimum target size
-  ASCIICHAT_ASSUME(target_h >= 10);
+  if (!(target_w >= 10)) SKIP("assumption not satisfied"); // Need reasonable minimum target size
+  if (!(target_h >= 10)) SKIP("assumption not satisfied");
 
   // Test aspect_ratio2 (no CHAR_ASPECT correction)
   ssize_t out_w2, out_h2;
   aspect_ratio2(img_w, img_h, target_w, target_h, &out_w2, &out_h2);
 
   // PROPERTY 1: Output dimensions must fit within target bounds
-  ASCIICHAT_REQUIRE_LE(out_w2, target_w, "aspect_ratio2: width %zd exceeds target %zd", out_w2, target_w);
-  ASCIICHAT_REQUIRE_LE(out_h2, target_h, "aspect_ratio2: height %zd exceeds target %zd", out_h2, target_h);
+  REQUIRE((out_w2) <= (target_w));
+  REQUIRE((out_h2) <= (target_h));
 
   // PROPERTY 2: Output dimensions must be positive
-  ASCIICHAT_REQUIRE_GT(out_w2, 0, "aspect_ratio2: width must be positive");
-  ASCIICHAT_REQUIRE_GT(out_h2, 0, "aspect_ratio2: height must be positive");
+  REQUIRE((out_w2) > (0));
+  REQUIRE((out_h2) > (0));
 
   // PROPERTY 3: Aspect ratio preservation (within 25% tolerance for discrete dimensions)
   float input_aspect = (float)img_w / (float)img_h;
   float output_aspect = (float)out_w2 / (float)out_h2;
   float aspect_error = fabsf(output_aspect - input_aspect) / input_aspect;
-  ASCIICHAT_REQUIRE_LT(aspect_error, 0.25f, "aspect_ratio2: aspect ratio not preserved (input=%.2f, output=%.2f, error=%.1f%%)", input_aspect, output_aspect, aspect_error * 100.0f);
+  REQUIRE((aspect_error) < (0.25f));
 
   // Test calculate_fit_dimensions_pixel (same properties)
   int out_w_pix, out_h_pix;
   calculate_fit_dimensions_pixel((int)img_w, (int)img_h, (int)target_w, (int)target_h, &out_w_pix, &out_h_pix);
 
-  ASCIICHAT_REQUIRE_LE(out_w_pix, (int)target_w, "calculate_fit_dimensions_pixel: width %d exceeds target %zd", out_w_pix, target_w);
-  ASCIICHAT_REQUIRE_LE(out_h_pix, (int)target_h, "calculate_fit_dimensions_pixel: height %d exceeds target %zd", out_h_pix, target_h);
-  ASCIICHAT_REQUIRE_GT(out_w_pix, 0, "calculate_fit_dimensions_pixel: width must be positive");
-  ASCIICHAT_REQUIRE_GT(out_h_pix, 0, "calculate_fit_dimensions_pixel: height must be positive");
+  REQUIRE((out_w_pix) <= ((int)target_w));
+  REQUIRE((out_h_pix) <= ((int)target_h));
+  REQUIRE((out_w_pix) > (0));
+  REQUIRE((out_h_pix) > (0));
 
   output_aspect = (float)out_w_pix / (float)out_h_pix;
   aspect_error = fabsf(output_aspect - input_aspect) / input_aspect;
-  ASCIICHAT_REQUIRE_LT(aspect_error, 0.25f, "calculate_fit_dimensions_pixel: aspect ratio not preserved (input=%.2f, output=%.2f, error=%.1f%%)", input_aspect, output_aspect, aspect_error * 100.0f);
+  REQUIRE((aspect_error) < (0.25f));
 }
 
 // Keep one simple precision test for aspect_ratio with CHAR_ASPECT correction
@@ -554,7 +551,7 @@ TEST_CASE("aspect_ratio/char_aspect_correction", "[aspect_ratio]") {
   aspect_ratio(1920, 1080, 80, 24, false, &out_width, &out_height);
   float aspect_ratio_result = (float)out_width / (float)out_height;
   float expected_aspect = 1920.0f / 1080.0f * 2.0f; // CHAR_ASPECT = 2.0
-  ASCIICHAT_REQUIRE_FLOAT_EQ(aspect_ratio_result, expected_aspect, 0.2f);
+  REQUIRE((aspect_ratio_result) == Catch::Approx(expected_aspect));
 }
 
 /* ============================================================================
@@ -566,17 +563,17 @@ TEST_CASE("aspect_ratio/stress_test_large_values", "[aspect_ratio]") {
 
   // Test with very large image dimensions
   aspect_ratio(100000, 100000, 1000, 1000, false, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 1000);
-  ASCIICHAT_REQUIRE_LE(out_height, 1000);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (1000));
+  REQUIRE((out_height) <= (1000));
 
   // Test with very large terminal dimensions
   aspect_ratio(1920, 1080, 100000, 100000, false, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 100000);
-  ASCIICHAT_REQUIRE_LE(out_height, 100000);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (100000));
+  REQUIRE((out_height) <= (100000));
 }
 
 TEST_CASE("aspect_ratio2/stress_test_large_values", "[aspect_ratio2]") {
@@ -584,17 +581,17 @@ TEST_CASE("aspect_ratio2/stress_test_large_values", "[aspect_ratio2]") {
 
   // Test with very large image dimensions
   aspect_ratio2(100000, 100000, 1000, 1000, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 1000);
-  ASCIICHAT_REQUIRE_LE(out_height, 1000);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (1000));
+  REQUIRE((out_height) <= (1000));
 
   // Test with very large target dimensions
   aspect_ratio2(1920, 1080, 100000, 100000, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 100000);
-  ASCIICHAT_REQUIRE_LE(out_height, 100000);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (100000));
+  REQUIRE((out_height) <= (100000));
 }
 
 TEST_CASE("calculate_fit_dimensions_pixel/stress_test_large_values", "[calculate_fit_dimensions_pixel]") {
@@ -602,15 +599,15 @@ TEST_CASE("calculate_fit_dimensions_pixel/stress_test_large_values", "[calculate
 
   // Test with very large image dimensions
   calculate_fit_dimensions_pixel(100000, 100000, 1000, 1000, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 1000);
-  ASCIICHAT_REQUIRE_LE(out_height, 1000);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (1000));
+  REQUIRE((out_height) <= (1000));
 
   // Test with very large target dimensions
   calculate_fit_dimensions_pixel(1920, 1080, 100000, 100000, &out_width, &out_height);
-  ASCIICHAT_REQUIRE_GT(out_width, 0);
-  ASCIICHAT_REQUIRE_GT(out_height, 0);
-  ASCIICHAT_REQUIRE_LE(out_width, 100000);
-  ASCIICHAT_REQUIRE_LE(out_height, 100000);
+  REQUIRE((out_width) > (0));
+  REQUIRE((out_height) > (0));
+  REQUIRE((out_width) <= (100000));
+  REQUIRE((out_height) <= (100000));
 }

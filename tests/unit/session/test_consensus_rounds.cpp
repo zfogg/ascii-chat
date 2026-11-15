@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include "common/session/consensus.h"
 #include <ascii-chat/network/consensus/state.h>
@@ -26,19 +26,19 @@ static asciichat_error_t own_metrics(void *context, const uint8_t id[SESSION_ID_
 }
 static asciichat_error_t notified(void *context, const uint8_t host[SESSION_ID_SIZE], const char address[ACIP_ADDRESS_SIZE], uint16_t port, const uint8_t backup[SESSION_ID_SIZE],
                                   const char backup_address[ACIP_ADDRESS_SIZE], uint16_t backup_port) {
-  ASCIICHAT_REQUIRE_EQ(context, &notifications);
-  ASCIICHAT_REQUIRE_ARRAY_EQ(host, members[1], SESSION_ID_SIZE);
-  ASCIICHAT_REQUIRE_ARRAY_EQ(backup, members[2], SESSION_ID_SIZE);
-  ASCIICHAT_REQUIRE_STR_EQ(address, "127.0.0.2");
-  ASCIICHAT_REQUIRE_STR_EQ(backup_address, "127.0.0.3");
-  ASCIICHAT_REQUIRE_EQ(port, 27002);
-  ASCIICHAT_REQUIRE_EQ(backup_port, 27003);
+  REQUIRE((context) == (&notifications));
+  REQUIRE(std::memcmp((host), (members[1]), (SESSION_ID_SIZE)) == 0);
+  REQUIRE(std::memcmp((backup), (members[2]), (SESSION_ID_SIZE)) == 0);
+  REQUIRE(std::strcmp((address), ("127.0.0.2")) == 0);
+  REQUIRE(std::strcmp((backup_address), ("127.0.0.3")) == 0);
+  REQUIRE((port) == (27002));
+  REQUIRE((backup_port) == (27003));
   ++notifications;
   return reject_election ? ERROR_NETWORK : ASCIICHAT_OK;
 }
 static asciichat_error_t choose(void *context, const participant_metrics_t *metrics, int count, int *best, int *backup) {
-  ASCIICHAT_REQUIRE_EQ(context, &notifications);
-  ASCIICHAT_REQUIRE_EQ(count, 3);
+  REQUIRE((context) == (&notifications));
+  REQUIRE((count) == (3));
   ++elections;
   *best = *backup = -1;
   for (int i = 0; i < count; ++i) {
@@ -66,76 +66,76 @@ static void teardown(void) {
 }
 static void create(bool custom) {
   session_consensus_callbacks_t cb = callbacks(custom);
-  ASCIICHAT_REQUIRE_EQ(session_consensus_create(members[0], true, members, 3, &cb, &consensus), ASCIICHAT_OK);
+  REQUIRE((session_consensus_create(members[0], true, members, 3, &cb, &consensus)) == (ASCIICHAT_OK));
 }
 static void collect(void) {
-  ASCIICHAT_REQUIRE_EQ(session_consensus_on_collection_start(consensus, 7, time_get_ns() - 1), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session_consensus_get_metrics_count(consensus), 1);
+  REQUIRE((session_consensus_on_collection_start(consensus, 7, time_get_ns() - 1)) == (ASCIICHAT_OK));
+  REQUIRE((session_consensus_get_metrics_count(consensus)) == (1));
   participant_metrics_t peers[2];
-  ASCIICHAT_REQUIRE_EQ(own_metrics(NULL, members[1], &peers[0]), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(own_metrics(NULL, members[2], &peers[1]), ASCIICHAT_OK);
+  REQUIRE((own_metrics(NULL, members[1], &peers[0])) == (ASCIICHAT_OK));
+  REQUIRE((own_metrics(NULL, members[2], &peers[1])) == (ASCIICHAT_OK));
   peers[0].nat_tier = 1;
   peers[1].nat_tier = 2;
-  ASCIICHAT_REQUIRE_EQ(session_consensus_on_stats_update(consensus, members[1], peers, 2), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session_consensus_get_metrics_count(consensus), 3);
-  ASCIICHAT_REQUIRE_EQ(session_consensus_process(consensus, 0), ASCIICHAT_OK);
+  REQUIRE((session_consensus_on_stats_update(consensus, members[1], peers, 2)) == (ASCIICHAT_OK));
+  REQUIRE((session_consensus_get_metrics_count(consensus)) == (3));
+  REQUIRE((session_consensus_process(consensus, 0)) == (ASCIICHAT_OK));
 }
 static void expect_hosts(const uint8_t *expected_host, const uint8_t *expected_backup) {
   uint8_t host[SESSION_ID_SIZE], backup[SESSION_ID_SIZE];
   char address[ACIP_ADDRESS_SIZE], backup_address[ACIP_ADDRESS_SIZE];
   uint16_t port = 1, backup_port = 1;
-  ASCIICHAT_REQUIRE_EQ(session_consensus_get_elected_host(consensus, host, address, &port, backup, backup_address, &backup_port), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_ARRAY_EQ(host, expected_host, SESSION_ID_SIZE);
-  ASCIICHAT_REQUIRE_ARRAY_EQ(backup, expected_backup, SESSION_ID_SIZE);
+  REQUIRE((session_consensus_get_elected_host(consensus, host, address, &port, backup, backup_address, &backup_port)) == (ASCIICHAT_OK));
+  REQUIRE(std::memcmp((host), (expected_host), (SESSION_ID_SIZE)) == 0);
+  REQUIRE(std::memcmp((backup), (expected_backup), (SESSION_ID_SIZE)) == 0);
   // The coordinator currently stores identities, without endpoint metadata.
-  ASCIICHAT_REQUIRE_EQ(port, 0);
-  ASCIICHAT_REQUIRE_EQ(backup_port, 0);
-  ASCIICHAT_REQUIRE_STR_EMPTY(address);
-  ASCIICHAT_REQUIRE_STR_EMPTY(backup_address);
-  ASCIICHAT_REQUIRE(session_consensus_is_ready(consensus));
+  REQUIRE((port) == (0));
+  REQUIRE((backup_port) == (0));
+  REQUIRE((address)[0] == '\0');
+  REQUIRE((backup_address)[0] == '\0');
+  REQUIRE(session_consensus_is_ready(consensus));
 }
 
 TEST_CASE("session_consensus_rounds/custom_election_receives_all_metrics_and_publishes_its_selected_hosts", "[session_consensus_rounds]") {
   create(true);
   collect();
-  ASCIICHAT_REQUIRE_EQ(elections, 1);
+  REQUIRE((elections) == (1));
   expect_hosts(members[1], members[2]);
 }
 TEST_CASE("session_consensus_rounds/default_election_prefers_the_better_observed_network", "[session_consensus_rounds]") {
   create(false);
   collect();
   expect_hosts(members[0], members[1]);
-  ASCIICHAT_REQUIRE_EQ(elections, 0);
+  REQUIRE((elections) == (0));
 }
 TEST_CASE("session_consensus_rounds/invalid_custom_result_does_not_publish_a_host", "[session_consensus_rounds]") {
   create(true);
   invalid_choice = true;
   collect();
-  ASCIICHAT_REQUIRE_EQ(elections, 1);
-  ASCIICHAT_REQUIRE_NOT(session_consensus_is_ready(consensus));
+  REQUIRE((elections) == (1));
+  REQUIRE(!(session_consensus_is_ready(consensus)));
 }
 TEST_CASE("session_consensus_rounds/election_notification_propagates_callback_errors_and_retains_host_identity", "[session_consensus_rounds]") {
   create(false);
   reject_election = true;
-  ASCIICHAT_REQUIRE_EQ(session_consensus_on_election_result(consensus, members[1], "127.0.0.2", 27002, members[2], "127.0.0.3", 27003), ERROR_NETWORK);
-  ASCIICHAT_REQUIRE_EQ(notifications, 1);
+  REQUIRE((session_consensus_on_election_result(consensus, members[1], "127.0.0.2", 27002, members[2], "127.0.0.3", 27003)) == (ERROR_NETWORK));
+  REQUIRE((notifications) == (1));
   expect_hosts(members[1], members[2]);
 }
 TEST_CASE("session_consensus_rounds/topology_replacement_rejects_missing_local_identity_without_losing_the_old_ring", "[session_consensus_rounds]") {
   create(true);
   uint8_t invalid[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE] = {{99}};
-  ASCIICHAT_REQUIRE_NE(session_consensus_set_topology(consensus, invalid, 1), ASCIICHAT_OK);
+  REQUIRE((session_consensus_set_topology(consensus, invalid, 1)) != (ASCIICHAT_OK));
   CLEAR_ERRNO_ALL();
   collect();
   expect_hosts(members[1], members[2]);
 }
 TEST_CASE("session_consensus_rounds/topology_change_during_collection_discards_old_metrics_and_accepts_a_new_round", "[session_consensus_rounds]") {
   create(true);
-  ASCIICHAT_REQUIRE_EQ(session_consensus_on_collection_start(consensus, 1, time_get_ns() + NS_PER_SEC_INT), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session_consensus_get_metrics_count(consensus), 1);
-  ASCIICHAT_REQUIRE_EQ(session_consensus_set_topology(consensus, members, 3), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session_consensus_get_state(consensus), CONSENSUS_STATE_IDLE);
-  ASCIICHAT_REQUIRE_EQ(session_consensus_get_metrics_count(consensus), 0);
+  REQUIRE((session_consensus_on_collection_start(consensus, 1, time_get_ns() + NS_PER_SEC_INT)) == (ASCIICHAT_OK));
+  REQUIRE((session_consensus_get_metrics_count(consensus)) == (1));
+  REQUIRE((session_consensus_set_topology(consensus, members, 3)) == (ASCIICHAT_OK));
+  REQUIRE((session_consensus_get_state(consensus)) == (CONSENSUS_STATE_IDLE));
+  REQUIRE((session_consensus_get_metrics_count(consensus)) == (0));
   collect();
   expect_hosts(members[1], members[2]);
 }

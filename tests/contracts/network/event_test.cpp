@@ -1,5 +1,5 @@
+#include <catch2/catch_test_macros.hpp>
 #include "../worker_assert.h"
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/os/event.h>
 #include <ascii-chat/buffer.h>
@@ -17,7 +17,7 @@ static asciichat_error_t count_packet(const void *data, size_t size, void *arg) 
   (void)arg;
   packet_header_t header;
   memcpy(&header, data, sizeof(header));
-  ASCIICHAT_REQUIRE_EQ(size, sizeof(header) + NET_TO_HOST_U32(header.length));
+  REQUIRE((size) == (sizeof(header) + NET_TO_HOST_U32(header.length)));
   ++packets;
   return ASCIICHAT_OK;
 }
@@ -30,33 +30,33 @@ static void decoder_tests(void) {
   memcpy(wire, &header, sizeof(header));
   memcpy(wire + sizeof(header), "abc", 3);
   for (size_t split = 0; split <= sizeof(wire); ++split) {
-    ASCIICHAT_REQUIRE_EQ(packet_decoder_feed(&decoder, wire, split, count_packet, NULL), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(packet_decoder_feed(&decoder, wire + split, sizeof(wire) - split, count_packet, NULL), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE(!packet_decoder_pending(&decoder));
+    REQUIRE((packet_decoder_feed(&decoder, wire, split, count_packet, NULL)) == (ASCIICHAT_OK));
+    REQUIRE((packet_decoder_feed(&decoder, wire + split, sizeof(wire) - split, count_packet, NULL)) == (ASCIICHAT_OK));
+    REQUIRE(!packet_decoder_pending(&decoder));
   }
-  ASCIICHAT_REQUIRE_EQ(packets, sizeof(wire) + 1);
+  REQUIRE((packets) == (sizeof(wire) + 1));
   buffer_stats_t before, after;
   buffer_domain_stats(buffer_default_domain(), &before);
   for (unsigned i = 0; i < 100; ++i)
-    ASCIICHAT_REQUIRE_EQ(packet_decoder_feed(&decoder, wire, sizeof(wire), count_packet, NULL), ASCIICHAT_OK);
+    REQUIRE((packet_decoder_feed(&decoder, wire, sizeof(wire), count_packet, NULL)) == (ASCIICHAT_OK));
   buffer_domain_stats(buffer_default_domain(), &after);
-  ASCIICHAT_REQUIRE(before.allocations == after.allocations && before.hits == after.hits);
+  REQUIRE(before.allocations == after.allocations && before.hits == after.hits);
   uint8_t batch[sizeof(wire) * 2];
   memcpy(batch, wire, sizeof(wire));
   memcpy(batch + sizeof(wire), wire, sizeof(wire));
-  ASCIICHAT_REQUIRE_EQ(packet_decoder_feed(&decoder, batch, sizeof(batch), count_packet, NULL), ASCIICHAT_OK);
+  REQUIRE((packet_decoder_feed(&decoder, batch, sizeof(batch), count_packet, NULL)) == (ASCIICHAT_OK));
   wire[sizeof(wire) - 1] ^= 1;
-  ASCIICHAT_REQUIRE_NE(packet_decoder_feed(&decoder, wire, sizeof(wire), count_packet, NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NE(packet_decoder_feed(&decoder, wire, sizeof(wire), count_packet, NULL), ASCIICHAT_OK);
+  REQUIRE((packet_decoder_feed(&decoder, wire, sizeof(wire), count_packet, NULL)) != (ASCIICHAT_OK));
+  REQUIRE((packet_decoder_feed(&decoder, wire, sizeof(wire), count_packet, NULL)) != (ASCIICHAT_OK));
   packet_decoder_reset(&decoder);
   header.length = HOST_TO_NET_U32(MAX_PACKET_SIZE + 1);
-  ASCIICHAT_REQUIRE_NE(packet_decoder_feed(&decoder, &header, sizeof(header), count_packet, NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(decoder.packet, NULL);
+  REQUIRE((packet_decoder_feed(&decoder, &header, sizeof(header), count_packet, NULL)) != (ASCIICHAT_OK));
+  REQUIRE((decoder.packet) == (NULL));
   packet_decoder_reset(&decoder);
   header.length = 0;
   header.crc32 = 0;
-  ASCIICHAT_REQUIRE_EQ(packet_decoder_feed(&decoder, &header, sizeof(header), count_packet, NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(!packet_decoder_pending(&decoder));
+  REQUIRE((packet_decoder_feed(&decoder, &header, sizeof(header), count_packet, NULL)) == (ASCIICHAT_OK));
+  REQUIRE(!packet_decoder_pending(&decoder));
   packet_decoder_reset(&decoder);
   CLEAR_ERRNO_ALL();
 }

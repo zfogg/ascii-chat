@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include "../../../src/common/session/server_like.h"
 #include <ascii-chat/options/rcu.h>
@@ -17,12 +17,12 @@ static asciichat_error_t owner_create(const network_server_config_t *config, net
   return ASCIICHAT_OK;
 }
 static asciichat_error_t owner_start(network_server_t *server) {
-  ASCIICHAT_REQUIRE_NOT_NULL(server);
+  REQUIRE((server) != nullptr);
   ++started;
   return fail_stage == 2 ? ERROR_NETWORK_BIND : ASCIICHAT_OK;
 }
 static asciichat_error_t owner_run(network_server_t *server) {
-  ASCIICHAT_REQUIRE_NOT_NULL(server);
+  REQUIRE((server) != nullptr);
   ++ran;
   return fail_stage == 3 ? ERROR_NETWORK : ASCIICHAT_OK;
 }
@@ -42,7 +42,7 @@ static bool owner_websocket(network_server_t *server) {
 }
 static asciichat_error_t owner_map(uint16_t port, const char *description, nat_upnp_context_t **out) {
   (void)port;
-  ASCIICHAT_REQUIRE_NOT_NULL(description);
+  REQUIRE((description) != nullptr);
   if (fail_mapping)
     return ERROR_NETWORK;
   *out = &mapping_storage[mapped % 2];
@@ -69,7 +69,7 @@ static asciichat_error_t owner_mapping_address(const nat_upnp_context_t *mapping
   return ASCIICHAT_OK;
 }
 static asciichat_error_t owner_refresh(nat_upnp_context_t *mapping) {
-  ASCIICHAT_REQUIRE_NOT_NULL(mapping);
+  REQUIRE((mapping) != nullptr);
   ++renewed;
   return ERROR_NETWORK;
 }
@@ -77,11 +77,11 @@ static asciichat_mdns_t *owner_mdns_init(void) {
   return fail_mdns ? NULL : (asciichat_mdns_t *)&mdns_token;
 }
 static void owner_mdns_destroy(asciichat_mdns_t *context) {
-  ASCIICHAT_REQUIRE_NOT_NULL(context);
+  REQUIRE((context) != nullptr);
 }
 static asciichat_error_t owner_advertise(asciichat_mdns_t *context, const asciichat_mdns_service_t *service) {
-  ASCIICHAT_REQUIRE_NOT_NULL(context);
-  ASCIICHAT_REQUIRE_EQ(service->port, 27001);
+  REQUIRE((context) != nullptr);
+  REQUIRE((service->port) == (27001));
   ++advertised;
   return fail_advertisement ? ERROR_NETWORK : ASCIICHAT_OK;
 }
@@ -104,7 +104,7 @@ static int owner_join_timeout(platform_thread_t *thread, void **result, uint64_t
 }
 static void owner_sleep(uint64_t ns);
 static void owner_status(const ui_status_t *status) {
-  ASCIICHAT_REQUIRE_NOT_NULL(status);
+  REQUIRE((status) != nullptr);
   ++status_draws;
 }
 #define network_server_create owner_create
@@ -149,23 +149,23 @@ static void owner_status(const ui_status_t *status) {
 #undef time_sleep_ns
 #undef ui_status_display_interactive
 static void owner_sleep(uint64_t ns) {
-  ASCIICHAT_REQUIRE_EQ(ns, 100 * NS_PER_MS_INT);
+  REQUIRE((ns) == (100 * NS_PER_MS_INT));
   atomic_store_bool(&g_upnp_stop, true);
 }
 static asciichat_error_t mode_init(void *data) {
-  ASCIICHAT_REQUIRE_EQ(data, &initialized);
+  REQUIRE((data) == (&initialized));
   ++initialized;
   if (cancel_initialization)
     session_server_like_request_shutdown();
   return fail_stage == 4 ? ERROR_CONFIG : ASCIICHAT_OK;
 }
 static void mode_cleanup(void *data) {
-  ASCIICHAT_REQUIRE_EQ(data, &cleaned);
+  REQUIRE((data) == (&cleaned));
   ++cleaned;
-  ASCIICHAT_REQUIRE_EQ(mapped, unmapped);
+  REQUIRE((mapped) == (unmapped));
 }
 static void mode_interrupt(int sig) {
-  ASCIICHAT_REQUIRE_EQ(sig, SIGINT);
+  REQUIRE((sig) == (SIGINT));
   ++interrupted;
 }
 static asciichat_error_t mode_packet(network_connection_t *connection, packet_type_t type, const void *payload, size_t length, void *data) {
@@ -177,7 +177,7 @@ static asciichat_error_t mode_packet(network_connection_t *connection, packet_ty
   return ASCIICHAT_OK;
 }
 static void mode_status(void *data, ui_status_t *status) {
-  ASCIICHAT_REQUIRE_EQ(data, &status_draws);
+  REQUIRE((data) == (&status_draws));
   memset(status, 0, sizeof(*status));
   atomic_store_bool(&g_status_should_exit, true);
 }
@@ -188,76 +188,76 @@ static session_server_like_config_t config(void) {
 static void setup(void) {
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
-  ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(options_set_int("port", 27001), ASCIICHAT_OK);
+  REQUIRE((options_state_init()) == (ASCIICHAT_OK));
+  REQUIRE((options_set_int("port", 27001)) == (ASCIICHAT_OK));
 }
 static void teardown(void) {
-  ASCIICHAT_REQUIRE_NULL(g_network_server);
-  ASCIICHAT_REQUIRE_NULL(g_upnp_ctx);
-  ASCIICHAT_REQUIRE_NULL(g_ws_upnp_ctx);
-  ASCIICHAT_REQUIRE_NULL(g_mdns_ctx);
+  REQUIRE((g_network_server) == nullptr);
+  REQUIRE((g_upnp_ctx) == nullptr);
+  REQUIRE((g_ws_upnp_ctx) == nullptr);
+  REQUIRE((g_mdns_ctx) == nullptr);
   options_state_destroy();
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
 TEST_CASE("server_lifecycle/missing_callbacks_and_conflicting_keepawake_reject_start_before_allocating_listener", "[server_lifecycle]") {
   session_server_like_config_t c = {0};
-  ASCIICHAT_REQUIRE_EQ(session_server_like_run(NULL), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(session_server_like_run(&c), ERROR_INVALID_PARAM);
+  REQUIRE((session_server_like_run(NULL)) == (ERROR_INVALID_PARAM));
+  REQUIRE((session_server_like_run(&c)) == (ERROR_INVALID_PARAM));
   c.init_fn = mode_init;
-  ASCIICHAT_REQUIRE_EQ(session_server_like_run(&c), ERROR_INVALID_PARAM);
+  REQUIRE((session_server_like_run(&c)) == (ERROR_INVALID_PARAM));
   c.interrupt_fn = mode_interrupt;
-  ASCIICHAT_REQUIRE_EQ(session_server_like_run(&c), ERROR_INVALID_PARAM);
+  REQUIRE((session_server_like_run(&c)) == (ERROR_INVALID_PARAM));
   c = config();
   options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
   *v = *options_get();
   v->enable_keepawake = v->disable_keepawake = true;
-  ASCIICHAT_REQUIRE_EQ(options_state_set(v), ASCIICHAT_OK);
+  REQUIRE((options_state_set(v)) == (ASCIICHAT_OK));
   SAFE_FREE(v);
-  ASCIICHAT_REQUIRE_EQ(session_server_like_run(&c), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(created, 0);
-  ASCIICHAT_REQUIRE_EQ(cleaned, 0);
+  REQUIRE((session_server_like_run(&c)) == (ERROR_INVALID_PARAM));
+  REQUIRE((created) == (0));
+  REQUIRE((cleaned) == (0));
 }
 TEST_CASE("server_lifecycle/listener_creation_failure_runs_mode_cleanup_without_starting_mode_or_event_loop", "[server_lifecycle]") {
   session_server_like_config_t c = config();
   fail_stage = 1;
-  ASCIICHAT_REQUIRE_EQ(session_server_like_run(&c), ERROR_NETWORK);
-  ASCIICHAT_REQUIRE_EQ(created, 1);
-  ASCIICHAT_REQUIRE_EQ(initialized, 0);
-  ASCIICHAT_REQUIRE_EQ(started, 0);
-  ASCIICHAT_REQUIRE_EQ(ran, 0);
-  ASCIICHAT_REQUIRE_EQ(cleaned, 1);
-  ASCIICHAT_REQUIRE_EQ(destroyed, 0);
-  ASCIICHAT_REQUIRE_EQ(stopped, 1);
+  REQUIRE((session_server_like_run(&c)) == (ERROR_NETWORK));
+  REQUIRE((created) == (1));
+  REQUIRE((initialized) == (0));
+  REQUIRE((started) == (0));
+  REQUIRE((ran) == (0));
+  REQUIRE((cleaned) == (1));
+  REQUIRE((destroyed) == (0));
+  REQUIRE((stopped) == (1));
 }
 TEST_CASE("server_lifecycle/mode_failure_and_requested_shutdown_never_start_accepting_connections", "[server_lifecycle]") {
   session_server_like_config_t c = config();
   fail_stage = 4;
-  ASCIICHAT_REQUIRE_EQ(session_server_like_run(&c), ERROR_CONFIG);
-  ASCIICHAT_REQUIRE_EQ(started, 0);
-  ASCIICHAT_REQUIRE_EQ(cleaned, 1);
-  ASCIICHAT_REQUIRE_EQ(destroyed, 1);
+  REQUIRE((session_server_like_run(&c)) == (ERROR_CONFIG));
+  REQUIRE((started) == (0));
+  REQUIRE((cleaned) == (1));
+  REQUIRE((destroyed) == (1));
   fail_stage = 0;
   cancel_initialization = true;
-  ASCIICHAT_REQUIRE_EQ(session_server_like_run(&c), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(started, 0);
-  ASCIICHAT_REQUIRE_EQ(interrupted, 1);
-  ASCIICHAT_REQUIRE(session_server_like_shutdown_requested());
-  ASCIICHAT_REQUIRE_EQ(cleaned, 2);
-  ASCIICHAT_REQUIRE_EQ(destroyed, 2);
+  REQUIRE((session_server_like_run(&c)) == (ASCIICHAT_OK));
+  REQUIRE((started) == (0));
+  REQUIRE((interrupted) == (1));
+  REQUIRE(session_server_like_shutdown_requested());
+  REQUIRE((cleaned) == (2));
+  REQUIRE((destroyed) == (2));
 }
 TEST_CASE("server_lifecycle/event_loop_start_and_run_failures_return_the_failure_after_owned_resources_are_released", "[server_lifecycle]") {
   session_server_like_config_t c = config();
   fail_stage = 2;
-  ASCIICHAT_REQUIRE_EQ(session_server_like_run(&c), ERROR_NETWORK_BIND);
-  ASCIICHAT_REQUIRE_EQ(started, 1);
-  ASCIICHAT_REQUIRE_EQ(ran, 0);
-  ASCIICHAT_REQUIRE_EQ(destroyed, 1);
+  REQUIRE((session_server_like_run(&c)) == (ERROR_NETWORK_BIND));
+  REQUIRE((started) == (1));
+  REQUIRE((ran) == (0));
+  REQUIRE((destroyed) == (1));
   fail_stage = 3;
-  ASCIICHAT_REQUIRE_EQ(session_server_like_run(&c), ERROR_NETWORK);
-  ASCIICHAT_REQUIRE_EQ(ran, 1);
-  ASCIICHAT_REQUIRE_EQ(destroyed, 2);
-  ASCIICHAT_REQUIRE_EQ(cleaned, 2);
+  REQUIRE((session_server_like_run(&c)) == (ERROR_NETWORK));
+  REQUIRE((ran) == (1));
+  REQUIRE((destroyed) == (2));
+  REQUIRE((cleaned) == (2));
 }
 TEST_CASE("server_lifecycle/listener_options_preserve_ipv4_ipv6_websocket_and_packet_limits", "[server_lifecycle]") {
   session_server_like_config_t c = config();
@@ -273,15 +273,15 @@ TEST_CASE("server_lifecycle/listener_options_preserve_ipv4_ipv6_websocket_and_pa
       SAFE_STRNCPY(v->address, "127.0.0.1", sizeof(v->address));
     if (i == 1)
       SAFE_STRNCPY(v->address6, "::1", sizeof(v->address6));
-    ASCIICHAT_REQUIRE_EQ(options_state_set(v), ASCIICHAT_OK);
+    REQUIRE((options_state_set(v)) == (ASCIICHAT_OK));
     SAFE_FREE(v);
-    ASCIICHAT_REQUIRE_EQ(session_server_like_run(&c), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(observed_network.bind_ipv4, i != 1);
-    ASCIICHAT_REQUIRE_EQ(observed_network.bind_ipv6, i != 0);
-    ASCIICHAT_REQUIRE_EQ(observed_network.max_payload, 1234);
-    ASCIICHAT_REQUIRE_EQ(observed_network.partial_timeout_ms, 99);
-    ASCIICHAT_REQUIRE_EQ(observed_network.idle_timeout_ms, 333);
-    ASCIICHAT_REQUIRE(observed_network.websocket_enabled);
+    REQUIRE((session_server_like_run(&c)) == (ASCIICHAT_OK));
+    REQUIRE((observed_network.bind_ipv4) == (i != 1));
+    REQUIRE((observed_network.bind_ipv6) == (i != 0));
+    REQUIRE((observed_network.max_payload) == (1234));
+    REQUIRE((observed_network.partial_timeout_ms) == (99));
+    REQUIRE((observed_network.idle_timeout_ms) == (333));
+    REQUIRE(observed_network.websocket_enabled);
   }
 }
 TEST_CASE("server_lifecycle/mapping_and_advertisement_failures_are_nonfatal_and_remove_mappings_before_mode_cleanup", "[server_lifecycle]") {
@@ -295,25 +295,25 @@ TEST_CASE("server_lifecycle/mapping_and_advertisement_failures_are_nonfatal_and_
   *v = *options_get();
   v->enable_upnp = true;
   SAFE_STRNCPY(v->address, "0.0.0.0", sizeof(v->address));
-  ASCIICHAT_REQUIRE_EQ(options_state_set(v), ASCIICHAT_OK);
+  REQUIRE((options_state_set(v)) == (ASCIICHAT_OK));
   SAFE_FREE(v);
-  ASCIICHAT_REQUIRE_EQ(session_server_like_run(&c), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(mapped, 1);
-  ASCIICHAT_REQUIRE_EQ(unmapped, 1);
-  ASCIICHAT_REQUIRE_EQ(joined, 1);
-  ASCIICHAT_REQUIRE_EQ(advertised, 1);
+  REQUIRE((session_server_like_run(&c)) == (ASCIICHAT_OK));
+  REQUIRE((mapped) == (1));
+  REQUIRE((unmapped) == (1));
+  REQUIRE((joined) == (1));
+  REQUIRE((advertised) == (1));
   mapping_matches = false;
   fail_advertisement = true;
-  ASCIICHAT_REQUIRE_EQ(session_server_like_run(&c), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(mapped, 2);
-  ASCIICHAT_REQUIRE_EQ(unmapped, 2);
-  ASCIICHAT_REQUIRE_EQ(joined, 1);
+  REQUIRE((session_server_like_run(&c)) == (ASCIICHAT_OK));
+  REQUIRE((mapped) == (2));
+  REQUIRE((unmapped) == (2));
+  REQUIRE((joined) == (1));
   fail_mapping = true;
   fail_mdns = true;
-  ASCIICHAT_REQUIRE_EQ(session_server_like_run(&c), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(mapped, 2);
-  ASCIICHAT_REQUIRE_EQ(cleaned, 3);
-  ASCIICHAT_REQUIRE_EQ(session_server_like_mdns_advertise("no-context", "_coverage._tcp", 27001, NULL, 0), ERROR_INVALID_STATE);
+  REQUIRE((session_server_like_run(&c)) == (ASCIICHAT_OK));
+  REQUIRE((mapped) == (2));
+  REQUIRE((cleaned) == (3));
+  REQUIRE((session_server_like_mdns_advertise("no-context", "_coverage._tcp", 27001, NULL, 0)) == (ERROR_INVALID_STATE));
 }
 TEST_CASE("server_lifecycle/failed_renewal_worker_removes_both_tcp_and_websocket_mappings", "[server_lifecycle]") {
   session_server_like_config_t c = config();
@@ -324,14 +324,14 @@ TEST_CASE("server_lifecycle/failed_renewal_worker_removes_both_tcp_and_websocket
   *v = *options_get();
   v->enable_upnp = true;
   SAFE_STRNCPY(v->address, "0.0.0.0", sizeof(v->address));
-  ASCIICHAT_REQUIRE_EQ(options_state_set(v), ASCIICHAT_OK);
+  REQUIRE((options_state_set(v)) == (ASCIICHAT_OK));
   SAFE_FREE(v);
   fail_worker = true;
-  ASCIICHAT_REQUIRE_EQ(session_server_like_run(&c), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(mapped, 2);
-  ASCIICHAT_REQUIRE_EQ(unmapped, 2);
-  ASCIICHAT_REQUIRE_EQ(joined, 0);
-  ASCIICHAT_REQUIRE_EQ(cleaned, 1);
+  REQUIRE((session_server_like_run(&c)) == (ASCIICHAT_OK));
+  REQUIRE((mapped) == (2));
+  REQUIRE((unmapped) == (2));
+  REQUIRE((joined) == (0));
+  REQUIRE((cleaned) == (1));
 }
 TEST_CASE("server_lifecycle/renewal_attempts_each_expired_mapping_and_handles_failed_refresh_before_stop", "[server_lifecycle]") {
   g_upnp_ctx = &mapping_storage[0];
@@ -339,7 +339,7 @@ TEST_CASE("server_lifecycle/renewal_attempts_each_expired_mapping_and_handles_fa
   atomic_store_bool(&g_upnp_ready, true);
   atomic_store_bool(&g_upnp_stop, false);
   upnp_renewal_thread(NULL);
-  ASCIICHAT_REQUIRE_EQ(renewed, 2);
+  REQUIRE((renewed) == (2));
   g_upnp_ctx = g_ws_upnp_ctx = NULL;
 }
 TEST_CASE("server_lifecycle/status_worker_lifetime_tracks_start_success_and_failure", "[server_lifecycle]") {
@@ -350,22 +350,22 @@ TEST_CASE("server_lifecycle/status_worker_lifetime_tracks_start_success_and_fail
   *v = *options_get();
   v->status_screen = true;
   v->status_screen_explicitly_set = true;
-  ASCIICHAT_REQUIRE_EQ(options_state_set(v), ASCIICHAT_OK);
+  REQUIRE((options_state_set(v)) == (ASCIICHAT_OK));
   SAFE_FREE(v);
-  ASCIICHAT_REQUIRE_EQ(session_server_like_run(&c), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(joined, 1);
-  ASCIICHAT_REQUIRE_NULL(g_status_fn);
-  ASCIICHAT_REQUIRE_NULL(g_status_user_data);
+  REQUIRE((session_server_like_run(&c)) == (ASCIICHAT_OK));
+  REQUIRE((joined) == (1));
+  REQUIRE((g_status_fn) == nullptr);
+  REQUIRE((g_status_user_data) == nullptr);
   fail_worker = true;
-  ASCIICHAT_REQUIRE_EQ(session_server_like_run(&c), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(joined, 1);
-  ASCIICHAT_REQUIRE_NULL(g_status_fn);
-  ASCIICHAT_REQUIRE_NULL(g_status_user_data);
+  REQUIRE((session_server_like_run(&c)) == (ASCIICHAT_OK));
+  REQUIRE((joined) == (1));
+  REQUIRE((g_status_fn) == nullptr);
+  REQUIRE((g_status_user_data) == nullptr);
   g_status_fn = mode_status;
   g_status_user_data = &status_draws;
   atomic_store_bool(&g_status_should_exit, false);
   status_screen_thread_func(NULL);
-  ASCIICHAT_REQUIRE_EQ(status_draws, 1);
+  REQUIRE((status_draws) == (1));
   g_status_fn = NULL;
   g_status_user_data = NULL;
 }

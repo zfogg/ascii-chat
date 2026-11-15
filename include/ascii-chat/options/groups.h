@@ -39,6 +39,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Option group identifiers
  *
@@ -155,3 +159,7 @@ static inline const char *option_group_name(option_group_t group) {
 static inline bool option_group_has(uint32_t mode_groups, option_group_t group) {
   return (mode_groups & (uint32_t)group) != 0;
 }
+
+#ifdef __cplusplus
+}
+#endif

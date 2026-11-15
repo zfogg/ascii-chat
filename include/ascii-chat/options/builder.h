@@ -153,6 +153,10 @@
 #include "../common.h"
 #include "../options/options.h" // For option_mode_bitmask_t
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Custom help section descriptor
  * @brief Example descriptor for programmatic EXAMPLES generation
@@ -1344,3 +1348,7 @@ const char *find_similar_option_with_mode(const char *unknown_opt, const options
 
 /** Set the CLI parser for the last added string option; environment strings remain scalar. */
 void options_builder_set_string_parser(options_builder_t *builder, bool (*parser)(const char *, void *, char **));
+
+#ifdef __cplusplus
+}
+#endif

@@ -7,6 +7,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Generate a JSON property from a registered option's metadata; document owns the result. */
 yyjson_mut_val *options_json_schema_for_option(yyjson_mut_doc *doc, const char *name);
 /** Convert and parse a JSON value with the CLI handler, without publishing global options.
@@ -15,3 +19,7 @@ yyjson_mut_val *options_json_schema_for_option(yyjson_mut_doc *doc, const char *
  */
 asciichat_error_t options_json_parse_value(const char *name, yyjson_val *value, char *output, size_t output_size,
                                            bool *omitted);
+
+#ifdef __cplusplus
+}
+#endif

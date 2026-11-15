@@ -58,6 +58,10 @@
 #include "../common.h"
 #include "../options/options.h" // For asciichat_mode_t
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Load configuration from TOML file and apply to global options
  * @param is_client `true` if loading client configuration, `false` for server configuration
@@ -150,3 +154,7 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
 asciichat_error_t config_create_default(const char *config_path);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file config_test.c
  * @brief Unit tests for lib/config.c - TOML configuration file parsing
@@ -12,9 +13,6 @@
  * - Edge cases (empty files, missing sections, partial configs)
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -33,7 +31,6 @@
 #include <ascii-chat/options/schema.h>
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
@@ -134,7 +131,7 @@ TEST_CASE("config/load_missing_file_non_strict_returns_ok", "[config]") {
   // This tests the default config path resolution
   asciichat_error_t result = config_load_and_apply(true, NULL, false, &backup);
   // Default config location may not exist, but in non-strict mode it should return OK
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Default config location in non-strict mode should return OK");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   restore_config_options(&backup);
 }
@@ -145,7 +142,7 @@ TEST_CASE("config_strict/load_missing_file_strict_returns_error", "[config_stric
 
   // Non-existent file should return error in strict mode
   asciichat_error_t result = config_load_and_apply(true, "/nonexistent/path/to/config.toml", true, &backup);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Missing file in strict mode should return error");
+  REQUIRE((result) != (ASCIICHAT_OK));
 
   restore_config_options(&backup);
 }
@@ -155,10 +152,10 @@ TEST_CASE("config/load_empty_file_returns_ok", "[config]") {
   save_config_options(&backup);
 
   char *config_path = create_temp_config("");
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Empty config file should return OK");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -174,10 +171,10 @@ TEST_CASE("config/load_comments_only_file_returns_ok", "[config]") {
                         "# No actual config values\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Comments-only config file should return OK");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -193,10 +190,10 @@ TEST_CASE("config/load_invalid_toml_non_strict_returns_ok", "[config]") {
                         "port = 8080\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Invalid TOML in non-strict mode should return OK");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -212,10 +209,10 @@ TEST_CASE("config_strict/load_invalid_toml_strict_returns_error", "[config_stric
                         "port = 8080\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, true, &backup);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Invalid TOML in strict mode should return error");
+  REQUIRE((result) != (ASCIICHAT_OK));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -228,7 +225,7 @@ TEST_CASE("config/load_directory_instead_of_file_returns_ok", "[config]") {
 
   // Try to load a directory as config file - should be handled gracefully
   asciichat_error_t result = config_load_and_apply(true, "/tmp", false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Directory as config path in non-strict mode should return OK");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   restore_config_options(&backup);
 }
@@ -245,13 +242,13 @@ TEST_CASE("config_sections/network_port_as_integer", "[config_sections]") {
                         "port = 8080\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid port as integer should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->port, 8080, "Port should be set to 8080");
+  REQUIRE((opts->port) == (8080));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -266,13 +263,13 @@ TEST_CASE("config_sections/network_port_as_string", "[config_sections]") {
                         "port = \"9090\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid port as string should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->port, 9090, "Port should be set to 9090");
+  REQUIRE((opts->port) == (9090));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -292,11 +289,11 @@ TEST_CASE("config_sections/network_port_invalid_too_high", "[config_sections]") 
                         "port = 70000\n"; // Too high
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Invalid port should be skipped but return OK");
-  ASCIICHAT_REQUIRE_EQ(opts->port, original_port, "Port should remain unchanged for invalid value");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((opts->port) == (original_port));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -315,11 +312,11 @@ TEST_CASE("config_sections/network_port_invalid_zero", "[config_sections]") {
                         "port = 0\n"; // Zero is invalid
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Invalid port 0 should be skipped");
-  ASCIICHAT_REQUIRE_EQ(opts->port, original_port, "Port should remain unchanged for port 0");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((opts->port) == (original_port));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -334,13 +331,13 @@ TEST_CASE("config_sections/client_port", "[config_sections]") {
                         "port = 8080\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid port should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->port, 8080, "Port should be set");
+  REQUIRE((opts->port) == (8080));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -355,13 +352,13 @@ TEST_CASE("config_sections/server_max_clients", "[config_sections]") {
                         "max_clients = 16\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(false, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid max_clients should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->max_clients, 16, "Max clients should be set");
+  REQUIRE((opts->max_clients) == (16));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -376,13 +373,13 @@ TEST_CASE("config_sections/network_compression_level", "[config_sections]") {
                         "compression_level = 5\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid compression_level should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->compression_level, 5, "Compression level should be set");
+  REQUIRE((opts->compression_level) == (5));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -402,7 +399,7 @@ TEST_CASE("config_sections/client_width_height_as_integers", "[config_sections]"
                         "height = 40\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   // Set auto_width/height to 0 first so config values are applied
   const options_t *current_opts = options_get();
@@ -413,11 +410,11 @@ TEST_CASE("config_sections/client_width_height_as_integers", "[config_sections]"
   options_state_set(&writable_opts);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid width/height should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->width, 120, "Width should be set to 120");
-  ASCIICHAT_REQUIRE_EQ(opts->height, 40, "Height should be set to 40");
+  REQUIRE((opts->width) == (120));
+  REQUIRE((opts->height) == (40));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -433,14 +430,14 @@ TEST_CASE("config_sections/client_width_height_as_strings", "[config_sections]")
                         "height = \"24\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid width/height as strings should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->width, 80, "Width should be set to 80");
-  ASCIICHAT_REQUIRE_EQ(opts->height, 24, "Height should be set to 24");
+  REQUIRE((opts->width) == (80));
+  REQUIRE((opts->height) == (24));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -458,15 +455,15 @@ TEST_CASE("config_sections/client_webcam_settings", "[config_sections]") {
                         "flip_x = false\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid webcam settings should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->webcam_index, 2, "Webcam index should be set to 2");
-  ASCIICHAT_REQUIRE_EQ(opts->flip_x, false, "Flip X should be false");
-  ASCIICHAT_REQUIRE(opts->flip_x_explicit, "A configured orientation must override source defaults");
+  REQUIRE((opts->webcam_index) == (2));
+  REQUIRE((opts->flip_x) == (false));
+  REQUIRE(opts->flip_x_explicit);
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -480,14 +477,14 @@ TEST_CASE("config_sections/client_color_mode_none", "[config_sections]") {
   const char *content = "[terminal]\ncolor_mode = \"none\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid color mode none should succeed");
-  ASCIICHAT_REQUIRE_EQ(backup.color_mode, TERM_COLOR_NONE, "After config_load_and_apply: backup.color_mode should be TERM_COLOR_NONE (got %d, expected %d)", backup.color_mode, TERM_COLOR_NONE);
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((backup.color_mode) == (TERM_COLOR_NONE));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->color_mode, TERM_COLOR_NONE, "After options_state_set: color_mode should be none (got %d, expected %d)", opts->color_mode, TERM_COLOR_NONE);
+  REQUIRE((opts->color_mode) == (TERM_COLOR_NONE));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -501,14 +498,14 @@ TEST_CASE("config_sections/client_color_mode_256", "[config_sections]") {
   const char *content = "[terminal]\ncolor_mode = \"256\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid color mode 256 should succeed");
-  ASCIICHAT_REQUIRE_EQ(backup.color_mode, TERM_COLOR_256, "After config_load_and_apply: backup.color_mode should be TERM_COLOR_256 (got %d, expected %d)", backup.color_mode, TERM_COLOR_256);
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((backup.color_mode) == (TERM_COLOR_256));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->color_mode, TERM_COLOR_256, "Color mode should be 256 (got %d, expected %d)", opts->color_mode, TERM_COLOR_256);
+  REQUIRE((opts->color_mode) == (TERM_COLOR_256));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -522,15 +519,14 @@ TEST_CASE("config_sections/client_color_mode_truecolor", "[config_sections]") {
   const char *content = "[terminal]\ncolor_mode = \"truecolor\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid color mode truecolor should succeed");
-  ASCIICHAT_REQUIRE_EQ(backup.color_mode, TERM_COLOR_TRUECOLOR, "After config_load_and_apply: backup.color_mode should be TERM_COLOR_TRUECOLOR (got %d, expected %d)", backup.color_mode,
-                       TERM_COLOR_TRUECOLOR);
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((backup.color_mode) == (TERM_COLOR_TRUECOLOR));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->color_mode, TERM_COLOR_TRUECOLOR, "Color mode should be truecolor (got %d, expected %d)", opts->color_mode, TERM_COLOR_TRUECOLOR);
+  REQUIRE((opts->color_mode) == (TERM_COLOR_TRUECOLOR));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -544,13 +540,13 @@ TEST_CASE("config_sections/client_render_mode_foreground", "[config_sections]") 
   const char *content = "[display]\nrender_mode = \"foreground\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid render mode foreground should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->render_mode, RENDER_MODE_FOREGROUND, "Render mode should be foreground");
+  REQUIRE((opts->render_mode) == (RENDER_MODE_FOREGROUND));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -564,13 +560,13 @@ TEST_CASE("config_sections/client_render_mode_background", "[config_sections]") 
   const char *content = "[display]\nrender_mode = \"background\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid render mode background should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->render_mode, RENDER_MODE_BACKGROUND, "Render mode should be background");
+  REQUIRE((opts->render_mode) == (RENDER_MODE_BACKGROUND));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -584,13 +580,13 @@ TEST_CASE("config_sections/client_render_mode_half_block", "[config_sections]") 
   const char *content = "[display]\nrender_mode = \"half-block\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid render mode half-block should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->render_mode, RENDER_MODE_HALF_BLOCK, "Render mode should be half-block");
+  REQUIRE((opts->render_mode) == (RENDER_MODE_HALF_BLOCK));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -608,15 +604,15 @@ TEST_CASE("config_sections/client_boolean_options", "[config_sections]") {
                         "quiet = true\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid boolean options should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->stretch, 1, "Stretch should be enabled");
-  ASCIICHAT_REQUIRE_EQ(opts->quiet, 1, "Quiet should be enabled");
-  ASCIICHAT_REQUIRE_EQ(opts->snapshot_mode, 1, "Snapshot mode should be enabled");
+  REQUIRE((opts->stretch) == (1));
+  REQUIRE((opts->quiet) == (1));
+  REQUIRE((opts->snapshot_mode) == (1));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -631,13 +627,13 @@ TEST_CASE("config_sections/client_snapshot_delay", "[config_sections]") {
                         "snapshot_delay = 2.5\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid snapshot delay should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_FLOAT_EQ(opts->snapshot_delay, 2.5f, 0.01f, "Snapshot delay should be 2.5");
+  REQUIRE((opts->snapshot_delay) == Catch::Approx(2.5f));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -652,11 +648,11 @@ TEST_CASE("config_sections/client_fps_as_integer", "[config_sections]") {
                         "fps = 30\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid FPS should succeed");
-  ASCIICHAT_REQUIRE_EQ(GET_OPTION(fps), 30, "FPS should be set to 30");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((GET_OPTION(fps)) == (30));
   unlink(config_path);
   SAFE_FREE(config_path);
   restore_config_options(&backup);
@@ -670,13 +666,13 @@ TEST_CASE("config_sections/client_fps_invalid_too_high", "[config_sections]") {
                         "fps = 200\n"; // Too high (max 144)
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   int original_fps = GET_OPTION(fps);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Invalid FPS should be skipped but return OK");
-  ASCIICHAT_REQUIRE_EQ(GET_OPTION(fps), original_fps, "FPS should remain unchanged for invalid value");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((GET_OPTION(fps)) == (original_fps));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -702,20 +698,20 @@ TEST_CASE("config_sections/client_config_ignored_for_server", "[config_sections]
                         "height = 100\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   // Copy writable_opts to backup so config_load_and_apply modifies the right values
   memcpy(&backup, &writable_opts, sizeof(options_t));
 
   // Load as server - client terminal config (width/height) should be ignored
   asciichat_error_t result = config_load_and_apply(MODE_SERVER, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Loading terminal config should succeed");
-  ASCIICHAT_REQUIRE_EQ(backup.width, 100, "Width should remain unchanged for server (got %d)", backup.width);
-  ASCIICHAT_REQUIRE_EQ(backup.height, 50, "Height should remain unchanged for server (got %d)", backup.height);
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((backup.width) == (100));
+  REQUIRE((backup.height) == (50));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->width, 100, "Width should remain unchanged for server");
-  ASCIICHAT_REQUIRE_EQ(opts->height, 50, "Height should remain unchanged for server");
+  REQUIRE((opts->width) == (100));
+  REQUIRE((opts->height) == (50));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -736,15 +732,15 @@ TEST_CASE("config_sections/audio_settings", "[config_sections]") {
                         "speakers_index = 2\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid audio settings should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->audio_enabled, 1, "Audio should be enabled");
-  ASCIICHAT_REQUIRE_EQ(opts->microphone_index, 1, "Microphone index should be 1");
-  ASCIICHAT_REQUIRE_EQ(opts->speakers_index, 2, "Speakers index should be 2");
+  REQUIRE((opts->audio_enabled) == (1));
+  REQUIRE((opts->microphone_index) == (1));
+  REQUIRE((opts->speakers_index) == (2));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -760,13 +756,13 @@ TEST_CASE("config_sections/audio_device_default", "[config_sections]") {
                         "microphone_index = -1\n"; // -1 means default device
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Microphone index -1 should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->microphone_index, -1, "Microphone index should be -1 (default)");
+  REQUIRE((opts->microphone_index) == (-1));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -792,17 +788,17 @@ TEST_CASE("config_sections/audio_config_ignored_for_server", "[config_sections]"
                         "microphone_index = 5\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   // Load as server - audio config should be ignored
   asciichat_error_t result = config_load_and_apply(MODE_SERVER, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Loading audio config as server should succeed");
-  ASCIICHAT_REQUIRE_EQ(backup.audio_enabled, 0, "After config_load: backup.audio_enabled should remain 0 for server (got %d)", backup.audio_enabled);
-  ASCIICHAT_REQUIRE_EQ(backup.microphone_index, 0, "After config_load: backup.microphone_index should remain 0 for server (got %d)", backup.microphone_index);
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((backup.audio_enabled) == (0));
+  REQUIRE((backup.microphone_index) == (0));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->audio_enabled, 0, "Audio enabled should remain unchanged for server");
-  ASCIICHAT_REQUIRE_EQ(opts->microphone_index, 0, "Microphone index should remain unchanged for server");
+  REQUIRE((opts->audio_enabled) == (0));
+  REQUIRE((opts->microphone_index) == (0));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -820,13 +816,13 @@ TEST_CASE("config_sections/palette_type_standard", "[config_sections]") {
   const char *content = "[palette]\ntype = \"standard\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid palette type standard should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_STANDARD, "Palette type should be standard");
+  REQUIRE((opts->palette_type) == (PALETTE_STANDARD));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -840,13 +836,13 @@ TEST_CASE("config_sections/palette_type_blocks", "[config_sections]") {
   const char *content = "[display]\npalette = \"blocks\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid palette type blocks should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_BLOCKS, "Palette type should be blocks");
+  REQUIRE((opts->palette_type) == (PALETTE_BLOCKS));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -860,13 +856,13 @@ TEST_CASE("config_sections/palette_type_digital", "[config_sections]") {
   const char *content = "[display]\npalette = \"digital\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid palette type digital should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_DIGITAL, "Palette type should be digital");
+  REQUIRE((opts->palette_type) == (PALETTE_DIGITAL));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -881,15 +877,15 @@ TEST_CASE("config_sections/palette_custom_chars", "[config_sections]") {
                         "palette_chars = \"@#$%^&*\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid palette chars should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_STR_EQ(opts->palette_custom, "@#$%^&*", "Palette chars should be set");
-  ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_CUSTOM, "Palette type should be set to custom");
-  ASCIICHAT_REQUIRE_EQ(opts->palette_custom_set, true, "Palette custom set flag should be true");
+  REQUIRE(std::strcmp((opts->palette_custom), ("@#$%^&*")) == 0);
+  REQUIRE((opts->palette_type) == (PALETTE_CUSTOM));
+  REQUIRE((opts->palette_custom_set) == (true));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -909,7 +905,7 @@ TEST_CASE("config_sections/palette_chars_too_long", "[config_sections]") {
   safe_snprintf(content, sizeof(content), "[display]\npalette_chars = \"%s\"\n", long_chars);
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   // Clear palette custom before test
   const options_t *current_opts = options_get();
@@ -920,10 +916,10 @@ TEST_CASE("config_sections/palette_chars_too_long", "[config_sections]") {
   options_state_set(&writable_opts);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Too long palette chars should be skipped");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->palette_custom_set, false, "Palette custom set should remain false");
+  REQUIRE((opts->palette_custom_set) == (false));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -942,13 +938,13 @@ TEST_CASE("config_sections/crypto_encrypt_enabled", "[config_sections]") {
                         "encrypt = true\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid encrypt enabled should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->encrypt_enabled, 1, "Encryption should be enabled");
+  REQUIRE((opts->encrypt_enabled) == (1));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -969,14 +965,14 @@ TEST_CASE("config_sections/crypto_no_encrypt", "[config_sections]") {
                         "no_encrypt = true\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &writable_opts);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid no_encrypt should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&writable_opts);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->no_encrypt, 1, "No encrypt should be set");
-  ASCIICHAT_REQUIRE_EQ(opts->encrypt_enabled, 1, "Preserve explicit encryption for conflict validation");
+  REQUIRE((opts->no_encrypt) == (1));
+  REQUIRE((opts->encrypt_enabled) == (1));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -997,14 +993,14 @@ TEST_CASE("config_sections/crypto_key_auto_enables_encryption", "[config_section
                         "key = \"gpg:ABCD1234\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid crypto key should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_STR_EQ(opts->encrypt_key, "gpg:ABCD1234", "Crypto key should be set");
-  ASCIICHAT_REQUIRE_EQ(opts->encrypt_enabled, 0, "Keys must not force payload encryption");
+  REQUIRE(std::strcmp((opts->encrypt_key), ("gpg:ABCD1234")) == 0);
+  REQUIRE((opts->encrypt_enabled) == (0));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1019,14 +1015,14 @@ TEST_CASE("config_sections/crypto_server_key_client_only", "[config_sections]") 
                         "server_key = \"github:testuser\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   // Load as client
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Server key for client should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_STR_EQ(opts->server_key, "github:testuser", "Server key should be set for client");
+  REQUIRE(std::strcmp((opts->server_key), ("github:testuser")) == 0);
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1039,20 +1035,20 @@ TEST_CASE("config_sections/crypto_client_keys_server_only", "[config_sections]")
 
   // Create a temporary directory for client keys
   char *temp_dir = create_temp_dir();
-  ASCIICHAT_REQUIRE_NOT_NULL(temp_dir, "Failed to create temp directory");
+  REQUIRE((temp_dir) != nullptr);
 
   char content[512];
   safe_snprintf(content, sizeof(content), "[security]\nclient_keys = \"%s\"\n", temp_dir);
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   // Load as server
   asciichat_error_t result = config_load_and_apply(false, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Client keys for server should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_STR_EQ(opts->client_keys, temp_dir, "Client keys should be set for server");
+  REQUIRE(std::strcmp((opts->client_keys), (temp_dir)) == 0);
 
   unlink(config_path);
   rmdir(temp_dir);
@@ -1073,13 +1069,13 @@ TEST_CASE("config_sections/log_file_in_logging_section", "[config_sections]") {
                         "log_file = \"/tmp/test.log\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid log file should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_STR_EQ(opts->log_file, "/tmp/test.log", "Log file should be set");
+  REQUIRE(std::strcmp((opts->log_file), ("/tmp/test.log")) == 0);
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1094,13 +1090,13 @@ TEST_CASE("config_sections/log_file_at_root", "[config_sections]") {
   const char *content = "[logging]\nlog_file = \"/var/log/ascii-chat.log\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid log file in section should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_STR_EQ(opts->log_file, "/var/log/ascii-chat.log", "Log file should be set from logging section");
+  REQUIRE(std::strcmp((opts->log_file), ("/var/log/ascii-chat.log")) == 0);
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1147,7 +1143,7 @@ TEST_CASE("config_sections/full_client_config", "[config_sections]") {
                         "encrypt = true\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   // Disable auto dimensions
   const options_t *current_opts = options_get();
@@ -1158,26 +1154,26 @@ TEST_CASE("config_sections/full_client_config", "[config_sections]") {
   options_state_set(&writable_opts);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Full client config should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Verify all values
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->port, 9000, "Port should be 9000");
-  ASCIICHAT_REQUIRE_EQ(opts->width, 160, "Width should be 160");
-  ASCIICHAT_REQUIRE_EQ(opts->height, 48, "Height should be 48");
-  ASCIICHAT_REQUIRE_EQ(opts->webcam_index, 1, "Webcam index should be 1");
-  ASCIICHAT_REQUIRE_EQ(opts->flip_x, false, "Flip X should be false");
-  ASCIICHAT_REQUIRE_EQ(opts->color_mode, TERM_COLOR_256, "Color mode should be 256");
-  ASCIICHAT_REQUIRE_EQ(opts->render_mode, RENDER_MODE_HALF_BLOCK, "Render mode should be half-block");
-  ASCIICHAT_REQUIRE_EQ(opts->stretch, 1, "Stretch should be enabled");
-  ASCIICHAT_REQUIRE_EQ(opts->quiet, 0, "Quiet should be disabled");
-  ASCIICHAT_REQUIRE_EQ(opts->snapshot_mode, 0, "Snapshot mode should be disabled");
-  ASCIICHAT_REQUIRE_FLOAT_EQ(opts->snapshot_delay, 1.0f, 0.01f, "Snapshot delay should be 1.0");
-  ASCIICHAT_REQUIRE_EQ(opts->audio_enabled, 1, "Audio should be enabled");
-  ASCIICHAT_REQUIRE_EQ(opts->microphone_index, 0, "Microphone index should be 0");
-  ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_DIGITAL, "Palette should be digital");
-  ASCIICHAT_REQUIRE_EQ(opts->encrypt_enabled, 1, "Encryption should be enabled");
-  ASCIICHAT_REQUIRE_STR_EQ(opts->log_file, "/tmp/ascii-chat-test.log", "Log file should be set");
+  REQUIRE((opts->port) == (9000));
+  REQUIRE((opts->width) == (160));
+  REQUIRE((opts->height) == (48));
+  REQUIRE((opts->webcam_index) == (1));
+  REQUIRE((opts->flip_x) == (false));
+  REQUIRE((opts->color_mode) == (TERM_COLOR_256));
+  REQUIRE((opts->render_mode) == (RENDER_MODE_HALF_BLOCK));
+  REQUIRE((opts->stretch) == (1));
+  REQUIRE((opts->quiet) == (0));
+  REQUIRE((opts->snapshot_mode) == (0));
+  REQUIRE((opts->snapshot_delay) == Catch::Approx(1.0f));
+  REQUIRE((opts->audio_enabled) == (1));
+  REQUIRE((opts->microphone_index) == (0));
+  REQUIRE((opts->palette_type) == (PALETTE_DIGITAL));
+  REQUIRE((opts->encrypt_enabled) == (1));
+  REQUIRE(std::strcmp((opts->log_file), ("/tmp/ascii-chat-test.log")) == 0);
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1190,7 +1186,7 @@ TEST_CASE("config_sections/full_server_config", "[config_sections]") {
 
   // Create a temp directory for client keys to avoid path validation issues
   char *temp_keys_dir = create_temp_dir();
-  ASCIICHAT_REQUIRE_NOT_NULL(temp_keys_dir, "Failed to create temp keys directory");
+  REQUIRE((temp_keys_dir) != nullptr);
 
   char content[1024];
   safe_snprintf(content, sizeof(content),
@@ -1209,19 +1205,19 @@ TEST_CASE("config_sections/full_server_config", "[config_sections]") {
                 temp_keys_dir);
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(MODE_SERVER, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Full server config should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
 
   // Verify server values
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->port, 27224, "Port should be 27224");
+  REQUIRE((opts->port) == (27224));
   // Note: palette is CLIENT-only, so it's correctly skipped in server mode
-  ASCIICHAT_REQUIRE_EQ(opts->encrypt_enabled, 1, "Encryption should be enabled");
-  ASCIICHAT_REQUIRE_STR_EQ(opts->client_keys, temp_keys_dir, "Client keys should be set");
-  ASCIICHAT_REQUIRE_STR_EQ(opts->log_file, "/tmp/ascii-chat-server-test.log", "Log file should be set");
+  REQUIRE((opts->encrypt_enabled) == (1));
+  REQUIRE(std::strcmp((opts->client_keys), (temp_keys_dir)) == 0);
+  REQUIRE(std::strcmp((opts->log_file), ("/tmp/ascii-chat-server-test.log")) == 0);
 
   unlink(config_path);
   rmdir(temp_keys_dir);
@@ -1239,38 +1235,38 @@ TEST_CASE("config_create/creates_file_with_content", "[config_create]") {
   save_config_options(&backup);
 
   char *temp_dir = create_temp_dir();
-  ASCIICHAT_REQUIRE_NOT_NULL(temp_dir, "Failed to create temp directory");
+  REQUIRE((temp_dir) != nullptr);
 
   char config_path[512];
   safe_snprintf(config_path, sizeof(config_path), "%s/config.toml", temp_dir);
 
   asciichat_error_t result = config_create_default(config_path);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Creating default config should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Verify file exists
   struct stat st;
-  ASCIICHAT_REQUIRE_EQ(stat(config_path, &st), 0, "Config file should exist");
-  ASCIICHAT_REQUIRE_GT(st.st_size, 0, "Config file should have content");
+  REQUIRE((stat(config_path, &st)) == (0));
+  REQUIRE((st.st_size) > (0));
 
   // Read file and verify it contains expected sections
   FILE *f = fopen(config_path, "r");
-  ASCIICHAT_REQUIRE_NOT_NULL(f, "Should be able to open created file");
+  REQUIRE((f) != nullptr);
 
   char *buffer = SAFE_MALLOC((size_t)st.st_size + 1, char *);
-  ASCIICHAT_REQUIRE_NOT_NULL(buffer, "Should allocate enough space for the generated config");
+  REQUIRE((buffer) != nullptr);
   size_t bytes_read = fread(buffer, 1, (size_t)st.st_size, f);
   buffer[bytes_read] = '\0';
-  ASCIICHAT_REQUIRE_EQ(bytes_read, (size_t)st.st_size, "Read %zu of %zu config bytes (ferror=%d)", bytes_read, (size_t)st.st_size, ferror(f));
+  REQUIRE((bytes_read) == ((size_t)st.st_size));
   fclose(f);
 
   // Verify key sections exist
-  ASCIICHAT_REQUIRE(strstr(buffer, "[network]") != NULL, "Config should have [network] section");
-  ASCIICHAT_REQUIRE(strstr(buffer, "[terminal]") != NULL, "Config should have [terminal] section");
-  ASCIICHAT_REQUIRE(strstr(buffer, "[display]") != NULL, "Config should have [display] section");
-  ASCIICHAT_REQUIRE(strstr(buffer, "[audio]") != NULL, "Config should have [audio] section");
-  ASCIICHAT_REQUIRE(strstr(buffer, "[security]") != NULL, "Config should have [security] section");
-  ASCIICHAT_REQUIRE(strstr(buffer, "[logging]") != NULL, "Config should have [logging] section");
-  ASCIICHAT_REQUIRE(strstr(buffer, "ascii-chat") != NULL, "Config should mention ascii-chat");
+  REQUIRE(strstr(buffer, "[network]") != NULL);
+  REQUIRE(strstr(buffer, "[terminal]") != NULL);
+  REQUIRE(strstr(buffer, "[display]") != NULL);
+  REQUIRE(strstr(buffer, "[audio]") != NULL);
+  REQUIRE(strstr(buffer, "[security]") != NULL);
+  REQUIRE(strstr(buffer, "[logging]") != NULL);
+  REQUIRE(strstr(buffer, "ascii-chat") != NULL);
   SAFE_FREE(buffer);
 
   // Cleanup
@@ -1286,7 +1282,7 @@ TEST_CASE("config_create/fails_if_file_exists", "[config_create]") {
 
   // Create a temp file that already exists
   char *existing_file = create_temp_config("existing content");
-  ASCIICHAT_REQUIRE_NOT_NULL(existing_file, "Failed to create temp file");
+  REQUIRE((existing_file) != nullptr);
 
   // Set environment variable to answer "no" to overwrite prompt
   const char *old_response = getenv("ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
@@ -1294,7 +1290,7 @@ TEST_CASE("config_create/fails_if_file_exists", "[config_create]") {
 
   // Try to create default config at same path
   asciichat_error_t result = config_create_default(existing_file);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Creating config over existing file should fail");
+  REQUIRE((result) != (ASCIICHAT_OK));
 
   // Restore old environment variable
   if (old_response) {
@@ -1348,13 +1344,13 @@ TEST_CASE("config/unknown_sections_are_ignored", "[config]") {
                         "port = 5555\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Unknown sections should be ignored");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->port, 5555, "Known values should still be applied");
+  REQUIRE((opts->port) == (5555));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1371,13 +1367,13 @@ TEST_CASE("config/unknown_keys_are_ignored", "[config]") {
                         "another_unknown = 123\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Unknown keys should be ignored");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->port, 6666, "Known values should still be applied");
+  REQUIRE((opts->port) == (6666));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1393,12 +1389,12 @@ TEST_CASE("config/multiple_loads_accumulate_correctly", "[config]") {
                          "port = 7777\n";
 
   char *config_path1 = create_temp_config(content1);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path1, "Failed to create first temp config file");
+  REQUIRE((config_path1) != nullptr);
 
   asciichat_error_t result1 = config_load_and_apply(true, config_path1, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result1, ASCIICHAT_OK, "First config load should succeed");
+  REQUIRE((result1) == (ASCIICHAT_OK));
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->port, 7777, "Port should be 7777 after first load");
+  REQUIRE((opts->port) == (7777));
 
   // Second config sets different values
   // Note: port won't be overwritten because config_port_set flag is set
@@ -1406,14 +1402,14 @@ TEST_CASE("config/multiple_loads_accumulate_correctly", "[config]") {
                          "webcam_index = 3\n";
 
   char *config_path2 = create_temp_config(content2);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path2, "Failed to create second temp config file");
+  REQUIRE((config_path2) != nullptr);
 
   asciichat_error_t result2 = config_load_and_apply(true, config_path2, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result2, ASCIICHAT_OK, "Second config load should succeed");
+  REQUIRE((result2) == (ASCIICHAT_OK));
   opts = options_get();
   // Port flag was reset in config_load_and_apply, so this is tricky to test
   // Let's just verify both loads succeeded
-  ASCIICHAT_REQUIRE_EQ(opts->webcam_index, 3, "Webcam index should be 3 after second load");
+  REQUIRE((opts->webcam_index) == (3));
 
   unlink(config_path1);
   unlink(config_path2);
@@ -1433,7 +1429,7 @@ TEST_CASE("config/whitespace_handling", "[config]") {
                         "  width   =   120  \n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   // Disable auto_width so config value applies
   const options_t *current_opts = options_get();
@@ -1443,11 +1439,11 @@ TEST_CASE("config/whitespace_handling", "[config]") {
   options_state_set(&writable_opts);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Config with extra whitespace should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->port, 8888, "Port should be parsed correctly despite whitespace");
-  ASCIICHAT_REQUIRE_EQ(opts->width, 120, "Width should be parsed correctly despite whitespace");
+  REQUIRE((opts->port) == (8888));
+  REQUIRE((opts->width) == (120));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1473,11 +1469,11 @@ TEST_CASE("config/inline_comments", "[config]") {
   options_state_set(&writable_opts);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Config with inline comments should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->port, 9999, "Port should be parsed correctly with inline comment");
-  ASCIICHAT_REQUIRE_EQ(opts->width, 100, "Width should be parsed correctly with inline comment");
+  REQUIRE((opts->port) == (9999));
+  REQUIRE((opts->width) == (100));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1495,12 +1491,12 @@ TEST_CASE("config/integer_vs_string_port", "[config]") {
   // Test integer port
   const char *content1 = "[network]\nport = 1234\n";
   char *config_path1 = create_temp_config(content1);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path1, "Failed to create config with integer port");
+  REQUIRE((config_path1) != nullptr);
 
   asciichat_error_t result1 = config_load_and_apply(true, config_path1, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result1, ASCIICHAT_OK, "Integer port should succeed");
+  REQUIRE((result1) == (ASCIICHAT_OK));
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->port, 1234, "Integer port should be applied");
+  REQUIRE((opts->port) == (1234));
 
   unlink(config_path1);
   SAFE_FREE(config_path1);
@@ -1512,12 +1508,12 @@ TEST_CASE("config/integer_vs_string_port", "[config]") {
   // Test string port
   const char *content2 = "[network]\nport = \"5678\"\n";
   char *config_path2 = create_temp_config(content2);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path2, "Failed to create config with string port");
+  REQUIRE((config_path2) != nullptr);
 
   asciichat_error_t result2 = config_load_and_apply(true, config_path2, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result2, ASCIICHAT_OK, "String port should succeed");
+  REQUIRE((result2) == (ASCIICHAT_OK));
   opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->port, 5678, "String port should be parsed and applied");
+  REQUIRE((opts->port) == (5678));
 
   unlink(config_path2);
   SAFE_FREE(config_path2);
@@ -1535,14 +1531,14 @@ TEST_CASE("config/boolean_values", "[config]") {
                         "quiet = false\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Boolean values should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->stretch, 1, "true should be 1");
-  ASCIICHAT_REQUIRE_EQ(opts->quiet, 0, "false should be 0");
+  REQUIRE((opts->stretch) == (1));
+  REQUIRE((opts->quiet) == (0));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1557,13 +1553,13 @@ TEST_CASE("config/float_snapshot_delay", "[config]") {
                         "snapshot_delay = 3.14159\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Float snapshot delay should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_FLOAT_EQ(opts->snapshot_delay, 3.14159f, 0.0001f, "Float should be parsed correctly");
+  REQUIRE((opts->snapshot_delay) == Catch::Approx(3.14159f));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1588,13 +1584,13 @@ TEST_CASE("config/invalid_color_mode_skipped", "[config]") {
                         "color_mode = \"invalid_mode\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Invalid color mode should be skipped");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->color_mode, TERM_COLOR_AUTO, "Color mode should remain unchanged");
+  REQUIRE((opts->color_mode) == (TERM_COLOR_AUTO));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1616,13 +1612,13 @@ TEST_CASE("config/invalid_render_mode_skipped", "[config]") {
                         "render_mode = \"invalid_mode\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Invalid render mode should be skipped");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->render_mode, RENDER_MODE_FOREGROUND, "Render mode should remain unchanged");
+  REQUIRE((opts->render_mode) == (RENDER_MODE_FOREGROUND));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1644,13 +1640,13 @@ TEST_CASE("config/invalid_palette_type_skipped", "[config]") {
                         "type = \"nonexistent_palette\"\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Invalid palette type should be skipped");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_STANDARD, "Palette type should remain unchanged");
+  REQUIRE((opts->palette_type) == (PALETTE_STANDARD));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1673,10 +1669,10 @@ TEST_CASE("config/negative_width_skipped", "[config]") {
                         "width = \"-10\"\n"; // Negative as string
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Negative width should be skipped");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
   (void)opts; // Reserved for future validation
@@ -1703,14 +1699,14 @@ TEST_CASE("config/negative_snapshot_delay_skipped", "[config]") {
                         "snapshot_delay = -5.0\n";
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Negative snapshot delay should be skipped");
-  ASCIICHAT_REQUIRE_FLOAT_EQ(backup.snapshot_delay, 1.0f, 0.01f, "After config_load: backup.snapshot_delay should remain 1.0 (got %.2f)", backup.snapshot_delay);
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((backup.snapshot_delay) == Catch::Approx(1.0f));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_FLOAT_EQ(opts->snapshot_delay, 1.0f, 0.01f, "Snapshot delay should remain unchanged");
+  REQUIRE((opts->snapshot_delay) == Catch::Approx(1.0f));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1734,13 +1730,13 @@ TEST_CASE("config/invalid_port_skipped", "[config]") {
                         "port = 99999\n"; // Invalid port (too high)
 
   char *config_path = create_temp_config(content);
-  ASCIICHAT_REQUIRE_NOT_NULL(config_path, "Failed to create temp config file");
+  REQUIRE((config_path) != nullptr);
 
   asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Invalid port should be skipped");
+  REQUIRE((result) == (ASCIICHAT_OK));
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->port, 8080, "Port should remain unchanged");
+  REQUIRE((opts->port) == (8080));
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1759,10 +1755,10 @@ TEST_CASE("config/test_pattern_boolean_and_integer_values", "[config]") {
       char content[128];
       safe_snprintf(content, sizeof(content), "[webcam]\ntest_pattern = %s\n", values[i]);
       char *config_path = create_temp_config(content);
-      ASCIICHAT_REQUIRE_NOT_NULL(config_path);
-      ASCIICHAT_REQUIRE_EQ(config_load_and_apply(MODE_MIRROR, config_path, false, &opts), ASCIICHAT_OK);
-      ASCIICHAT_REQUIRE_EQ(opts.test_pattern, i != 1, "value=%s initial=%d", values[i], enabled);
-      ASCIICHAT_REQUIRE_EQ(opts.test_pattern_index, i == 3 ? 1 : 0);
+      REQUIRE((config_path) != nullptr);
+      REQUIRE((config_load_and_apply(MODE_MIRROR, config_path, false, &opts)) == (ASCIICHAT_OK));
+      REQUIRE((opts.test_pattern) == (i != 1));
+      REQUIRE((opts.test_pattern_index) == (i == 3 ? 1 : 0));
       unlink(config_path);
       SAFE_FREE(config_path);
     }

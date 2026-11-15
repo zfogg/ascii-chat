@@ -7,6 +7,10 @@
 
 #include "../../network/rate_limit/rate_limit.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Memory backend operations vtable
  */
@@ -27,3 +31,7 @@ uint64_t rate_limiter_get_time_ms(void);
  * @brief Helper: Get event type string for logging
  */
 const char *rate_limiter_event_type_string(rate_event_type_t event_type);
+
+#ifdef __cplusplus
+}
+#endif

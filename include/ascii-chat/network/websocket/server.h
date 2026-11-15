@@ -57,6 +57,10 @@
 #include "../../thread_pool.h"
 #include <libwebsockets.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Forward declarations
 typedef struct websocket_server websocket_server_t;
 typedef struct acip_transport acip_transport_t;
@@ -156,3 +160,7 @@ void websocket_server_destroy(websocket_server_t *server);
  * @param server Server instance (must have a valid context)
  */
 void websocket_server_cancel_service(websocket_server_t *server);
+
+#ifdef __cplusplus
+}
+#endif

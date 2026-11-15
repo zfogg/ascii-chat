@@ -13,6 +13,10 @@
 #include <stdio.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Generate USAGE section content
  *
@@ -34,3 +38,7 @@ char *manpage_content_generate_usage(const options_config_t *config);
  * @ingroup options_manpage
  */
 void manpage_content_free_usage(char *content);
+
+#ifdef __cplusplus
+}
+#endif

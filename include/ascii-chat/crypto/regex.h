@@ -15,6 +15,10 @@
 
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Match SSH known_hosts line and extract components
  *
@@ -85,3 +89,7 @@ bool crypto_regex_extract_pem_base64(const char *file_content, char **base64_dat
  * @note Returns false if regex is not available (caller should use fallback manual parsing)
  */
 bool crypto_regex_extract_gpg_keygrip(const char *line, char **keygrip_out);
+
+#ifdef __cplusplus
+}
+#endif

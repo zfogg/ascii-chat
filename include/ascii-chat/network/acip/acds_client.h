@@ -127,6 +127,10 @@
 #include "../../crypto/policy.h"
 #include "../../network/acip/transport.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // ============================================================================
 // ACDS Client Configuration
 // ============================================================================
@@ -417,3 +421,7 @@ asciichat_error_t acds_transport_metadata_encode(uint16_t quic_port, const char 
                                                  size_t *length);
 asciichat_error_t acds_transport_metadata_decode(const void *bytes, size_t length, uint16_t *quic_port, char *url,
                                                  size_t capacity);
+
+#ifdef __cplusplus
+}
+#endif

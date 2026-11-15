@@ -62,6 +62,10 @@
 #include <ascii-chat/asciichat_errno.h>
 #include "settings.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Session Participant Types
  * ============================================================================ */
@@ -439,3 +443,7 @@ bool session_participant_has_transport(session_participant_t *p);
 network_connection_t *session_participant_connection(session_participant_t *p);
 /** Dispatch SETTINGS_ACK on the connection owner thread; callbacks run outside locks. */
 asciichat_error_t session_participant_receive_settings(session_participant_t *p, const void *payload, size_t length);
+
+#ifdef __cplusplus
+}
+#endif

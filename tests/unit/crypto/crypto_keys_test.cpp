@@ -1,12 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file crypto_keys_test.c
  * @brief Unit tests for lib/crypto/keys.c - Tests the intended final crypto implementation
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -15,7 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/tests/logging.h>
 
@@ -108,7 +104,7 @@ TEST_CASE("crypto_keys/hex_decode_tests", "[crypto_keys]") {
 
   // hex_decode returns asciichat_error_t: ASCIICHAT_OK (0) for success, error code for failure
   if (tc->expected_result == 0) {
-    ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Failed for case: %s", tc->description);
+    REQUIRE((result) == (ASCIICHAT_OK));
 
     // For valid cases, verify the output is not all zeros
     bool all_zero = true;
@@ -118,10 +114,10 @@ TEST_CASE("crypto_keys/hex_decode_tests", "[crypto_keys]") {
         break;
       }
     }
-    ASCIICHAT_REQUIRE_NOT(all_zero, "Decoded output should not be all zeros for case: %s", tc->description);
+    REQUIRE(!(all_zero));
   } else {
     // Expected to fail - should return an error code (not ASCIICHAT_OK)
-    ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail for case: %s", tc->description);
+    REQUIRE((result) != (ASCIICHAT_OK));
   }
 }
 
@@ -209,7 +205,7 @@ TEST_CASE("crypto_keys/parse_public_key_tests", "[crypto_keys]") {
   log_debug("Input: %s", input_ptr ? input_ptr : "(null)");
 
   if (tc->requires_network && !network_tests_enabled()) {
-    ASCIICHAT_SKIP("Network-dependent test skipped (set ASCII_CHAT_ENABLE_NETWORK_TESTS=1 to enable)");
+    SKIP("test skipped");
   }
 
   asciichat_error_t result = parse_public_key(input_ptr, &key);
@@ -219,13 +215,13 @@ TEST_CASE("crypto_keys/parse_public_key_tests", "[crypto_keys]") {
   // parse_public_key returns asciichat_error_t: ASCIICHAT_OK (0) for success, error code for failure
   if (tc->expected_result == 0) {
     if (tc->requires_network && result != ASCIICHAT_OK) {
-      ASCIICHAT_SKIP("Network-dependent key fetch failed (likely no BearSSL or connectivity)");
+      SKIP("test skipped");
     }
-    ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Failed for case: %s", tc->description);
-    ASCIICHAT_REQUIRE_EQ(key.type, tc->expected_type, "Key type should match for case: %s", tc->description);
+    REQUIRE((result) == (ASCIICHAT_OK));
+    REQUIRE((key.type) == (tc->expected_type));
   } else {
     // Expected to fail - should return an error code (not ASCIICHAT_OK)
-    ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail for case: %s", tc->description);
+    REQUIRE((result) != (ASCIICHAT_OK));
   }
 }
 
@@ -243,10 +239,10 @@ TEST_CASE("crypto_keys/parse_private_key_ed25519_file", "[crypto_keys]") {
 
   // This will likely fail without a real key file, but tests the interface
   if (result == ASCIICHAT_OK) {
-    ASCIICHAT_REQUIRE_EQ(key.type, KEY_TYPE_ED25519, "Should parse as Ed25519 key");
+    REQUIRE((key.type) == (KEY_TYPE_ED25519));
   } else {
     // Expected to fail without real key file - returns error code (not ASCIICHAT_OK)
-    ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail without real key file");
+    REQUIRE((result) != (ASCIICHAT_OK));
   }
 
   restore_ssh_passphrase(&restore);
@@ -259,7 +255,7 @@ TEST_CASE("crypto_keys/parse_private_key_nonexistent", "[crypto_keys]") {
 
   asciichat_error_t result = parse_private_key("/nonexistent/path", &key);
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Parsing nonexistent private key should fail");
+  REQUIRE((result) != (ASCIICHAT_OK));
 
   restore_ssh_passphrase(&restore);
 }
@@ -271,7 +267,7 @@ TEST_CASE("crypto_keys/parse_private_key_null_path", "[crypto_keys]") {
 
   asciichat_error_t result = parse_private_key(NULL, &key);
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Parsing NULL path should fail");
+  REQUIRE((result) != (ASCIICHAT_OK));
 
   restore_ssh_passphrase(&restore);
 }
@@ -294,7 +290,7 @@ TEST_CASE("crypto_keys/public_key_to_x25519_ed25519", "[crypto_keys]") {
   uint8_t x25519_key[32];
   asciichat_error_t result = public_key_to_x25519(&key, x25519_key);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Ed25519 to X25519 conversion should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Verify the output is not all zeros
   bool all_zero = true;
@@ -304,7 +300,7 @@ TEST_CASE("crypto_keys/public_key_to_x25519_ed25519", "[crypto_keys]") {
       break;
     }
   }
-  ASCIICHAT_REQUIRE_NOT(all_zero, "X25519 key should not be all zeros");
+  REQUIRE(!(all_zero));
 }
 
 TEST_CASE("crypto_keys/public_key_to_x25519_x25519_passthrough", "[crypto_keys]") {
@@ -316,8 +312,8 @@ TEST_CASE("crypto_keys/public_key_to_x25519_x25519_passthrough", "[crypto_keys]"
   uint8_t x25519_key[32];
   asciichat_error_t result = public_key_to_x25519(&key, x25519_key);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "X25519 passthrough should succeed");
-  ASCIICHAT_REQUIRE_EQ(memcmp(key.key, x25519_key, 32), 0, "X25519 key should be unchanged");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((memcmp(key.key, x25519_key, 32)) == (0));
 }
 
 TEST_CASE("crypto_keys/public_key_to_x25519_gpg", "[crypto_keys]") {
@@ -329,7 +325,7 @@ TEST_CASE("crypto_keys/public_key_to_x25519_gpg", "[crypto_keys]") {
   uint8_t x25519_key[32];
   asciichat_error_t result = public_key_to_x25519(&key, x25519_key);
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "GPG key type should not support conversion");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_keys/public_key_to_x25519_unknown_type", "[crypto_keys]") {
@@ -340,7 +336,7 @@ TEST_CASE("crypto_keys/public_key_to_x25519_unknown_type", "[crypto_keys]") {
   uint8_t x25519_key[32];
   asciichat_error_t result = public_key_to_x25519(&key, x25519_key);
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Unknown key type should fail");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_keys/private_key_to_x25519_ed25519", "[crypto_keys]") {
@@ -360,7 +356,7 @@ TEST_CASE("crypto_keys/private_key_to_x25519_ed25519", "[crypto_keys]") {
   uint8_t x25519_key[32];
   asciichat_error_t result = private_key_to_x25519(&key, x25519_key);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Ed25519 private key to X25519 should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_keys/private_key_to_x25519_x25519_passthrough", "[crypto_keys]") {
@@ -372,8 +368,8 @@ TEST_CASE("crypto_keys/private_key_to_x25519_x25519_passthrough", "[crypto_keys]
   uint8_t x25519_key[32];
   asciichat_error_t result = private_key_to_x25519(&key, x25519_key);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "X25519 private key passthrough should succeed");
-  ASCIICHAT_REQUIRE_EQ(memcmp(key.key.x25519, x25519_key, 32), 0, "X25519 private key should be unchanged");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((memcmp(key.key.x25519, x25519_key, 32)) == (0));
 }
 
 // =============================================================================
@@ -382,7 +378,7 @@ TEST_CASE("crypto_keys/private_key_to_x25519_x25519_passthrough", "[crypto_keys]
 
 TEST_CASE("crypto_keys/fetch_github_keys_valid_user", "[crypto_keys]") {
   if (!network_tests_enabled()) {
-    ASCIICHAT_SKIP("Network-dependent test skipped (set ASCII_CHAT_ENABLE_NETWORK_TESTS=1 to enable)");
+    SKIP("test skipped");
   }
 
   char **keys = NULL;
@@ -392,8 +388,8 @@ TEST_CASE("crypto_keys/fetch_github_keys_valid_user", "[crypto_keys]") {
 
   // This will fail without BearSSL, but tests the interface
   if (result == ASCIICHAT_OK) {
-    ASCIICHAT_REQUIRE_NOT_NULL(keys, "Keys array should be allocated");
-    ASCIICHAT_REQUIRE_GT(num_keys, 0, "Should fetch at least one key");
+    REQUIRE((keys) != nullptr);
+    REQUIRE((num_keys) > (0));
 
     // Free the keys if they were allocated
     for (size_t i = 0; i < num_keys; i++) {
@@ -401,13 +397,13 @@ TEST_CASE("crypto_keys/fetch_github_keys_valid_user", "[crypto_keys]") {
     }
     SAFE_FREE(keys);
   } else {
-    ASCIICHAT_SKIP("GitHub HTTPS fetch failed (likely missing BearSSL or no network)");
+    SKIP("test skipped");
   }
 }
 
 TEST_CASE("crypto_keys/fetch_github_keys_invalid_user", "[crypto_keys]") {
   if (!network_tests_enabled()) {
-    ASCIICHAT_SKIP("Network-dependent test skipped (set ASCII_CHAT_ENABLE_NETWORK_TESTS=1 to enable)");
+    SKIP("test skipped");
   }
 
   char **keys = NULL;
@@ -415,14 +411,14 @@ TEST_CASE("crypto_keys/fetch_github_keys_invalid_user", "[crypto_keys]") {
 
   asciichat_error_t result = fetch_github_keys("nonexistentuser12345", &keys, &num_keys, false);
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Invalid user should fail");
-  ASCIICHAT_REQUIRE_NULL(keys, "Keys array should be NULL on failure");
-  ASCIICHAT_REQUIRE_EQ(num_keys, 0, "Number of keys should be 0 on failure");
+  REQUIRE((result) != (ASCIICHAT_OK));
+  REQUIRE((keys) == nullptr);
+  REQUIRE((num_keys) == (0));
 }
 
 TEST_CASE("crypto_keys/fetch_gitlab_keys_valid_user", "[crypto_keys]") {
   if (!network_tests_enabled()) {
-    ASCIICHAT_SKIP("Network-dependent test skipped (set ASCII_CHAT_ENABLE_NETWORK_TESTS=1 to enable)");
+    SKIP("test skipped");
   }
 
   char **keys = NULL;
@@ -432,8 +428,8 @@ TEST_CASE("crypto_keys/fetch_gitlab_keys_valid_user", "[crypto_keys]") {
 
   // This will fail without BearSSL, but tests the interface
   if (result == ASCIICHAT_OK) {
-    ASCIICHAT_REQUIRE_NOT_NULL(keys, "Keys array should be allocated");
-    ASCIICHAT_REQUIRE_GT(num_keys, 0, "Should fetch at least one key");
+    REQUIRE((keys) != nullptr);
+    REQUIRE((num_keys) > (0));
 
     // Free the keys if they were allocated
     for (size_t i = 0; i < num_keys; i++) {
@@ -441,13 +437,13 @@ TEST_CASE("crypto_keys/fetch_gitlab_keys_valid_user", "[crypto_keys]") {
     }
     SAFE_FREE(keys);
   } else {
-    ASCIICHAT_SKIP("GitLab HTTPS fetch failed (likely missing BearSSL or no network)");
+    SKIP("test skipped");
   }
 }
 
 TEST_CASE("crypto_keys/fetch_github_gpg_keys", "[crypto_keys]") {
   if (!network_tests_enabled()) {
-    ASCIICHAT_SKIP("Network-dependent test skipped (set ASCII_CHAT_ENABLE_NETWORK_TESTS=1 to enable)");
+    SKIP("test skipped");
   }
 
   char **keys = NULL;
@@ -456,14 +452,14 @@ TEST_CASE("crypto_keys/fetch_github_gpg_keys", "[crypto_keys]") {
   asciichat_error_t result = fetch_github_gpg_keys("octocat", &keys, &num_keys);
 
   if (result == ASCIICHAT_OK) {
-    ASCIICHAT_REQUIRE_NOT_NULL(keys, "Keys array should be allocated");
-    ASCIICHAT_REQUIRE_GT(num_keys, 0, "Should fetch at least one key");
+    REQUIRE((keys) != nullptr);
+    REQUIRE((num_keys) > (0));
     for (size_t i = 0; i < num_keys; i++) {
       SAFE_FREE(keys[i]);
     }
     SAFE_FREE(keys);
   } else {
-    ASCIICHAT_SKIP("GitHub GPG fetch failed (likely missing BearSSL or no network)");
+    SKIP("test skipped");
   }
 }
 
@@ -477,8 +473,8 @@ TEST_CASE("crypto_keys/parse_keys_from_file_nonexistent", "[crypto_keys]") {
 
   asciichat_error_t result = parse_keys_from_file("/nonexistent/authorized_keys", keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Parsing nonexistent file should fail");
-  ASCIICHAT_REQUIRE_EQ(num_keys, 0, "Number of keys should be 0 on failure");
+  REQUIRE((result) != (ASCIICHAT_OK));
+  REQUIRE((num_keys) == (0));
 }
 
 TEST_CASE("crypto_keys/parse_keys_from_file_null_path", "[crypto_keys]") {
@@ -487,7 +483,7 @@ TEST_CASE("crypto_keys/parse_keys_from_file_null_path", "[crypto_keys]") {
 
   asciichat_error_t result = parse_keys_from_file(NULL, keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Parsing NULL path should fail");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 // =============================================================================
@@ -503,8 +499,8 @@ TEST_CASE("crypto_keys/format_public_key_ed25519", "[crypto_keys]") {
   char output[512];
   format_public_key(&key, output, sizeof(output));
 
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(output, "ssh-ed25519"), "Formatted key should contain ssh-ed25519");
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(output, "test-key"), "Formatted key should contain comment");
+  REQUIRE((strstr(output, "ssh-ed25519")) != nullptr);
+  REQUIRE((strstr(output, "test-key")) != nullptr);
 }
 
 TEST_CASE("crypto_keys/format_public_key_x25519", "[crypto_keys]") {
@@ -516,7 +512,7 @@ TEST_CASE("crypto_keys/format_public_key_x25519", "[crypto_keys]") {
   char output[512];
   format_public_key(&key, output, sizeof(output));
 
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(output, "x25519"), "Formatted key should contain x25519");
+  REQUIRE((strstr(output, "x25519")) != nullptr);
 }
 
 TEST_CASE("crypto_keys/format_public_key_gpg", "[crypto_keys]") {
@@ -528,7 +524,7 @@ TEST_CASE("crypto_keys/format_public_key_gpg", "[crypto_keys]") {
   char output[512];
   format_public_key(&key, output, sizeof(output));
 
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(output, "unknown"), "Formatted key should indicate unknown key type");
+  REQUIRE((strstr(output, "unknown")) != nullptr);
 }
 
 // =============================================================================
@@ -537,7 +533,7 @@ TEST_CASE("crypto_keys/format_public_key_gpg", "[crypto_keys]") {
 
 TEST_CASE("crypto_keys/key_type_validation", "[crypto_keys]") {
   key_type_t key_type = GENERATE(KEY_TYPE_UNKNOWN, KEY_TYPE_ED25519, KEY_TYPE_X25519, KEY_TYPE_GPG);
-  ASCIICHAT_ASSUME(key_type >= KEY_TYPE_UNKNOWN && key_type <= KEY_TYPE_GPG);
+  if (!(key_type >= KEY_TYPE_UNKNOWN && key_type <= KEY_TYPE_GPG)) SKIP("assumption not satisfied");
 
   public_key_t key;
   memset(&key, 0, sizeof(key));
@@ -555,16 +551,16 @@ TEST_CASE("crypto_keys/key_type_validation", "[crypto_keys]") {
   }
 
   // Test that the key type is preserved
-  ASCIICHAT_REQUIRE_EQ(key.type, key_type, "Key type should be preserved");
+  REQUIRE((key.type) == (key_type));
 
   // Test conversion to X25519 (should work for all types except UNKNOWN)
   uint8_t x25519_key[32];
   asciichat_error_t result = public_key_to_x25519(&key, x25519_key);
 
   if (key_type == KEY_TYPE_UNKNOWN || key_type == KEY_TYPE_GPG) {
-    ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Unsupported key type should fail conversion");
+    REQUIRE((result) != (ASCIICHAT_OK));
   } else {
-    ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid key type should succeed conversion");
+    REQUIRE((result) == (ASCIICHAT_OK));
   }
 }
 
@@ -586,12 +582,12 @@ TEST_CASE("crypto_keys/parse_public_keys_comma_separated_hex_keys", "[crypto_key
 
   asciichat_error_t result = parse_public_keys(input, keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Parsing comma-separated hex keys should succeed");
-  ASCIICHAT_REQUIRE_EQ(num_keys, 3, "Should parse 3 comma-separated hex keys");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((num_keys) == (3));
 
   // Verify each key is X25519 type
   for (size_t i = 0; i < num_keys; i++) {
-    ASCIICHAT_REQUIRE_EQ(keys[i].type, KEY_TYPE_X25519, "Each key should be X25519 type");
+    REQUIRE((keys[i].type) == (KEY_TYPE_X25519));
   }
 }
 
@@ -608,8 +604,8 @@ TEST_CASE("crypto_keys/parse_public_keys_comma_separated_with_whitespace", "[cry
 
   asciichat_error_t result = parse_public_keys(input, keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Parsing comma-separated keys with whitespace should succeed");
-  ASCIICHAT_REQUIRE_EQ(num_keys, 2, "Should parse 2 comma-separated hex keys despite whitespace");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((num_keys) == (2));
 }
 
 TEST_CASE("crypto_keys/parse_public_keys_single_key_no_comma", "[crypto_keys]") {
@@ -621,6 +617,6 @@ TEST_CASE("crypto_keys/parse_public_keys_single_key_no_comma", "[crypto_keys]") 
 
   asciichat_error_t result = parse_public_keys(hex1, keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Parsing single hex key should succeed");
-  ASCIICHAT_REQUIRE_EQ(num_keys, 1, "Should parse exactly 1 key");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((num_keys) == (1));
 }

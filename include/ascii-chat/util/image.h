@@ -13,6 +13,10 @@
 #include <stdint.h>
 #include "../asciichat_errno.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Calculate pixel count with overflow checking
  * @param width Image width (pixels)
@@ -86,3 +90,7 @@ asciichat_error_t image_validate_dimensions(size_t width, size_t height);
  * Sets errno with detailed context if validation fails
  */
 asciichat_error_t image_validate_buffer_size(size_t requested_size);
+
+#ifdef __cplusplus
+}
+#endif

@@ -8,6 +8,10 @@
 
 #include <ascii-chat/common/limits.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Cryptographic storage and wire widths; usable without crypto context types or libsodium. */
 
 /**
@@ -171,3 +175,7 @@
 /** Existing text storage budgets, including NUL. */
 #define MAX_COMMENT_LEN 256
 #define MAX_GPG_KEYGRIP_LEN 64
+
+#ifdef __cplusplus
+}
+#endif

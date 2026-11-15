@@ -1,6 +1,10 @@
 #pragma once
 #include <ascii-chat/network/packet/packet.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Incremental wire framing. Feed only on the owning connection's serial lane.
  * @brief When code needs to work with packet decoder, it keeps `header_used`, `packet`, `used`, `size` here instead of
  * scattering it across globals. Initialization establishes the handles and sizes; teardown must release any allocation,
@@ -19,3 +23,7 @@ typedef asciichat_error_t (*packet_decoder_fn)(const void *, size_t, void *);
 asciichat_error_t packet_decoder_feed(packet_decoder_t *, const void *, size_t, packet_decoder_fn, void *);
 void packet_decoder_reset(packet_decoder_t *);
 bool packet_decoder_pending(const packet_decoder_t *);
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file permessage_deflate_test.c
  * @brief Tests for permessage-deflate WebSocket compression
@@ -9,10 +10,6 @@
  * - Data integrity verification
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -21,7 +18,6 @@
 #include <stdlib.h>
 #include <zlib.h>
 
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
 
@@ -149,30 +145,30 @@ static void generate_test_data(uint8_t *data, size_t size, int pattern) {
  */
 TEST_CASE("permessage_deflate/small_messages", "[permessage_deflate]") {
   size_t msg_size = GENERATE(1u, 8u, 64u, 256u, 512u);
-  ASCIICHAT_ASSUME(msg_size > 0 && msg_size <= 512);
+  if (!(msg_size > 0 && msg_size <= 512)) SKIP("assumption not satisfied");
 
   uint8_t *original = SAFE_MALLOC(msg_size, uint8_t *);
-  ASCIICHAT_REQUIRE_NOT_NULL(original);
+  REQUIRE((original) != nullptr);
   generate_test_data(original, msg_size, 0);
 
   // Compress
   uint8_t *compressed = NULL;
   size_t compressed_len = 0;
   int ret = deflate_compress(original, msg_size, &compressed, &compressed_len);
-  ASCIICHAT_REQUIRE_EQ(ret, 0, "Compression should succeed for size %zu", msg_size);
-  ASCIICHAT_REQUIRE_NOT_NULL(compressed);
-  ASCIICHAT_REQUIRE_GT(compressed_len, 0);
+  REQUIRE((ret) == (0));
+  REQUIRE((compressed) != nullptr);
+  REQUIRE((compressed_len) > (0));
 
   // Decompress
   uint8_t *decompressed = SAFE_MALLOC(msg_size, uint8_t *);
-  ASCIICHAT_REQUIRE_NOT_NULL(decompressed);
+  REQUIRE((decompressed) != nullptr);
   size_t decompressed_len = 0;
   ret = deflate_decompress(compressed, compressed_len, decompressed, msg_size, &decompressed_len);
-  ASCIICHAT_REQUIRE_EQ(ret, 0, "Decompression should succeed for size %zu", msg_size);
-  ASCIICHAT_REQUIRE_EQ(decompressed_len, msg_size, "Decompressed size must match original for size %zu", msg_size);
+  REQUIRE((ret) == (0));
+  REQUIRE((decompressed_len) == (msg_size));
 
   // Verify data integrity
-  ASCIICHAT_REQUIRE_EQ(memcmp(original, decompressed, msg_size), 0, "Decompressed data must match original for size %zu", msg_size);
+  REQUIRE((memcmp(original, decompressed, msg_size)) == (0));
 
   SAFE_FREE(original);
   SAFE_FREE(compressed);
@@ -184,24 +180,24 @@ TEST_CASE("permessage_deflate/small_messages", "[permessage_deflate]") {
  */
 TEST_CASE("permessage_deflate/medium_messages", "[permessage_deflate]") {
   size_t msg_size = GENERATE(1024u, 4096u, 16384u, 65536u);
-  ASCIICHAT_ASSUME(msg_size > 0 && msg_size <= 65536);
+  if (!(msg_size > 0 && msg_size <= 65536)) SKIP("assumption not satisfied");
 
   uint8_t *original = SAFE_MALLOC(msg_size, uint8_t *);
-  ASCIICHAT_REQUIRE_NOT_NULL(original);
+  REQUIRE((original) != nullptr);
   generate_test_data(original, msg_size, 1); // RGB pattern
 
   uint8_t *compressed = NULL;
   size_t compressed_len = 0;
   int ret = deflate_compress(original, msg_size, &compressed, &compressed_len);
-  ASCIICHAT_REQUIRE_EQ(ret, 0);
+  REQUIRE((ret) == (0));
 
   uint8_t *decompressed = SAFE_MALLOC(msg_size, uint8_t *);
-  ASCIICHAT_REQUIRE_NOT_NULL(decompressed);
+  REQUIRE((decompressed) != nullptr);
   size_t decompressed_len = 0;
   ret = deflate_decompress(compressed, compressed_len, decompressed, msg_size, &decompressed_len);
-  ASCIICHAT_REQUIRE_EQ(ret, 0);
-  ASCIICHAT_REQUIRE_EQ(decompressed_len, msg_size);
-  ASCIICHAT_REQUIRE_EQ(memcmp(original, decompressed, msg_size), 0);
+  REQUIRE((ret) == (0));
+  REQUIRE((decompressed_len) == (msg_size));
+  REQUIRE((memcmp(original, decompressed, msg_size)) == (0));
 
   SAFE_FREE(original);
   SAFE_FREE(compressed);
@@ -216,26 +212,26 @@ TEST_CASE("permessage_deflate/compression_patterns", "[permessage_deflate]") {
   size_t msg_size = 8192;
 
   uint8_t *original = SAFE_MALLOC(msg_size, uint8_t *);
-  ASCIICHAT_REQUIRE_NOT_NULL(original);
+  REQUIRE((original) != nullptr);
   generate_test_data(original, msg_size, pattern);
 
   uint8_t *compressed = NULL;
   size_t compressed_len = 0;
   int ret = deflate_compress(original, msg_size, &compressed, &compressed_len);
-  ASCIICHAT_REQUIRE_EQ(ret, 0, "Compression should succeed for pattern %d", pattern);
+  REQUIRE((ret) == (0));
 
   // For pattern 0 (highly compressible), expect good compression
   if (pattern == 0) {
     float ratio = (float)compressed_len / (float)msg_size;
-    ASCIICHAT_REQUIRE_LT(ratio, 0.1f, "Pattern 0 should compress to <10%% (got %.2f%%)", ratio * 100.0f);
+    REQUIRE((ratio) < (0.1f));
   }
 
   uint8_t *decompressed = SAFE_MALLOC(msg_size, uint8_t *);
-  ASCIICHAT_REQUIRE_NOT_NULL(decompressed);
+  REQUIRE((decompressed) != nullptr);
   size_t decompressed_len = 0;
   ret = deflate_decompress(compressed, compressed_len, decompressed, msg_size, &decompressed_len);
-  ASCIICHAT_REQUIRE_EQ(ret, 0);
-  ASCIICHAT_REQUIRE_EQ(memcmp(original, decompressed, msg_size), 0);
+  REQUIRE((ret) == (0));
+  REQUIRE((memcmp(original, decompressed, msg_size)) == (0));
 
   SAFE_FREE(original);
   SAFE_FREE(compressed);
@@ -250,30 +246,30 @@ TEST_CASE("permessage_deflate/buffer_overflow_protection", "[permessage_deflate]
   size_t msg_size = 256 * 1024; // 256KB - large video frame
 
   uint8_t *original = SAFE_MALLOC(msg_size, uint8_t *);
-  ASCIICHAT_REQUIRE_NOT_NULL(original);
+  REQUIRE((original) != nullptr);
   generate_test_data(original, msg_size, 1); // Video pattern
 
   uint8_t *compressed = NULL;
   size_t compressed_len = 0;
   int ret = deflate_compress(original, msg_size, &compressed, &compressed_len);
-  ASCIICHAT_REQUIRE_EQ(ret, 0);
+  REQUIRE((ret) == (0));
 
   // Allocate exact-size buffer
   uint8_t *decompressed = SAFE_MALLOC(msg_size, uint8_t *);
-  ASCIICHAT_REQUIRE_NOT_NULL(decompressed);
+  REQUIRE((decompressed) != nullptr);
 
   // Fill with sentinel values
   uint8_t *beyond_buffer = SAFE_MALLOC(256, uint8_t *);
-  ASCIICHAT_REQUIRE_NOT_NULL(beyond_buffer);
+  REQUIRE((beyond_buffer) != nullptr);
   memset(beyond_buffer, 0xAA, 256);
 
   size_t decompressed_len = 0;
   ret = deflate_decompress(compressed, compressed_len, decompressed, msg_size, &decompressed_len);
-  ASCIICHAT_REQUIRE_EQ(ret, 0);
-  ASCIICHAT_REQUIRE_EQ(decompressed_len, msg_size);
+  REQUIRE((ret) == (0));
+  REQUIRE((decompressed_len) == (msg_size));
 
   // Verify decompressed data matches
-  ASCIICHAT_REQUIRE_EQ(memcmp(original, decompressed, msg_size), 0);
+  REQUIRE((memcmp(original, decompressed, msg_size)) == (0));
 
   SAFE_FREE(original);
   SAFE_FREE(compressed);
@@ -289,31 +285,31 @@ TEST_CASE("permessage_deflate/fragmented_decompression", "[permessage_deflate]")
   size_t total_size = 128 * 1024; // 128KB total message
 
   uint8_t *original = SAFE_MALLOC(total_size, uint8_t *);
-  ASCIICHAT_REQUIRE_NOT_NULL(original);
+  REQUIRE((original) != nullptr);
   generate_test_data(original, total_size, 1);
 
   // Compress entire message
   uint8_t *compressed = NULL;
   size_t compressed_len = 0;
   int ret = deflate_compress(original, total_size, &compressed, &compressed_len);
-  ASCIICHAT_REQUIRE_EQ(ret, 0);
+  REQUIRE((ret) == (0));
 
   // Fragment the compressed bytes, which can be much shorter than the input.
-  ASCIICHAT_REQUIRE_GT(compressed_len, 1);
+  REQUIRE((compressed_len) > (1));
   size_t fragment_size = (compressed_len + 7) / 8;
   size_t num_fragments = (compressed_len + fragment_size - 1) / fragment_size;
-  ASCIICHAT_REQUIRE_GT(num_fragments, 1);
+  REQUIRE((num_fragments) > (1));
 
   // Decompress fragments sequentially
   uint8_t *decompressed = SAFE_MALLOC(total_size, uint8_t *);
-  ASCIICHAT_REQUIRE_NOT_NULL(decompressed);
+  REQUIRE((decompressed) != nullptr);
 
   z_stream stream;
   stream.zalloc = Z_NULL;
   stream.zfree = Z_NULL;
   stream.opaque = Z_NULL;
   int z_ret = inflateInit2(&stream, -15);
-  ASCIICHAT_REQUIRE_EQ(z_ret, Z_OK);
+  REQUIRE((z_ret) == (Z_OK));
 
   stream.avail_out = total_size;
   stream.next_out = decompressed;
@@ -321,13 +317,13 @@ TEST_CASE("permessage_deflate/fragmented_decompression", "[permessage_deflate]")
   size_t offset = 0;
   for (size_t i = 0; i < num_fragments; i++) {
     size_t chunk_size = (i < num_fragments - 1) ? fragment_size : (compressed_len - offset);
-    ASCIICHAT_REQUIRE_GT(chunk_size, 0, "Fragment %zu should have data", i);
+    REQUIRE((chunk_size) > (0));
 
     stream.avail_in = chunk_size;
     stream.next_in = compressed + offset;
 
     z_ret = inflate(&stream, i == num_fragments - 1 ? Z_FINISH : Z_NO_FLUSH);
-    ASCIICHAT_REQUIRE(z_ret == Z_OK || z_ret == Z_STREAM_END, "inflate should succeed for fragment %zu (got %d)", i, z_ret);
+    REQUIRE((z_ret == Z_OK || z_ret == Z_STREAM_END));
 
     offset += chunk_size;
   }
@@ -335,8 +331,8 @@ TEST_CASE("permessage_deflate/fragmented_decompression", "[permessage_deflate]")
   size_t decompressed_len = stream.total_out;
   inflateEnd(&stream);
 
-  ASCIICHAT_REQUIRE_EQ(decompressed_len, total_size);
-  ASCIICHAT_REQUIRE_EQ(memcmp(original, decompressed, total_size), 0);
+  REQUIRE((decompressed_len) == (total_size));
+  REQUIRE((memcmp(original, decompressed, total_size)) == (0));
 
   SAFE_FREE(original);
   SAFE_FREE(compressed);
@@ -351,13 +347,13 @@ TEST_CASE("permessage_deflate/corrupted_data_handling", "[permessage_deflate]") 
   size_t msg_size = 16384;
 
   uint8_t *original = SAFE_MALLOC(msg_size, uint8_t *);
-  ASCIICHAT_REQUIRE_NOT_NULL(original);
+  REQUIRE((original) != nullptr);
   generate_test_data(original, msg_size, 1);
 
   uint8_t *compressed = NULL;
   size_t compressed_len = 0;
   int ret = deflate_compress(original, msg_size, &compressed, &compressed_len);
-  ASCIICHAT_REQUIRE_EQ(ret, 0);
+  REQUIRE((ret) == (0));
 
   // Corrupt the data
   if (compressed_len > 10) {
@@ -365,13 +361,13 @@ TEST_CASE("permessage_deflate/corrupted_data_handling", "[permessage_deflate]") 
   }
 
   uint8_t *decompressed = SAFE_MALLOC(msg_size, uint8_t *);
-  ASCIICHAT_REQUIRE_NOT_NULL(decompressed);
+  REQUIRE((decompressed) != nullptr);
   size_t decompressed_len = 0;
 
   ret = deflate_decompress(compressed, compressed_len, decompressed, msg_size, &decompressed_len);
 
   // Decompression should fail or produce corrupted data
-  ASCIICHAT_REQUIRE(ret != 0 || decompressed_len == 0 || memcmp(original, decompressed, msg_size) != 0, "Decompression should fail or produce corrupted output for corrupted input");
+  REQUIRE((ret != 0 || decompressed_len == 0 || memcmp(original, decompressed, msg_size) != 0));
 
   SAFE_FREE(original);
   SAFE_FREE(compressed);
@@ -405,7 +401,7 @@ TEST_CASE("permessage_deflate/large_video_frame", "[permessage_deflate]") {
   size_t msg_size = 921600;
 
   uint8_t *original = SAFE_MALLOC(msg_size, uint8_t *);
-  ASCIICHAT_REQUIRE_NOT_NULL(original);
+  REQUIRE((original) != nullptr);
 
   // Fill with video-like pattern (RGB pixels)
   for (size_t i = 0; i < msg_size; i += 3) {
@@ -419,20 +415,20 @@ TEST_CASE("permessage_deflate/large_video_frame", "[permessage_deflate]") {
   uint8_t *compressed = NULL;
   size_t compressed_len = 0;
   int ret = deflate_compress(original, msg_size, &compressed, &compressed_len);
-  ASCIICHAT_REQUIRE_EQ(ret, 0);
+  REQUIRE((ret) == (0));
 
   // Check compression ratio is reasonable
   float ratio = (float)compressed_len / (float)msg_size;
-  ASCIICHAT_REQUIRE_LT(ratio, 1.0f, "Compressed should be smaller than original (ratio=%.2f%%)", ratio * 100.0f);
+  REQUIRE((ratio) < (1.0f));
 
   uint8_t *decompressed = SAFE_MALLOC(msg_size, uint8_t *);
-  ASCIICHAT_REQUIRE_NOT_NULL(decompressed);
+  REQUIRE((decompressed) != nullptr);
   size_t decompressed_len = 0;
 
   ret = deflate_decompress(compressed, compressed_len, decompressed, msg_size, &decompressed_len);
-  ASCIICHAT_REQUIRE_EQ(ret, 0);
-  ASCIICHAT_REQUIRE_EQ(decompressed_len, msg_size);
-  ASCIICHAT_REQUIRE_EQ(memcmp(original, decompressed, msg_size), 0);
+  REQUIRE((ret) == (0));
+  REQUIRE((decompressed_len) == (msg_size));
+  REQUIRE((memcmp(original, decompressed, msg_size)) == (0));
 
   log_info("Video frame compression: %zu bytes -> %zu bytes (ratio=%.2f%%)", msg_size, compressed_len, ratio * 100.0f);
 
@@ -451,21 +447,21 @@ TEST_CASE("permessage_deflate/sequential_messages", "[permessage_deflate]") {
 
   for (int i = 0; i < num_messages; i++) {
     uint8_t *original = SAFE_MALLOC(msg_size, uint8_t *);
-    ASCIICHAT_REQUIRE_NOT_NULL(original);
+    REQUIRE((original) != nullptr);
     generate_test_data(original, msg_size, i % 4);
 
     uint8_t *compressed = NULL;
     size_t compressed_len = 0;
     int ret = deflate_compress(original, msg_size, &compressed, &compressed_len);
-    ASCIICHAT_REQUIRE_EQ(ret, 0, "Compression should succeed for message %d", i);
+    REQUIRE((ret) == (0));
 
     uint8_t *decompressed = SAFE_MALLOC(msg_size, uint8_t *);
-    ASCIICHAT_REQUIRE_NOT_NULL(decompressed);
+    REQUIRE((decompressed) != nullptr);
     size_t decompressed_len = 0;
 
     ret = deflate_decompress(compressed, compressed_len, decompressed, msg_size, &decompressed_len);
-    ASCIICHAT_REQUIRE_EQ(ret, 0, "Decompression should succeed for message %d", i);
-    ASCIICHAT_REQUIRE_EQ(memcmp(original, decompressed, msg_size), 0, "Data must match for message %d", i);
+    REQUIRE((ret) == (0));
+    REQUIRE((memcmp(original, decompressed, msg_size)) == (0));
 
     SAFE_FREE(original);
     SAFE_FREE(compressed);

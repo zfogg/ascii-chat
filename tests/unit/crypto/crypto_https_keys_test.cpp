@@ -1,10 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file crypto_https_keys_test.c
  * @brief Unit tests for HTTPS key fetching, parsing, and multi-key support
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/https_keys.h>
@@ -21,28 +20,28 @@ TEST_CASE("crypto_https_keys/build_github_ssh_url_valid", "[crypto_https_keys]")
   char url[256];
   asciichat_error_t result = build_github_ssh_url("testuser", url, sizeof(url));
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should build GitHub SSH URL successfully");
-  ASCIICHAT_REQUIRE_STR_EQ(url, "https://github.com/testuser.keys", "URL should match expected format");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE(std::strcmp((url), ("https://github.com/testuser.keys")) == 0);
 }
 
 TEST_CASE("crypto_https_keys/build_github_ssh_url_null_username", "[crypto_https_keys]") {
   char url[256];
   asciichat_error_t result = build_github_ssh_url(NULL, url, sizeof(url));
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL username");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_https_keys/build_github_ssh_url_null_output", "[crypto_https_keys]") {
   asciichat_error_t result = build_github_ssh_url("testuser", NULL, 256);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL output buffer");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_https_keys/build_github_ssh_url_buffer_too_small", "[crypto_https_keys]") {
   char url[10];
   asciichat_error_t result = build_github_ssh_url("testuser", url, sizeof(url));
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with buffer too small");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_https_keys/build_github_ssh_url_long_username", "[crypto_https_keys]") {
@@ -54,7 +53,7 @@ TEST_CASE("crypto_https_keys/build_github_ssh_url_long_username", "[crypto_https
   asciichat_error_t result = build_github_ssh_url(long_username, url, sizeof(url));
 
   // Should succeed (buffer is large enough)
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should handle long username within buffer limits");
+  REQUIRE((result) == (ASCIICHAT_OK));
 }
 
 // =============================================================================
@@ -65,28 +64,28 @@ TEST_CASE("crypto_https_keys/build_gitlab_ssh_url_valid", "[crypto_https_keys]")
   char url[256];
   asciichat_error_t result = build_gitlab_ssh_url("testuser", url, sizeof(url));
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should build GitLab SSH URL successfully");
-  ASCIICHAT_REQUIRE_STR_EQ(url, "https://gitlab.com/testuser.keys", "URL should match expected format");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE(std::strcmp((url), ("https://gitlab.com/testuser.keys")) == 0);
 }
 
 TEST_CASE("crypto_https_keys/build_gitlab_ssh_url_null_username", "[crypto_https_keys]") {
   char url[256];
   asciichat_error_t result = build_gitlab_ssh_url(NULL, url, sizeof(url));
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL username");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_https_keys/build_gitlab_ssh_url_null_output", "[crypto_https_keys]") {
   asciichat_error_t result = build_gitlab_ssh_url("testuser", NULL, 256);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL output buffer");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_https_keys/build_gitlab_ssh_url_buffer_too_small", "[crypto_https_keys]") {
   char url[10];
   asciichat_error_t result = build_gitlab_ssh_url("testuser", url, sizeof(url));
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with buffer too small");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 // =============================================================================
@@ -97,28 +96,28 @@ TEST_CASE("crypto_https_keys/build_github_gpg_url_valid", "[crypto_https_keys]")
   char url[256];
   asciichat_error_t result = build_github_gpg_url("testuser", url, sizeof(url));
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should build GitHub GPG URL successfully");
-  ASCIICHAT_REQUIRE_STR_EQ(url, "https://github.com/testuser.gpg", "URL should match expected format");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE(std::strcmp((url), ("https://github.com/testuser.gpg")) == 0);
 }
 
 TEST_CASE("crypto_https_keys/build_github_gpg_url_null_username", "[crypto_https_keys]") {
   char url[256];
   asciichat_error_t result = build_github_gpg_url(NULL, url, sizeof(url));
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL username");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_https_keys/build_github_gpg_url_null_output", "[crypto_https_keys]") {
   asciichat_error_t result = build_github_gpg_url("testuser", NULL, 256);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL output buffer");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_https_keys/build_github_gpg_url_buffer_too_small", "[crypto_https_keys]") {
   char url[10];
   asciichat_error_t result = build_github_gpg_url("testuser", url, sizeof(url));
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with buffer too small");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 // =============================================================================
@@ -129,28 +128,28 @@ TEST_CASE("crypto_https_keys/build_gitlab_gpg_url_valid", "[crypto_https_keys]")
   char url[256];
   asciichat_error_t result = build_gitlab_gpg_url("testuser", url, sizeof(url));
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should build GitLab GPG URL successfully");
-  ASCIICHAT_REQUIRE_STR_EQ(url, "https://gitlab.com/testuser.gpg", "URL should match expected format");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE(std::strcmp((url), ("https://gitlab.com/testuser.gpg")) == 0);
 }
 
 TEST_CASE("crypto_https_keys/build_gitlab_gpg_url_null_username", "[crypto_https_keys]") {
   char url[256];
   asciichat_error_t result = build_gitlab_gpg_url(NULL, url, sizeof(url));
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL username");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_https_keys/build_gitlab_gpg_url_null_output", "[crypto_https_keys]") {
   asciichat_error_t result = build_gitlab_gpg_url("testuser", NULL, 256);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL output buffer");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_https_keys/build_gitlab_gpg_url_buffer_too_small", "[crypto_https_keys]") {
   char url[10];
   asciichat_error_t result = build_gitlab_gpg_url("testuser", url, sizeof(url));
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with buffer too small");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 // =============================================================================
@@ -164,10 +163,10 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_single_key", "[crypto_https_keys]") 
 
   asciichat_error_t result = parse_ssh_keys_from_response(response, strlen(response), &keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should parse single SSH key successfully");
-  ASCIICHAT_REQUIRE_EQ(num_keys, 1, "Should parse exactly one key");
-  ASCIICHAT_REQUIRE_NOT_NULL(keys, "Keys array should not be NULL");
-  ASCIICHAT_REQUIRE_STR_EQ(keys[0], response, "Parsed key should match input");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((num_keys) == (1));
+  REQUIRE((keys) != nullptr);
+  REQUIRE(std::strcmp((keys[0]), (response)) == 0);
 
   // Cleanup
   for (size_t i = 0; i < num_keys; i++) {
@@ -186,14 +185,14 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_multiple_keys", "[crypto_https_keys]
 
   asciichat_error_t result = parse_ssh_keys_from_response(response, strlen(response), &keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should parse multiple SSH keys successfully");
-  ASCIICHAT_REQUIRE_EQ(num_keys, 3, "Should parse exactly three keys");
-  ASCIICHAT_REQUIRE_NOT_NULL(keys, "Keys array should not be NULL");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((num_keys) == (3));
+  REQUIRE((keys) != nullptr);
 
   // Verify each key
-  ASCIICHAT_REQUIRE(strstr(keys[0], "key1@example.com") != NULL, "First key should contain key1");
-  ASCIICHAT_REQUIRE(strstr(keys[1], "key2@example.com") != NULL, "Second key should contain key2");
-  ASCIICHAT_REQUIRE(strstr(keys[2], "key3@example.com") != NULL, "Third key should contain key3");
+  REQUIRE(strstr(keys[0], "key1@example.com") != NULL);
+  REQUIRE(strstr(keys[1], "key2@example.com") != NULL);
+  REQUIRE(strstr(keys[2], "key3@example.com") != NULL);
 
   // Cleanup
   for (size_t i = 0; i < num_keys; i++) {
@@ -212,8 +211,8 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_with_empty_lines", "[crypto_https_ke
 
   asciichat_error_t result = parse_ssh_keys_from_response(response, strlen(response), &keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should parse SSH keys while skipping empty lines");
-  ASCIICHAT_REQUIRE_EQ(num_keys, 2, "Should parse exactly two keys");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((num_keys) == (2));
 
   // Cleanup
   for (size_t i = 0; i < num_keys; i++) {
@@ -235,8 +234,8 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_max_keys_limit", "[crypto_https_keys
   // Limit to 2 keys even though there are 3
   asciichat_error_t result = parse_ssh_keys_from_response(response, strlen(response), &keys, &num_keys, 2);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should respect max_keys limit");
-  ASCIICHAT_REQUIRE_EQ(num_keys, 2, "Should only parse 2 keys when max_keys is 2");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((num_keys) == (2));
 
   // Cleanup
   for (size_t i = 0; i < num_keys; i++) {
@@ -251,7 +250,7 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_null_response", "[crypto_https_keys]
 
   asciichat_error_t result = parse_ssh_keys_from_response(NULL, 100, &keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL response");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_https_keys/parse_ssh_keys_null_keys_out", "[crypto_https_keys]") {
@@ -260,7 +259,7 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_null_keys_out", "[crypto_https_keys]
 
   asciichat_error_t result = parse_ssh_keys_from_response(response, strlen(response), NULL, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL keys_out");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_https_keys/parse_ssh_keys_null_num_keys", "[crypto_https_keys]") {
@@ -269,7 +268,7 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_null_num_keys", "[crypto_https_keys]
 
   asciichat_error_t result = parse_ssh_keys_from_response(response, strlen(response), &keys, NULL, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL num_keys");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_https_keys/parse_ssh_keys_empty_response", "[crypto_https_keys]") {
@@ -279,7 +278,7 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_empty_response", "[crypto_https_keys
 
   asciichat_error_t result = parse_ssh_keys_from_response(response, 0, &keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO_KEY, "Should fail with empty response");
+  REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
 TEST_CASE("crypto_https_keys/parse_ssh_keys_only_newlines", "[crypto_https_keys]") {
@@ -289,7 +288,7 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_only_newlines", "[crypto_https_keys]
 
   asciichat_error_t result = parse_ssh_keys_from_response(response, strlen(response), &keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO_KEY, "Should fail with only newlines");
+  REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
 // =============================================================================
@@ -317,13 +316,13 @@ TEST_CASE("crypto_https_keys/parse_gpg_keys_valid", "[crypto_https_keys]") {
 
   asciichat_error_t result = parse_gpg_keys_from_response(response, strlen(response), &keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should parse GPG key successfully");
-  ASCIICHAT_REQUIRE_EQ(num_keys, 1, "Should parse exactly one GPG key");
-  ASCIICHAT_REQUIRE_NOT_NULL(keys, "Keys array should not be NULL");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((num_keys) == (1));
+  REQUIRE((keys) != nullptr);
   // The function returns "gpg:FINGERPRINT" format, not the armored text
-  ASCIICHAT_REQUIRE_NOT_NULL(keys[0], "First key should not be NULL");
-  ASCIICHAT_REQUIRE(strncmp(keys[0], "gpg:", 4) == 0, "Key should start with 'gpg:' prefix");
-  ASCIICHAT_REQUIRE(strlen(keys[0]) > 4, "Key should have content after 'gpg:' prefix");
+  REQUIRE((keys[0]) != nullptr);
+  REQUIRE(strncmp(keys[0], "gpg:", 4) == 0);
+  REQUIRE(strlen(keys[0]) > 4);
 
   // Cleanup
   for (size_t i = 0; i < num_keys; i++) {
@@ -338,7 +337,7 @@ TEST_CASE("crypto_https_keys/parse_gpg_keys_null_response", "[crypto_https_keys]
 
   asciichat_error_t result = parse_gpg_keys_from_response(NULL, 100, &keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL response");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_https_keys/parse_gpg_keys_null_keys_out", "[crypto_https_keys]") {
@@ -347,7 +346,7 @@ TEST_CASE("crypto_https_keys/parse_gpg_keys_null_keys_out", "[crypto_https_keys]
 
   asciichat_error_t result = parse_gpg_keys_from_response(response, strlen(response), NULL, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL keys_out");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_https_keys/parse_gpg_keys_null_num_keys", "[crypto_https_keys]") {
@@ -356,7 +355,7 @@ TEST_CASE("crypto_https_keys/parse_gpg_keys_null_num_keys", "[crypto_https_keys]
 
   asciichat_error_t result = parse_gpg_keys_from_response(response, strlen(response), &keys, NULL, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL num_keys");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_https_keys/parse_gpg_keys_invalid_format", "[crypto_https_keys]") {
@@ -366,7 +365,7 @@ TEST_CASE("crypto_https_keys/parse_gpg_keys_invalid_format", "[crypto_https_keys
 
   asciichat_error_t result = parse_gpg_keys_from_response(response, strlen(response), &keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO_KEY, "Should fail with invalid GPG format");
+  REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
 TEST_CASE("crypto_https_keys/parse_gpg_keys_ssh_key_input", "[crypto_https_keys]") {
@@ -376,7 +375,7 @@ TEST_CASE("crypto_https_keys/parse_gpg_keys_ssh_key_input", "[crypto_https_keys]
 
   asciichat_error_t result = parse_gpg_keys_from_response(response, strlen(response), &keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO_KEY, "Should fail when given SSH key instead of GPG key");
+  REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
 // =============================================================================
@@ -389,7 +388,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_null_input", "[crypto_multi_keys]
 
   asciichat_error_t result = parse_public_keys(NULL, keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL input");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_multi_keys/parse_public_keys_null_keys_out", "[crypto_multi_keys]") {
@@ -397,7 +396,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_null_keys_out", "[crypto_multi_ke
 
   asciichat_error_t result = parse_public_keys("ssh-ed25519 AAAAC3...", NULL, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL keys_out");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_multi_keys/parse_public_keys_null_num_keys", "[crypto_multi_keys]") {
@@ -405,7 +404,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_null_num_keys", "[crypto_multi_ke
 
   asciichat_error_t result = parse_public_keys("ssh-ed25519 AAAAC3...", keys, NULL, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with NULL num_keys");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_multi_keys/parse_public_keys_zero_max_keys", "[crypto_multi_keys]") {
@@ -414,7 +413,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_zero_max_keys", "[crypto_multi_ke
 
   asciichat_error_t result = parse_public_keys("ssh-ed25519 AAAAC3...", keys, &num_keys, 0);
 
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "Should fail with max_keys=0");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_multi_keys/parse_public_keys_single_ssh_key", "[crypto_multi_keys]") {
@@ -425,9 +424,9 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_single_ssh_key", "[crypto_multi_k
 
   asciichat_error_t result = parse_public_keys(key_str, keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should parse single SSH Ed25519 key successfully");
-  ASCIICHAT_REQUIRE_EQ(num_keys, 1, "Should return exactly one key for single key input");
-  ASCIICHAT_REQUIRE_EQ(keys[0].type, KEY_TYPE_ED25519, "Key type should be Ed25519");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((num_keys) == (1));
+  REQUIRE((keys[0].type) == (KEY_TYPE_ED25519));
 }
 
 TEST_CASE("crypto_multi_keys/parse_public_keys_raw_hex", "[crypto_multi_keys]") {
@@ -438,9 +437,9 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_raw_hex", "[crypto_multi_keys]") 
 
   asciichat_error_t result = parse_public_keys(hex_key, keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should parse raw hex key successfully");
-  ASCIICHAT_REQUIRE_EQ(num_keys, 1, "Should return exactly one key for hex input");
-  ASCIICHAT_REQUIRE_EQ(keys[0].type, KEY_TYPE_X25519, "Key type should be X25519 for raw hex");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((num_keys) == (1));
+  REQUIRE((keys[0].type) == (KEY_TYPE_X25519));
 }
 
 TEST_CASE("crypto_multi_keys/parse_public_keys_github_prefix_detection", "[crypto_multi_keys]") {
@@ -456,7 +455,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_github_prefix_detection", "[crypt
   // Should fail (network error or no keys), but num_keys should be reset to 0
   // Note: This test may pass or fail depending on network availability
   // The important thing is that num_keys is initialized to 0 at start
-  ASCIICHAT_REQUIRE(num_keys == 0 || num_keys >= 1, "num_keys should be valid (0 on failure, >=1 on success)");
+  REQUIRE((num_keys == 0 || num_keys >= 1));
 }
 
 TEST_CASE("crypto_multi_keys/parse_public_keys_gitlab_prefix_detection", "[crypto_multi_keys]") {
@@ -466,7 +465,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_gitlab_prefix_detection", "[crypt
 
   asciichat_error_t result = parse_public_keys("gitlab:nonexistent_user_12345", keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE(num_keys == 0 || num_keys >= 1, "num_keys should be valid (0 on failure, >=1 on success)");
+  REQUIRE((num_keys == 0 || num_keys >= 1));
   (void)result; // Ignore result - we're testing prefix handling
 }
 
@@ -479,8 +478,8 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_respects_max_keys", "[crypto_mult
 
   asciichat_error_t result = parse_public_keys(key_str, keys, &num_keys, 1);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should parse with max_keys=1");
-  ASCIICHAT_REQUIRE_EQ(num_keys, 1, "Should return at most max_keys");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((num_keys) == (1));
 }
 
 TEST_CASE("crypto_multi_keys/parse_public_keys_invalid_format", "[crypto_multi_keys]") {
@@ -491,7 +490,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_invalid_format", "[crypto_multi_k
 
   asciichat_error_t result = parse_public_keys(invalid, keys, &num_keys, 10);
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail with invalid key format");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 // =============================================================================
@@ -530,8 +529,8 @@ TEST_CASE("crypto_multi_keys/real_github_zfogg_multi_key_response", "[crypto_mul
   // First, parse all raw key strings
   asciichat_error_t result = parse_ssh_keys_from_response(zfogg_keys_response, strlen(zfogg_keys_response), &raw_keys, &num_raw_keys, 10);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should parse zfogg's GitHub key response");
-  ASCIICHAT_REQUIRE_EQ(num_raw_keys, 4, "Should find all 4 key lines (1 RSA + 3 Ed25519)");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((num_raw_keys) == (4));
 
   // Now verify that only Ed25519 keys are parsed by parse_public_key
   size_t ed25519_count = 0;
@@ -539,13 +538,13 @@ TEST_CASE("crypto_multi_keys/real_github_zfogg_multi_key_response", "[crypto_mul
 
   for (size_t i = 0; i < num_raw_keys; i++) {
     if (parse_public_key(raw_keys[i], &key) == ASCIICHAT_OK) {
-      ASCIICHAT_REQUIRE_EQ(key.type, KEY_TYPE_ED25519, "Parsed key should be Ed25519");
+      REQUIRE((key.type) == (KEY_TYPE_ED25519));
       ed25519_count++;
     }
     // RSA key silently fails (as expected - only Ed25519 supported)
   }
 
-  ASCIICHAT_REQUIRE_EQ(ed25519_count, 3, "Should find exactly 3 Ed25519 keys out of 4 total keys");
+  REQUIRE((ed25519_count) == (3));
 
   // Cleanup
   for (size_t i = 0; i < num_raw_keys; i++) {
@@ -570,12 +569,12 @@ TEST_CASE("crypto_multi_keys/real_github_zfogg_server_key_match_any", "[crypto_m
     }
   }
 
-  ASCIICHAT_REQUIRE_EQ(num_parsed, 3, "Should parse all 3 of zfogg's Ed25519 keys");
+  REQUIRE((num_parsed) == (3));
 
   // Simulate server presenting the second key (could be from a different machine)
   public_key_t server_presented_key;
   asciichat_error_t parse_result = parse_public_key(ZFOGG_ED25519_KEY2, &server_presented_key);
-  ASCIICHAT_REQUIRE_EQ(parse_result, ASCIICHAT_OK, "Should parse server key");
+  REQUIRE((parse_result) == (ASCIICHAT_OK));
 
   // Verify match-any logic (core use case for multi-key support)
   bool found_match = false;
@@ -586,7 +585,7 @@ TEST_CASE("crypto_multi_keys/real_github_zfogg_server_key_match_any", "[crypto_m
     }
   }
 
-  ASCIICHAT_REQUIRE(found_match, "Server key should match one of zfogg's GitHub keys");
+  REQUIRE(found_match);
 }
 
 // Test that each of zfogg's Ed25519 keys matches when presented as server key
@@ -596,7 +595,7 @@ TEST_CASE("crypto_multi_keys/real_github_zfogg_each_key_matches", "[crypto_multi
   public_key_t all_keys[3];
   for (size_t i = 0; i < 3; i++) {
     asciichat_error_t result = parse_public_key(zfogg_ed25519_keys[i], &all_keys[i]);
-    ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should parse key %zu", i);
+    REQUIRE((result) == (ASCIICHAT_OK));
   }
 
   // Test that each key can be found when presented as the server key
@@ -611,7 +610,7 @@ TEST_CASE("crypto_multi_keys/real_github_zfogg_each_key_matches", "[crypto_multi
         break;
       }
     }
-    ASCIICHAT_REQUIRE(found, "Server key %zu should match when checking all keys", server_key_idx);
+    REQUIRE(found);
   }
 }
 
@@ -620,7 +619,7 @@ TEST_CASE("crypto_multi_keys/real_github_zfogg_rsa_rejected", "[crypto_multi_key
   public_key_t key;
   asciichat_error_t result = parse_public_key(ZFOGG_RSA_KEY, &key);
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "RSA key should be rejected (only Ed25519 supported)");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 // Test that no match is detected when server key is not in zfogg's list
@@ -642,7 +641,7 @@ TEST_CASE("crypto_multi_keys/real_github_zfogg_unknown_server_key_no_match", "[c
   const char *unknown_server_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKm7PKY3p1n4AJFJ3l2p1q3F8T7x9W2c5B4nM6K8H9J0";
   public_key_t server_key;
   asciichat_error_t result = parse_public_key(unknown_server_key, &server_key);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should parse valid unknown Ed25519 key");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Verify no match - this simulates MITM detection
   bool found_match = false;
@@ -653,5 +652,5 @@ TEST_CASE("crypto_multi_keys/real_github_zfogg_unknown_server_key_no_match", "[c
     }
   }
 
-  ASCIICHAT_REQUIRE_EQ(found_match, false, "Unknown server key should NOT match any of zfogg's GitHub keys (MITM detection)");
+  REQUIRE((found_match) == (false));
 }

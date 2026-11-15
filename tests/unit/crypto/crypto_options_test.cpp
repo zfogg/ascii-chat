@@ -1,12 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file crypto_options_test.c
  * @brief Unit tests for crypto CLI options parsing - Tests the intended final crypto implementation
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -24,7 +21,6 @@
 #include <unistd.h>
 #endif
 
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/tests/logging.h>
@@ -222,9 +218,9 @@ TEST_CASE("crypto_options/crypto_options_parsing_tests", "[crypto_options]") {
 
   // Check return value matches expectation
   if (tc->expected_result == 0) {
-    ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "options_init should succeed for case: %s", tc->description);
+    REQUIRE((result) == (ASCIICHAT_OK));
   } else {
-    ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "options_init should fail for case: %s", tc->description);
+    REQUIRE((result) != (ASCIICHAT_OK));
     return; // Don't check other assertions if we expected failure
   }
 
@@ -232,25 +228,25 @@ TEST_CASE("crypto_options/crypto_options_parsing_tests", "[crypto_options]") {
   const options_t *opts = options_get();
 
   // Test the results (only if we expected success)
-  ASCIICHAT_REQUIRE_EQ(opts->no_encrypt, tc->expect_no_encrypt, "No encrypt flag should match for case: %s", tc->description);
-  ASCIICHAT_REQUIRE_EQ(opts->encrypt_key[0] != '\0', tc->expect_key_set, "Key should be set for case: %s", tc->description);
-  ASCIICHAT_REQUIRE_EQ(opts->server_key[0] != '\0', tc->expect_server_key_set, "Server key should be set for case: %s", tc->description);
-  ASCIICHAT_REQUIRE_EQ(opts->client_keys[0] != '\0', tc->expect_client_keys_set, "Client keys should be set for case: %s", tc->description);
+  REQUIRE((opts->no_encrypt) == (tc->expect_no_encrypt));
+  REQUIRE((opts->encrypt_key[0] != '\0') == (tc->expect_key_set));
+  REQUIRE((opts->server_key[0] != '\0') == (tc->expect_server_key_set));
+  REQUIRE((opts->client_keys[0] != '\0') == (tc->expect_client_keys_set));
 
   // Check expected values (use [0] != '\0' to check if string is non-empty)
   if (tc->expected_key[0] != '\0') {
-    ASCIICHAT_REQUIRE(opts->encrypt_key[0] != '\0', "Key should not be empty for case: %s", tc->description);
-    ASCIICHAT_REQUIRE_STR_EQ(opts->encrypt_key, tc->expected_key, "Key should match for case: %s", tc->description);
+    REQUIRE(opts->encrypt_key[0] != '\0');
+    REQUIRE(std::strcmp((opts->encrypt_key), (tc->expected_key)) == 0);
   }
 
   if (tc->expected_server_key[0] != '\0') {
-    ASCIICHAT_REQUIRE(opts->server_key[0] != '\0', "Server key should not be empty for case: %s", tc->description);
-    ASCIICHAT_REQUIRE_STR_EQ(opts->server_key, tc->expected_server_key, "Server key should match for case: %s", tc->description);
+    REQUIRE(opts->server_key[0] != '\0');
+    REQUIRE(std::strcmp((opts->server_key), (tc->expected_server_key)) == 0);
   }
 
   if (tc->expected_client_keys[0] != '\0') {
-    ASCIICHAT_REQUIRE(opts->client_keys[0] != '\0', "Client keys should not be empty for case: %s", tc->description);
-    ASCIICHAT_REQUIRE_STR_EQ(opts->client_keys, tc->expected_client_keys, "Client keys should match for case: %s", tc->description);
+    REQUIRE(opts->client_keys[0] != '\0');
+    REQUIRE(std::strcmp((opts->client_keys), (tc->expected_client_keys)) == 0);
   }
 }
 
@@ -265,13 +261,13 @@ TEST_CASE("crypto_options/client_only_options", "[crypto_options]") {
   // --server-key is client-only, should work for client
   asciichat_error_t result = options_init(4, (char **)argv);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Client-only option should work for client");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Get options from RCU state
   const options_t *opts = options_get();
 
-  ASCIICHAT_REQUIRE(opts->server_key[0] != '\0', "Server key should be set for client");
-  ASCIICHAT_REQUIRE_STR_EQ(opts->server_key, "/path/to/server/key", "Server key should match");
+  REQUIRE(opts->server_key[0] != '\0');
+  REQUIRE(std::strcmp((opts->server_key), ("/path/to/server/key")) == 0);
 }
 
 TEST_CASE("crypto_options/server_only_options", "[crypto_options]") {
@@ -283,8 +279,8 @@ TEST_CASE("crypto_options/server_only_options", "[crypto_options]") {
   // Get options from RCU state
   const options_t *opts = options_get();
 
-  ASCIICHAT_REQUIRE(opts->client_keys[0] != '\0', "Client keys should be set for server");
-  ASCIICHAT_REQUIRE_STR_EQ(opts->client_keys, "/path/to/authorized_keys", "Client keys path should match");
+  REQUIRE(opts->client_keys[0] != '\0');
+  REQUIRE(std::strcmp((opts->client_keys), ("/path/to/authorized_keys")) == 0);
 }
 
 TEST_CASE("crypto_options/mutually_exclusive_options", "[crypto_options]") {
@@ -294,7 +290,7 @@ TEST_CASE("crypto_options/mutually_exclusive_options", "[crypto_options]") {
   char no_encrypt[] = "--no-encrypt";
   char *argv[] = {program, client, encrypt, no_encrypt};
 
-  ASCIICHAT_REQUIRE_NE(options_init_exit_code(4, argv), 0, "Explicit encryption flags must conflict");
+  REQUIRE((options_init_exit_code(4, argv)) != (0));
 }
 
 TEST_CASE("crypto_options/no_auth_rejects_authentication", "[crypto_options]") {
@@ -305,7 +301,7 @@ TEST_CASE("crypto_options/no_auth_rejects_authentication", "[crypto_options]") {
   char identity[] = "test-key";
   char *argv[] = {program, client, no_auth, key, identity};
 
-  ASCIICHAT_REQUIRE_NE(options_init_exit_code(5, argv), 0, "--no-auth must reject identity keys");
+  REQUIRE((options_init_exit_code(5, argv)) != (0));
 }
 
 TEST_CASE("crypto_options/invalid_key_formats", "[crypto_options]") {
@@ -330,8 +326,8 @@ TEST_CASE("crypto_options/invalid_key_formats", "[crypto_options]") {
     const options_t *opts = options_get();
 
     // These should still be accepted by the parser (validation happens later)
-    ASCIICHAT_REQUIRE(opts->encrypt_key[0] != '\0', "Key should be set even for invalid format: %s", invalid_keys[i]);
-    ASCIICHAT_REQUIRE_STR_EQ(opts->encrypt_key, invalid_keys[i], "Key should match input: %s", invalid_keys[i]);
+    REQUIRE(opts->encrypt_key[0] != '\0');
+    REQUIRE(std::strcmp((opts->encrypt_key), (invalid_keys[i])) == 0);
   }
 }
 
@@ -351,8 +347,8 @@ TEST_CASE("crypto_options/very_long_key_value", "[crypto_options]") {
   // Get options from RCU state
   const options_t *opts = options_get();
 
-  ASCIICHAT_REQUIRE(opts->encrypt_key[0] != '\0', "Long key should be accepted");
-  ASCIICHAT_REQUIRE_STR_EQ(opts->encrypt_key, long_key, "Long key should match input");
+  REQUIRE(opts->encrypt_key[0] != '\0');
+  REQUIRE(std::strcmp((opts->encrypt_key), (long_key)) == 0);
 }
 
 TEST_CASE("crypto_options/special_characters_in_key", "[crypto_options]") {
@@ -364,8 +360,8 @@ TEST_CASE("crypto_options/special_characters_in_key", "[crypto_options]") {
   // Get options from RCU state
   const options_t *opts = options_get();
 
-  ASCIICHAT_REQUIRE(opts->encrypt_key[0] != '\0', "Special characters should be accepted");
-  ASCIICHAT_REQUIRE_STR_EQ(opts->encrypt_key, special_key, "Special characters should be preserved");
+  REQUIRE(opts->encrypt_key[0] != '\0');
+  REQUIRE(std::strcmp((opts->encrypt_key), (special_key)) == 0);
 }
 
 TEST_CASE("crypto_options/unicode_characters_in_key", "[crypto_options]") {
@@ -377,8 +373,8 @@ TEST_CASE("crypto_options/unicode_characters_in_key", "[crypto_options]") {
   // Get options from RCU state
   const options_t *opts = options_get();
 
-  ASCIICHAT_REQUIRE(opts->encrypt_key[0] != '\0', "Unicode characters should be accepted");
-  ASCIICHAT_REQUIRE_STR_EQ(opts->encrypt_key, unicode_key, "Unicode characters should be preserved");
+  REQUIRE(opts->encrypt_key[0] != '\0');
+  REQUIRE(std::strcmp((opts->encrypt_key), (unicode_key)) == 0);
 }
 
 TEST_CASE("crypto_options/empty_arguments", "[crypto_options]") {
@@ -390,8 +386,8 @@ TEST_CASE("crypto_options/empty_arguments", "[crypto_options]") {
   const options_t *opts = options_get();
 
   // Should have default values
-  ASCIICHAT_REQUIRE_NOT(opts->no_encrypt, "No encrypt should be false by default");
-  ASCIICHAT_REQUIRE(opts->encrypt_key[0] == '\0', "Key should be NULL by default");
+  REQUIRE(!(opts->no_encrypt));
+  REQUIRE(opts->encrypt_key[0] == '\0');
 }
 
 TEST_CASE("crypto_options/null_arguments", "[crypto_options]") {
@@ -402,8 +398,8 @@ TEST_CASE("crypto_options/null_arguments", "[crypto_options]") {
   const options_t *opts = options_get();
 
   // Should have default values
-  ASCIICHAT_REQUIRE_NOT(opts->no_encrypt, "No encrypt should be false by default");
-  ASCIICHAT_REQUIRE(opts->encrypt_key[0] == '\0', "Key should be NULL by default");
+  REQUIRE(!(opts->no_encrypt));
+  REQUIRE(opts->encrypt_key[0] == '\0');
 }
 
 // =============================================================================
@@ -449,14 +445,14 @@ TEST_CASE("crypto_options/option_combinations", "[crypto_options]") {
     argv[argc++] = key_val;
   }
 
-  ASCIICHAT_REQUIRE_EQ(options_init(argc, (char **)argv), ASCIICHAT_OK, "Authentication and payload encryption are independent");
+  REQUIRE((options_init(argc, (char **)argv)) == (ASCIICHAT_OK));
 
   // Get options from RCU state
   const options_t *opts = options_get();
 
   // Verify the options were parsed correctly
-  ASCIICHAT_REQUIRE_EQ(opts->no_encrypt, no_encrypt, "No encrypt flag should match");
-  ASCIICHAT_REQUIRE_EQ(opts->encrypt_key[0] != '\0', has_key, "Key should be set if specified");
+  REQUIRE((opts->no_encrypt) == (no_encrypt));
+  REQUIRE((opts->encrypt_key[0] != '\0') == (has_key));
 }
 
 // =============================================================================
@@ -472,8 +468,8 @@ TEST_CASE("crypto_options/absolute_file_paths", "[crypto_options]") {
   // Get options from RCU state
   const options_t *opts = options_get();
 
-  ASCIICHAT_REQUIRE(opts->server_key[0] != '\0', "Server key should be set");
-  ASCIICHAT_REQUIRE_STR_EQ(opts->server_key, "/etc/ascii-chat/server_key", "Server key path should match");
+  REQUIRE(opts->server_key[0] != '\0');
+  REQUIRE(std::strcmp((opts->server_key), ("/etc/ascii-chat/server_key")) == 0);
 }
 
 TEST_CASE("crypto_options/relative_file_paths", "[crypto_options]") {
@@ -484,8 +480,8 @@ TEST_CASE("crypto_options/relative_file_paths", "[crypto_options]") {
   // Get options from RCU state
   const options_t *opts = options_get();
 
-  ASCIICHAT_REQUIRE(opts->client_keys[0] != '\0', "Client keys should be set");
-  ASCIICHAT_REQUIRE_STR_EQ(opts->client_keys, "./authorized_keys", "Client keys path should match");
+  REQUIRE(opts->client_keys[0] != '\0');
+  REQUIRE(std::strcmp((opts->client_keys), ("./authorized_keys")) == 0);
 }
 
 // =============================================================================
@@ -500,7 +496,7 @@ TEST_CASE("crypto_options/help_display", "[crypto_options]") {
   asciichat_error_t result = options_init(2, (char **)argv);
 
   // Help display should return success (sets help flag in options)
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Help display should return success");
+  REQUIRE((result) == (ASCIICHAT_OK));
 }
 
 // Test that --version returns success (previously called exit(0))
@@ -511,7 +507,7 @@ TEST_CASE("crypto_options/version_display", "[crypto_options]") {
   asciichat_error_t result = options_init(2, (char **)argv);
 
   // Version display should return success (sets version flag in options)
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Version display should return success");
+  REQUIRE((result) == (ASCIICHAT_OK));
 }
 
 // =============================================================================
@@ -530,12 +526,12 @@ TEST_CASE("crypto_options/many_options", "[crypto_options]") {
   char server_key_value[] = "/etc/server_key";
   char *argv[] = {program, client, no_encrypt, key, password, server_key, server_key_value};
 
-  ASCIICHAT_REQUIRE_EQ(options_init(7, argv), ASCIICHAT_OK, "Auth-only options should be accepted");
+  REQUIRE((options_init(7, argv)) == (ASCIICHAT_OK));
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE(opts->no_encrypt);
-  ASCIICHAT_REQUIRE_NOT(opts->encrypt_enabled);
-  ASCIICHAT_REQUIRE_STR_EQ(opts->encrypt_key, password);
-  ASCIICHAT_REQUIRE_STR_EQ(opts->server_key, server_key_value);
+  REQUIRE(opts->no_encrypt);
+  REQUIRE(!(opts->encrypt_enabled));
+  REQUIRE(std::strcmp((opts->encrypt_key), (password)) == 0);
+  REQUIRE(std::strcmp((opts->server_key), (server_key_value)) == 0);
 }
 
 TEST_CASE("crypto_options/repeated_options", "[crypto_options]") {
@@ -547,6 +543,6 @@ TEST_CASE("crypto_options/repeated_options", "[crypto_options]") {
   const options_t *opts = options_get();
 
   // Should use the last values
-  ASCIICHAT_REQUIRE(opts->encrypt_key[0] != '\0', "Key should be set");
-  ASCIICHAT_REQUIRE_STR_EQ(opts->encrypt_key, "second-key", "Should use last key");
+  REQUIRE(opts->encrypt_key[0] != '\0');
+  REQUIRE(std::strcmp((opts->encrypt_key), ("second-key")) == 0);
 }

@@ -1,5 +1,5 @@
+#include <catch2/catch_test_macros.hpp>
 #include "../worker_assert.h"
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 /** Regression checks for discovery processing against the production library. */
 #include "discovery/session.h"
@@ -35,7 +35,7 @@ static uint64_t discovery_session_clock(void) {
 }
 static void discovery_session_transition(discovery_state_t state, void *data) {
   discovery_session_t *session = data;
-  ASCIICHAT_REQUIRE_EQ(session->state, state);
+  REQUIRE((session->state) == (state));
   transitions++;
 }
 static bool discovery_session_connected(acip_transport_t *transport) {
@@ -48,7 +48,7 @@ static bool discovery_session_pending(acip_transport_t *transport) {
 }
 static asciichat_error_t discovery_session_send(acip_transport_t *transport, const void *data, size_t len) {
   (void)transport;
-  ASCIICHAT_REQUIRE(data && len >= sizeof(packet_header_t));
+  REQUIRE(data && len >= sizeof(packet_header_t));
   sends++;
   return send_result;
 }
@@ -59,7 +59,7 @@ static asciichat_error_t discovery_session_receive(acip_transport_t *transport, 
   if (recv_result != ASCIICHAT_OK)
     return recv_result;
   packet_header_t *header = buffer_alloc(NULL, sizeof(*header) + incoming_length);
-  ASCIICHAT_REQUIRE(header);
+  REQUIRE(header);
   *header = (packet_header_t){.magic = HOST_TO_NET_U64(PACKET_MAGIC),
                               .type = HOST_TO_NET_U16(incoming_type),
                               .length = HOST_TO_NET_U32((uint32_t)incoming_length),
@@ -82,7 +82,7 @@ static void discovery_check_pong_clock(acip_transport_t *transport) {
   discovery_session_t session = discovery_session_fixture(DISCOVERY_STATE_ACTIVE);
   session_participant_config_t config = {.address = "127.0.0.1", .port = 1};
   session.participant_ctx = session_participant_create(&config);
-  ASCIICHAT_REQUIRE(session.participant_ctx);
+  REQUIRE(session.participant_ctx);
   session.liveness.ping_interval_ms = 5000;
   session.liveness.timeout_ms = 10000;
   session.liveness.max_failures = 3;
@@ -92,10 +92,10 @@ static void discovery_check_pong_clock(acip_transport_t *transport) {
     session.liveness.last_ping_sent_ms = now_ms;
     session.liveness.ping_in_flight = true;
     session.liveness.consecutive_failures = 2;
-    ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocol, PACKET_TYPE_PONG, NULL, 0), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(atomic_load_u64(&session.liveness.last_pong_received_ms), now_ms);
-    ASCIICHAT_REQUIRE_EQ(discovery_session_check_host_alive(&session), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE(!session.liveness.ping_in_flight && session.liveness.consecutive_failures == 0);
+    REQUIRE((session_protocol_dispatch(&protocol, PACKET_TYPE_PONG, NULL, 0)) == (ASCIICHAT_OK));
+    REQUIRE((atomic_load_u64(&session.liveness.last_pong_received_ms)) == (now_ms));
+    REQUIRE((discovery_session_check_host_alive(&session)) == (ASCIICHAT_OK));
+    REQUIRE(!session.liveness.ping_in_flight && session.liveness.consecutive_failures == 0);
     now_ms += 15000;
   }
   session_participant_destroy(session.participant_ctx);
@@ -135,17 +135,17 @@ static void *discovery_session_server(void *data) {
 static void discovery_session_check_tcp(int scenario) {
   char *config_dir = get_config_dir();
   const char *test_home = SAFE_GETENV("ASCII_CHAT_TEST_HOME");
-  ASCIICHAT_REQUIRE(config_dir && test_home && strncmp(config_dir, test_home, strlen(test_home)) == 0);
+  REQUIRE(config_dir && test_home && strncmp(config_dir, test_home, strlen(test_home)) == 0);
   SAFE_FREE(config_dir);
   discovery_session_server_t server = {.scenario = scenario};
   server.listener = socket_create("discovery-test-listener", AF_INET, SOCK_STREAM, 0);
-  ASCIICHAT_REQUIRE_NE(server.listener, INVALID_SOCKET_VALUE);
+  REQUIRE((server.listener) != (INVALID_SOCKET_VALUE));
   struct sockaddr_in address = {.sin_family = AF_INET};
   address.sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK);
-  ASCIICHAT_REQUIRE_EQ(socket_bind(server.listener, (struct sockaddr *)&address, sizeof(address)), 0);
-  ASCIICHAT_REQUIRE_EQ(socket_listen(server.listener, 1), 0);
+  REQUIRE((socket_bind(server.listener, (struct sockaddr *)&address, sizeof(address))) == (0));
+  REQUIRE((socket_listen(server.listener, 1)) == (0));
   socklen_t len = sizeof(address);
-  ASCIICHAT_REQUIRE_EQ(socket_getsockname(server.listener, (struct sockaddr *)&address, &len), 0);
+  REQUIRE((socket_getsockname(server.listener, (struct sockaddr *)&address, &len)) == (0));
   discovery_session_t session = discovery_session_fixture(DISCOVERY_STATE_CONNECTING_HOST);
   SAFE_STRNCPY(session.host_address, "127.0.0.1", sizeof(session.host_address));
   session.host_port = NET_TO_HOST_U16(address.sin_port);
@@ -154,27 +154,27 @@ static void discovery_session_check_tcp(int scenario) {
     socket_close(server.listener);
     session_host_config_t config = {.port = session.host_port, .ipv4_address = "127.0.0.1", .max_clients = 1};
     session_host_t *host = session_host_create(&config);
-    ASCIICHAT_REQUIRE(host && session_host_start(host) == ASCIICHAT_OK);
+    REQUIRE(host && session_host_start(host) == ASCIICHAT_OK);
     asciichat_error_t result = discovery_session_step(&session, 0);
     if (result != ASCIICHAT_OK) {
       asciichat_error_context_t error;
       log_error("Host connection result %d: %s", result, HAS_ERRNO(&error) ? error.context_message : "no error context");
     }
-    ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE(session.state == DISCOVERY_STATE_ACTIVE && session.participant_ctx);
-    ASCIICHAT_REQUIRE(session_participant_is_connected(session.participant_ctx));
+    REQUIRE((result) == (ASCIICHAT_OK));
+    REQUIRE(session.state == DISCOVERY_STATE_ACTIVE && session.participant_ctx);
+    REQUIRE(session_participant_is_connected(session.participant_ctx));
     session_participant_destroy(session.participant_ctx);
-    ASCIICHAT_REQUIRE_EQ(session_host_destroy(host), ASCIICHAT_OK);
+    REQUIRE((session_host_destroy(host)) == (ASCIICHAT_OK));
     return;
   }
   platform_thread_t thread;
-  ASCIICHAT_REQUIRE_EQ(platform_thread_create(&thread, "discovery-test-server", discovery_session_server, &server), 0);
+  REQUIRE((platform_thread_create(&thread, "discovery-test-server", discovery_session_server, &server)) == (0));
   asciichat_error_t result = discovery_session_step(&session, 0);
-  ASCIICHAT_REQUIRE(session.participant_ctx);
-  ASCIICHAT_REQUIRE(result != ASCIICHAT_OK && session.state == DISCOVERY_STATE_FAILED && session.error == result);
-  ASCIICHAT_REQUIRE(!session_participant_is_connected(session.participant_ctx));
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), result);
-  ASCIICHAT_REQUIRE_EQ(thread_join(&thread, NULL), 0);
+  REQUIRE(session.participant_ctx);
+  REQUIRE(result != ASCIICHAT_OK && session.state == DISCOVERY_STATE_FAILED && session.error == result);
+  REQUIRE(!session_participant_is_connected(session.participant_ctx));
+  REQUIRE((discovery_session_step(&session, 0)) == (result));
+  REQUIRE((thread_join(&thread, NULL)) == (0));
   session_participant_destroy(session.participant_ctx);
   session.participant_ctx = NULL;
   socket_close(server.listener);
@@ -184,55 +184,55 @@ static void discovery_session_check_negotiation(void) {
   discovery_session_t session = discovery_session_fixture(DISCOVERY_STATE_NEGOTIATING);
   session.negotiate.state = NEGOTIATE_STATE_WAITING_PEER;
   session.negotiate.peer_quality_received = true;
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(session.state == DISCOVERY_STATE_FAILED && session.error == ERROR_INVALID_STATE);
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ERROR_INVALID_STATE);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE(session.state == DISCOVERY_STATE_FAILED && session.error == ERROR_INVALID_STATE);
+  REQUIRE((discovery_session_step(&session, 0)) == (ERROR_INVALID_STATE));
 
   session = discovery_session_fixture(DISCOVERY_STATE_NEGOTIATING);
   session.negotiate.state = NEGOTIATE_STATE_WAITING_PEER;
   session.negotiate.peer_quality_received = true;
   session.negotiate.our_quality.detection_complete = true;
   session.negotiate.our_quality.has_public_ip = true;
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(session.is_host && session.state == DISCOVERY_STATE_STARTING_HOST);
-  ASCIICHAT_REQUIRE(!strcmp(session.host_address, "127.0.0.1"));
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE(session.is_host && session.state == DISCOVERY_STATE_STARTING_HOST);
+  REQUIRE(!strcmp(session.host_address, "127.0.0.1"));
 
   session = discovery_session_fixture(DISCOVERY_STATE_NEGOTIATING);
   session.negotiate.state = NEGOTIATE_STATE_WAITING_PEER;
   session.negotiate.peer_quality_received = true;
   session.negotiate.our_quality.detection_complete = true;
   session.negotiate.peer_quality.has_public_ip = true;
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(!session.is_host && session.state == DISCOVERY_STATE_NEGOTIATING);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE(!session.is_host && session.state == DISCOVERY_STATE_NEGOTIATING);
   SAFE_STRNCPY(session.negotiate.peer_quality.public_address, "127.0.0.2", sizeof(session.negotiate.peer_quality.public_address));
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(!session.is_host && session.state == DISCOVERY_STATE_CONNECTING_HOST);
-  ASCIICHAT_REQUIRE(!strcmp(session.host_address, "127.0.0.2"));
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE(!session.is_host && session.state == DISCOVERY_STATE_CONNECTING_HOST);
+  REQUIRE(!strcmp(session.host_address, "127.0.0.2"));
 }
 
 TEST_CASE("discovery_session_process/state_dispatch_keepalive_and_migration", "[discovery_session_process]") {
-  ASCIICHAT_REQUIRE_EQ(asciichat_shared_init(NULL, false, true), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
+  REQUIRE((asciichat_shared_init(NULL, false, true)) == (ASCIICHAT_OK));
+  REQUIRE((options_state_init()) == (ASCIICHAT_OK));
   options_t opts = options_t_new();
-  ASCIICHAT_REQUIRE_EQ(options_state_set(&opts), ASCIICHAT_OK);
+  REQUIRE((options_state_set(&opts)) == (ASCIICHAT_OK));
   app_callbacks_t callbacks = {.platform_get_monotonic_time_us = discovery_session_clock};
   app_callbacks_register(&callbacks);
   acip_transport_methods_t methods = {.send = discovery_session_send, .recv = discovery_session_receive, .is_connected = discovery_session_connected, .has_pending_data = discovery_session_pending};
   acip_transport_t transport = {.methods = &methods};
   discovery_check_pong_clock(&transport);
 
-  ASCIICHAT_REQUIRE_EQ(discovery_session_process(NULL, 0), ERROR_INVALID_PARAM);
+  REQUIRE((discovery_session_process(NULL, 0)) == (ERROR_INVALID_PARAM));
   discovery_session_t session = discovery_session_fixture((discovery_state_t)-1);
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ERROR_INVALID_STATE);
+  REQUIRE((discovery_session_step(&session, 0)) == (ERROR_INVALID_STATE));
   discovery_state_t idle_states[] = {DISCOVERY_STATE_INIT, DISCOVERY_STATE_CONNECTING_ACDS, DISCOVERY_STATE_CREATING_SESSION, DISCOVERY_STATE_JOINING_SESSION, DISCOVERY_STATE_ENDED};
   for (size_t i = 0; i < sizeof(idle_states) / sizeof(idle_states[0]); i++) {
     session = discovery_session_fixture(idle_states[i]);
-    ASCIICHAT_REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == idle_states[i]);
+    REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == idle_states[i]);
   }
   session = discovery_session_fixture(DISCOVERY_STATE_FAILED);
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ERROR_NETWORK);
+  REQUIRE((discovery_session_step(&session, 0)) == (ERROR_NETWORK));
   session.error = ERROR_MEMORY;
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ERROR_MEMORY);
+  REQUIRE((discovery_session_step(&session, 0)) == (ERROR_MEMORY));
 
   // Keepalive precedes dispatch even for ended sessions, and updates only on success.
   // Some monotonic clocks start at process initialization, so establish enough
@@ -243,30 +243,30 @@ TEST_CASE("discovery_session_process/state_dispatch_keepalive_and_migration", "[
   session = discovery_session_fixture(DISCOVERY_STATE_ENDED);
   session.acds_transport = &transport;
   session.last_acds_keepalive_ns = time_get_ns() - 5 * NS_PER_SEC_INT;
-  ASCIICHAT_REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && sends == 1);
+  REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && sends == 1);
   uint64_t last_ping = session.last_acds_keepalive_ns;
-  ASCIICHAT_REQUIRE_NE(last_ping, 0);
-  ASCIICHAT_REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && sends == 1);
+  REQUIRE((last_ping) != (0));
+  REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && sends == 1);
   uint64_t overdue_ping = time_get_ns() - 5 * NS_PER_SEC_INT;
   session.last_acds_keepalive_ns = overdue_ping;
   send_result = ERROR_NETWORK;
-  ASCIICHAT_REQUIRE(discovery_session_step(&session, 0) == ERROR_NETWORK && sends == 2);
-  ASCIICHAT_REQUIRE(session.last_acds_keepalive_ns == overdue_ping && session.state == DISCOVERY_STATE_ENDED);
+  REQUIRE(discovery_session_step(&session, 0) == ERROR_NETWORK && sends == 2);
+  REQUIRE(session.last_acds_keepalive_ns == overdue_ping && session.state == DISCOVERY_STATE_ENDED);
   send_result = ASCIICHAT_OK;
 
   session = discovery_session_fixture(DISCOVERY_STATE_WAITING_PEER);
   session.acds_transport = &transport;
   session.last_acds_keepalive_ns = time_get_ns();
-  ASCIICHAT_REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && receives == 0);
-  ASCIICHAT_REQUIRE(discovery_session_step(&session, 1) == ASCIICHAT_OK && receives == 1);
-  ASCIICHAT_REQUIRE_EQ(session.state, DISCOVERY_STATE_WAITING_PEER);
+  REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && receives == 0);
+  REQUIRE(discovery_session_step(&session, 1) == ASCIICHAT_OK && receives == 1);
+  REQUIRE((session.state) == (DISCOVERY_STATE_WAITING_PEER));
   recv_result = ASCIICHAT_OK;
   incoming_type = PACKET_TYPE_PONG;
-  ASCIICHAT_REQUIRE(discovery_session_step(&session, 1) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_WAITING_PEER);
+  REQUIRE(discovery_session_step(&session, 1) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_WAITING_PEER);
   incoming_type = PACKET_TYPE_ACIP_PARTICIPANT_JOINED;
   transitions = 0;
-  ASCIICHAT_REQUIRE(discovery_session_step(&session, 1) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_NEGOTIATING);
-  ASCIICHAT_REQUIRE_EQ(transitions, 1);
+  REQUIRE(discovery_session_step(&session, 1) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_NEGOTIATING);
+  REQUIRE((transitions) == (1));
 
   // A ready DataChannel takes precedence over signaling receive failures.
   session = discovery_session_fixture(DISCOVERY_STATE_CONNECTING_HOST);
@@ -276,14 +276,14 @@ TEST_CASE("discovery_session_process/state_dispatch_keepalive_and_migration", "[
   session.last_acds_keepalive_ns = time_get_ns();
   recv_result = ERROR_NETWORK;
   unsigned int previous_receives = receives;
-  ASCIICHAT_REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_ACTIVE);
-  ASCIICHAT_REQUIRE_EQ(receives, previous_receives);
+  REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_ACTIVE);
+  REQUIRE((receives) == (previous_receives));
   session.state = DISCOVERY_STATE_CONNECTING_HOST;
   session.webrtc_transport_ready = false;
-  ASCIICHAT_REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_CONNECTING_HOST);
+  REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_CONNECTING_HOST);
   connected = false;
-  ASCIICHAT_REQUIRE(discovery_session_step(&session, 0) == ERROR_NETWORK && session.state == DISCOVERY_STATE_FAILED);
-  ASCIICHAT_REQUIRE_EQ(session.error, ERROR_NETWORK);
+  REQUIRE(discovery_session_step(&session, 0) == ERROR_NETWORK && session.state == DISCOVERY_STATE_FAILED);
+  REQUIRE((session.error) == (ERROR_NETWORK));
   connected = true;
 
   // Active signaling receive failures are currently ignored for hosts.
@@ -292,14 +292,14 @@ TEST_CASE("discovery_session_process/state_dispatch_keepalive_and_migration", "[
   session.is_host = true;
   session.acds_transport = &transport;
   session.last_acds_keepalive_ns = time_get_ns();
-  ASCIICHAT_REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_ACTIVE);
+  REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_ACTIVE);
   session.is_host = false;
   session.webrtc_transport_ready = true;
-  ASCIICHAT_REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_ACTIVE);
+  REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_ACTIVE);
   opts.prefer_webrtc = true;
-  ASCIICHAT_REQUIRE_EQ(options_state_set(&opts), ASCIICHAT_OK);
+  REQUIRE((options_state_set(&opts)) == (ASCIICHAT_OK));
   session.webrtc_transport_ready = false;
-  ASCIICHAT_REQUIRE(discovery_session_step(&session, 0) == ERROR_NETWORK && session.state == DISCOVERY_STATE_FAILED);
+  REQUIRE(discovery_session_step(&session, 0) == ERROR_NETWORK && session.state == DISCOVERY_STATE_FAILED);
 
   // A terminal ACDS decision must survive dead-host liveness in this same step.
   recv_result = ASCIICHAT_OK;
@@ -315,34 +315,34 @@ TEST_CASE("discovery_session_process/state_dispatch_keepalive_and_migration", "[
     session.last_acds_keepalive_ns = time_get_ns();
     transitions = 0;
     unsigned int before_sends = sends;
-    ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(session.state, DISCOVERY_STATE_FAILED);
-    ASCIICHAT_REQUIRE_EQ(session.error, ERROR_NETWORK);
-    ASCIICHAT_REQUIRE_EQ(transitions, 1);
-    ASCIICHAT_REQUIRE_EQ(sends, before_sends, "Terminal failure must not send a new HOST_LOST");
-    ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ERROR_NETWORK);
-    ASCIICHAT_REQUIRE_EQ(transitions, 1);
+    REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+    REQUIRE((session.state) == (DISCOVERY_STATE_FAILED));
+    REQUIRE((session.error) == (ERROR_NETWORK));
+    REQUIRE((transitions) == (1));
+    REQUIRE((sends) == (before_sends));
+    REQUIRE((discovery_session_step(&session, 0)) == (ERROR_NETWORK));
+    REQUIRE((transitions) == (1));
   }
   incoming_length = 0;
   recv_result = ERROR_NETWORK_TIMEOUT;
 
   session = discovery_session_fixture(DISCOVERY_STATE_MIGRATING);
   session.host_loss_detected_ms = now_ms - 30000;
-  ASCIICHAT_REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_MIGRATING);
+  REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_MIGRATING);
   now_ms++;
-  ASCIICHAT_REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_FAILED);
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ERROR_NETWORK_TIMEOUT);
+  REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == DISCOVERY_STATE_FAILED);
+  REQUIRE((discovery_session_step(&session, 0)) == (ERROR_NETWORK_TIMEOUT));
   options_state_destroy();
   asciichat_shared_destroy();
 }
 
 TEST_CASE("discovery_session_process/tcp_establishment_and_negotiation", "[discovery_session_process]") {
-  ASCIICHAT_REQUIRE_EQ(asciichat_shared_init(NULL, false, true), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
+  REQUIRE((asciichat_shared_init(NULL, false, true)) == (ASCIICHAT_OK));
+  REQUIRE((options_state_init()) == (ASCIICHAT_OK));
   app_callbacks_t callbacks = {.platform_get_monotonic_time_us = discovery_session_clock};
   app_callbacks_register(&callbacks);
   discovery_session_check_negotiation();
-  ASCIICHAT_REQUIRE_EQ(socket_init(), ASCIICHAT_OK);
+  REQUIRE((socket_init()) == (ASCIICHAT_OK));
   for (int scenario = 0; scenario < 4; scenario++)
     discovery_session_check_tcp(scenario);
   socket_cleanup();
@@ -351,8 +351,8 @@ TEST_CASE("discovery_session_process/tcp_establishment_and_negotiation", "[disco
 }
 
 TEST_CASE("discovery_session_process/authoritative_designation_is_idempotent_and_session_scoped", "[discovery_session_process]") {
-  ASCIICHAT_REQUIRE_EQ(asciichat_shared_init(NULL, false, true), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
+  REQUIRE((asciichat_shared_init(NULL, false, true)) == (ASCIICHAT_OK));
+  REQUIRE((options_state_init()) == (ASCIICHAT_OK));
   app_callbacks_t callbacks = {.platform_get_monotonic_time_us = discovery_session_clock};
   app_callbacks_register(&callbacks);
   acip_transport_methods_t methods = {.send = discovery_session_send, .recv = discovery_session_receive, .is_connected = discovery_session_connected, .has_pending_data = discovery_session_pending};
@@ -368,33 +368,33 @@ TEST_CASE("discovery_session_process/authoritative_designation_is_idempotent_and
   incoming_payload = &host;
   incoming_length = sizeof(host);
   recv_result = ASCIICHAT_OK;
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session.state, DISCOVERY_STATE_ACTIVE);
-  ASCIICHAT_REQUIRE_NOT(session.handoff_pending);
-  ASCIICHAT_REQUIRE_EQ(session.handoff_generation, 3);
-  ASCIICHAT_REQUIRE_STR_EQ(session.host_address, "127.0.0.1");
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE((session.state) == (DISCOVERY_STATE_ACTIVE));
+  REQUIRE(!(session.handoff_pending));
+  REQUIRE((session.handoff_generation) == (3));
+  REQUIRE(std::strcmp((session.host_address), ("127.0.0.1")) == 0);
   // Duplicate/conflicting same-generation events cannot tear down a healthy call.
   host.host_id[0] = 9;
   host.host_port = 4000;
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session.host_id[0], 1);
-  ASCIICHAT_REQUIRE_EQ(session.host_port, 3000);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE((session.host_id[0]) == (1));
+  REQUIRE((session.host_port) == (3000));
   host.generation = HOST_TO_NET_U32(2);
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session.host_id[0], 1);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE((session.host_id[0]) == (1));
   host.generation = HOST_TO_NET_U32(4);
   host.session_id[0] = 3;
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session.handoff_generation, 3);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE((session.handoff_generation) == (3));
   host.session_id[0] = 2;
   incoming_length--;
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session.handoff_generation, 3);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE((session.handoff_generation) == (3));
   incoming_length++;
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session.host_id[0], 9);
-  ASCIICHAT_REQUIRE_EQ(session.state, DISCOVERY_STATE_MIGRATING);
-  ASCIICHAT_REQUIRE(session.handoff_pending);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE((session.host_id[0]) == (9));
+  REQUIRE((session.state) == (DISCOVERY_STATE_MIGRATING));
+  REQUIRE(session.handoff_pending);
   // Replay after a fresh join restores authority without starting migration.
   session = discovery_session_fixture(DISCOVERY_STATE_ACTIVE);
   session.session_id[0] = 2;
@@ -402,10 +402,10 @@ TEST_CASE("discovery_session_process/authoritative_designation_is_idempotent_and
   session.is_host = true;
   session.acds_transport = &transport;
   session.last_acds_keepalive_ns = time_get_ns();
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session.handoff_generation, 4);
-  ASCIICHAT_REQUIRE_NOT(session.handoff_pending);
-  ASCIICHAT_REQUIRE_EQ(session.state, DISCOVERY_STATE_ACTIVE);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE((session.handoff_generation) == (4));
+  REQUIRE(!(session.handoff_pending));
+  REQUIRE((session.state) == (DISCOVERY_STATE_ACTIVE));
   // A duplicated commit must not queue another worker teardown either.
   consensus_handoff_message_t commit = {.kind = HANDOFF_COMMIT, .session = {2}, .participant = {7}, .generation = 5, .port = 4000};
   uint8_t bytes[CONSENSUS_HANDOFF_HEADER];
@@ -414,41 +414,41 @@ TEST_CASE("discovery_session_process/authoritative_designation_is_idempotent_and
   incoming_payload = bytes;
   incoming_length = sizeof(bytes);
   session.session_type = SESSION_TYPE_WEBRTC;
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(session.handoff_pending);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE(session.handoff_pending);
   session.handoff_pending = false;
   session.state = DISCOVERY_STATE_ACTIVE;
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NOT(session.handoff_pending);
-  ASCIICHAT_REQUIRE_EQ(session.state, DISCOVERY_STATE_ACTIVE);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE(!(session.handoff_pending));
+  REQUIRE((session.state) == (DISCOVERY_STATE_ACTIVE));
   commit.generation = 4;
   consensus_handoff_encode(&commit, bytes);
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session.handoff_generation, 5);
-  ASCIICHAT_REQUIRE_NOT(session.handoff_pending);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE((session.handoff_generation) == (5));
+  REQUIRE(!(session.handoff_pending));
   // TCP authority can arrive before its endpoint. Preserve the migration
   // deadline and wait rather than connecting to the previous host's address.
   session.session_type = SESSION_TYPE_DIRECT_TCP;
   commit.generation = 6;
   commit.participant[0] = 8;
   consensus_handoff_encode(&commit, bytes);
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session.state, DISCOVERY_STATE_MIGRATING);
-  ASCIICHAT_REQUIRE_NOT(session.handoff_pending);
-  ASCIICHAT_REQUIRE_STR_EMPTY(session.host_address);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE((session.state) == (DISCOVERY_STATE_MIGRATING));
+  REQUIRE(!(session.handoff_pending));
+  REQUIRE((session.host_address)[0] == '\0');
   incoming_type = PACKET_TYPE_PONG;
   incoming_length = 0;
   now_ms++;
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session.state, DISCOVERY_STATE_MIGRATING);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE((session.state) == (DISCOVERY_STATE_MIGRATING));
   host.host_id[0] = 8;
   host.generation = HOST_TO_NET_U32(6);
   incoming_type = PACKET_TYPE_ACIP_HOST_DESIGNATED;
   incoming_payload = &host;
   incoming_length = sizeof(host);
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(session.handoff_pending);
-  ASCIICHAT_REQUIRE_EQ(session.host_port, 4000);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE(session.handoff_pending);
+  REQUIRE((session.host_port) == (4000));
   // A second committed round can replace a host without membership changing.
   session.state = DISCOVERY_STATE_ACTIVE;
   session.handoff_pending = false;
@@ -458,24 +458,24 @@ TEST_CASE("discovery_session_process/authoritative_designation_is_idempotent_and
   incoming_type = (packet_type_t)CONSENSUS_HANDOFF_PACKET;
   incoming_payload = bytes;
   incoming_length = sizeof(bytes);
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session.host_id[0], 9);
-  ASCIICHAT_REQUIRE_EQ(session.host_authority_sequence, 1);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE((session.host_id[0]) == (9));
+  REQUIRE((session.host_authority_sequence) == (1));
   commit.sequence = 0;
   commit.participant[0] = 8;
   consensus_handoff_encode(&commit, bytes);
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session.host_id[0], 9);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE((session.host_id[0]) == (9));
   incoming_type = PACKET_TYPE_ACIP_HOST_DESIGNATED;
   incoming_payload = &host; // Delayed endpoint for the preceding committed round.
   incoming_length = sizeof(host);
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(session.host_id[0], 9);
-  ASCIICHAT_REQUIRE_NOT(session.handoff_pending);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE((session.host_id[0]) == (9));
+  REQUIRE(!(session.handoff_pending));
   host.host_id[0] = 9;
   host.sequence = HOST_TO_NET_U32(1);
-  ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(session.handoff_pending);
+  REQUIRE((discovery_session_step(&session, 0)) == (ASCIICHAT_OK));
+  REQUIRE(session.handoff_pending);
   incoming_length = 0;
   incoming_payload = NULL;
   options_state_destroy();
@@ -552,30 +552,30 @@ static acip_transport_t *designation_peer(network_server_t *server, const uint8_
   peer->client.joined_session = joined;
   memcpy(peer->client.session_id, session, 16);
   memcpy(peer->client.participant_id, participant, 16);
-  ASCIICHAT_REQUIRE_EQ(network_server_adopt(server, transport, "designation-fixture", true), ASCIICHAT_OK);
+  REQUIRE((network_server_adopt(server, transport, "designation-fixture", true)) == (ASCIICHAT_OK));
   uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
   while (!atomic_load_bool(&peer->opened) && time_get_ns() < deadline)
     platform_sleep_ms(1);
-  ASCIICHAT_REQUIRE(atomic_load_bool(&peer->opened));
+  REQUIRE(atomic_load_bool(&peer->opened));
   return transport;
 }
 
 TEST_CASE("discovery_session_process/host_fanout_authority_isolation_and_reconnect", "[discovery_session_process]") {
-  ASCIICHAT_REQUIRE_EQ(asciichat_shared_init(NULL, false, true), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(socket_init(), ASCIICHAT_OK);
+  REQUIRE((asciichat_shared_init(NULL, false, true)) == (ASCIICHAT_OK));
+  REQUIRE((socket_init()) == (ASCIICHAT_OK));
   acds_server_t server = {0};
-  ASCIICHAT_REQUIRE_EQ(database_init(":memory:", &server.db), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(mutex_init(&server.handoff_mutex, "designation-test"), ASCIICHAT_OK);
+  REQUIRE((database_init(":memory:", &server.db)) == (ASCIICHAT_OK));
+  REQUIRE((mutex_init(&server.handoff_mutex, "designation-test")) == (ASCIICHAT_OK));
   server.handoff_mutex_initialized = true;
   acip_session_create_t request = {.session_type = SESSION_TYPE_WEBRTC, .max_participants = 8, .expose_ip_publicly = true};
   acip_session_created_t created;
-  ASCIICHAT_REQUIRE_EQ(database_session_create(server.db, &request, &server.config, &created), ASCIICHAT_OK);
+  REQUIRE((database_session_create(server.db, &request, &server.config, &created)) == (ASCIICHAT_OK));
   acip_session_join_t join = {.session_string_len = created.session_string_len};
   SAFE_STRNCPY(join.session_string, created.session_string, sizeof(join.session_string));
   acip_session_joined_t first;
-  ASCIICHAT_REQUIRE_EQ(database_session_join(server.db, &join, &server.config, &first), ASCIICHAT_OK);
+  REQUIRE((database_session_join(server.db, &join, &server.config, &first)) == (ASCIICHAT_OK));
   network_server_config_t config = {.bind_ipv4 = true, .ipv4_address = "127.0.0.1", .max_connections = 8, .callbacks = {.open = designation_open, .packet = designation_packet}};
-  ASCIICHAT_REQUIRE_EQ(network_server_create(&config, &server.network_server), ASCIICHAT_OK);
+  REQUIRE((network_server_create(&config, &server.network_server)) == (ASCIICHAT_OK));
   uint8_t other[16] = {99}, outsider[16] = {98};
   acip_transport_t *host = designation_peer(server.network_server, created.session_id, first.participant_id, true);
   acip_transport_t *peer = designation_peer(server.network_server, created.session_id, other, true);
@@ -585,13 +585,13 @@ TEST_CASE("discovery_session_process/host_fanout_authority_isolation_and_reconne
   memcpy(announcement.session_id, created.session_id, 16);
   memcpy(announcement.host_id, first.participant_id, 16);
   acds_on_host_announcement(&announcement, host, "fixture", &server);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&((designation_peer_t *)host->impl_data)->designated), 1);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&((designation_peer_t *)peer->impl_data)->designated), 1);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&((designation_peer_t *)foreign->impl_data)->designated), 0);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&((designation_peer_t *)unjoined->impl_data)->designated), 0);
+  REQUIRE((atomic_load_int(&((designation_peer_t *)host->impl_data)->designated)) == (1));
+  REQUIRE((atomic_load_int(&((designation_peer_t *)peer->impl_data)->designated)) == (1));
+  REQUIRE((atomic_load_int(&((designation_peer_t *)foreign->impl_data)->designated)) == (0));
+  REQUIRE((atomic_load_int(&((designation_peer_t *)unjoined->impl_data)->designated)) == (0));
   // Duplicate announcements can repair delivery; recipients suppress repeat UX.
   acds_on_host_announcement(&announcement, host, "fixture", &server);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&((designation_peer_t *)peer->impl_data)->designated), 2);
+  REQUIRE((atomic_load_int(&((designation_peer_t *)peer->impl_data)->designated)) == (2));
   announcement.generation = HOST_TO_NET_U32(2);
   acds_on_host_announcement(&announcement, host, "fixture", &server);
   announcement.generation = HOST_TO_NET_U32(1);
@@ -602,50 +602,50 @@ TEST_CASE("discovery_session_process/host_fanout_authority_isolation_and_reconne
   acds_on_host_announcement(&announcement, foreign, "fixture", &server);
   announcement.host_port++;
   acds_on_host_announcement(&announcement, host, "fixture", &server);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&((designation_peer_t *)host->impl_data)->errors), 2);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&((designation_peer_t *)peer->impl_data)->errors), 2);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&((designation_peer_t *)peer->impl_data)->designated), 2);
+  REQUIRE((atomic_load_int(&((designation_peer_t *)host->impl_data)->errors)) == (2));
+  REQUIRE((atomic_load_int(&((designation_peer_t *)peer->impl_data)->errors)) == (2));
+  REQUIRE((atomic_load_int(&((designation_peer_t *)peer->impl_data)->designated)) == (2));
   announcement.sequence = HOST_TO_NET_U32(1);
   announcement.host_port = 3456;
   acds_on_host_announcement(&announcement, host, "fixture", &server);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&((designation_peer_t *)peer->impl_data)->designated), 2);
+  REQUIRE((atomic_load_int(&((designation_peer_t *)peer->impl_data)->designated)) == (2));
   announcement.sequence = 0;
   // A rejoined connection receives the persisted current endpoint and generation.
   acip_transport_t *reconnected = designation_peer(server.network_server, created.session_id, other, true);
   acds_send_current_host(&server, reconnected, created.session_id);
   designation_peer_t *replay = reconnected->impl_data;
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&replay->designated), 1);
-  ASCIICHAT_REQUIRE_EQ(replay->last.host_port, 3456);
-  ASCIICHAT_REQUIRE_ARRAY_EQ(replay->last.host_id, first.participant_id, 16);
-  ASCIICHAT_REQUIRE_EQ(sqlite3_exec(server.db, "UPDATE sessions SET expose_ip_publicly = 0", NULL, NULL, NULL), SQLITE_OK);
+  REQUIRE((atomic_load_int(&replay->designated)) == (1));
+  REQUIRE((replay->last.host_port) == (3456));
+  REQUIRE(std::memcmp((replay->last.host_id), (first.participant_id), (16)) == 0);
+  REQUIRE((sqlite3_exec(server.db, "UPDATE sessions SET expose_ip_publicly = 0", NULL, NULL, NULL)) == (SQLITE_OK));
   acds_send_current_host(&server, reconnected, created.session_id);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&replay->designated), 2);
-  ASCIICHAT_REQUIRE_STR_EMPTY(replay->last.host_address);
+  REQUIRE((atomic_load_int(&replay->designated)) == (2));
+  REQUIRE((replay->last.host_address)[0] == '\0');
   ((designation_peer_t *)peer->impl_data)->fail_send = true;
   announcement.host_port = 3456;
   acds_on_host_announcement(&announcement, host, "fixture", &server);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&replay->designated), 3, "A failed recipient must not stop fanout");
-  ASCIICHAT_REQUIRE_STR_EMPTY(replay->last.host_address);
-  ASCIICHAT_REQUIRE_EQ(sqlite3_exec(server.db, "UPDATE sessions SET expose_ip_publicly = 1", NULL, NULL, NULL), SQLITE_OK);
+  REQUIRE((atomic_load_int(&replay->designated)) == (3));
+  REQUIRE((replay->last.host_address)[0] == '\0');
+  REQUIRE((sqlite3_exec(server.db, "UPDATE sessions SET expose_ip_publicly = 1", NULL, NULL, NULL)) == (SQLITE_OK));
   uint8_t metadata[ACDS_TRANSPORT_METADATA_MAX];
   size_t metadata_length = 0;
-  ASCIICHAT_REQUIRE_EQ(acds_transport_metadata_encode(4567, "https://example.test:4568/acip", metadata, sizeof(metadata), &metadata_length), ASCIICHAT_OK);
+  REQUIRE((acds_transport_metadata_encode(4567, "https://example.test:4568/acip", metadata, sizeof(metadata), &metadata_length)) == (ASCIICHAT_OK));
   int legacy_before = atomic_load_int(&replay->designated);
   acds_on_host_announcement_ex(&announcement, metadata, metadata_length, host, "fixture", &server);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&replay->extended), 1);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&replay->designated), legacy_before + 1);
-  ASCIICHAT_REQUIRE_EQ(replay->quic_port, 4567);
-  ASCIICHAT_REQUIRE_STR_EQ(replay->webtransport_url, "https://example.test:4568/acip");
+  REQUIRE((atomic_load_int(&replay->extended)) == (1));
+  REQUIRE((atomic_load_int(&replay->designated)) == (legacy_before + 1));
+  REQUIRE((replay->quic_port) == (4567));
+  REQUIRE(std::strcmp((replay->webtransport_url), ("https://example.test:4568/acip")) == 0);
   metadata[7]++;
   int errors_before = atomic_load_int(&((designation_peer_t *)host->impl_data)->errors);
   acds_on_host_announcement_ex(&announcement, metadata, metadata_length, host, "fixture", &server);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&((designation_peer_t *)host->impl_data)->errors), errors_before + 1);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&replay->extended), 1);
-  ASCIICHAT_REQUIRE_EQ(sqlite3_exec(server.db, "UPDATE sessions SET expose_ip_publicly = 0", NULL, NULL, NULL), SQLITE_OK);
+  REQUIRE((atomic_load_int(&((designation_peer_t *)host->impl_data)->errors)) == (errors_before + 1));
+  REQUIRE((atomic_load_int(&replay->extended)) == (1));
+  REQUIRE((sqlite3_exec(server.db, "UPDATE sessions SET expose_ip_publicly = 0", NULL, NULL, NULL)) == (SQLITE_OK));
   acds_send_current_host(&server, reconnected, created.session_id);
-  ASCIICHAT_REQUIRE_EQ(atomic_load_int(&replay->extended), 1, "Private endpoints must not leak through the extension");
-  ASCIICHAT_REQUIRE_STR_EMPTY(replay->last.host_address);
-  ASCIICHAT_REQUIRE_EQ(network_server_stop(server.network_server), ASCIICHAT_OK);
+  REQUIRE((atomic_load_int(&replay->extended)) == (1));
+  REQUIRE((replay->last.host_address)[0] == '\0');
+  REQUIRE((network_server_stop(server.network_server)) == (ASCIICHAT_OK));
   network_server_destroy(&server.network_server);
   // Release handoff state through normal server cleanup.
   acds_server_shutdown(&server);

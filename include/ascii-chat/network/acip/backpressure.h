@@ -6,6 +6,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct acip_transport acip_transport_t;
 typedef struct acip_outbound acip_outbound_t;
 
@@ -51,3 +55,7 @@ asciichat_error_t acip_outbound_submitv_ex(acip_transport_t *transport, const so
                                            const acip_send_options_t *options, acip_admission_t *admission);
 asciichat_error_t acip_outbound_snapshot(acip_transport_t *transport, acip_outbound_stats_t *stats);
 bool acip_outbound_needs_keyframe(acip_transport_t *transport, uint16_t packet_type, uint32_t stream_id);
+
+#ifdef __cplusplus
+}
+#endif

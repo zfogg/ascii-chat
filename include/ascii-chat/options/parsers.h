@@ -18,6 +18,10 @@
 #include <ascii-chat/video/ascii/palette.h>
 #include "../log/log.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Parse color setting option (--color flag)
  * @param arg String argument (e.g., "auto", "true", "false")
@@ -316,3 +320,7 @@ bool parse_audio_source(const char *arg, void *dest, char **error_msg);
 
 /** Parse local capture policy option (--audio-capture-source). */
 bool parse_audio_capture_source(const char *arg, void *dest, char **error_msg);
+
+#ifdef __cplusplus
+}
+#endif

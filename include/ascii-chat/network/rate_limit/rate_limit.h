@@ -40,6 +40,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief One sliding-window rate-limit policy
  * @brief Backend callbacks implementing rate-limit checks, recording, cleanup, and destruction
@@ -203,3 +207,7 @@ asciichat_error_t rate_limiter_prune(rate_limiter_t *limiter, uint32_t max_age_s
  * @return Event type name string (e.g., "session_create", "connection")
  */
 const char *rate_limiter_event_type_string(rate_event_type_t event_type);
+
+#ifdef __cplusplus
+}
+#endif

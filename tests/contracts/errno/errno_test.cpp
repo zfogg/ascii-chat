@@ -1,8 +1,8 @@
+#include <catch2/catch_test_macros.hpp>
 #include "../worker_assert.h"
 #define CHECK_WORKER ASCIICHAT_WORKER_ASSERT
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
-#define CHECK(...) ASCIICHAT_REQUIRE(__VA_ARGS__)
+#define CHECK(...) REQUIRE(__VA_ARGS__)
 #include "../../standalone/errno/errno_fixture.h"
 
 static void setup(void) {
@@ -60,10 +60,10 @@ TEST_CASE("errno_stack/concurrency_contract", "[errno_stack]") {
 }
 
 TEST_CASE("errno_stack/scheduler_shutdown_and_first_exit_code", "[errno_stack]") {
-  ASCIICHAT_REQUIRE_EQ(debug_stats_init(), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(debug_stats_start_thread(), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(debug_sync_start_thread(), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(debug_errno_start_thread(), ASCIICHAT_OK);
+  REQUIRE((debug_stats_init()) == (ASCIICHAT_OK));
+  REQUIRE((debug_stats_start_thread()) == (ASCIICHAT_OK));
+  REQUIRE((debug_sync_start_thread()) == (ASCIICHAT_OK));
+  REQUIRE((debug_errno_start_thread()) == (ASCIICHAT_OK));
   debug_errno_print_delayed(60 * NS_PER_SEC_INT);
   debug_sync_print_state_delayed(60 * NS_PER_SEC_INT);
   debug_sync_print_backtrace_delayed(60 * NS_PER_SEC_INT);
@@ -72,13 +72,13 @@ TEST_CASE("errno_stack/scheduler_shutdown_and_first_exit_code", "[errno_stack]")
   debug_sync_destroy();
   debug_errno_destroy();
   debug_stats_destroy();
-  ASCIICHAT_REQUIRE(time_get_ns() - start < NS_PER_SEC_INT);
+  REQUIRE(time_get_ns() - start < NS_PER_SEC_INT);
   errno_destroy();
-  ASCIICHAT_REQUIRE_EQ(asciichat_error_stats_get().registered_threads, 0);
+  REQUIRE((asciichat_error_stats_get().registered_threads) == (0));
   errno_request_exit(ERROR_CRYPTO_AUTH);
   errno_request_exit(ERROR_MEDIA_OPEN);
   CLEAR_ERRNO_ALL();
   errno_shutdown();
-  ASCIICHAT_REQUIRE_EQ(errno_exit_code(), ERROR_CRYPTO_AUTH);
+  REQUIRE((errno_exit_code()) == (ERROR_CRYPTO_AUTH));
   errno_shutdown();
 }

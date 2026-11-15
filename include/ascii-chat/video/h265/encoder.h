@@ -26,6 +26,10 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/media/codecs.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct h265_encoder h265_encoder_t;
 
 /**
@@ -127,3 +131,7 @@ asciichat_error_t h265_encoder_flush(h265_encoder_t *encoder, uint8_t *output_bu
  */
 void h265_encoder_get_stats(h265_encoder_t *encoder, uint64_t *total_frames, uint64_t *keyframes,
                             uint32_t *avg_bitrate);
+
+#ifdef __cplusplus
+}
+#endif

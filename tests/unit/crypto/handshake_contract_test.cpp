@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/tests/logging.h>
@@ -9,13 +9,13 @@
 static crypto_handshake_context_t first, second;
 static void setup(void) {
   log_init(NULL, LOG_FATAL, false, false);
-  ASCIICHAT_REQUIRE_EQ(crypto_init(&first.crypto_ctx), CRYPTO_OK);
-  ASCIICHAT_REQUIRE_EQ(crypto_init(&second.crypto_ctx), CRYPTO_OK);
+  REQUIRE((crypto_init(&first.crypto_ctx)) == (CRYPTO_OK));
+  REQUIRE((crypto_init(&second.crypto_ctx)) == (CRYPTO_OK));
   uint8_t a[32], b[32];
-  ASCIICHAT_REQUIRE_EQ(crypto_get_public_key(&first.crypto_ctx, a), CRYPTO_OK);
-  ASCIICHAT_REQUIRE_EQ(crypto_get_public_key(&second.crypto_ctx, b), CRYPTO_OK);
-  ASCIICHAT_REQUIRE_EQ(crypto_set_peer_public_key(&first.crypto_ctx, b), CRYPTO_OK);
-  ASCIICHAT_REQUIRE_EQ(crypto_set_peer_public_key(&second.crypto_ctx, a), CRYPTO_OK);
+  REQUIRE((crypto_get_public_key(&first.crypto_ctx, a)) == (CRYPTO_OK));
+  REQUIRE((crypto_get_public_key(&second.crypto_ctx, b)) == (CRYPTO_OK));
+  REQUIRE((crypto_set_peer_public_key(&first.crypto_ctx, b)) == (CRYPTO_OK));
+  REQUIRE((crypto_set_peer_public_key(&second.crypto_ctx, a)) == (CRYPTO_OK));
   first.state = second.state = CRYPTO_HANDSHAKE_READY;
 }
 static void teardown(void) {
@@ -46,11 +46,11 @@ TEST_CASE("handshake_contract/packet_lengths_enforce_negotiated_boundaries_and_r
     const size_t lengths[] = {0, 1, cases[i].minimum ? cases[i].minimum - 1 : 0, cases[i].minimum, cases[i].minimum + 1, cases[i].maximum, cases[i].maximum + 1, cases[i].alternate, SIZE_MAX};
     for (size_t j = 0; j < sizeof(lengths) / sizeof(*lengths); ++j) {
       bool valid = (lengths[j] >= cases[i].minimum && lengths[j] <= cases[i].maximum) || (cases[i].alternate && lengths[j] == cases[i].alternate);
-      ASCIICHAT_REQUIRE_EQ(crypto_handshake_validate_packet_size(&first, cases[i].type, lengths[j]), valid ? ASCIICHAT_OK : ERROR_NETWORK_PROTOCOL, "type %u size %zu", cases[i].type, lengths[j]);
+      REQUIRE((crypto_handshake_validate_packet_size(&first, cases[i].type, lengths[j])) == (valid ? ASCIICHAT_OK : ERROR_NETWORK_PROTOCOL));
     }
   }
-  ASCIICHAT_REQUIRE_EQ(crypto_handshake_validate_packet_size(&first, UINT16_MAX, 0), ERROR_NETWORK_PROTOCOL);
-  ASCIICHAT_REQUIRE_EQ(crypto_handshake_validate_packet_size(NULL, 0, 0), ERROR_INVALID_PARAM);
+  REQUIRE((crypto_handshake_validate_packet_size(&first, UINT16_MAX, 0)) == (ERROR_NETWORK_PROTOCOL));
+  REQUIRE((crypto_handshake_validate_packet_size(NULL, 0, 0)) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("handshake_contract/negotiated_sizes_use_host_order_for_server_and_network_order_for_client", "[handshake_contract]") {
@@ -61,27 +61,27 @@ TEST_CASE("handshake_contract/negotiated_sizes_use_host_order_for_server_and_net
     parameters.auth_public_key_size = server ? 32 : HOST_TO_NET_U16(32);
     parameters.shared_secret_size = server ? 32 : HOST_TO_NET_U16(32);
     parameters.signature_size = server ? 64 : HOST_TO_NET_U16(64);
-    ASCIICHAT_REQUIRE_EQ(crypto_handshake_set_parameters(&first, &parameters), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_NOT(first.crypto_ctx.encrypt_data);
-    ASCIICHAT_REQUIRE_EQ(first.crypto_ctx.public_key_size, 32);
-    ASCIICHAT_REQUIRE_EQ(first.crypto_ctx.auth_public_key_size, 32);
-    ASCIICHAT_REQUIRE_EQ(first.crypto_ctx.shared_key_size, 32);
-    ASCIICHAT_REQUIRE_EQ(first.crypto_ctx.signature_size, 64);
-    ASCIICHAT_REQUIRE_EQ(first.crypto_ctx.nonce_size, 24);
-    ASCIICHAT_REQUIRE_EQ(first.crypto_ctx.mac_size, 16);
-    ASCIICHAT_REQUIRE_EQ(first.crypto_ctx.hmac_size, 32);
-    ASCIICHAT_REQUIRE_EQ(first.crypto_ctx.private_key_size, 32);
+    REQUIRE((crypto_handshake_set_parameters(&first, &parameters)) == (ASCIICHAT_OK));
+    REQUIRE(!(first.crypto_ctx.encrypt_data));
+    REQUIRE((first.crypto_ctx.public_key_size) == (32));
+    REQUIRE((first.crypto_ctx.auth_public_key_size) == (32));
+    REQUIRE((first.crypto_ctx.shared_key_size) == (32));
+    REQUIRE((first.crypto_ctx.signature_size) == (64));
+    REQUIRE((first.crypto_ctx.nonce_size) == (24));
+    REQUIRE((first.crypto_ctx.mac_size) == (16));
+    REQUIRE((first.crypto_ctx.hmac_size) == (32));
+    REQUIRE((first.crypto_ctx.private_key_size) == (32));
     if (!server)
-      ASCIICHAT_REQUIRE(first.require_client_auth);
+      REQUIRE(first.require_client_auth);
   }
-  ASCIICHAT_REQUIRE_EQ(crypto_handshake_set_parameters(NULL, NULL), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(crypto_handshake_set_parameters(&first, NULL), ERROR_INVALID_PARAM);
+  REQUIRE((crypto_handshake_set_parameters(NULL, NULL)) == (ERROR_INVALID_PARAM));
+  REQUIRE((crypto_handshake_set_parameters(&first, NULL)) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("handshake_contract/exposes_crypto_only_after_handshake_completion", "[handshake_contract]") {
-  ASCIICHAT_REQUIRE(crypto_handshake_is_ready(&first));
-  ASCIICHAT_REQUIRE_EQ(crypto_handshake_get_context(&first), &first.crypto_ctx);
-  ASCIICHAT_REQUIRE_NULL(crypto_handshake_get_context(NULL));
+  REQUIRE(crypto_handshake_is_ready(&first));
+  REQUIRE((crypto_handshake_get_context(&first)) == (&first.crypto_ctx));
+  REQUIRE((crypto_handshake_get_context(NULL)) == nullptr);
   first.state = CRYPTO_HANDSHAKE_INIT;
-  ASCIICHAT_REQUIRE_NULL(crypto_handshake_get_context(&first));
+  REQUIRE((crypto_handshake_get_context(&first)) == nullptr);
 }

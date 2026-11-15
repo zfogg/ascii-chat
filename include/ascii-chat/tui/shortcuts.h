@@ -1,6 +1,10 @@
 #pragma once
 #include <libplatform/keyboard.h>
 #include <ascii-chat/ui/help_menu.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef enum {
   TUI_SHORTCUT_NONE,
   TUI_SHORTCUT_HELP,
@@ -14,3 +18,7 @@ typedef enum {
 tui_shortcut_t tui_shortcut_action(keyboard_key_t key);
 /** Shared definitions used by both dispatch and mode help. */
 size_t tui_shortcut_help(ui_help_entry_t *entries, size_t capacity, bool server, bool browser);
+
+#ifdef __cplusplus
+}
+#endif

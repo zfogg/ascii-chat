@@ -1727,29 +1727,28 @@ add_dependencies(ascii-chat-static-lib build-ascii-chat-static-lib)
 
 # Create an INTERFACE library for dependency propagation
 # (IMPORTED libraries can't have INTERFACE_LINK_LIBRARIES in older CMake)
-add_library(ascii-chat-static-lib-deps INTERFACE)
-target_link_libraries(ascii-chat-static-lib-deps INTERFACE libplatform::libplatform ${UTF8PROC_LIBRARIES} asciichat-icu)
+target_link_libraries(ascii-chat-static-lib INTERFACE libplatform::libplatform ${UTF8PROC_LIBRARIES} asciichat-icu)
 if(NOT EMSCRIPTEN)
-    target_link_libraries(ascii-chat-static-lib-deps INTERFACE asciichat-quic)
+    target_link_libraries(ascii-chat-static-lib INTERFACE asciichat-quic)
 endif()
 
 # Link bundled dependencies (not available via package managers)
 # BearSSL and WebRTC AEC3 are embedded in the static library
 # BearSSL is required
-target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${BEARSSL_LIBRARIES})
+target_link_libraries(ascii-chat-static-lib INTERFACE ${BEARSSL_LIBRARIES})
 if(NOT EMSCRIPTEN)
     if(TARGET ascii-chat-shared)
         target_link_libraries(ascii-chat-shared PRIVATE ${ASCIICHAT_LIBUV_TARGET})
     endif()
-    target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${ASCIICHAT_LIBUV_TARGET})
+    target_link_libraries(ascii-chat-static-lib INTERFACE ${ASCIICHAT_LIBUV_TARGET})
 endif()
 if(WEBRTC_AEC3_LIBRARIES)
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${WEBRTC_AEC3_LIBRARIES})
+    target_link_libraries(ascii-chat-static-lib INTERFACE ${WEBRTC_AEC3_LIBRARIES})
 endif()
 
 # External dependencies - users must install these via package manager
 # These are linked but NOT embedded in the static library
-target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
+target_link_libraries(ascii-chat-static-lib INTERFACE
     ${PCRE2_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
     zstd::libzstd
@@ -1767,30 +1766,30 @@ target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
     ${ASCIICHAT_NGHTTP2_TARGET}
 )
 if(FREETYPE_LIBRARY_DIRS)
-    target_link_directories(ascii-chat-static-lib-deps INTERFACE ${FREETYPE_LIBRARY_DIRS})
+    target_link_directories(ascii-chat-static-lib INTERFACE ${FREETYPE_LIBRARY_DIRS})
 endif()
 
 # Link mimalloc
 if(USE_MIMALLOC)
     if(TARGET mimalloc-static)
-        target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE mimalloc-static)
+        target_link_libraries(ascii-chat-static-lib INTERFACE mimalloc-static)
     elseif(MIMALLOC_LIBRARIES)
-        target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${MIMALLOC_LIBRARIES})
+        target_link_libraries(ascii-chat-static-lib INTERFACE ${MIMALLOC_LIBRARIES})
     endif()
 endif()
 
 # Link FFmpeg for media file streaming
 if(FFMPEG_FOUND)
-    target_link_directories(ascii-chat-static-lib-deps INTERFACE ${FFMPEG_LIBRARY_DIRS})
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${FFMPEG_LIBRARIES})
+    target_link_directories(ascii-chat-static-lib INTERFACE ${FFMPEG_LIBRARY_DIRS})
+    target_link_libraries(ascii-chat-static-lib INTERFACE ${FFMPEG_LIBRARIES})
 endif()
 
 # Link yyjson for structured logging (required)
-target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${YYJSON_LIBRARIES})
+target_link_libraries(ascii-chat-static-lib INTERFACE ${YYJSON_LIBRARIES})
 
 # Platform-specific system libraries
 if(WIN32)
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
+    target_link_libraries(ascii-chat-static-lib INTERFACE
         ${WS2_32_LIB}
         ${USER32_LIB}
         ${ADVAPI32_LIB}
@@ -1803,7 +1802,7 @@ if(WIN32)
         crypt32
     )
 elseif(APPLE)
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
+    target_link_libraries(ascii-chat-static-lib INTERFACE
         ${FOUNDATION_FRAMEWORK}
         "-framework CoreFoundation"
             ${ASCIICHAT_CLIPBOARD_FRAMEWORK}
@@ -1820,7 +1819,7 @@ elseif(APPLE)
     )
 else()
     # Linux
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
+    target_link_libraries(ascii-chat-static-lib INTERFACE
         ${CMAKE_THREAD_LIBS_INIT}
         m
         dl
@@ -1830,54 +1829,47 @@ else()
     if(USE_MUSL)
         # Musl builds use Alpine's musl-compatible libc++
         if(ALPINE_LIBCXX_STATIC AND ALPINE_LIBCXXABI_STATIC)
-            target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
+            target_link_libraries(ascii-chat-static-lib INTERFACE
                 ${ALPINE_LIBCXX_STATIC}
                 ${ALPINE_LIBCXXABI_STATIC}
             )
             if(ALPINE_LIBUNWIND_STATIC)
-                target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${ALPINE_LIBUNWIND_STATIC})
+                target_link_libraries(ascii-chat-static-lib INTERFACE ${ALPINE_LIBUNWIND_STATIC})
             endif()
         endif()
     else()
         # Non-musl builds: link the C++ standard library
-        target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE c++)
+        target_link_libraries(ascii-chat-static-lib INTERFACE c++)
         # The combined archive includes the platform keepawake implementation.
-        target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${LIBSYSTEMD_LIBRARIES})
+        target_link_libraries(ascii-chat-static-lib INTERFACE ${LIBSYSTEMD_LIBRARIES})
     endif()
 endif()
 
 # Link libdatachannel for WebRTC P2P connections (static library)
 # The libdatachannel INTERFACE target's dependencies propagate to ascii-chat-static-lib
 if(TARGET libdatachannel)
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE libdatachannel)
+    target_link_libraries(ascii-chat-static-lib INTERFACE libdatachannel)
 endif()
 
 # Link OpenSSL for TURN credentials (required by network module)
 # This is linked to ascii-chat-network module, but must also be exposed via the
 # INTERFACE library for final executables since libasciichat.a includes turn_credentials.c
 if(TARGET OpenSSL::Crypto)
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE OpenSSL::Crypto)
+    target_link_libraries(ascii-chat-static-lib INTERFACE OpenSSL::Crypto)
 endif()
 
 # Link miniupnpc for UPnP/NAT-PMP port mapping (optional)
 # This is linked to ascii-chat-network module, but must also be exposed via the
 # INTERFACE library for final executables since libasciichat.a includes upnp.c
 if(MINIUPNPC_FOUND)
-    target_include_directories(ascii-chat-static-lib-deps INTERFACE ${MINIUPNPC_INCLUDE_DIRS})
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${MINIUPNPC_LIBRARIES})
+    target_include_directories(ascii-chat-static-lib INTERFACE ${MINIUPNPC_INCLUDE_DIRS})
+    target_link_libraries(ascii-chat-static-lib INTERFACE ${MINIUPNPC_LIBRARIES})
     # Also link libnatpmp on macOS (separate library for NAT-PMP protocol)
     if(NATPMP_LIBRARY)
-        target_include_directories(ascii-chat-static-lib-deps INTERFACE ${NATPMP_INCLUDE_DIR})
-        target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${NATPMP_LIBRARY})
+        target_include_directories(ascii-chat-static-lib INTERFACE ${NATPMP_INCLUDE_DIR})
+        target_link_libraries(ascii-chat-static-lib INTERFACE ${NATPMP_LIBRARY})
     endif()
 endif()
-
-# Wrapper: links both the archive and its dependencies
-add_library(ascii-chat-static-lib-with-deps INTERFACE)
-target_link_libraries(ascii-chat-static-lib-with-deps PRIVATE INTERFACE
-    ascii-chat-static-lib
-    ascii-chat-static-lib-deps
-)
 
 # =============================================================================
 # Symbol Validation for Combined Static Library
@@ -1937,7 +1929,7 @@ if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev") AND NO
 else()
     # Release builds or USE_MUSL: ascii-chat-static wraps the combined static library
     add_library(ascii-chat-static INTERFACE)
-    target_link_libraries(ascii-chat-static PRIVATE INTERFACE ascii-chat-static-lib-with-deps)
+    target_link_libraries(ascii-chat-static PRIVATE INTERFACE ascii-chat-static-lib)
 
     # Build target name for consistency
     set(ASCII_CHAT_UNIFIED_BUILD_TARGET build-ascii-chat-static-lib)
@@ -1988,8 +1980,8 @@ if(TARGET ascii-chat-shared)
         target_link_libraries(ascii-chat-shared PRIVATE FFTW3::fftw3f)
     endif()
 endif()
-target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_LIBRARIES})
-target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_FLOAT_LIBRARY})
+target_link_libraries(ascii-chat-static-lib INTERFACE ${FFTW_LIBRARIES})
+target_link_libraries(ascii-chat-static-lib INTERFACE ${FFTW_FLOAT_LIBRARY})
 target_link_libraries(ascii-chat-core PRIVATE ${FFTW_FLOAT_LIBRARY})
 
 if(TARGET gotel::gotel)
@@ -1997,5 +1989,5 @@ if(TARGET gotel::gotel)
     if(TARGET ascii-chat-shared)
         target_link_libraries(ascii-chat-shared PRIVATE gotel::gotel)
     endif()
-    target_link_libraries(ascii-chat-static-lib-deps INTERFACE gotel::gotel)
+    target_link_libraries(ascii-chat-static-lib INTERFACE gotel::gotel)
 endif()

@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file webrtc_frame_capture_test.c
  * @brief Integration test for WebRTC frame capture via discovery service
@@ -291,14 +292,14 @@ TEST_CASE("webrtc_discovery/frame_capture_via_webrtc", "[webrtc_discovery]") {
   const char *binary_path = test_get_binary_path();
 
   // Verify binary exists
-  ASCIICHAT_REQUIRE(access(binary_path, X_OK) == 0, "ascii-chat binary must exist and be executable at %s", binary_path);
+  REQUIRE(access(binary_path, X_OK) == 0);
 
   // ========================================================================
   // Step 1: Start ACDS discovery service on port 27325
   // ========================================================================
   log_info("Starting ACDS discovery service...");
   g_acds_pid = fork();
-  ASCIICHAT_REQUIRE_NE(g_acds_pid, -1, "Fork for ACDS should succeed");
+  REQUIRE((g_acds_pid) != (-1));
 
   if (g_acds_pid == 0) {
     // Child: Start ACDS with fresh database (with 10 second timeout)
@@ -317,14 +318,14 @@ TEST_CASE("webrtc_discovery/frame_capture_via_webrtc", "[webrtc_discovery]") {
     kill_and_wait(g_acds_pid, "acds");
     g_acds_pid = -1;
   }
-  ASCIICHAT_REQUIRE(acds_ready, "ACDS should start and listen on port 27325 within 10 seconds");
+  REQUIRE(acds_ready);
 
   // ========================================================================
   // Step 2: Start server with discovery registration
   // ========================================================================
   log_info("Starting server with discovery...");
   g_server_pid = fork();
-  ASCIICHAT_REQUIRE_NE(g_server_pid, -1, "Fork for server should succeed");
+  REQUIRE((g_server_pid) != (-1));
 
   if (g_server_pid == 0) {
     // Child: Start server (receives video from clients, doesn't capture)
@@ -346,15 +347,15 @@ TEST_CASE("webrtc_discovery/frame_capture_via_webrtc", "[webrtc_discovery]") {
     g_server_pid = -1;
     g_acds_pid = -1;
   }
-  ASCIICHAT_REQUIRE(server_ready, "Server should register with ACDS and get session string within 10 seconds");
+  REQUIRE(server_ready);
 
   // ========================================================================
   // Step 3: Extract session string from server log
   // ========================================================================
   char session_string[64] = {0};
   int session_found = extract_session_string(SERVER_LOG_PATH, session_string, sizeof(session_string));
-  ASCIICHAT_REQUIRE(session_found, "Session string should be found in server log");
-  ASCIICHAT_REQUIRE_NE(session_string[0], '\0', "Session string should not be empty");
+  REQUIRE(session_found);
+  REQUIRE((session_string[0]) != ('\0'));
   log_info("Extracted session string: %s", session_string);
 
   // ========================================================================
@@ -375,14 +376,14 @@ TEST_CASE("webrtc_discovery/frame_capture_via_webrtc", "[webrtc_discovery]") {
            binary_path, session_string, CLIENT_OUTPUT_PATH);
 
   int client_result = system(client_cmd);
-  ASCIICHAT_REQUIRE(client_result != -1 && WIFEXITED(client_result), "Client should exit normally");
-  ASCIICHAT_REQUIRE_EQ(WEXITSTATUS(client_result), 0, "Client should complete its WebRTC snapshot successfully");
+  REQUIRE(client_result != -1 && WIFEXITED(client_result));
+  REQUIRE((WEXITSTATUS(client_result)) == (0));
 
   // Discovery participant mode intentionally does not render a terminal frame;
   // it hands the established WebRTC transport to the media session. Verify the
   // transport transition directly in the client log instead of stdout.
   int media_active = wait_for_pattern(CLIENT_LOG_PATH, "WebRTC Media Channel ACTIVE", 1);
-  ASCIICHAT_REQUIRE(media_active, "Client should establish the WebRTC media channel");
+  REQUIRE(media_active);
 
   // Cleanup will be done automatically by .fini = cleanup_processes
 }

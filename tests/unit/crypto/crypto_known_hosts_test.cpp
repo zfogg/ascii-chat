@@ -1,11 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file crypto_known_hosts_test.c
  * @brief Unit tests for lib/crypto/known_hosts.c - Tests the intended final crypto implementation
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -14,7 +12,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/crypto/known_hosts.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/logging.h>
@@ -78,9 +75,9 @@ TEST_CASE("crypto_known_hosts/get_known_hosts_path", "[crypto_known_hosts]") {
 
   log_info("well test");
 
-  ASCIICHAT_REQUIRE_NOT_NULL(path, "Known hosts path should not be NULL");
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(path, "ascii-chat"), "Path should contain .ascii-chat");
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(path, "known_hosts"), "Path should contain known_hosts");
+  REQUIRE((path) != nullptr);
+  REQUIRE((strstr(path, "ascii-chat")) != nullptr);
+  REQUIRE((strstr(path, "known_hosts")) != nullptr);
 }
 
 // =============================================================================
@@ -121,17 +118,17 @@ TEST_CASE("crypto_known_hosts/add_known_host_tests", "[crypto_known_hosts]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(add_known_host_cases));
   auto *tc = &generated_case;
   // Validate the test case pointer is not NULL
-  ASCIICHAT_REQUIRE_NOT_NULL(tc, "Test case pointer should not be NULL");
-  ASCIICHAT_REQUIRE_NOT_NULL(tc->hostname, "Hostname should not be NULL");
-  ASCIICHAT_REQUIRE_NOT_NULL(tc->description, "Description should not be NULL");
+  REQUIRE((tc) != nullptr);
+  REQUIRE((tc->hostname) != nullptr);
+  REQUIRE((tc->description) != nullptr);
 
   asciichat_error_t result = add_known_host(tc->hostname, tc->port, tc->server_key);
 
   if (tc->expected_result == 0) {
-    ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Failed for case: %s (got %d, expected %d)", tc->description, result, ASCIICHAT_OK);
+    REQUIRE((result) == (ASCIICHAT_OK));
   } else {
     // Expected to fail - should return an error (not ASCIICHAT_OK)
-    ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail for case: %s (got %d, expected != %d)", tc->description, result, ASCIICHAT_OK);
+    REQUIRE((result) != (ASCIICHAT_OK));
   }
 }
 
@@ -147,12 +144,12 @@ TEST_CASE("crypto_known_hosts/check_known_host_exists_match", "[crypto_known_hos
                                   0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef};
 
   asciichat_error_t add_result = add_known_host(hostname, port, server_key);
-  ASCIICHAT_REQUIRE_EQ(add_result, ASCIICHAT_OK, "Adding known host should succeed");
+  REQUIRE((add_result) == (ASCIICHAT_OK));
 
   // Check if it exists and matches
   // Note: check_known_host returns 1 (not ASCIICHAT_OK) when key matches
   asciichat_error_t check_result = check_known_host(hostname, port, server_key);
-  ASCIICHAT_REQUIRE_EQ(check_result, 1, "Known host should exist and match (returns 1)");
+  REQUIRE((check_result) == (1));
 }
 
 TEST_CASE("crypto_known_hosts/check_known_host_exists_mismatch", "[crypto_known_hosts]") {
@@ -163,15 +160,15 @@ TEST_CASE("crypto_known_hosts/check_known_host_exists_mismatch", "[crypto_known_
                                   0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef};
 
   asciichat_error_t add_result = add_known_host(hostname, port, server_key);
-  ASCIICHAT_REQUIRE_EQ(add_result, ASCIICHAT_OK, "Adding known host should succeed");
+  REQUIRE((add_result) == (ASCIICHAT_OK));
 
   // Check with different key
   const uint8_t different_key[32] = {0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10,
                                      0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10};
   asciichat_error_t check_result = check_known_host(hostname, port, different_key);
-  ASCIICHAT_REQUIRE_NE(check_result, ASCIICHAT_OK, "Different key should not match");
-  ASCIICHAT_REQUIRE_NE(check_result, 1, "Different key should not return match");
-  ASCIICHAT_REQUIRE_EQ(check_result, ERROR_CRYPTO_VERIFICATION, "Different key should return ERROR_CRYPTO_VERIFICATION");
+  REQUIRE((check_result) != (ASCIICHAT_OK));
+  REQUIRE((check_result) != (1));
+  REQUIRE((check_result) == (ERROR_CRYPTO_VERIFICATION));
 }
 
 TEST_CASE("crypto_known_hosts/check_known_host_not_exists", "[crypto_known_hosts]") {
@@ -181,7 +178,7 @@ TEST_CASE("crypto_known_hosts/check_known_host_not_exists", "[crypto_known_hosts
                                   0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef};
 
   asciichat_error_t check_result = check_known_host(hostname, port, server_key);
-  ASCIICHAT_REQUIRE_EQ(check_result, ASCIICHAT_OK, "Unknown host should return ASCIICHAT_OK (not in known_hosts)");
+  REQUIRE((check_result) == (ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_known_hosts/check_known_host_null_params", "[crypto_known_hosts]") {
@@ -189,8 +186,8 @@ TEST_CASE("crypto_known_hosts/check_known_host_null_params", "[crypto_known_host
                                   0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef};
 
   asciichat_error_t result = check_known_host(NULL, 8080, server_key);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "NULL hostname should fail");
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "NULL hostname should return ERROR_INVALID_PARAM");
+  REQUIRE((result) != (ASCIICHAT_OK));
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 // =============================================================================
@@ -205,15 +202,15 @@ TEST_CASE("crypto_known_hosts/remove_known_host_exists", "[crypto_known_hosts]")
                                   0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef};
 
   asciichat_error_t add_result = add_known_host(hostname, port, server_key);
-  ASCIICHAT_REQUIRE_EQ(add_result, ASCIICHAT_OK, "Adding known host should succeed");
+  REQUIRE((add_result) == (ASCIICHAT_OK));
 
   // Remove it
   asciichat_error_t remove_result = remove_known_host(hostname, port);
-  ASCIICHAT_REQUIRE_EQ(remove_result, ASCIICHAT_OK, "Removing known host should succeed");
+  REQUIRE((remove_result) == (ASCIICHAT_OK));
 
   // Verify it's gone
   asciichat_error_t check_result = check_known_host(hostname, port, server_key);
-  ASCIICHAT_REQUIRE_EQ(check_result, ASCIICHAT_OK, "Removed host should not exist (return ASCIICHAT_OK)");
+  REQUIRE((check_result) == (ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_known_hosts/remove_known_host_not_exists", "[crypto_known_hosts]") {
@@ -224,13 +221,13 @@ TEST_CASE("crypto_known_hosts/remove_known_host_not_exists", "[crypto_known_host
   // Removing a non-existent host might succeed (nothing to remove) or return an error
   // The function reads all lines and skips matching ones, then writes back
   // So if the host doesn't exist, it still succeeds
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Removing non-existent host should succeed (nothing to remove)");
+  REQUIRE((result) == (ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_known_hosts/remove_known_host_null_params", "[crypto_known_hosts]") {
   asciichat_error_t result = remove_known_host(NULL, 8080);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "NULL hostname should fail");
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "NULL hostname should return ERROR_INVALID_PARAM");
+  REQUIRE((result) != (ASCIICHAT_OK));
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 // =============================================================================
@@ -250,7 +247,7 @@ TEST_CASE("crypto_known_hosts/display_mitm_warning", "[crypto_known_hosts]") {
   bool result = display_mitm_warning(hostname, port, expected_key, actual_key);
 
   // Test passes if it doesn't crash - result will be false in automated tests
-  ASCIICHAT_REQUIRE(result == false || result == true, "MITM warning should return a boolean and not crash");
+  REQUIRE((result == false || result == true));
 }
 
 // =============================================================================
@@ -265,11 +262,11 @@ TEST_CASE("crypto_known_hosts/add_known_host_duplicate", "[crypto_known_hosts]")
 
   // Add first time
   asciichat_error_t result1 = add_known_host(hostname, port, server_key);
-  ASCIICHAT_REQUIRE_EQ(result1, ASCIICHAT_OK, "First addition should succeed");
+  REQUIRE((result1) == (ASCIICHAT_OK));
 
   // Add second time (should either succeed or fail gracefully)
   asciichat_error_t result2 = add_known_host(hostname, port, server_key);
-  ASCIICHAT_REQUIRE(result2 == ASCIICHAT_OK || result2 != ASCIICHAT_OK, "Duplicate addition should either succeed or fail gracefully");
+  REQUIRE((result2 == ASCIICHAT_OK || result2 != ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_known_hosts/large_known_hosts_file", "[crypto_known_hosts]") {
@@ -284,13 +281,13 @@ TEST_CASE("crypto_known_hosts/large_known_hosts_file", "[crypto_known_hosts]") {
     safe_snprintf(dynamic_hostname, sizeof(dynamic_hostname), "host%d.example.com", i);
 
     asciichat_error_t result = add_known_host(dynamic_hostname, port, server_key);
-    ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Adding host %d should succeed", i);
+    REQUIRE((result) == (ASCIICHAT_OK));
   }
 
   // Check that one of them exists
   // Note: check_known_host returns 1 (not ASCIICHAT_OK) when key matches
   asciichat_error_t check_result = check_known_host("host50.example.com", port, server_key);
-  ASCIICHAT_REQUIRE_EQ(check_result, 1, "Host 50 should exist and match (returns 1)");
+  REQUIRE((check_result) == (1));
 }
 
 TEST_CASE("crypto_known_hosts/port_boundary_values", "[crypto_known_hosts]") {
@@ -300,16 +297,16 @@ TEST_CASE("crypto_known_hosts/port_boundary_values", "[crypto_known_hosts]") {
 
   // Test minimum port
   asciichat_error_t result1 = add_known_host(hostname, 1, server_key);
-  ASCIICHAT_REQUIRE_EQ(result1, ASCIICHAT_OK, "Port 1 should succeed");
+  REQUIRE((result1) == (ASCIICHAT_OK));
 
   // Test maximum port
   asciichat_error_t result2 = add_known_host(hostname, 65535, server_key);
-  ASCIICHAT_REQUIRE_EQ(result2, ASCIICHAT_OK, "Port 65535 should succeed");
+  REQUIRE((result2) == (ASCIICHAT_OK));
 
   // Test port 0 - format_ip_with_port might validate and reject port 0
   asciichat_error_t result3 = add_known_host(hostname, 0, server_key);
   // Port 0 might fail in format_ip_with_port, or might succeed if not validated
-  ASCIICHAT_REQUIRE(result3 == ASCIICHAT_OK || result3 == ERROR_INVALID_PARAM, "Port 0 should either succeed or fail with ERROR_INVALID_PARAM");
+  REQUIRE((result3 == ASCIICHAT_OK || result3 == ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_known_hosts/key_validation", "[crypto_known_hosts]") {
@@ -319,11 +316,11 @@ TEST_CASE("crypto_known_hosts/key_validation", "[crypto_known_hosts]") {
   // Test all-zero key - code accepts it as "no-identity" entry
   const uint8_t zero_key[32] = {0};
   asciichat_error_t result1 = add_known_host(hostname, port, zero_key);
-  ASCIICHAT_REQUIRE_EQ(result1, ASCIICHAT_OK, "All-zero key should succeed (stored as no-identity entry)");
+  REQUIRE((result1) == (ASCIICHAT_OK));
 
   // Test all-ones key
   const uint8_t ones_key[32] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                                 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
   asciichat_error_t result2 = add_known_host(hostname, port, ones_key);
-  ASCIICHAT_REQUIRE_EQ(result2, ASCIICHAT_OK, "All-ones key should succeed");
+  REQUIRE((result2) == (ASCIICHAT_OK));
 }

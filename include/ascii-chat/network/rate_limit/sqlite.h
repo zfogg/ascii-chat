@@ -8,6 +8,10 @@
 #include "../../network/rate_limit/memory.h" // For backend_ops_t typedef
 #include <sqlite3.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief SQLite backend operations vtable
  */
@@ -30,3 +34,7 @@ void *sqlite_backend_create(const char *db_path);
  * @param db SQLite database handle
  */
 void sqlite_backend_set_db(void *backend_data, sqlite3 *db);
+
+#ifdef __cplusplus
+}
+#endif

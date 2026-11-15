@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file mdns_discovery_test.c
  * @brief Integration tests for mDNS service advertisement and discovery
@@ -12,7 +13,6 @@
  * They may be skipped or fail on systems without proper mDNS support.
  */
 
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <stdlib.h>
 #include <string.h>
@@ -55,14 +55,14 @@ static void lifecycle_callback(const asciichat_mdns_discovery_t *service, void *
 TEST_CASE("mdns_integration/real_answers_survive_invalid_replacement_and_own_caller_records", "[mdns_integration]") {
   asciichat_mdns_t *advertiser = asciichat_mdns_init();
   asciichat_mdns_t *query = asciichat_mdns_init();
-  ASCIICHAT_REQUIRE_NOT_NULL(advertiser);
-  ASCIICHAT_REQUIRE_NOT_NULL(query);
+  REQUIRE((advertiser) != nullptr);
+  REQUIRE((query) != nullptr);
   char name[64] = "owned-lan-fixture", host[64] = "owned-host";
   const char *txt[] = {"session_string=swift-river-mountain"};
   asciichat_mdns_service_t service = {.name = name, .host = host, .type = "_ascii-chat._tcp", .port = 32123, .txt_records = txt, .txt_count = 1};
-  ASCIICHAT_REQUIRE_EQ(asciichat_mdns_advertise(advertiser, &service), ASCIICHAT_OK);
+  REQUIRE((asciichat_mdns_advertise(advertiser, &service)) == (ASCIICHAT_OK));
   service.port = 0;
-  ASCIICHAT_REQUIRE_EQ(asciichat_mdns_advertise(advertiser, &service), ERROR_INVALID_PARAM);
+  REQUIRE((asciichat_mdns_advertise(advertiser, &service)) == (ERROR_INVALID_PARAM));
   memset(name, 'x', sizeof(name) - 1);
   memset(host, 'y', sizeof(host) - 1);
   asciichat_mdns_discovery_t found = {0};
@@ -70,52 +70,52 @@ TEST_CASE("mdns_integration/real_answers_survive_invalid_replacement_and_own_cal
   if (query_result == ERROR_NETWORK_BIND || query_result == ERROR_NETWORK) {
     asciichat_mdns_destroy(advertiser);
     asciichat_mdns_destroy(query);
-    ASCIICHAT_SKIP("mDNS multicast queries are unavailable on this runner");
+    SKIP("test skipped");
   }
-  ASCIICHAT_REQUIRE_EQ(query_result, ASCIICHAT_OK);
+  REQUIRE((query_result) == (ASCIICHAT_OK));
   uint64_t deadline = time_get_ns() + 2 * NS_PER_SEC_INT;
   while (!found.port && time_get_ns() < deadline)
-    ASCIICHAT_REQUIRE_EQ(asciichat_mdns_update(query, 50), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(found.port, 32123, "A registered service must answer real network queries");
+    REQUIRE((asciichat_mdns_update(query, 50)) == (ASCIICHAT_OK));
+  REQUIRE((found.port) == (32123));
 #ifdef __APPLE__
   // Bonjour resolves its registered local host rather than the caller's alias.
-  ASCIICHAT_REQUIRE_STR_NOT_EMPTY(found.host);
-  ASCIICHAT_REQUIRE_NOT_NULL(strstr(found.host, ".local."));
-  ASCIICHAT_REQUIRE_NULL(strstr(found.host, "yyyy"));
+  REQUIRE((found.host)[0] != '\0');
+  REQUIRE((strstr(found.host, ".local.")) != nullptr);
+  REQUIRE((strstr(found.host, "yyyy")) == nullptr);
 #else
-  ASCIICHAT_REQUIRE_STR_EQ(found.host, "owned-host.local.");
+  REQUIRE(std::strcmp((found.host), ("owned-host.local.")) == 0);
 #endif
-  ASCIICHAT_REQUIRE_STR_EQ(found.txt, "session_string=swift-river-mountain");
-  ASCIICHAT_REQUIRE_STR_NOT_EMPTY(found.ipv4);
+  REQUIRE(std::strcmp((found.txt), ("session_string=swift-river-mountain")) == 0);
+  REQUIRE((found.ipv4)[0] != '\0');
   int server_count = 0;
   ui_mdns_server_t *servers = discovery_mdns_query(800, 20, true, &server_count);
   bool session_found = false;
   for (int i = 0; i < server_count; ++i) {
     if (servers[i].port == 32123 && strncmp(servers[i].name, "owned-lan-fixture-", 18) == 0) {
-      ASCIICHAT_REQUIRE_STR_EQ(servers[i].session_string, "swift-river-mountain");
+      REQUIRE(std::strcmp((servers[i].session_string), ("swift-river-mountain")) == 0);
       session_found = true;
     }
   }
-  ASCIICHAT_REQUIRE(session_found, "The UI discovery result must retain session TXT metadata");
+  REQUIRE(session_found);
   discovery_mdns_destroy(servers);
   discovery_config_t config;
   discovery_config_init_defaults(&config);
   discovery_result_t resolved;
-  ASCIICHAT_REQUIRE_EQ(discover_session_parallel("swift-river-mountain", &config, &resolved), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(resolved.success);
-  ASCIICHAT_REQUIRE_EQ(resolved.source, DISCOVERY_SOURCE_MDNS);
-  ASCIICHAT_REQUIRE_EQ(resolved.server_port, 32123);
-  ASCIICHAT_REQUIRE_EQ(asciichat_mdns_unadvertise(advertiser, "owned-lan-fixture"), ASCIICHAT_OK);
+  REQUIRE((discover_session_parallel("swift-river-mountain", &config, &resolved)) == (ASCIICHAT_OK));
+  REQUIRE(resolved.success);
+  REQUIRE((resolved.source) == (DISCOVERY_SOURCE_MDNS));
+  REQUIRE((resolved.server_port) == (32123));
+  REQUIRE((asciichat_mdns_unadvertise(advertiser, "owned-lan-fixture")) == (ASCIICHAT_OK));
   asciichat_mdns_destroy(advertiser);
   asciichat_mdns_destroy(query);
   query = asciichat_mdns_init();
-  ASCIICHAT_REQUIRE_NOT_NULL(query);
+  REQUIRE((query) != nullptr);
   memset(&found, 0, sizeof(found));
-  ASCIICHAT_REQUIRE_EQ(asciichat_mdns_query(query, "_ascii-chat._tcp.local", lifecycle_callback, &found), ASCIICHAT_OK);
+  REQUIRE((asciichat_mdns_query(query, "_ascii-chat._tcp.local", lifecycle_callback, &found)) == (ASCIICHAT_OK));
   deadline = time_get_ns() + 300 * NS_PER_MS_INT;
   while (time_get_ns() < deadline)
-    ASCIICHAT_REQUIRE_EQ(asciichat_mdns_update(query, 50), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(found.port, 0, "Withdrawn service must stop answering queries");
+    REQUIRE((asciichat_mdns_update(query, 50)) == (ASCIICHAT_OK));
+  REQUIRE((found.port) == (0));
   asciichat_mdns_destroy(query);
 }
 
@@ -123,10 +123,10 @@ TEST_CASE("mdns_integration/initialization_cleanup_cycle", "[mdns_integration]")
   // Create and destroy multiple times to verify no resource leaks
   for (int i = 0; i < 3; i++) {
     asciichat_mdns_t *mdns = asciichat_mdns_init();
-    ASCIICHAT_REQUIRE_NOT_NULL(mdns, "Should initialize on attempt %d", i + 1);
+    REQUIRE((mdns) != nullptr);
 
     int socket = asciichat_mdns_get_socket(mdns);
-    ASCIICHAT_REQUIRE_GT(socket, -1, "Socket should be valid on attempt %d", i + 1);
+    REQUIRE((socket) > (-1));
 
     asciichat_mdns_destroy(mdns);
   }
@@ -137,7 +137,7 @@ TEST_CASE("mdns_integration/initialization_cleanup_cycle", "[mdns_integration]")
  */
 TEST_CASE("mdns_integration/service_advertisement_registration", "[mdns_integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
-  ASCIICHAT_REQUIRE_NOT_NULL(mdns, "mDNS should initialize");
+  REQUIRE((mdns) != nullptr);
 
   // Advertise a test service
   asciichat_mdns_service_t service = {
@@ -150,7 +150,7 @@ TEST_CASE("mdns_integration/service_advertisement_registration", "[mdns_integrat
   };
 
   asciichat_error_t result = asciichat_mdns_advertise(mdns, &service);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Service advertisement should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Service should remain advertised until shutdown
   asciichat_mdns_destroy(mdns);
@@ -161,7 +161,7 @@ TEST_CASE("mdns_integration/service_advertisement_registration", "[mdns_integrat
  */
 TEST_CASE("mdns_integration/multiple_services_advertisement", "[mdns_integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
-  ASCIICHAT_REQUIRE_NOT_NULL(mdns, "mDNS should initialize");
+  REQUIRE((mdns) != nullptr);
 
   // Advertise multiple services
   asciichat_mdns_service_t services[] = {
@@ -193,7 +193,7 @@ TEST_CASE("mdns_integration/multiple_services_advertisement", "[mdns_integration
 
   for (int i = 0; i < 3; i++) {
     asciichat_error_t result = asciichat_mdns_advertise(mdns, &services[i]);
-    ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Service %d advertisement should succeed", i + 1);
+    REQUIRE((result) == (ASCIICHAT_OK));
   }
 
   asciichat_mdns_destroy(mdns);
@@ -204,7 +204,7 @@ TEST_CASE("mdns_integration/multiple_services_advertisement", "[mdns_integration
  */
 TEST_CASE("mdns_integration/service_unadvertisement", "[mdns_integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
-  ASCIICHAT_REQUIRE_NOT_NULL(mdns, "mDNS should initialize");
+  REQUIRE((mdns) != nullptr);
 
   // Advertise a service
   asciichat_mdns_service_t service = {
@@ -217,11 +217,11 @@ TEST_CASE("mdns_integration/service_unadvertisement", "[mdns_integration]") {
   };
 
   asciichat_error_t advertise_result = asciichat_mdns_advertise(mdns, &service);
-  ASCIICHAT_REQUIRE_EQ(advertise_result, ASCIICHAT_OK, "Service advertisement should succeed");
+  REQUIRE((advertise_result) == (ASCIICHAT_OK));
 
   // Unadvertise the service
   asciichat_error_t unadvertise_result = asciichat_mdns_unadvertise(mdns, service.name);
-  ASCIICHAT_REQUIRE_EQ(unadvertise_result, ASCIICHAT_OK, "Service unadvertisement should succeed");
+  REQUIRE((unadvertise_result) == (ASCIICHAT_OK));
 
   asciichat_mdns_destroy(mdns);
 }
@@ -231,7 +231,7 @@ TEST_CASE("mdns_integration/service_unadvertisement", "[mdns_integration]") {
  */
 TEST_CASE("mdns_integration/query_initialization", "[mdns_integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
-  ASCIICHAT_REQUIRE_NOT_NULL(mdns, "mDNS should initialize");
+  REQUIRE((mdns) != nullptr);
 
   // Test callback that counts invocations
   int callback_count = 0;
@@ -240,7 +240,7 @@ TEST_CASE("mdns_integration/query_initialization", "[mdns_integration]") {
 
   // Query may fail in some environments (e.g., restricted networks, containers)
   // Just verify it doesn't crash - both success and graceful failure are acceptable
-  ASCIICHAT_REQUIRE(result == ASCIICHAT_OK || result == ERROR_NETWORK, "Query should either succeed or fail gracefully (got error %d)", result);
+  REQUIRE(result == ASCIICHAT_OK || result == ERROR_NETWORK);
 
   asciichat_mdns_destroy(mdns);
 }
@@ -250,7 +250,7 @@ TEST_CASE("mdns_integration/query_initialization", "[mdns_integration]") {
  */
 TEST_CASE("mdns_integration/update_processing_loop", "[mdns_integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
-  ASCIICHAT_REQUIRE_NOT_NULL(mdns, "mDNS should initialize");
+  REQUIRE((mdns) != nullptr);
 
   asciichat_error_t query_result = asciichat_mdns_query(mdns, "_ascii-chat-test._tcp.local", dummy_callback, NULL);
 
@@ -260,7 +260,7 @@ TEST_CASE("mdns_integration/update_processing_loop", "[mdns_integration]") {
     // Simulate processing loop with multiple updates
     for (int i = 0; i < 5; i++) {
       asciichat_error_t update_result = asciichat_mdns_update(mdns, 50);
-      ASCIICHAT_REQUIRE_EQ(update_result, ASCIICHAT_OK, "Update %d should succeed", i + 1);
+      REQUIRE((update_result) == (ASCIICHAT_OK));
     }
   }
 
@@ -272,7 +272,7 @@ TEST_CASE("mdns_integration/update_processing_loop", "[mdns_integration]") {
  */
 TEST_CASE("mdns_integration/service_with_various_ports", "[mdns_integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
-  ASCIICHAT_REQUIRE_NOT_NULL(mdns, "mDNS should initialize");
+  REQUIRE((mdns) != nullptr);
 
   uint16_t ports[] = {80, 443, 8000, 27224, 65535};
 
@@ -288,7 +288,7 @@ TEST_CASE("mdns_integration/service_with_various_ports", "[mdns_integration]") {
     service.port = ports[i];
 
     asciichat_error_t result = asciichat_mdns_advertise(mdns, &service);
-    ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should advertise service with port %u", ports[i]);
+    REQUIRE((result) == (ASCIICHAT_OK));
   }
 
   asciichat_mdns_destroy(mdns);
@@ -299,7 +299,7 @@ TEST_CASE("mdns_integration/service_with_various_ports", "[mdns_integration]") {
  */
 TEST_CASE("mdns_integration/service_with_ipv6_hostname", "[mdns_integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
-  ASCIICHAT_REQUIRE_NOT_NULL(mdns, "mDNS should initialize");
+  REQUIRE((mdns) != nullptr);
 
   asciichat_mdns_service_t service = {
       .name = "ipv6-test-service",
@@ -311,7 +311,7 @@ TEST_CASE("mdns_integration/service_with_ipv6_hostname", "[mdns_integration]") {
   };
 
   asciichat_error_t result = asciichat_mdns_advertise(mdns, &service);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should advertise service with IPv6-capable hostname");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   asciichat_mdns_destroy(mdns);
 }
@@ -321,7 +321,7 @@ TEST_CASE("mdns_integration/service_with_ipv6_hostname", "[mdns_integration]") {
  */
 TEST_CASE("mdns_integration/rapid_advertise_unadvertise_cycles", "[mdns_integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
-  ASCIICHAT_REQUIRE_NOT_NULL(mdns, "mDNS should initialize");
+  REQUIRE((mdns) != nullptr);
 
   for (int i = 0; i < 10; i++) {
     char name_buffer[256];
@@ -335,10 +335,10 @@ TEST_CASE("mdns_integration/rapid_advertise_unadvertise_cycles", "[mdns_integrat
     service.port = 27224;
 
     asciichat_error_t advertise = asciichat_mdns_advertise(mdns, &service);
-    ASCIICHAT_REQUIRE_EQ(advertise, ASCIICHAT_OK, "Advertise %d should succeed", i);
+    REQUIRE((advertise) == (ASCIICHAT_OK));
 
     asciichat_error_t unadvertise = asciichat_mdns_unadvertise(mdns, service.name);
-    ASCIICHAT_REQUIRE_EQ(unadvertise, ASCIICHAT_OK, "Unadvertise %d should succeed", i);
+    REQUIRE((unadvertise) == (ASCIICHAT_OK));
   }
 
   asciichat_mdns_destroy(mdns);
@@ -349,7 +349,7 @@ TEST_CASE("mdns_integration/rapid_advertise_unadvertise_cycles", "[mdns_integrat
  */
 TEST_CASE("mdns_integration/invalid_service_types", "[mdns_integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
-  ASCIICHAT_REQUIRE_NOT_NULL(mdns, "mDNS should initialize");
+  REQUIRE((mdns) != nullptr);
 
   // Test various invalid service types
   const char *invalid_types[] = {
@@ -372,5 +372,5 @@ TEST_CASE("mdns_integration/invalid_service_types", "[mdns_integration]") {
   }
 
   asciichat_mdns_destroy(mdns);
-  ASCIICHAT_REQUIRE_EQ(attempt_count, 5, "All invalid type attempts should complete");
+  REQUIRE((attempt_count) == (5));
 }

@@ -19,6 +19,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @brief Log rate limit: 0.1 seconds (100,000 microseconds) - for very high frequency operations */
 #define LOG_RATE_VERY_FAST (100000)
 
@@ -35,3 +39,7 @@
 #define LOG_RATE_SLOW (10000000)
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

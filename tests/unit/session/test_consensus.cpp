@@ -1,10 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file session/test_consensus.c
  * @brief Tests for session consensus abstraction
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
@@ -99,8 +98,8 @@ TEST_CASE("test_consensus/create_basic", "[test_consensus]") {
   session_consensus_t *consensus = NULL;
   asciichat_error_t result = session_consensus_create(my_id, false, participant_ids, 1, &callbacks, &consensus);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should create consensus successfully");
-  ASCIICHAT_REQUIRE_NOT_NULL(consensus, "Consensus handle should not be NULL");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((consensus) != nullptr);
 
   session_consensus_destroy(consensus);
 }
@@ -116,7 +115,7 @@ TEST_CASE("test_consensus/create_as_leader", "[test_consensus]") {
   session_consensus_t *consensus = NULL;
   asciichat_error_t result = session_consensus_create(my_id, true, participant_ids, 1, &callbacks, &consensus);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should create consensus with leader role");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   session_consensus_destroy(consensus);
 }
@@ -134,7 +133,7 @@ TEST_CASE("test_consensus/create_multiple_participants", "[test_consensus]") {
   session_consensus_t *consensus = NULL;
   asciichat_error_t result = session_consensus_create(my_id, false, participant_ids, 5, &callbacks, &consensus);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should handle multiple participants");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   session_consensus_destroy(consensus);
 }
@@ -145,7 +144,7 @@ TEST_CASE("test_consensus/create_multiple_participants", "[test_consensus]") {
 
 TEST_CASE("test_consensus/destroy_null_consensus", "[test_consensus]") {
   session_consensus_destroy(NULL);
-  ASCIICHAT_REQUIRE(true, "Destroying NULL consensus should not crash");
+  REQUIRE(true);
 }
 
 TEST_CASE("test_consensus/destroy_twice", "[test_consensus]") {
@@ -164,7 +163,7 @@ TEST_CASE("test_consensus/destroy_twice", "[test_consensus]") {
   // caller's copy. Do not pass the dangling pointer back to it.
   consensus = NULL;
   session_consensus_destroy(consensus);
-  ASCIICHAT_REQUIRE(true, "Destroying a NULL consensus should be safe");
+  REQUIRE(true);
 }
 
 // =============================================================================
@@ -183,7 +182,7 @@ TEST_CASE("test_consensus/process_basic", "[test_consensus]") {
   session_consensus_create(my_id, false, participant_ids, 1, &callbacks, &consensus);
 
   asciichat_error_t result = session_consensus_process(consensus, 0);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Process should succeed with zero timeout");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   session_consensus_destroy(consensus);
 }
@@ -204,7 +203,7 @@ TEST_CASE("test_consensus/is_ready_initially_false", "[test_consensus]") {
   session_consensus_create(my_id, false, participant_ids, 1, &callbacks, &consensus);
 
   bool is_ready = session_consensus_is_ready(consensus);
-  ASCIICHAT_REQUIRE_NOT(is_ready, "Consensus should not be ready immediately after creation");
+  REQUIRE(!(is_ready));
 
   session_consensus_destroy(consensus);
 }
@@ -221,7 +220,7 @@ TEST_CASE("test_consensus/get_state", "[test_consensus]") {
   session_consensus_create(my_id, false, participant_ids, 1, &callbacks, &consensus);
 
   int state = session_consensus_get_state(consensus);
-  ASCIICHAT_REQUIRE_GE(state, 0, "Consensus state should be valid");
+  REQUIRE((state) >= (0));
 
   session_consensus_destroy(consensus);
 }
@@ -238,7 +237,7 @@ TEST_CASE("test_consensus/get_metrics_count", "[test_consensus]") {
   session_consensus_create(my_id, false, participant_ids, 1, &callbacks, &consensus);
 
   int count = session_consensus_get_metrics_count(consensus);
-  ASCIICHAT_REQUIRE_GE(count, -1, "Metrics count should be valid");
+  REQUIRE((count) >= (-1));
 
   session_consensus_destroy(consensus);
 }
@@ -255,7 +254,7 @@ TEST_CASE("test_consensus/time_until_next_round", "[test_consensus]") {
   session_consensus_create(my_id, false, participant_ids, 1, &callbacks, &consensus);
 
   uint64_t time_until_next = session_consensus_time_until_next_round(consensus);
-  ASCIICHAT_REQUIRE_GE(time_until_next, 0, "Time until next round should be non-negative");
+  REQUIRE((time_until_next) >= (0));
 
   session_consensus_destroy(consensus);
 }
@@ -283,7 +282,7 @@ TEST_CASE("test_consensus/set_topology", "[test_consensus]") {
   }
 
   asciichat_error_t result = session_consensus_set_topology(consensus, new_participant_ids, 3);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should update topology successfully");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   session_consensus_destroy(consensus);
 }

@@ -20,6 +20,10 @@
 
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Array of English adjectives for ACDS session naming
  *
@@ -43,3 +47,7 @@ extern const char *adjectives[];
 extern const size_t adjectives_count;
 
 #endif // ADJECTIVES_H
+
+#ifdef __cplusplus
+}
+#endif

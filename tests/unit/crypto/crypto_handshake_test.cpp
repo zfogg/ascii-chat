@@ -1,15 +1,13 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file crypto_handshake_test.c
  * @brief Unit tests for lib/crypto/handshake.c
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
 
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/crypto/handshake/client.h>
@@ -24,9 +22,9 @@ TEST_CASE("crypto_handshake/init_server", "[crypto_handshake]") {
   memset(&ctx, 0, sizeof(ctx));
 
   asciichat_error_t result = crypto_handshake_init("test_server", &ctx, true);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Server handshake init should succeed");
-  ASCIICHAT_REQUIRE(ctx.is_server, "Context should be marked as server");
-  ASCIICHAT_REQUIRE_EQ(ctx.state, CRYPTO_HANDSHAKE_INIT, "Initial state should be INIT");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE(ctx.is_server);
+  REQUIRE((ctx.state) == (CRYPTO_HANDSHAKE_INIT));
 
   crypto_handshake_destroy(&ctx);
 }
@@ -36,16 +34,16 @@ TEST_CASE("crypto_handshake/init_client", "[crypto_handshake]") {
   memset(&ctx, 0, sizeof(ctx));
 
   asciichat_error_t result = crypto_handshake_init("test_client", &ctx, false);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Client handshake init should succeed");
-  ASCIICHAT_REQUIRE_NOT(ctx.is_server, "Context should be marked as client");
-  ASCIICHAT_REQUIRE_EQ(ctx.state, CRYPTO_HANDSHAKE_INIT, "Initial state should be INIT");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE(!(ctx.is_server));
+  REQUIRE((ctx.state) == (CRYPTO_HANDSHAKE_INIT));
 
   crypto_handshake_destroy(&ctx);
 }
 
 TEST_CASE("crypto_handshake/init_null_context", "[crypto_handshake]") {
   asciichat_error_t result = crypto_handshake_init("test", NULL, true);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Init with NULL context should fail");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_handshake/init_null_name", "[crypto_handshake]") {
@@ -53,7 +51,7 @@ TEST_CASE("crypto_handshake/init_null_name", "[crypto_handshake]") {
   memset(&ctx, 0, sizeof(ctx));
 
   asciichat_error_t result = crypto_handshake_init(NULL, &ctx, true);
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Init with NULL name should fail");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 // =============================================================================
@@ -65,10 +63,10 @@ TEST_CASE("crypto_handshake/context_state_transitions", "[crypto_handshake]") {
   memset(&ctx, 0, sizeof(ctx));
 
   asciichat_error_t result = crypto_handshake_init("test", &ctx, true);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK);
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Initial state should be INIT
-  ASCIICHAT_REQUIRE_EQ(ctx.state, CRYPTO_HANDSHAKE_INIT, "State should be INIT after init");
+  REQUIRE((ctx.state) == (CRYPTO_HANDSHAKE_INIT));
 
   // Test that we can destroy without issues
   crypto_handshake_destroy(&ctx);
@@ -77,7 +75,7 @@ TEST_CASE("crypto_handshake/context_state_transitions", "[crypto_handshake]") {
 TEST_CASE("crypto_handshake/destroy_null_context", "[crypto_handshake]") {
   // Destroying NULL should be safe
   crypto_handshake_destroy(NULL);
-  ASCIICHAT_REQUIRE(true, "Destroying NULL context should not crash");
+  REQUIRE(true);
 }
 
 TEST_CASE("crypto_handshake/destroy_twice", "[crypto_handshake]") {
@@ -85,14 +83,14 @@ TEST_CASE("crypto_handshake/destroy_twice", "[crypto_handshake]") {
   memset(&ctx, 0, sizeof(ctx));
 
   asciichat_error_t result = crypto_handshake_init("test", &ctx, true);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK);
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Destroy once
   crypto_handshake_destroy(&ctx);
 
   // Destroying again should be safe (idempotent)
   crypto_handshake_destroy(&ctx);
-  ASCIICHAT_REQUIRE(true, "Double destroy should be safe");
+  REQUIRE(true);
 }
 
 // =============================================================================
@@ -109,8 +107,8 @@ TEST_CASE("crypto_handshake/server_vs_client_flags", "[crypto_handshake]") {
   crypto_handshake_init("server", &server_ctx, true);
   crypto_handshake_init("client", &client_ctx, false);
 
-  ASCIICHAT_REQUIRE(server_ctx.is_server, "Server context should have is_server=true");
-  ASCIICHAT_REQUIRE_NOT(client_ctx.is_server, "Client context should have is_server=false");
+  REQUIRE(server_ctx.is_server);
+  REQUIRE(!(client_ctx.is_server));
 
   crypto_handshake_destroy(&server_ctx);
   crypto_handshake_destroy(&client_ctx);
@@ -125,12 +123,12 @@ TEST_CASE("crypto_handshake/ephemeral_key_generation", "[crypto_handshake]") {
   memset(&ctx, 0, sizeof(ctx));
 
   asciichat_error_t result = crypto_handshake_init("test", &ctx, true);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK);
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Ephemeral keys should be generated during init
   // (Key material exists in the context, but we can't directly inspect it)
   // Just verify the context is in a valid state
-  ASCIICHAT_REQUIRE_EQ(ctx.state, CRYPTO_HANDSHAKE_INIT);
+  REQUIRE((ctx.state) == (CRYPTO_HANDSHAKE_INIT));
 
   crypto_handshake_destroy(&ctx);
 }
@@ -149,7 +147,7 @@ TEST_CASE("crypto_handshake/various_names", "[crypto_handshake]") {
     memset(&ctx, 0, sizeof(ctx));
 
     asciichat_error_t result = crypto_handshake_init(names[i], &ctx, true);
-    ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should accept name: %s", names[i]);
+    REQUIRE((result) == (ASCIICHAT_OK));
 
     crypto_handshake_destroy(&ctx);
   }

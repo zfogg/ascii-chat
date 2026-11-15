@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file crypto_openpgp_test.c
  * @brief Unit tests for OpenPGP packet parser (RFC 4880)
@@ -6,8 +7,6 @@
  * and full PGP armored key block parsing.
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
@@ -81,22 +80,22 @@ TEST_CASE("openpgp/parse_old_format_packet_header", "[openpgp]") {
   openpgp_packet_header_t header;
   asciichat_error_t result = openpgp_parse_packet_header(OLD_FORMAT_PUBKEY_PACKET, sizeof(OLD_FORMAT_PUBKEY_PACKET), &header);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Failed to parse old format packet header");
-  ASCIICHAT_REQUIRE_EQ(header.new_format, false, "Should detect old format");
-  ASCIICHAT_REQUIRE_EQ(header.tag, 6, "Should extract tag 6 (Public Key Packet)");
-  ASCIICHAT_REQUIRE_EQ(header.length, 51, "Should extract length 51");
-  ASCIICHAT_REQUIRE_EQ(header.header_len, 2, "Old format one-octet length header is 2 bytes");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((header.new_format) == (false));
+  REQUIRE((header.tag) == (6));
+  REQUIRE((header.length) == (51));
+  REQUIRE((header.header_len) == (2));
 }
 
 TEST_CASE("openpgp/parse_new_format_packet_header", "[openpgp]") {
   openpgp_packet_header_t header;
   asciichat_error_t result = openpgp_parse_packet_header(NEW_FORMAT_PUBKEY_PACKET, sizeof(NEW_FORMAT_PUBKEY_PACKET), &header);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Failed to parse new format packet header");
-  ASCIICHAT_REQUIRE_EQ(header.new_format, true, "Should detect new format");
-  ASCIICHAT_REQUIRE_EQ(header.tag, 6, "Should extract tag 6 (Public Key Packet)");
-  ASCIICHAT_REQUIRE_EQ(header.length, 51, "Should extract length 51");
-  ASCIICHAT_REQUIRE_EQ(header.header_len, 2, "New format one-octet length header is 2 bytes");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((header.new_format) == (true));
+  REQUIRE((header.tag) == (6));
+  REQUIRE((header.length) == (51));
+  REQUIRE((header.header_len) == (2));
 }
 
 TEST_CASE("openpgp/parse_new_format_two_octet_length", "[openpgp]") {
@@ -107,11 +106,11 @@ TEST_CASE("openpgp/parse_new_format_two_octet_length", "[openpgp]") {
 
   asciichat_error_t result = openpgp_parse_packet_header(packet, sizeof(packet), &header);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Failed to parse two-octet length");
-  ASCIICHAT_REQUIRE_EQ(header.new_format, true);
-  ASCIICHAT_REQUIRE_EQ(header.tag, 6);
-  ASCIICHAT_REQUIRE_EQ(header.length, 192, "Should decode two-octet length");
-  ASCIICHAT_REQUIRE_EQ(header.header_len, 3);
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((header.new_format) == (true));
+  REQUIRE((header.tag) == (6));
+  REQUIRE((header.length) == (192));
+  REQUIRE((header.header_len) == (3));
 }
 
 TEST_CASE("openpgp/parse_new_format_five_octet_length", "[openpgp]") {
@@ -122,11 +121,11 @@ TEST_CASE("openpgp/parse_new_format_five_octet_length", "[openpgp]") {
 
   asciichat_error_t result = openpgp_parse_packet_header(packet, sizeof(packet), &header);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Failed to parse five-octet length");
-  ASCIICHAT_REQUIRE_EQ(header.new_format, true);
-  ASCIICHAT_REQUIRE_EQ(header.tag, 6);
-  ASCIICHAT_REQUIRE_EQ(header.length, 4096, "Should decode five-octet length");
-  ASCIICHAT_REQUIRE_EQ(header.header_len, 6);
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((header.new_format) == (true));
+  REQUIRE((header.tag) == (6));
+  REQUIRE((header.length) == (4096));
+  REQUIRE((header.header_len) == (6));
 }
 
 TEST_CASE("openpgp/parse_old_format_two_octet_length", "[openpgp]") {
@@ -136,11 +135,11 @@ TEST_CASE("openpgp/parse_old_format_two_octet_length", "[openpgp]") {
 
   asciichat_error_t result = openpgp_parse_packet_header(packet, sizeof(packet), &header);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Failed to parse old format two-octet length");
-  ASCIICHAT_REQUIRE_EQ(header.new_format, false);
-  ASCIICHAT_REQUIRE_EQ(header.tag, 6);
-  ASCIICHAT_REQUIRE_EQ(header.length, 256);
-  ASCIICHAT_REQUIRE_EQ(header.header_len, 3);
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((header.new_format) == (false));
+  REQUIRE((header.tag) == (6));
+  REQUIRE((header.length) == (256));
+  REQUIRE((header.header_len) == (3));
 }
 
 TEST_CASE("openpgp/parse_old_format_four_octet_length", "[openpgp]") {
@@ -150,11 +149,11 @@ TEST_CASE("openpgp/parse_old_format_four_octet_length", "[openpgp]") {
 
   asciichat_error_t result = openpgp_parse_packet_header(packet, sizeof(packet), &header);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Failed to parse old format four-octet length");
-  ASCIICHAT_REQUIRE_EQ(header.new_format, false);
-  ASCIICHAT_REQUIRE_EQ(header.tag, 6);
-  ASCIICHAT_REQUIRE_EQ(header.length, 65536);
-  ASCIICHAT_REQUIRE_EQ(header.header_len, 5);
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((header.new_format) == (false));
+  REQUIRE((header.tag) == (6));
+  REQUIRE((header.length) == (65536));
+  REQUIRE((header.header_len) == (5));
 }
 
 TEST_CASE("openpgp/reject_invalid_packet_bit7_not_set", "[openpgp]") {
@@ -164,7 +163,7 @@ TEST_CASE("openpgp/reject_invalid_packet_bit7_not_set", "[openpgp]") {
 
   asciichat_error_t result = openpgp_parse_packet_header(packet, sizeof(packet), &header);
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should reject packet with bit 7 not set");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 // =============================================================================
@@ -179,10 +178,10 @@ TEST_CASE("openpgp/parse_old_format_pubkey_packet", "[openpgp]") {
   openpgp_public_key_t pubkey;
   asciichat_error_t result = openpgp_parse_public_key_packet(packet_body, body_len, &pubkey);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Failed to parse old format public key packet");
-  ASCIICHAT_REQUIRE_EQ(pubkey.version, 4, "Should extract version 4");
-  ASCIICHAT_REQUIRE_EQ(pubkey.algorithm, 22, "Should extract EdDSA algorithm");
-  ASCIICHAT_REQUIRE(memcmp(pubkey.pubkey, EXPECTED_OLD_FORMAT_KEY, 32) == 0, "Should extract correct Ed25519 public key");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((pubkey.version) == (4));
+  REQUIRE((pubkey.algorithm) == (22));
+  REQUIRE(memcmp(pubkey.pubkey, EXPECTED_OLD_FORMAT_KEY, 32) == 0);
 }
 
 TEST_CASE("openpgp/parse_new_format_pubkey_packet", "[openpgp]") {
@@ -193,10 +192,10 @@ TEST_CASE("openpgp/parse_new_format_pubkey_packet", "[openpgp]") {
   openpgp_public_key_t pubkey;
   asciichat_error_t result = openpgp_parse_public_key_packet(packet_body, body_len, &pubkey);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Failed to parse new format public key packet");
-  ASCIICHAT_REQUIRE_EQ(pubkey.version, 4, "Should extract version 4");
-  ASCIICHAT_REQUIRE_EQ(pubkey.algorithm, 22, "Should extract EdDSA algorithm");
-  ASCIICHAT_REQUIRE(memcmp(pubkey.pubkey, EXPECTED_NEW_FORMAT_KEY, 32) == 0, "Should extract correct Ed25519 public key");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((pubkey.version) == (4));
+  REQUIRE((pubkey.algorithm) == (22));
+  REQUIRE(memcmp(pubkey.pubkey, EXPECTED_NEW_FORMAT_KEY, 32) == 0);
 }
 
 TEST_CASE("openpgp/reject_non_eddsa_algorithm", "[openpgp]") {
@@ -208,7 +207,7 @@ TEST_CASE("openpgp/reject_non_eddsa_algorithm", "[openpgp]") {
   openpgp_public_key_t pubkey;
   asciichat_error_t result = openpgp_parse_public_key_packet(packet_body, 49, &pubkey);
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should reject non-EdDSA algorithm");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("openpgp/reject_missing_0x40_prefix", "[openpgp]") {
@@ -225,7 +224,7 @@ TEST_CASE("openpgp/reject_missing_0x40_prefix", "[openpgp]") {
   openpgp_public_key_t pubkey;
   asciichat_error_t result = openpgp_parse_public_key_packet(packet_body, 49, &pubkey);
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should reject packet without 0x40 prefix");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 // =============================================================================
@@ -241,9 +240,9 @@ TEST_CASE("openpgp/decode_base64_with_newlines", "[openpgp]") {
   size_t binary_len;
   asciichat_error_t result = openpgp_base64_decode(base64_with_newlines, strlen(base64_with_newlines), &binary_out, &binary_len);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Failed to decode base64 with newlines");
-  ASCIICHAT_REQUIRE_NE(binary_out, NULL, "Should allocate output buffer");
-  ASCIICHAT_REQUIRE_GT(binary_len, 0, "Should decode to non-zero length");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((binary_out) != (NULL));
+  REQUIRE((binary_len) > (0));
 
   SAFE_FREE(binary_out);
 }
@@ -256,7 +255,7 @@ TEST_CASE("openpgp/reject_invalid_base64", "[openpgp]") {
   size_t binary_len;
   asciichat_error_t result = openpgp_base64_decode(invalid_base64, strlen(invalid_base64), &binary_out, &binary_len);
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should reject invalid base64");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 // =============================================================================
@@ -285,8 +284,8 @@ TEST_CASE("openpgp/parse_full_armored_key_old_format", "[openpgp]") {
   uint8_t ed25519_pk[32];
   asciichat_error_t result = openpgp_parse_armored_pubkey(armored_key, ed25519_pk);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Failed to parse full armored key");
-  ASCIICHAT_REQUIRE(memcmp(ed25519_pk, EXPECTED_OLD_FORMAT_KEY, 32) == 0, "Should extract correct Ed25519 public key from armored block");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE(memcmp(ed25519_pk, EXPECTED_OLD_FORMAT_KEY, 32) == 0);
 }
 
 TEST_CASE("openpgp/reject_missing_begin_marker", "[openpgp]") {
@@ -296,7 +295,7 @@ TEST_CASE("openpgp/reject_missing_begin_marker", "[openpgp]") {
   uint8_t ed25519_pk[32];
   asciichat_error_t result = openpgp_parse_armored_pubkey(armored_key, ed25519_pk);
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should reject key without BEGIN marker");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("openpgp/reject_missing_end_marker", "[openpgp]") {
@@ -306,5 +305,5 @@ TEST_CASE("openpgp/reject_missing_end_marker", "[openpgp]") {
   uint8_t ed25519_pk[32];
   asciichat_error_t result = openpgp_parse_armored_pubkey(armored_key, ed25519_pk);
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should reject key without END marker");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }

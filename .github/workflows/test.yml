@@ -546,7 +546,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
+        os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15","windows-latest"]' || '["ubuntu-latest"]') }}
 
     steps:
       - name: Checkout code
@@ -559,7 +559,7 @@ jobs:
       - name: Install dependencies with caching
         uses: ./.github/actions/install-deps
         with:
-          os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+          os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache build, dependencies, and ccache
@@ -679,7 +679,7 @@ jobs:
         if: always()
         uses: ./.github/actions/generate-coverage
         with:
-          os-type: ${{ startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}
+          os-type: ${{ startsWith(matrix.os, 'windows') && 'windows' || startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}
 
       - name: Publish Test Results and Coverage
         uses: ./.github/actions/publish-test-results

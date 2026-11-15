@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <libplatform/cond.h>
 #include <libplatform/thread.h>
@@ -28,21 +28,21 @@ static int mutation_result;
 
 static void setup(void) {
   CLEAR_ERRNO_ALL();
-  ASCIICHAT_REQUIRE_GE(sodium_init(), 0);
-  ASCIICHAT_REQUIRE_EQ(mutex_init(&gate, "password-probe"), 0);
-  ASCIICHAT_REQUIRE_EQ(cond_init(&changed, "password-probe"), 0);
-  ASCIICHAT_REQUIRE_EQ(database_init(":memory:", &db), ASCIICHAT_OK);
+  REQUIRE((sodium_init()) >= (0));
+  REQUIRE((mutex_init(&gate, "password-probe")) == (0));
+  REQUIRE((cond_init(&changed, "password-probe")) == (0));
+  REQUIRE((database_init(":memory:", &db)) == (ASCIICHAT_OK));
   memset(&config, 0, sizeof(config));
   verifying = completed = progressed = false;
   password_calls = 0;
   mutation = NULL;
   mutation_result = SQLITE_OK;
   for (size_t i = 0; i < 2; ++i)
-    ASCIICHAT_REQUIRE_EQ(crypto_sign_keypair(keys[i], secrets[i]), 0);
+    REQUIRE((crypto_sign_keypair(keys[i], secrets[i])) == (0));
   acip_session_create_t create = {.total_keys = 2, .max_participants = 2, .has_password = 1};
   memcpy(create.identity_pubkey, keys[0], sizeof(create.identity_pubkey));
   memcpy(create.password_hash, "probe-hash", sizeof("probe-hash"));
-  ASCIICHAT_REQUIRE_EQ(database_session_create_keys(db, &create, keys, 2, &config, &session), ASCIICHAT_OK);
+  REQUIRE((database_session_create_keys(db, &create, keys, 2, &config, &session)) == (ASCIICHAT_OK));
 }
 static void teardown(void) {
   database_close(db);
@@ -93,26 +93,26 @@ static acip_session_join_t request(void) {
   memcpy(join.identity_pubkey, keys[0], sizeof(join.identity_pubkey));
   SAFE_STRNCPY(join.password, "secret", sizeof(join.password));
   join.timestamp = time_ns_to_ms(time_get_realtime_ns());
-  ASCIICHAT_REQUIRE_EQ(acds_sign_session_join(secrets[0], join.timestamp, join.session_string, join.signature), ASCIICHAT_OK);
+  REQUIRE((acds_sign_session_join(secrets[0], join.timestamp, join.session_string, join.signature)) == (ASCIICHAT_OK));
   return join;
 }
 static void run_join(uint8_t expected) {
   acip_session_join_t join = request();
   platform_thread_t worker;
-  ASCIICHAT_REQUIRE_EQ(platform_thread_create(&worker, "other-client", other_client, NULL), 0);
+  REQUIRE((platform_thread_create(&worker, "other-client", other_client, NULL)) == (0));
   acip_session_joined_t response;
   asciichat_error_t result = database_session_join(db, &join, &config, &response);
-  ASCIICHAT_REQUIRE_EQ(thread_join(&worker, NULL), 0);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(progressed, "Unrelated SQLite work must finish while password verification is still blocked");
-  ASCIICHAT_REQUIRE_EQ(lookup_result, ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(mutation_result, SQLITE_OK);
-  ASCIICHAT_REQUIRE_EQ(password_calls, 1);
-  ASCIICHAT_REQUIRE_EQ(response.error_code, expected);
-  ASCIICHAT_REQUIRE_EQ(response.success, expected == ACIP_ERROR_NONE);
+  REQUIRE((thread_join(&worker, NULL)) == (0));
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE(progressed);
+  REQUIRE((lookup_result) == (ASCIICHAT_OK));
+  REQUIRE((mutation_result) == (SQLITE_OK));
+  REQUIRE((password_calls) == (1));
+  REQUIRE((response.error_code) == (expected));
+  REQUIRE((response.success) == (expected == ACIP_ERROR_NONE));
   session_entry_t *entry = database_session_find_by_string(db, session.session_string);
-  ASCIICHAT_REQUIRE_NOT_NULL(entry);
-  ASCIICHAT_REQUIRE_EQ(entry->current_participants, expected == ACIP_ERROR_NONE ? 1 : expected == ACIP_ERROR_SESSION_FULL ? 2 : 0);
+  REQUIRE((entry) != nullptr);
+  REQUIRE((entry->current_participants) == (expected == ACIP_ERROR_NONE ? 1 : expected == ACIP_ERROR_SESSION_FULL ? 2 : 0));
   session_entry_destroy(entry);
 }
 TEST_CASE("discovery_password_lock/unrelated_lookup_proceeds_during_password_verification", "[discovery_password_lock]") {
@@ -138,7 +138,7 @@ TEST_CASE("discovery_password_lock/unlisted_identity_cannot_trigger_password_wor
   acip_session_join_t join = request();
   memset(join.identity_pubkey, 0, sizeof(join.identity_pubkey));
   acip_session_joined_t response;
-  ASCIICHAT_REQUIRE_EQ(database_session_join(db, &join, &config, &response), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(response.error_code, ACIP_ERROR_INVALID_SIGNATURE);
-  ASCIICHAT_REQUIRE_EQ(password_calls, 0);
+  REQUIRE((database_session_join(db, &join, &config, &response)) == (ASCIICHAT_OK));
+  REQUIRE((response.error_code) == (ACIP_ERROR_INVALID_SIGNATURE));
+  REQUIRE((password_calls) == (0));
 }

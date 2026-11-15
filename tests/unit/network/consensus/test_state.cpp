@@ -1,9 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file tests/unit/network/consensus/test_state.c
  * @brief Ring consensus state machine unit tests
  */
 
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/network/consensus/state.h>
 #include <ascii-chat/tests/logging.h>
@@ -54,11 +54,11 @@ TEST_CASE("state/create_and_destroy", "[state]") {
   consensus_state_t *state = NULL;
   asciichat_error_t err = consensus_state_create(my_id, topo, &state);
 
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NE(state, NULL);
+  REQUIRE((err) == (ASCIICHAT_OK));
+  REQUIRE((state) != (NULL));
 
   consensus_state_machine_t current = consensus_state_get_current_state(state);
-  ASCIICHAT_REQUIRE_EQ(current, CONSENSUS_STATE_IDLE);
+  REQUIRE((current) == (CONSENSUS_STATE_IDLE));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -73,15 +73,15 @@ TEST_CASE("state/create_invalid_params", "[state]") {
 
   /* NULL my_id */
   asciichat_error_t err = consensus_state_create(NULL, topo, &state);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK);
+  REQUIRE((err) != (ASCIICHAT_OK));
 
   /* NULL topology */
   err = consensus_state_create(my_id, NULL, &state);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK);
+  REQUIRE((err) != (ASCIICHAT_OK));
 
   /* NULL output */
   err = consensus_state_create(my_id, topo, NULL);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK);
+  REQUIRE((err) != (ASCIICHAT_OK));
 
   consensus_topology_destroy(topo);
 }
@@ -99,10 +99,10 @@ TEST_CASE("state/valid_transition_idle_to_collecting", "[state]") {
   consensus_state_create(my_id, topo, &state);
 
   asciichat_error_t err = consensus_state_start_collection(state);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   consensus_state_machine_t current = consensus_state_get_current_state(state);
-  ASCIICHAT_REQUIRE_EQ(current, CONSENSUS_STATE_COLLECTING);
+  REQUIRE((current) == (CONSENSUS_STATE_COLLECTING));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -123,10 +123,10 @@ TEST_CASE("state/valid_transition_collecting_to_collection_complete_non_leader",
   consensus_state_add_metrics(state, &m2);
 
   asciichat_error_t err = consensus_state_collection_complete(state);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   consensus_state_machine_t current = consensus_state_get_current_state(state);
-  ASCIICHAT_REQUIRE_EQ(current, CONSENSUS_STATE_IDLE);
+  REQUIRE((current) == (CONSENSUS_STATE_IDLE));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -140,7 +140,7 @@ TEST_CASE("state/valid_transition_collecting_to_election_start_leader", "[state]
   consensus_state_t *state = NULL;
   consensus_state_create(my_id, topo, &state);
 
-  ASCIICHAT_REQUIRE(consensus_state_is_leader(state), "Should be leader");
+  REQUIRE(consensus_state_is_leader(state));
 
   consensus_state_start_collection(state);
   participant_metrics_t m1 = make_metrics(1, 10, 5000);
@@ -149,10 +149,10 @@ TEST_CASE("state/valid_transition_collecting_to_election_start_leader", "[state]
   consensus_state_add_metrics(state, &m2);
 
   asciichat_error_t err = consensus_state_collection_complete(state);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   consensus_state_machine_t current = consensus_state_get_current_state(state);
-  ASCIICHAT_REQUIRE_EQ(current, CONSENSUS_STATE_ELECTION_START);
+  REQUIRE((current) == (CONSENSUS_STATE_ELECTION_START));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -174,10 +174,10 @@ TEST_CASE("state/valid_transition_election_start_to_election_complete", "[state]
   consensus_state_collection_complete(state);
 
   asciichat_error_t err = consensus_state_compute_election(state);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   consensus_state_machine_t current = consensus_state_get_current_state(state);
-  ASCIICHAT_REQUIRE_EQ(current, CONSENSUS_STATE_ELECTION_COMPLETE);
+  REQUIRE((current) == (CONSENSUS_STATE_ELECTION_COMPLETE));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -200,10 +200,10 @@ TEST_CASE("state/valid_transition_election_complete_to_idle", "[state]") {
   consensus_state_compute_election(state);
 
   asciichat_error_t err = consensus_state_reset_to_idle(state);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   consensus_state_machine_t current = consensus_state_get_current_state(state);
-  ASCIICHAT_REQUIRE_EQ(current, CONSENSUS_STATE_IDLE);
+  REQUIRE((current) == (CONSENSUS_STATE_IDLE));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -223,7 +223,7 @@ TEST_CASE("state/invalid_transition_idle_to_election_start", "[state]") {
 
   /* Can't go directly from IDLE to ELECTION_START */
   asciichat_error_t err = consensus_state_compute_election(state);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK);
+  REQUIRE((err) != (ASCIICHAT_OK));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -239,7 +239,7 @@ TEST_CASE("state/invalid_transition_idle_to_collection_complete", "[state]") {
 
   /* Can't go from IDLE to COLLECTION_COMPLETE */
   asciichat_error_t err = consensus_state_collection_complete(state);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK);
+  REQUIRE((err) != (ASCIICHAT_OK));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -256,7 +256,7 @@ TEST_CASE("state/invalid_transition_collecting_to_collecting", "[state]") {
 
   /* Can't start collection again */
   asciichat_error_t err = consensus_state_start_collection(state);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK);
+  REQUIRE((err) != (ASCIICHAT_OK));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -280,7 +280,7 @@ TEST_CASE("state/invalid_transition_election_complete_to_collection", "[state]")
 
   /* Can't add metrics after election complete */
   asciichat_error_t err = consensus_state_add_metrics(state, &m1);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK);
+  REQUIRE((err) != (ASCIICHAT_OK));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -302,8 +302,8 @@ TEST_CASE("state/add_single_metric", "[state]") {
   participant_metrics_t m = make_metrics(1, 15, 5000);
   asciichat_error_t err = consensus_state_add_metrics(state, &m);
 
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(consensus_state_get_metrics_count(state), 1);
+  REQUIRE((err) == (ASCIICHAT_OK));
+  REQUIRE((consensus_state_get_metrics_count(state)) == (1));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -323,7 +323,7 @@ TEST_CASE("state/add_multiple_metrics", "[state]") {
     consensus_state_add_metrics(state, &m);
   }
 
-  ASCIICHAT_REQUIRE_EQ(consensus_state_get_metrics_count(state), 5);
+  REQUIRE((consensus_state_get_metrics_count(state)) == (5));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -342,10 +342,10 @@ TEST_CASE("state/metrics_array_grows", "[state]") {
   for (int i = 1; i <= 20; i++) {
     participant_metrics_t m = make_metrics(i, 10 + i, 5000 - i * 100);
     asciichat_error_t err = consensus_state_add_metrics(state, &m);
-    ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+    REQUIRE((err) == (ASCIICHAT_OK));
   }
 
-  ASCIICHAT_REQUIRE_EQ(consensus_state_get_metrics_count(state), 20);
+  REQUIRE((consensus_state_get_metrics_count(state)) == (20));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -367,12 +367,12 @@ TEST_CASE("state/retrieve_metric_at_index", "[state]") {
 
   participant_metrics_t retrieved;
   asciichat_error_t err = consensus_state_get_metric_at(state, 0, &retrieved);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(retrieved.rtt_ns, 10000000);
+  REQUIRE((err) == (ASCIICHAT_OK));
+  REQUIRE((retrieved.rtt_ns) == (10000000));
 
   err = consensus_state_get_metric_at(state, 1, &retrieved);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(retrieved.rtt_ns, 20000000);
+  REQUIRE((err) == (ASCIICHAT_OK));
+  REQUIRE((retrieved.rtt_ns) == (20000000));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -392,7 +392,7 @@ TEST_CASE("state/retrieve_metric_out_of_bounds", "[state]") {
 
   participant_metrics_t retrieved;
   asciichat_error_t err = consensus_state_get_metric_at(state, 5, &retrieved);
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK);
+  REQUIRE((err) != (ASCIICHAT_OK));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -410,7 +410,7 @@ TEST_CASE("state/add_metrics_not_in_collecting_state", "[state]") {
   participant_metrics_t m = make_metrics(1, 10, 5000);
   asciichat_error_t err = consensus_state_add_metrics(state, &m);
 
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK);
+  REQUIRE((err) != (ASCIICHAT_OK));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -438,10 +438,10 @@ TEST_CASE("state/election_result_storage_best_lowest_rtt", "[state]") {
 
   uint8_t host_id[16];
   asciichat_error_t err = consensus_state_get_elected_host(state, host_id);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   /* Verify host is participant 2 (lowest RTT) */
-  ASCIICHAT_REQUIRE_EQ(host_id[0], 2);
+  REQUIRE((host_id[0]) == (2));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -465,10 +465,10 @@ TEST_CASE("state/election_result_storage_best_highest_bandwidth", "[state]") {
 
   uint8_t host_id[16];
   asciichat_error_t err = consensus_state_get_elected_host(state, host_id);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   /* Verify host is participant 2 (highest bandwidth) */
-  ASCIICHAT_REQUIRE_EQ(host_id[0], 2);
+  REQUIRE((host_id[0]) == (2));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -497,9 +497,9 @@ TEST_CASE("state/election_result_backup_selection", "[state]") {
   consensus_state_get_elected_host(state, host_id);
   asciichat_error_t err = consensus_state_get_elected_backup(state, backup_id);
 
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(host_id[0], 1);   /* Best */
-  ASCIICHAT_REQUIRE_EQ(backup_id[0], 2); /* Second best */
+  REQUIRE((err) == (ASCIICHAT_OK));
+  REQUIRE((host_id[0]) == (1));   /* Best */
+  REQUIRE((backup_id[0]) == (2)); /* Second best */
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -517,7 +517,7 @@ TEST_CASE("state/get_election_result_not_complete", "[state]") {
   /* Try to get election result without completing election */
   asciichat_error_t err = consensus_state_get_elected_host(state, host_id);
 
-  ASCIICHAT_REQUIRE_NE(err, ASCIICHAT_OK);
+  REQUIRE((err) != (ASCIICHAT_OK));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -535,7 +535,7 @@ TEST_CASE("state/is_leader_true_for_last_position", "[state]") {
   consensus_state_t *state = NULL;
   consensus_state_create(my_id, topo, &state);
 
-  ASCIICHAT_REQUIRE(consensus_state_is_leader(state));
+  REQUIRE(consensus_state_is_leader(state));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -549,7 +549,7 @@ TEST_CASE("state/is_leader_false_for_non_last_position", "[state]") {
   consensus_state_t *state = NULL;
   consensus_state_create(my_id, topo, &state);
 
-  ASCIICHAT_REQUIRE_NOT(consensus_state_is_leader(state));
+  REQUIRE(!(consensus_state_is_leader(state)));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);
@@ -563,7 +563,7 @@ TEST_CASE("state/is_leader_true_single_participant", "[state]") {
   consensus_state_t *state = NULL;
   consensus_state_create(my_id, topo, &state);
 
-  ASCIICHAT_REQUIRE(consensus_state_is_leader(state));
+  REQUIRE(consensus_state_is_leader(state));
 
   consensus_state_destroy(state);
   consensus_topology_destroy(topo);

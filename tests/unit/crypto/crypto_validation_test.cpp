@@ -1,11 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file crypto_validation_test.c
  * @brief Unit tests for cryptographic key validation
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -33,12 +31,12 @@ TEST_CASE("crypto_validation/validate_public_key_valid_ed25519", "[crypto_valida
   SAFE_STRNCPY(key.comment, "test key", sizeof(key.comment) - 1);
 
   asciichat_error_t result = validate_public_key(&key);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid Ed25519 key should pass validation");
+  REQUIRE((result) == (ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_validation/validate_public_key_null", "[crypto_validation]") {
   asciichat_error_t result = validate_public_key(NULL);
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "NULL key should return ERROR_INVALID_PARAM");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_validation/validate_public_key_unknown_type", "[crypto_validation]") {
@@ -51,7 +49,7 @@ TEST_CASE("crypto_validation/validate_public_key_unknown_type", "[crypto_validat
   }
 
   asciichat_error_t result = validate_public_key(&key);
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO_KEY, "Unknown key type should fail validation");
+  REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
 TEST_CASE("crypto_validation/validate_public_key_all_zeros", "[crypto_validation]") {
@@ -61,7 +59,7 @@ TEST_CASE("crypto_validation/validate_public_key_all_zeros", "[crypto_validation
   // key.key is all zeros
 
   asciichat_error_t result = validate_public_key(&key);
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO_KEY, "All-zero key should fail validation");
+  REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
 TEST_CASE("crypto_validation/validate_public_key_comment_too_long", "[crypto_validation]") {
@@ -78,7 +76,7 @@ TEST_CASE("crypto_validation/validate_public_key_comment_too_long", "[crypto_val
   key.comment[MAX_COMMENT_LEN - 1] = '\0'; // This is actually valid (exactly MAX_COMMENT_LEN-1)
 
   asciichat_error_t result = validate_public_key(&key);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Comment at max length should be valid");
+  REQUIRE((result) == (ASCIICHAT_OK));
 }
 
 // =============================================================================
@@ -97,12 +95,12 @@ TEST_CASE("crypto_validation/validate_private_key_valid_ed25519", "[crypto_valid
   SAFE_STRNCPY(key.key_comment, "test key", sizeof(key.key_comment) - 1);
 
   asciichat_error_t result = validate_private_key(&key);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid Ed25519 private key should pass validation");
+  REQUIRE((result) == (ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_validation/validate_private_key_null", "[crypto_validation]") {
   asciichat_error_t result = validate_private_key(NULL);
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "NULL key should return ERROR_INVALID_PARAM");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_validation/validate_private_key_all_zeros", "[crypto_validation]") {
@@ -112,7 +110,7 @@ TEST_CASE("crypto_validation/validate_private_key_all_zeros", "[crypto_validatio
   // key.key.ed25519 is all zeros
 
   asciichat_error_t result = validate_private_key(&key);
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO_KEY, "All-zero private key should fail validation");
+  REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
 // =============================================================================
@@ -123,68 +121,68 @@ TEST_CASE("crypto_validation/validate_ssh_key_format_valid", "[crypto_validation
   const char *valid_ssh_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
 
   asciichat_error_t result = validate_ssh_key_format(valid_ssh_key);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid SSH key format should pass");
+  REQUIRE((result) == (ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_validation/validate_ssh_key_format_null", "[crypto_validation]") {
   asciichat_error_t result = validate_ssh_key_format(NULL);
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_INVALID_PARAM, "NULL should return ERROR_INVALID_PARAM");
+  REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
 TEST_CASE("crypto_validation/validate_ssh_key_format_wrong_prefix", "[crypto_validation]") {
   const char *wrong_prefix = "ssh-rsa AAAAB3NzaC1...";
 
   asciichat_error_t result = validate_ssh_key_format(wrong_prefix);
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO_KEY, "Wrong key type prefix should fail");
+  REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
 TEST_CASE("crypto_validation/validate_ssh_key_format_no_data", "[crypto_validation]") {
   const char *no_data = "ssh-ed25519 ";
 
   asciichat_error_t result = validate_ssh_key_format(no_data);
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO_KEY, "SSH key with no base64 data should fail");
+  REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
 TEST_CASE("crypto_validation/validate_gpg_key_format_valid", "[crypto_validation]") {
   const char *valid_gpg = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: GnuPG v2\n\nmQENBF...\n-----END PGP PUBLIC KEY BLOCK-----\n";
 
   asciichat_error_t result = validate_gpg_key_format(valid_gpg);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid GPG key format should pass");
+  REQUIRE((result) == (ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_validation/validate_gpg_key_format_missing_header", "[crypto_validation]") {
   const char *no_header = "This is not a GPG key\n-----END PGP PUBLIC KEY BLOCK-----\n";
 
   asciichat_error_t result = validate_gpg_key_format(no_header);
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO_KEY, "GPG key without header should fail");
+  REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
 TEST_CASE("crypto_validation/validate_gpg_key_format_missing_footer", "[crypto_validation]") {
   const char *no_footer = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nmQENBF...\n";
 
   asciichat_error_t result = validate_gpg_key_format(no_footer);
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO_KEY, "GPG key without footer should fail");
+  REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
 TEST_CASE("crypto_validation/validate_x25519_key_format_valid", "[crypto_validation]") {
   const char *valid_hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
   asciichat_error_t result = validate_x25519_key_format(valid_hex);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid X25519 hex key should pass");
+  REQUIRE((result) == (ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_validation/validate_x25519_key_format_wrong_length", "[crypto_validation]") {
   const char *too_short = "0123456789abcdef";
 
   asciichat_error_t result = validate_x25519_key_format(too_short);
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO_KEY, "Wrong length hex key should fail");
+  REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
 TEST_CASE("crypto_validation/validate_x25519_key_format_invalid_char", "[crypto_validation]") {
   const char *invalid_char = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeg"; // 'g' is invalid
 
   asciichat_error_t result = validate_x25519_key_format(invalid_char);
-  ASCIICHAT_REQUIRE_EQ(result, ERROR_CRYPTO_KEY, "Invalid hex character should fail");
+  REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
 // =============================================================================
@@ -204,8 +202,8 @@ TEST_CASE("crypto_validation/check_key_strength_normal", "[crypto_validation]") 
   bool is_weak = true;
   asciichat_error_t result = check_key_strength(&key, &is_weak);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should check key strength successfully");
-  ASCIICHAT_REQUIRE_EQ(is_weak, false, "Random-pattern key should not be considered weak");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((is_weak) == (false));
 }
 
 TEST_CASE("crypto_validation/check_key_strength_all_ones", "[crypto_validation]") {
@@ -219,8 +217,8 @@ TEST_CASE("crypto_validation/check_key_strength_all_ones", "[crypto_validation]"
   bool is_weak = false;
   asciichat_error_t result = check_key_strength(&key, &is_weak);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should check key strength successfully");
-  ASCIICHAT_REQUIRE_EQ(is_weak, true, "All-ones key should be considered weak");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((is_weak) == (true));
 }
 
 // =============================================================================
@@ -240,8 +238,8 @@ TEST_CASE("crypto_validation/check_key_patterns_sequential", "[crypto_validation
   bool has_weak_patterns = false;
   asciichat_error_t result = check_key_patterns(&key, &has_weak_patterns);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should check patterns successfully");
-  ASCIICHAT_REQUIRE_EQ(has_weak_patterns, true, "Sequential pattern should be detected");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((has_weak_patterns) == (true));
 }
 
 TEST_CASE("crypto_validation/check_key_patterns_random", "[crypto_validation]") {
@@ -257,8 +255,8 @@ TEST_CASE("crypto_validation/check_key_patterns_random", "[crypto_validation]") 
   bool has_weak_patterns = true;
   asciichat_error_t result = check_key_patterns(&key, &has_weak_patterns);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should check patterns successfully");
-  ASCIICHAT_REQUIRE_EQ(has_weak_patterns, false, "Non-sequential pattern should not be detected as weak");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((has_weak_patterns) == (false));
 }
 
 // =============================================================================
@@ -281,8 +279,8 @@ TEST_CASE("crypto_validation/compare_public_keys_equal", "[crypto_validation]") 
   bool are_equal = false;
   asciichat_error_t result = compare_public_keys(&key1, &key2, &are_equal);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should compare keys successfully");
-  ASCIICHAT_REQUIRE_EQ(are_equal, true, "Identical keys should be equal");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((are_equal) == (true));
 }
 
 TEST_CASE("crypto_validation/compare_public_keys_different", "[crypto_validation]") {
@@ -302,8 +300,8 @@ TEST_CASE("crypto_validation/compare_public_keys_different", "[crypto_validation
   bool are_equal = true;
   asciichat_error_t result = compare_public_keys(&key1, &key2, &are_equal);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should compare keys successfully");
-  ASCIICHAT_REQUIRE_EQ(are_equal, false, "Different keys should not be equal");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((are_equal) == (false));
 }
 
 TEST_CASE("crypto_validation/compare_public_keys_different_types", "[crypto_validation]") {
@@ -322,8 +320,8 @@ TEST_CASE("crypto_validation/compare_public_keys_different_types", "[crypto_vali
   bool are_equal = true;
   asciichat_error_t result = compare_public_keys(&key1, &key2, &are_equal);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should compare keys successfully");
-  ASCIICHAT_REQUIRE_EQ(are_equal, false, "Keys of different types should not be equal");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((are_equal) == (false));
 }
 
 // =============================================================================
@@ -343,7 +341,7 @@ TEST_CASE("crypto_validation/generate_key_fingerprint_valid", "[crypto_validatio
   uint8_t fingerprint[32];
   asciichat_error_t result = generate_key_fingerprint(&key, fingerprint, sizeof(fingerprint));
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should generate fingerprint successfully");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // Verify fingerprint is not all zeros
   bool all_zero = true;
@@ -353,7 +351,7 @@ TEST_CASE("crypto_validation/generate_key_fingerprint_valid", "[crypto_validatio
       break;
     }
   }
-  ASCIICHAT_REQUIRE_EQ(all_zero, false, "Fingerprint should not be all zeros");
+  REQUIRE((all_zero) == (false));
 }
 
 TEST_CASE("crypto_validation/generate_key_fingerprint_deterministic", "[crypto_validation]") {
@@ -371,7 +369,7 @@ TEST_CASE("crypto_validation/generate_key_fingerprint_deterministic", "[crypto_v
   generate_key_fingerprint(&key, fingerprint1, sizeof(fingerprint1));
   generate_key_fingerprint(&key, fingerprint2, sizeof(fingerprint2));
 
-  ASCIICHAT_REQUIRE(sodium_memcmp(fingerprint1, fingerprint2, 32) == 0, "Fingerprints should be deterministic");
+  REQUIRE(sodium_memcmp(fingerprint1, fingerprint2, 32) == 0);
 }
 
 TEST_CASE("crypto_validation/check_key_fingerprint_match", "[crypto_validation]") {
@@ -389,8 +387,8 @@ TEST_CASE("crypto_validation/check_key_fingerprint_match", "[crypto_validation]"
   bool matches = false;
   asciichat_error_t result = check_key_fingerprint(&key, expected_fingerprint, 32, &matches);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should check fingerprint successfully");
-  ASCIICHAT_REQUIRE_EQ(matches, true, "Fingerprints should match");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((matches) == (true));
 }
 
 TEST_CASE("crypto_validation/check_key_fingerprint_no_match", "[crypto_validation]") {
@@ -408,8 +406,8 @@ TEST_CASE("crypto_validation/check_key_fingerprint_no_match", "[crypto_validatio
   bool matches = true;
   asciichat_error_t result = check_key_fingerprint(&key, wrong_fingerprint, 32, &matches);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should check fingerprint successfully");
-  ASCIICHAT_REQUIRE_EQ(matches, false, "Fingerprints should not match");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((matches) == (false));
 }
 
 // =============================================================================
@@ -424,6 +422,6 @@ TEST_CASE("crypto_validation/check_key_expiry", "[crypto_validation]") {
   bool is_expired = true;
   asciichat_error_t result = check_key_expiry(&key, &is_expired);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Should check expiry successfully");
-  ASCIICHAT_REQUIRE_EQ(is_expired, false, "Key expiry not implemented yet, should return false");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((is_expired) == (false));
 }

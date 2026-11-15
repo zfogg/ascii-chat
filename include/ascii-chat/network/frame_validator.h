@@ -10,6 +10,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Frame format constants */
 
 /** @brief Legacy frame header size (width:4 + height:4) */
@@ -74,3 +78,7 @@ void frame_extract_dimensions(const void *data, uint32_t *width, uint32_t *heigh
 void frame_extract_new_header(const void *data, uint32_t *compressed, uint32_t *data_size);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

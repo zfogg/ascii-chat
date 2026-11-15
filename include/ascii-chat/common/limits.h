@@ -11,6 +11,10 @@
  */
 
 #pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define MAX_CONFIGURED_STUN_SERVERS 4
 #define MAX_CONFIGURED_TURN_SERVERS 4
@@ -72,3 +76,7 @@
 #define FRAME_BUFFER_CAPACITY (DEFAULT_MAX_FPS / 4)
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

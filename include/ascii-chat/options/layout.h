@@ -11,6 +11,10 @@
 
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Layout Constants
  * ============================================================================ */
@@ -61,3 +65,7 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
                                  int term_width, int continuation_indent_extra);
 
 #endif // ASCII_CHAT_OPTIONS_LAYOUT_H
+
+#ifdef __cplusplus
+}
+#endif

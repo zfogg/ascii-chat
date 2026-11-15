@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include "client/webrtc.h"
 #include "discovery/webrtc.h"
@@ -16,7 +16,7 @@ static const uint8_t session[16] = {1, 2, 3}, local[16] = {4, 5, 6}, remote[16] 
 
 static asciichat_error_t capture(acip_transport_t *transport, const void *data, size_t length) {
   (void)transport;
-  ASCIICHAT_REQUIRE_LE(length, sizeof(packet));
+  REQUIRE((length) <= (sizeof(packet)));
   memcpy(packet, data, length);
   packet_length = length;
   sends++;
@@ -27,7 +27,7 @@ static acip_transport_t transport = {.methods = &methods};
 
 static void setup(void) {
   log_init(NULL, LOG_FATAL, false, false);
-  ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
+  REQUIRE((options_state_init()) == (ASCIICHAT_OK));
   send_result = ASCIICHAT_OK;
 }
 static void teardown(void) {
@@ -47,13 +47,13 @@ static webrtc_signaling_callbacks_t callbacks(bool direct) {
 }
 
 static const uint8_t *payload(packet_type_t type, size_t length) {
-  ASCIICHAT_REQUIRE_EQ(packet_length, sizeof(packet_header_t) + length);
+  REQUIRE((packet_length) == (sizeof(packet_header_t) + length));
   packet_header_t header;
   memcpy(&header, packet, sizeof(header));
-  ASCIICHAT_REQUIRE_EQ(NET_TO_HOST_U16(header.type), type);
-  ASCIICHAT_REQUIRE_EQ(NET_TO_HOST_U32(header.length), length);
+  REQUIRE((NET_TO_HOST_U16(header.type)) == (type));
+  REQUIRE((NET_TO_HOST_U32(header.length)) == (length));
   const uint8_t *data = packet + sizeof(header);
-  ASCIICHAT_REQUIRE_EQ(NET_TO_HOST_U32(header.crc32), asciichat_crc32(data, length));
+  REQUIRE((NET_TO_HOST_U32(header.crc32)) == (asciichat_crc32(data, length)));
   return data;
 }
 
@@ -62,17 +62,17 @@ TEST_CASE("signaling/sdp_offer_and_answer_preserve_identity_payload_and_network_
   for (unsigned direct = 0; direct < 2; ++direct) {
     webrtc_signaling_callbacks_t cb = callbacks(direct);
     for (unsigned answer = 0; answer < 2; ++answer) {
-      ASCIICHAT_REQUIRE_EQ(cb.send_sdp(session, remote, answer ? "answer" : "offer", sdp, cb.user_data), ASCIICHAT_OK);
+      REQUIRE((cb.send_sdp(session, remote, answer ? "answer" : "offer", sdp, cb.user_data)) == (ASCIICHAT_OK));
       const uint8_t *data = payload(PACKET_TYPE_ACIP_WEBRTC_SDP, sizeof(acip_webrtc_sdp_t) + strlen(sdp));
       acip_webrtc_sdp_t header;
       memcpy(&header, data, sizeof(header));
-      ASCIICHAT_REQUIRE_ARRAY_EQ(header.session_id, session, 16);
-      ASCIICHAT_REQUIRE_ARRAY_EQ(header.sender_id, local, 16);
+      REQUIRE(std::memcmp((header.session_id), (session), (16)) == 0);
+      REQUIRE(std::memcmp((header.sender_id), (local), (16)) == 0);
       const uint8_t broadcast[16] = {0};
-      ASCIICHAT_REQUIRE_ARRAY_EQ(header.recipient_id, direct ? broadcast : remote, 16);
-      ASCIICHAT_REQUIRE_EQ(header.sdp_type, answer);
-      ASCIICHAT_REQUIRE_EQ(NET_TO_HOST_U16(header.sdp_len), strlen(sdp));
-      ASCIICHAT_REQUIRE_ARRAY_EQ(data + sizeof(header), sdp, strlen(sdp));
+      REQUIRE(std::memcmp((header.recipient_id), (direct ? broadcast : remote), (16)) == 0);
+      REQUIRE((header.sdp_type) == (answer));
+      REQUIRE((NET_TO_HOST_U16(header.sdp_len)) == (strlen(sdp)));
+      REQUIRE(std::memcmp((data + sizeof(header)), (sdp), (strlen(sdp))) == 0);
     }
   }
 }
@@ -82,32 +82,32 @@ TEST_CASE("signaling/ice_candidate_and_mid_have_separate_terminators_and_candida
   const char mid[] = "data";
   for (unsigned direct = 0; direct < 2; ++direct) {
     webrtc_signaling_callbacks_t cb = callbacks(direct);
-    ASCIICHAT_REQUIRE_EQ(cb.send_ice(session, remote, candidate, mid, cb.user_data), ASCIICHAT_OK);
+    REQUIRE((cb.send_ice(session, remote, candidate, mid, cb.user_data)) == (ASCIICHAT_OK));
     const uint8_t *data = payload(PACKET_TYPE_ACIP_WEBRTC_ICE, sizeof(acip_webrtc_ice_t) + sizeof(candidate) + sizeof(mid));
     acip_webrtc_ice_t header;
     memcpy(&header, data, sizeof(header));
-    ASCIICHAT_REQUIRE_ARRAY_EQ(header.session_id, session, 16);
-    ASCIICHAT_REQUIRE_ARRAY_EQ(header.sender_id, local, 16);
-    ASCIICHAT_REQUIRE_EQ(NET_TO_HOST_U16(header.candidate_len), strlen(candidate));
-    ASCIICHAT_REQUIRE_ARRAY_EQ(data + sizeof(header), candidate, sizeof(candidate));
-    ASCIICHAT_REQUIRE_ARRAY_EQ(data + sizeof(header) + sizeof(candidate), mid, sizeof(mid));
+    REQUIRE(std::memcmp((header.session_id), (session), (16)) == 0);
+    REQUIRE(std::memcmp((header.sender_id), (local), (16)) == 0);
+    REQUIRE((NET_TO_HOST_U16(header.candidate_len)) == (strlen(candidate)));
+    REQUIRE(std::memcmp((data + sizeof(header)), (candidate), (sizeof(candidate))) == 0);
+    REQUIRE(std::memcmp((data + sizeof(header) + sizeof(candidate)), (mid), (sizeof(mid))) == 0);
   }
 }
 
 TEST_CASE("signaling/disconnected_and_unconfigured_signaling_cannot_send", "[signaling]") {
   webrtc_signaling_callbacks_t cb = webrtc_get_signaling_callbacks();
-  ASCIICHAT_REQUIRE_EQ(cb.send_sdp(session, remote, "offer", "v=0", cb.user_data), ERROR_INVALID_STATE);
-  ASCIICHAT_REQUIRE_EQ(cb.send_ice(session, remote, "candidate", "data", cb.user_data), ERROR_INVALID_STATE);
+  REQUIRE((cb.send_sdp(session, remote, "offer", "v=0", cb.user_data)) == (ERROR_INVALID_STATE));
+  REQUIRE((cb.send_ice(session, remote, "candidate", "data", cb.user_data)) == (ERROR_INVALID_STATE));
   webrtc_set_acds_transport(&transport);
-  ASCIICHAT_REQUIRE_EQ(cb.send_sdp(session, remote, "offer", "v=0", cb.user_data), ERROR_INVALID_STATE);
-  ASCIICHAT_REQUIRE_EQ(cb.send_ice(session, remote, "candidate", "data", cb.user_data), ERROR_INVALID_STATE);
+  REQUIRE((cb.send_sdp(session, remote, "offer", "v=0", cb.user_data)) == (ERROR_INVALID_STATE));
+  REQUIRE((cb.send_ice(session, remote, "candidate", "data", cb.user_data)) == (ERROR_INVALID_STATE));
   cb = discovery_webrtc_get_direct_signaling_callbacks(NULL, NULL, NULL);
-  ASCIICHAT_REQUIRE_EQ(cb.send_sdp(session, remote, "offer", "v=0", cb.user_data), ERROR_INVALID_STATE);
-  ASCIICHAT_REQUIRE_EQ(cb.send_ice(session, remote, "candidate", "data", cb.user_data), ERROR_INVALID_STATE);
+  REQUIRE((cb.send_sdp(session, remote, "offer", "v=0", cb.user_data)) == (ERROR_INVALID_STATE));
+  REQUIRE((cb.send_ice(session, remote, "candidate", "data", cb.user_data)) == (ERROR_INVALID_STATE));
   discovery_webrtc_set_tcp_transport(&transport);
-  ASCIICHAT_REQUIRE_EQ(cb.send_sdp(session, remote, "offer", "v=0", cb.user_data), ERROR_INVALID_STATE);
-  ASCIICHAT_REQUIRE_EQ(cb.send_ice(session, remote, "candidate", "data", cb.user_data), ERROR_INVALID_STATE);
-  ASCIICHAT_REQUIRE_EQ(sends, 0);
+  REQUIRE((cb.send_sdp(session, remote, "offer", "v=0", cb.user_data)) == (ERROR_INVALID_STATE));
+  REQUIRE((cb.send_ice(session, remote, "candidate", "data", cb.user_data)) == (ERROR_INVALID_STATE));
+  REQUIRE((sends) == (0));
 }
 
 TEST_CASE("signaling/invalid_or_oversized_payloads_are_rejected_and_transport_errors_propagate", "[signaling]") {
@@ -117,29 +117,29 @@ TEST_CASE("signaling/invalid_or_oversized_payloads_are_rejected_and_transport_er
   for (unsigned direct = 0; direct < 2; ++direct) {
     webrtc_signaling_callbacks_t cb = callbacks(direct);
     size_t before = sends;
-    ASCIICHAT_REQUIRE_EQ(cb.send_sdp(session, remote, "offer", NULL, cb.user_data), ERROR_INVALID_PARAM);
-    ASCIICHAT_REQUIRE_EQ(cb.send_ice(session, remote, NULL, "data", cb.user_data), ERROR_INVALID_PARAM);
-    ASCIICHAT_REQUIRE_EQ(cb.send_ice(session, remote, "candidate", NULL, cb.user_data), ERROR_INVALID_PARAM);
-    ASCIICHAT_REQUIRE_EQ(cb.send_sdp(session, remote, "offer", too_large, cb.user_data), ERROR_INVALID_PARAM);
-    ASCIICHAT_REQUIRE_EQ(cb.send_ice(session, remote, too_large, "data", cb.user_data), ERROR_INVALID_PARAM);
-    ASCIICHAT_REQUIRE_EQ(sends, before);
+    REQUIRE((cb.send_sdp(session, remote, "offer", NULL, cb.user_data)) == (ERROR_INVALID_PARAM));
+    REQUIRE((cb.send_ice(session, remote, NULL, "data", cb.user_data)) == (ERROR_INVALID_PARAM));
+    REQUIRE((cb.send_ice(session, remote, "candidate", NULL, cb.user_data)) == (ERROR_INVALID_PARAM));
+    REQUIRE((cb.send_sdp(session, remote, "offer", too_large, cb.user_data)) == (ERROR_INVALID_PARAM));
+    REQUIRE((cb.send_ice(session, remote, too_large, "data", cb.user_data)) == (ERROR_INVALID_PARAM));
+    REQUIRE((sends) == (before));
     send_result = ERROR_NETWORK;
-    ASCIICHAT_REQUIRE_EQ(cb.send_sdp(session, remote, "offer", "v=0", cb.user_data), ERROR_NETWORK);
-    ASCIICHAT_REQUIRE_EQ(cb.send_ice(session, remote, "candidate", "data", cb.user_data), ERROR_NETWORK);
+    REQUIRE((cb.send_sdp(session, remote, "offer", "v=0", cb.user_data)) == (ERROR_NETWORK));
+    REQUIRE((cb.send_ice(session, remote, "candidate", "data", cb.user_data)) == (ERROR_NETWORK));
     send_result = ASCIICHAT_OK;
-    ASCIICHAT_REQUIRE_EQ(cb.send_sdp(session, remote, "answer", "v=0", cb.user_data), ASCIICHAT_OK);
+    REQUIRE((cb.send_sdp(session, remote, "answer", "v=0", cb.user_data)) == (ASCIICHAT_OK));
   }
 }
 
 TEST_CASE("signaling/data_channel_cleanup_does_not_release_the_borrowed_transport", "[signaling]") {
-  ASCIICHAT_REQUIRE_NULL(webrtc_get_transport());
+  REQUIRE((webrtc_get_transport()) == nullptr);
   webrtc_cleanup_transport();
   webrtc_set_transport(&transport);
-  ASCIICHAT_REQUIRE_EQ(webrtc_get_transport(), &transport);
+  REQUIRE((webrtc_get_transport()) == (&transport));
   webrtc_cleanup_transport();
-  ASCIICHAT_REQUIRE_NULL(webrtc_get_transport());
+  REQUIRE((webrtc_get_transport()) == nullptr);
   webrtc_set_transport(&transport);
   webrtc_set_transport(NULL);
-  ASCIICHAT_REQUIRE_NULL(webrtc_get_transport());
-  ASCIICHAT_REQUIRE_EQ(transport.methods, &methods);
+  REQUIRE((webrtc_get_transport()) == nullptr);
+  REQUIRE((transport.methods) == (&methods));
 }

@@ -12,6 +12,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Unicode scalar encoding storage; text capacity includes NUL. */
 #define UTF8_MAX_BYTES 4
 #define ASCII_CHAT_UTF8_BUFFER_SIZE (UTF8_MAX_BYTES + 1)
@@ -147,3 +151,7 @@
 #define MAX_FRAME_BUFFER_SIZE (2 * 1024 * 1024)
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

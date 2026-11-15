@@ -1,7 +1,4 @@
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -9,7 +6,6 @@
 #include <string.h>
 #include <math.h>
 
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/audio/audio.h>
@@ -19,7 +15,7 @@
 
 TEST_CASE("mixer/independent_listener_audio_and_self_exclusion", "[mixer]") {
   mixer_t *mixer = mixer_create(3, 48000);
-  ASCIICHAT_REQUIRE_NOT_NULL(mixer);
+  REQUIRE((mixer) != nullptr);
   float input[480], first[480], second[480], self[480];
   for (int i = 0; i < 480; i++)
     input[i] = 0.1f;
@@ -27,18 +23,18 @@ TEST_CASE("mixer/independent_listener_audio_and_self_exclusion", "[mixer]") {
   const char *ids[] = {"speaker", "listener-one", "listener-two"};
   for (int i = 0; i < 3; i++) {
     buffers[i] = audio_ring_buffer_create_for_capture();
-    ASCIICHAT_REQUIRE_NOT_NULL(buffers[i]);
-    ASCIICHAT_REQUIRE_GE(mixer_add_source(mixer, ids[i], buffers[i]), 0);
+    REQUIRE((buffers[i]) != nullptr);
+    REQUIRE((mixer_add_source(mixer, ids[i], buffers[i])) >= (0));
   }
-  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_write(buffers[0], input, 480), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(mixer_process_excluding_source(mixer, first, 480, fnv1a_hash_string(ids[1])), 480);
-  ASCIICHAT_REQUIRE_EQ(mixer_process_excluding_source(mixer, second, 480, fnv1a_hash_string(ids[2])), 480);
-  ASCIICHAT_REQUIRE_EQ(mixer_process_excluding_source(mixer, self, 480, fnv1a_hash_string(ids[0])), 480);
+  REQUIRE((audio_ring_buffer_write(buffers[0], input, 480)) == (ASCIICHAT_OK));
+  REQUIRE((mixer_process_excluding_source(mixer, first, 480, fnv1a_hash_string(ids[1]))) == (480));
+  REQUIRE((mixer_process_excluding_source(mixer, second, 480, fnv1a_hash_string(ids[2]))) == (480));
+  REQUIRE((mixer_process_excluding_source(mixer, self, 480, fnv1a_hash_string(ids[0]))) == (480));
   for (int i = 0; i < 480; i++) {
-    ASCIICHAT_REQUIRE_GT(first[i], 0.05f, "First listener must receive the source");
-    ASCIICHAT_REQUIRE_GT(second[i], 0.05f, "Second listener must receive the same source");
-    ASCIICHAT_REQUIRE_FLOAT_EQ(first[i], second[i], 0.01f);
-    ASCIICHAT_REQUIRE_FLOAT_EQ(self[i], 0.0f, 0.00001f, "Sender must not hear itself");
+    REQUIRE((first[i]) > (0.05f));
+    REQUIRE((second[i]) > (0.05f));
+    REQUIRE((first[i]) == Catch::Approx(second[i]));
+    REQUIRE((self[i]) == Catch::Approx(0.0f));
   }
   mixer_destroy(mixer);
   for (int i = 0; i < 3; i++)
@@ -48,7 +44,7 @@ TEST_CASE("mixer/independent_listener_audio_and_self_exclusion", "[mixer]") {
 TEST_CASE("mixer/listener_exclusion_and_activation_across_mask_words", "[mixer]") {
   enum { SOURCES = 65 };
   mixer_t *mixer = mixer_create(SOURCES, 48000);
-  ASCIICHAT_REQUIRE_NOT_NULL(mixer);
+  REQUIRE((mixer) != nullptr);
   audio_ring_buffer_t *buffers[SOURCES];
   char ids[SOURCES][32];
   float input[480], output[480];
@@ -57,25 +53,25 @@ TEST_CASE("mixer/listener_exclusion_and_activation_across_mask_words", "[mixer]"
   for (unsigned i = 0; i < SOURCES; ++i) {
     snprintf(ids[i], sizeof(ids[i]), "mask-source-%u", i);
     buffers[i] = audio_ring_buffer_create_for_capture();
-    ASCIICHAT_REQUIRE_NOT_NULL(buffers[i]);
-    ASCIICHAT_REQUIRE_EQ(mixer_add_source(mixer, ids[i], buffers[i]), i);
+    REQUIRE((buffers[i]) != nullptr);
+    REQUIRE((mixer_add_source(mixer, ids[i], buffers[i])) == (i));
     mixer_set_source_active(mixer, ids[i], i == 64);
   }
-  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_write(buffers[64], input, 480), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(mixer_process_excluding_source(mixer, output, 480, fnv1a_hash_string(ids[0])), 480);
+  REQUIRE((audio_ring_buffer_write(buffers[64], input, 480)) == (ASCIICHAT_OK));
+  REQUIRE((mixer_process_excluding_source(mixer, output, 480, fnv1a_hash_string(ids[0]))) == (480));
   for (unsigned i = 0; i < 480; ++i)
-    ASCIICHAT_REQUIRE_GT(output[i], 0.05f, "Source 64 must reach a listener in word zero");
+    REQUIRE((output[i]) > (0.05f));
   mixer_process_excluding_source(mixer, output, 480, fnv1a_hash_string(ids[64]));
   for (unsigned i = 0; i < 480; ++i)
-    ASCIICHAT_REQUIRE_FLOAT_EQ(output[i], 0, 0.00001f, "Source 64 must not hear itself");
+    REQUIRE((output[i]) == Catch::Approx(0));
   mixer_set_source_active(mixer, ids[64], false);
-  ASCIICHAT_REQUIRE_EQ(mixer_process_excluding_source(mixer, output, 480, fnv1a_hash_string(ids[0])), 0);
+  REQUIRE((mixer_process_excluding_source(mixer, output, 480, fnv1a_hash_string(ids[0]))) == (0));
   mixer_set_source_active(mixer, ids[0], true);
-  ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_write(buffers[0], input, 480), ASCIICHAT_OK);
+  REQUIRE((audio_ring_buffer_write(buffers[0], input, 480)) == (ASCIICHAT_OK));
   mixer_remove_source(mixer, ids[64]);
-  ASCIICHAT_REQUIRE_EQ(mixer_process_excluding_source(mixer, output, 480, fnv1a_hash_string(ids[1])), 480);
+  REQUIRE((mixer_process_excluding_source(mixer, output, 480, fnv1a_hash_string(ids[1]))) == (480));
   for (unsigned i = 0; i < 480; ++i)
-    ASCIICHAT_REQUIRE_GT(output[i], 0.05f, "Removing source 64 must not clear source zero's bit");
+    REQUIRE((output[i]) > (0.05f));
   mixer_destroy(mixer);
   for (unsigned i = 0; i < SOURCES; ++i)
     audio_ring_buffer_destroy(buffers[i]);
@@ -107,11 +103,11 @@ static void generate_noise(float *buffer, int num_samples, float amplitude) {
 // Helper to create a test audio ring buffer with data
 static audio_ring_buffer_t *create_test_buffer_with_data(const float *data, int num_samples) {
   audio_ring_buffer_t *buffer = audio_ring_buffer_create();
-  ASCIICHAT_REQUIRE_NOT_NULL(buffer);
+  REQUIRE((buffer) != nullptr);
 
   // audio_ring_buffer_write returns asciichat_error_t, not sample count
   asciichat_error_t result = audio_ring_buffer_write(buffer, data, num_samples);
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "audio_ring_buffer_write should succeed");
+  REQUIRE((result) == (ASCIICHAT_OK));
 
   // For tests, mark jitter buffer as filled immediately so reads work
   // (Normally this happens after AUDIO_JITTER_BUFFER_THRESHOLD samples are written)
@@ -127,10 +123,10 @@ static audio_ring_buffer_t *create_test_buffer_with_data(const float *data, int 
 
 TEST_CASE("mixer/create_and_destroy", "[mixer]") {
   mixer_t *mixer = mixer_create(4, 44100);
-  ASCIICHAT_REQUIRE_NOT_NULL(mixer);
-  ASCIICHAT_REQUIRE_EQ(mixer->max_sources, 4);
-  ASCIICHAT_REQUIRE_EQ(mixer->sample_rate, 44100);
-  ASCIICHAT_REQUIRE_EQ(mixer->num_sources, 0);
+  REQUIRE((mixer) != nullptr);
+  REQUIRE((mixer->max_sources) == (4));
+  REQUIRE((mixer->sample_rate) == (44100));
+  REQUIRE((mixer->num_sources) == (0));
 
   mixer_destroy(mixer);
 }
@@ -150,12 +146,12 @@ TEST_CASE("mixer/create_with_invalid_params", "[mixer]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(mixer_invalid_params_cases));
   auto *tc = &generated_case;
   mixer_t *mixer = mixer_create(tc->max_sources, tc->sample_rate);
-  ASCIICHAT_REQUIRE_NULL(mixer, "%s should return NULL", tc->description);
+  REQUIRE((mixer) == nullptr);
 }
 
 TEST_CASE("mixer/add_and_remove_sources", "[mixer]") {
   mixer_t *mixer = mixer_create(4, 44100);
-  ASCIICHAT_REQUIRE_NOT_NULL(mixer);
+  REQUIRE((mixer) != nullptr);
 
   // Create test audio buffers
   float test_data[256];
@@ -166,12 +162,12 @@ TEST_CASE("mixer/add_and_remove_sources", "[mixer]") {
 
   // Add sources
   int slot1 = mixer_add_source(mixer, "100", buffer1);
-  ASCIICHAT_REQUIRE_GE(slot1, 0);
-  ASCIICHAT_REQUIRE_EQ(mixer->num_sources, 1);
+  REQUIRE((slot1) >= (0));
+  REQUIRE((mixer->num_sources) == (1));
 
   int slot2 = mixer_add_source(mixer, "200", buffer2);
-  ASCIICHAT_REQUIRE_GE(slot2, 0);
-  ASCIICHAT_REQUIRE_EQ(mixer->num_sources, 2);
+  REQUIRE((slot2) >= (0));
+  REQUIRE((mixer->num_sources) == (2));
 
   // Try to add more than max sources
   audio_ring_buffer_t *buffer3 = create_test_buffer_with_data(test_data, 256);
@@ -182,17 +178,17 @@ TEST_CASE("mixer/add_and_remove_sources", "[mixer]") {
   int slot4 = mixer_add_source(mixer, "400", buffer4);
   int slot5 = mixer_add_source(mixer, "500", buffer5);
 
-  ASCIICHAT_REQUIRE_GE(slot3, 0);
-  ASCIICHAT_REQUIRE_GE(slot4, 0);
-  ASCIICHAT_REQUIRE_EQ(slot5, -1); // Should fail - no more slots
-  ASCIICHAT_REQUIRE_EQ(mixer->num_sources, 4);
+  REQUIRE((slot3) >= (0));
+  REQUIRE((slot4) >= (0));
+  REQUIRE((slot5) == (-1)); // Should fail - no more slots
+  REQUIRE((mixer->num_sources) == (4));
 
   // Remove sources
   mixer_remove_source(mixer, "100");
-  ASCIICHAT_REQUIRE_EQ(mixer->num_sources, 3);
+  REQUIRE((mixer->num_sources) == (3));
 
   mixer_remove_source(mixer, "200");
-  ASCIICHAT_REQUIRE_EQ(mixer->num_sources, 2);
+  REQUIRE((mixer->num_sources) == (2));
 
   // Clean up
   audio_ring_buffer_destroy(buffer1);
@@ -205,25 +201,25 @@ TEST_CASE("mixer/add_and_remove_sources", "[mixer]") {
 
 TEST_CASE("mixer/set_source_active", "[mixer]") {
   mixer_t *mixer = mixer_create(2, 44100);
-  ASCIICHAT_REQUIRE_NOT_NULL(mixer);
+  REQUIRE((mixer) != nullptr);
 
   float test_data[256];
   generate_sine_wave(test_data, 256, 440.0f, 44100.0f, 0.5f);
 
   audio_ring_buffer_t *buffer = create_test_buffer_with_data(test_data, 256);
   int slot = mixer_add_source(mixer, "100", buffer);
-  ASCIICHAT_REQUIRE_GE(slot, 0);
+  REQUIRE((slot) >= (0));
 
   // Source should be active by default
-  ASCIICHAT_REQUIRE(mixer->source_active[slot]);
+  REQUIRE(mixer->source_active[slot]);
 
   // Deactivate source
   mixer_set_source_active(mixer, "100", false);
-  ASCIICHAT_REQUIRE_NOT(mixer->source_active[slot]);
+  REQUIRE(!(mixer->source_active[slot]));
 
   // Reactivate source
   mixer_set_source_active(mixer, "100", true);
-  ASCIICHAT_REQUIRE(mixer->source_active[slot]);
+  REQUIRE(mixer->source_active[slot]);
 
   // Clean up
   audio_ring_buffer_destroy(buffer);
@@ -232,7 +228,7 @@ TEST_CASE("mixer/set_source_active", "[mixer]") {
 
 TEST_CASE("mixer/process_single_source", "[mixer]") {
   mixer_t *mixer = mixer_create(2, 44100);
-  ASCIICHAT_REQUIRE_NOT_NULL(mixer);
+  REQUIRE((mixer) != nullptr);
 
   // Generate test signal
   float test_data[256];
@@ -244,13 +240,13 @@ TEST_CASE("mixer/process_single_source", "[mixer]") {
   // Process audio
   float output[256];
   int processed = mixer_process(mixer, output, 256);
-  ASCIICHAT_REQUIRE_EQ(processed, 256);
+  REQUIRE((processed) == (256));
 
   // Output should be similar to input (with some processing applied)
   // We expect some attenuation due to crowd scaling and compression
   for (int i = 0; i < 256; i++) {
-    ASCIICHAT_REQUIRE_GE(fabsf(output[i]), 0.0f);
-    ASCIICHAT_REQUIRE_LE(fabsf(output[i]), 1.0f);
+    REQUIRE((fabsf(output[i])) >= (0.0f));
+    REQUIRE((fabsf(output[i])) <= (1.0f));
   }
 
   // Clean up
@@ -260,7 +256,7 @@ TEST_CASE("mixer/process_single_source", "[mixer]") {
 
 TEST_CASE("mixer/process_multiple_sources", "[mixer]") {
   mixer_t *mixer = mixer_create(3, 44100);
-  ASCIICHAT_REQUIRE_NOT_NULL(mixer);
+  REQUIRE((mixer) != nullptr);
 
   // Generate different test signals
   float test_data1[256], test_data2[256];
@@ -276,13 +272,13 @@ TEST_CASE("mixer/process_multiple_sources", "[mixer]") {
   // Process audio
   float output[256];
   int processed = mixer_process(mixer, output, 256);
-  ASCIICHAT_REQUIRE_EQ(processed, 256);
+  REQUIRE((processed) == (256));
 
   // Output should be mixed (not just one source)
   // With crowd scaling, the output should be attenuated
   for (int i = 0; i < 256; i++) {
-    ASCIICHAT_REQUIRE_GE(fabsf(output[i]), 0.0f);
-    ASCIICHAT_REQUIRE_LE(fabsf(output[i]), 1.0f);
+    REQUIRE((fabsf(output[i])) >= (0.0f));
+    REQUIRE((fabsf(output[i])) <= (1.0f));
   }
 
   // Clean up
@@ -293,7 +289,7 @@ TEST_CASE("mixer/process_multiple_sources", "[mixer]") {
 
 TEST_CASE("mixer/process_excluding_source", "[mixer]") {
   mixer_t *mixer = mixer_create(3, 44100);
-  ASCIICHAT_REQUIRE_NOT_NULL(mixer);
+  REQUIRE((mixer) != nullptr);
 
   // Generate test signals
   float test_data1[256], test_data2[256];
@@ -313,7 +309,7 @@ TEST_CASE("mixer/process_excluding_source", "[mixer]") {
   // Process excluding source 100
   float output_excluded[256];
   int processed = mixer_process_excluding_source(mixer, output_excluded, 256, 100);
-  ASCIICHAT_REQUIRE_EQ(processed, 256);
+  REQUIRE((processed) == (256));
 
   // Output should be different (only source 200 should be present)
   bool different = false;
@@ -323,7 +319,7 @@ TEST_CASE("mixer/process_excluding_source", "[mixer]") {
       break;
     }
   }
-  ASCIICHAT_REQUIRE(different, "Output should be different when excluding a source");
+  REQUIRE(different);
 
   // Clean up
   audio_ring_buffer_destroy(buffer1);
@@ -333,15 +329,15 @@ TEST_CASE("mixer/process_excluding_source", "[mixer]") {
 
 TEST_CASE("mixer/process_no_sources", "[mixer]") {
   mixer_t *mixer = mixer_create(2, 44100);
-  ASCIICHAT_REQUIRE_NOT_NULL(mixer);
+  REQUIRE((mixer) != nullptr);
 
   float output[256];
   int processed = mixer_process(mixer, output, 256);
-  ASCIICHAT_REQUIRE_EQ(processed, 0);
+  REQUIRE((processed) == (0));
 
   // Output should be silence
   for (int i = 0; i < 256; i++) {
-    ASCIICHAT_REQUIRE_FLOAT_EQ(output[i], 0.0f, 1e-6f);
+    REQUIRE((output[i]) == Catch::Approx(0.0f));
   }
 
   mixer_destroy(mixer);
@@ -367,7 +363,7 @@ TEST_CASE("mixer_utils/db_to_linear_conversion_param", "[mixer_utils]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(db_to_linear_cases));
   auto *tc = &generated_case;
   float result = db_to_linear(tc->db_value);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(result, tc->expected_linear, tc->epsilon, "%s should be correct", tc->description);
+  REQUIRE((result) == Catch::Approx(tc->expected_linear));
 }
 
 // Test case structure for linear to dB conversion
@@ -386,7 +382,7 @@ TEST_CASE("mixer_utils/linear_to_db_conversion_param", "[mixer_utils]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(linear_to_db_cases));
   auto *tc = &generated_case;
   float result = linear_to_db(tc->linear_value);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(result, tc->expected_db, tc->epsilon, "%s should be correct", tc->description);
+  REQUIRE((result) == Catch::Approx(tc->expected_db));
 }
 
 // Test case structure for clamp_float
@@ -407,7 +403,7 @@ TEST_CASE("mixer_utils/clamp_float_param", "[mixer_utils]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(clamp_float_cases));
   auto *tc = &generated_case;
   float result = clamp_float(tc->value, tc->min, tc->max);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(result, tc->expected, 1e-6f, "%s should be correct", tc->description);
+  REQUIRE((result) == Catch::Approx(tc->expected));
 }
 
 /* ============================================================================
@@ -418,14 +414,14 @@ TEST_CASE("compressor/init_and_params", "[compressor]") {
   compressor_t comp;
   compressor_init(&comp, 44100.0f);
 
-  ASCIICHAT_REQUIRE_FLOAT_EQ(comp.sample_rate, 44100.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(comp.threshold_dB, -10.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(comp.ratio, 4.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_EQ(comp.attack_ns, 10 * NS_PER_MS_INT);
-  ASCIICHAT_REQUIRE_EQ(comp.release_ns, 100 * NS_PER_MS_INT);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(comp.makeup_dB, 0.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(comp.envelope, 0.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(comp.gain_lin, 1.0f, 1e-6f);
+  REQUIRE((comp.sample_rate) == Catch::Approx(44100.0f));
+  REQUIRE((comp.threshold_dB) == Catch::Approx(-10.0f));
+  REQUIRE((comp.ratio) == Catch::Approx(4.0f));
+  REQUIRE((comp.attack_ns) == (10 * NS_PER_MS_INT));
+  REQUIRE((comp.release_ns) == (100 * NS_PER_MS_INT));
+  REQUIRE((comp.makeup_dB) == Catch::Approx(0.0f));
+  REQUIRE((comp.envelope) == Catch::Approx(0.0f));
+  REQUIRE((comp.gain_lin) == Catch::Approx(1.0f));
 }
 
 TEST_CASE("compressor/set_params", "[compressor]") {
@@ -434,11 +430,11 @@ TEST_CASE("compressor/set_params", "[compressor]") {
 
   compressor_set_params(&comp, -20.0f, 2.0f, 5 * NS_PER_MS_INT, 50 * NS_PER_MS_INT, 6.0f);
 
-  ASCIICHAT_REQUIRE_FLOAT_EQ(comp.threshold_dB, -20.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(comp.ratio, 2.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_EQ(comp.attack_ns, 5 * NS_PER_MS_INT);
-  ASCIICHAT_REQUIRE_EQ(comp.release_ns, 50 * NS_PER_MS_INT);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(comp.makeup_dB, 6.0f, 1e-6f);
+  REQUIRE((comp.threshold_dB) == Catch::Approx(-20.0f));
+  REQUIRE((comp.ratio) == Catch::Approx(2.0f));
+  REQUIRE((comp.attack_ns) == (5 * NS_PER_MS_INT));
+  REQUIRE((comp.release_ns) == (50 * NS_PER_MS_INT));
+  REQUIRE((comp.makeup_dB) == Catch::Approx(6.0f));
 }
 
 TEST_CASE("compressor/process_below_threshold", "[compressor]") {
@@ -448,7 +444,7 @@ TEST_CASE("compressor/process_below_threshold", "[compressor]") {
 
   // Process signal below threshold
   float gain = compressor_process_sample(&comp, 0.1f); // -20dB
-  ASCIICHAT_REQUIRE_GE(gain, 0.9f);                    // Should have minimal compression
+  REQUIRE((gain) >= (0.9f));                    // Should have minimal compression
 }
 
 TEST_CASE("compressor/process_above_threshold", "[compressor]") {
@@ -458,7 +454,7 @@ TEST_CASE("compressor/process_above_threshold", "[compressor]") {
 
   // Process signal above threshold
   float gain = compressor_process_sample(&comp, 0.5f); // -6dB
-  ASCIICHAT_REQUIRE_LE(gain, 1.0f);                    // Should have some compression
+  REQUIRE((gain) <= (1.0f));                    // Should have some compression
 }
 
 /* ============================================================================
@@ -469,17 +465,17 @@ TEST_CASE("ducking/init_and_params", "[ducking]") {
   ducking_t duck;
   ducking_init(&duck, 4, 44100.0f);
 
-  ASCIICHAT_REQUIRE_FLOAT_EQ(duck.threshold_dB, -45.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(duck.leader_margin_dB, 6.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(duck.atten_dB, -6.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_EQ(duck.attack_ns, 10 * NS_PER_MS_INT);
-  ASCIICHAT_REQUIRE_EQ(duck.release_ns, 200 * NS_PER_MS_INT);
-  ASCIICHAT_REQUIRE_NOT_NULL(duck.envelope);
-  ASCIICHAT_REQUIRE_NOT_NULL(duck.gain);
+  REQUIRE((duck.threshold_dB) == Catch::Approx(-45.0f));
+  REQUIRE((duck.leader_margin_dB) == Catch::Approx(6.0f));
+  REQUIRE((duck.atten_dB) == Catch::Approx(-6.0f));
+  REQUIRE((duck.attack_ns) == (10 * NS_PER_MS_INT));
+  REQUIRE((duck.release_ns) == (200 * NS_PER_MS_INT));
+  REQUIRE((duck.envelope) != nullptr);
+  REQUIRE((duck.gain) != nullptr);
 
   // Check initial gain values
   for (int i = 0; i < 4; i++) {
-    ASCIICHAT_REQUIRE_FLOAT_EQ(duck.gain[i], 1.0f, 1e-6f);
+    REQUIRE((duck.gain[i]) == Catch::Approx(1.0f));
   }
 
   ducking_destroy(&duck);
@@ -491,11 +487,11 @@ TEST_CASE("ducking/set_params", "[ducking]") {
 
   ducking_set_params(&duck, -30.0f, 5.0f, -15.0f, 10 * NS_PER_MS_INT, 200 * NS_PER_MS_INT);
 
-  ASCIICHAT_REQUIRE_FLOAT_EQ(duck.threshold_dB, -30.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(duck.leader_margin_dB, 5.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(duck.atten_dB, -15.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_EQ(duck.attack_ns, 10 * NS_PER_MS_INT);
-  ASCIICHAT_REQUIRE_EQ(duck.release_ns, 200 * NS_PER_MS_INT);
+  REQUIRE((duck.threshold_dB) == Catch::Approx(-30.0f));
+  REQUIRE((duck.leader_margin_dB) == Catch::Approx(5.0f));
+  REQUIRE((duck.atten_dB) == Catch::Approx(-15.0f));
+  REQUIRE((duck.attack_ns) == (10 * NS_PER_MS_INT));
+  REQUIRE((duck.release_ns) == (200 * NS_PER_MS_INT));
 
   ducking_destroy(&duck);
 }
@@ -511,11 +507,11 @@ TEST_CASE("ducking/process_frame_leader_detection", "[ducking]") {
   ducking_process_frame(&duck, envelopes, gains, 3);
 
   // Source 1 should remain at full gain (leader)
-  ASCIICHAT_REQUIRE_GE(gains[1], 0.9f);
+  REQUIRE((gains[1]) >= (0.9f));
 
   // Sources 0 and 2 should be ducked (but might not be as aggressive initially)
-  ASCIICHAT_REQUIRE_LT(gains[0], 1.0f);
-  ASCIICHAT_REQUIRE_LT(gains[2], 1.0f);
+  REQUIRE((gains[0]) < (1.0f));
+  REQUIRE((gains[2]) < (1.0f));
 
   ducking_destroy(&duck);
 }
@@ -528,13 +524,13 @@ TEST_CASE("noise_gate/init_and_params", "[noise_gate]") {
   noise_gate_t gate;
   noise_gate_init(&gate, 44100.0f);
 
-  ASCIICHAT_REQUIRE_FLOAT_EQ(gate.sample_rate, 44100.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(gate.threshold, 0.01f, 1e-6f);
-  ASCIICHAT_REQUIRE_EQ(gate.attack_ns, 10 * NS_PER_MS_INT);
-  ASCIICHAT_REQUIRE_EQ(gate.release_ns, 50 * NS_PER_MS_INT);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(gate.hysteresis, 0.9f, 1e-6f);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(gate.envelope, 0.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_NOT(gate.gate_open);
+  REQUIRE((gate.sample_rate) == Catch::Approx(44100.0f));
+  REQUIRE((gate.threshold) == Catch::Approx(0.01f));
+  REQUIRE((gate.attack_ns) == (10 * NS_PER_MS_INT));
+  REQUIRE((gate.release_ns) == (50 * NS_PER_MS_INT));
+  REQUIRE((gate.hysteresis) == Catch::Approx(0.9f));
+  REQUIRE((gate.envelope) == Catch::Approx(0.0f));
+  REQUIRE(!(gate.gate_open));
 }
 
 TEST_CASE("noise_gate/set_params", "[noise_gate]") {
@@ -543,10 +539,10 @@ TEST_CASE("noise_gate/set_params", "[noise_gate]") {
 
   noise_gate_set_params(&gate, 0.05f, 5 * NS_PER_MS_INT, 100 * NS_PER_MS_INT, 0.8f);
 
-  ASCIICHAT_REQUIRE_FLOAT_EQ(gate.threshold, 0.05f, 1e-6f);
-  ASCIICHAT_REQUIRE_EQ(gate.attack_ns, 5 * NS_PER_MS_INT);
-  ASCIICHAT_REQUIRE_EQ(gate.release_ns, 100 * NS_PER_MS_INT);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(gate.hysteresis, 0.8f, 1e-6f);
+  REQUIRE((gate.threshold) == Catch::Approx(0.05f));
+  REQUIRE((gate.attack_ns) == (5 * NS_PER_MS_INT));
+  REQUIRE((gate.release_ns) == (100 * NS_PER_MS_INT));
+  REQUIRE((gate.hysteresis) == Catch::Approx(0.8f));
 }
 
 TEST_CASE("noise_gate/process_below_threshold", "[noise_gate]") {
@@ -556,8 +552,8 @@ TEST_CASE("noise_gate/process_below_threshold", "[noise_gate]") {
 
   // Process signal below threshold
   float output = noise_gate_process_sample(&gate, 0.5f, 0.05f);
-  ASCIICHAT_REQUIRE_LE(fabsf(output), 0.1f); // Should be gated
-  ASCIICHAT_REQUIRE_NOT(noise_gate_is_open(&gate));
+  REQUIRE((fabsf(output)) <= (0.1f)); // Should be gated
+  REQUIRE(!(noise_gate_is_open(&gate)));
 }
 
 TEST_CASE("noise_gate/process_above_threshold", "[noise_gate]") {
@@ -567,8 +563,8 @@ TEST_CASE("noise_gate/process_above_threshold", "[noise_gate]") {
 
   // Process signal above threshold (envelope starts at 0, so first sample will be low)
   float output = noise_gate_process_sample(&gate, 0.5f, 0.2f);
-  ASCIICHAT_REQUIRE_GT(fabsf(output), 0.001f); // Should pass through (but envelope starts low)
-  ASCIICHAT_REQUIRE(noise_gate_is_open(&gate));
+  REQUIRE((fabsf(output)) > (0.001f)); // Should pass through (but envelope starts low)
+  REQUIRE(noise_gate_is_open(&gate));
 }
 
 TEST_CASE("noise_gate/process_buffer", "[noise_gate]") {
@@ -581,8 +577,8 @@ TEST_CASE("noise_gate/process_buffer", "[noise_gate]") {
 
   // All samples should be processed
   for (int i = 0; i < 10; i++) {
-    ASCIICHAT_REQUIRE_GE(fabsf(buffer[i]), 0.0f);
-    ASCIICHAT_REQUIRE_LE(fabsf(buffer[i]), 1.0f);
+    REQUIRE((fabsf(buffer[i])) >= (0.0f));
+    REQUIRE((fabsf(buffer[i])) <= (1.0f));
   }
 }
 
@@ -594,14 +590,14 @@ TEST_CASE("highpass_filter/init_and_reset", "[highpass_filter]") {
   highpass_filter_t filter;
   highpass_filter_init(&filter, 100.0f, 44100.0f);
 
-  ASCIICHAT_REQUIRE_FLOAT_EQ(filter.cutoff_hz, 100.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(filter.sample_rate, 44100.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_GT(filter.alpha, 0.0f);
-  ASCIICHAT_REQUIRE_LT(filter.alpha, 1.0f);
+  REQUIRE((filter.cutoff_hz) == Catch::Approx(100.0f));
+  REQUIRE((filter.sample_rate) == Catch::Approx(44100.0f));
+  REQUIRE((filter.alpha) > (0.0f));
+  REQUIRE((filter.alpha) < (1.0f));
 
   highpass_filter_reset(&filter);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(filter.prev_input, 0.0f, 1e-6f);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(filter.prev_output, 0.0f, 1e-6f);
+  REQUIRE((filter.prev_input) == Catch::Approx(0.0f));
+  REQUIRE((filter.prev_output) == Catch::Approx(0.0f));
 }
 
 TEST_CASE("highpass_filter/process_dc_signal", "[highpass_filter]") {
@@ -610,13 +606,13 @@ TEST_CASE("highpass_filter/process_dc_signal", "[highpass_filter]") {
 
   // Process DC signal (should be filtered out)
   float output = highpass_filter_process_sample(&filter, 1.0f);
-  ASCIICHAT_REQUIRE_LT(fabsf(output), 1.0f); // Should be attenuated (first sample might not be fully filtered)
+  REQUIRE((fabsf(output)) < (1.0f)); // Should be attenuated (first sample might not be fully filtered)
 
   // Continue processing DC
   for (int i = 0; i < 100; i++) {
     output = highpass_filter_process_sample(&filter, 1.0f);
   }
-  ASCIICHAT_REQUIRE_LT(fabsf(output), 0.5f); // Should be attenuated (high-pass filters may not be perfect)
+  REQUIRE((fabsf(output)) < (0.5f)); // Should be attenuated (high-pass filters may not be perfect)
 }
 
 TEST_CASE("highpass_filter/process_high_frequency", "[highpass_filter]") {
@@ -629,7 +625,7 @@ TEST_CASE("highpass_filter/process_high_frequency", "[highpass_filter]") {
   for (int i = 0; i < 10; i++) {
     output = highpass_filter_process_sample(&filter, (i % 2) ? 1.0f : -1.0f);
   }
-  ASCIICHAT_REQUIRE_GT(fabsf(output), 0.1f); // Should have significant output
+  REQUIRE((fabsf(output)) > (0.1f)); // Should have significant output
 }
 
 TEST_CASE("highpass_filter/process_buffer", "[highpass_filter]") {
@@ -641,8 +637,8 @@ TEST_CASE("highpass_filter/process_buffer", "[highpass_filter]") {
 
   // All samples should be processed
   for (int i = 0; i < 10; i++) {
-    ASCIICHAT_REQUIRE_GE(fabsf(buffer[i]), 0.0f);
-    ASCIICHAT_REQUIRE_LE(fabsf(buffer[i]), 1.0f);
+    REQUIRE((fabsf(buffer[i])) >= (0.0f));
+    REQUIRE((fabsf(buffer[i])) <= (1.0f));
   }
 }
 
@@ -652,31 +648,31 @@ TEST_CASE("highpass_filter/process_buffer", "[highpass_filter]") {
 
 TEST_CASE("soft_clip/process_within_threshold", "[soft_clip]") {
   float output = soft_clip(0.5f, 0.8f, 6.0f);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(output, 0.5f, 1e-6f);
+  REQUIRE((output) == Catch::Approx(0.5f));
 
   output = soft_clip(-0.3f, 0.8f, 6.0f);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(output, -0.3f, 1e-6f);
+  REQUIRE((output) == Catch::Approx(-0.3f));
 }
 
 TEST_CASE("soft_clip/process_above_threshold", "[soft_clip]") {
   float output = soft_clip(1.0f, 0.8f, 6.0f);
-  ASCIICHAT_REQUIRE_LT(output, 1.0f);
-  ASCIICHAT_REQUIRE_GT(output, 0.8f);
+  REQUIRE((output) < (1.0f));
+  REQUIRE((output) > (0.8f));
 
   output = soft_clip(-1.0f, 0.8f, 6.0f);
-  ASCIICHAT_REQUIRE_GT(output, -1.0f);
-  ASCIICHAT_REQUIRE_LT(output, -0.6f); // Should be soft clipped (smooth curve, not hard threshold)
+  REQUIRE((output) > (-1.0f));
+  REQUIRE((output) < (-0.6f)); // Should be soft clipped (smooth curve, not hard threshold)
 }
 
 TEST_CASE("soft_clip/process_buffer", "[soft_clip]") {
   float buffer[5] = {0.5f, 1.0f, -0.3f, -1.0f, 0.0f};
   soft_clip_buffer(buffer, 5, 0.8f, 6.0f);
 
-  ASCIICHAT_REQUIRE_FLOAT_EQ(buffer[0], 0.5f, 1e-6f);  // Within threshold
-  ASCIICHAT_REQUIRE_LT(buffer[1], 1.0f);               // Clipped
-  ASCIICHAT_REQUIRE_FLOAT_EQ(buffer[2], -0.3f, 1e-6f); // Within threshold
-  ASCIICHAT_REQUIRE_GT(buffer[3], -1.0f);              // Clipped
-  ASCIICHAT_REQUIRE_FLOAT_EQ(buffer[4], 0.0f, 1e-6f);  // Zero
+  REQUIRE((buffer[0]) == Catch::Approx(0.5f));  // Within threshold
+  REQUIRE((buffer[1]) < (1.0f));               // Clipped
+  REQUIRE((buffer[2]) == Catch::Approx(-0.3f)); // Within threshold
+  REQUIRE((buffer[3]) > (-1.0f));              // Clipped
+  REQUIRE((buffer[4]) == Catch::Approx(0.0f));  // Zero
 }
 
 /* ============================================================================
@@ -685,7 +681,7 @@ TEST_CASE("soft_clip/process_buffer", "[soft_clip]") {
 
 TEST_CASE("mixer_integration/full_pipeline_with_processing", "[mixer_integration]") {
   mixer_t *mixer = mixer_create(3, 44100);
-  ASCIICHAT_REQUIRE_NOT_NULL(mixer);
+  REQUIRE((mixer) != nullptr);
 
   // Generate test signals with different characteristics
   float sine_data[256], noise_data[256];
@@ -701,7 +697,7 @@ TEST_CASE("mixer_integration/full_pipeline_with_processing", "[mixer_integration
   // Process through full pipeline
   float output[256];
   int processed = mixer_process(mixer, output, 256);
-  ASCIICHAT_REQUIRE_EQ(processed, 256);
+  REQUIRE((processed) == (256));
 
   // Verify output characteristics
   float max_output = 0.0f;
@@ -715,8 +711,8 @@ TEST_CASE("mixer_integration/full_pipeline_with_processing", "[mixer_integration
   rms_output = sqrtf(rms_output / 256.0f);
 
   // Output should be properly limited and processed
-  ASCIICHAT_REQUIRE_LE(max_output, 1.0f); // No clipping
-  ASCIICHAT_REQUIRE_GT(rms_output, 0.0f); // Non-zero output
+  REQUIRE((max_output) <= (1.0f)); // No clipping
+  REQUIRE((rms_output) > (0.0f)); // Non-zero output
 
   // Clean up
   audio_ring_buffer_destroy(sine_buffer);
@@ -726,7 +722,7 @@ TEST_CASE("mixer_integration/full_pipeline_with_processing", "[mixer_integration
 
 TEST_CASE("mixer_integration/stress_test_multiple_sources", "[mixer_integration]") {
   mixer_t *mixer = mixer_create(MIXER_MAX_SOURCES, 44100);
-  ASCIICHAT_REQUIRE_NOT_NULL(mixer);
+  REQUIRE((mixer) != nullptr);
 
   // Add maximum number of sources
   audio_ring_buffer_t *buffers[MIXER_MAX_SOURCES];
@@ -737,20 +733,20 @@ TEST_CASE("mixer_integration/stress_test_multiple_sources", "[mixer_integration]
     char client_id[32];
     snprintf(client_id, sizeof(client_id), "%d", 100 + i);
     int slot = mixer_add_source(mixer, client_id, buffers[i]);
-    ASCIICHAT_REQUIRE_GE(slot, 0);
+    REQUIRE((slot) >= (0));
   }
 
-  ASCIICHAT_REQUIRE_EQ(mixer->num_sources, MIXER_MAX_SOURCES);
+  REQUIRE((mixer->num_sources) == (MIXER_MAX_SOURCES));
 
   // Process all sources
   float output[256];
   int processed = mixer_process(mixer, output, 256);
-  ASCIICHAT_REQUIRE_EQ(processed, 256);
+  REQUIRE((processed) == (256));
 
   // Verify output is properly mixed and limited
   for (int i = 0; i < 256; i++) {
-    ASCIICHAT_REQUIRE_GE(output[i], -1.0f);
-    ASCIICHAT_REQUIRE_LE(output[i], 1.0f);
+    REQUIRE((output[i]) >= (-1.0f));
+    REQUIRE((output[i]) <= (1.0f));
   }
 
   // Clean up
@@ -771,24 +767,24 @@ static constexpr int audio_bounds_property_catch2_data[] = {1, 2, 3, 4, 8};
 TEST_CASE("mixer_integration/audio_bounds_property", "[mixer_integration]") {
   size_t num_sources = GENERATE(Catch::Generators::from_range(audio_bounds_property_catch2_data));
   float amplitude = GENERATE(0.1f, 0.5f, 1.0f, 1.5f, 2.0f);
-  ASCIICHAT_ASSUME(num_sources > 0 && num_sources <= MIXER_MAX_SOURCES);
-  ASCIICHAT_ASSUME(amplitude > 0.0f && amplitude <= 2.0f);
+  if (!(num_sources > 0 && num_sources <= MIXER_MAX_SOURCES)) SKIP("assumption not satisfied");
+  if (!(amplitude > 0.0f && amplitude <= 2.0f)) SKIP("assumption not satisfied");
 
   mixer_t *mixer = mixer_create(MIXER_MAX_SOURCES, 48000);
-  ASCIICHAT_ASSUME(mixer != NULL);
+  if (!(mixer != NULL)) SKIP("assumption not satisfied");
 
   // Create sources with specified amplitude
   audio_ring_buffer_t *buffers[MIXER_MAX_SOURCES];
   for (size_t i = 0; i < num_sources; i++) {
     buffers[i] = audio_ring_buffer_create();
-    ASCIICHAT_ASSUME(buffers[i] != NULL);
+    if (!(buffers[i] != NULL)) SKIP("assumption not satisfied");
 
     // Generate test signal with specified amplitude
     float test_data[256];
     generate_sine_wave(test_data, 256, 440.0f + (float)i * 100.0f, 48000.0f, amplitude);
 
     asciichat_error_t write_result = audio_ring_buffer_write(buffers[i], test_data, 256);
-    ASCIICHAT_ASSUME(write_result == ASCIICHAT_OK);
+    if (!(write_result == ASCIICHAT_OK)) SKIP("assumption not satisfied");
     char client_id[32];
     snprintf(client_id, sizeof(client_id), "%u", 100 + (uint32_t)i);
     mixer_add_source(mixer, client_id, buffers[i]);
@@ -797,12 +793,12 @@ TEST_CASE("mixer_integration/audio_bounds_property", "[mixer_integration]") {
   // Process mixed output
   float output[256];
   int processed = mixer_process(mixer, output, 256);
-  ASCIICHAT_REQUIRE_EQ(processed, 256, "Should process all samples");
+  REQUIRE((processed) == (256));
 
   // Verify property: ALL output samples must be in [-1.0, 1.0] range
   for (int i = 0; i < 256; i++) {
-    ASCIICHAT_REQUIRE_GE(output[i], -1.0f, "Output sample %d must be >= -1.0 (sources=%zu, amplitude=%.2f, got %.4f)", i, num_sources, amplitude, output[i]);
-    ASCIICHAT_REQUIRE_LE(output[i], 1.0f, "Output sample %d must be <= 1.0 (sources=%zu, amplitude=%.2f, got %.4f)", i, num_sources, amplitude, output[i]);
+    REQUIRE((output[i]) >= (-1.0f));
+    REQUIRE((output[i]) <= (1.0f));
   }
 
   // Clean up

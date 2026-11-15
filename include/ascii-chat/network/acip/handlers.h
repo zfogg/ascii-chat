@@ -38,6 +38,10 @@
 #include "../../asciichat_errno.h"
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // =============================================================================
 // Client-Side Handler Callbacks
 // =============================================================================
@@ -229,3 +233,7 @@ typedef struct {
 asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
                                             size_t payload_len, void *client_ctx,
                                             const acip_server_callbacks_t *callbacks);
+
+#ifdef __cplusplus
+}
+#endif

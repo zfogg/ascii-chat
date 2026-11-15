@@ -1,23 +1,23 @@
+#include <catch2/catch_test_macros.hpp>
 #include "../worker_assert.h"
 #define CHECK_WORKER ASCIICHAT_WORKER_ASSERT
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
-#define CHECK(...) ASCIICHAT_REQUIRE(__VA_ARGS__)
+#define CHECK(...) REQUIRE(__VA_ARGS__)
 #include "../../standalone/network/vectored_fixture.h"
 
 static void setup(void) {
   log_init(NULL, LOG_WARN, false, false);
   errno_suppress(true);
-  ASCIICHAT_REQUIRE_EQ(socket_init(), ASCIICHAT_OK);
+  REQUIRE((socket_init()) == (ASCIICHAT_OK));
 }
 
 static void teardown(void) {
   socket_cleanup();
   buffer_stats_t stats;
   buffer_domain_stats(buffer_default_domain(), &stats);
-  ASCIICHAT_REQUIRE_EQ(stats.outstanding, 0);
+  REQUIRE((stats.outstanding) == (0));
   buffer_system_cleanup();
-  ASCIICHAT_REQUIRE_EQ(buffer_process_reserved(), 0);
+  REQUIRE((buffer_process_reserved()) == (0));
   log_destroy();
 }
 TEST_CASE("vectored/crc_vectors", "[vectored]") {

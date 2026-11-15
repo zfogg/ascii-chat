@@ -1,4 +1,3 @@
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/record.h>
 #include <ascii-chat/crypto/rekey.h>

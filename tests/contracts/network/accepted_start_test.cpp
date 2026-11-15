@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/network/tcp/async.h>
 #include <ascii-chat/common.h>
@@ -17,7 +17,7 @@ static asciichat_error_t fail_stream_start(platform_event_stream_t *stream, plat
 
 static void record_stream_close(platform_event_stream_t *stream, asciichat_error_t reason) {
   (void)stream;
-  ASCIICHAT_REQUIRE_EQ(reason, ERROR_NETWORK);
+  REQUIRE((reason) == (ERROR_NETWORK));
   ++close_requests;
 }
 
@@ -50,11 +50,11 @@ static void observe_fake_stream(platform_event_stream_t *stream, platform_event_
 void accepted_start_failure_test(void) {
   int stream_token;
   platform_event_stream_t *stream = (platform_event_stream_t *)&stream_token;
-  ASCIICHAT_REQUIRE_NULL(acip_async_tcp_accepted_create(stream));
-  ASCIICHAT_REQUIRE_EQ(close_requests, 1);
-  ASCIICHAT_REQUIRE_EQ(destroyed, 0, "Transport must survive until close completion");
-  ASCIICHAT_REQUIRE_NOT_NULL(failed_close);
+  REQUIRE((acip_async_tcp_accepted_create(stream)) == nullptr);
+  REQUIRE((close_requests) == (1));
+  REQUIRE((destroyed) == (0));
+  REQUIRE((failed_close) != nullptr);
   failed_close(failed_arg, ERROR_NETWORK);
-  ASCIICHAT_REQUIRE_EQ(destroyed, 1);
+  REQUIRE((destroyed) == (1));
   CLEAR_ERRNO_ALL();
 }

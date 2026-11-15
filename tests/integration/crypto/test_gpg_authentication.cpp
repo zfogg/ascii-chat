@@ -1,10 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file test_gpg_authentication.c
  * @brief Integration tests for GPG authentication
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
@@ -27,7 +26,7 @@ static const char *get_test_gpg_key_id(void) {
 TEST_CASE("gpg_authentication/sign_message_with_gpg_key", "[gpg_authentication]") {
   const char *test_key_id = get_test_gpg_key_id();
   if (!test_key_id) {
-    ASCIICHAT_SKIP("TEST_GPG_KEY_ID environment variable not set");
+    SKIP("test skipped");
   }
 
   const char *message = "Authentication challenge nonce 123456";
@@ -36,18 +35,18 @@ TEST_CASE("gpg_authentication/sign_message_with_gpg_key", "[gpg_authentication]"
 
   int result = gpg_sign_with_key(test_key_id, (const uint8_t *)message, strlen(message), signature, &signature_len);
 
-  ASCIICHAT_REQUIRE_EQ(result, 0, "gpg_sign_with_key should succeed");
-  ASCIICHAT_REQUIRE_GT(signature_len, 0, "Signature length should be > 0");
-  ASCIICHAT_REQUIRE_LT(signature_len, 512, "Signature length should be < 512");
+  REQUIRE((result) == (0));
+  REQUIRE((signature_len) > (0));
+  REQUIRE((signature_len) < (512));
 
   // Ed25519 OpenPGP signatures are typically ~119 bytes
-  ASCIICHAT_INFO("Signature created: %zu bytes", signature_len);
+  INFO("Signature created: %zu bytes");
 }
 
 TEST_CASE("gpg_authentication/verify_valid_signature", "[gpg_authentication]") {
   const char *test_key_id = get_test_gpg_key_id();
   if (!test_key_id) {
-    ASCIICHAT_SKIP("TEST_GPG_KEY_ID environment variable not set");
+    SKIP("test skipped");
   }
 
   const char *message = "Authentication challenge nonce 123456";
@@ -56,18 +55,18 @@ TEST_CASE("gpg_authentication/verify_valid_signature", "[gpg_authentication]") {
 
   // First create a signature
   int sign_result = gpg_sign_with_key(test_key_id, (const uint8_t *)message, strlen(message), signature, &signature_len);
-  ASCIICHAT_REQUIRE_EQ(sign_result, 0, "Signing should succeed");
+  REQUIRE((sign_result) == (0));
 
   // Now verify it
   int verify_result = gpg_verify_signature_with_binary(signature, signature_len, (const uint8_t *)message, strlen(message), test_key_id);
 
-  ASCIICHAT_REQUIRE_EQ(verify_result, 0, "Verification should succeed for valid signature");
+  REQUIRE((verify_result) == (0));
 }
 
 TEST_CASE("gpg_authentication/reject_tampered_message", "[gpg_authentication]") {
   const char *test_key_id = get_test_gpg_key_id();
   if (!test_key_id) {
-    ASCIICHAT_SKIP("TEST_GPG_KEY_ID environment variable not set");
+    SKIP("test skipped");
   }
 
   const char *message = "Authentication challenge nonce 123456";
@@ -77,18 +76,18 @@ TEST_CASE("gpg_authentication/reject_tampered_message", "[gpg_authentication]") 
 
   // Create signature for original message
   int sign_result = gpg_sign_with_key(test_key_id, (const uint8_t *)message, strlen(message), signature, &signature_len);
-  ASCIICHAT_REQUIRE_EQ(sign_result, 0, "Signing should succeed");
+  REQUIRE((sign_result) == (0));
 
   // Try to verify with tampered message
   int verify_result = gpg_verify_signature_with_binary(signature, signature_len, (const uint8_t *)tampered, strlen(tampered), test_key_id);
 
-  ASCIICHAT_REQUIRE_NE(verify_result, 0, "Verification should fail for tampered message");
+  REQUIRE((verify_result) != (0));
 }
 
 TEST_CASE("gpg_authentication/parse_gpg_public_key", "[gpg_authentication]") {
   const char *test_key_id = get_test_gpg_key_id();
   if (!test_key_id) {
-    ASCIICHAT_SKIP("TEST_GPG_KEY_ID environment variable not set");
+    SKIP("test skipped");
   }
 
   char key_input[64];
@@ -99,8 +98,8 @@ TEST_CASE("gpg_authentication/parse_gpg_public_key", "[gpg_authentication]") {
 
   asciichat_error_t result = parse_public_key(key_input, &public_key);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "parse_public_key should succeed for gpg:KEYID format");
-  ASCIICHAT_REQUIRE_EQ(public_key.type, KEY_TYPE_GPG, "Key type should be KEY_TYPE_GPG");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((public_key.type) == (KEY_TYPE_GPG));
 
   // Verify we got a valid 32-byte public key
   bool all_zeros = true;
@@ -110,13 +109,13 @@ TEST_CASE("gpg_authentication/parse_gpg_public_key", "[gpg_authentication]") {
       break;
     }
   }
-  ASCIICHAT_REQUIRE_EQ(all_zeros, false, "Public key should not be all zeros");
+  REQUIRE((all_zeros) == (false));
 }
 
 TEST_CASE("gpg_authentication/parse_gpg_private_key", "[gpg_authentication]") {
   const char *test_key_id = get_test_gpg_key_id();
   if (!test_key_id) {
-    ASCIICHAT_SKIP("TEST_GPG_KEY_ID environment variable not set");
+    SKIP("test skipped");
   }
 
   char key_input[64];
@@ -127,17 +126,17 @@ TEST_CASE("gpg_authentication/parse_gpg_private_key", "[gpg_authentication]") {
 
   asciichat_error_t result = parse_private_key(key_input, &private_key);
 
-  ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "parse_private_key should succeed for gpg:KEYID format");
-  ASCIICHAT_REQUIRE_EQ(private_key.use_gpg_agent, true, "use_gpg_agent flag should be set");
-  ASCIICHAT_REQUIRE_EQ(strlen(private_key.gpg_keygrip), 40, "Keygrip should be 40 characters");
+  REQUIRE((result) == (ASCIICHAT_OK));
+  REQUIRE((private_key.use_gpg_agent) == (true));
+  REQUIRE((strlen(private_key.gpg_keygrip)) == (40));
 
-  ASCIICHAT_INFO("Keygrip: %s", private_key.gpg_keygrip);
+  INFO("Keygrip: %s");
 }
 
 TEST_CASE("gpg_authentication/get_public_key_from_keyring", "[gpg_authentication]") {
   const char *test_key_id = get_test_gpg_key_id();
   if (!test_key_id) {
-    ASCIICHAT_SKIP("TEST_GPG_KEY_ID environment variable not set");
+    SKIP("test skipped");
   }
 
   uint8_t public_key[32];
@@ -145,8 +144,8 @@ TEST_CASE("gpg_authentication/get_public_key_from_keyring", "[gpg_authentication
 
   int result = gpg_get_public_key(test_key_id, public_key, keygrip);
 
-  ASCIICHAT_REQUIRE_EQ(result, 0, "gpg_get_public_key should succeed");
-  ASCIICHAT_REQUIRE_EQ(strlen(keygrip), 40, "Keygrip should be 40 characters");
+  REQUIRE((result) == (0));
+  REQUIRE((strlen(keygrip)) == (40));
 
   // Verify we got a valid public key (not all zeros)
   bool all_zeros = true;
@@ -156,10 +155,10 @@ TEST_CASE("gpg_authentication/get_public_key_from_keyring", "[gpg_authentication
       break;
     }
   }
-  ASCIICHAT_REQUIRE_EQ(all_zeros, false, "Public key should not be all zeros");
+  REQUIRE((all_zeros) == (false));
 
-  ASCIICHAT_INFO("Public key (first 16 bytes): ");
+  INFO("Public key (first 16 bytes): ");
   for (int i = 0; i < 16; i++) {
-    ASCIICHAT_INFO("%02x", public_key[i]);
+    INFO("%02x");
   }
 }

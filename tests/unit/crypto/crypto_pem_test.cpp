@@ -1,11 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file crypto_pem_test.c
  * @brief Unit tests for PEM utility functions (trust anchor parsing)
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
@@ -73,23 +71,23 @@ TEST_CASE("crypto_pem/parse_pem_certificate", "[crypto_pem]") {
 
   size_t num = read_trust_anchors_from_memory(&anchors, (const unsigned char *)test_ca_pem, strlen(test_ca_pem));
 
-  ASCIICHAT_REQUIRE_GT(num, 0, "Should parse at least one trust anchor");
-  ASCIICHAT_REQUIRE_EQ(num, 1, "Should parse exactly one certificate from PEM");
-  ASCIICHAT_REQUIRE_NOT_NULL(anchors.buf, "Anchor buffer should be allocated");
-  ASCIICHAT_REQUIRE_EQ(anchors.ptr, 1, "Anchor count should be 1");
+  REQUIRE((num) > (0));
+  REQUIRE((num) == (1));
+  REQUIRE((anchors.buf) != nullptr);
+  REQUIRE((anchors.ptr) == (1));
 
   // Verify trust anchor has expected fields
   br_x509_trust_anchor *ta = &anchors.buf[0];
-  ASCIICHAT_REQUIRE_NOT_NULL(ta->dn.data, "Distinguished name should be present");
-  ASCIICHAT_REQUIRE_GT(ta->dn.len, 0, "Distinguished name should not be empty");
+  REQUIRE((ta->dn.data) != nullptr);
+  REQUIRE((ta->dn.len) > (0));
 
   // Verify CA flag is set
-  ASCIICHAT_REQUIRE(ta->flags & BR_X509_TA_CA, "CA flag should be set for root certificate");
+  REQUIRE(ta->flags & BR_X509_TA_CA);
 
   // Verify public key type (should be RSA for this test certificate)
-  ASCIICHAT_REQUIRE_EQ(ta->pkey.key_type, BR_KEYTYPE_RSA, "Public key should be RSA");
-  ASCIICHAT_REQUIRE_NOT_NULL(ta->pkey.key.rsa.n, "RSA modulus should be present");
-  ASCIICHAT_REQUIRE_GT(ta->pkey.key.rsa.nlen, 0, "RSA modulus length should be non-zero");
+  REQUIRE((ta->pkey.key_type) == (BR_KEYTYPE_RSA));
+  REQUIRE((ta->pkey.key.rsa.n) != nullptr);
+  REQUIRE((ta->pkey.key.rsa.nlen) > (0));
 
   // Cleanup
   for (size_t i = 0; i < anchors.ptr; i++) {
@@ -107,9 +105,9 @@ TEST_CASE("crypto_pem/parse_der_certificate", "[crypto_pem]") {
 
   size_t num = read_trust_anchors_from_memory(&anchors, test_ca_der, sizeof(test_ca_der));
 
-  ASCIICHAT_REQUIRE_GT(num, 0, "Should parse at least one trust anchor from DER");
-  ASCIICHAT_REQUIRE_EQ(num, 1, "Should parse exactly one certificate from DER");
-  ASCIICHAT_REQUIRE_NOT_NULL(anchors.buf, "Anchor buffer should be allocated");
+  REQUIRE((num) > (0));
+  REQUIRE((num) == (1));
+  REQUIRE((anchors.buf) != nullptr);
 
   // Cleanup
   for (size_t i = 0; i < anchors.ptr; i++) {
@@ -124,8 +122,8 @@ TEST_CASE("crypto_pem/parse_invalid_pem", "[crypto_pem]") {
 
   size_t num = read_trust_anchors_from_memory(&anchors, (const unsigned char *)invalid_pem, strlen(invalid_pem));
 
-  ASCIICHAT_REQUIRE_EQ(num, 0, "Should return 0 for invalid PEM data");
-  ASCIICHAT_REQUIRE_NULL(anchors.buf, "Anchor buffer should remain NULL on error");
+  REQUIRE((num) == (0));
+  REQUIRE((anchors.buf) == nullptr);
 }
 
 TEST_CASE("crypto_pem/parse_empty_data", "[crypto_pem]") {
@@ -134,8 +132,8 @@ TEST_CASE("crypto_pem/parse_empty_data", "[crypto_pem]") {
 
   size_t num = read_trust_anchors_from_memory(&anchors, (const unsigned char *)empty_data, 0);
 
-  ASCIICHAT_REQUIRE_EQ(num, 0, "Should return 0 for empty data");
-  ASCIICHAT_REQUIRE_NULL(anchors.buf, "Anchor buffer should remain NULL for empty input");
+  REQUIRE((num) == (0));
+  REQUIRE((anchors.buf) == nullptr);
 }
 
 TEST_CASE("crypto_pem/parse_pem_without_trailing_newline", "[crypto_pem]") {
@@ -176,7 +174,7 @@ TEST_CASE("crypto_pem/parse_pem_without_trailing_newline", "[crypto_pem]") {
   anchor_list anchors = ANCHOR_LIST_INIT;
   size_t num = read_trust_anchors_from_memory(&anchors, (const unsigned char *)pem_no_newline, strlen(pem_no_newline));
 
-  ASCIICHAT_REQUIRE_GT(num, 0, "Should parse certificate even without trailing newline");
+  REQUIRE((num) > (0));
 
   // Cleanup
   for (size_t i = 0; i < anchors.ptr; i++) {
@@ -197,9 +195,9 @@ TEST_CASE("crypto_pem/parse_multiple_certificates", "[crypto_pem]") {
   anchor_list anchors = ANCHOR_LIST_INIT;
   size_t num = read_trust_anchors_from_memory(&anchors, (const unsigned char *)multi_pem, strlen(multi_pem));
 
-  ASCIICHAT_REQUIRE_EQ(num, 2, "Should parse two certificates");
-  ASCIICHAT_REQUIRE_NOT_NULL(anchors.buf, "Anchor buffer should be allocated");
-  ASCIICHAT_REQUIRE_EQ(anchors.ptr, 2, "Should have 2 trust anchors");
+  REQUIRE((num) == (2));
+  REQUIRE((anchors.buf) != nullptr);
+  REQUIRE((anchors.ptr) == (2));
 
   // Cleanup
   for (size_t i = 0; i < anchors.ptr; i++) {
@@ -224,7 +222,7 @@ TEST_CASE("crypto_pem/memory_cleanup", "[crypto_pem]") {
   SAFE_FREE(anchors.buf);
 
   // Verify cleanup
-  ASCIICHAT_REQUIRE_NULL(anchors.buf, "Buffer should be NULL after free");
+  REQUIRE((anchors.buf) == nullptr);
 }
 
 TEST_CASE("crypto_pem/free_ta_contents_null", "[crypto_pem]") {
@@ -232,7 +230,7 @@ TEST_CASE("crypto_pem/free_ta_contents_null", "[crypto_pem]") {
   free_ta_contents(NULL);
 
   // Test passes if we don't crash
-  ASCIICHAT_REQUIRE(true, "Should handle NULL pointer");
+  REQUIRE(true);
 }
 
 // =============================================================================
@@ -278,7 +276,7 @@ TEST_CASE("crypto_pem/pem_with_comments", "[crypto_pem]") {
   size_t num = read_trust_anchors_from_memory(&anchors, (const unsigned char *)pem_with_comments, strlen(pem_with_comments));
 
   // BearSSL PEM decoder should handle comments
-  ASCIICHAT_REQUIRE_GT(num, 0, "Should parse certificate with comments");
+  REQUIRE((num) > (0));
 
   // Cleanup
   for (size_t i = 0; i < anchors.ptr; i++) {
@@ -325,7 +323,7 @@ TEST_CASE("crypto_pem/x509_certificate_name_variant", "[crypto_pem]") {
   anchor_list anchors = ANCHOR_LIST_INIT;
   size_t num = read_trust_anchors_from_memory(&anchors, (const unsigned char *)pem_with_dashes, strlen(pem_with_dashes));
 
-  ASCIICHAT_REQUIRE_GT(num, 0, "Should parse X509 CERTIFICATE format");
+  REQUIRE((num) > (0));
 
   // Cleanup
   for (size_t i = 0; i < anchors.ptr; i++) {

@@ -1,9 +1,9 @@
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/log.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/network/crc32.h>
 /* ============================================================================
@@ -15,8 +15,8 @@ TEST_CASE("crc32_hw/empty_data", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(NULL, 0);
   uint32_t crc_sw = asciichat_crc32_sw(NULL, 0);
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of empty data should match");
-  ASCIICHAT_REQUIRE_EQ(crc_hw, 0, "CRC32 of empty data should be 0");
+  REQUIRE((crc_hw) == (crc_sw));
+  REQUIRE((crc_hw) == (0));
 }
 
 TEST_CASE("crc32_hw/single_byte", "[crc32_hw]") {
@@ -24,8 +24,8 @@ TEST_CASE("crc32_hw/single_byte", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(&data, 1);
   uint32_t crc_sw = asciichat_crc32_sw(&data, 1);
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of single byte should match");
-  ASCIICHAT_REQUIRE_NE(crc_hw, 0, "CRC32 of single byte should not be 0");
+  REQUIRE((crc_hw) == (crc_sw));
+  REQUIRE((crc_hw) != (0));
 }
 
 TEST_CASE("crc32_hw/simple_string", "[crc32_hw]") {
@@ -38,14 +38,14 @@ TEST_CASE("crc32_hw/simple_string", "[crc32_hw]") {
   log_debug("  Software CRC: 0x%08x", crc_sw);
   log_debug("  HW available: %s", crc32_hw_is_available() ? "YES" : "NO");
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of 'Hello, World!' should match");
+  REQUIRE((crc_hw) == (crc_sw));
 
   // Known CRC32-C (Castagnoli) value for "Hello, World!"
   // Note: This uses the CRC32-C polynomial (0x1EDC6F41), not IEEE 802.3
   // This matches hardware implementations (__crc32* on ARM, _mm_crc32_* on x86)
   uint32_t expected = 0x4d551068;
   log_debug("  Expected CRC: 0x%08x", expected);
-  ASCIICHAT_REQUIRE_EQ(crc_hw, expected, "CRC32-C of 'Hello, World!' should be 0x%08x", expected);
+  REQUIRE((crc_hw) == (expected));
 }
 
 TEST_CASE("crc32_hw/ascii_chat_string", "[crc32_hw]") {
@@ -53,7 +53,7 @@ TEST_CASE("crc32_hw/ascii_chat_string", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(test_str, strlen(test_str));
   uint32_t crc_sw = asciichat_crc32_sw(test_str, strlen(test_str));
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 should match for 'ascii-chat'");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/binary_data", "[crc32_hw]") {
@@ -65,7 +65,7 @@ TEST_CASE("crc32_hw/binary_data", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, sizeof(data));
   uint32_t crc_sw = asciichat_crc32_sw(data, sizeof(data));
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of binary data should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/all_zeros", "[crc32_hw]") {
@@ -75,7 +75,7 @@ TEST_CASE("crc32_hw/all_zeros", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, sizeof(data));
   uint32_t crc_sw = asciichat_crc32_sw(data, sizeof(data));
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of all zeros should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/all_ones", "[crc32_hw]") {
@@ -85,7 +85,7 @@ TEST_CASE("crc32_hw/all_ones", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, sizeof(data));
   uint32_t crc_sw = asciichat_crc32_sw(data, sizeof(data));
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of all ones should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 /* ============================================================================
@@ -98,7 +98,7 @@ TEST_CASE("crc32_hw/size_7_bytes", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, 7);
   uint32_t crc_sw = asciichat_crc32_sw(data, 7);
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of 7 bytes should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/size_8_bytes", "[crc32_hw]") {
@@ -112,7 +112,7 @@ TEST_CASE("crc32_hw/size_8_bytes", "[crc32_hw]") {
   log_debug("  Hardware CRC: 0x%08x", crc_hw);
   log_debug("  Software CRC: 0x%08x", crc_sw);
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of 8 bytes should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/size_9_bytes", "[crc32_hw]") {
@@ -121,7 +121,7 @@ TEST_CASE("crc32_hw/size_9_bytes", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, 9);
   uint32_t crc_sw = asciichat_crc32_sw(data, 9);
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of 9 bytes should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/size_16_bytes", "[crc32_hw]") {
@@ -130,7 +130,7 @@ TEST_CASE("crc32_hw/size_16_bytes", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, 16);
   uint32_t crc_sw = asciichat_crc32_sw(data, 16);
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of 16 bytes should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/size_17_bytes", "[crc32_hw]") {
@@ -139,7 +139,7 @@ TEST_CASE("crc32_hw/size_17_bytes", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, 17);
   uint32_t crc_sw = asciichat_crc32_sw(data, 17);
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of 17 bytes should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/size_1_byte", "[crc32_hw]") {
@@ -147,7 +147,7 @@ TEST_CASE("crc32_hw/size_1_byte", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, 1);
   uint32_t crc_sw = asciichat_crc32_sw(data, 1);
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of 1 byte should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/size_2_bytes", "[crc32_hw]") {
@@ -155,7 +155,7 @@ TEST_CASE("crc32_hw/size_2_bytes", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, 2);
   uint32_t crc_sw = asciichat_crc32_sw(data, 2);
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of 2 bytes should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/size_3_bytes", "[crc32_hw]") {
@@ -163,7 +163,7 @@ TEST_CASE("crc32_hw/size_3_bytes", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, 3);
   uint32_t crc_sw = asciichat_crc32_sw(data, 3);
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of 3 bytes should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/size_4_bytes", "[crc32_hw]") {
@@ -171,7 +171,7 @@ TEST_CASE("crc32_hw/size_4_bytes", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, 4);
   uint32_t crc_sw = asciichat_crc32_sw(data, 4);
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of 4 bytes should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/size_5_bytes", "[crc32_hw]") {
@@ -179,7 +179,7 @@ TEST_CASE("crc32_hw/size_5_bytes", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, 5);
   uint32_t crc_sw = asciichat_crc32_sw(data, 5);
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of 5 bytes should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/size_6_bytes", "[crc32_hw]") {
@@ -187,7 +187,7 @@ TEST_CASE("crc32_hw/size_6_bytes", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, 6);
   uint32_t crc_sw = asciichat_crc32_sw(data, 6);
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of 6 bytes should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 /* ============================================================================
@@ -203,7 +203,7 @@ TEST_CASE("crc32_hw/large_buffer_1kb", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, sizeof(data));
   uint32_t crc_sw = asciichat_crc32_sw(data, sizeof(data));
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of 1KB should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/large_buffer_4kb", "[crc32_hw]") {
@@ -216,7 +216,7 @@ TEST_CASE("crc32_hw/large_buffer_4kb", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, 4096);
   uint32_t crc_sw = asciichat_crc32_sw(data, 4096);
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of 4KB should match");
+  REQUIRE((crc_hw) == (crc_sw));
 
   SAFE_FREE(data);
 }
@@ -232,7 +232,7 @@ TEST_CASE("crc32_hw/large_buffer_64kb", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, size);
   uint32_t crc_sw = asciichat_crc32_sw(data, size);
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of 64KB should match");
+  REQUIRE((crc_hw) == (crc_sw));
 
   SAFE_FREE(data);
 }
@@ -248,7 +248,7 @@ TEST_CASE("crc32_hw/different_data_different_crc", "[crc32_hw]") {
   uint32_t crc1 = asciichat_crc32_hw(data1, strlen(data1));
   uint32_t crc2 = asciichat_crc32_hw(data2, strlen(data2));
 
-  ASCIICHAT_REQUIRE_NE(crc1, crc2, "Different data should produce different CRC32");
+  REQUIRE((crc1) != (crc2));
 }
 
 TEST_CASE("crc32_hw/same_data_same_crc", "[crc32_hw]") {
@@ -258,7 +258,7 @@ TEST_CASE("crc32_hw/same_data_same_crc", "[crc32_hw]") {
   uint32_t crc1 = asciichat_crc32_hw(data1, strlen(data1));
   uint32_t crc2 = asciichat_crc32_hw(data2, strlen(data2));
 
-  ASCIICHAT_REQUIRE_EQ(crc1, crc2, "Same data should produce same CRC32");
+  REQUIRE((crc1) == (crc2));
 }
 
 TEST_CASE("crc32_hw/order_matters", "[crc32_hw]") {
@@ -268,7 +268,7 @@ TEST_CASE("crc32_hw/order_matters", "[crc32_hw]") {
   uint32_t crc1 = asciichat_crc32_hw(data1, sizeof(data1));
   uint32_t crc2 = asciichat_crc32_hw(data2, sizeof(data2));
 
-  ASCIICHAT_REQUIRE_NE(crc1, crc2, "Byte order should affect CRC32");
+  REQUIRE((crc1) != (crc2));
 }
 
 /* ============================================================================
@@ -279,13 +279,13 @@ TEST_CASE("crc32_hw/hardware_availability_check", "[crc32_hw]") {
   bool hw_available = crc32_hw_is_available();
 
   // Should not crash
-  ASCIICHAT_REQUIRE(true, "Hardware availability check should not crash");
+  REQUIRE(true);
 
   // Log the result for debugging
   if (hw_available) {
-    ASCIICHAT_INFO("CRC32 hardware acceleration is available");
+    INFO("CRC32 hardware acceleration is available");
   } else {
-    ASCIICHAT_INFO("CRC32 hardware acceleration is NOT available - using software fallback");
+    INFO("CRC32 hardware acceleration is NOT available - using software fallback");
   }
 }
 
@@ -295,8 +295,8 @@ TEST_CASE("crc32_hw/repeated_hw_check", "[crc32_hw]") {
   bool hw2 = crc32_hw_is_available();
   bool hw3 = crc32_hw_is_available();
 
-  ASCIICHAT_REQUIRE_EQ(hw1, hw2, "Hardware availability should be consistent");
-  ASCIICHAT_REQUIRE_EQ(hw2, hw3, "Hardware availability should be consistent");
+  REQUIRE((hw1) == (hw2));
+  REQUIRE((hw2) == (hw3));
 }
 
 /* ============================================================================
@@ -308,7 +308,7 @@ TEST_CASE("crc32_hw/macro_dispatches_correctly", "[crc32_hw]") {
   uint32_t crc_macro = asciichat_crc32(test_str, strlen(test_str));
   uint32_t crc_hw = asciichat_crc32_hw(test_str, strlen(test_str));
 
-  ASCIICHAT_REQUIRE_EQ(crc_macro, crc_hw, "Macro should dispatch to hardware function");
+  REQUIRE((crc_macro) == (crc_hw));
 }
 
 /* ============================================================================
@@ -320,7 +320,7 @@ TEST_CASE("crc32_hw/special_characters", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, strlen(data));
   uint32_t crc_sw = asciichat_crc32_sw(data, strlen(data));
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of special chars should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/unicode_data", "[crc32_hw]") {
@@ -328,7 +328,7 @@ TEST_CASE("crc32_hw/unicode_data", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, strlen(data));
   uint32_t crc_sw = asciichat_crc32_sw(data, strlen(data));
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of unicode should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/null_bytes_in_data", "[crc32_hw]") {
@@ -336,7 +336,7 @@ TEST_CASE("crc32_hw/null_bytes_in_data", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, sizeof(data));
   uint32_t crc_sw = asciichat_crc32_sw(data, sizeof(data));
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 with null bytes should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/repeating_pattern", "[crc32_hw]") {
@@ -348,7 +348,7 @@ TEST_CASE("crc32_hw/repeating_pattern", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, sizeof(data));
   uint32_t crc_sw = asciichat_crc32_sw(data, sizeof(data));
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of repeating pattern should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 TEST_CASE("crc32_hw/alternating_pattern", "[crc32_hw]") {
@@ -360,7 +360,7 @@ TEST_CASE("crc32_hw/alternating_pattern", "[crc32_hw]") {
   uint32_t crc_hw = asciichat_crc32_hw(data, sizeof(data));
   uint32_t crc_sw = asciichat_crc32_sw(data, sizeof(data));
 
-  ASCIICHAT_REQUIRE_EQ(crc_hw, crc_sw, "Hardware and software CRC32 of alternating pattern should match");
+  REQUIRE((crc_hw) == (crc_sw));
 }
 
 /* ============================================================================
@@ -374,8 +374,8 @@ TEST_CASE("crc32_hw/consistent_results", "[crc32_hw]") {
   uint32_t crc2 = asciichat_crc32_hw(data, strlen(data));
   uint32_t crc3 = asciichat_crc32_hw(data, strlen(data));
 
-  ASCIICHAT_REQUIRE_EQ(crc1, crc2, "Multiple CRC32 calls should return same result");
-  ASCIICHAT_REQUIRE_EQ(crc2, crc3, "Multiple CRC32 calls should return same result");
+  REQUIRE((crc1) == (crc2));
+  REQUIRE((crc2) == (crc3));
 }
 
 TEST_CASE("crc32_hw/sw_consistent_results", "[crc32_hw]") {
@@ -385,6 +385,6 @@ TEST_CASE("crc32_hw/sw_consistent_results", "[crc32_hw]") {
   uint32_t crc2 = asciichat_crc32_sw(data, strlen(data));
   uint32_t crc3 = asciichat_crc32_sw(data, strlen(data));
 
-  ASCIICHAT_REQUIRE_EQ(crc1, crc2, "Multiple software CRC32 calls should return same result");
-  ASCIICHAT_REQUIRE_EQ(crc2, crc3, "Multiple software CRC32 calls should return same result");
+  REQUIRE((crc1) == (crc2));
+  REQUIRE((crc2) == (crc3));
 }

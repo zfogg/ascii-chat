@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <libplatform/system.h>
 #include <ascii-chat/log/log.h>
@@ -14,37 +14,37 @@ static void setup(void) {
 
 TEST_CASE("subprocess_contract/closed_gate_with_ignored_sigpipe_does_not_block", "[subprocess_contract]") {
   int gate[2];
-  ASCIICHAT_REQUIRE_EQ(pipe(gate), 0);
+  REQUIRE((pipe(gate)) == (0));
   close(gate[0]);
   struct sigaction ignore = {.sa_handler = SIG_IGN}, previous;
   sigemptyset(&ignore.sa_mask);
-  ASCIICHAT_REQUIRE_EQ(sigaction(SIGPIPE, &ignore, &previous), 0);
+  REQUIRE((sigaction(SIGPIPE, &ignore, &previous)) == (0));
   bool released = terminal_release_subprocess_gate(gate[1]);
-  ASCIICHAT_REQUIRE_EQ(sigaction(SIGPIPE, &previous, NULL), 0);
+  REQUIRE((sigaction(SIGPIPE, &previous, NULL)) == (0));
   close(gate[1]);
-  ASCIICHAT_REQUIRE_NOT(released);
+  REQUIRE(!(released));
 }
 
 TEST_CASE("subprocess_contract/capture_preserves_empty_arguments_and_shell_metacharacters", "[subprocess_contract]") {
   const char *args[] = {"printf", "<%s>|<%s>|<%s>|<%s>", "", "two words", "$(echo changed);*", "single'quote", NULL};
   char output[256];
-  ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("/usr/bin/printf", args, output, sizeof(output), NULL, NULL), 0);
-  ASCIICHAT_REQUIRE_STR_EQ(output, "<>|<two words>|<$(echo changed);*>|<single'quote>");
+  REQUIRE((platform_execute_subprocess("/usr/bin/printf", args, output, sizeof(output), NULL, NULL)) == (0));
+  REQUIRE(std::strcmp((output), ("<>|<two words>|<$(echo changed);*>|<single'quote>")) == 0);
 }
 TEST_CASE("subprocess_contract/executable_is_independent_of_display_name_and_exit_status_is_preserved", "[subprocess_contract]") {
   const char *args[] = {"display-name", "%s", "literal", NULL};
   char output[32];
-  ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("/usr/bin/printf", args, output, sizeof(output), NULL, NULL), 0);
-  ASCIICHAT_REQUIRE_STR_EQ(output, "literal");
+  REQUIRE((platform_execute_subprocess("/usr/bin/printf", args, output, sizeof(output), NULL, NULL)) == (0));
+  REQUIRE(std::strcmp((output), ("literal")) == 0);
   const char *exit_args[] = {"sh", "-c", "exit 23", NULL};
-  ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("/bin/sh", exit_args, output, sizeof(output), NULL, NULL), 23);
-  ASCIICHAT_REQUIRE_STR_EQ(output, "");
-  ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("/bin/sh", exit_args, NULL, 0, NULL, NULL), 23);
+  REQUIRE((platform_execute_subprocess("/bin/sh", exit_args, output, sizeof(output), NULL, NULL)) == (23));
+  REQUIRE(std::strcmp((output), ("")) == 0);
+  REQUIRE((platform_execute_subprocess("/bin/sh", exit_args, NULL, 0, NULL, NULL)) == (23));
   const char *missing[] = {"missing", NULL};
-  ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("/definitely-missing-ascii-chat-program", missing, output, sizeof(output),
-                                           NULL, NULL,
+  REQUIRE(platform_execute_subprocess("/definitely-missing-ascii-chat-program", missing, output, sizeof(output),
+                                           NULL, NULL),
                127);
-  ASCIICHAT_REQUIRE_STR_EQ(output, "");
+  REQUIRE(std::strcmp(output, "") == 0);
 }
 TEST_CASE("subprocess_contract/captured_output_has_exact_capacity_and_overflow_is_drained", "[subprocess_contract]") {
   const char *small[] = {"printf", "abcd", NULL};
@@ -52,28 +52,28 @@ TEST_CASE("subprocess_contract/captured_output_has_exact_capacity_and_overflow_i
     char output[5];
     char guard;
   } buffer = {.guard = 'G'};
-  ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("/usr/bin/printf", small, buffer.output, 5, NULL, NULL), 0);
-  ASCIICHAT_REQUIRE_STR_EQ(buffer.output, "abcd");
-  ASCIICHAT_REQUIRE_EQ(buffer.guard, 'G');
-  ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("/usr/bin/printf", small, buffer.output, 4, NULL, NULL), -1);
-  ASCIICHAT_REQUIRE_STR_EQ(buffer.output, "abc");
-  ASCIICHAT_REQUIRE_EQ(buffer.guard, 'G');
-  ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("/usr/bin/printf", small, buffer.output, 1, NULL, NULL), -1);
-  ASCIICHAT_REQUIRE_STR_EQ(buffer.output, "");
-  ASCIICHAT_REQUIRE_EQ(buffer.guard, 'G');
+  REQUIRE(platform_execute_subprocess("/usr/bin/printf", small, buffer.output, 5, NULL, NULL) == 0);
+  REQUIRE(std::strcmp(buffer.output, "abcd") == 0);
+  REQUIRE(buffer.guard == 'G');
+  REQUIRE(platform_execute_subprocess("/usr/bin/printf", small, buffer.output, 4, NULL, NULL) == -1);
+  REQUIRE(std::strcmp(buffer.output, "abc") == 0);
+  REQUIRE(buffer.guard == 'G');
+  REQUIRE(platform_execute_subprocess("/usr/bin/printf", small, buffer.output, 1, NULL, NULL) == -1);
+  REQUIRE(std::strcmp(buffer.output, "") == 0);
+  REQUIRE(buffer.guard == 'G');
   const char *large[] = {"sh", "-c", "head -c 131072 /dev/zero", NULL};
-  ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("/bin/sh", large, buffer.output, sizeof(buffer.output), NULL, NULL), -1);
-  ASCIICHAT_REQUIRE_EQ(buffer.output[4], '\0');
-  ASCIICHAT_REQUIRE_EQ(buffer.guard, 'G');
+  REQUIRE(platform_execute_subprocess("/bin/sh", large, buffer.output, sizeof(buffer.output), NULL, NULL) == -1);
+  REQUIRE(buffer.output[4] == '\0');
+  REQUIRE(buffer.guard == 'G');
 }
 TEST_CASE("subprocess_contract/invalid_parameters_and_signal_termination_report_failure", "[subprocess_contract]") {
   const char *args[] = {"sh", "-c", "kill -TERM $$", NULL};
   char output[16];
-  ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess(NULL, args, output, sizeof(output), NULL, NULL), -1);
-  ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("/bin/sh", NULL, output, sizeof(output), NULL, NULL), -1);
+  REQUIRE(platform_execute_subprocess(NULL, args, output, sizeof(output), NULL, NULL) == -1);
+  REQUIRE(platform_execute_subprocess("/bin/sh", NULL, output, sizeof(output), NULL, NULL) == -1);
   const char *empty[] = {NULL};
-  ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("/bin/sh", empty, output, sizeof(output), NULL, NULL), -1);
-  ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("/bin/sh", args, output, sizeof(output), NULL, NULL), -1);
-  ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("/bin/sh", args, NULL, 0, NULL, NULL), -1);
+  REQUIRE(platform_execute_subprocess("/bin/sh", empty, output, sizeof(output), NULL, NULL) == -1);
+  REQUIRE(platform_execute_subprocess("/bin/sh", args, output, sizeof(output), NULL, NULL) == -1);
+  REQUIRE(platform_execute_subprocess("/bin/sh", args, NULL, 0, NULL, NULL) == -1);
 }
 #endif

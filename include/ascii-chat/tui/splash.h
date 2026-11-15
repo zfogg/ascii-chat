@@ -19,6 +19,10 @@
 
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Forward declare to avoid circular includes
 struct session_display_ctx;
 typedef struct session_display_ctx session_display_ctx_t;
@@ -224,3 +228,7 @@ void splash_set_discovery_session(const char *session_string, bool joining);
 
 /** Reset discovery presentation after the animation has been joined. */
 void splash_clear_discovery_session(void);
+
+#ifdef __cplusplus
+}
+#endif

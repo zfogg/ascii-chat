@@ -1,4 +1,3 @@
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/network/crc32.h>
 #include <array>

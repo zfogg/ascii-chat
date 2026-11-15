@@ -20,6 +20,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Configuration
 /*
  * Keep roughly 16 MiB of formatted logs in the interactive history.  The
@@ -98,3 +102,7 @@ void session_log_buffer_append(session_log_buffer_t *buf, const char *message);
  * @return Number of entries actually copied (may be less than max_count)
  */
 size_t session_log_buffer_get_recent(session_log_buffer_t *buf, session_log_entry_t *out_entries, size_t max_count);
+
+#ifdef __cplusplus
+}
+#endif

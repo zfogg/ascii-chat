@@ -48,6 +48,10 @@
 #include <stddef.h>
 #include "../common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * IP Address Validation Functions
  * @{
@@ -1057,3 +1061,7 @@ int extract_ip_from_address(const char *addr_with_port, char *ip_out, size_t ip_
 const char *get_ip_type_string(const char *ip);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

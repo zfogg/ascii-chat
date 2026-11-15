@@ -3,6 +3,10 @@
 #include <ascii-chat/options/options.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Runtime edits are applied to the latest snapshot under the writer mutex. */
 typedef enum { OPTIONS_VALUE_INT, OPTIONS_VALUE_BOOL, OPTIONS_VALUE_DOUBLE, OPTIONS_VALUE_STRING } options_value_type_t;
 typedef enum { OPTIONS_ASSIGN, OPTIONS_TOGGLE, OPTIONS_ADD, OPTIONS_CYCLE } options_operation_t;
@@ -75,3 +79,7 @@ asciichat_error_t options_apply_json(const char *json, size_t length, uint64_t e
                                      options_origin_t origin, options_patch_result_t *result);
 /** Caller releases JSON with SAFE_FREE. Only public runtime fields are serialized. */
 char *options_values_json(const options_t *values, bool remote_only);
+
+#ifdef __cplusplus
+}
+#endif

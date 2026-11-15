@@ -1,11 +1,10 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/audio/visualization.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/video/anim/waveform.h>
 #include <ascii-chat/video/anim/fft.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
@@ -17,25 +16,25 @@ static void enable_visualization(void) {
   options_t options = *options_get();
   options.waveform = true;
   options.fft = true;
-  ASCIICHAT_REQUIRE_EQ(options_state_set(&options), ASCIICHAT_OK);
+  REQUIRE((options_state_set(&options)) == (ASCIICHAT_OK));
 }
 TEST_CASE("audio_visualization/fft_refreshes_on_a_bounded_cadence", "[audio_visualization]") {
   float samples[48000] = {0};
   audio_visualization_submit(AUDIO_VISUALIZATION_SOURCE_MIC, samples, 48000);
   char *quiet = audio_visualization_render_fft(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, false, 0, false, false);
-  ASCIICHAT_REQUIRE_NOT_NULL(quiet);
+  REQUIRE((quiet) != nullptr);
   uint64_t quiet_finished = time_get_ns();
   for (size_t i = 0; i < 48000; ++i)
     samples[i] = (float)sin(2 * 3.141592653589793 * i / 48.0);
   audio_visualization_submit(AUDIO_VISUALIZATION_SOURCE_MIC, samples, 48000);
   char *cached = audio_visualization_render_fft(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, false, 0, false, false);
-  ASCIICHAT_REQUIRE_NOT_NULL(cached);
+  REQUIRE((cached) != nullptr);
   if (time_get_ns() - quiet_finished < 50 * NS_PER_MS_INT)
-    ASCIICHAT_CHECK_STR_EQ(quiet, cached);
+    CHECK(std::strcmp((quiet), (cached)) == 0);
   platform_sleep_ms(150);
   char *updated = audio_visualization_render_fft(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, false, 0, false, false);
-  ASCIICHAT_REQUIRE_NOT_NULL(updated);
-  ASCIICHAT_CHECK_STR_NE(quiet, updated);
+  REQUIRE((updated) != nullptr);
+  CHECK(std::strcmp((quiet), (updated)) != 0);
   SAFE_FREE(quiet);
   SAFE_FREE(cached);
   SAFE_FREE(updated);
@@ -51,18 +50,18 @@ TEST_CASE("audio_visualization/clips_invalid_samples_and_mixes_sources_without_a
   audio_visualization_read(AUDIO_VISUALIZATION_SOURCE_MIC, output, 6);
   float expected[] = {0, 0, 0, 1, -1, 0.25f};
   for (size_t i = 0; i < 6; ++i)
-    ASCIICHAT_REQUIRE_FLOAT_EQ(output[i], expected[i], 0.00001);
+    REQUIRE((output[i]) == Catch::Approx(expected[i]));
   audio_visualization_read(AUDIO_VISUALIZATION_SOURCE_LOCAL_MIX, output, 6);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(output[5], 0.75, 0.00001);
+  REQUIRE((output[5]) == Catch::Approx(0.75));
   audio_visualization_read(AUDIO_VISUALIZATION_SOURCE_MIX, output, 6);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(output[5], 1.0, 0.00001);
+  REQUIRE((output[5]) == Catch::Approx(1.0));
   audio_visualization_read((audio_visualization_source_t)-1, output, 6);
   for (size_t i = 0; i < 6; ++i)
-    ASCIICHAT_REQUIRE_FLOAT_EQ(output[i], 0, 0.00001);
+    REQUIRE((output[i]) == Catch::Approx(0));
   audio_visualization_read(AUDIO_VISUALIZATION_SOURCE_MIC, NULL, 6);
   audio_visualization_submit(AUDIO_VISUALIZATION_SOURCE_MIC, NULL, 6);
   audio_visualization_submit(AUDIO_VISUALIZATION_SOURCE_MIX, media, 6);
-  ASCIICHAT_REQUIRE_FLOAT_EQ(microphone[3], 2.0, 0.00001);
+  REQUIRE((microphone[3]) == Catch::Approx(2.0));
 }
 
 TEST_CASE("audio_visualization/ring_wrap_preserves_latest_samples_and_zero_pads_older_history", "[audio_visualization]") {
@@ -74,9 +73,9 @@ TEST_CASE("audio_visualization/ring_wrap_preserves_latest_samples_and_zero_pads_
   float *output = SAFE_MALLOC(total * sizeof(float), float *);
   audio_visualization_read(AUDIO_VISUALIZATION_SOURCE_MIC, output, total);
   for (size_t i = 0; i < 10; ++i)
-    ASCIICHAT_REQUIRE_FLOAT_EQ(output[i], 0, 0.00001);
+    REQUIRE((output[i]) == Catch::Approx(0));
   for (size_t i = 10; i < total; ++i)
-    ASCIICHAT_REQUIRE_FLOAT_EQ(output[i], input[i], 0.00001);
+    REQUIRE((output[i]) == Catch::Approx(input[i]));
   SAFE_FREE(output);
   SAFE_FREE(input);
 }
@@ -92,29 +91,29 @@ TEST_CASE("audio_visualization/waveform_and_fft_render_bounded_plain_and_colored
     for (int color = 0; color < 3; ++color) {
       options_t options = *options_get();
       options.render_mode = modes[i];
-      ASCIICHAT_REQUIRE_EQ(options_state_set(&options), ASCIICHAT_OK);
+      REQUIRE((options_state_set(&options)) == (ASCIICHAT_OK));
       char *wave = audio_visualization_render_waveform(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, color != 0, color, true, true);
       char *fft = audio_visualization_render_fft(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, color != 0, color, false, false);
-      ASCIICHAT_REQUIRE_NOT_NULL(wave);
-      ASCIICHAT_REQUIRE_NOT_NULL(fft);
-      ASCIICHAT_REQUIRE_GT(strlen(wave), 0);
-      ASCIICHAT_REQUIRE_GT(strlen(fft), 0);
+      REQUIRE((wave) != nullptr);
+      REQUIRE((fft) != nullptr);
+      REQUIRE((strlen(wave)) > (0));
+      REQUIRE((strlen(fft)) > (0));
       size_t rows = 0;
       for (const char *p = wave; *p; ++p)
         rows += *p == '\n';
-      ASCIICHAT_REQUIRE_EQ(rows, 8);
+      REQUIRE((rows) == (8));
       if (color == 0) {
-        ASCIICHAT_REQUIRE_NULL(strchr(wave, '\033'));
-        ASCIICHAT_REQUIRE_NULL(strchr(fft, '\033'));
+        REQUIRE((strchr(wave, '\033')) == nullptr);
+        REQUIRE((strchr(fft, '\033')) == nullptr);
       } else {
-        ASCIICHAT_REQUIRE_NOT_NULL(strchr(wave, '\033'));
-        ASCIICHAT_REQUIRE_NOT_NULL(strchr(fft, '\033'));
+        REQUIRE((strchr(wave, '\033')) != nullptr);
+        REQUIRE((strchr(fft, '\033')) != nullptr);
       }
       SAFE_FREE(wave);
       SAFE_FREE(fft);
     }
-  ASCIICHAT_REQUIRE_NULL(audio_visualization_render_waveform(7, 8, AUDIO_VISUALIZATION_SOURCE_MIC, false, 0, false, false));
-  ASCIICHAT_REQUIRE_NULL(audio_visualization_render_waveform(513, 8, AUDIO_VISUALIZATION_SOURCE_MIC, false, 0, false, false));
-  ASCIICHAT_REQUIRE_NULL(audio_visualization_render_fft(16, 3, AUDIO_VISUALIZATION_SOURCE_MIC, false, 0, false, false));
-  ASCIICHAT_REQUIRE_NULL(audio_visualization_render_fft(16, 8, AUDIO_VISUALIZATION_SOURCE_COUNT, false, 0, false, false));
+  REQUIRE((audio_visualization_render_waveform(7, 8, AUDIO_VISUALIZATION_SOURCE_MIC, false, 0, false, false)) == nullptr);
+  REQUIRE((audio_visualization_render_waveform(513, 8, AUDIO_VISUALIZATION_SOURCE_MIC, false, 0, false, false)) == nullptr);
+  REQUIRE((audio_visualization_render_fft(16, 3, AUDIO_VISUALIZATION_SOURCE_MIC, false, 0, false, false)) == nullptr);
+  REQUIRE((audio_visualization_render_fft(16, 8, AUDIO_VISUALIZATION_SOURCE_COUNT, false, 0, false, false)) == nullptr);
 }

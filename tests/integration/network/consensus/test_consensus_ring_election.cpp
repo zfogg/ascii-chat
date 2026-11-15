@@ -1,3 +1,4 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file test_consensus_ring_election.c
  * @brief Integration test for ring consensus protocol
@@ -10,7 +11,6 @@
  * - All participants converge on same elected host
  */
 
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/network/consensus/coordinator.h>
 #include <ascii-chat/tests/logging.h>
@@ -149,19 +149,19 @@ TEST_CASE("consensus_integration/topology_formation", "[consensus_integration]")
   // Create topology for each participant
   for (int i = 0; i < 4; i++) {
     asciichat_error_t err = consensus_topology_create(participants, 4, participants[i], &parts[i].topology);
-    ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+    REQUIRE((err) == (ASCIICHAT_OK));
   }
 
   // Verify positions (should be sorted lexicographically)
   for (int i = 0; i < 4; i++) {
     int pos = consensus_topology_get_position(parts[i].topology);
-    ASCIICHAT_REQUIRE_EQ(pos, i, "Participant %d has wrong position %d", i, pos);
+    REQUIRE((pos) == (i));
   }
 
   // Verify leader is last
-  ASCIICHAT_REQUIRE_EQ(consensus_topology_am_leader(parts[3].topology), true);
+  REQUIRE((consensus_topology_am_leader(parts[3].topology)) == (true));
   for (int i = 0; i < 3; i++) {
-    ASCIICHAT_REQUIRE_EQ(consensus_topology_am_leader(parts[i].topology), false);
+    REQUIRE((consensus_topology_am_leader(parts[i].topology)) == (false));
   }
 
   // Cleanup
@@ -197,15 +197,15 @@ TEST_CASE("consensus_integration/ring_navigation", "[consensus_integration]") {
 
   // Participant 0 (100) should have next=101
   consensus_topology_get_next(parts[0].topology, next_id);
-  ASCIICHAT_REQUIRE_EQ(next_id[3], 101);
+  REQUIRE((next_id[3]) == (101));
 
   // Participant 1 (101) should have next=102
   consensus_topology_get_next(parts[1].topology, next_id);
-  ASCIICHAT_REQUIRE_EQ(next_id[3], 102);
+  REQUIRE((next_id[3]) == (102));
 
   // Participant 2 (102) should have next=100 (wraparound)
   consensus_topology_get_next(parts[2].topology, next_id);
-  ASCIICHAT_REQUIRE_EQ(next_id[3], 100);
+  REQUIRE((next_id[3]) == (100));
 
   // Cleanup
   for (int i = 0; i < 3; i++) {
@@ -240,16 +240,16 @@ TEST_CASE("consensus_integration/complete_election_flow", "[consensus_integratio
   scores[2] = consensus_election_compute_score(&metrics[2]);
   scores[3] = consensus_election_compute_score(&metrics[3]);
 
-  ASCIICHAT_REQUIRE_GT(scores[1], scores[2], "Participant 2 (LAN) should score higher than 3");
-  ASCIICHAT_REQUIRE_GT(scores[2], scores[0], "Participant 3 should score higher than 1");
+  REQUIRE((scores[1]) > (scores[2]));
+  REQUIRE((scores[2]) > (scores[0]));
 
   // Run election
   int best_idx, backup_idx;
   asciichat_error_t err = consensus_election_choose_hosts(metrics, 4, &best_idx, &backup_idx);
 
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(best_idx, 1, "Participant 2 (index 1) should be elected as best host");
-  ASCIICHAT_REQUIRE_EQ(backup_idx, 2, "Participant 3 (index 2) should be elected as backup");
+  REQUIRE((err) == (ASCIICHAT_OK));
+  REQUIRE((best_idx) == (1));
+  REQUIRE((backup_idx) == (2));
 
   // Verify all participants would agree on this election
   uint8_t announced_host[16], announced_backup[16];
@@ -259,8 +259,8 @@ TEST_CASE("consensus_integration/complete_election_flow", "[consensus_integratio
   bool valid = false;
   err = consensus_election_verify(metrics, 4, announced_host, announced_backup, &valid);
 
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(valid, true, "Election result should be verifiable by all participants");
+  REQUIRE((err) == (ASCIICHAT_OK));
+  REQUIRE((valid) == (true));
 }
 
 /**
@@ -276,21 +276,21 @@ TEST_CASE("consensus_integration/state_machine_transitions", "[consensus_integra
 
   // Create topology
   asciichat_error_t err = consensus_topology_create(participants, 2, participants[0], &topo);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   // Create state machine
   err = consensus_state_create(participants[0], topo, &state);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   // Initial state should be IDLE
   consensus_state_machine_t current = consensus_state_get_current_state(state);
-  ASCIICHAT_REQUIRE_EQ(current, CONSENSUS_STATE_IDLE);
+  REQUIRE((current) == (CONSENSUS_STATE_IDLE));
 
   // Transition to COLLECTING
   err = consensus_state_start_collection(state);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+  REQUIRE((err) == (ASCIICHAT_OK));
   current = consensus_state_get_current_state(state);
-  ASCIICHAT_REQUIRE_EQ(current, CONSENSUS_STATE_COLLECTING);
+  REQUIRE((current) == (CONSENSUS_STATE_COLLECTING));
 
   // Add some metrics
   participant_metrics_t m1 = {0};
@@ -301,7 +301,7 @@ TEST_CASE("consensus_integration/state_machine_transitions", "[consensus_integra
   m1.stun_probe_success_pct = 100;
 
   err = consensus_state_add_metrics(state, &m1);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   participant_metrics_t m2 = {0};
   make_test_id(m2.participant_id, 20);
@@ -311,17 +311,17 @@ TEST_CASE("consensus_integration/state_machine_transitions", "[consensus_integra
   m2.stun_probe_success_pct = 95;
 
   err = consensus_state_add_metrics(state, &m2);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   // Transition to COLLECTION_COMPLETE
   err = consensus_state_collection_complete(state);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   // Should transition to ELECTION_START (I am leader, position 0, which is NOT last, but let's check)
   // Actually, position 0 means I'm first when sorted, and last position is leader
   // So I'm not leader, should go back to IDLE
   current = consensus_state_get_current_state(state);
-  ASCIICHAT_REQUIRE_EQ(current, CONSENSUS_STATE_IDLE);
+  REQUIRE((current) == (CONSENSUS_STATE_IDLE));
 
   // Cleanup
   consensus_state_destroy(state);
@@ -348,16 +348,16 @@ TEST_CASE("consensus_integration/coordinator_lifecycle", "[consensus_integration
 
   // Create coordinator (as leader - position 2)
   asciichat_error_t err = consensus_coordinator_create(participants[2], parts[2].topology, test_election_callback, &parts[2], &parts[2].coordinator);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
+  REQUIRE((err) == (ASCIICHAT_OK));
 
   // Verify initial state
   consensus_state_machine_t coord_state = consensus_coordinator_get_state(parts[2].coordinator);
-  ASCIICHAT_REQUIRE_EQ(coord_state, CONSENSUS_STATE_IDLE);
+  REQUIRE((coord_state) == (CONSENSUS_STATE_IDLE));
 
   // Check that next round is scheduled
   uint64_t time_until_next = consensus_coordinator_time_until_next_round(parts[2].coordinator);
-  ASCIICHAT_REQUIRE_GT(time_until_next, 0);
-  ASCIICHAT_REQUIRE(time_until_next <= 5 * 60 * 1000000000ULL);
+  REQUIRE((time_until_next) > (0));
+  REQUIRE(time_until_next <= 5 * 60 * 1000000000ULL);
 
   // Cleanup
   for (int i = 0; i < 3; i++) {
@@ -388,9 +388,9 @@ TEST_CASE("consensus_integration/multiple_election_rounds", "[consensus_integrat
   // Verify first round election - participants 0 and 1 should compete
   int best_idx_1, backup_idx_1;
   asciichat_error_t err = consensus_election_choose_hosts(metrics, 3, &best_idx_1, &backup_idx_1);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(best_idx_1 == 0 || best_idx_1 == 1, "Round 1: Participant 0 or 1 should be best");
-  ASCIICHAT_REQUIRE_EQ(backup_idx_1, (best_idx_1 == 0) ? 1 : 0, "Round 1: The other participant should be backup");
+  REQUIRE((err) == (ASCIICHAT_OK));
+  REQUIRE(best_idx_1 == 0 || best_idx_1 == 1);
+  REQUIRE((backup_idx_1) == ((best_idx_1 == 0) ? 1 : 0));
 
   // Modify metrics - make participant 1 significantly better
   metrics[0].nat_tier = 3;         // Participant 0 gets worse NAT
@@ -401,7 +401,7 @@ TEST_CASE("consensus_integration/multiple_election_rounds", "[consensus_integrat
   // Verify second round election (participant 1 should now clearly be best)
   int best_idx_2, backup_idx_2;
   err = consensus_election_choose_hosts(metrics, 3, &best_idx_2, &backup_idx_2);
-  ASCIICHAT_REQUIRE_EQ(err, ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(best_idx_2, 1, "Round 2: Participant 1 should now be clearly best");
-  ASCIICHAT_REQUIRE_NE(best_idx_1, best_idx_2, "Election should change with metric changes");
+  REQUIRE((err) == (ASCIICHAT_OK));
+  REQUIRE((best_idx_2) == (1));
+  REQUIRE((best_idx_1) != (best_idx_2));
 }

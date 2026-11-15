@@ -9,6 +9,10 @@
 #include <stdint.h>
 #include <ascii-chat/video/ascii/common.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if SIMD_SUPPORT_AVX2
 
 // Thread-local storage for AVX2 working buffers
@@ -25,3 +29,7 @@ void avx2_compute_luminance_32(const uint8_t *r_vals, const uint8_t *g_vals, con
 
 #endif // SIMD_SUPPORT_AVX2
 #endif // AVX2_COMMON_H
+
+#ifdef __cplusplus
+}
+#endif

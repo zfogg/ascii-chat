@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include "common/session/display.h"
 #include "common/session/frame_validation.h"
@@ -14,7 +14,7 @@ static image_t *image;
 static void setup(void) {
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
-  ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
+  REQUIRE((options_state_init()) == (ASCIICHAT_OK));
   options_t *options = SAFE_MALLOC(sizeof(*options), options_t *);
   *options = options_t_new();
   options->width = 64;
@@ -23,13 +23,13 @@ static void setup(void) {
   options->color_mode = TERM_COLOR_NONE;
   options->render_mode = RENDER_MODE_FOREGROUND;
   options->force_utf8 = UTF8_SETTING_TRUE;
-  ASCIICHAT_REQUIRE_EQ(options_state_set(options), ASCIICHAT_OK);
+  REQUIRE((options_state_set(options)) == (ASCIICHAT_OK));
   SAFE_FREE(options);
   session_display_config_t config = {.snapshot_mode = true, .palette_type = PALETTE_CUSTOM, .custom_palette = ".#", .color_mode = TERM_COLOR_NONE};
   display = session_display_create(&config);
-  ASCIICHAT_REQUIRE_NOT_NULL(display);
+  REQUIRE((display) != nullptr);
   image = image_new(8, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(image);
+  REQUIRE((image) != nullptr);
   for (int y = 0; y < 4; ++y)
     for (int x = 0; x < 8; ++x) {
       uint8_t gray = y < 2 ? (x < 4 ? 0 : 255) : (x < 4 ? 170 : 85);
@@ -50,23 +50,23 @@ TEST_CASE("session_display_conversion/flips_match_explicit_quadrants_and_never_m
   memcpy(original, image->pixels, sizeof(original));
   const uint8_t quadrants[4][4] = {{0, 255, 170, 85}, {255, 0, 85, 170}, {170, 85, 0, 255}, {85, 170, 255, 0}};
   image_t *expected = image_new(8, 4);
-  ASCIICHAT_REQUIRE_NOT_NULL(expected);
+  REQUIRE((expected) != nullptr);
   for (unsigned flips = 0; flips < 4; ++flips) {
     for (int y = 0; y < 4; ++y)
       for (int x = 0; x < 8; ++x) {
         uint8_t gray = quadrants[flips][(y >= 2 ? 2 : 0) + (x >= 4)];
         expected->pixels[y * 8 + x] = (rgb_pixel_t){gray, gray, gray};
       }
-    ASCIICHAT_REQUIRE_EQ(options_set_bool("flip_x", false), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(options_set_bool("flip_y", false), ASCIICHAT_OK);
+    REQUIRE((options_set_bool("flip_x", false)) == (ASCIICHAT_OK));
+    REQUIRE((options_set_bool("flip_y", false)) == (ASCIICHAT_OK));
     char *reference = session_display_convert_to_ascii(display, expected);
-    ASCIICHAT_REQUIRE_NOT_NULL(reference);
-    ASCIICHAT_REQUIRE_EQ(options_set_bool("flip_x", (flips & 1) != 0), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(options_set_bool("flip_y", (flips & 2) != 0), ASCIICHAT_OK);
+    REQUIRE((reference) != nullptr);
+    REQUIRE((options_set_bool("flip_x", (flips & 1) != 0)) == (ASCIICHAT_OK));
+    REQUIRE((options_set_bool("flip_y", (flips & 2) != 0)) == (ASCIICHAT_OK));
     char *actual = session_display_convert_to_ascii_reuse(display, image);
-    ASCIICHAT_REQUIRE_NOT_NULL(actual);
-    ASCIICHAT_REQUIRE_STR_EQ(actual, reference);
-    ASCIICHAT_REQUIRE_ARRAY_EQ(image->pixels, original, sizeof(original));
+    REQUIRE((actual) != nullptr);
+    REQUIRE(std::strcmp((actual), (reference)) == 0);
+    REQUIRE(std::memcmp((image->pixels), (original), (sizeof(original))) == 0);
     session_display_release_ascii(display, actual);
     SAFE_FREE(reference);
   }
@@ -75,29 +75,29 @@ TEST_CASE("session_display_conversion/flips_match_explicit_quadrants_and_never_m
 
 TEST_CASE("session_display_conversion/reused_output_can_be_followed_by_owned_output_and_a_size_change", "[session_display_conversion]") {
   char *owned = session_display_convert_to_ascii(display, image);
-  ASCIICHAT_REQUIRE_NOT_NULL(owned);
+  REQUIRE((owned) != nullptr);
   char *reused = session_display_convert_to_ascii_reuse(display, image);
-  ASCIICHAT_REQUIRE_NOT_NULL(reused);
-  ASCIICHAT_REQUIRE_STR_EQ(reused, owned);
+  REQUIRE((reused) != nullptr);
+  REQUIRE(std::strcmp((reused), (owned)) == 0);
   session_display_release_ascii(display, reused);
-  ASCIICHAT_REQUIRE_EQ(options_set_int("width", 40), ASCIICHAT_OK);
+  REQUIRE((options_set_int("width", 40)) == (ASCIICHAT_OK));
   char *smaller = session_display_convert_to_ascii_reuse(display, image);
-  ASCIICHAT_REQUIRE_NOT_NULL(smaller);
-  ASCIICHAT_REQUIRE_STR_NE(smaller, owned);
-  ASCIICHAT_REQUIRE_EQ(session_frame_validate(smaller, strlen(smaller), 40, 24), ASCIICHAT_OK);
+  REQUIRE((smaller) != nullptr);
+  REQUIRE(std::strcmp((smaller), (owned)) != 0);
+  REQUIRE((session_frame_validate(smaller, strlen(smaller), 40, 24)) == (ASCIICHAT_OK));
   session_display_release_ascii(display, smaller);
-  ASCIICHAT_REQUIRE_EQ(options_set_int("width", 64), ASCIICHAT_OK);
+  REQUIRE((options_set_int("width", 64)) == (ASCIICHAT_OK));
   reused = session_display_convert_to_ascii_reuse(display, image);
-  ASCIICHAT_REQUIRE_NOT_NULL(reused);
-  ASCIICHAT_REQUIRE_STR_EQ(reused, owned);
+  REQUIRE((reused) != nullptr);
+  REQUIRE(std::strcmp((reused), (owned)) == 0);
   session_display_release_ascii(display, reused);
   SAFE_FREE(owned);
 }
 
 TEST_CASE("session_display_conversion/runtime_renderer_and_palette_change_together", "[session_display_conversion]") {
-  ASCIICHAT_REQUIRE_EQ(options_set_int("palette_type", PALETTE_DIGITAL), ASCIICHAT_OK);
+  REQUIRE((options_set_int("palette_type", PALETTE_DIGITAL)) == (ASCIICHAT_OK));
   char *before = session_display_convert_to_ascii_reuse(display, image);
-  ASCIICHAT_REQUIRE_NOT_NULL(before);
+  REQUIRE((before) != nullptr);
   session_display_release_ascii(display, before);
   options_edit_t edits[] = {
       {.name = "renderer", .type = OPTIONS_VALUE_INT, .value.integer = ASCII_RENDERER_GLYPH},
@@ -105,10 +105,10 @@ TEST_CASE("session_display_conversion/runtime_renderer_and_palette_change_togeth
       {.name = "palette_custom", .type = OPTIONS_VALUE_STRING, .value.string = "@#"},
   };
   options_patch_t patch = {.edits = edits, .count = 3, .expected_revision = OPTIONS_REVISION_ANY};
-  ASCIICHAT_REQUIRE_EQ(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
+  REQUIRE((options_apply_patch(&patch, NULL)) == (ASCIICHAT_OK));
   char *after = session_display_convert_to_ascii_reuse(display, image);
-  ASCIICHAT_REQUIRE_NOT_NULL(after);
-  ASCIICHAT_REQUIRE_NOT_NULL(strpbrk(after, "@#"));
+  REQUIRE((after) != nullptr);
+  REQUIRE((strpbrk(after, "@#")) != nullptr);
   session_display_release_ascii(display, after);
 }
 
@@ -116,55 +116,55 @@ TEST_CASE("session_display_conversion/filters_and_dynamic_rain_leave_the_source_
   rgb_pixel_t original[32];
   memcpy(original, image->pixels, sizeof(original));
   char *plain = session_display_convert_to_ascii(display, image);
-  ASCIICHAT_REQUIRE_NOT_NULL(plain);
+  REQUIRE((plain) != nullptr);
   const color_filter_t filters[] = {COLOR_FILTER_RED, COLOR_FILTER_RAINBOW, COLOR_FILTER_NONE};
   for (size_t i = 0; i < sizeof(filters) / sizeof(filters[0]); ++i) {
-    ASCIICHAT_REQUIRE_EQ(options_set_int("color_filter", filters[i]), ASCIICHAT_OK);
+    REQUIRE((options_set_int("color_filter", filters[i])) == (ASCIICHAT_OK));
     char *ascii = session_display_convert_to_ascii_reuse(display, image);
-    ASCIICHAT_REQUIRE_NOT_NULL(ascii);
-    ASCIICHAT_REQUIRE_ARRAY_EQ(image->pixels, original, sizeof(original));
+    REQUIRE((ascii) != nullptr);
+    REQUIRE(std::memcmp((image->pixels), (original), (sizeof(original))) == 0);
     session_display_release_ascii(display, ascii);
   }
-  ASCIICHAT_REQUIRE_EQ(options_set_bool("matrix_rain", true), ASCIICHAT_OK);
+  REQUIRE((options_set_bool("matrix_rain", true)) == (ASCIICHAT_OK));
   char *rain = session_display_convert_to_ascii_reuse(display, image);
   asciichat_error_context_t error{};
   errno_has(&error);
-  ASCIICHAT_REQUIRE_NOT_NULL(rain, "%s", error.context_message);
+  REQUIRE((rain) != nullptr);
   session_display_release_ascii(display, rain);
-  ASCIICHAT_REQUIRE_EQ(options_set_bool("matrix_rain", false), ASCIICHAT_OK);
+  REQUIRE((options_set_bool("matrix_rain", false)) == (ASCIICHAT_OK));
   char *restored = session_display_convert_to_ascii_reuse(display, image);
-  ASCIICHAT_REQUIRE_NOT_NULL(restored);
-  ASCIICHAT_REQUIRE_STR_EQ(restored, plain);
+  REQUIRE((restored) != nullptr);
+  REQUIRE(std::strcmp((restored), (plain)) == 0);
   session_display_release_ascii(display, restored);
-  ASCIICHAT_REQUIRE_ARRAY_EQ(image->pixels, original, sizeof(original));
+  REQUIRE(std::memcmp((image->pixels), (original), (sizeof(original))) == 0);
   SAFE_FREE(plain);
 }
 
 TEST_CASE("session_display_conversion/display_queries_track_borrowed_reader_and_frame_rate_without_recording", "[session_display_conversion]") {
-  ASCIICHAT_REQUIRE_STR_EQ(session_display_get_palette_chars(display), ".#");
-  ASCIICHAT_REQUIRE_EQ(session_display_get_palette_len(display), 2);
-  ASCIICHAT_REQUIRE_NOT_NULL(session_display_get_luminance_palette(display));
-  ASCIICHAT_REQUIRE_EQ(session_display_get_caps(display)->color_level, TERM_COLOR_NONE);
-  ASCIICHAT_REQUIRE_NOT(session_display_has_render_file(display));
-  ASCIICHAT_REQUIRE_NOT(session_display_has_audio_playback(display));
-  ASCIICHAT_REQUIRE_NOT(session_display_has_first_frame(display));
+  REQUIRE(std::strcmp((session_display_get_palette_chars(display)), (".#")) == 0);
+  REQUIRE((session_display_get_palette_len(display)) == (2));
+  REQUIRE((session_display_get_luminance_palette(display)) != nullptr);
+  REQUIRE((session_display_get_caps(display)->color_level) == (TERM_COLOR_NONE));
+  REQUIRE(!(session_display_has_render_file(display)));
+  REQUIRE(!(session_display_has_audio_playback(display)));
+  REQUIRE(!(session_display_has_first_frame(display)));
   session_display_reset_first_frame(display);
   session_display_set_render_fps(display, 24);
-  ASCIICHAT_REQUIRE_EQ(session_display_get_render_fps(display), 24);
+  REQUIRE((session_display_get_render_fps(display)) == (24));
   session_display_set_render_fps(display, 0);
-  ASCIICHAT_REQUIRE_EQ(session_display_get_render_fps(display), 0);
+  REQUIRE((session_display_get_render_fps(display)) == (0));
   int reader;
   session_display_set_stdin_reader(display, &reader);
-  ASCIICHAT_REQUIRE_EQ(session_display_get_stdin_reader(display), &reader);
+  REQUIRE((session_display_get_stdin_reader(display)) == (&reader));
   session_display_set_stdin_reader(display, NULL);
-  ASCIICHAT_REQUIRE_NULL(session_display_get_stdin_reader(display));
+  REQUIRE((session_display_get_stdin_reader(display)) == nullptr);
   session_display_set_global_context_public(display);
-  ASCIICHAT_REQUIRE_EQ(session_display_get_global_context(), display);
+  REQUIRE((session_display_get_global_context()) == (display));
   session_display_set_snapshot_actual_duration(display, 0.5);
-  ASCIICHAT_REQUIRE_EQ(session_display_finish_render_file(display), ASCIICHAT_OK);
+  REQUIRE((session_display_finish_render_file(display)) == (ASCIICHAT_OK));
   float sample = 0.5f;
-  ASCIICHAT_REQUIRE_EQ(session_display_write_audio(display, &sample, 1), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_NULL(session_display_convert_to_ascii(display, NULL));
+  REQUIRE((session_display_write_audio(display, &sample, 1)) == (ASCIICHAT_OK));
+  REQUIRE((session_display_convert_to_ascii(display, NULL)) == nullptr);
 }
 
 static bool cancel(void *context) {
@@ -174,11 +174,11 @@ static bool cancel(void *context) {
 TEST_CASE("session_display_conversion/cancellation_prevents_context_creation_and_invalid_palette_falls_back", "[session_display_conversion]") {
   unsigned calls = 0;
   session_display_config_t config = {.should_exit_callback = cancel, .callback_data = &calls};
-  ASCIICHAT_REQUIRE_NULL(session_display_create(&config));
-  ASCIICHAT_REQUIRE_EQ(calls, 1);
+  REQUIRE((session_display_create(&config)) == nullptr);
+  REQUIRE((calls) == (1));
   config = (session_display_config_t){.snapshot_mode = true, .palette_type = PALETTE_CUSTOM, .custom_palette = "", .color_mode = TERM_COLOR_NONE};
   session_display_ctx_t *fallback = session_display_create(&config);
-  ASCIICHAT_REQUIRE_NOT_NULL(fallback);
-  ASCIICHAT_REQUIRE_STR_EQ(session_display_get_palette_chars(fallback), get_builtin_palette(PALETTE_STANDARD)->chars);
+  REQUIRE((fallback) != nullptr);
+  REQUIRE(std::strcmp((session_display_get_palette_chars(fallback)), (get_builtin_palette(PALETTE_STANDARD)->chars)) == 0);
   session_display_destroy(fallback);
 }

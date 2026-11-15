@@ -1,10 +1,9 @@
+#include <catch2/catch_test_macros.hpp>
 /**
  * @file crypto_ssh_agent_test.c
  * @brief Unit tests for SSH agent integration
  */
 
-#include <ascii-chat/tests/common.h>
-#include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/ssh/ssh_agent.h>
@@ -23,7 +22,7 @@ TEST_CASE("crypto_ssh_agent/check_availability", "[crypto_ssh_agent]") {
   bool available = ssh_agent_is_available();
 
   // Result depends on environment, but function should execute
-  ASCIICHAT_REQUIRE(available == true || available == false, "Should return boolean");
+  REQUIRE((available == true || available == false));
 }
 
 TEST_CASE("crypto_ssh_agent/availability_without_env", "[crypto_ssh_agent]") {
@@ -41,7 +40,7 @@ TEST_CASE("crypto_ssh_agent/availability_without_env", "[crypto_ssh_agent]") {
 #endif
 
   bool available = ssh_agent_is_available();
-  ASCIICHAT_REQUIRE_EQ(available, false, "Should return false when SSH_AUTH_SOCK not set");
+  REQUIRE((available) == (false));
 
   // Restore environment
   if (strlen(saved_value) > 0) {
@@ -61,7 +60,7 @@ TEST_CASE("crypto_ssh_agent/availability_without_env", "[crypto_ssh_agent]") {
 
 TEST_CASE("crypto_ssh_agent/check_has_key_null_input", "[crypto_ssh_agent]") {
   bool has_key = ssh_agent_has_key(NULL);
-  ASCIICHAT_REQUIRE_EQ(has_key, false, "Should return false for NULL key");
+  REQUIRE((has_key) == (false));
 }
 
 TEST_CASE("crypto_ssh_agent/check_has_key_valid_key", "[crypto_ssh_agent]") {
@@ -80,7 +79,7 @@ TEST_CASE("crypto_ssh_agent/check_has_key_valid_key", "[crypto_ssh_agent]") {
 
   // Should return false (this test key won't actually be in the agent)
   // But function should execute without crashing
-  ASCIICHAT_REQUIRE(has_key == true || has_key == false, "Should return boolean");
+  REQUIRE((has_key == true || has_key == false));
 }
 
 // =============================================================================
@@ -89,7 +88,7 @@ TEST_CASE("crypto_ssh_agent/check_has_key_valid_key", "[crypto_ssh_agent]") {
 
 TEST_CASE("crypto_ssh_agent/add_key_null_private_key", "[crypto_ssh_agent]") {
   asciichat_error_t result = ssh_agent_add_key(NULL, "test_path");
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail with NULL private key");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_ssh_agent/add_key_null_path", "[crypto_ssh_agent]") {
@@ -102,7 +101,7 @@ TEST_CASE("crypto_ssh_agent/add_key_null_path", "[crypto_ssh_agent]") {
 
   // Result depends on whether ssh-agent is available
   // Function should execute without crashing
-  ASCIICHAT_REQUIRE(result == ASCIICHAT_OK || result != ASCIICHAT_OK, "Should return error code");
+  REQUIRE((result == ASCIICHAT_OK || result != ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_ssh_agent/add_key_wrong_type", "[crypto_ssh_agent]") {
@@ -112,7 +111,7 @@ TEST_CASE("crypto_ssh_agent/add_key_wrong_type", "[crypto_ssh_agent]") {
 
   asciichat_error_t result = ssh_agent_add_key(&test_key, "test_path");
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail with non-Ed25519 key");
+  REQUIRE((result) != (ASCIICHAT_OK));
 }
 
 TEST_CASE("crypto_ssh_agent/add_key_without_agent", "[crypto_ssh_agent]") {
@@ -142,7 +141,7 @@ TEST_CASE("crypto_ssh_agent/add_key_without_agent", "[crypto_ssh_agent]") {
 
   asciichat_error_t result = ssh_agent_add_key(&test_key, "/tmp/test_key");
 
-  ASCIICHAT_REQUIRE_NE(result, ASCIICHAT_OK, "Should fail when agent not available");
+  REQUIRE((result) != (ASCIICHAT_OK));
 
   // Restore environment
   if (strlen(saved_value) > 0) {
@@ -163,7 +162,7 @@ TEST_CASE("crypto_ssh_agent/add_key_without_agent", "[crypto_ssh_agent]") {
 TEST_CASE("crypto_ssh_agent/full_workflow_if_agent_available", "[crypto_ssh_agent]") {
   // Skip if agent not available
   if (!ssh_agent_is_available()) {
-    ASCIICHAT_SKIP("SSH agent not available, skipping integration test");
+    SKIP("test skipped");
     return;
   }
 
@@ -190,5 +189,5 @@ TEST_CASE("crypto_ssh_agent/full_workflow_if_agent_available", "[crypto_ssh_agen
   }
 
   // Test passes either way - we're verifying the function doesn't crash
-  ASCIICHAT_REQUIRE(true, "Function executed without crashing");
+  REQUIRE(true);
 }

@@ -1,4 +1,4 @@
-#include <ascii-chat/tests/common.h>
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/messages.h>
@@ -15,19 +15,19 @@ TEST_CASE("packet_messages/error_packets_use_declared_length_and_terminate_every
     memset(output, 0xa5, sizeof(output));
     size_t length = SIZE_MAX;
     asciichat_error_t code = ASCIICHAT_OK;
-    ASCIICHAT_REQUIRE_EQ(packet_parse_error_message(&packet, sizeof(packet), &code, output, capacity, &length), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(code, ERROR_CRYPTO_VERIFICATION);
-    ASCIICHAT_REQUIRE_EQ(length, 5);
+    REQUIRE((packet_parse_error_message(&packet, sizeof(packet), &code, output, capacity, &length)) == (ASCIICHAT_OK));
+    REQUIRE((code) == (ERROR_CRYPTO_VERIFICATION));
+    REQUIRE((length) == (5));
     size_t copied = capacity > 5 ? 5 : capacity - 1;
-    ASCIICHAT_REQUIRE_ARRAY_EQ(output, "hello", copied);
-    ASCIICHAT_REQUIRE_EQ(output[copied], '\0');
-    ASCIICHAT_REQUIRE_EQ((unsigned char)output[capacity], 0xa5);
+    REQUIRE(std::memcmp((output), ("hello"), (copied)) == 0);
+    REQUIRE((output[copied]) == ('\0'));
+    REQUIRE(((unsigned char)output[capacity]) == (0xa5));
   }
   char output[8];
   asciichat_error_t code;
   packet.header.message_length = 0;
-  ASCIICHAT_REQUIRE_EQ(packet_parse_error_message(&packet, sizeof(packet.header), &code, output, sizeof(output), NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_STR_EMPTY(output);
+  REQUIRE((packet_parse_error_message(&packet, sizeof(packet.header), &code, output, sizeof(output), NULL)) == (ASCIICHAT_OK));
+  REQUIRE((output)[0] == '\0');
 }
 
 TEST_CASE("packet_messages/error_packet_rejections_preserve_message_storage", "[packet_messages]") {
@@ -39,20 +39,20 @@ TEST_CASE("packet_messages/error_packet_rejections_preserve_message_storage", "[
   char output[8];
   memset(output, 0xa5, sizeof(output));
   size_t length = SIZE_MAX;
-  ASCIICHAT_REQUIRE_EQ(packet_parse_error_message(NULL, sizeof(packet), &code, output, sizeof(output), &length), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(packet_parse_error_message(&packet, sizeof(packet), NULL, output, sizeof(output), &length), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(packet_parse_error_message(&packet, sizeof(packet), &code, NULL, sizeof(output), &length), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(packet_parse_error_message(&packet, sizeof(packet), &code, output, 0, &length), ERROR_INVALID_PARAM);
+  REQUIRE((packet_parse_error_message(NULL, sizeof(packet), &code, output, sizeof(output), &length)) == (ERROR_INVALID_PARAM));
+  REQUIRE((packet_parse_error_message(&packet, sizeof(packet), NULL, output, sizeof(output), &length)) == (ERROR_INVALID_PARAM));
+  REQUIRE((packet_parse_error_message(&packet, sizeof(packet), &code, NULL, sizeof(output), &length)) == (ERROR_INVALID_PARAM));
+  REQUIRE((packet_parse_error_message(&packet, sizeof(packet), &code, output, 0, &length)) == (ERROR_INVALID_PARAM));
   for (size_t size = 0; size < sizeof(packet.header); ++size)
-    ASCIICHAT_REQUIRE_EQ(packet_parse_error_message(&packet, size, &code, output, sizeof(output), &length), ERROR_INVALID_PARAM);
+    REQUIRE((packet_parse_error_message(&packet, size, &code, output, sizeof(output), &length)) == (ERROR_INVALID_PARAM));
   for (size_t size = sizeof(packet.header); size < sizeof(packet); ++size)
-    ASCIICHAT_REQUIRE_EQ(packet_parse_error_message(&packet, size, &code, output, sizeof(output), &length), ERROR_NETWORK_PROTOCOL);
+    REQUIRE((packet_parse_error_message(&packet, size, &code, output, sizeof(output), &length)) == (ERROR_NETWORK_PROTOCOL));
   packet.header.message_length = HOST_TO_NET_U32(MAX_ERROR_MESSAGE_LENGTH + 1);
-  ASCIICHAT_REQUIRE_EQ(packet_parse_error_message(&packet, sizeof(packet), &code, output, sizeof(output), &length), ERROR_NETWORK_PROTOCOL);
+  REQUIRE((packet_parse_error_message(&packet, sizeof(packet), &code, output, sizeof(output), &length)) == (ERROR_NETWORK_PROTOCOL));
   for (size_t i = 0; i < sizeof(output); ++i)
-    ASCIICHAT_REQUIRE_EQ((unsigned char)output[i], 0xa5);
-  ASCIICHAT_REQUIRE_EQ(length, SIZE_MAX);
-  ASCIICHAT_REQUIRE_EQ(code, ERROR_GENERAL);
+    REQUIRE(((unsigned char)output[i]) == (0xa5));
+  REQUIRE((length) == (SIZE_MAX));
+  REQUIRE((code) == (ERROR_GENERAL));
 }
 
 TEST_CASE("packet_messages/remote_log_levels_directions_flags_and_truncation", "[packet_messages]") {
@@ -72,15 +72,15 @@ TEST_CASE("packet_messages/remote_log_levels_directions_flags_and_truncation", "
         remote_log_direction_t direction;
         uint16_t flags;
         size_t length = SIZE_MAX;
-        ASCIICHAT_REQUIRE_EQ(packet_parse_remote_log(&packet, sizeof(packet), &parsed_level, &direction, &flags, output, capacity, &length), ASCIICHAT_OK);
-        ASCIICHAT_REQUIRE_EQ(parsed_level, level);
-        ASCIICHAT_REQUIRE_EQ(direction, directions[d] == 0xff ? REMOTE_LOG_DIRECTION_UNKNOWN : directions[d]);
-        ASCIICHAT_REQUIRE_EQ(flags, 0xa502);
-        ASCIICHAT_REQUIRE_EQ(length, 6);
+        REQUIRE((packet_parse_remote_log(&packet, sizeof(packet), &parsed_level, &direction, &flags, output, capacity, &length)) == (ASCIICHAT_OK));
+        REQUIRE((parsed_level) == (level));
+        REQUIRE((direction) == (directions[d] == 0xff ? REMOTE_LOG_DIRECTION_UNKNOWN : directions[d]));
+        REQUIRE((flags) == (0xa502));
+        REQUIRE((length) == (6));
         size_t copied = capacity > 6 ? 6 : capacity - 1;
-        ASCIICHAT_REQUIRE_ARRAY_EQ(output, "remote", copied);
-        ASCIICHAT_REQUIRE_EQ(output[copied], '\0');
-        ASCIICHAT_REQUIRE_EQ((unsigned char)output[capacity], 0xa5);
+        REQUIRE(std::memcmp((output), ("remote"), (copied)) == 0);
+        REQUIRE((output[copied]) == ('\0'));
+        REQUIRE(((unsigned char)output[capacity]) == (0xa5));
       }
     }
   }
@@ -89,8 +89,8 @@ TEST_CASE("packet_messages/remote_log_levels_directions_flags_and_truncation", "
   log_level_t level;
   remote_log_direction_t direction;
   uint16_t flags;
-  ASCIICHAT_REQUIRE_EQ(packet_parse_remote_log(&packet, sizeof(packet.header), &level, &direction, &flags, output, sizeof(output), NULL), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_STR_EMPTY(output);
+  REQUIRE((packet_parse_remote_log(&packet, sizeof(packet.header), &level, &direction, &flags, output, sizeof(output), NULL)) == (ASCIICHAT_OK));
+  REQUIRE((output)[0] == '\0');
 }
 
 TEST_CASE("packet_messages/malformed_remote_log_packets_are_rejected_without_writing_message", "[packet_messages]") {
@@ -101,21 +101,21 @@ TEST_CASE("packet_messages/malformed_remote_log_packets_are_rejected_without_wri
   remote_log_direction_t direction;
   uint16_t flags;
   size_t length = SIZE_MAX;
-  ASCIICHAT_REQUIRE_EQ(packet_parse_remote_log(NULL, sizeof(packet), &level, &direction, &flags, output, sizeof(output), &length), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(packet_parse_remote_log(&packet, sizeof(packet), NULL, &direction, &flags, output, sizeof(output), &length), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(packet_parse_remote_log(&packet, sizeof(packet), &level, NULL, &flags, output, sizeof(output), &length), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(packet_parse_remote_log(&packet, sizeof(packet), &level, &direction, NULL, output, sizeof(output), &length), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(packet_parse_remote_log(&packet, sizeof(packet), &level, &direction, &flags, NULL, sizeof(output), &length), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(packet_parse_remote_log(&packet, sizeof(packet), &level, &direction, &flags, output, 0, &length), ERROR_INVALID_PARAM);
+  REQUIRE((packet_parse_remote_log(NULL, sizeof(packet), &level, &direction, &flags, output, sizeof(output), &length)) == (ERROR_INVALID_PARAM));
+  REQUIRE((packet_parse_remote_log(&packet, sizeof(packet), NULL, &direction, &flags, output, sizeof(output), &length)) == (ERROR_INVALID_PARAM));
+  REQUIRE((packet_parse_remote_log(&packet, sizeof(packet), &level, NULL, &flags, output, sizeof(output), &length)) == (ERROR_INVALID_PARAM));
+  REQUIRE((packet_parse_remote_log(&packet, sizeof(packet), &level, &direction, NULL, output, sizeof(output), &length)) == (ERROR_INVALID_PARAM));
+  REQUIRE((packet_parse_remote_log(&packet, sizeof(packet), &level, &direction, &flags, NULL, sizeof(output), &length)) == (ERROR_INVALID_PARAM));
+  REQUIRE((packet_parse_remote_log(&packet, sizeof(packet), &level, &direction, &flags, output, 0, &length)) == (ERROR_INVALID_PARAM));
   for (size_t size = 0; size < sizeof(packet); ++size)
-    ASCIICHAT_REQUIRE_EQ(packet_parse_remote_log(&packet, size, &level, &direction, &flags, output, sizeof(output), &length), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(packet_parse_remote_log(&packet, sizeof(packet), &level, &direction, &flags, output, sizeof(output), &length), ERROR_NETWORK_PROTOCOL);
+    REQUIRE((packet_parse_remote_log(&packet, size, &level, &direction, &flags, output, sizeof(output), &length)) == (ERROR_INVALID_PARAM));
+  REQUIRE((packet_parse_remote_log(&packet, sizeof(packet), &level, &direction, &flags, output, sizeof(output), &length)) == (ERROR_NETWORK_PROTOCOL));
   packet.message_length = HOST_TO_NET_U32(MAX_REMOTE_LOG_MESSAGE_LENGTH + 1);
-  ASCIICHAT_REQUIRE_EQ(packet_parse_remote_log(&packet, sizeof(packet), &level, &direction, &flags, output, sizeof(output), &length), ERROR_NETWORK_PROTOCOL);
+  REQUIRE((packet_parse_remote_log(&packet, sizeof(packet), &level, &direction, &flags, output, sizeof(output), &length)) == (ERROR_NETWORK_PROTOCOL));
   packet.message_length = 0;
   packet.log_level = 0xff;
-  ASCIICHAT_REQUIRE_EQ(packet_parse_remote_log(&packet, sizeof(packet), &level, &direction, &flags, output, sizeof(output), &length), ERROR_NETWORK_PROTOCOL);
-  ASCIICHAT_REQUIRE_EQ(length, SIZE_MAX);
+  REQUIRE((packet_parse_remote_log(&packet, sizeof(packet), &level, &direction, &flags, output, sizeof(output), &length)) == (ERROR_NETWORK_PROTOCOL));
+  REQUIRE((length) == (SIZE_MAX));
   for (size_t i = 0; i < sizeof(output); ++i)
-    ASCIICHAT_REQUIRE_EQ((unsigned char)output[i], 0xa5);
+    REQUIRE(((unsigned char)output[i]) == (0xa5));
 }

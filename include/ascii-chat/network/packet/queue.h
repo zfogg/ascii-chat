@@ -2,6 +2,10 @@
 #include <ascii-chat/buffer.h>
 #include "packet.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** A dequeued packet owns its immutable payload until packet_queue_free_packet(). */
 typedef struct {
   packet_header_t header;
@@ -45,3 +49,7 @@ bool packet_queue_is_empty(packet_queue_t *queue);
 bool packet_queue_is_full(packet_queue_t *queue);
 void packet_queue_get_stats(packet_queue_t *queue, uint64_t *enqueued, uint64_t *dequeued, uint64_t *dropped);
 bool packet_queue_validate_packet(const queued_packet_t *packet);
+
+#ifdef __cplusplus
+}
+#endif
