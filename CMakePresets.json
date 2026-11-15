@@ -277,7 +277,7 @@
         "BUILD_TESTS": "ON",
         "USE_CPACK": "OFF",
         "ASCIICHAT_FORCE_CRITERION_TESTS": "ON",
-        "CMAKE_CXX_STANDARD": "20"
+        "CMAKE_CXX_STANDARD": "23"
       }
     },
     {
