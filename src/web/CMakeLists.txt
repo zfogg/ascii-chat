@@ -134,7 +134,25 @@ set(WEB_SRC_MIRROR
 )
 
 # Platform implementations are supplied by the shared libplatform target.
-set(PLATFORM_SRC)
+set(PLATFORM_SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/backtrace.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/filesystem.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/init.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/string.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/system.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/terminal.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/actions.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/audio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/backtrace.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/comprehensive.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/crypto.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/ffmpeg_decoder.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/log.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/misc.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/network.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/stats.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/util.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/video.c)
 
 # WASM rendering components (libvterm + FreeType)
 # Uses the cross-platform terminal renderer instead of WASM-specific implementation
