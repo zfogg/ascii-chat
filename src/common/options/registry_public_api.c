@@ -26,7 +26,8 @@ static bool registry_flags_validate(const flags_context_t *context, const char *
   (void)error;
   (void)error_size;
   const registry_entry_t *entry = user_data;
-  if (!entry || !value || entry->metadata.input_type != OPTION_INPUT_NUMERIC)
+  if (!entry || !value || entry->metadata.input_type != OPTION_INPUT_NUMERIC ||
+      (entry->type != OPTION_TYPE_INT && entry->type != OPTION_TYPE_DOUBLE))
     return true;
   const double number = entry->type == OPTION_TYPE_DOUBLE ? value->number : (double)value->integer;
   const double minimum = entry->metadata.numeric_range.min;
@@ -36,7 +37,7 @@ static bool registry_flags_validate(const flags_context_t *context, const char *
     return true;
   if (number < minimum || number > maximum)
     return false;
-  if (step > 0.0 && fmod(number - minimum, step) != 0.0)
+  if (step > 0.0 && fabs(fmod(number - minimum, step)) > 1e-9)
     return false;
   return true;
 }
