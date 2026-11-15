@@ -71,7 +71,9 @@ set(_asciichat_parent_fetchcontent_fully_disconnected
 set(_asciichat_gotel_sources_ready TRUE)
 foreach(_asciichat_gotel_source
         "${_asciichat_gotel_cache_dir}/otlp_c-src/src/http_client.h"
-        "${_asciichat_gotel_cache_dir}/sequel-src/CMakeLists.txt")
+        "${_asciichat_gotel_cache_dir}/sequel-src/CMakeLists.txt"
+        "${_asciichat_gotel_cache_dir}/gotel_nghttp2-src/CMakeLists.txt"
+        "${_asciichat_gotel_cache_dir}/gotel_pcre2-src/CMakeLists.txt")
     if(NOT EXISTS "${_asciichat_gotel_source}")
         set(_asciichat_gotel_sources_ready FALSE)
     endif()
