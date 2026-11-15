@@ -65,6 +65,10 @@ asciichat_error_t registry_add_all_to_flags_builder(flags_schema_builder_t *buil
     const registry_entry_t *entry = &g_options_registry[i];
     if (!entry->long_name || (entry->mode_bitmask != OPTION_MODE_NONE && !(entry->mode_bitmask & mode_mask) && !(entry->mode_bitmask & OPTION_MODE_BINARY)))
       continue;
+    /* These binary commands are handled by ascii-chat's command dispatcher,
+     * not stored as values in options_t. */
+    if (entry->type == OPTION_TYPE_STRING && entry->default_value_size == 0 && entry->offset == 0)
+      continue;
     flags_value_type_t type;
     flags_option_behavior_t behavior = FLAGS_BEHAVIOR_VALUE;
     switch (entry->type) {
