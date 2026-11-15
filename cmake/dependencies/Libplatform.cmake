@@ -39,6 +39,17 @@ FetchContent_Declare(libplatform
     BINARY_DIR "${_ascii_chat_libplatform_build}")
 FetchContent_MakeAvailable(libplatform)
 
+# libplatform's platform implementations are compiled as a separate object
+# target, so they do not inherit ascii-chat's aggregate include target.  Map
+# the parent public/generated/dependency roots explicitly for headers such as
+# <ascii-chat/common.h> used by the platform boundary.
+if(TARGET libplatform-objects)
+    target_include_directories(libplatform-objects PRIVATE
+        "${CMAKE_BINARY_DIR}/generated"
+        "${CMAKE_SOURCE_DIR}/include"
+        "${CMAKE_SOURCE_DIR}/deps")
+endif()
+
 # libplatform is a separate CMake project and does not inherit the parent's
 # MSVC C11 atomics option through its target properties.  Apply the native
 # compiler requirement directly to its object target.
