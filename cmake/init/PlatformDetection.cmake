@@ -102,7 +102,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(IS_ROSETTA 0)
 
 elseif(WIN32)
-    target_compile_definitions(asciichat-project-options INTERFACE _WIN32 WIN32_LEAN_AND_MEAN NOMINMAX)
+    target_compile_definitions(asciichat-project-options INTERFACE _WIN32 WIN32_LEAN_AND_MEAN)
     set(PLATFORM_WINDOWS TRUE)
     set(IS_APPLE_SILICON 0)
     set(IS_ROSETTA 0)

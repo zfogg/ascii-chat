@@ -27,12 +27,6 @@ if(WIN32)
     return()
 endif()
 
-if(EMSCRIPTEN)
-    set(X265_FOUND FALSE)
-    message(STATUS "⚠ x265 not needed for Emscripten web targets")
-    return()
-endif()
-
 # =============================================================================
 # musl: Build from source
 # =============================================================================
