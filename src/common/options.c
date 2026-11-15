@@ -408,34 +408,6 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
   return false;
 }
 
-/**
- * @brief Check if a CLI flag/option is mirror-mode specific
- *
- * Queries the mirror mode config to determine if a given option
- * is unique to mirror mode (not in server/client/discovery modes).
- * This allows mode detection via options like -f or -u without
- * explicitly specifying "mirror" keyword.
- *
- * @param opt_name Option name without dashes (e.g., "file" not "-f")
- * @param short_name Short option char (e.g., 'f' or '\0')
- * @return true if this option exists in mirror mode config
- */
-static bool is_mirror_mode_option(const char *opt_name, char short_name) {
-  const registry_entry_t *registry = options_registry_get_raw();
-  if (!registry)
-    return false;
-  for (size_t i = 0; registry[i].long_name; ++i) {
-    const registry_entry_t *entry = &registry[i];
-    const bool matches_long = opt_name && strcmp(opt_name, entry->long_name) == 0;
-    const bool matches_short = short_name != '\0' && short_name == entry->short_name;
-    if ((matches_long || matches_short) && entry->mode_bitmask == (1U << MODE_MIRROR))
-      return true;
-    if (matches_long || matches_short)
-      return false;
-  }
-  return false;
-}
-
 static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mode_t *out_mode, char *out_session_string, int *out_mode_index) {
   if (out_mode == NULL || out_mode_index == NULL) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output parameters must not be NULL");

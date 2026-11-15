@@ -883,8 +883,7 @@ static const double default_render_font_size_value = OPT_RENDER_FONT_SIZE_DEFAUL
  *
  * This function is used internally by the options parser to safely convert
  * command-line argument strings to integer values with proper error handling.
- *
-/** @} */
+ */
 
 /**
  * @brief Mode type for options parsing

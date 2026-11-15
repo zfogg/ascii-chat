@@ -150,7 +150,6 @@ const char *find_similar_option(const char *unknown_opt, const struct option *op
 const char *format_available_modes(option_mode_bitmask_t mode_bitmask);
 
 /**
-/**
  * @brief Standard option parsing error return
  *
  * Returns ERROR_INVALID_PARAM consistently across all option parsing code.
