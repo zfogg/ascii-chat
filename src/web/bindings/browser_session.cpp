@@ -29,8 +29,7 @@ public:
     } else {
       pass.push_back(0);
       session_.reset(
-          browser_session_create(server, encryption, pass.size() > 1 ? reinterpret_cast<char *>(pass.data()) : nullptr,
-                                 secret.empty() ? nullptr : secret.data(), key.empty() ? nullptr : key.data()));
+          browser_session_create(server, encryption, pass.size() > 1 ? reinterpret_cast<char *>(pass.data()) : nullptr, secret.empty() ? nullptr : secret.data(), key.empty() ? nullptr : key.data()));
     }
     if (!pass.empty())
       sodium_memzero(pass.data(), pass.size());
@@ -109,16 +108,14 @@ public:
       result.set("quicOutputs", quic_outputs);
     } else if (type == "quic-event" && event["operation"].as<std::string>() == "state") {
       result.set("epoch", browser_session_security_epoch(session_.get()));
-    } else if (type == "quic-event" &&
-               (event["operation"].as<std::string>() == "seal" || event["operation"].as<std::string>() == "open")) {
+    } else if (type == "quic-event" && (event["operation"].as<std::string>() == "seal" || event["operation"].as<std::string>() == "open")) {
       auto packet = binding_copy_input(event["packet"]);
       const bool seal = event["operation"].as<std::string>() == "seal";
       std::vector<uint8_t> output(packet.size() + (seal ? 94 : 0));
       size_t length = 0;
       uint64_t sequence = 0;
-      const int code = browser_session_security_packet(session_.get(), seal, event["flow"].as<unsigned>(),
-                                                       event["delivery"].as<unsigned>(), packet.data(), packet.size(),
-                                                       output.data(), output.size(), &length, &sequence);
+      const int code = browser_session_security_packet(session_.get(), seal, event["flow"].as<unsigned>(), event["delivery"].as<unsigned>(), packet.data(), packet.size(), output.data(), output.size(),
+                                                       &length, &sequence);
       result.set("code", code);
       result.set("packet", binding_copy_output(output.data(), code ? 0 : length));
       result.set("sequence", emscripten::val::global("BigInt")(std::to_string(sequence)));
@@ -133,9 +130,7 @@ public:
     if (code) {
       asciichat_error_context_t context{};
       const bool has_context = errno_has(&context);
-      result.set("message", has_context && context.context_message[0]
-                                ? std::string(context.context_message)
-                                : std::string(asciichat_error_string(static_cast<asciichat_error_t>(code))));
+      result.set("message", has_context && context.context_message[0] ? std::string(context.context_message) : std::string(asciichat_error_string(static_cast<asciichat_error_t>(code))));
       result.set("retryable", network_error_action(static_cast<asciichat_error_t>(code)) == NETWORK_ERROR_RETRY);
     }
     emscripten::val outputs = emscripten::val::array();
@@ -149,8 +144,7 @@ public:
     result.set("outputs", outputs);
     const void *received = browser_session_received_data(session_.get());
     const size_t received_size = browser_session_received_size(session_.get());
-    result.set("received",
-               received && received_size ? binding_copy_output(received, received_size) : emscripten::val::null());
+    result.set("received", received && received_size ? binding_copy_output(received, received_size) : emscripten::val::null());
     result.set("queuedBytes", browser_session_queued_bytes(session_.get()));
     result.set("writable", browser_session_writable(session_.get(), 0));
     result.set("ok", result["code"].as<int>() == 0);
@@ -162,8 +156,7 @@ public:
     const unsigned count = events["length"].as<unsigned>();
     if (count > 128) {
       emscripten::val error = emscripten::val::object();
-      error.set("code",
-                static_cast<int>(SET_ERRNO(ERROR_INVALID_PARAM, "Browser session event batch exceeds 128 events")));
+      error.set("code", static_cast<int>(SET_ERRNO(ERROR_INVALID_PARAM, "Browser session event batch exceeds 128 events")));
       error.set("ok", false);
       error.set("message", "Browser session event batch exceeds 128 events");
       error.set("retryable", false);
@@ -177,8 +170,7 @@ public:
 
 private:
   int input_bytes(const std::vector<uint8_t> &bytes, bool receive) {
-    return receive ? browser_session_receive(session_.get(), bytes.data(), bytes.size())
-                   : browser_session_send(session_.get(), bytes.data(), bytes.size());
+    return receive ? browser_session_receive(session_.get(), bytes.data(), bytes.size()) : browser_session_send(session_.get(), bytes.data(), bytes.size());
   }
   std::unique_ptr<browser_session_t, decltype(&browser_session_destroy)> session_{nullptr, &browser_session_destroy};
   std::string construction_error_;

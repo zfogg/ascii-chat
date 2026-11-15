@@ -18,8 +18,7 @@ public:
       asciichat_error_context_t context{};
       const bool has_context = HAS_ERRNO(&context);
       close();
-      SET_ERRNO(static_cast<asciichat_error_t>(result_), "%s",
-                has_context ? context.context_message : "Invalid initial mirror options");
+      SET_ERRNO(static_cast<asciichat_error_t>(result_), "%s", has_context ? context.context_message : "Invalid initial mirror options");
     } else {
       owned_ = true;
     }

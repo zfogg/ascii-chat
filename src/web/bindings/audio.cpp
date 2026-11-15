@@ -36,11 +36,9 @@ static audio_processor_t *create_processor(int sample_rate, bool bypass, unsigne
 
 class AudioProcessorBinding {
 public:
-  AudioProcessorBinding(int sample_rate, bool bypass, unsigned frame_samples)
-      : AudioProcessorBinding(sample_rate, bypass, frame_samples, 2) {}
+  AudioProcessorBinding(int sample_rate, bool bypass, unsigned frame_samples) : AudioProcessorBinding(sample_rate, bypass, frame_samples, 2) {}
   AudioProcessorBinding(int sample_rate, bool bypass, unsigned frame_samples, int channels)
-      : processor_(create_processor(sample_rate, bypass, frame_samples, channels)),
-        scratch_(processor_ ? frame_samples : 0) {}
+      : processor_(create_processor(sample_rate, bypass, frame_samples, channels)), scratch_(processor_ ? frame_samples : 0) {}
   ~AudioProcessorBinding() {
     close();
   }
@@ -165,8 +163,7 @@ public:
     }
     emscripten::val view = emscripten::val(emscripten::typed_memory_view(count, pcm_.data()));
     view.call<void>("set", samples);
-    const int size = opus_encode(encoder_, pcm_.data(), static_cast<int>(count / channels_), encoded_.data(),
-                                 static_cast<int>(encoded_.size()));
+    const int size = opus_encode(encoder_, pcm_.data(), static_cast<int>(count / channels_), encoded_.data(), static_cast<int>(encoded_.size()));
     if (size < 0) {
       SET_ERRNO(ERROR_AUDIO, "Browser Opus encoding failed");
       return NullableOpusBytes(emscripten::val::null());
@@ -210,10 +207,8 @@ private:
 class AudioSessionBinding {
 public:
   AudioSessionBinding(int sample_rate, bool bypass, int encoder_channels, int bitrate, unsigned frame_samples)
-      : sample_rate_(sample_rate), encoder_channels_(encoder_channels), frame_samples_(frame_samples),
-        processor_(create_processor(sample_rate, bypass, frame_samples, 2)) {
-    if (!processor_ || (encoder_channels != 1 && encoder_channels != 2) || sample_rate <= 0 || bitrate <= 0 ||
-        frame_samples == 0) {
+      : sample_rate_(sample_rate), encoder_channels_(encoder_channels), frame_samples_(frame_samples), processor_(create_processor(sample_rate, bypass, frame_samples, 2)) {
+    if (!processor_ || (encoder_channels != 1 && encoder_channels != 2) || sample_rate <= 0 || bitrate <= 0 || frame_samples == 0) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Invalid browser audio session configuration");
       close();
       return;
@@ -279,12 +274,10 @@ public:
     }
     result_samples.call<void>("set", emscripten::val(emscripten::typed_memory_view(count, scratch_.data())));
     for (size_t index = 0; index < pcm_.size(); ++index) {
-      const float sample =
-          encoder_channels_ == 2 ? scratch_[index] : (scratch_[index * 2] + scratch_[index * 2 + 1]) * 0.5f;
+      const float sample = encoder_channels_ == 2 ? scratch_[index] : (scratch_[index * 2] + scratch_[index * 2 + 1]) * 0.5f;
       pcm_[index] = static_cast<int16_t>(std::round(sample * (sample < 0 ? 32768.0f : 32767.0f)));
     }
-    const int encoded = opus_encode(encoder_, pcm_.data(), static_cast<int>(frame_samples_ / 2), encoded_.data(),
-                                    static_cast<int>(encoded_.size()));
+    const int encoded = opus_encode(encoder_, pcm_.data(), static_cast<int>(frame_samples_ / 2), encoded_.data(), static_cast<int>(encoded_.size()));
     if (encoded < 0)
       return failure(SET_ERRNO(ERROR_AUDIO, "Browser audio session encoding failed"));
     const size_t payload_size = 18 + static_cast<size_t>(encoded);

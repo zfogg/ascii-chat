@@ -25,5 +25,4 @@ typedef struct {
 } ui_buttons_t;
 /** Returns the activated index or -1. Disabled buttons cannot activate. */
 int ui_buttons_key(ui_buttons_t *state, const ui_button_t *buttons, size_t count, keyboard_key_t key);
-void ui_buttons_render(frame_buffer_t *out, int row, int left, int width, const ui_button_t *buttons, size_t count,
-                       size_t selected);
+void ui_buttons_render(frame_buffer_t *out, int row, int left, int width, const ui_button_t *buttons, size_t count, size_t selected);

@@ -32,8 +32,7 @@ asciichat_error_t quic_endpoint_set_http_server(quic_endpoint_t *endpoint, http_
 /** Bind a concrete IPv4 or IPv6 local address and start the endpoint worker.
  * Configuration strings are consumed during this call. The caller retains
  * address storage. A listener requires a matching certificate and key. */
-asciichat_error_t quic_endpoint_open(const struct sockaddr *bind_address, socklen_t bind_length, bool listener,
-                                     const quic_config_t *config, quic_endpoint_t **out);
+asciichat_error_t quic_endpoint_open(const struct sockaddr *bind_address, socklen_t bind_length, bool listener, const quic_config_t *config, quic_endpoint_t **out);
 asciichat_error_t quic_endpoint_address(quic_endpoint_t *endpoint, struct sockaddr_storage *address, socklen_t *length);
 
 /** Start a client connection to a resolved address. server_name is used for
@@ -41,14 +40,12 @@ asciichat_error_t quic_endpoint_address(quic_endpoint_t *endpoint, struct sockad
  * The returned transport is owned by the caller and is initially
  * negotiating TLS. Check capabilities for TLS readiness before ACIP handshake.
  * No application media is enabled until ACIP authentication and readiness. */
-asciichat_error_t quic_connect(quic_endpoint_t *endpoint, const struct sockaddr *remote, socklen_t remote_length,
-                               const char *server_name, acip_transport_t **out);
+asciichat_error_t quic_connect(quic_endpoint_t *endpoint, const struct sockaddr *remote, socklen_t remote_length, const char *server_name, acip_transport_t **out);
 /** Nonblocking accept. Returns ERROR_NETWORK_TIMEOUT when none is available.
  * A returned transport is owned and may still be negotiating TLS. */
 asciichat_error_t quic_accept(quic_endpoint_t *endpoint, acip_transport_t **out);
 /** Copy the current peer address. It may change after a validated migration. */
-asciichat_error_t quic_transport_peer_address(acip_transport_t *transport, struct sockaddr_storage *address,
-                                              socklen_t *length);
+asciichat_error_t quic_transport_peer_address(acip_transport_t *transport, struct sockaddr_storage *address, socklen_t *length);
 
 /** Start the authenticated transition after the existing ACIP handshake.
  * crypto is borrowed and must outlive the transport. After this call the
@@ -77,5 +74,4 @@ asciichat_error_t quic_endpoint_destroy(quic_endpoint_t **endpoint);
  * and restarts the worker to avoid closing a socket under its readiness wait.
  * A rejected migration retains the original socket and live connection.
  * The new address must have the same family as the existing remote address. */
-asciichat_error_t quic_endpoint_migrate(quic_endpoint_t *endpoint, const struct sockaddr *local_address,
-                                        socklen_t length);
+asciichat_error_t quic_endpoint_migrate(quic_endpoint_t *endpoint, const struct sockaddr *local_address, socklen_t length);
