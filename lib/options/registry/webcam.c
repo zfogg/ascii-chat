@@ -23,6 +23,8 @@ static bool parse_test_pattern(const char *arg, void *dest, char **error_msg) {
   options_t *opts = (options_t *)((char *)dest - offsetof(options_t, test_pattern));
   opts->test_pattern = true;
   opts->test_pattern_index = arg && arg[0] == '1' ? 1 : 0;
+  if (!opts->flip_x_explicit)
+    opts->flip_x = false;
   return true;
 }
 

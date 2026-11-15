@@ -48,18 +48,18 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_ENABLE_COVERAGE)
 else()
     string(REPLACE "\\" "/" _ascii_chat_source_root "${CMAKE_SOURCE_DIR}")
 endif()
-target_compile_definitions(libplatform-objects PRIVATE
+target_compile_definitions(libplatform PRIVATE
     LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
-target_include_directories(libplatform-objects PRIVATE
+target_include_directories(libplatform PRIVATE
     ${_ascii_chat_repo_root}/include
     ${_ascii_chat_repo_root}/deps
     ${_ascii_chat_repo_root}/deps/ascii-chat-deps/yyjson/src
     ${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc)
 if(LIBSODIUM_INCLUDE_DIRS)
-    target_include_directories(libplatform-objects PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
+    target_include_directories(libplatform PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
 endif()
 if(EMSCRIPTEN)
-    target_compile_options(libplatform-objects PRIVATE -pthread -matomics -mbulk-memory)
+    target_compile_options(libplatform PRIVATE -pthread -matomics -mbulk-memory)
 endif()
 
 # Clang/lld can infer the exported data section as read-only when a Windows
@@ -73,20 +73,20 @@ endif()
 # libplatform's POSIX helpers use interfaces such as fileno() that musl hides
 # from strict C mode unless the feature-test macros are enabled on the target.
 if(UNIX AND NOT APPLE)
-    target_compile_definitions(libplatform-objects PRIVATE _GNU_SOURCE)
+    target_compile_definitions(libplatform PRIVATE _GNU_SOURCE)
     if(DEFINED KERNEL_HEADERS_DIR AND EXISTS "${KERNEL_HEADERS_DIR}")
-        target_include_directories(libplatform-objects PRIVATE "${KERNEL_HEADERS_DIR}")
+        target_include_directories(libplatform PRIVATE "${KERNEL_HEADERS_DIR}")
     endif()
     if(DEFINED FONTCONFIG_INCLUDE_DIRS)
-        target_include_directories(libplatform-objects PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
+        target_include_directories(libplatform PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
     endif()
     if(DEFINED LIBEXECINFO_INCLUDE_DIRS)
-        target_include_directories(libplatform-objects PRIVATE ${LIBEXECINFO_INCLUDE_DIRS})
+        target_include_directories(libplatform PRIVATE ${LIBEXECINFO_INCLUDE_DIRS})
     endif()
 endif()
 
 if(FONTCONFIG_LINK_LIBRARIES)
-    target_include_directories(libplatform-objects PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
+    target_include_directories(libplatform PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
     target_link_libraries(libplatform PUBLIC ${FONTCONFIG_LINK_LIBRARIES})
 endif()
 
