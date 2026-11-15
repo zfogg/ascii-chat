@@ -1,6 +1,8 @@
 #include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <libplatform/symbols.h>
+
+extern "C" bool symbol_module_is_project(const char *module_name);
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
