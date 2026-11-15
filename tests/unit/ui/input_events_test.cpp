@@ -98,9 +98,9 @@ TEST_CASE("input_events/full_payload_is_drained_and_never_overflows", "[input_ev
   keyboard_key_t input[9003];
   input[0] = KEY_PASTE_BEGIN;
   for (size_t i = 1; i < 9001; ++i)
-    input[i] = 'x';
+    input[i] = static_cast<keyboard_key_t>('x');
   input[9001] = KEY_PASTE_END;
-  input[9002] = 'q';
+  input[9002] = static_cast<keyboard_key_t>('q');
   keys = input;
   remaining = 9003;
   keyboard_key_t result;
