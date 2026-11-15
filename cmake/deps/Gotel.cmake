@@ -56,6 +56,13 @@ else()
     set(_asciichat_gotel_shared ${ASCIICHAT_SHARED_DEPS})
 endif()
 set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared})
+set(_asciichat_build_shared_libs_cache_defined FALSE)
+if(DEFINED BUILD_SHARED_LIBS)
+    get_property(_asciichat_build_shared_libs_cache_defined CACHE BUILD_SHARED_LIBS PROPERTY TYPE SET)
+    if(_asciichat_build_shared_libs_cache_defined)
+        set(_asciichat_parent_build_shared_libs_cache "${BUILD_SHARED_LIBS}")
+    endif()
+endif()
 set(_asciichat_fetchcontent_base_dir_was_defined FALSE)
 if(DEFINED FETCHCONTENT_BASE_DIR)
     set(_asciichat_fetchcontent_base_dir_was_defined TRUE)
@@ -63,6 +70,15 @@ if(DEFINED FETCHCONTENT_BASE_DIR)
 endif()
 set(FETCHCONTENT_BASE_DIR "${_asciichat_gotel_cache_dir}" CACHE PATH
     "Persistent Gotel dependency source/build cache" FORCE)
+
+# otlp-c's protobuf and exporter helpers are internal implementation symbols
+# used by gotel-testing. They are not exported by a shared otlp-c library, so
+# always build this dependency statically even when ascii-chat uses shared
+# dependency libraries. Force the cache value as well as the normal variable:
+# the persistent dependency build cache may otherwise retain ON from an older
+# configure.
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
+set(BUILD_SHARED_LIBS OFF)
 
 # Gotel's vendored utf8proc CMake project predates the shared dependency target
 # used by ascii-chat and unconditionally creates a second target named
@@ -113,6 +129,14 @@ endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                  "${_asciichat_gotel_cache_dir}/build")
+
+if(_asciichat_build_shared_libs_cache_defined)
+    set(BUILD_SHARED_LIBS "${_asciichat_parent_build_shared_libs_cache}" CACHE BOOL
+        "Build shared libraries" FORCE)
+else()
+    unset(BUILD_SHARED_LIBS CACHE)
+endif()
+set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared})
 
 # gotel's util/utf8.c includes util/utf8.h relative to the C source root;
 # explicitly expose that root for compilers that do not add it implicitly.
@@ -187,6 +211,8 @@ target_sources(otlp_c PRIVATE "${CMAKE_BINARY_DIR}/generated/otlp_exporter.c")
 set(BUILD_SHARED_LIBS ${_asciichat_parent_shared_libs})
 unset(_asciichat_parent_fetchcontent_base_dir)
 unset(_asciichat_fetchcontent_base_dir_was_defined)
+unset(_asciichat_parent_build_shared_libs_cache)
+unset(_asciichat_build_shared_libs_cache_defined)
 add_compile_definitions(GOTEL_WITH_SQLITE=1)
 include_directories($<TARGET_PROPERTY:gotel,INTERFACE_INCLUDE_DIRECTORIES>
                     $<TARGET_PROPERTY:otlp_c,INTERFACE_INCLUDE_DIRECTORIES>)
