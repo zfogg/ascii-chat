@@ -63,6 +63,21 @@ if(DEFINED BUILD_SHARED_LIBS)
         set(_asciichat_parent_build_shared_libs_cache "${BUILD_SHARED_LIBS}")
     endif()
 endif()
+set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared} CACHE BOOL
+    "Build gotel and its public dependencies as shared libraries" FORCE)
+
+# These dependency revisions are pinned in the vendored Gotel checkout.  Keep
+# FetchContent from running its git update step on every configure: updating a
+# populated git checkout refreshes all source mtimes, which makes Ninja treat
+# the entire gotel/nghttp2/otlp-c dependency tree as stale on the next build.
+# First-time population still occurs when a source directory is absent.
+set(_asciichat_parent_fetchcontent_updates_disconnected
+    ${FETCHCONTENT_UPDATES_DISCONNECTED})
+set(_asciichat_parent_fetchcontent_fully_disconnected
+    ${FETCHCONTENT_FULLY_DISCONNECTED})
+set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
+# Do not force FULLY_DISCONNECTED here.  A fresh release runner must be able
+# to populate sequel and otlp-c before subsequent configures reuse the cache.
 set(_asciichat_fetchcontent_base_dir_was_defined FALSE)
 if(DEFINED FETCHCONTENT_BASE_DIR)
     set(_asciichat_fetchcontent_base_dir_was_defined TRUE)
@@ -209,7 +224,11 @@ set_property(TARGET otlp_c PROPERTY SOURCES "${_otel_sources}")
 target_sources(otlp_c PRIVATE "${CMAKE_BINARY_DIR}/generated/otlp_exporter.c")
 
 set(BUILD_SHARED_LIBS ${_asciichat_parent_shared_libs})
+set(FETCHCONTENT_UPDATES_DISCONNECTED ${_asciichat_parent_fetchcontent_updates_disconnected})
+set(FETCHCONTENT_FULLY_DISCONNECTED ${_asciichat_parent_fetchcontent_fully_disconnected})
 unset(_asciichat_parent_fetchcontent_base_dir)
+unset(_asciichat_parent_fetchcontent_updates_disconnected)
+unset(_asciichat_parent_fetchcontent_fully_disconnected)
 unset(_asciichat_fetchcontent_base_dir_was_defined)
 unset(_asciichat_parent_build_shared_libs_cache)
 unset(_asciichat_build_shared_libs_cache_defined)
