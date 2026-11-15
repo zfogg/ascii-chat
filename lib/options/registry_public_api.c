@@ -43,6 +43,11 @@ static void registry_flags_change(flags_context_t *context, const char *name, co
       action();
     return;
   }
+  if (strcmp(entry->long_name, "flip-x") == 0 || strcmp(entry->long_name, "flip-y") == 0) {
+    options_t *options = flags_context_storage(context);
+    if (options)
+      options->flip_x_explicit = true;
+  }
   if (!entry->parse_fn)
     return;
   void *storage = flags_context_storage(context);
