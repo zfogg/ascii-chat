@@ -898,6 +898,10 @@ create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
 if(USE_MUSL AND ASCIICHAT_LIBUV_INCLUDE_DIRS)
     target_include_directories(ascii-chat-network PRIVATE ${ASCIICHAT_LIBUV_INCLUDE_DIRS})
 endif()
+# Browser builds do not include the native HTTP/2 server.
+if(EMSCRIPTEN)
+    set(ASCIICHAT_NGHTTP2_TARGET "")
+else()
 # Prefer the package target so manifest/vcpkg builds carry the correct
 # include and transitive-link settings on every platform.  Keep the direct
 # search as a fallback for distro/Homebrew installs that do not ship a CMake
@@ -944,6 +948,7 @@ else()
     endif()
     set(ASCIICHAT_NGHTTP2_TARGET ${ASCIICHAT_NGHTTP2_LIBRARY})
     target_include_directories(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_INCLUDE_DIR})
+endif()
 endif()
 # nghttp2 is already propagated by the gotel transport dependency.  Adding
 # the separately discovered package here creates two incompatible Windows
