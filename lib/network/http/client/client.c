@@ -205,7 +205,10 @@ char *https_get(const char *hostname, const char *path) {
   anchor_list anchors = ANCHOR_LIST_INIT;
   defer(free_http_anchors(&anchors));
   size_t num_anchors = read_trust_anchors_from_memory(&anchors, (unsigned char *)pem_data, pem_size);
-  SAFE_FREE(pem_data);
+  /* libplatform allocates the certificate bundle with the regular C
+   * allocator; it must not cross into ascii-chat's optional mimalloc path. */
+  free(pem_data);
+  pem_data = NULL;
 
   if (num_anchors == 0) {
     log_error("No trust anchors loaded");

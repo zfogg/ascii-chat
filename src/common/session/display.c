@@ -1165,8 +1165,13 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
         if (platform_write_all(output_fd, frame_buffer, total_size) != total_size)
           presented = SET_ERRNO(ERROR_FILE_OPERATION, "Cannot write snapshot frame to terminal");
       } else {
+        uint64_t present_started_ns = time_get_ns();
+        log_debug("MEDIA_PRESENT_CALL: fd=%d bytes=%zu fresh=%d", output_fd, total_size, fresh ? 1 : 0);
         presented = (fresh ? ui_controller_present : ui_controller_present_retained)(UI_SCREEN_MEDIA, output_fd, (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, frame_buffer,
                                                                                      total_size);
+        uint64_t present_elapsed_ns = time_get_ns() - present_started_ns;
+        if (present_elapsed_ns >= 50 * NS_PER_MS_INT)
+          log_debug("MEDIA_PRESENT_RETURN: fd=%d bytes=%zu elapsed_ms=%.2f result=%d", output_fd, total_size, (double)present_elapsed_ns / NS_PER_MS_INT, presented);
       }
       if (was_first_frame && presented == ASCIICHAT_OK)
         ui_controller_remove(UI_SCREEN_SPLASH);
