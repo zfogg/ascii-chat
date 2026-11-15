@@ -1,6 +1,6 @@
 #include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
-#include <ascii-chat/os/symbols.h>
+#include <libplatform/symbols.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
