@@ -720,7 +720,7 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
         ops->quantize(frame.packed, frame.fg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
         ops->quantize(frame.index, frame.bg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
       }
-      emit_prepared_row(&frame.output, mode, ops, frame.glyph, frame.fg, frame.bg, frame.width);
+      ascii_emit_prepared_row(&frame.output, mode, ops, frame.glyph, frame.fg, frame.bg, frame.width);
       emit_row_end(&frame.output, true, y + 1 < cells.h);
       ++frame.row;
     } else {
