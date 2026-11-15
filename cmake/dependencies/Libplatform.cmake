@@ -64,13 +64,21 @@ target_compile_definitions(libplatform PRIVATE
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
     target_compile_definitions(libplatform PRIVATE DEBUG_MEMORY)
 endif()
-target_include_directories(libplatform PRIVATE
-    ${_ascii_chat_repo_root}/include
-    ${_ascii_chat_repo_root}/deps
-    ${_ascii_chat_repo_root}/deps/ascii-chat-deps/yyjson/src
-    ${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc)
+foreach(_libplatform_target IN ITEMS libplatform libplatform-objects)
+    if(TARGET ${_libplatform_target})
+        target_include_directories(${_libplatform_target} PRIVATE
+            ${_ascii_chat_repo_root}/include
+            ${_ascii_chat_repo_root}/deps
+            ${_ascii_chat_repo_root}/deps/ascii-chat-deps/yyjson/src
+            ${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc)
+    endif()
+endforeach()
 if(LIBSODIUM_INCLUDE_DIRS)
-    target_include_directories(libplatform PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
+    foreach(_libplatform_target IN ITEMS libplatform libplatform-objects)
+        if(TARGET ${_libplatform_target})
+            target_include_directories(${_libplatform_target} PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
+        endif()
+    endforeach()
 endif()
 if(EMSCRIPTEN)
     target_compile_options(libplatform PRIVATE -pthread -matomics -mbulk-memory)
