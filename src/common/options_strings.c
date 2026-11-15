@@ -31,7 +31,6 @@
 
 /**
  * @brief Mode name mapping for string conversion
- * @brief Mode name mapping for string conversion
  */
 typedef struct {
   asciichat_mode_t mode;
