@@ -600,22 +600,25 @@ free(buffer);
 
 Memory reports show at program exit in debug builds. Red numbers indicate leaks.
 
-## Platform Abstraction Layer (lib/platform)
+## Platform Abstraction Layer (libplatform)
 
-Cross-platform support via abstraction:
+Cross-platform operating-system support is provided by the standalone
+`libplatform` dependency, checked out under `deps/ascii-chat-deps/libplatform`
+and configured by `cmake/dependencies/Libplatform.cmake`. Its public headers
+are included as `<libplatform/...>`; do not add a second platform abstraction
+under this repository's `lib/` tree.
 
-- **lib/platform/posix/** - Linux/macOS implementations
-- **lib/platform/windows/** - Windows implementations
-- **lib/platform/abstraction.h** - Platform-independent API
+libplatform provides the shared APIs for threads, mutexes, rwlocks, condition
+variables, atomics, sockets, filesystems, processes, signals, timing,
+terminals, keyboards, memory mapping, backtraces, symbolization, diagnostics,
+and platform startup/shutdown. It supports Windows, Linux, Apple platforms,
+and WebAssembly through common, POSIX, Windows, Linux, macOS, and WASM
+implementations.
 
-Key abstractions:
-
-- Threads: `platform_thread_t`, `platform_thread_create()`
-- Mutexes: `mutex_t`, `mutex_init/lock/unlock()`
-- Sockets: `socket_t`, `socket_close()`, `INVALID_SOCKET_VALUE`
-- Safe wrappers: `SAFE_GETENV()`, `SAFE_STRERROR()`, `platform_open()`
-
-Always use abstraction layer functions, never direct POSIX/Windows APIs.
+Use libplatform APIs and the existing `platform_*`/`mutex_*` abstractions in
+application code; do not call platform-specific POSIX or Win32 APIs directly.
+The repository-local `lib/platform/` directory is limited to ascii-chat
+integration code, currently including `wakeup.cpp` and WASM stubs.
 
 ## Session Management (lib/session)
 
@@ -858,14 +861,14 @@ ascii-chat/
 │   ├── common/                 # Shared code and utilities used by multiple modes
 │   ├── session/                # Session initialization and lifecycle management across modes
 │   ├── tooling/                # Development and debugging tools integrated into the binary
+│   ├── mcp-server/              # MCP server mode and tool transport
+│   ├── api-server/              # HTTP API server mode
 │   └── web/                    # Web components and WebRTC integration for browser-based clients
 ├── lib/                        # Core reusable libraries for all modes
-│   ├── platform/               # Cross-platform abstractions (threads, mutexes, sockets, file I/O)
-│   │   ├── linux/              # Linux-specific implementations using POSIX APIs and system calls
-│   │   ├── macos/              # macOS-specific implementations using Cocoa and Darwin APIs
-│   │   ├── windows/            # Windows-specific implementations using Win32 APIs
-│   │   ├── posix/              # POSIX-compliant implementations for Unix-like systems
-│   │   └── wasm/               # WebAssembly implementations for browser environments
+│   ├── platform/               # ascii-chat integration and WASM stubs; core APIs come from libplatform
+│   ├── terminal/               # Terminal capability and output support
+│   ├── tui/                    # Interactive terminal UI controllers and screens
+│   ├── stats/                  # Runtime statistics and telemetry state
 │   ├── session/                # Session management UI including splash screens, status displays, and help overlays
 │   ├── crypto/                 # Encryption, authentication, SSH key parsing, and cryptographic handshakes
 │   │   ├── ssh/                # SSH key parsing, format detection, and serialization utilities
@@ -908,12 +911,15 @@ ascii-chat/
 │   │   └── query/              # Query and introspection tools for runtime analysis
 │   ├── tests/                  # Shared test utilities and fixtures for the test suite
 │   ├── uthash/                 # Hash table implementation library (vendored dependency)
-│   ├── cmake/                  # CMake support libraries and configuration helpers
 │   └── pkgconfig/              # pkg-config definition files for library installation
 ├── cmake/                      # Build system configuration and utilities
-│   ├── dependencies/           # CMake modules for finding/configuring external libraries (PCRE2, FFmpeg, etc.)
+│   ├── dependencies/           # CMake modules for finding/configuring external libraries (including libplatform)
 │   ├── targets/                # Build target definitions and custom commands for code generation
 │   ├── tools/                  # CMake utility scripts for template substitution and binary embedding
+│   ├── deps/                   # Dependency configuration and source-build helpers
+│   ├── find/                   # CMake package and program discovery helpers
+│   ├── probes/                 # Compiler and platform capability probes
+│   ├── tooling/                # Build-time tooling integration
 │   ├── platform/               # Platform-specific CMake configuration (Windows, macOS, Linux)
 │   ├── compiler/               # Compiler detection and flag configuration for Clang
 │   ├── toolchains/             # CMake toolchain files for cross-compilation and build environments
