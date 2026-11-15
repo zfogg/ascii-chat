@@ -25,18 +25,6 @@ bool ascii_render_palette_supported(ascii_renderer_t kind, const char *palette) 
   return kind == ASCII_RENDERER_LUMINANCE && palette && *palette;
 }
 
-bool ascii_glyph_palette_supported(const char *palette) {
-  return ascii_glyph_palette_supported_impl(palette);
-}
-
-char *ascii_render_glyph_match(const image_t *image, ascii_color_t color, const simd_cells_t *ops, const char *palette) {
-  return ascii_glyph_render(image, color, ops, palette, false);
-}
-
-char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t color, const simd_cells_t *ops, const char *palette, bool background) {
-  return ascii_glyph_render(image, color, ops, palette, background);
-}
-
 char *ascii_render(const image_t *image, const char *palette, ascii_color_t color, bool background, bool dither, const simd_cells_t *ops) {
   if (!ops) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Missing ASCII rendering backend");
