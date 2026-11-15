@@ -174,28 +174,33 @@ asciichat_error_t test_pattern_render_at(test_pattern_t *p, int index, double ti
     colors[i] = hue(i * 30, 0.55);
   uint32_t frame = (uint32_t)fmod(floor(time_ms / (1000.0 / 60)), 512);
   uint32_t code = frame ^ (frame >> 1);
-  const int slots[8] = {6, 4, 2, 0, 1, 3, 5, 7};
   rgb_pixel_t *pixels = p->image->pixels;
   if (index == 1) {
     // The background is constant down each column. Rasterize one row, then copy.
     for (int x = 0; x < w; x++) {
       rgb_pixel_t pixel = dark;
-      if (cadence) {
-        int slot = (int)(x / fmax(2, w / 8.0));
-        if (slot < 8)
-          pixel = (code & (1u << slots[slot])) ? white : (rgb_pixel_t){0, 0, 0};
-      } else {
-        int k = (int)floor((x - offset) / stripe) + 1;
-        for (int j = k; j <= k + 1; j++)
-          if (j >= first_stripe && j <= first_stripe + 12)
-            blend(&pixel, colors[(j % 12 + 12) % 12], overlap(x, j * stripe + offset - stripe, j * stripe + offset));
-      }
+      int k = (int)floor((x - offset) / stripe) + 1;
+      for (int j = k; j <= k + 1; j++)
+        if (j >= first_stripe && j <= first_stripe + 12)
+          blend(&pixel, colors[(j % 12 + 12) % 12], overlap(x, j * stripe + offset - stripe, j * stripe + offset));
       pixels[x] = pixel;
     }
     for (int y = 1; y < h; y++)
       memcpy(pixels + (size_t)y * w, pixels, (size_t)w * sizeof(*pixels));
-    if (cadence)
+    if (cadence) {
+      // Keep the cadence marker compact and overlaid on the animated pattern.
+      // The old marker replaced the entire image with eight black/white bars,
+      // which made the test look broken in terminal captures. Gray-code bits
+      // guarantee a deterministic change at each 60 Hz sample without hiding
+      // the underlying test pattern.
+      int marker = (int)fmax(16, fmin(w, h) / 4.0);
+      int marker_left = (w - marker) / 2;
+      int marker_top = (h - marker) / 2;
+      for (int y = marker_top; y < marker_top + marker && y < h; y++)
+        for (int x = marker_left; x < marker_left + marker && x < w; x++)
+          pixels[(size_t)y * w + x] = (code & 1u) ? white : (rgb_pixel_t){0, 0, 0};
       return ASCIICHAT_OK;
+    }
     int top = (int)fmax(0, floor(cy - radius - 1)), bottom = (int)fmin(h, ceil(cy + radius + 1));
     int left = (int)fmax(0, floor(cx - radius - 1)), right = (int)fmin(w, ceil(cx + radius + 1));
     for (int y = top; y < bottom; y++)

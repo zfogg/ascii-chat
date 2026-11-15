@@ -404,6 +404,12 @@ static asciichat_error_t client_like_configure_media_capture(const session_clien
     }
   }
 
+  // Synthetic media has no source-provided cadence. Normalize its implicit
+  // capture rate before configuring the pipeline so the no-argument
+  // `mirror --test-pattern` path follows the same live-frame schedule as an
+  // explicit `--fps 60` invocation.
+  if (GET_OPTION(test_pattern) && GET_OPTION(fps) <= 0)
+    options_set_int("fps", 60);
   state->capture_config.target_fps = client_like_select_capture_fps(state);
   ui_controller_set_effective_fps(state->capture_config.target_fps);
 

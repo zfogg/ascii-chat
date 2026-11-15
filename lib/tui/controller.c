@@ -341,6 +341,7 @@ static bool g_redraw;
 static bool g_finished;
 static uint64_t g_media_frame_id;
 static _Atomic uint64_t g_media_epoch;
+static atomic_t g_sync_initialized = {0};
 static _Thread_local uint64_t g_acquisition_started_ns;
 static _Thread_local bool g_probe_frame;
 static _Thread_local uint64_t g_probe_requested_ns;
@@ -456,10 +457,10 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
   if (measure_media_write)
     fps_counter_write_begin(g_fps);
   uint64_t stats_start = g_stats_media ? time_get_ns() : 0;
+  bool help_media_overlay = ui_controller_current_screen() == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_MEDIA;
   // Terminals supporting synchronized output present the art and its overlays
   // together, even when a large UTF-8 frame requires several writes.
-  bool help_media_overlay = ui_controller_current_screen() == UI_SCREEN_HELP && keyboard_help_parent_screen() == UI_SCREEN_MEDIA;
-  bool synchronized = g_render_snapshot != NULL || help_media_overlay;
+  bool synchronized = false;
   g_help_sync_open = help_media_overlay;
   // A frame can legitimately occupy the terminal's last column and row.
   // Disable DECAWM while presenting it so writing the bottom-right cell does
@@ -490,22 +491,20 @@ asciichat_error_t ui_controller_write(int fd, const char *data, size_t len) {
     }
     size_t count = len - written;
     bool row_boundary = false;
-    if (g_stats_media && count > 32768) {
-      count = 32768;
+    if (g_stats_media && count > 16384) {
+      count = 16384;
       size_t boundary = media_chunk_boundary(data + written, count);
       if (boundary) {
         count = boundary;
         row_boundary = true;
       }
-      // Never inspect beyond the candidate chunk: the next byte may belong
-      // to unrelated memory or to the next output chunk.
       count = ui_controller_trim_utf8_chunk(data + written, count);
     }
     size_t sent = write_output_chunk(fd, data + written, count);
     written += sent;
     if (sent != count)
       break;
-    if (synchronized && g_stats_media && row_boundary && written < len && time_get_ns() - sync_started_ns >= 40 * NS_PER_MS_INT) {
+    if (synchronized && g_stats_media && written < len && row_boundary && time_get_ns() - sync_started_ns >= 40 * NS_PER_MS_INT) {
       // Give the terminal a complete set of rows before its synchronized
       // output watchdog can expose a partly written row.
       if (write_output_chunk(fd, "\033[?2026l\033[?2026h", 16) != 16) {
@@ -997,12 +996,10 @@ static void *presentation_main(void *unused) {
       awaiting_reply = false;
       fps_counter_frame_end(g_fps, reply_written_ns);
     }
-    if (awaiting_reply && !ui_error_popup_visible() && ui_controller_current_screen() == UI_SCREEN_MEDIA && !shutdown_is_requested()) {
-      // Keep only the latest mailbox frame while the frontend parses output.
-      // Input and modal screens remain independent of this backpressure.
-      platform_sleep_ms(2);
-      continue;
-    }
+    // A terminal capability query is advisory. Some ConPTY frontends,
+    // including Alacritty, do not answer the OSC query; never hold the media
+    // presentation loop behind that optional reply. The timeout below still
+    // records the frontend as non-responsive for diagnostics.
     // This path must remain independent of producers, including one stuck
     // holding the controller mutex. It reads only the collector's mailbox.
     if (ui_sync_is_visible() && ui_controller_current_screen() >= 0 && (ui_controller_current_screen() <= UI_SCREEN_SYNC || ui_controller_current_screen() == UI_SCREEN_ERROR) &&
@@ -1088,7 +1085,6 @@ static void *presentation_main(void *unused) {
       bool resized = false;
       // Observe physical changes once for all modes; consumers use the published dimensions.
       if (terminal_resize_poll(&watcher, screen->fd, &resized) != ASCIICHAT_OK) {
-        // A minimized or detached terminal has no usable drawing area.
         atomic_store_bool(&g_blocked, true);
         const ui_session_view_t hidden = {.screen = -1};
         ui_session_render(g_session, &hidden, time_get_ns());
@@ -1240,9 +1236,11 @@ static void *presentation_main(void *unused) {
           ui_notice_frame_presented(screen->snapshot);
         if (fresh_media) {
           fps_counter_write_begin(g_fps);
-          // A frontend reply drains the complete update. A local console query
-          // adds an RPC without establishing any stronger completion boundary.
-          asciichat_error_t drained = g_probe_requested_ns ? ASCIICHAT_OK : terminal_flush(screen->fd);
+          // platform_write_all has already submitted the complete frame. Do
+          // not synchronously drain the Windows console after every frame:
+          // ConPTY/Alacritty can make that wait for terminal-side rendering
+          // and serialize the producer behind the terminal compositor.
+          asciichat_error_t drained = ASCIICHAT_OK;
           fps_counter_write_end(g_fps, drained == ASCIICHAT_OK);
           if (written != ASCIICHAT_OK || drained != ASCIICHAT_OK)
             CLEAR_ERRNO();
@@ -1341,6 +1339,7 @@ static asciichat_error_t controller_start(void) {
   ui_output_set_writer(ui_controller_write);
   if (lifecycle_init_once(&g_lifecycle)) {
     atomic_store_bool(&g_presentation_stop_requested, false);
+    atomic_store_bool(&g_sync_initialized, false);
     atomic_store(&g_sync_finishing, false);
     atomic_store(&g_sync_rendering, false);
     atomic_store_bool(&g_blocked, false);
@@ -1567,11 +1566,14 @@ static asciichat_error_t submit_screen(ui_screen_t screen, int fd, terminal_size
     copy->terminal->fd = retained_fd;
   }
   int output_fd = copy->terminal->fd;
-  err = ui_sync_start(output_fd);
-  if (err != ASCIICHAT_OK) {
-    mutex_unlock(&g_mutex);
-    release_snapshot(copy);
-    return err;
+  if (!atomic_load_bool(&g_sync_initialized)) {
+    err = ui_sync_start(output_fd);
+    if (err != ASCIICHAT_OK) {
+      mutex_unlock(&g_mutex);
+      release_snapshot(copy);
+      return err;
+    }
+    atomic_store_bool(&g_sync_initialized, true);
   }
   if (queue_notice) {
     size_t pending = 1;
