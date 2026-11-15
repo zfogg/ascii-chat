@@ -82,7 +82,7 @@ if(ASCIICHAT_ENABLE_COVERAGE AND CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
                 -fno-profile-arcs
                 -fno-test-coverage)
         endif()
-        foreach(_ascii_chat_utf8proc_target IN ITEMS utf8proc libplatform-utf8proc)
+        foreach(_ascii_chat_utf8proc_target IN ITEMS ascii-chat-utf8proc utf8proc libplatform-utf8proc)
             if(TARGET ${_ascii_chat_utf8proc_target})
                 target_compile_options(${_ascii_chat_utf8proc_target} PRIVATE
                     -fno-profile-arcs
