@@ -45,6 +45,11 @@ if(TARGET libplatform-objects)
     list(FILTER _ascii_chat_libplatform_sources EXCLUDE REGEX "(^|/)(signal|backtrace)\\.c$")
     set_property(TARGET libplatform-objects PROPERTY SOURCES
         "${_ascii_chat_libplatform_sources}")
+    set_property(SOURCE
+        "${_ascii_chat_libplatform_source}/lib/posix/filesystem.c"
+        TARGET_DIRECTORY libplatform-objects
+        APPEND PROPERTY COMPILE_DEFINITIONS
+        platform_get_data_dir_candidates=libplatform_filesystem_get_data_dir_candidates)
 endif()
 
 if(TARGET asciichat-project-includes)
