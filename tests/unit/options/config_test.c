@@ -26,7 +26,6 @@
 #include <options/config.h>
 #include <options/options.h>
 #include <options/rcu.h>
-#include <libflags/schema.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
@@ -54,10 +53,6 @@ static void save_config_options(config_options_backup_t *backup) {
   // Initialize RCU state if not already initialized
   // This is safe to call multiple times - it's a no-op if already initialized
   options_state_init();
-
-  // Build config schema if not already built (required for config loading)
-  // This is safe to call multiple times - it rebuilds if needed
-  cr_assert_eq(config_schema_build_from_registry(), ASCIICHAT_OK);
 
   // Get current options from RCU
   const options_t *current = options_get();

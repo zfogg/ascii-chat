@@ -19,6 +19,7 @@
 #include <libplatform/terminal.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/logging.h>
+#include <libflags/values.h>
 
 TestSuite(options);
 TestSuite(options_errors);
@@ -395,7 +396,9 @@ ParameterizedTest(port_validation_test_case_t *tc, options, port_validation) {
     options_init(argc, argv);
     // Get options from RCU for assertions
     const options_t *opts = options_get();
-    cr_assert_eq(opts->port, strtoint_safe(tc->port), "%s should set port correctly", tc->description);
+    int expected_port = 0;
+    cr_assert(flags_parse_int32(tc->port, &expected_port), "%s should contain a valid port", tc->description);
+    cr_assert_eq(opts->port, expected_port, "%s should set port correctly", tc->description);
   } else {
     cr_assert_eq(exit_code, tc->expected_exit_code, "%s should cause exit with code %d", tc->description, tc->expected_exit_code);
   }

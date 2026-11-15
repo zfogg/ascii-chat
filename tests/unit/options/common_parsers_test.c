@@ -8,12 +8,12 @@
 TestSuite(common_parsers);
 
 Test(common_parsers, levenshtein_handles_utf8_and_invalid_inputs) {
-  cr_assert_eq(levenshtein("kitten", "sitting"), 3);
-  cr_assert_eq(levenshtein("café", "cafe"), 1);
-  cr_assert_eq(levenshtein("界é", "界"), 1);
-  cr_assert_eq(levenshtein("", "abc"), 3);
-  cr_assert_eq(levenshtein(NULL, "abc"), SIZE_MAX);
-  cr_assert_eq(levenshtein("\xff", "abc"), SIZE_MAX);
+  cr_assert_eq(flags_levenshtein("kitten", "sitting"), 3);
+  cr_assert_eq(flags_levenshtein("café", "cafe"), 1);
+  cr_assert_eq(flags_levenshtein("界é", "界"), 1);
+  cr_assert_eq(flags_levenshtein("", "abc"), 3);
+  cr_assert_eq(flags_levenshtein(NULL, "abc"), SIZE_MAX);
+  cr_assert_eq(flags_levenshtein("\xff", "abc"), SIZE_MAX);
 }
 
 Test(common_parsers, display_aliases_and_rejected_values_preserve_previous_settings) {
