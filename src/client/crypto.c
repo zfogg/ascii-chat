@@ -31,8 +31,7 @@ asciichat_error_t client_crypto_init(client_connection_t *connection, const char
     char discovery_url[URL_BUFFER_SIZE];
     const char *discovery_service = GET_OPTION(discovery_server);
     if (GET_OPTION(discovery_port) != ACIP_DISCOVERY_DEFAULT_PORT) {
-      asciichat_error_t override_result = connection_endpoint_override_port(discovery_service, (uint16_t)GET_OPTION(discovery_port),
-                                                                            discovery_url, sizeof(discovery_url));
+      asciichat_error_t override_result = connection_endpoint_override_port(discovery_service, (uint16_t)GET_OPTION(discovery_port), discovery_url, sizeof(discovery_url));
       if (override_result != ASCIICHAT_OK)
         return SET_ERRNO(ERROR_USAGE, "Invalid --discovery-service URL for --discovery-service-port override");
       discovery_service = discovery_url;

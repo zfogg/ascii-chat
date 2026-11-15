@@ -112,10 +112,8 @@ asciichat_error_t connection_endpoint_override_port(const char *input, uint16_t 
     return result;
   const char *host = parts.ipv6 ? parts.ipv6 : parts.host;
   const char *path = parts.path ? parts.path : "";
-  result = (safe_snprintf(output, output_size, "%s://%s%s%s:%u%s", parts.scheme,
-                           parts.ipv6 ? "[" : "", host, parts.ipv6 ? "]" : "", ":", (unsigned)port, path) < 0)
-                ? ERROR_INVALID_PARAM
-                : ASCIICHAT_OK;
+  result =
+      (safe_snprintf(output, output_size, "%s://%s%s%s:%u%s", parts.scheme, parts.ipv6 ? "[" : "", host, parts.ipv6 ? "]" : "", ":", (unsigned)port, path) < 0) ? ERROR_INVALID_PARAM : ASCIICHAT_OK;
   url_parts_destroy(&parts);
   return result;
 }

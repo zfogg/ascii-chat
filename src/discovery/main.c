@@ -854,8 +854,7 @@ int discovery_main(void) {
   char service_url_override[URL_BUFFER_SIZE];
   const char *service_url = GET_OPTION(discovery_server);
   if (GET_OPTION(discovery_port) != ACIP_DISCOVERY_DEFAULT_PORT) {
-    asciichat_error_t override_result = connection_endpoint_override_port(service_url, (uint16_t)GET_OPTION(discovery_port),
-                                                                          service_url_override, sizeof(service_url_override));
+    asciichat_error_t override_result = connection_endpoint_override_port(service_url, (uint16_t)GET_OPTION(discovery_port), service_url_override, sizeof(service_url_override));
     if (override_result != ASCIICHAT_OK) {
       log_fatal("Invalid --discovery-service URL for --discovery-service-port override");
       return ERROR_USAGE;
