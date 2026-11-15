@@ -11,8 +11,7 @@
 static bool fail_encoder;
 static unsigned encoder_calls;
 static int encoder_fps;
-static asciichat_error_t delivery_encoder(const char *path, int cols, int rows, int fps, int theme,
-                                          render_file_ctx_t **out) {
+static asciichat_error_t delivery_encoder(const char *path, int cols, int rows, int fps, int theme, render_file_ctx_t **out) {
   ++encoder_calls;
   encoder_fps = fps;
   if (fail_encoder)
@@ -37,16 +36,14 @@ static asciichat_error_t delivery_write(int fd, const char *data, size_t length)
   delivery_length = length;
   return delivery_result;
 }
-static asciichat_error_t delivery_present(ui_screen_t screen, int fd, terminal_size_t size, const char *data,
-                                          size_t length) {
+static asciichat_error_t delivery_present(ui_screen_t screen, int fd, terminal_size_t size, const char *data, size_t length) {
   ASCIICHAT_REQUIRE_EQ(screen, UI_SCREEN_MEDIA);
   ASCIICHAT_REQUIRE_GT(size.cols, 0);
   ASCIICHAT_REQUIRE_GT(size.rows, 0);
   ++delivery_fresh;
   return delivery_write(fd, data, length);
 }
-static asciichat_error_t delivery_present_retained(ui_screen_t screen, int fd, terminal_size_t size, const char *data,
-                                                   size_t length) {
+static asciichat_error_t delivery_present_retained(ui_screen_t screen, int fd, terminal_size_t size, const char *data, size_t length) {
   ++delivery_retained;
   return delivery_present(screen, fd, size, data, length);
 }
@@ -93,8 +90,7 @@ static void teardown(void) {
   log_destroy();
 }
 static void create(bool snapshot) {
-  session_display_config_t config = {
-      .snapshot_mode = snapshot, .palette_type = PALETTE_STANDARD, .color_mode = TERM_COLOR_NONE};
+  session_display_config_t config = {.snapshot_mode = snapshot, .palette_type = PALETTE_STANDARD, .color_mode = TERM_COLOR_NONE};
   display = session_display_create(&config);
   ASCIICHAT_REQUIRE_NOT_NULL(display);
 }
@@ -165,11 +161,7 @@ TEST_CASE("display_delivery/local_audio_playback_uses_the_borrowed_ring_without_
   audio_ring_buffer_destroy(local_audio.playback_buffer);
   local_audio.playback_buffer = audio_ring_buffer_create_for_capture();
   ASCIICHAT_REQUIRE_NOT_NULL(local_audio.playback_buffer);
-  session_display_config_t config = {.snapshot_mode = true,
-                                     .palette_type = PALETTE_STANDARD,
-                                     .color_mode = TERM_COLOR_NONE,
-                                     .enable_audio_playback = true,
-                                     .audio_ctx = &local_audio};
+  session_display_config_t config = {.snapshot_mode = true, .palette_type = PALETTE_STANDARD, .color_mode = TERM_COLOR_NONE, .enable_audio_playback = true, .audio_ctx = &local_audio};
   display = session_display_create(&config);
   ASCIICHAT_REQUIRE_NOT_NULL(display);
   ASCIICHAT_REQUIRE(session_display_has_audio_playback(display));
@@ -322,10 +314,7 @@ TEST_CASE("display_delivery/encoder_start_failure_rolls_back_constructor_and_pre
 TEST_CASE("display_delivery/deferred_encoder_selects_media_then_option_then_default_fps_and_remains_retryable", "[display_delivery]") {
   encoder_options(0);
   fail_encoder = true;
-  session_display_config_t config = {.snapshot_mode = true,
-                                     .palette_type = PALETTE_STANDARD,
-                                     .color_mode = TERM_COLOR_NONE,
-                                     .defer_render_file = true};
+  session_display_config_t config = {.snapshot_mode = true, .palette_type = PALETTE_STANDARD, .color_mode = TERM_COLOR_NONE, .defer_render_file = true};
   display = session_display_create(&config);
   ASCIICHAT_REQUIRE_NOT_NULL(display);
   ASCIICHAT_REQUIRE_EQ(encoder_calls, 0);

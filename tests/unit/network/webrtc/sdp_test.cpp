@@ -14,22 +14,12 @@ static constexpr sdp_renderer_t sdp_renderer_braille = static_cast<sdp_renderer_
 static constexpr sdp_charset_t sdp_charset_utf8 = static_cast<sdp_charset_t>(1);
 static constexpr sdp_compression_t sdp_compression_zstd = static_cast<sdp_compression_t>(2);
 static opus_config_t audio_config(void) {
-  return (opus_config_t){.sample_rate = 48000,
-                         .channels = 2,
-                         .bitrate = 24000,
-                         .frame_duration = 20,
-                         .dtx_enabled = true,
-                         .fec_enabled = true};
+  return (opus_config_t){.sample_rate = 48000, .channels = 2, .bitrate = 24000, .frame_duration = 20, .dtx_enabled = true, .fec_enabled = true};
 }
 
 static terminal_capability_t capability(acip_codec_t codec) {
   return (terminal_capability_t){.codec = codec,
-                                 .format = {.width = 100,
-                                            .height = 40,
-                                            .renderer = sdp_renderer_braille,
-                                            .charset = sdp_charset_utf8,
-                                            .compression = sdp_compression_zstd,
-                                            .csi_rep_support = true}};
+                                 .format = {.width = 100, .height = 40, .renderer = sdp_renderer_braille, .charset = sdp_charset_utf8, .compression = sdp_compression_zstd, .csi_rep_support = true}};
 }
 
 TEST_CASE("sdp/offers_round_trip_audio_rendering_and_codec_capabilities", "[sdp]") {
@@ -61,8 +51,7 @@ TEST_CASE("sdp/offers_round_trip_audio_rendering_and_codec_capabilities", "[sdp]
 }
 
 TEST_CASE("sdp/answer_obeys_server_preference_and_format_constraints", "[sdp]") {
-  terminal_capability_t offered[] = {capability(ACIP_CODEC_TRUECOLOR), capability(ACIP_CODEC_256COLOR),
-                                     capability(ACIP_CODEC_MONO)};
+  terminal_capability_t offered[] = {capability(ACIP_CODEC_TRUECOLOR), capability(ACIP_CODEC_256COLOR), capability(ACIP_CODEC_MONO)};
   terminal_capability_t supported[] = {capability(ACIP_CODEC_256COLOR), capability(ACIP_CODEC_TRUECOLOR)};
   opus_config_t audio = audio_config();
   sdp_session_t offer = {0}, answer = {0};
@@ -109,10 +98,8 @@ TEST_CASE("sdp/terminal_detection_honors_depth_utf8_and_output_capacity", "[sdp]
   const struct {
     const char *term, *color, *lang;
     acip_codec_t preferred;
-  } cases[] = {{"xterm", "truecolor", "en_US.UTF-8", ACIP_CODEC_TRUECOLOR},
-               {"xterm-256color", "", "C", ACIP_CODEC_256COLOR},
-               {"xterm", "", "C", ACIP_CODEC_16COLOR},
-               {"dumb", "", "C", ACIP_CODEC_MONO}};
+  } cases[] = {
+      {"xterm", "truecolor", "en_US.UTF-8", ACIP_CODEC_TRUECOLOR}, {"xterm-256color", "", "C", ACIP_CODEC_256COLOR}, {"xterm", "", "C", ACIP_CODEC_16COLOR}, {"dumb", "", "C", ACIP_CODEC_MONO}};
   for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
     platform_setenv("TERM", cases[i].term);
     platform_setenv("COLORTERM", cases[i].color);

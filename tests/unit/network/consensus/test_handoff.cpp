@@ -6,14 +6,12 @@
 static uint8_t session_id[16] = {9}, host_id[16] = {1}, slow_id[16] = {2}, fast_id[16] = {3};
 
 static void sample(consensus_handoff_t *s, const uint8_t id[16], uint64_t start, uint64_t end, uint32_t sequence) {
-  consensus_handoff_message_t m = {
-      .kind = HANDOFF_SAMPLE_START, .sequence = sequence, .capabilities = 2, .nat_tier = 255};
+  consensus_handoff_message_t m = {.kind = HANDOFF_SAMPLE_START, .sequence = sequence, .capabilities = 2, .nat_tier = 255};
   memcpy(m.session, session_id, 16);
   memcpy(m.participant, id, 16);
   ASCIICHAT_REQUIRE_EQ(consensus_handoff_receive(s, &m, CONSENSUS_HANDOFF_HEADER, start), ASCIICHAT_OK);
   m.kind = HANDOFF_SAMPLE_DATA;
-  ASCIICHAT_REQUIRE_EQ(consensus_handoff_receive(s, &m, CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES, end),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(consensus_handoff_receive(s, &m, CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES, end), ASCIICHAT_OK);
 }
 static consensus_handoff_t setup(void) {
   consensus_handoff_t s;
@@ -265,8 +263,7 @@ TEST_CASE("handoff/incomplete_refresh_cannot_change_eligible_metrics", "[handoff
   action.kind = HANDOFF_READY;
   ASCIICHAT_REQUIRE_EQ(consensus_handoff_receive(&s, &action, CONSENSUS_HANDOFF_HEADER, 2002), ASCIICHAT_OK);
   m.kind = HANDOFF_SAMPLE_DATA;
-  ASCIICHAT_REQUIRE_EQ(consensus_handoff_receive(&s, &m, CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES, 2010),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(consensus_handoff_receive(&s, &m, CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES, 2010), ASCIICHAT_OK);
   // A completed refresh withdrawing host capability revokes the old preparation.
   consensus_handoff_host_lost(&s, host_id);
   ASCIICHAT_REQUIRE_NOT(consensus_handoff_tick(&s, 2011, &action));
@@ -280,8 +277,7 @@ TEST_CASE("handoff/departed_peer_and_late_probe_cannot_win", "[handoff]") {
   consensus_handoff_message_t m = {.kind = HANDOFF_SAMPLE_DATA, .sequence = 1};
   memcpy(m.session, session_id, 16);
   memcpy(m.participant, fast_id, 16);
-  ASCIICHAT_REQUIRE_NE(consensus_handoff_receive(&s, &m, CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES, 111),
-                ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_NE(consensus_handoff_receive(&s, &m, CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES, 111), ASCIICHAT_OK);
   sample(&s, slow_id, 100, 300, 1);
   consensus_handoff_message_t action;
   ASCIICHAT_REQUIRE(consensus_handoff_tick(&s, 301, &action));

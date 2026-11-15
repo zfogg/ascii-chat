@@ -25,8 +25,7 @@ static void setup(void) {
   options->force_utf8 = UTF8_SETTING_TRUE;
   ASCIICHAT_REQUIRE_EQ(options_state_set(options), ASCIICHAT_OK);
   SAFE_FREE(options);
-  session_display_config_t config = {
-      .snapshot_mode = true, .palette_type = PALETTE_CUSTOM, .custom_palette = ".#", .color_mode = TERM_COLOR_NONE};
+  session_display_config_t config = {.snapshot_mode = true, .palette_type = PALETTE_CUSTOM, .custom_palette = ".#", .color_mode = TERM_COLOR_NONE};
   display = session_display_create(&config);
   ASCIICHAT_REQUIRE_NOT_NULL(display);
   image = image_new(8, 4);
@@ -177,8 +176,7 @@ TEST_CASE("session_display_conversion/cancellation_prevents_context_creation_and
   session_display_config_t config = {.should_exit_callback = cancel, .callback_data = &calls};
   ASCIICHAT_REQUIRE_NULL(session_display_create(&config));
   ASCIICHAT_REQUIRE_EQ(calls, 1);
-  config = (session_display_config_t){
-      .snapshot_mode = true, .palette_type = PALETTE_CUSTOM, .custom_palette = "", .color_mode = TERM_COLOR_NONE};
+  config = (session_display_config_t){.snapshot_mode = true, .palette_type = PALETTE_CUSTOM, .custom_palette = "", .color_mode = TERM_COLOR_NONE};
   session_display_ctx_t *fallback = session_display_create(&config);
   ASCIICHAT_REQUIRE_NOT_NULL(fallback);
   ASCIICHAT_REQUIRE_STR_EQ(session_display_get_palette_chars(fallback), get_builtin_palette(PALETTE_STANDARD)->chars);

@@ -37,8 +37,7 @@ static void description(webrtc_peer_connection_t *pc, const char *sdp, const cha
   // The oversized ACIP exchange below must still use locally bounded chunks.
   size_t capacity = strlen(sdp) + 64;
   char *remote_sdp = SAFE_MALLOC(capacity, char *);
-  safe_snprintf(remote_sdp, capacity, "%.*sa=max-message-size:%u%s", (int)(limit - sdp), sdp,
-                4 * ACIP_OUTBOUND_SCTP_RESERVE, limit + strlen(message_limit));
+  safe_snprintf(remote_sdp, capacity, "%.*sa=max-message-size:%u%s", (int)(limit - sdp), sdp, 4 * ACIP_OUTBOUND_SCTP_RESERVE, limit + strlen(message_limit));
   ASCIICHAT_REQUIRE_EQ(webrtc_set_remote_description(endpoint->other->pc, remote_sdp, type), ASCIICHAT_OK);
   SAFE_FREE(remote_sdp);
 }
@@ -80,14 +79,9 @@ static void initialize(endpoint_t *endpoint, bool server, uint8_t mode, const ch
   ASCIICHAT_REQUIRE(endpoint->security);
   endpoint->security->mode = mode;
   ASCIICHAT_REQUIRE_EQ(
-      (password ? crypto_handshake_init_with_password("webrtc_test", &endpoint->security->handshake, server, password)
-                : crypto_handshake_init("webrtc_test", &endpoint->security->handshake, server)),
+      (password ? crypto_handshake_init_with_password("webrtc_test", &endpoint->security->handshake, server, password) : crypto_handshake_init("webrtc_test", &endpoint->security->handshake, server)),
       ASCIICHAT_OK);
-  webrtc_config_t config = {.bind_address = "127.0.0.1",
-                            .on_local_description = description,
-                            .on_local_candidate = candidate,
-                            .on_datachannel_open = opened,
-                            .user_data = endpoint};
+  webrtc_config_t config = {.bind_address = "127.0.0.1", .on_local_description = description, .on_local_candidate = candidate, .on_datachannel_open = opened, .user_data = endpoint};
   ASCIICHAT_REQUIRE_EQ(webrtc_create_peer_connection(&config, &endpoint->pc), ASCIICHAT_OK);
 }
 
@@ -97,8 +91,7 @@ static void exchange(endpoint_t *sender, endpoint_t *receiver) {
   acip_outbound_stats_t before;
   ASCIICHAT_REQUIRE_EQ(acip_outbound_snapshot(sender->transport, &before), ASCIICHAT_OK);
   uint64_t nonce = sender->security->handshake.crypto_ctx.nonce_counter;
-  ASCIICHAT_REQUIRE_EQ(packet_send_via_transport(sender->transport, PACKET_TYPE_PING, payload, sizeof(payload), 0),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(packet_send_via_transport(sender->transport, PACKET_TYPE_PING, payload, sizeof(payload), 0), ASCIICHAT_OK);
   uint64_t submitted_start = time_get_ns();
   for (;;) {
     acip_outbound_stats_t after;
@@ -108,11 +101,9 @@ static void exchange(endpoint_t *sender, endpoint_t *receiver) {
     ASCIICHAT_REQUIRE(time_get_ns() - submitted_start < 5 * NS_PER_SEC_INT);
     platform_sleep_ms(1);
   }
-  ASCIICHAT_REQUIRE_EQ(sender->security->handshake.crypto_ctx.nonce_counter,
-               nonce + (ACIP_CRYPTO_HAS_ENCRYPT(sender->security->mode) ? 1 : 0));
+  ASCIICHAT_REQUIRE_EQ(sender->security->handshake.crypto_ctx.nonce_counter, nonce + (ACIP_CRYPTO_HAS_ENCRYPT(sender->security->mode) ? 1 : 0));
   uint64_t start = time_get_ns();
-  while (!acip_transport_has_pending_data(receiver->transport) &&
-         time_elapsed_ns(start, time_get_ns()) < 5 * NS_PER_SEC_INT)
+  while (!acip_transport_has_pending_data(receiver->transport) && time_elapsed_ns(start, time_get_ns()) < 5 * NS_PER_SEC_INT)
     platform_sleep_ms(5);
   ASCIICHAT_REQUIRE(acip_transport_has_pending_data(receiver->transport));
   void *data = NULL, *owned = NULL;
@@ -139,9 +130,7 @@ static void exchange_encrypted_wire(endpoint_t *sender, endpoint_t *receiver) {
   uint8_t *wire = SAFE_MALLOC(sizeof(inner) + plan.ciphertext_capacity, uint8_t *);
   packet_header_t outer;
   size_t encrypted_length = 0;
-  ASCIICHAT_REQUIRE_EQ(acip_packet_encrypt(&sender->security->handshake.crypto_ctx, &plan, NULL, wire + sizeof(outer),
-                                   plan.ciphertext_capacity, &outer, &encrypted_length),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(acip_packet_encrypt(&sender->security->handshake.crypto_ctx, &plan, NULL, wire + sizeof(outer), plan.ciphertext_capacity, &outer, &encrypted_length), ASCIICHAT_OK);
   memcpy(wire, &outer, sizeof(outer));
   ASCIICHAT_REQUIRE_EQ(webrtc_datachannel_send(sender->dc, wire, sizeof(outer) + encrypted_length), ASCIICHAT_OK);
   SAFE_FREE(wire);
@@ -178,8 +167,7 @@ static void rotate_idle(endpoint_t *client, endpoint_t *server) {
       for (unsigned i = 0; i < 2; ++i) {
         crypto_session_t *session;
         ASCIICHAT_REQUIRE_EQ(crypto_session_lock(&peers[i]->security->handshake.crypto_ctx, &session), ASCIICHAT_OK);
-        settled = settled && session->records.key_epoch == epoch && !session->records.previous_valid &&
-                  session->rotation.peer_ack == epoch && !session->rotation.exchange_ns;
+        settled = settled && session->records.key_epoch == epoch && !session->records.previous_valid && session->rotation.peer_ack == epoch && !session->rotation.exchange_ns;
         crypto_session_unlock(session);
       }
       if (!settled)
@@ -232,8 +220,7 @@ static void fixture(uint8_t mode, const char *password, bool identity, int rejec
   ASCIICHAT_REQUIRE(server.transport);
   if (rejection) {
     uint64_t start = time_get_ns();
-    while (acip_transport_is_connected(client.transport) && acip_transport_is_connected(server.transport) &&
-           time_elapsed_ns(start, time_get_ns()) < 10 * NS_PER_SEC_INT)
+    while (acip_transport_is_connected(client.transport) && acip_transport_is_connected(server.transport) && time_elapsed_ns(start, time_get_ns()) < 10 * NS_PER_SEC_INT)
       platform_sleep_ms(5);
     ASCIICHAT_REQUIRE(!acip_transport_is_connected(client.transport) || !acip_transport_is_connected(server.transport));
     ASCIICHAT_REQUIRE(!atomic_load_bool(&client.ready));

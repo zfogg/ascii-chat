@@ -143,16 +143,12 @@ typedef struct {
 } mixer_invalid_params_test_case_t;
 
 static mixer_invalid_params_test_case_t mixer_invalid_params_cases[] = {
-    {0, 44100, "Zero max_sources"},
-    {4, 0, "Zero sample_rate"},
-    {-1, 44100, "Negative max_sources"},
-    {4, -1, "Negative sample_rate"},
-    {MIXER_MAX_SOURCES + 1, 44100, "Exceeds MIXER_MAX_SOURCES"},
+    {0, 44100, "Zero max_sources"}, {4, 0, "Zero sample_rate"}, {-1, 44100, "Negative max_sources"}, {4, -1, "Negative sample_rate"}, {MIXER_MAX_SOURCES + 1, 44100, "Exceeds MIXER_MAX_SOURCES"},
 };
 
-
-
-TEST_CASE("mixer/create_with_invalid_params", "[mixer]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(mixer_invalid_params_cases)); auto *tc = &generated_case;
+TEST_CASE("mixer/create_with_invalid_params", "[mixer]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(mixer_invalid_params_cases));
+  auto *tc = &generated_case;
   mixer_t *mixer = mixer_create(tc->max_sources, tc->sample_rate);
   ASCIICHAT_REQUIRE_NULL(mixer, "%s should return NULL", tc->description);
 }
@@ -363,14 +359,13 @@ typedef struct {
   char description[64];
 } db_to_linear_test_case_t;
 
-static db_to_linear_test_case_t db_to_linear_cases[] = {
-    {0.0f, 1.0f, 1e-6f, "0 dB equals unity gain"},       {-6.0f, 0.5f, 0.01f, "-6 dB equals half gain"},
-    {-20.0f, 0.1f, 1e-3f, "-20 dB equals 0.1 gain"},     {-40.0f, 0.01f, 1e-4f, "-40 dB equals 0.01 gain"},
-    {-60.0f, 0.001f, 1e-4f, "-60 dB equals 0.001 gain"}, {6.0f, 2.0f, 0.01f, "+6 dB equals double gain"}};
+static db_to_linear_test_case_t db_to_linear_cases[] = {{0.0f, 1.0f, 1e-6f, "0 dB equals unity gain"},       {-6.0f, 0.5f, 0.01f, "-6 dB equals half gain"},
+                                                        {-20.0f, 0.1f, 1e-3f, "-20 dB equals 0.1 gain"},     {-40.0f, 0.01f, 1e-4f, "-40 dB equals 0.01 gain"},
+                                                        {-60.0f, 0.001f, 1e-4f, "-60 dB equals 0.001 gain"}, {6.0f, 2.0f, 0.01f, "+6 dB equals double gain"}};
 
-
-
-TEST_CASE("mixer_utils/db_to_linear_conversion_param", "[mixer_utils]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(db_to_linear_cases)); auto *tc = &generated_case;
+TEST_CASE("mixer_utils/db_to_linear_conversion_param", "[mixer_utils]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(db_to_linear_cases));
+  auto *tc = &generated_case;
   float result = db_to_linear(tc->db_value);
   ASCIICHAT_REQUIRE_FLOAT_EQ(result, tc->expected_linear, tc->epsilon, "%s should be correct", tc->description);
 }
@@ -383,14 +378,13 @@ typedef struct {
   char description[64];
 } linear_to_db_test_case_t;
 
-static linear_to_db_test_case_t linear_to_db_cases[] = {
-    {1.0f, 0.0f, 1e-6f, "Unity gain equals 0 dB"},       {0.5f, -6.0f, 0.1f, "Half gain equals -6 dB"},
-    {0.1f, -20.0f, 1e-3f, "0.1 gain equals -20 dB"},     {0.01f, -40.0f, 1e-3f, "0.01 gain equals -40 dB"},
-    {0.001f, -60.0f, 1e-3f, "0.001 gain equals -60 dB"}, {2.0f, 6.0f, 0.1f, "Double gain equals +6 dB"}};
+static linear_to_db_test_case_t linear_to_db_cases[] = {{1.0f, 0.0f, 1e-6f, "Unity gain equals 0 dB"},       {0.5f, -6.0f, 0.1f, "Half gain equals -6 dB"},
+                                                        {0.1f, -20.0f, 1e-3f, "0.1 gain equals -20 dB"},     {0.01f, -40.0f, 1e-3f, "0.01 gain equals -40 dB"},
+                                                        {0.001f, -60.0f, 1e-3f, "0.001 gain equals -60 dB"}, {2.0f, 6.0f, 0.1f, "Double gain equals +6 dB"}};
 
-
-
-TEST_CASE("mixer_utils/linear_to_db_conversion_param", "[mixer_utils]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(linear_to_db_cases)); auto *tc = &generated_case;
+TEST_CASE("mixer_utils/linear_to_db_conversion_param", "[mixer_utils]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(linear_to_db_cases));
+  auto *tc = &generated_case;
   float result = linear_to_db(tc->linear_value);
   ASCIICHAT_REQUIRE_FLOAT_EQ(result, tc->expected_db, tc->epsilon, "%s should be correct", tc->description);
 }
@@ -404,15 +398,14 @@ typedef struct {
   char description[64];
 } clamp_float_test_case_t;
 
-static clamp_float_test_case_t clamp_float_cases[] = {
-    {0.5f, 0.0f, 1.0f, 0.5f, "Value within range"},       {-0.5f, 0.0f, 1.0f, 0.0f, "Value below min"},
-    {1.5f, 0.0f, 1.0f, 1.0f, "Value above max"},          {0.0f, -1.0f, 1.0f, 0.0f, "Zero in symmetric range"},
-    {-2.0f, -1.0f, 1.0f, -1.0f, "Clamp to negative min"}, {2.0f, -1.0f, 1.0f, 1.0f, "Clamp to positive max"},
-    {0.0f, 0.0f, 0.0f, 0.0f, "Degenerate range"}};
+static clamp_float_test_case_t clamp_float_cases[] = {{0.5f, 0.0f, 1.0f, 0.5f, "Value within range"},       {-0.5f, 0.0f, 1.0f, 0.0f, "Value below min"},
+                                                      {1.5f, 0.0f, 1.0f, 1.0f, "Value above max"},          {0.0f, -1.0f, 1.0f, 0.0f, "Zero in symmetric range"},
+                                                      {-2.0f, -1.0f, 1.0f, -1.0f, "Clamp to negative min"}, {2.0f, -1.0f, 1.0f, 1.0f, "Clamp to positive max"},
+                                                      {0.0f, 0.0f, 0.0f, 0.0f, "Degenerate range"}};
 
-
-
-TEST_CASE("mixer_utils/clamp_float_param", "[mixer_utils]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(clamp_float_cases)); auto *tc = &generated_case;
+TEST_CASE("mixer_utils/clamp_float_param", "[mixer_utils]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(clamp_float_cases));
+  auto *tc = &generated_case;
   float result = clamp_float(tc->value, tc->min, tc->max);
   ASCIICHAT_REQUIRE_FLOAT_EQ(result, tc->expected, 1e-6f, "%s should be correct", tc->description);
 }
@@ -455,7 +448,7 @@ TEST_CASE("compressor/process_below_threshold", "[compressor]") {
 
   // Process signal below threshold
   float gain = compressor_process_sample(&comp, 0.1f); // -20dB
-  ASCIICHAT_REQUIRE_GE(gain, 0.9f);                           // Should have minimal compression
+  ASCIICHAT_REQUIRE_GE(gain, 0.9f);                    // Should have minimal compression
 }
 
 TEST_CASE("compressor/process_above_threshold", "[compressor]") {
@@ -465,7 +458,7 @@ TEST_CASE("compressor/process_above_threshold", "[compressor]") {
 
   // Process signal above threshold
   float gain = compressor_process_sample(&comp, 0.5f); // -6dB
-  ASCIICHAT_REQUIRE_LE(gain, 1.0f);                           // Should have some compression
+  ASCIICHAT_REQUIRE_LE(gain, 1.0f);                    // Should have some compression
 }
 
 /* ============================================================================
@@ -723,7 +716,7 @@ TEST_CASE("mixer_integration/full_pipeline_with_processing", "[mixer_integration
 
   // Output should be properly limited and processed
   ASCIICHAT_REQUIRE_LE(max_output, 1.0f); // No clipping
-  ASCIICHAT_REQUIRE_GT(rms_output, 0.0f);  // Non-zero output
+  ASCIICHAT_REQUIRE_GT(rms_output, 0.0f); // Non-zero output
 
   // Clean up
   audio_ring_buffer_destroy(sine_buffer);
@@ -808,10 +801,8 @@ TEST_CASE("mixer_integration/audio_bounds_property", "[mixer_integration]") {
 
   // Verify property: ALL output samples must be in [-1.0, 1.0] range
   for (int i = 0; i < 256; i++) {
-    ASCIICHAT_REQUIRE_GE(output[i], -1.0f, "Output sample %d must be >= -1.0 (sources=%zu, amplitude=%.2f, got %.4f)", i,
-                  num_sources, amplitude, output[i]);
-    ASCIICHAT_REQUIRE_LE(output[i], 1.0f, "Output sample %d must be <= 1.0 (sources=%zu, amplitude=%.2f, got %.4f)", i,
-                  num_sources, amplitude, output[i]);
+    ASCIICHAT_REQUIRE_GE(output[i], -1.0f, "Output sample %d must be >= -1.0 (sources=%zu, amplitude=%.2f, got %.4f)", i, num_sources, amplitude, output[i]);
+    ASCIICHAT_REQUIRE_LE(output[i], 1.0f, "Output sample %d must be <= 1.0 (sources=%zu, amplitude=%.2f, got %.4f)", i, num_sources, amplitude, output[i]);
   }
 
   // Clean up

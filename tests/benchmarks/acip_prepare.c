@@ -27,8 +27,7 @@ static void *measured_copy(void *to, const void *from, size_t size) {
 #define acip_packet_encrypt measured_encrypt
 #include "../../lib/network/acip/prepare.c"
 
-static void prepare(crypto_context_t *crypto, const socket_buffer_t *slices, size_t count, size_t size, int transport,
-                    bool legacy) {
+static void prepare(crypto_context_t *crypto, const socket_buffer_t *slices, size_t count, size_t size, int transport, bool legacy) {
   // 0: synchronous TCP, 1: async TCP, 2: WebSocket (already contiguous).
   if (!crypto) {
     if (!legacy) {
@@ -97,28 +96,26 @@ TEST_CASE("acip_prepare/legacy_and_planned_paths", "[benchmark][acip_prepare]") 
   socket_buffer_t slices[] = {{packet, sizeof(header)}, {packet + sizeof(header), size - sizeof(header)}};
   socket_buffer_t contiguous = {packet, size};
   BENCHMARK("prepare paths") {
-  for (int repeat = 0; repeat < 3; ++repeat) {
-    for (int transport = 0; transport < 3; ++transport) {
-      for (int vector = 0; vector < (transport == 2 ? 1 : 2); ++vector) {
-        for (int encrypted = 0; encrypted < 2; ++encrypted) {
-          for (int order = 0; order < 2; ++order) {
-            bool legacy = (order + repeat) % 2 == 0;
-            allocations = copies = 0;
-            uint64_t start = time_get_ns();
-            for (size_t i = 0; i < iterations; ++i)
-              prepare(encrypted ? &crypto : NULL, vector ? slices : &contiguous, vector ? 2 : 1, size, transport,
-                      legacy);
-            uint64_t elapsed = time_get_ns() - start;
-            log_warn("prepare-bench run=%d transport=%d vectors=%d encrypted=%d legacy=%d allocs=%.0f copy_bytes=%.0f "
-                     "MiB/s=%.2f",
-                     repeat, transport, vector, encrypted, legacy, (double)allocations / iterations,
-                     (double)copies / iterations, (double)size * iterations * 1e9 / elapsed / 1048576.0);
+    for (int repeat = 0; repeat < 3; ++repeat) {
+      for (int transport = 0; transport < 3; ++transport) {
+        for (int vector = 0; vector < (transport == 2 ? 1 : 2); ++vector) {
+          for (int encrypted = 0; encrypted < 2; ++encrypted) {
+            for (int order = 0; order < 2; ++order) {
+              bool legacy = (order + repeat) % 2 == 0;
+              allocations = copies = 0;
+              uint64_t start = time_get_ns();
+              for (size_t i = 0; i < iterations; ++i)
+                prepare(encrypted ? &crypto : NULL, vector ? slices : &contiguous, vector ? 2 : 1, size, transport, legacy);
+              uint64_t elapsed = time_get_ns() - start;
+              log_warn("prepare-bench run=%d transport=%d vectors=%d encrypted=%d legacy=%d allocs=%.0f copy_bytes=%.0f "
+                       "MiB/s=%.2f",
+                       repeat, transport, vector, encrypted, legacy, (double)allocations / iterations, (double)copies / iterations, (double)size * iterations * 1e9 / elapsed / 1048576.0);
+            }
           }
         }
       }
     }
-  }
-  return 0;
+    return 0;
   };
   buffer_release(packet);
   crypto_destroy(&crypto);

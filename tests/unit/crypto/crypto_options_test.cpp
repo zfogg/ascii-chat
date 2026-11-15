@@ -34,7 +34,6 @@ static void reset_crypto_options(void) {
   // Shutdown and reinitialize RCU state to clear all previous state
   options_state_destroy();
   options_state_init();
-
 }
 
 static int options_init_exit_code(int argc, char **argv) {
@@ -235,10 +234,8 @@ TEST_CASE("crypto_options/crypto_options_parsing_tests", "[crypto_options]") {
   // Test the results (only if we expected success)
   ASCIICHAT_REQUIRE_EQ(opts->no_encrypt, tc->expect_no_encrypt, "No encrypt flag should match for case: %s", tc->description);
   ASCIICHAT_REQUIRE_EQ(opts->encrypt_key[0] != '\0', tc->expect_key_set, "Key should be set for case: %s", tc->description);
-  ASCIICHAT_REQUIRE_EQ(opts->server_key[0] != '\0', tc->expect_server_key_set, "Server key should be set for case: %s",
-               tc->description);
-  ASCIICHAT_REQUIRE_EQ(opts->client_keys[0] != '\0', tc->expect_client_keys_set, "Client keys should be set for case: %s",
-               tc->description);
+  ASCIICHAT_REQUIRE_EQ(opts->server_key[0] != '\0', tc->expect_server_key_set, "Server key should be set for case: %s", tc->description);
+  ASCIICHAT_REQUIRE_EQ(opts->client_keys[0] != '\0', tc->expect_client_keys_set, "Client keys should be set for case: %s", tc->description);
 
   // Check expected values (use [0] != '\0' to check if string is non-empty)
   if (tc->expected_key[0] != '\0') {
@@ -248,14 +245,12 @@ TEST_CASE("crypto_options/crypto_options_parsing_tests", "[crypto_options]") {
 
   if (tc->expected_server_key[0] != '\0') {
     ASCIICHAT_REQUIRE(opts->server_key[0] != '\0', "Server key should not be empty for case: %s", tc->description);
-    ASCIICHAT_REQUIRE_STR_EQ(opts->server_key, tc->expected_server_key, "Server key should match for case: %s",
-                     tc->description);
+    ASCIICHAT_REQUIRE_STR_EQ(opts->server_key, tc->expected_server_key, "Server key should match for case: %s", tc->description);
   }
 
   if (tc->expected_client_keys[0] != '\0') {
     ASCIICHAT_REQUIRE(opts->client_keys[0] != '\0', "Client keys should not be empty for case: %s", tc->description);
-    ASCIICHAT_REQUIRE_STR_EQ(opts->client_keys, tc->expected_client_keys, "Client keys should match for case: %s",
-                     tc->description);
+    ASCIICHAT_REQUIRE_STR_EQ(opts->client_keys, tc->expected_client_keys, "Client keys should match for case: %s", tc->description);
   }
 }
 
@@ -422,8 +417,7 @@ TEST_CASE("crypto_options/option_combinations", "[crypto_options]") {
     bool has_key;
   };
   static constexpr option_combination_t combinations[] = {
-      {true, true, true},  {true, true, false},  {true, false, true},  {true, false, false},
-      {false, true, true}, {false, true, false}, {false, false, true}, {false, false, false},
+      {true, true, true}, {true, true, false}, {true, false, true}, {true, false, false}, {false, true, true}, {false, true, false}, {false, false, true}, {false, false, false},
   };
   auto &&generated_case = GENERATE(Catch::Generators::from_range(combinations));
   const auto &combination = generated_case;
@@ -455,8 +449,7 @@ TEST_CASE("crypto_options/option_combinations", "[crypto_options]") {
     argv[argc++] = key_val;
   }
 
-  ASCIICHAT_REQUIRE_EQ(options_init(argc, (char **)argv), ASCIICHAT_OK,
-               "Authentication and payload encryption are independent");
+  ASCIICHAT_REQUIRE_EQ(options_init(argc, (char **)argv), ASCIICHAT_OK, "Authentication and payload encryption are independent");
 
   // Get options from RCU state
   const options_t *opts = options_get();

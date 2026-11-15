@@ -33,8 +33,7 @@ TEST_CASE("auth_binding/authentication_mac_binds_nonce_password_and_dh_secret", 
     ASCIICHAT_REQUIRE_EQ(crypto_compute_auth_response(&sender, nonce, actual), CRYPTO_OK);
     memcpy(input, nonce, 32);
     memcpy(input + 32, sender.shared_key, 32);
-    ASCIICHAT_REQUIRE_EQ(
-        crypto_auth_hmacsha256(expected, input, sizeof(input), password ? sender.password_key : sender.shared_key), 0);
+    ASCIICHAT_REQUIRE_EQ(crypto_auth_hmacsha256(expected, input, sizeof(input), password ? sender.password_key : sender.shared_key), 0);
     ASCIICHAT_REQUIRE_ARRAY_EQ(actual, expected, 32);
     ASCIICHAT_REQUIRE(crypto_verify_auth_response(&receiver, nonce, actual));
     nonce[0] ^= 1;
@@ -51,8 +50,7 @@ TEST_CASE("auth_binding/authentication_mac_binds_nonce_password_and_dh_secret", 
       ASCIICHAT_REQUIRE_NOT(crypto_verify_auth_response(&receiver, nonce, actual));
     }
   }
-  ASCIICHAT_REQUIRE_EQ(crypto_compute_password_hmac(&sender, sender.password_key, nonce, sender.shared_key, actual),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(crypto_compute_password_hmac(&sender, sender.password_key, nonce, sender.shared_key, actual), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(crypto_auth_hmacsha256(expected, input, sizeof(input), sender.password_key), 0);
   ASCIICHAT_REQUIRE_ARRAY_EQ(actual, expected, 32);
   receiver.key_exchange_complete = false;

@@ -26,12 +26,8 @@ TEST_CASE("colorscheme_files/exported_builtin_preserves_colors_and_compiles_both
       ASCIICHAT_REQUIRE_EQ(memcmp(original.log_colors_light, loaded.log_colors_light, sizeof(original.log_colors_light)), 0);
     compiled_color_scheme_t compiled = {0};
     for (int background = TERM_BACKGROUND_LIGHT; background <= TERM_BACKGROUND_DARK; ++background) {
-      ASCIICHAT_REQUIRE_EQ(
-          colorscheme_compile_scheme(&loaded, TERM_COLOR_TRUECOLOR, (terminal_background_t)background, &compiled),
-          ASCIICHAT_OK);
-      const rgb_pixel_t *colors = background == TERM_BACKGROUND_LIGHT && loaded.has_light_variant
-                                      ? loaded.log_colors_light
-                                      : loaded.log_colors_dark;
+      ASCIICHAT_REQUIRE_EQ(colorscheme_compile_scheme(&loaded, TERM_COLOR_TRUECOLOR, (terminal_background_t)background, &compiled), ASCIICHAT_OK);
+      const rgb_pixel_t *colors = background == TERM_BACKGROUND_LIGHT && loaded.has_light_variant ? loaded.log_colors_light : loaded.log_colors_dark;
       for (int i = 0; i < 8; ++i) {
         ASCIICHAT_REQUIRE_NOT_NULL(strstr(compiled.codes_16[i], "\033["));
         ASCIICHAT_REQUIRE_NOT_NULL(strstr(compiled.codes_256[i], "\033["));

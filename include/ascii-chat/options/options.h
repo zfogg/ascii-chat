@@ -1335,14 +1335,14 @@ const terminal_options_t *options_terminal_settings_ptr(void);
 #define ASCIICHAT_OPTION_FIELD_TYPE(field) typeof(((options_t *)0)->field)
 #endif
 
-#define GET_OPTION(field)                                                                                              \
-  ({                                                                                                                   \
-    const options_t *_opts = options_get();                                                                            \
-    if (!_opts) {                                                                                                      \
-      log_warn("GET_OPTION(" #field ") called but options not initialized");                                           \
-    }                                                                                                                  \
-    static ASCIICHAT_OPTION_FIELD_TYPE(field) _default = {0};                                                         \
-    (_opts ? (_opts->field) : _default);                                                                               \
+#define GET_OPTION(field)                                                                                                                                                                              \
+  ({                                                                                                                                                                                                   \
+    const options_t *_opts = options_get();                                                                                                                                                            \
+    if (!_opts) {                                                                                                                                                                                      \
+      log_warn("GET_OPTION(" #field ") called but options not initialized");                                                                                                                           \
+    }                                                                                                                                                                                                  \
+    static ASCIICHAT_OPTION_FIELD_TYPE(field) _default = {0};                                                                                                                                          \
+    (_opts ? (_opts->field) : _default);                                                                                                                                                               \
   })
 
 /**

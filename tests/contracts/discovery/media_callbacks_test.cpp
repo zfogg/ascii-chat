@@ -31,8 +31,7 @@ static asciichat_error_t media_audio_start(session_audio_ctx_t *audio) {
   ASCIICHAT_REQUIRE_NOT_NULL(audio);
   return audio_failure == 2 ? ERROR_AUDIO : ASCIICHAT_OK;
 }
-static asciichat_error_t media_thread_create(platform_thread_t *thread, const char *name, void *(*fn)(void *),
-                                             void *arg) {
+static asciichat_error_t media_thread_create(platform_thread_t *thread, const char *name, void *(*fn)(void *), void *arg) {
   (void)thread;
   (void)name;
   (void)fn;
@@ -221,8 +220,7 @@ TEST_CASE("discovery_media/opus_decode_rejects_invalid_frames_and_preserves_the_
   receiver.audio_pipeline = client_audio_pipeline_create(NULL);
   ASCIICHAT_REQUIRE_NOT_NULL(receiver.audio_pipeline);
   uint8_t invalid[3] = {0xff, 0xff, 0xff};
-  ASCIICHAT_REQUIRE_EQ(discovery_decode_opus(invalid, sizeof(invalid), samples, OPUS_FRAME_SAMPLES, &decoded, &receiver),
-               ERROR_AUDIO);
+  ASCIICHAT_REQUIRE_EQ(discovery_decode_opus(invalid, sizeof(invalid), samples, OPUS_FRAME_SAMPLES, &decoded, &receiver), ERROR_AUDIO);
   ASCIICHAT_REQUIRE_EQ(decoded, 0);
   client_audio_pipeline_destroy(receiver.audio_pipeline);
 }

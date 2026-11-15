@@ -111,8 +111,7 @@ TEST_CASE("yt_dlp/extract_accepts_custom_options", "[yt_dlp]") {
   char output[8192] = {0};
 
   // Test that custom options are accepted (may fail if yt-dlp not available or URL invalid)
-  asciichat_error_t err =
-      yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", "--no-warnings", output, sizeof(output));
+  asciichat_error_t err = yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", "--no-warnings", output, sizeof(output));
 
   ASCIICHAT_REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK, "Should accept custom options");
 }
@@ -139,12 +138,10 @@ TEST_CASE("yt_dlp/extract_respects_buffer_size", "[yt_dlp]") {
   char large_buffer[8192] = {0};
 
   // Test with small buffer
-  asciichat_error_t err1 =
-      yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", NULL, small_buffer, sizeof(small_buffer));
+  asciichat_error_t err1 = yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", NULL, small_buffer, sizeof(small_buffer));
 
   // Test with large buffer
-  asciichat_error_t err2 =
-      yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", NULL, large_buffer, sizeof(large_buffer));
+  asciichat_error_t err2 = yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", NULL, large_buffer, sizeof(large_buffer));
 
   // Both should return valid error codes
   ASCIICHAT_REQUIRE(err1 == ASCIICHAT_OK || err1 != ASCIICHAT_OK, "Small buffer test should return valid code");
@@ -176,10 +173,8 @@ TEST_CASE("yt_dlp/extract_cache_different_url", "[yt_dlp]") {
   char output2[8192] = {0};
 
   // Extract different URLs - should not use cache
-  asciichat_error_t err1 =
-      yt_dlp_extract_stream_url("http://invalid.invalid/fake1.mp4", NULL, output1, sizeof(output1));
-  asciichat_error_t err2 =
-      yt_dlp_extract_stream_url("http://invalid.invalid/fake2.mp4", NULL, output2, sizeof(output2));
+  asciichat_error_t err1 = yt_dlp_extract_stream_url("http://invalid.invalid/fake1.mp4", NULL, output1, sizeof(output1));
+  asciichat_error_t err2 = yt_dlp_extract_stream_url("http://invalid.invalid/fake2.mp4", NULL, output2, sizeof(output2));
 
   // Different URLs should be handled independently
   ASCIICHAT_REQUIRE(err1 == ASCIICHAT_OK || err1 != ASCIICHAT_OK, "First URL should return valid code");
@@ -192,8 +187,7 @@ TEST_CASE("yt_dlp/extract_cache_different_options", "[yt_dlp]") {
 
   // Extract same URL with different options - should not use cache
   asciichat_error_t err1 = yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", NULL, output1, sizeof(output1));
-  asciichat_error_t err2 =
-      yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", "--no-warnings", output2, sizeof(output2));
+  asciichat_error_t err2 = yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", "--no-warnings", output2, sizeof(output2));
 
   // Different options should be handled independently
   ASCIICHAT_REQUIRE(err1 == ASCIICHAT_OK || err1 != ASCIICHAT_OK, "No-options call should return valid code");
@@ -252,8 +246,7 @@ TEST_CASE("yt_dlp/extract_long_options", "[yt_dlp]") {
   memset(long_options, '-', sizeof(long_options) - 1);
   long_options[sizeof(long_options) - 1] = '\0';
 
-  asciichat_error_t err =
-      yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", long_options, output, sizeof(output));
+  asciichat_error_t err = yt_dlp_extract_stream_url("http://invalid.invalid/fake.mp4", long_options, output, sizeof(output));
 
   // Should handle long options gracefully
   ASCIICHAT_REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK, "Should handle long options");
@@ -264,11 +257,7 @@ TEST_CASE("yt_dlp/extract_special_characters_in_url", "[yt_dlp]") {
 
   // Test URL with special characters
   const char *special_urls[] = {
-      "http://example.com/video.mp4?token=abc&id=123",
-      "http://example.com/video.mp4#fragment",
-      "http://example.com/path%20with%20spaces/video.mp4",
-      "http://user:pass@example.com/video.mp4",
-      NULL,
+      "http://example.com/video.mp4?token=abc&id=123", "http://example.com/video.mp4#fragment", "http://example.com/path%20with%20spaces/video.mp4", "http://user:pass@example.com/video.mp4", NULL,
   };
 
   for (int i = 0; special_urls[i] != NULL; i++) {

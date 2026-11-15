@@ -501,10 +501,8 @@ TEST_CASE("url_validator/ports_valid", "[url_validator]") {
  * ============================================================================ */
 
 static url_test_case_t port_invalid_urls[] = {
-    {"http://example.com:", "colon no port"},      {"http://example.com:abc", "non-numeric port"},
-    {"http://example.com:-8080", "negative port"}, {"http://example.com:8080a", "alphanumeric port"},
-    {"http://example.com:-1", "negative port"},    {"http://example.com:8a", "hex port"},
-    {"http://example.com:8.0", "float port"},      {"http://example.com:80 ", "space after port"},
+    {"http://example.com:", "colon no port"},   {"http://example.com:abc", "non-numeric port"}, {"http://example.com:-8080", "negative port"}, {"http://example.com:8080a", "alphanumeric port"},
+    {"http://example.com:-1", "negative port"}, {"http://example.com:8a", "hex port"},          {"http://example.com:8.0", "float port"},      {"http://example.com:80 ", "space after port"},
 };
 
 TEST_CASE("url_validator/ports_invalid", "[url_validator]") {
@@ -542,13 +540,8 @@ TEST_CASE("url_validator/userinfo", "[url_validator]") {
  * ============================================================================ */
 
 static url_test_case_t scheme_valid_urls[] = {
-    {"http://example.com", "http"},
-    {"https://example.com", "https"},
-    {"HTTP://EXAMPLE.COM", "HTTP uppercase"},
-    {"HTTPS://EXAMPLE.COM", "HTTPS uppercase"},
-    {"Http://Example.com", "mixed case"},
-    {"ws://example.com", "websocket"},
-    {"wss://example.com", "websocket secure"},
+    {"http://example.com", "http"},       {"https://example.com", "https"},  {"HTTP://EXAMPLE.COM", "HTTP uppercase"},  {"HTTPS://EXAMPLE.COM", "HTTPS uppercase"},
+    {"Http://Example.com", "mixed case"}, {"ws://example.com", "websocket"}, {"wss://example.com", "websocket secure"},
 };
 
 TEST_CASE("url_validator/schemes_valid", "[url_validator]") {
@@ -666,12 +659,8 @@ TEST_CASE("url_validator/schemeless_valid", "[url_validator]") {
 }
 
 static url_test_case_t schemeless_invalid_urls[] = {
-    {"//example.com", "protocol-relative"},
-    {"//www.example.com", "protocol-relative www"},
-    {"///example.com", "triple slash"},
-    {"////example.com", "quad slash"},
-    {"user@example.com", "ambiguous email address"},
-    {"user:pass@example.com", "userinfo requires scheme"},
+    {"//example.com", "protocol-relative"}, {"//www.example.com", "protocol-relative www"},  {"///example.com", "triple slash"},
+    {"////example.com", "quad slash"},      {"user@example.com", "ambiguous email address"}, {"user:pass@example.com", "userinfo requires scheme"},
 };
 
 TEST_CASE("url_validator/schemeless_invalid", "[url_validator]") {

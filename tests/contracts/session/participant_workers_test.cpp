@@ -176,9 +176,7 @@ TEST_CASE("participant_workers/capture_source_selection_preserves_urls_files_std
     ASCIICHAT_REQUIRE_EQ(options_state_set(values), ASCIICHAT_OK);
     SAFE_FREE(values);
     ASCIICHAT_REQUIRE_EQ(session_participant_start_video(participant), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(requested_capture.type, i == 0   ? MEDIA_SOURCE_FILE
-                                         : i == 1 ? MEDIA_SOURCE_STDIN
-                                                  : MEDIA_SOURCE_WEBCAM);
+    ASCIICHAT_REQUIRE_EQ(requested_capture.type, i == 0 ? MEDIA_SOURCE_FILE : i == 1 ? MEDIA_SOURCE_STDIN : MEDIA_SOURCE_WEBCAM);
     if (i != 1)
       ASCIICHAT_REQUIRE_STR_EQ(requested_capture.path, i == 0 ? files[i] : "3");
     else
@@ -235,8 +233,7 @@ TEST_CASE("participant_workers/disabled_or_transitioning_media_cannot_start_or_r
 TEST_CASE("participant_workers/borrowed_transport_cannot_silently_change_ownership", "[participant_workers]") {
   ASCIICHAT_REQUIRE_EQ(session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_OWNED), ERROR_INVALID_STATE);
-  ASCIICHAT_REQUIRE_EQ(session_participant_set_transport(participant, &transport, (acip_transport_ownership_t)99),
-               ERROR_INVALID_PARAM);
+  ASCIICHAT_REQUIRE_EQ(session_participant_set_transport(participant, &transport, (acip_transport_ownership_t)99), ERROR_INVALID_PARAM);
   ASCIICHAT_REQUIRE_EQ(session_participant_get_transport(participant), &transport);
   network_connection_t *connection = NULL;
   ASCIICHAT_REQUIRE_EQ(session_participant_take_connection(participant, &connection), ERROR_INVALID_STATE);
@@ -335,8 +332,7 @@ TEST_CASE("participant_workers/failed_audio_join_retains_encoder_and_rejects_res
 }
 TEST_CASE("participant_workers/constructor_owns_identity_strings_and_rejects_an_out_of_range_endpoint_before_connecting", "[participant_workers]") {
   char address[] = "127.0.0.9", password[] = "fixture-password", key[] = "fixture-server-key";
-  session_participant_config_t config = {
-      .address = address, .port = 65536, .password = password, .server_key = key, .encryption_enabled = true};
+  session_participant_config_t config = {.address = address, .port = 65536, .password = password, .server_key = key, .encryption_enabled = true};
   session_participant_t *other = session_participant_create(&config);
   ASCIICHAT_REQUIRE_NOT_NULL(other);
   memset(address, 0, sizeof(address));

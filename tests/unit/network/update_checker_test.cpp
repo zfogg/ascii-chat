@@ -56,8 +56,7 @@ TEST_CASE("update_checker/cache_round_trip_preserves_release_link", "[update_che
   update_check_result_t expected = {0};
   snprintf(expected.latest_version, sizeof(expected.latest_version), "v99.0.0");
   snprintf(expected.latest_sha, sizeof(expected.latest_sha), "0123456789012345678901234567890123456789");
-  snprintf(expected.release_url, sizeof(expected.release_url),
-           "https://github.com/zfogg/ascii-chat/releases/tag/v99.0.0");
+  snprintf(expected.release_url, sizeof(expected.release_url), "https://github.com/zfogg/ascii-chat/releases/tag/v99.0.0");
   expected.last_check_time = time(NULL);
 
   ASCIICHAT_REQUIRE_EQ(update_check_save_cache(&expected), ASCIICHAT_OK);
@@ -78,8 +77,7 @@ TEST_CASE("update_checker/cached_current_release_does_not_report_update", "[upda
 
   update_check_result_t expected = {0};
   snprintf(expected.latest_version, sizeof(expected.latest_version), "%s", ASCII_CHAT_VERSION_STRING);
-  snprintf(expected.release_url, sizeof(expected.release_url), "https://github.com/zfogg/ascii-chat/releases/tag/%s",
-           ASCII_CHAT_VERSION_STRING);
+  snprintf(expected.release_url, sizeof(expected.release_url), "https://github.com/zfogg/ascii-chat/releases/tag/%s", ASCII_CHAT_VERSION_STRING);
   expected.last_check_time = time(NULL);
 
   ASCIICHAT_REQUIRE_EQ(update_check_save_cache(&expected), ASCIICHAT_OK);
@@ -107,8 +105,7 @@ TEST_CASE("update_checker/cache_without_release_link_is_rejected", "[update_chec
 
   update_check_result_t loaded = {0};
   ASCIICHAT_REQUIRE_NE(update_check_load_cache(&loaded), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE(platform_access(cache_path, PLATFORM_ACCESS_EXISTS) != 0,
-                    "legacy cache should be deleted and treated as missing");
+  ASCIICHAT_REQUIRE(platform_access(cache_path, PLATFORM_ACCESS_EXISTS) != 0, "legacy cache should be deleted and treated as missing");
 
   restore_test_config_root();
 }

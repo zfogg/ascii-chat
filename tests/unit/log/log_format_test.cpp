@@ -40,13 +40,9 @@ TEST_CASE("log_format/nested_color_fields_respect_the_callers_policy", "[log_for
   log_template_t *format = log_template_parse("%color(INFO,%message)", false);
   ASCIICHAT_REQUIRE_NOT_NULL(format);
   char output[512];
-  ASCIICHAT_REQUIRE_GT(log_template_apply(format, output, sizeof(output), LOG_INFO, "00:00:00", "test.c", 1, "test", 1,
-                                  "value 123 ms", false, 0),
-               0);
+  ASCIICHAT_REQUIRE_GT(log_template_apply(format, output, sizeof(output), LOG_INFO, "00:00:00", "test.c", 1, "test", 1, "value 123 ms", false, 0), 0);
   ASCIICHAT_REQUIRE_STR_EQ(output, "value 123 ms", "Plain file formatting must bypass global terminal color detection");
-  ASCIICHAT_REQUIRE_GT(log_template_apply(format, output, sizeof(output), LOG_INFO, "00:00:00", "test.c", 1, "test", 1,
-                                  "value 123 ms", true, 0),
-               0);
+  ASCIICHAT_REQUIRE_GT(log_template_apply(format, output, sizeof(output), LOG_INFO, "00:00:00", "test.c", 1, "test", 1, "value 123 ms", true, 0), 0);
   ASCIICHAT_REQUIRE_NOT_NULL(strstr(output, "\033["));
   log_template_free(format);
   g_color_flag_passed = saved_passed;
@@ -364,8 +360,7 @@ TEST_CASE("log_format/apply_literal_only", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   ASCIICHAT_REQUIRE_STR_EQ(buf, "Static text");
   log_template_free(fmt);
@@ -376,8 +371,7 @@ TEST_CASE("log_format/apply_level", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   ASCIICHAT_REQUIRE_STR_EQ(buf, "[INFO]");
   log_template_free(fmt);
@@ -388,8 +382,7 @@ TEST_CASE("log_format/apply_level_aligned", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  log_template_apply(fmt, buf, sizeof(buf), LOG_WARN, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
-                     45296123456000);
+  log_template_apply(fmt, buf, sizeof(buf), LOG_WARN, "12:34:56", "test.c", 42, "main", 1234, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_STR_EQ(buf, "[WARN ]");
   log_template_free(fmt);
 }
@@ -399,8 +392,7 @@ TEST_CASE("log_format/apply_file_and_line", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "test.c", 42, "main", 1234, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   ASCIICHAT_REQUIRE_STR_EQ(buf, "test.c:42");
   log_template_free(fmt);
@@ -411,8 +403,7 @@ TEST_CASE("log_format/apply_func", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "test.c", 42, "main", 1234, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   ASCIICHAT_REQUIRE_STR_EQ(buf, "in main()");
   log_template_free(fmt);
@@ -423,8 +414,7 @@ TEST_CASE("log_format/apply_tid", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "test.c", 42, "main", 5678, "msg", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "test.c", 42, "main", 5678, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   ASCIICHAT_REQUIRE_STR_EQ(buf, "tid:5678");
   log_template_free(fmt);
@@ -435,8 +425,7 @@ TEST_CASE("log_format/apply_message", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "Hello", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "Hello", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   ASCIICHAT_REQUIRE_STR_EQ(buf, "Message: Hello");
   log_template_free(fmt);
@@ -447,8 +436,7 @@ TEST_CASE("log_format/apply_complex_format", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_ERROR, "12:34:56", "error.c", 99, "error_func", 1234,
-                               "Critical error", false, 45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_ERROR, "12:34:56", "error.c", 99, "error_func", 1234, "Critical error", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   ASCIICHAT_REQUIRE_STR_EQ(buf, "[ERROR] error.c:99 - Critical error");
   log_template_free(fmt);
@@ -459,8 +447,7 @@ TEST_CASE("log_format/apply_with_utf8_message", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234,
-                               "Processing café", false, 45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "Processing café", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   ASCIICHAT_REQUIRE_STR_EQ(buf, "[INFO] Processing café");
   log_template_free(fmt);
@@ -471,8 +458,7 @@ TEST_CASE("log_format/apply_null_optionals", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", NULL, 0, NULL, 1234, "msg", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", NULL, 0, NULL, 1234, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   ASCIICHAT_REQUIRE_STR_EQ(buf, "[] []"); /* Empty optional fields */
   log_template_free(fmt);
@@ -483,8 +469,7 @@ TEST_CASE("log_format/apply_buffer_overflow", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[10] = {0}; /* Too small */
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234,
-                               "Very long message", false, 45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "Very long message", false, 45296123456000);
   ASCIICHAT_REQUIRE_EQ(len, -1, "Should fail on buffer overflow");
   log_template_free(fmt);
 }
@@ -524,8 +509,7 @@ TEST_CASE("log_format/apply_file_relative", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "src/main.c", 42, "main", 1234, "msg",
-                               false, 45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "src/main.c", 42, "main", 1234, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   /* Should contain the relative path (extracted by extract_project_relative_path) */
   ASCIICHAT_REQUIRE(strchr(buf, ':') != NULL, "Should contain colon separator");
@@ -541,8 +525,7 @@ TEST_CASE("log_format/apply_time_format_iso8601", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   /* Should have format like: YYYY-MM-DD HH:MM:SS (no automatic microseconds) */
   ASCIICHAT_REQUIRE(strchr(buf, '-') != NULL && strchr(buf, ' ') != NULL);
@@ -555,8 +538,7 @@ TEST_CASE("log_format/apply_time_format_with_weekday", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   /* Should contain comma and have reasonable length for full weekday + month name */
   ASCIICHAT_REQUIRE_GT(strlen(buf), 15);
@@ -568,8 +550,7 @@ TEST_CASE("log_format/apply_time_format_short_date", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   /* Should be shorter than full format */
   ASCIICHAT_REQUIRE_LT(strlen(buf), 30);
@@ -581,8 +562,7 @@ TEST_CASE("log_format/apply_time_format_with_percent", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   /* Should contain percent signs from escaped %% */
   ASCIICHAT_REQUIRE(strchr(buf, '%') != NULL);
@@ -598,8 +578,7 @@ TEST_CASE("log_format/apply_newline_in_format", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "Hello", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "Hello", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   ASCIICHAT_REQUIRE(strchr(buf, '\n') != NULL, "Should contain newline");
   ASCIICHAT_REQUIRE_STR_EQ(buf, "[INFO]\nHello");
@@ -611,8 +590,7 @@ TEST_CASE("log_format/apply_multiple_newlines", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[512] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_WARN, "12:34:56", "src.c", 10, "main", 1234, "Test", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_WARN, "12:34:56", "src.c", 10, "main", 1234, "Test", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   /* Count newlines */
   int newline_count = 0;
@@ -629,8 +607,7 @@ TEST_CASE("log_format/apply_message_first_then_newline_then_header", "[log_forma
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[512] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_ERROR, "12:34:56", "error.c", 99, "process", 1234,
-                               "Error occurred", false, 45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_ERROR, "12:34:56", "error.c", 99, "process", 1234, "Error occurred", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   ASCIICHAT_REQUIRE(strchr(buf, '\n') != NULL);
 
@@ -647,8 +624,7 @@ TEST_CASE("log_format/apply_newline_at_end", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   ASCIICHAT_REQUIRE_EQ(buf[strlen(buf) - 1], '\n', "Should end with newline");
   log_template_free(fmt);
@@ -663,8 +639,7 @@ TEST_CASE("log_format/apply_specifiers_reverse_order", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "app.c", 50, "process", 1234, "Starting",
-                               false, 45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "app.c", 50, "process", 1234, "Starting", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   /* Message should come first */
   ASCIICHAT_REQUIRE(strncmp(buf, "Starting", 8) == 0);
@@ -676,8 +651,7 @@ TEST_CASE("log_format/apply_message_in_middle", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_WARN, "14:30:00", "test.c", 42, "main", 1234, "Warning!",
-                               false, 45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_WARN, "14:30:00", "test.c", 42, "main", 1234, "Warning!", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   /* Time should come first, message in middle, level at end */
   const char *msg_pos = strstr(buf, "Warning!");
@@ -691,8 +665,7 @@ TEST_CASE("log_format/apply_duplicate_specifiers", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_FATAL, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_FATAL, "12:34:56", "test.c", 42, "main", 1234, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   /* Should have FATAL twice */
   int count = 0;
@@ -703,13 +676,11 @@ TEST_CASE("log_format/apply_duplicate_specifiers", "[log_format]") {
 }
 
 TEST_CASE("log_format/apply_all_specifiers_together", "[log_format]") {
-  log_template_t *fmt = log_template_parse(
-      "[%time(%H:%M:%S)] [%level_aligned] [%file_relative:%line] {%func} <tid:%tid> %message", false);
+  log_template_t *fmt = log_template_parse("[%time(%H:%M:%S)] [%level_aligned] [%file_relative:%line] {%func} <tid:%tid> %message", false);
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[512] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "lib/core.c", 42, "initialize", 5678,
-                               "Initializing system", false, 45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_DEBUG, "12:34:56", "lib/core.c", 42, "initialize", 5678, "Initializing system", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   /* All parts should be present */
   ASCIICHAT_REQUIRE(strchr(buf, '[') != NULL);
@@ -728,8 +699,7 @@ TEST_CASE("log_format/apply_empty_message", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   ASCIICHAT_REQUIRE_STR_EQ(buf, "[INFO] ");
   log_template_free(fmt);
@@ -744,8 +714,7 @@ TEST_CASE("log_format/apply_very_long_message", "[log_format]") {
   long_msg[sizeof(long_msg) - 1] = '\0';
 
   char buf[1024] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, long_msg, false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, long_msg, false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   ASCIICHAT_REQUIRE(strstr(buf, long_msg) != NULL);
   log_template_free(fmt);
@@ -756,8 +725,7 @@ TEST_CASE("log_format/apply_special_characters_in_message", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234,
-                               "Test %% %% backslash \\ newline \\n", false, 45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "Test %% %% backslash \\ newline \\n", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   /* Message should be copied as-is (these are in the message, not format specifiers) */
   ASCIICHAT_REQUIRE_STR_EQ(buf, "Test %% %% backslash \\ newline \\n");
@@ -770,8 +738,7 @@ TEST_CASE("log_format/apply_large_thread_id", "[log_format]") {
 
   char buf[256] = {0};
   uint64_t large_tid = 18446744073709551615ULL; /* Max uint64_t */
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", large_tid, "msg",
-                               false, 45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", large_tid, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   ASCIICHAT_REQUIRE(strstr(buf, "tid=") != NULL);
   log_template_free(fmt);
@@ -786,8 +753,7 @@ TEST_CASE("log_format/apply_all_log_levels", "[log_format]") {
 
   for (size_t i = 0; i < sizeof(levels) / sizeof(levels[0]); i++) {
     char buf[256] = {0};
-    int len = log_template_apply(fmt, buf, sizeof(buf), levels[i], "12:34:56", "test.c", 42, "main", 1234, "msg", false,
-                                 45296123456000);
+    int len = log_template_apply(fmt, buf, sizeof(buf), levels[i], "12:34:56", "test.c", 42, "main", 1234, "msg", false, 45296123456000);
     ASCIICHAT_REQUIRE_GT(len, 0);
     ASCIICHAT_REQUIRE_STR_EQ(buf, expected[i], "Level %lu should format correctly", i);
   }
@@ -800,8 +766,7 @@ TEST_CASE("log_format/apply_zero_line_number", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 0, "main", 1234, "msg", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 0, "main", 1234, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   /* Zero line should not be printed (line > 0 check in format.c) */
   ASCIICHAT_REQUIRE_STR_EQ(buf, "line=");
@@ -813,8 +778,7 @@ TEST_CASE("log_format/apply_negative_line_number", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", -1, "main", 1234, "msg", false,
-                               45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", -1, "main", 1234, "msg", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
   /* Negative line should not be printed (line > 0 check) */
   ASCIICHAT_REQUIRE_STR_EQ(buf, "line=");
@@ -833,10 +797,8 @@ TEST_CASE("log_format/apply_consistent_output", "[log_format]") {
   char buf1[256] = {0};
   char buf2[256] = {0};
 
-  int len1 = log_template_apply(fmt, buf1, sizeof(buf1), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
-                                45296123456000);
-  int len2 = log_template_apply(fmt, buf2, sizeof(buf2), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false,
-                                45296123456000);
+  int len1 = log_template_apply(fmt, buf1, sizeof(buf1), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false, 45296123456000);
+  int len2 = log_template_apply(fmt, buf2, sizeof(buf2), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "msg", false, 45296123456000);
 
   ASCIICHAT_REQUIRE_EQ(len1, len2, "Same inputs should produce same length output");
   ASCIICHAT_REQUIRE_STR_EQ(buf1, buf2, "Same inputs should produce identical output");
@@ -851,10 +813,8 @@ TEST_CASE("log_format/apply_time_consistency_multiple_calls", "[log_format]") {
   char buf1[256] = {0};
   char buf2[256] = {0};
 
-  int len1 = log_template_apply(fmt, buf1, sizeof(buf1), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false,
-                                45296123456000);
-  int len2 = log_template_apply(fmt, buf2, sizeof(buf2), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false,
-                                45296123456000);
+  int len1 = log_template_apply(fmt, buf1, sizeof(buf1), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false, 45296123456000);
+  int len2 = log_template_apply(fmt, buf2, sizeof(buf2), LOG_INFO, "dummy", "test.c", 42, "main", 1234, "msg", false, 45296123456000);
 
   ASCIICHAT_REQUIRE_GT(len1, 0);
   ASCIICHAT_REQUIRE_GT(len2, 0);
@@ -882,8 +842,7 @@ TEST_CASE("log_format/color_with_use_colors_true", "[log_format]") {
   g_color_flag_value = true;
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "test message",
-                               true, 45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "test message", true, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0, "Should produce output with colors");
 
   /* Get the actual INFO color code from the enum */
@@ -913,8 +872,7 @@ TEST_CASE("log_format/color_with_use_colors_false", "[log_format]") {
   ASCIICHAT_REQUIRE_NOT_NULL(fmt);
 
   char buf[256] = {0};
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "test message",
-                               false, 45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "test message", false, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0);
 
   /* Get the INFO color code - should NOT appear when use_colors=false */
@@ -938,8 +896,7 @@ TEST_CASE("log_format/colored_message_with_colorize", "[log_format]") {
 
   char buf[512] = {0};
   /* Use message with numbers and hex that would be colorized in a TTY */
-  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234,
-                               "Buffer size: 256 bytes (0x100)", true, 45296123456000);
+  int len = log_template_apply(fmt, buf, sizeof(buf), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "Buffer size: 256 bytes (0x100)", true, 45296123456000);
   ASCIICHAT_REQUIRE_GT(len, 0, "Should render colored_message format");
 
   /* Should contain the message text */
@@ -964,10 +921,8 @@ TEST_CASE("log_format/color_different_levels", "[log_format]") {
   char buf_info[256] = {0};
   char buf_error[256] = {0};
 
-  log_template_apply(fmt, buf_info, sizeof(buf_info), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "message", true,
-                     45296123456000);
-  log_template_apply(fmt, buf_error, sizeof(buf_error), LOG_ERROR, "12:34:56", "test.c", 42, "main", 1234, "message",
-                     true, 45296123456000);
+  log_template_apply(fmt, buf_info, sizeof(buf_info), LOG_INFO, "12:34:56", "test.c", 42, "main", 1234, "message", true, 45296123456000);
+  log_template_apply(fmt, buf_error, sizeof(buf_error), LOG_ERROR, "12:34:56", "test.c", 42, "main", 1234, "message", true, 45296123456000);
 
   /* Get the actual color codes from the enum */
   const char *info_color = log_level_color(LOG_COLOR_INFO);

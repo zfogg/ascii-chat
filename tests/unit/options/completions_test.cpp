@@ -116,8 +116,7 @@ TEST_CASE("completions/mcp_mode_registry_includes_transport_and_bind_options", "
   size_t count = 0;
   const option_descriptor_t *options = options_registry_get_for_display(MODE_MCP_SERVER, false, &count);
   ASCIICHAT_REQUIRE_NOT_NULL(options);
-  const char *required[] = {"transport", "server", "http-origin", "tls-cert", "tls-key", "tls-key-password",
-                            "port",          "address",      "address6"};
+  const char *required[] = {"transport", "server", "http-origin", "tls-cert", "tls-key", "tls-key-password", "port", "address", "address6"};
   for (size_t r = 0; r < sizeof(required) / sizeof(required[0]); r++) {
     bool found = false;
     for (size_t i = 0; i < count; i++) {

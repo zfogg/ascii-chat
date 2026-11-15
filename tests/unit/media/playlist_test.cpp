@@ -5,8 +5,7 @@
 
 TEST_CASE("media_playlist/quoted_drops_and_uri_lines_preserve_order", "[media_playlist]") {
   media_playlist_t list = {0}, again = {0};
-  ASCIICHAT_REQUIRE_EQ(media_playlist_parse("  \"C:\\Videos\\first movie.webm\"  \"C:\\Videos\\second.mp4\" ", &list),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(media_playlist_parse("  \"C:\\Videos\\first movie.webm\"  \"C:\\Videos\\second.mp4\" ", &list), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(list.count, 2);
   ASCIICHAT_REQUIRE_STR_EQ(list.paths[0], "C:\\Videos\\first movie.webm");
   ASCIICHAT_REQUIRE_STR_EQ(list.paths[1], "C:\\Videos\\second.mp4");

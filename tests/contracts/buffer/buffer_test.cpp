@@ -215,8 +215,7 @@ static void *queue_producer(void *arg) {
     ((unsigned *)data)[0] = i;
     ((unsigned *)data)[1] = ~i;
     asciichat_error_t result;
-    while ((result = packet_queue_push_take(producer->stress->queue, PACKET_TYPE_PING, &data, 2 * sizeof(unsigned),
-                                            i)) != ASCIICHAT_OK) {
+    while ((result = packet_queue_push_take(producer->stress->queue, PACKET_TYPE_PING, &data, 2 * sizeof(unsigned), i)) != ASCIICHAT_OK) {
       ASCIICHAT_WORKER_ASSERT(result == ERROR_BUFFER && data);
       platform_sleep_ns(100000);
     }
@@ -383,9 +382,7 @@ static void websocket_control_reserve_contract(void) {
   // An oversized miss trims idle media storage, so cached blocks cannot mask pressure.
   ASCIICHAT_REQUIRE_EQ(buffer_alloc(NULL, BUFFER_DOMAIN_LIMIT), NULL);
   buffer_budget_t pressure = {0};
-  ASCIICHAT_REQUIRE_EQ(
-      buffer_budget_reserve(&pressure, BUFFER_PROCESS_LIMIT - BUFFER_CONTROL_RESERVE - buffer_process_reserved()),
-      ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(buffer_budget_reserve(&pressure, BUFFER_PROCESS_LIMIT - BUFFER_CONTROL_RESERVE - buffer_process_reserved()), ASCIICHAT_OK);
   // Consume all non-control process allowance while leaving the reserved bytes available.
   packet_type_t types[] = {PACKET_TYPE_CRYPTO_PARAMETERS, PACKET_TYPE_ERROR_MESSAGE};
   for (int client = 0; client < 2; ++client) {
@@ -395,14 +392,12 @@ static void websocket_control_reserve_contract(void) {
       for (size_t i = 0; i < 2; ++i) {
         packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(types[i])};
         asciichat_error_t result = websocket_transport_send(&transport, &header, sizeof(header));
-        ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "client=%d encrypted=%d type=%d: %s", client, encrypted, types[i],
-                     asciichat_error_string(result));
+        ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "client=%d encrypted=%d type=%d: %s", client, encrypted, types[i], asciichat_error_string(result));
         websocket_msg_t message;
         ASCIICHAT_REQUIRE(ringbuffer_read(ws.send_queue, &message));
         packet_header_t wire;
         memcpy(&wire, message.data + LWS_PRE, sizeof(wire));
-        ASCIICHAT_REQUIRE_EQ(NET_TO_HOST_U16(wire.type),
-                     (encrypted && types[i] == PACKET_TYPE_ERROR_MESSAGE ? PACKET_TYPE_ENCRYPTED : types[i]));
+        ASCIICHAT_REQUIRE_EQ(NET_TO_HOST_U16(wire.type), (encrypted && types[i] == PACKET_TYPE_ERROR_MESSAGE ? PACKET_TYPE_ENCRYPTED : types[i]));
         buffer_release(message.data);
       }
     }
@@ -457,8 +452,7 @@ static void *allocate_on_cold_start(void *arg) {
   void *control = NULL;
   worker->media_result = buffer_acquire(NULL, 4096, BUFFER_DEFAULT_ALIGNMENT, &media);
   buffer_domain_t *domain = buffer_control_domain();
-  worker->control_result =
-      domain ? buffer_acquire(domain, 64, BUFFER_DEFAULT_ALIGNMENT, &control) : ERROR_INVALID_STATE;
+  worker->control_result = domain ? buffer_acquire(domain, 64, BUFFER_DEFAULT_ALIGNMENT, &control) : ERROR_INVALID_STATE;
   buffer_release(media);
   buffer_release(control);
   return NULL;
@@ -477,8 +471,7 @@ static void concurrent_cold_start(void) {
       workers[i].start = &start;
       workers[i].media_result = ERROR_INVALID_STATE;
       workers[i].control_result = ERROR_INVALID_STATE;
-      ASCIICHAT_REQUIRE_EQ(platform_thread_create(&threads[i], "buffer-cold-start", allocate_on_cold_start, &workers[i]),
-                   ASCIICHAT_OK);
+      ASCIICHAT_REQUIRE_EQ(platform_thread_create(&threads[i], "buffer-cold-start", allocate_on_cold_start, &workers[i]), ASCIICHAT_OK);
     }
     uint64_t deadline = time_get_ns() + 5 * NS_PER_SEC_INT;
     while (atomic_load(&ready) != WORKERS && time_get_ns() < deadline)
@@ -490,8 +483,7 @@ static void concurrent_cold_start(void) {
     ASCIICHAT_REQUIRE(all_ready, "Cold-start workers failed to reach the start barrier");
     for (unsigned i = 0; i < WORKERS; ++i) {
       ASCIICHAT_REQUIRE_EQ(workers[i].media_result, ASCIICHAT_OK, "Media allocation failed in round %u worker %u", round, i);
-      ASCIICHAT_REQUIRE_EQ(workers[i].control_result, ASCIICHAT_OK, "Control allocation failed in round %u worker %u", round,
-                   i);
+      ASCIICHAT_REQUIRE_EQ(workers[i].control_result, ASCIICHAT_OK, "Control allocation failed in round %u worker %u", round, i);
     }
     buffer_stats_t stats;
     buffer_domain_stats(buffer_default_domain(), &stats);

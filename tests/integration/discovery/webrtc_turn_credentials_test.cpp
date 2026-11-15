@@ -100,8 +100,7 @@ TEST_CASE("acds_webrtc_turn/join_generates_turn_credentials", "[acds_webrtc_turn
   // Verify password is valid base64
   for (size_t i = 0; join_resp.turn_password[i] != '\0'; i++) {
     char c = join_resp.turn_password[i];
-    bool valid =
-        (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '+' || c == '/' || c == '=';
+    bool valid = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '+' || c == '/' || c == '=';
     ASCIICHAT_REQUIRE(valid, "TURN password character '%c' is not valid base64", c);
   }
 

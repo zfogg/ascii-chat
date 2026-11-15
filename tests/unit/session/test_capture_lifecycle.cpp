@@ -89,8 +89,7 @@ TEST_CASE("session_capture_lifecycle/transmission_workspace_reuses_storage_accep
 TEST_CASE("session_capture_lifecycle/microphone_fallback_borrows_context_and_preserves_exact_captured_samples", "[session_capture_lifecycle]") {
   audio_context_t microphone = {0};
   ASCIICHAT_REQUIRE_EQ(audio_init(&microphone), ASCIICHAT_OK);
-  session_capture_config_t config = {
-      .type = MEDIA_SOURCE_TEST, .enable_audio = true, .audio_fallback_to_mic = true, .mic_audio_ctx = &microphone};
+  session_capture_config_t config = {.type = MEDIA_SOURCE_TEST, .enable_audio = true, .audio_fallback_to_mic = true, .mic_audio_ctx = &microphone};
   capture = session_mirror_capture_create(&config);
   ASCIICHAT_REQUIRE_NOT_NULL(capture);
   ASCIICHAT_REQUIRE(session_capture_has_audio(capture));
@@ -113,8 +112,7 @@ static bool cancel(void *context) {
 }
 TEST_CASE("session_capture_lifecycle/cancelled_creation_and_empty_network_capture_do_not_open_local_sources", "[session_capture_lifecycle]") {
   unsigned calls = 0;
-  session_capture_config_t config = {
-      .type = MEDIA_SOURCE_TEST, .should_exit_callback = cancel, .callback_data = &calls};
+  session_capture_config_t config = {.type = MEDIA_SOURCE_TEST, .should_exit_callback = cancel, .callback_data = &calls};
   ASCIICHAT_REQUIRE_NULL(session_mirror_capture_create(&config));
   ASCIICHAT_REQUIRE_EQ(calls, 1);
   capture = session_network_capture_create(0);
@@ -138,8 +136,7 @@ TEST_CASE("session_capture_lifecycle/paused_file_redraw_retains_frame_without_co
   ASCIICHAT_REQUIRE_NOT_NULL(file);
   const char header[] = "P6\n4 2\n255\n";
   ASCIICHAT_REQUIRE_EQ(fwrite(header, 1, sizeof(header) - 1, file), sizeof(header) - 1);
-  const rgb_pixel_t pixels[8] = {{255, 0, 0}, {0, 255, 0},  {0, 0, 255},     {255, 255, 255},
-                                 {0, 0, 0},   {80, 80, 80}, {160, 160, 160}, {240, 240, 240}};
+  const rgb_pixel_t pixels[8] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}, {255, 255, 255}, {0, 0, 0}, {80, 80, 80}, {160, 160, 160}, {240, 240, 240}};
   ASCIICHAT_REQUIRE_EQ(fwrite(pixels, sizeof(*pixels), 8, file), 8);
   ASCIICHAT_REQUIRE_EQ(fclose(file), 0);
   session_capture_config_t config = {.type = MEDIA_SOURCE_FILE, .path = path, .target_fps = 60, .loop = true};

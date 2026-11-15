@@ -17,18 +17,7 @@ static void generate_key(unsigned int sequence) {
   char output[8192];
   char identity[80];
   safe_snprintf(identity, sizeof(identity), "coverage-%u@example.invalid", sequence);
-  const char *generate[] = {"gpg",
-                            "--batch",
-                            "--pinentry-mode",
-                            "loopback",
-                            "--passphrase",
-                            "",
-                            "--quick-generate-key",
-                            identity,
-                            "ed25519",
-                            "sign",
-                            "0",
-                            NULL};
+  const char *generate[] = {"gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--quick-generate-key", identity, "ed25519", "sign", "0", NULL};
   ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("gpg", generate, NULL, 0, NULL, NULL), 0);
   const char *list[] = {"gpg", "--with-colons", "--list-keys", identity, NULL};
   ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("gpg", list, output, sizeof(output), NULL, NULL), 0);
@@ -101,8 +90,7 @@ TEST_CASE("gpg_keyring/native_detached_signature_is_accepted_by_gnupg_and_tamper
   char message_path[256], signature_path[256];
   int message_fd, signature_fd;
   ASCIICHAT_REQUIRE_EQ(platform_create_temp_file(message_path, sizeof(message_path), "ascii-gpg-message", &message_fd), 0);
-  ASCIICHAT_REQUIRE_EQ(platform_create_temp_file(signature_path, sizeof(signature_path), "ascii-gpg-signature", &signature_fd),
-               0);
+  ASCIICHAT_REQUIRE_EQ(platform_create_temp_file(signature_path, sizeof(signature_path), "ascii-gpg-signature", &signature_fd), 0);
   ASCIICHAT_REQUIRE_EQ(platform_write(message_fd, message, sizeof(message) - 1), (ssize_t)sizeof(message) - 1);
   ASCIICHAT_REQUIRE_EQ(platform_write(signature_fd, signature, size), (ssize_t)size);
   platform_close(message_fd);

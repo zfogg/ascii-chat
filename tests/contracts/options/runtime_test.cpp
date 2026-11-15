@@ -36,8 +36,7 @@ static void test_flip_defaults(void) {
     ASCIICHAT_REQUIRE_EQ(options_set_bool("fft", false), ASCIICHAT_OK);
     ASCIICHAT_REQUIRE(GET_OPTION(flip_x));
   }
-  options_edit_t invalid[] = {{.name = "flip_x", .type = OPTIONS_VALUE_BOOL, .value.boolean = false},
-                              {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = -1}};
+  options_edit_t invalid[] = {{.name = "flip_x", .type = OPTIONS_VALUE_BOOL, .value.boolean = false}, {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = -1}};
   options_patch_t patch = {.edits = invalid, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
   ASCIICHAT_REQUIRE_NE(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
   CLEAR_ERRNO();
@@ -83,8 +82,7 @@ static void test_transactions(void) {
   ASCIICHAT_REQUIRE_EQ(options_set_int("width", 80), ASCIICHAT_OK);
   const options_t *borrowed = options_get();
   uint64_t before = options_revision();
-  options_edit_t edits[] = {{.name = "width", .type = OPTIONS_VALUE_INT, .value.integer = 120},
-                            {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = -1}};
+  options_edit_t edits[] = {{.name = "width", .type = OPTIONS_VALUE_INT, .value.integer = 120}, {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = -1}};
   options_patch_t patch = {.edits = edits, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
   ASCIICHAT_REQUIRE_NE(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE(GET_OPTION(width) == 80 && options_revision() == before);
@@ -98,12 +96,10 @@ static void test_transactions(void) {
   CLEAR_ERRNO();
   ASCIICHAT_REQUIRE_NE(options_set_double("speakers_volume", NAN), ASCIICHAT_OK);
   CLEAR_ERRNO();
-  ASCIICHAT_REQUIRE_NE(options_apply_json("{\"fps\":30,\"fps\":60}", 19, OPTIONS_REVISION_ANY, OPTIONS_ORIGIN_LOCAL, NULL),
-                ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_NE(options_apply_json("{\"fps\":30,\"fps\":60}", 19, OPTIONS_REVISION_ANY, OPTIONS_ORIGIN_LOCAL, NULL), ASCIICHAT_OK);
   CLEAR_ERRNO();
   const char nul_key[] = "{\"width\\u0000hidden\":99}";
-  ASCIICHAT_REQUIRE_NE(options_apply_json(nul_key, sizeof(nul_key) - 1, OPTIONS_REVISION_ANY, OPTIONS_ORIGIN_LOCAL, NULL),
-                ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_NE(options_apply_json(nul_key, sizeof(nul_key) - 1, OPTIONS_REVISION_ANY, OPTIONS_ORIGIN_LOCAL, NULL), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(GET_OPTION(width), 120);
   CLEAR_ERRNO();
   ASCIICHAT_REQUIRE_EQ(options_set_bool("flip_x", false), ASCIICHAT_OK);
@@ -161,21 +157,14 @@ static void test_remote(void) {
   for (int i = 0; i < 2; ++i)
     ASCIICHAT_REQUIRE_EQ(acip_render_settings_prepare(&clients[i], values), ASCIICHAT_OK);
   uint64_t local_revision = options_revision();
-  ASCIICHAT_REQUIRE_EQ(
-      request(&clients[0],
-              "{\"width\":55,\"color_filter\":3,\"render_mode\":2,\"palette_type\":6,\"palette_custom\":\" .+#\"}",
-              UINT32_MAX)
-          .status,
-      0);
-  ASCIICHAT_REQUIRE(clients[0].width == 55 && clients[0].caps.palette_type == PALETTE_CUSTOM &&
-            !strcmp(clients[0].palette, " .+#"));
+  ASCIICHAT_REQUIRE_EQ(request(&clients[0], "{\"width\":55,\"color_filter\":3,\"render_mode\":2,\"palette_type\":6,\"palette_custom\":\" .+#\"}", UINT32_MAX).status, 0);
+  ASCIICHAT_REQUIRE(clients[0].width == 55 && clients[0].caps.palette_type == PALETTE_CUSTOM && !strcmp(clients[0].palette, " .+#"));
   ASCIICHAT_REQUIRE(clients[1].width == 80 && clients[1].caps.palette_type == PALETTE_STANDARD);
   ASCIICHAT_REQUIRE_EQ(request(&clients[1], "{\"renderer\":1,\"palette_explicit\":false}", UINT32_MAX).status, 0);
   ASCIICHAT_REQUIRE_EQ(clients[1].caps.text_renderer, ASCII_RENDERER_GLYPH);
   ASCIICHAT_REQUIRE_EQ(clients[1].palette_length, 95);
   ASCIICHAT_REQUIRE_EQ(clients[0].caps.text_renderer, ASCII_RENDERER_LUMINANCE);
-  ASCIICHAT_REQUIRE_EQ(request(&clients[1], "{\"renderer\":1,\"palette_type\":6,\"palette_custom\":\"@#\"}", UINT32_MAX).status,
-               0);
+  ASCIICHAT_REQUIRE_EQ(request(&clients[1], "{\"renderer\":1,\"palette_type\":6,\"palette_custom\":\"@#\"}", UINT32_MAX).status, 0);
   ASCIICHAT_REQUIRE(clients[1].caps.palette_explicit && !strcmp(clients[1].palette, "@#"));
   acip_render_settings_t glyph_previous = clients[1];
   ASCIICHAT_REQUIRE_NE(request(&clients[1], "{\"palette_custom\":\"\\u2603\"}", UINT32_MAX).status, 0);

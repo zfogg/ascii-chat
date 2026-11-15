@@ -174,8 +174,7 @@ typedef struct {
 asciichat_error_t openpgp_parse_armored_pubkey(const char *armored_text, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]);
 
 /** Parse a binary OpenPGP public-key packet stream and extract its Ed25519 key. */
-asciichat_error_t openpgp_parse_binary_pubkey(const uint8_t *data, size_t data_len,
-                                              uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]);
+asciichat_error_t openpgp_parse_binary_pubkey(const uint8_t *data, size_t data_len, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]);
 
 /**
  * @brief Parse PGP armored secret key block and extract Ed25519 keypair
@@ -207,13 +206,10 @@ asciichat_error_t openpgp_parse_binary_pubkey(const uint8_t *data, size_t data_l
  *
  * @ingroup crypto
  */
-asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE],
-                                               uint8_t ed25519_sk[ED25519_SEED_SIZE]);
+asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE], uint8_t ed25519_sk[ED25519_SEED_SIZE]);
 
 /** Parse an unencrypted binary OpenPGP secret-key packet stream. */
-asciichat_error_t openpgp_parse_binary_seckey(const uint8_t *data, size_t data_len,
-                                              uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE],
-                                              uint8_t ed25519_sk[ED25519_SEED_SIZE]);
+asciichat_error_t openpgp_parse_binary_seckey(const uint8_t *data, size_t data_len, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE], uint8_t ed25519_sk[ED25519_SEED_SIZE]);
 
 /** @} */
 
@@ -259,8 +255,7 @@ asciichat_error_t openpgp_parse_packet_header(const uint8_t *data, size_t data_l
  *
  * @ingroup crypto
  */
-asciichat_error_t openpgp_parse_public_key_packet(const uint8_t *packet_body, size_t body_len,
-                                                  openpgp_public_key_t *pubkey);
+asciichat_error_t openpgp_parse_public_key_packet(const uint8_t *packet_body, size_t body_len, openpgp_public_key_t *pubkey);
 
 /**
  * @brief Parse OpenPGP Secret Key Packet (tag 5)
@@ -285,8 +280,7 @@ asciichat_error_t openpgp_parse_public_key_packet(const uint8_t *packet_body, si
  *
  * @ingroup crypto
  */
-asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, size_t body_len,
-                                                  openpgp_secret_key_t *seckey);
+asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, size_t body_len, openpgp_secret_key_t *seckey);
 
 /**
  * @brief Extract Ed25519 public key from MPI-encoded data
@@ -304,8 +298,7 @@ asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, si
  *
  * @ingroup crypto
  */
-asciichat_error_t openpgp_extract_ed25519_from_mpi(const uint8_t *mpi, size_t mpi_len,
-                                                   uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]);
+asciichat_error_t openpgp_extract_ed25519_from_mpi(const uint8_t *mpi, size_t mpi_len, uint8_t ed25519_pk[ED25519_PUBLIC_KEY_SIZE]);
 
 /** @} */
 
@@ -331,8 +324,7 @@ asciichat_error_t openpgp_extract_ed25519_from_mpi(const uint8_t *mpi, size_t mp
  *
  * @ingroup crypto
  */
-asciichat_error_t openpgp_base64_decode(const char *base64, size_t base64_len, uint8_t **binary_out,
-                                        size_t *binary_len);
+asciichat_error_t openpgp_base64_decode(const char *base64, size_t base64_len, uint8_t **binary_out, size_t *binary_len);
 
 /** @} */
 

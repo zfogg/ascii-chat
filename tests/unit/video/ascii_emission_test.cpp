@@ -225,8 +225,7 @@ TEST_CASE("ascii_emission/all_backends_terminal_cells", "[ascii_emission]") {
                   result = ascii_render(image, palettes[pi], mode, bg, dither, backends[b].luma);
                 ASCIICHAT_REQUIRE_NOT_NULL(result, "%s", backends[b].name);
                 decode(result, actual, width, 3, mode != ASCII_COLOR_NONE);
-                ASCIICHAT_REQUIRE_EQ(memcmp(expected, actual, (size_t)width * 3 * sizeof(*actual)), 0,
-                             "%s width=%d mode=%d bg=%d dither=%d", backends[b].name, width, mode, bg, dither);
+                ASCIICHAT_REQUIRE_EQ(memcmp(expected, actual, (size_t)width * 3 * sizeof(*actual)), 0, "%s width=%d mode=%d bg=%d dither=%d", backends[b].name, width, mode, bg, dither);
                 SAFE_FREE(result);
               }
               SAFE_FREE(actual);
@@ -349,10 +348,8 @@ TEST_CASE("ascii_emission/all_simd_halfblock_modes", "[ascii_emission]") {
               ASCIICHAT_REQUIRE_EQ(cell.fg, (top[0] << 16) | (top[1] << 8) | top[2]);
               ASCIICHAT_REQUIRE_EQ(cell.bg, (bottom[0] << 16) | (bottom[1] << 8) | bottom[2]);
             } else if (mode != ASCII_COLOR_NONE) {
-              int fg = mode == ASCII_COLOR_16 ? rgb_to_16color(top[0], top[1], top[2])
-                                              : rgb_to_256color(top[0], top[1], top[2]);
-              int bg = mode == ASCII_COLOR_16 ? rgb_to_16color(bottom[0], bottom[1], bottom[2])
-                                              : rgb_to_256color(bottom[0], bottom[1], bottom[2]);
+              int fg = mode == ASCII_COLOR_16 ? rgb_to_16color(top[0], top[1], top[2]) : rgb_to_256color(top[0], top[1], top[2]);
+              int bg = mode == ASCII_COLOR_16 ? rgb_to_16color(bottom[0], bottom[1], bottom[2]) : rgb_to_256color(bottom[0], bottom[1], bottom[2]);
               ASCIICHAT_REQUIRE_EQ(cell.fg, fg);
               ASCIICHAT_REQUIRE_EQ(cell.bg, bg);
             }
@@ -416,14 +413,12 @@ TEST_CASE("ascii_emission/sgr_encoders_and_compatibility", "[ascii_emission]") {
         char actual[40], expected[40];
         memset(actual, '#', sizeof(actual));
         char *end = append_sgr_truecolor_fg_bg(actual, values[r], values[g], values[b], 255, 100, 0);
-        int length =
-            snprintf(expected, sizeof(expected), "\033[38;2;%u;%u;%u;48;2;255;100;0m", values[r], values[g], values[b]);
+        int length = snprintf(expected, sizeof(expected), "\033[38;2;%u;%u;%u;48;2;255;100;0m", values[r], values[g], values[b]);
         ASCIICHAT_REQUIRE_EQ(end - actual, length);
         ASCIICHAT_REQUIRE_EQ(memcmp(actual, expected, (size_t)length), 0);
         ASCIICHAT_REQUIRE_EQ(*end, '#');
         char compatible[40];
-        ASCIICHAT_REQUIRE_EQ(append_truecolor_fg_bg(compatible, values[r], values[g], values[b], 255, 100, 0) - compatible,
-                     length);
+        ASCIICHAT_REQUIRE_EQ(append_truecolor_fg_bg(compatible, values[r], values[g], values[b], 255, 100, 0) - compatible, length);
         ASCIICHAT_REQUIRE_EQ(memcmp(compatible, actual, (size_t)length), 0);
       }
     }
@@ -462,14 +457,12 @@ TEST_CASE("ascii_emission/temporal_history_tracks_motion_and_configuration", "[a
   ASCIICHAT_REQUIRE_EQ(ascii_stabilizer_prepare(&state, 2, 1, 1), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(ascii_stabilizer_prepare(&other, 2, 1, 1), ASCIICHAT_OK);
   uint32_t color;
-  ASCIICHAT_REQUIRE_EQ(ascii_stabilizer_choose(&state.cells[0], samples, 'A', 100, UINT64_MAX, 0x646464, 16000000, &color),
-               'A');
+  ASCIICHAT_REQUIRE_EQ(ascii_stabilizer_choose(&state.cells[0], samples, 'A', 100, UINT64_MAX, 0x646464, 16000000, &color), 'A');
   ASCIICHAT_REQUIRE_EQ(color, 0x646464);
   memset(samples, 101, sizeof(samples));
   ASCIICHAT_REQUIRE_EQ(ascii_stabilizer_choose(&state.cells[0], samples, 'B', 100, 120, 0x686868, 16000000, &color), 'A');
   ASCIICHAT_REQUIRE(color > 0x646464 && color < 0x686868);
-  ASCIICHAT_REQUIRE_EQ(ascii_stabilizer_choose(&other.cells[0], samples, 'B', 100, UINT64_MAX, 0x686868, 16000000, &color),
-               'B');
+  ASCIICHAT_REQUIRE_EQ(ascii_stabilizer_choose(&other.cells[0], samples, 'B', 100, UINT64_MAX, 0x686868, 16000000, &color), 'B');
   ASCIICHAT_REQUIRE_EQ(ascii_stabilizer_choose(&state.cells[0], samples, 'B', 100, 10000, 0x686868, 16000000, &color), 'B');
   memset(samples, 200, sizeof(samples));
   ASCIICHAT_REQUIRE_EQ(ascii_stabilizer_choose(&state.cells[0], samples, 'C', 100, 101, 0xc8c8c8, 16000000, &color), 'C');
@@ -502,8 +495,7 @@ TEST_CASE("ascii_emission/temporal_stabilization_reduces_threshold_flicker", "[a
     for (int value = 0; value < 256; ++value) {
       for (int i = 0; i < image.w * image.h; ++i)
         pixels[i] = (rgb_pixel_t){value, value, value};
-      char *output = glyph ? ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, palette)
-                           : ascii_render(&image, palette, ASCII_COLOR_NONE, false, false, &simd_cells_scalar);
+      char *output = glyph ? ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, palette) : ascii_render(&image, palette, ASCII_COLOR_NONE, false, false, &simd_cells_scalar);
       ASCIICHAT_REQUIRE_NOT_NULL(output);
       if (value && output[0] != previous) {
         boundary = value;
@@ -520,15 +512,13 @@ TEST_CASE("ascii_emission/temporal_stabilization_reduces_threshold_flicker", "[a
     ascii_stabilizer_t *prior = ascii_stabilizer_set_target(&state);
     for (int i = 0; i < image.w * image.h; ++i)
       pixels[i] = (rgb_pixel_t){boundary - 1, boundary - 1, boundary - 1};
-    char *initial = glyph ? ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, palette)
-                          : ascii_render(&image, palette, ASCII_COLOR_NONE, false, false, &simd_cells_scalar);
+    char *initial = glyph ? ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, palette) : ascii_render(&image, palette, ASCII_COLOR_NONE, false, false, &simd_cells_scalar);
     ASCIICHAT_REQUIRE_NOT_NULL(initial);
     for (int frame = 0; frame < 6; ++frame) {
       int value = boundary - (frame % 2);
       for (int i = 0; i < image.w * image.h; ++i)
         pixels[i] = (rgb_pixel_t){value, value, value};
-      char *output = glyph ? ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, palette)
-                           : ascii_render(&image, palette, ASCII_COLOR_NONE, false, false, &simd_cells_scalar);
+      char *output = glyph ? ascii_render_glyph_match(&image, ASCII_COLOR_NONE, &simd_cells_scalar, palette) : ascii_render(&image, palette, ASCII_COLOR_NONE, false, false, &simd_cells_scalar);
       ASCIICHAT_REQUIRE_NOT_NULL(output);
       ASCIICHAT_REQUIRE_EQ(output[0], initial[0], "stationary threshold jitter should not switch glyphs");
       SAFE_FREE(output);
@@ -658,10 +648,8 @@ TEST_CASE("ascii_emission/temporal_halfblock_reduces_monochrome_flicker", "[asci
 TEST_CASE("ascii_emission/capability_conversion_rejects_unsupported_explicit_glyph_palette", "[ascii_emission]") {
   rgb_pixel_t pixel = {100, 100, 100};
   image_t image = {.w = 1, .h = 1, .pixels = &pixel};
-  terminal_capabilities_t caps = {
-      .text_renderer = ASCII_RENDERER_GLYPH, .render_mode = RENDER_MODE_FOREGROUND, .palette_explicit = true};
-  char *result =
-      ascii_convert_with_buffers_stabilized(&image, 1, 1, &caps, false, true, "\xe2\x98\x83", false, NULL, NULL, NULL);
+  terminal_capabilities_t caps = {.text_renderer = ASCII_RENDERER_GLYPH, .render_mode = RENDER_MODE_FOREGROUND, .palette_explicit = true};
+  char *result = ascii_convert_with_buffers_stabilized(&image, 1, 1, &caps, false, true, "\xe2\x98\x83", false, NULL, NULL, NULL);
   ASCIICHAT_REQUIRE_NULL(result, "unsupported glyph palettes must not fall back to luminance rendering");
   asciichat_error_context_t context;
   ASCIICHAT_REQUIRE(HAS_ERRNO(&context));
@@ -682,21 +670,17 @@ TEST_CASE("ascii_emission/capability_conversion_stabilizes_all_render_modes", "[
       caps.render_mode = modes[m];
       for (size_t i = 0; i < 4; ++i)
         pixels[i] = (rgb_pixel_t){100, 100, 100};
-      char *baseline =
-          ascii_convert_with_buffers_stabilized(&image, 2, 2, &caps, false, true, " .#@", false, NULL, NULL, NULL);
-      char *first =
-          ascii_convert_with_buffers_stabilized(&image, 2, 2, &caps, false, true, " .#@", false, NULL, NULL, &history);
+      char *baseline = ascii_convert_with_buffers_stabilized(&image, 2, 2, &caps, false, true, " .#@", false, NULL, NULL, NULL);
+      char *first = ascii_convert_with_buffers_stabilized(&image, 2, 2, &caps, false, true, " .#@", false, NULL, NULL, &history);
       ASCIICHAT_REQUIRE_NOT_NULL(baseline);
       ASCIICHAT_REQUIRE_NOT_NULL(first);
-      ASCIICHAT_REQUIRE_STR_EQ(first, baseline, "first frame must be unchanged for renderer %d and mode %d", renderers[r],
-                       modes[m]);
+      ASCIICHAT_REQUIRE_STR_EQ(first, baseline, "first frame must be unchanged for renderer %d and mode %d", renderers[r], modes[m]);
       ASCIICHAT_REQUIRE_EQ(history.width, 2);
       ASCIICHAT_REQUIRE_EQ(history.height, modes[m] == RENDER_MODE_HALF_BLOCK ? 4 : 2);
       ASCIICHAT_REQUIRE(history.cells[0].valid);
       for (size_t i = 0; i < 4; ++i)
         pixels[i] = (rgb_pixel_t){104, 104, 104};
-      char *next =
-          ascii_convert_with_buffers_stabilized(&image, 2, 2, &caps, false, true, " .#@", false, NULL, NULL, &history);
+      char *next = ascii_convert_with_buffers_stabilized(&image, 2, 2, &caps, false, true, " .#@", false, NULL, NULL, &history);
       ASCIICHAT_REQUIRE_NOT_NULL(next);
       if (renderers[r] == ASCII_RENDERER_LUMINANCE || modes[m] == RENDER_MODE_HALF_BLOCK) {
         ASCIICHAT_REQUIRE(history.cells[0].color > 0x646464);
@@ -837,8 +821,7 @@ TEST_CASE("ascii_emission/rejects_invalid_input", "[ascii_emission]") {
 TEST_CASE("ascii_emission/glyph_matching_uses_shape_and_rejects_invalid_sizes", "[ascii_emission]") {
 #if SIMD_SUPPORT_SVE
   if (simd_backend()->required_features == CPU_FEATURE_SVE)
-    ASCIICHAT_REQUIRE(simd_cells_backend()->glyph_shape_correlation == glyph_shape_correlation_sve,
-              "SVE dispatch must select SVE glyph correlation");
+    ASCIICHAT_REQUIRE(simd_cells_backend()->glyph_shape_correlation == glyph_shape_correlation_sve, "SVE dispatch must select SVE glyph correlation");
 #endif
   rgb_pixel_t pixels[16 * 8] = {{0}};
   image_t image = {.w = 16, .h = 8, .pixels = pixels};
@@ -882,9 +865,7 @@ TEST_CASE("ascii_emission/glyph_matching_uses_shape_and_rejects_invalid_sizes", 
         samples[i] = (int16_t)(((seed * 73 + i * 127) % 511) - 255);
         mask[i] = (int16_t)(((seed * 137 + i * 61) % 511) - 255);
       }
-      ASCIICHAT_REQUIRE_EQ(backends[b].luma->glyph_shape_correlation(samples, mask),
-                   glyph_shape_correlation_scalar(samples, mask), "glyph dot product differs for backend %s",
-                   backends[b].name);
+      ASCIICHAT_REQUIRE_EQ(backends[b].luma->glyph_shape_correlation(samples, mask), glyph_shape_correlation_scalar(samples, mask), "glyph dot product differs for backend %s", backends[b].name);
     }
     char *output = ascii_render_glyph_match(&varied_image, ASCII_COLOR_NONE, backends[b].luma, NULL);
     ASCIICHAT_REQUIRE_NOT_NULL(output);
@@ -938,8 +919,7 @@ TEST_CASE("ascii_emission/glyph_matching_uses_shape_and_rejects_invalid_sizes", 
       bool red = x < 8 ? y < 4 : x < 12;
       pixels[y * 16 + x] = red ? (rgb_pixel_t){150, 0, 0} : (rgb_pixel_t){0, 77, 0};
     }
-  char *chromatic = ascii_render_glyph_match_mode(&image, ASCII_COLOR_TRUE, &simd_cells_scalar,
-                                                  "\xe2\x96\x80\xe2\x96\x8c", true);
+  char *chromatic = ascii_render_glyph_match_mode(&image, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x80\xe2\x96\x8c", true);
   ASCIICHAT_REQUIRE_NOT_NULL(chromatic);
   decode(chromatic, block_cells, 2, 1, true);
   ASCIICHAT_REQUIRE_STR_EQ(block_cells[0].glyph, "\xe2\x96\x80");
@@ -996,8 +976,7 @@ TEST_CASE("ascii_emission/glyph_matching_uses_shape_and_rejects_invalid_sizes", 
   ASCIICHAT_REQUIRE_EQ(ascii_stabilizer_prepare(&fitted_history, 1, 1, 7), ASCIICHAT_OK);
   fitted_history.elapsed_ns = 16000000;
   ascii_stabilizer_t *old_target = ascii_stabilizer_set_target(&fitted_history);
-  char *first_fitted =
-      ascii_render_glyph_match_mode(&split, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x8c", true);
+  char *first_fitted = ascii_render_glyph_match_mode(&split, ASCII_COLOR_TRUE, &simd_cells_scalar, "\xe2\x96\x8c", true);
   ASCIICHAT_REQUIRE_NOT_NULL(first_fitted);
   SAFE_FREE(first_fitted);
   for (int y = 0; y < 8; ++y)
@@ -1046,9 +1025,7 @@ TEST_CASE("ascii_emission/glyph_matching_uses_shape_and_rejects_invalid_sizes", 
     decode(output, result, 2, 2, true);
     for (int i = 0; i < 4; ++i) {
       rgb_pixel_t p = colors[i];
-      int expected = color_modes[m] == ASCII_COLOR_TRUE  ? (p.r << 16) | (p.g << 8) | p.b
-                     : color_modes[m] == ASCII_COLOR_256 ? rgb_to_256color(p.r, p.g, p.b)
-                                                         : rgb_to_16color(p.r, p.g, p.b);
+      int expected = color_modes[m] == ASCII_COLOR_TRUE ? (p.r << 16) | (p.g << 8) | p.b : color_modes[m] == ASCII_COLOR_256 ? rgb_to_256color(p.r, p.g, p.b) : rgb_to_16color(p.r, p.g, p.b);
       ASCIICHAT_REQUIRE_EQ(result[i].glyph[0], '@');
       ASCIICHAT_REQUIRE_EQ(result[i].fg, expected, "incorrect foreground for cell %d and mode %d", i, color_modes[m]);
     }

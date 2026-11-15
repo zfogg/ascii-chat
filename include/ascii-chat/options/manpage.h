@@ -111,9 +111,7 @@ typedef struct {
  *
  * @ingroup options
  */
-asciichat_error_t options_config_generate_manpage_template(const options_config_t *config, const char *program_name,
-                                                           const char *mode_name, const char *output_path,
-                                                           const char *brief_description);
+asciichat_error_t options_config_generate_manpage_template(const options_config_t *config, const char *program_name, const char *mode_name, const char *output_path, const char *brief_description);
 
 /**
  * @brief Generate man page template from builder (before build())
@@ -130,9 +128,7 @@ asciichat_error_t options_config_generate_manpage_template(const options_config_
  *
  * @ingroup options
  */
-asciichat_error_t options_builder_generate_manpage_template(options_builder_t *builder, const char *program_name,
-                                                            const char *mode_name, const char *output_path,
-                                                            const char *brief_description);
+asciichat_error_t options_builder_generate_manpage_template(options_builder_t *builder, const char *program_name, const char *mode_name, const char *output_path, const char *brief_description);
 
 /**
  * @brief Generate merged man page template preserving manual content
@@ -181,9 +177,7 @@ asciichat_error_t options_builder_generate_manpage_template(options_builder_t *b
  * @deprecated The old signature with explicit file paths is no longer supported.
  *             Resources are now loaded automatically from embedded resources.
  */
-asciichat_error_t options_config_generate_manpage_merged(const options_config_t *config, const char *program_name,
-                                                         const char *mode_name, const char *output_path,
-                                                         const char *brief_description);
+asciichat_error_t options_config_generate_manpage_merged(const options_config_t *config, const char *program_name, const char *mode_name, const char *output_path, const char *brief_description);
 
 /**
  * @brief Parse existing man page template to extract sections
@@ -235,8 +229,7 @@ const parsed_section_t *find_section(const parsed_section_t *sections, size_t nu
  * @ingroup options
  */
 #ifndef NDEBUG
-asciichat_error_t options_config_generate_final_manpage(const char *template_path, const char *output_path,
-                                                        const char *version_string, const char *content_file_path);
+asciichat_error_t options_config_generate_final_manpage(const char *template_path, const char *output_path, const char *version_string, const char *content_file_path);
 #endif
 
 /**

@@ -57,11 +57,8 @@ TEST_CASE("source_paths/project_relative_paths_and_symbol_display", "[source_pat
 #ifdef _WIN32
   ASCIICHAT_REQUIRE_EQ(strcmp(extract_project_relative_path("C:\\src\\client\\main.c", ASCIICHAT_OWNED_SOURCE_DIRS), "src\\client\\main.c"), 0);
   ASCIICHAT_REQUIRE_EQ(strcmp(extract_project_relative_path("C:\\lib\\debug\\backtrace.c", ASCIICHAT_OWNED_SOURCE_DIRS), "lib\\debug\\backtrace.c"), 0);
-  ASCIICHAT_REQUIRE_EQ(strcmp(extract_project_relative_path("C:\\tests\\integration\\source_paths.c", ASCIICHAT_OWNED_SOURCE_DIRS),
-                      "tests\\integration\\source_paths.c"),
-               0);
-  ASCIICHAT_REQUIRE_EQ(
-      strcmp(extract_project_relative_path("C:/include/ascii-chat/util/path.h", ASCIICHAT_OWNED_SOURCE_DIRS), "include/ascii-chat/util/path.h"), 0);
+  ASCIICHAT_REQUIRE_EQ(strcmp(extract_project_relative_path("C:\\tests\\integration\\source_paths.c", ASCIICHAT_OWNED_SOURCE_DIRS), "tests\\integration\\source_paths.c"), 0);
+  ASCIICHAT_REQUIRE_EQ(strcmp(extract_project_relative_path("C:/include/ascii-chat/util/path.h", ASCIICHAT_OWNED_SOURCE_DIRS), "include/ascii-chat/util/path.h"), 0);
   ASCIICHAT_REQUIRE_EQ(strcmp(extract_project_relative_path("C:\\library\\external.c", ASCIICHAT_OWNED_SOURCE_DIRS), "C:\\library\\external.c"), 0);
 #endif
 
@@ -72,10 +69,7 @@ TEST_CASE("source_paths/project_relative_paths_and_symbol_display", "[source_pat
   ASCIICHAT_REQUIRE_EQ(strcmp(extract_project_relative_path("", ASCIICHAT_OWNED_SOURCE_DIRS), ""), 0);
   ASCIICHAT_REQUIRE_EQ(strcmp(extract_project_relative_path(ASCIICHAT_SOURCE_ROOT, ASCIICHAT_OWNED_SOURCE_DIRS), ASCIICHAT_SOURCE_ROOT), 0);
   ASCIICHAT_REQUIRE_EQ(strcmp(extract_project_relative_path("Z:\\external\\file.c", ASCIICHAT_OWNED_SOURCE_DIRS), "Z:\\external\\file.c"), 0);
-  ASCIICHAT_REQUIRE_EQ(
-      strcmp(path_last_components("D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl", 5),
-             "crt\\vcstartup\\src\\startup\\exe_common.inl"),
-      0);
+  ASCIICHAT_REQUIRE_EQ(strcmp(path_last_components("D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl", 5), "crt\\vcstartup\\src\\startup\\exe_common.inl"), 0);
   ASCIICHAT_REQUIRE_EQ(strcmp(path_last_components("vendor/runtime/file.c", 5), "vendor/runtime/file.c"), 0);
 
   ASCIICHAT_REQUIRE(symbol_module_is_project("ascii-chat.exe"));
@@ -85,34 +79,28 @@ TEST_CASE("source_paths/project_relative_paths_and_symbol_display", "[source_pat
 
   char display_path[512];
   bool external_source = false;
-  ASCIICHAT_REQUIRE_EQ(symbol_format_source_path(
-                   "ucrtbase.dll", "D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl",
-                   display_path, sizeof(display_path), &external_source, NULL),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(
+      symbol_format_source_path("ucrtbase.dll", "D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl", display_path, sizeof(display_path), &external_source, NULL),
+      ASCIICHAT_OK);
   ASCIICHAT_REQUIRE(external_source);
   const char *truncation_prefix = terminal_supports_utf8() ? "\xE2\x80\xA6\\" : "...\\";
   char expected_external_path[512];
-  safe_snprintf(expected_external_path, sizeof(expected_external_path),
-                "%scrt\\vcstartup\\src\\startup\\exe_common.inl", truncation_prefix);
+  safe_snprintf(expected_external_path, sizeof(expected_external_path), "%scrt\\vcstartup\\src\\startup\\exe_common.inl", truncation_prefix);
   ASCIICHAT_REQUIRE_EQ(strcmp(display_path, expected_external_path), 0);
-  ASCIICHAT_REQUIRE_EQ(symbol_format_source_path(
-                   "ascii-chat.exe", "D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl",
-                   display_path, sizeof(display_path), &external_source, NULL),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(
+      symbol_format_source_path("ascii-chat.exe", "D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl", display_path, sizeof(display_path), &external_source, NULL),
+      ASCIICHAT_OK);
   ASCIICHAT_REQUIRE(external_source);
   ASCIICHAT_REQUIRE_EQ(strcmp(display_path, expected_external_path), 0);
 
-  ASCIICHAT_REQUIRE_EQ(symbol_format_source_path("ucrtbase.dll", "vendor/runtime/file.c", display_path, sizeof(display_path),
-                                         &external_source, NULL),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(symbol_format_source_path("ucrtbase.dll", "vendor/runtime/file.c", display_path, sizeof(display_path), &external_source, NULL), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE(external_source);
   ASCIICHAT_REQUIRE_EQ(strcmp(display_path, "vendor/runtime/file.c"), 0);
 
   if (ASCIICHAT_SOURCE_ROOT[0]) {
-    ASCIICHAT_REQUIRE_EQ(symbol_format_source_path("test-error-popup-fixture.exe",
-                                           ASCIICHAT_SOURCE_ROOT "\\tests\\standalone\\errno\\error_popup_fixture.c",
-                                           display_path, sizeof(display_path), &external_source, ASCIICHAT_OWNED_SOURCE_DIRS),
-                 ASCIICHAT_OK);
+    ASCIICHAT_REQUIRE_EQ(symbol_format_source_path("test-error-popup-fixture.exe", ASCIICHAT_SOURCE_ROOT "\\tests\\standalone\\errno\\error_popup_fixture.c", display_path, sizeof(display_path),
+                                                   &external_source, ASCIICHAT_OWNED_SOURCE_DIRS),
+                         ASCIICHAT_OK);
     ASCIICHAT_REQUIRE(!external_source);
     ASCIICHAT_REQUIRE_STR_EQ(display_path, "tests\\standalone\\errno\\error_popup_fixture.c");
 
@@ -125,9 +113,7 @@ TEST_CASE("source_paths/project_relative_paths_and_symbol_display", "[source_pat
   }
 
   char too_small[4];
-  ASCIICHAT_REQUIRE_EQ(symbol_format_source_path("ucrtbase.dll", "vendor/runtime/file.c", too_small, sizeof(too_small),
-                                         &external_source, NULL),
-               ERROR_BUFFER_OVERFLOW);
+  ASCIICHAT_REQUIRE_EQ(symbol_format_source_path("ucrtbase.dll", "vendor/runtime/file.c", too_small, sizeof(too_small), &external_source, NULL), ERROR_BUFFER_OVERFLOW);
   CLEAR_ERRNO();
 }
 

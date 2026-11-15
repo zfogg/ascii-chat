@@ -11,8 +11,7 @@ typedef struct {
   uint64_t generation;
 } observation_t;
 
-static void visit(uintptr_t key, uint64_t generation, const char *name, const char *type, const char *file, int line,
-                  void *data) {
+static void visit(uintptr_t key, uint64_t generation, const char *name, const char *type, const char *file, int line, void *data) {
   (void)name;
   (void)type;
   (void)file;
@@ -31,8 +30,7 @@ TEST_CASE("registry_snapshot/metadata_and_protected_snapshots_follow_rename_and_
   ASCIICHAT_REQUIRE_EQ(named_init(), ASCIICHAT_OK);
   int object = 42, value = 0;
   uintptr_t key = (uintptr_t)&object;
-  ASCIICHAT_REQUIRE_STR_EQ(named_register_fmt(key, "fixture", "%p", __FILE__, __LINE__, __func__, "source.%d", 17),
-                   "source.17");
+  ASCIICHAT_REQUIRE_STR_EQ(named_register_fmt(key, "fixture", "%p", __FILE__, __LINE__, __func__, "source.%d", 17), "source.17");
   named_metadata_t before;
   ASCIICHAT_REQUIRE(named_metadata_copy(key, &before));
   ASCIICHAT_REQUIRE_STR_EQ(before.name, "source.17");

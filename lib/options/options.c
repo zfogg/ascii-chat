@@ -2515,8 +2515,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   // look explicitly selected.
   opts.flip_x_explicit = false;
   for (int i = 0; i < mode_args.argc; ++i) {
-    if (mode_args.argv[i] &&
-        (strcmp(mode_args.argv[i], "--flip-x") == 0 || strncmp(mode_args.argv[i], "--flip-x=", 9) == 0)) {
+    if (mode_args.argv[i] && (strcmp(mode_args.argv[i], "--flip-x") == 0 || strncmp(mode_args.argv[i], "--flip-x=", 9) == 0)) {
       opts.flip_x_explicit = true;
       break;
     }

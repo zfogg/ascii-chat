@@ -193,8 +193,7 @@ TEST_CASE("client_video_contract/capture_selection_prioritizes_url_then_stdin_fi
       v->test_pattern = false;
     video_publish(v);
     ASCIICHAT_REQUIRE_EQ(capture_init(), 0);
-    const media_source_type_t expected[] = {MEDIA_SOURCE_FILE, MEDIA_SOURCE_STDIN, MEDIA_SOURCE_FILE, MEDIA_SOURCE_TEST,
-                                            MEDIA_SOURCE_WEBCAM};
+    const media_source_type_t expected[] = {MEDIA_SOURCE_FILE, MEDIA_SOURCE_STDIN, MEDIA_SOURCE_FILE, MEDIA_SOURCE_TEST, MEDIA_SOURCE_WEBCAM};
     ASCIICHAT_REQUIRE_EQ(chosen_config.type, expected[scenario]);
     ASCIICHAT_REQUIRE_EQ(chosen_config.target_fps, scenario ? 60 : 144);
     ASCIICHAT_REQUIRE(chosen_config.resize_for_network);

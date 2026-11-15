@@ -80,13 +80,12 @@ typedef struct {
   int tolerance;
 } format_case_t;
 // RGB332 GIF conversion permits one 3-bit palette step (255 / 7).
-static format_case_t formats[] = {{"png", false, true, 0},  {"jpg", false, true, 20}, {"gif", false, false, 36},
-                                  {"mp4", true, false, 20}, {"mkv", true, false, 20}, {"webm", true, false, 20},
-                                  {"avi", true, false, 20}, {"mov", true, false, 20}, {"flv", true, false, 20},
-                                  {"3gp", true, false, 20}, {"mka", true, false, 20}, {"unknown", true, false, 20},
-                                  {"jpeg", false, true, 20}};
+static format_case_t formats[] = {{"png", false, true, 0},   {"jpg", false, true, 20},     {"gif", false, false, 36}, {"mp4", true, false, 20}, {"mkv", true, false, 20},
+                                  {"webm", true, false, 20}, {"avi", true, false, 20},     {"mov", true, false, 20},  {"flv", true, false, 20}, {"3gp", true, false, 20},
+                                  {"mka", true, false, 20},  {"unknown", true, false, 20}, {"jpeg", false, true, 20}};
 
-TEST_CASE("codec_roundtrip/encoded_frames_and_audio_decode_to_the_original_signal", "[codec_roundtrip]") { format_case_t *format = formats;
+TEST_CASE("codec_roundtrip/encoded_frames_and_audio_decode_to_the_original_signal", "[codec_roundtrip]") {
+  format_case_t *format = formats;
   encode_fixture(format->extension, format->image ? 1 : 12, format->audio);
   decoder = ffmpeg_decoder_create(path);
   ASCIICHAT_REQUIRE_NOT_NULL(decoder);
@@ -99,12 +98,9 @@ TEST_CASE("codec_roundtrip/encoded_frames_and_audio_decode_to_the_original_signa
   image_t *image = next_frame(false);
   ASCIICHAT_REQUIRE_NOT_NULL(image);
   for (size_t i = 0; i < 64 * 48; ++i) {
-    ASCIICHAT_REQUIRE_LE(abs((int)image->pixels[i].r - 36), format->tolerance, "%s RGB=%u,%u,%u", format->extension,
-                  image->pixels[i].r, image->pixels[i].g, image->pixels[i].b);
-    ASCIICHAT_REQUIRE_LE(abs((int)image->pixels[i].g - 146), format->tolerance, "%s RGB=%u,%u,%u", format->extension,
-                  image->pixels[i].r, image->pixels[i].g, image->pixels[i].b);
-    ASCIICHAT_REQUIRE_LE(abs((int)image->pixels[i].b - 170), format->tolerance, "%s blue=%u", format->extension,
-                  image->pixels[i].b);
+    ASCIICHAT_REQUIRE_LE(abs((int)image->pixels[i].r - 36), format->tolerance, "%s RGB=%u,%u,%u", format->extension, image->pixels[i].r, image->pixels[i].g, image->pixels[i].b);
+    ASCIICHAT_REQUIRE_LE(abs((int)image->pixels[i].g - 146), format->tolerance, "%s RGB=%u,%u,%u", format->extension, image->pixels[i].r, image->pixels[i].g, image->pixels[i].b);
+    ASCIICHAT_REQUIRE_LE(abs((int)image->pixels[i].b - 170), format->tolerance, "%s blue=%u", format->extension, image->pixels[i].b);
   }
   ASCIICHAT_REQUIRE_EQ(ffmpeg_decoder_has_audio(decoder), format->audio);
   if (format->audio) {
@@ -194,8 +190,7 @@ TEST_CASE("codec_roundtrip/independent_stereo_pcm_is_resampled_and_rewound", "[c
     put_le16(wav + 46 + i * 4, (uint16_t)(int16_t)(tone * 3276));
   }
   safe_snprintf(path, sizeof(path), "%s/stereo.wav", directory);
-  int fd = platform_open("stereo-wav", path,
-                         PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC | PLATFORM_O_BINARY, 0600);
+  int fd = platform_open("stereo-wav", path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC | PLATFORM_O_BINARY, 0600);
   ASCIICHAT_REQUIRE_GE(fd, 0);
   ssize_t written = platform_write(fd, wav, sizeof(wav));
   int closed = platform_close(fd);

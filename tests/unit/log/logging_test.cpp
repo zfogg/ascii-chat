@@ -50,10 +50,8 @@ static void init_long_message_case(log_message_test_case_t *tc) {
   SAFE_STRNCPY(tc->description, "Long message", sizeof(tc->description));
 }
 
-
-
 TEST_CASE("logging/log_message_variations", "[logging]") {
-  auto&& generated_case = GENERATE(Catch::Generators::from_range(log_message_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(log_message_cases));
   auto *tc = &generated_case;
   // Test all log levels with this message
   if (tc->use_format) {
@@ -90,9 +88,9 @@ static log_special_char_test_case_t log_special_char_cases[] = {
     {"Message with format chars: %s %d %f (but no args)", true, "Format chars with args"},
 };
 
-
-
-TEST_CASE("logging/log_special_characters", "[logging]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(log_special_char_cases)); auto *tc = &generated_case;
+TEST_CASE("logging/log_special_characters", "[logging]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(log_special_char_cases));
+  auto *tc = &generated_case;
   if (tc->use_format) {
     log_debug(tc->message, "test", 42, 3.14);
     log_info(tc->message, "test", 42, 3.14);
@@ -563,8 +561,7 @@ TEST_CASE("logging/log_message_formatting_long_strings", "[logging]") {
   log_info("Long string: %s", long_string);
 
   // Test with very long format string
-  log_info("Very long format string with many parameters: %s %d %s %d %s %d %s %d %s %d", "param1", 1, "param2", 2,
-           "param3", 3, "param4", 4, "param5", 5);
+  log_info("Very long format string with many parameters: %s %d %s %d %s %d %s %d %s %d", "param1", 1, "param2", 2, "param3", 3, "param4", 4, "param5", 5);
 
   ASCIICHAT_REQUIRE(true, "Long string log message formatting should work");
 }
@@ -642,14 +639,13 @@ typedef struct {
 } log_init_test_case_t;
 
 static log_init_test_case_t log_init_cases[] = {
-    {LOG_DEBUG, "DEBUG", "Initialization with DEBUG level"}, {LOG_INFO, "INFO", "Initialization with INFO level"},
-    {LOG_WARN, "WARN", "Initialization with WARN level"},    {LOG_ERROR, "ERROR", "Initialization with ERROR level"},
-    {LOG_FATAL, "FATAL", "Initialization with FATAL level"},
+    {LOG_DEBUG, "DEBUG", "Initialization with DEBUG level"}, {LOG_INFO, "INFO", "Initialization with INFO level"},    {LOG_WARN, "WARN", "Initialization with WARN level"},
+    {LOG_ERROR, "ERROR", "Initialization with ERROR level"}, {LOG_FATAL, "FATAL", "Initialization with FATAL level"},
 };
 
-
-
-TEST_CASE("logging/log_initialization_variations", "[logging]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(log_init_cases)); auto *tc = &generated_case;
+TEST_CASE("logging/log_initialization_variations", "[logging]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(log_init_cases));
+  auto *tc = &generated_case;
   log_init(NULL, tc->level, false, false);
 
   // Log message appropriate to the level

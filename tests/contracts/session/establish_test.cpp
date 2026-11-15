@@ -20,9 +20,7 @@ static asciichat_errno_scope_t test_errors;
 static crypto_handshake_context_t handshake;
 static network_connection_t *sentinel = (network_connection_t *)&handshake;
 static acip_transport_t transport;
-static asciichat_error_t dial(const char *name, const char *address, uint16_t port,
-                              const network_connect_config_t *config, network_connection_t **out,
-                              connection_endpoint_t *endpoint) {
+static asciichat_error_t dial(const char *name, const char *address, uint16_t port, const network_connect_config_t *config, network_connection_t **out, connection_endpoint_t *endpoint) {
   (void)name;
   (void)port;
   (void)config;
@@ -65,8 +63,7 @@ static void detach(void *context) {
   ASCIICHAT_REQUIRE_EQ(context, &handshake);
   detached++;
 }
-static asciichat_error_t negotiate(acip_transport_t *t, crypto_handshake_context_t *ctx, uint8_t crypto_mode,
-                                   network_protocol_t profile) {
+static asciichat_error_t negotiate(acip_transport_t *t, crypto_handshake_context_t *ctx, uint8_t crypto_mode, network_protocol_t profile) {
   ASCIICHAT_REQUIRE_EQ(t, &transport);
   ASCIICHAT_REQUIRE_EQ(profile, expected_protocol);
   ASCIICHAT_REQUIRE_EQ(crypto_mode, expected_crypto_mode);
@@ -102,8 +99,7 @@ static asciichat_error_t prompt(const char *target, char *password, size_t capac
 #include "../../../lib/network/establish.c"
 #include "session/establish.c"
 
-static asciichat_error_t prepare(network_connection_t *owner, const connection_endpoint_t *endpoint,
-                                 const char *password, void *context) {
+static asciichat_error_t prepare(network_connection_t *owner, const connection_endpoint_t *endpoint, const char *password, void *context) {
   ASCIICHAT_REQUIRE_EQ(owner, sentinel);
   ASCIICHAT_REQUIRE_EQ(context, &handshake);
   ASCIICHAT_REQUIRE_STR_EQ(endpoint->host, "resolved-host");
@@ -174,8 +170,7 @@ static void configure_fallback(void) {
 
 static asciichat_error_t establish_quic(network_connection_t **owner) {
   char password[PASSWORD_BUFFER_SIZE] = "initial";
-  return fixture_establish("fixture", "quic://127.0.0.1:1234", 0, NULL, owner, password, sizeof(password), prepare,
-                           detach, &handshake);
+  return fixture_establish("fixture", "quic://127.0.0.1:1234", 0, NULL, owner, password, sizeof(password), prepare, detach, &handshake);
 }
 
 TEST_CASE("session_establishment/falls_back_only_after_quic_open_timeout", "[session_establishment]") {
@@ -269,13 +264,8 @@ TEST_CASE("session_establishment/rejects_overwriting_an_existing_owner", "[sessi
   ASCIICHAT_REQUIRE_EQ(opens, 0);
 }
 TEST_CASE("session_establishment/network_attempt_reports_challenge_without_prompting_or_disposing", "[session_establishment]") {
-  network_establish_config_t config = {.name = "fixture",
-                                       .address = "input",
-                                       .password = "initial",
-                                       .protocol = NETWORK_PROTOCOL_MEDIA,
-                                       .authenticate = true,
-                                       .prepare = prepare,
-                                       .context = &handshake};
+  network_establish_config_t config = {
+      .name = "fixture", .address = "input", .password = "initial", .protocol = NETWORK_PROTOCOL_MEDIA, .authenticate = true, .prepare = prepare, .context = &handshake};
   network_connection_t *owner = NULL;
   network_establish_result_t attempt;
   challenge = true;
@@ -289,13 +279,8 @@ TEST_CASE("session_establishment/network_attempt_reports_challenge_without_promp
   ASCIICHAT_REQUIRE(errno_has_code(ERROR_CRYPTO_AUTH));
 }
 TEST_CASE("session_establishment/network_attempt_uses_explicit_protocol_and_authentication_policy", "[session_establishment]") {
-  network_establish_config_t config = {.name = "fixture",
-                                       .address = "input",
-                                       .password = "initial",
-                                       .protocol = NETWORK_PROTOCOL_DISCOVERY,
-                                       .authenticate = false,
-                                       .prepare = prepare,
-                                       .context = &handshake};
+  network_establish_config_t config = {
+      .name = "fixture", .address = "input", .password = "initial", .protocol = NETWORK_PROTOCOL_DISCOVERY, .authenticate = false, .prepare = prepare, .context = &handshake};
   network_connection_t *owner = NULL;
   network_establish_result_t attempt;
   expected_crypto_mode = ACIP_CRYPTO_ENCRYPT;

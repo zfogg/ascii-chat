@@ -69,8 +69,7 @@ static audio_ring_buffer_t *contract_audio_buffer(unsigned channels, bool captur
   return allocation_failure == 2 ? NULL : audio_ring_buffer_create_format(channels, capture);
 }
 static asciichat_error_t contract_client_mutex(mutex_t *mutex, const char *name) {
-  if ((allocation_failure == 3 && strcmp(name, "client_state") == 0) ||
-      (allocation_failure == 4 && strcmp(name, "client_send") == 0))
+  if ((allocation_failure == 3 && strcmp(name, "client_state") == 0) || (allocation_failure == 4 && strcmp(name, "client_send") == 0))
     return ERROR_THREAD;
   return mutex_init(mutex, name);
 }
@@ -168,10 +167,7 @@ TEST_CASE("server_client/raw_callback_owns_pixels_and_tracks_latest_frame_and_se
   struct {
     image_frame_packet_t header;
     uint8_t pixels[12];
-  } packet = {.header = {.width = HOST_TO_NET_U32(2),
-                         .height = HOST_TO_NET_U32(2),
-                         .pixel_format = HOST_TO_NET_U32(PIXEL_FORMAT_RGB)},
-              .pixels = {255, 0, 0, 0, 255, 0, 0, 0, 255, 80, 80, 80}};
+  } packet = {.header = {.width = HOST_TO_NET_U32(2), .height = HOST_TO_NET_U32(2), .pixel_format = HOST_TO_NET_U32(PIXEL_FORMAT_RGB)}, .pixels = {255, 0, 0, 0, 255, 0, 0, 0, 255, 80, 80, 80}};
   uint8_t expected[12];
   memcpy(expected, packet.pixels, sizeof(expected));
   dispatch(client, PACKET_TYPE_IMAGE_FRAME, &packet, sizeof(packet));
@@ -242,8 +238,7 @@ TEST_CASE("server_client/encoded_uploads_reuse_the_decoder_and_switch_between_he
       size_t length = sizeof(encoded);
       ASCIICHAT_REQUIRE_EQ(h265_encode(encoder, 64, 32, rgb, encoded, &length), ASCIICHAT_OK);
       ASCIICHAT_REQUIRE_GT(length, 5);
-      dispatch(client, codecs[c] == VIDEO_CODEC_H265 ? PACKET_TYPE_IMAGE_FRAME_H265 : PACKET_TYPE_IMAGE_FRAME_H264,
-               encoded, length);
+      dispatch(client, codecs[c] == VIDEO_CODEC_H265 ? PACKET_TYPE_IMAGE_FRAME_H265 : PACKET_TYPE_IMAGE_FRAME_H264, encoded, length);
       const video_frame_t *frame = video_frame_get_latest(client->incoming_video_buffer);
       ASCIICHAT_REQUIRE_NOT_NULL(frame);
       ASCIICHAT_REQUIRE_EQ(frame->width, 64);
@@ -321,10 +316,7 @@ TEST_CASE("server_client/remote_logs_validate_direction_and_preserve_client_medi
   struct {
     remote_log_packet_t header;
     char text[5];
-  } packet = {.header = {.log_level = LOG_INFO,
-                         .direction = REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER,
-                         .message_length = HOST_TO_NET_U32(5)},
-              .text = {'h', 'e', 'l', 'l', 'o'}};
+  } packet = {.header = {.log_level = LOG_INFO, .direction = REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER, .message_length = HOST_TO_NET_U32(5)}, .text = {'h', 'e', 'l', 'l', 'o'}};
   handle_remote_log_packet_from_client(client, &packet, sizeof(packet));
   ASCIICHAT_REQUIRE(atomic_load_bool(&client->active));
   SAFE_STRNCPY(client->display_name, "remote-test", sizeof(client->display_name));
@@ -410,10 +402,8 @@ TEST_CASE("server_client/legacy_pcm_batch_rejects_bad_headers_and_counts_without
   const uint32_t counts[][2] = {{0, 4}, {1, 0}, {1, 4}, {1, UINT32_MAX}};
   for (unsigned i = 0; i < ARRAY_SIZE(counts); ++i) {
     resume_client(client);
-    p.header = (audio_batch_packet_t){.batch_count = HOST_TO_NET_U32(counts[i][0]),
-                                      .total_samples = HOST_TO_NET_U32(counts[i][1]),
-                                      .sample_rate = HOST_TO_NET_U32(48000),
-                                      .channels = HOST_TO_NET_U32(1)};
+    p.header =
+        (audio_batch_packet_t){.batch_count = HOST_TO_NET_U32(counts[i][0]), .total_samples = HOST_TO_NET_U32(counts[i][1]), .sample_rate = HOST_TO_NET_U32(48000), .channels = HOST_TO_NET_U32(1)};
     handle_audio_batch_packet(client, &p, sizeof(p) - 1);
     expect_rejected(client);
     ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_available_read(client->incoming_audio_buffer), 0);
@@ -477,8 +467,7 @@ TEST_CASE("server_client/decrypted_dispatch_routes_controls_and_rejects_unknown_
   SAFE_STRNCPY(join.display_name, "Decrypted", sizeof(join.display_name));
   process_decrypted_packet(client, PACKET_TYPE_CLIENT_JOIN, &join, sizeof(join));
   ASCIICHAT_REQUIRE_STR_EQ(client->display_name, "Decrypted");
-  terminal_capabilities_packet_t caps = {
-      .width = HOST_TO_NET_U16(80), .height = HOST_TO_NET_U16(24), .color_level = HOST_TO_NET_U32(TERM_COLOR_NONE)};
+  terminal_capabilities_packet_t caps = {.width = HOST_TO_NET_U16(80), .height = HOST_TO_NET_U16(24), .color_level = HOST_TO_NET_U32(TERM_COLOR_NONE)};
   process_decrypted_packet(client, PACKET_TYPE_CLIENT_CAPABILITIES, &caps, sizeof(caps));
   ASCIICHAT_REQUIRE(client->has_terminal_caps);
   uint32_t video = HOST_TO_NET_U32(STREAM_TYPE_VIDEO);
@@ -524,8 +513,7 @@ TEST_CASE("server_client/callback_dispatch_delivers_join_capabilities_keepalive_
   SAFE_STRNCPY(join.display_name, "Callback", sizeof(join.display_name));
   dispatch(client, PACKET_TYPE_CLIENT_JOIN, &join, sizeof(join));
   ASCIICHAT_REQUIRE_STR_EQ(client->display_name, "Callback");
-  terminal_capabilities_packet_t caps = {
-      .width = HOST_TO_NET_U16(100), .height = HOST_TO_NET_U16(30), .color_level = HOST_TO_NET_U32(TERM_COLOR_NONE)};
+  terminal_capabilities_packet_t caps = {.width = HOST_TO_NET_U16(100), .height = HOST_TO_NET_U16(30), .color_level = HOST_TO_NET_U32(TERM_COLOR_NONE)};
   dispatch(client, PACKET_TYPE_CLIENT_CAPABILITIES, &caps, sizeof(caps));
   ASCIICHAT_REQUIRE_EQ(client->width, 100);
   ASCIICHAT_REQUIRE_EQ(client->height, 30);
@@ -605,8 +593,7 @@ TEST_CASE("server_client/compatibility_callbacks_validate_protocol_audio_and_rem
   ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_read(client->incoming_audio_buffer, actual, ARRAY_SIZE(actual)), ARRAY_SIZE(actual));
   for (size_t i = 0; i < ARRAY_SIZE(actual); ++i)
     ASCIICHAT_REQUIRE_FLOAT_EQ(actual[i], samples[i / AUDIO_CHANNELS], 1e-6);
-  remote_log_packet_t header = {
-      .log_level = LOG_INFO, .direction = REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER, .message_length = HOST_TO_NET_U32(5)};
+  remote_log_packet_t header = {.log_level = LOG_INFO, .direction = REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER, .message_length = HOST_TO_NET_U32(5)};
   acip_server_on_remote_log(&header, "hello", client, NULL);
   ASCIICHAT_REQUIRE(atomic_load_bool(&client->active));
   header.direction = REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT;

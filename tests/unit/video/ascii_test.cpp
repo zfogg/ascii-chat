@@ -442,8 +442,7 @@ TEST_CASE("ascii/height_padding_property", "[ascii]") {
     ASCIICHAT_REQUIRE_EQ(strlen(result), strlen(frame), "Zero padding should preserve length");
     ASCIICHAT_REQUIRE_STR_EQ(result, frame, "Zero padding should preserve content");
   } else {
-    ASCIICHAT_REQUIRE_GT(strlen(result), strlen(frame), "Non-zero padding should increase length for pad_height=%d",
-                 pad_height);
+    ASCIICHAT_REQUIRE_GT(strlen(result), strlen(frame), "Non-zero padding should increase length for pad_height=%d", pad_height);
   }
 
   SAFE_FREE(result);
@@ -779,9 +778,9 @@ static ascii_palette_test_case_t ascii_palette_cases[] = {{true, "@#$%&*+=-:. ",
                                                           {true, "0123456789", "Numeric palette"},
                                                           {false, "", "Empty palette"}};
 
-
-
-TEST_CASE("ascii/palette_tests", "[ascii]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(ascii_palette_cases)); auto *tc = &generated_case;
+TEST_CASE("ascii/palette_tests", "[ascii]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(ascii_palette_cases));
+  auto *tc = &generated_case;
   image_t *img = image_new(4, 4);
   ASCIICHAT_REQUIRE_NOT_NULL(img, "Image creation should succeed for %s", tc->description);
 
@@ -822,13 +821,11 @@ typedef struct {
 } ascii_size_test_case_t;
 
 static ascii_size_test_case_t ascii_size_cases[] = {// Skip 1x1 - causes SIMD buffer overflow
-                                                    {2, 2, "2x2 image"},     {4, 4, "4x4 image"},
-                                                    {8, 8, "8x8 image"},     {16, 16, "16x16 image"},
-                                                    {32, 32, "32x32 image"}, {64, 64, "64x64 image"}};
+                                                    {2, 2, "2x2 image"}, {4, 4, "4x4 image"}, {8, 8, "8x8 image"}, {16, 16, "16x16 image"}, {32, 32, "32x32 image"}, {64, 64, "64x64 image"}};
 
-
-
-TEST_CASE("ascii/size_tests", "[ascii]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(ascii_size_cases)); auto *tc = &generated_case;
+TEST_CASE("ascii/size_tests", "[ascii]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(ascii_size_cases));
+  auto *tc = &generated_case;
   image_t *img = image_new(tc->width, tc->height);
   ASCIICHAT_REQUIRE_NOT_NULL(img, "Image creation should succeed for %s", tc->description);
 
@@ -882,15 +879,13 @@ typedef struct {
   const char *description;
 } ascii_option_test_case_t;
 
-static ascii_option_test_case_t ascii_option_cases[] = {
-    {false, false, false, "No options"},    {true, false, false, "Color only"},
-    {false, true, false, "Bold only"},      {false, false, true, "Italic only"},
-    {true, true, false, "Color and bold"},  {true, false, true, "Color and italic"},
-    {false, true, true, "Bold and italic"}, {true, true, true, "All options"}};
+static ascii_option_test_case_t ascii_option_cases[] = {{false, false, false, "No options"},    {true, false, false, "Color only"},    {false, true, false, "Bold only"},
+                                                        {false, false, true, "Italic only"},    {true, true, false, "Color and bold"}, {true, false, true, "Color and italic"},
+                                                        {false, true, true, "Bold and italic"}, {true, true, true, "All options"}};
 
-
-
-TEST_CASE("ascii/option_tests", "[ascii]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(ascii_option_cases)); auto *tc = &generated_case;
+TEST_CASE("ascii/option_tests", "[ascii]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(ascii_option_cases));
+  auto *tc = &generated_case;
   image_t *img = image_new(4, 4);
   ASCIICHAT_REQUIRE_NOT_NULL(img, "Image creation should succeed for %s", tc->description);
 
@@ -920,12 +915,11 @@ typedef struct {
   const char *description;
 } ascii_stress_test_case_t;
 
-static ascii_stress_test_case_t ascii_stress_cases[] = {
-    {10, "Light stress test"}, {50, "Medium stress test"}, {100, "Heavy stress test"}, {500, "Intensive stress test"}};
+static ascii_stress_test_case_t ascii_stress_cases[] = {{10, "Light stress test"}, {50, "Medium stress test"}, {100, "Heavy stress test"}, {500, "Intensive stress test"}};
 
-
-
-TEST_CASE("ascii/stress_tests", "[ascii]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(ascii_stress_cases)); auto *tc = &generated_case;
+TEST_CASE("ascii/stress_tests", "[ascii]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(ascii_stress_cases));
+  auto *tc = &generated_case;
   const char *palette = "@#$%&*+=-:. ";
   char luminance_palette[257];
   for (int i = 0; i < 256; i++) {
@@ -956,9 +950,7 @@ TEST_CASE("ascii/halfblock_cover_uses_cell_geometry", "[ascii]") {
   ASCIICHAT_REQUIRE_NOT_NULL(img);
   for (int y = 0; y < 4; ++y) {
     for (int x = 0; x < 8; ++x) {
-      img->pixels[y * 8 + x] = x < 2    ? (rgb_pixel_t){255, 0, 0}
-                               : x >= 6 ? (rgb_pixel_t){0, 255, 0}
-                                        : (rgb_pixel_t){0, 0, 255};
+      img->pixels[y * 8 + x] = x < 2 ? (rgb_pixel_t){255, 0, 0} : x >= 6 ? (rgb_pixel_t){0, 255, 0} : (rgb_pixel_t){0, 0, 255};
     }
   }
   terminal_capabilities_t caps = {.color_level = TERM_COLOR_TRUECOLOR, .render_mode = RENDER_MODE_HALF_BLOCK};
@@ -1031,8 +1023,8 @@ TEST_CASE("ascii/ascii_create_grid_colored_rows_do_not_overlap", "[ascii]") {
   char plain[256];
   strip_ansi_codes(grid, plain, sizeof(plain));
   ASCIICHAT_REQUIRE_STR_EQ(plain, "AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB\r\n"
-                          "AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB\r\n"
-                          "AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB");
+                                  "AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB\r\n"
+                                  "AAAAAAAAAA|BBBBBBBBBB\r\nAAAAAAAAAA|BBBBBBBBBB");
   ASCIICHAT_REQUIRE_EQ(grid[size - 1], 'm'); // Ends with a complete reset, without a scrolling newline.
   SAFE_FREE(grid);
 }
@@ -1110,8 +1102,7 @@ TEST_CASE("ascii/grid_layout_sizes_source_tiles_to_viewport", "[ascii]") {
           size_t row_offset = (size_t)((i / columns) * (cell_height + 1) + y) * (width + 2);
           size_t start = row_offset + (i % columns) * (cell_width + 1);
           for (int x = 0; x < cell_width; ++x)
-            ASCIICHAT_REQUIRE_EQ(grid[start + x], 'X', "Missing tile cell at viewport %dx%d, tile %d, %d,%d", width, height, i,
-                         x, y);
+            ASCIICHAT_REQUIRE_EQ(grid[start + x], 'X', "Missing tile cell at viewport %dx%d, tile %d, %d,%d", width, height, i, x, y);
         }
       }
       SAFE_FREE(grid);

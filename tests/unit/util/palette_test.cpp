@@ -29,9 +29,9 @@ static palette_test_case_t builtin_palette_cases[] = {{PALETTE_STANDARD, "standa
                                                       {PALETTE_MINIMAL, "minimal", PALETTE_CHARS_MINIMAL, false},
                                                       {PALETTE_COOL, "cool", PALETTE_CHARS_COOL, true}};
 
-
-
-TEST_CASE("palette_tests/builtin_palette_tests", "[palette_tests]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(builtin_palette_cases)); auto *tc = &generated_case;
+TEST_CASE("palette_tests/builtin_palette_tests", "[palette_tests]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(builtin_palette_cases));
+  auto *tc = &generated_case;
   const palette_def_t *palette = get_builtin_palette(tc->type);
 
   ASCIICHAT_REQUIRE_NOT_NULL(palette, "Palette %s should not be null", tc->expected_name);
@@ -46,12 +46,11 @@ typedef struct {
   char description[64]; // Use fixed-size array
 } invalid_palette_test_case_t;
 
-static invalid_palette_test_case_t invalid_palette_cases[] = {
-    {PALETTE_CUSTOM, "Custom palette"}, {PALETTE_COUNT, "Count palette"}, {(palette_type_t)999, "Invalid enum value"}};
+static invalid_palette_test_case_t invalid_palette_cases[] = {{PALETTE_CUSTOM, "Custom palette"}, {PALETTE_COUNT, "Count palette"}, {(palette_type_t)999, "Invalid enum value"}};
 
-
-
-TEST_CASE("palette_tests/invalid_palette_tests", "[palette_tests]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(invalid_palette_cases)); auto *tc = &generated_case;
+TEST_CASE("palette_tests/invalid_palette_tests", "[palette_tests]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(invalid_palette_cases));
+  auto *tc = &generated_case;
   const palette_def_t *palette = get_builtin_palette(tc->type);
   ASCIICHAT_REQUIRE_NULL(palette, "Palette should be null for %s", tc->description);
 }
@@ -69,13 +68,12 @@ static utf8_test_case_t utf8_test_cases[] = {{PALETTE_CHARS_STANDARD, "Standard 
                                              {PALETTE_CHARS_COOL, "Cool UTF-8 palette", true},
                                              {"", "Empty palette", false}};
 
-
-
-TEST_CASE("palette_tests/utf8_encoding_tests", "[palette_tests]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(utf8_test_cases)); auto *tc = &generated_case;
+TEST_CASE("palette_tests/utf8_encoding_tests", "[palette_tests]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(utf8_test_cases));
+  auto *tc = &generated_case;
   size_t len = strlen(tc->palette_chars);
   bool requires_utf8 = palette_requires_utf8_encoding(tc->palette_chars, len);
-  ASCIICHAT_REQUIRE_EQ(requires_utf8, tc->expected_utf8, "UTF-8 requirement should match for %s (got %d, expected %d)",
-               tc->description, requires_utf8, tc->expected_utf8);
+  ASCIICHAT_REQUIRE_EQ(requires_utf8, tc->expected_utf8, "UTF-8 requirement should match for %s (got %d, expected %d)", tc->description, requires_utf8, tc->expected_utf8);
 }
 
 // Test case structure for palette validation tests
@@ -86,16 +84,15 @@ typedef struct {
   bool expected_valid;
 } validation_test_case_t;
 
-static validation_test_case_t validation_test_cases[] = {
-    {PALETTE_CHARS_STANDARD, strlen(PALETTE_CHARS_STANDARD), "Valid standard palette", true},
-    {PALETTE_CHARS_BLOCKS, strlen(PALETTE_CHARS_BLOCKS), "Valid UTF-8 palette", true},
-    {"A", 1, "Single character", true},
-    {"", 10, "NULL/empty palette chars", false}, // Can't use actual NULL with array, use empty string
-    {"", 0, "Empty palette", false}};
+static validation_test_case_t validation_test_cases[] = {{PALETTE_CHARS_STANDARD, strlen(PALETTE_CHARS_STANDARD), "Valid standard palette", true},
+                                                         {PALETTE_CHARS_BLOCKS, strlen(PALETTE_CHARS_BLOCKS), "Valid UTF-8 palette", true},
+                                                         {"A", 1, "Single character", true},
+                                                         {"", 10, "NULL/empty palette chars", false}, // Can't use actual NULL with array, use empty string
+                                                         {"", 0, "Empty palette", false}};
 
-
-
-TEST_CASE("palette_tests/validation_tests", "[palette_tests]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(validation_test_cases)); auto *tc = &generated_case;
+TEST_CASE("palette_tests/validation_tests", "[palette_tests]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(validation_test_cases));
+  auto *tc = &generated_case;
   // Handle empty string case - pass NULL to test NULL handling
   const char *chars_to_test = (tc->palette_chars[0] == '\0') ? NULL : tc->palette_chars;
   bool valid = validate_palette_chars(chars_to_test, tc->palette_len);
@@ -111,18 +108,14 @@ typedef struct {
 } compatibility_test_case_t;
 
 static compatibility_test_case_t compatibility_test_cases[] = {
-    {PALETTE_BLOCKS, true, "UTF-8 blocks with support", PALETTE_BLOCKS},
-    {PALETTE_COOL, true, "UTF-8 cool with support", PALETTE_COOL},
-    {PALETTE_BLOCKS, false, "UTF-8 blocks without support", PALETTE_STANDARD},
-    {PALETTE_DIGITAL, false, "UTF-8 digital without support", PALETTE_STANDARD},
-    {PALETTE_COOL, false, "UTF-8 cool without support", PALETTE_STANDARD},
-    {PALETTE_STANDARD, false, "ASCII standard without support", PALETTE_STANDARD},
-    {PALETTE_MINIMAL, false, "ASCII minimal without support", PALETTE_MINIMAL},
-    {PALETTE_CUSTOM, false, "Custom palette", PALETTE_CUSTOM}};
+    {PALETTE_BLOCKS, true, "UTF-8 blocks with support", PALETTE_BLOCKS},        {PALETTE_COOL, true, "UTF-8 cool with support", PALETTE_COOL},
+    {PALETTE_BLOCKS, false, "UTF-8 blocks without support", PALETTE_STANDARD},  {PALETTE_DIGITAL, false, "UTF-8 digital without support", PALETTE_STANDARD},
+    {PALETTE_COOL, false, "UTF-8 cool without support", PALETTE_STANDARD},      {PALETTE_STANDARD, false, "ASCII standard without support", PALETTE_STANDARD},
+    {PALETTE_MINIMAL, false, "ASCII minimal without support", PALETTE_MINIMAL}, {PALETTE_CUSTOM, false, "Custom palette", PALETTE_CUSTOM}};
 
-
-
-TEST_CASE("palette_tests/compatibility_tests", "[palette_tests]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(compatibility_test_cases)); auto *tc = &generated_case;
+TEST_CASE("palette_tests/compatibility_tests", "[palette_tests]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(compatibility_test_cases));
+  auto *tc = &generated_case;
   palette_type_t selected = select_compatible_palette(tc->requested_type, tc->has_utf8_support);
   ASCIICHAT_REQUIRE_EQ(selected, tc->expected_type, "Compatibility selection should match for %s", tc->description);
 }
@@ -136,24 +129,22 @@ typedef struct {
   bool should_succeed;
 } utf8_palette_test_case_t;
 
-static utf8_palette_test_case_t utf8_palette_test_cases[] = {
-    {" .:-=+*#%@", "ASCII palette", 10, 10, true},
-    {"🌑🌒🌓🌔🌕", "Emoji palette", 5, 20, true}, // 5 emojis × 4 bytes each
-    {"A→B", "Mixed ASCII/UTF-8", 3, 5, true},     // A(1) + →(3) + B(1)
-    {"", "NULL/empty string", 0, 0, false},       // Use empty string to test NULL handling
-    {"", "Empty string", 0, 0, false}};
+static utf8_palette_test_case_t utf8_palette_test_cases[] = {{" .:-=+*#%@", "ASCII palette", 10, 10, true},
+                                                             {"🌑🌒🌓🌔🌕", "Emoji palette", 5, 20, true}, // 5 emojis × 4 bytes each
+                                                             {"A→B", "Mixed ASCII/UTF-8", 3, 5, true},     // A(1) + →(3) + B(1)
+                                                             {"", "NULL/empty string", 0, 0, false},       // Use empty string to test NULL handling
+                                                             {"", "Empty string", 0, 0, false}};
 
-
-
-TEST_CASE("palette_tests/utf8_palette_creation_tests", "[palette_tests]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(utf8_palette_test_cases)); auto *tc = &generated_case;
+TEST_CASE("palette_tests/utf8_palette_creation_tests", "[palette_tests]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(utf8_palette_test_cases));
+  auto *tc = &generated_case;
   // Handle empty string case - pass NULL to test NULL handling
   const char *str_to_test = (tc->palette_string[0] == '\0') ? NULL : tc->palette_string;
   utf8_palette_t *palette = utf8_palette_create(str_to_test);
 
   if (tc->should_succeed) {
     ASCIICHAT_REQUIRE_NOT_NULL(palette, "Palette creation should succeed for %s", tc->description);
-    ASCIICHAT_REQUIRE_EQ(utf8_palette_get_char_count(palette), tc->expected_char_count, "Char count should match for %s",
-                 tc->description);
+    ASCIICHAT_REQUIRE_EQ(utf8_palette_get_char_count(palette), tc->expected_char_count, "Char count should match for %s", tc->description);
     ASCIICHAT_REQUIRE_EQ(palette->total_bytes, tc->expected_total_bytes, "Total bytes should match for %s", tc->description);
     if (str_to_test) {
       ASCIICHAT_REQUIRE_STR_EQ(palette->raw_string, str_to_test, "Raw string should match for %s", tc->description);
@@ -173,15 +164,13 @@ typedef struct {
   size_t expected_byte_len;
 } utf8_char_test_case_t;
 
-static utf8_char_test_case_t utf8_char_test_cases[] = {
-    {"ABC", 0, "First ASCII char", true, 1}, {"ABC", 2, "Last ASCII char", true, 1},
-    {"ABC", 3, "Out of bounds", false, 0},   {"A→B", 0, "First mixed char", true, 1},
-    {"A→B", 1, "UTF-8 char", true, 3},       {"A→B", 2, "Last mixed char", true, 1},
-    {"🌑🌒", 0, "First emoji", true, 4},     {"🌑🌒", 1, "Second emoji", true, 4}};
+static utf8_char_test_case_t utf8_char_test_cases[] = {{"ABC", 0, "First ASCII char", true, 1}, {"ABC", 2, "Last ASCII char", true, 1}, {"ABC", 3, "Out of bounds", false, 0},
+                                                       {"A→B", 0, "First mixed char", true, 1}, {"A→B", 1, "UTF-8 char", true, 3},      {"A→B", 2, "Last mixed char", true, 1},
+                                                       {"🌑🌒", 0, "First emoji", true, 4},     {"🌑🌒", 1, "Second emoji", true, 4}};
 
-
-
-TEST_CASE("palette_tests/utf8_char_access_tests", "[palette_tests]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(utf8_char_test_cases)); auto *tc = &generated_case;
+TEST_CASE("palette_tests/utf8_char_access_tests", "[palette_tests]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(utf8_char_test_cases));
+  auto *tc = &generated_case;
   utf8_palette_t *palette = utf8_palette_create(tc->palette_string);
   ASCIICHAT_REQUIRE_NOT_NULL(palette, "Palette should be created for %s", tc->description);
 
@@ -208,16 +197,12 @@ typedef struct {
 } utf8_search_test_case_t;
 
 static utf8_search_test_case_t utf8_search_test_cases[] = {
-    {"ABC", "A", 1, "Find first ASCII", true, 0},
-    {"ABC", "B", 1, "Find middle ASCII", true, 1},
-    {"ABC", "Z", 1, "Find non-existent ASCII", false, (size_t)-1},
-    {"A→B", "→", 3, "Find UTF-8 char", true, 1},
-    {"🌑🌒🌓", "🌒", 4, "Find emoji", true, 1},
-    {"🌑🌒🌓", "🌕", 4, "Find non-existent emoji", false, (size_t)-1}};
+    {"ABC", "A", 1, "Find first ASCII", true, 0}, {"ABC", "B", 1, "Find middle ASCII", true, 1}, {"ABC", "Z", 1, "Find non-existent ASCII", false, (size_t)-1},
+    {"A→B", "→", 3, "Find UTF-8 char", true, 1},  {"🌑🌒🌓", "🌒", 4, "Find emoji", true, 1},    {"🌑🌒🌓", "🌕", 4, "Find non-existent emoji", false, (size_t)-1}};
 
-
-
-TEST_CASE("palette_tests/utf8_search_tests", "[palette_tests]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(utf8_search_test_cases)); auto *tc = &generated_case;
+TEST_CASE("palette_tests/utf8_search_tests", "[palette_tests]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(utf8_search_test_cases));
+  auto *tc = &generated_case;
   utf8_palette_t *palette = utf8_palette_create(tc->palette_string);
   ASCIICHAT_REQUIRE_NOT_NULL(palette, "Palette should be created for %s", tc->description);
 
@@ -241,18 +226,17 @@ typedef struct {
   char expected_chars[64]; // Use fixed-size array
 } client_palette_init_test_case_t;
 
-static client_palette_init_test_case_t client_palette_init_cases[] = {
-    {PALETTE_STANDARD, "", "Standard builtin palette", true, PALETTE_CHARS_STANDARD},
-    {PALETTE_MINIMAL, "", "Minimal builtin palette", true, PALETTE_CHARS_MINIMAL},
-    {PALETTE_BLOCKS, "", "Blocks builtin palette", true, PALETTE_CHARS_BLOCKS},
-    {PALETTE_COOL, "", "Cool builtin palette", true, PALETTE_CHARS_COOL},
-    {PALETTE_CUSTOM, "01234567", "Valid custom palette", true, "01234567"},
-    {PALETTE_CUSTOM, "", "NULL custom palette", false, ""},
-    {PALETTE_CUSTOM, "", "Empty custom palette", false, ""}};
+static client_palette_init_test_case_t client_palette_init_cases[] = {{PALETTE_STANDARD, "", "Standard builtin palette", true, PALETTE_CHARS_STANDARD},
+                                                                      {PALETTE_MINIMAL, "", "Minimal builtin palette", true, PALETTE_CHARS_MINIMAL},
+                                                                      {PALETTE_BLOCKS, "", "Blocks builtin palette", true, PALETTE_CHARS_BLOCKS},
+                                                                      {PALETTE_COOL, "", "Cool builtin palette", true, PALETTE_CHARS_COOL},
+                                                                      {PALETTE_CUSTOM, "01234567", "Valid custom palette", true, "01234567"},
+                                                                      {PALETTE_CUSTOM, "", "NULL custom palette", false, ""},
+                                                                      {PALETTE_CUSTOM, "", "Empty custom palette", false, ""}};
 
-
-
-TEST_CASE("palette_tests/client_palette_initialization_tests", "[palette_tests]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(client_palette_init_cases)); auto *tc = &generated_case;
+TEST_CASE("palette_tests/client_palette_initialization_tests", "[palette_tests]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(client_palette_init_cases));
+  auto *tc = &generated_case;
   char client_palette_chars[256];
   size_t client_palette_len;
   char client_luminance_palette[256];
@@ -261,14 +245,12 @@ TEST_CASE("palette_tests/client_palette_initialization_tests", "[palette_tests]"
   const char *custom_to_test = (tc->custom_palette[0] == '\0') ? NULL : tc->custom_palette;
   const char *expected_to_check = (tc->expected_chars[0] == '\0') ? NULL : tc->expected_chars;
 
-  int result = initialize_client_palette(tc->palette_type, custom_to_test, client_palette_chars, &client_palette_len,
-                                         client_luminance_palette);
+  int result = initialize_client_palette(tc->palette_type, custom_to_test, client_palette_chars, &client_palette_len, client_luminance_palette);
 
   if (tc->should_succeed) {
     ASCIICHAT_REQUIRE_EQ(result, 0, "Initialization should succeed for %s", tc->description);
     if (expected_to_check) {
-      ASCIICHAT_REQUIRE_EQ(client_palette_len, strlen(expected_to_check), "Palette length should match for %s",
-                   tc->description);
+      ASCIICHAT_REQUIRE_EQ(client_palette_len, strlen(expected_to_check), "Palette length should match for %s", tc->description);
       ASCIICHAT_REQUIRE_STR_EQ(client_palette_chars, expected_to_check, "Palette chars should match for %s", tc->description);
     }
   } else {
@@ -314,8 +296,7 @@ TEST_CASE("palette/palette_length_property", "[palette]") {
 
   // PROPERTY: Darkest should map to first char, brightest to last
   ASCIICHAT_REQUIRE_EQ(luminance_mapping[0], test_palette[0], "Darkest should map to first char for length %d", palette_len);
-  ASCIICHAT_REQUIRE_EQ(luminance_mapping[255], test_palette[palette_len - 1], "Brightest should map to last char for length %d",
-               palette_len);
+  ASCIICHAT_REQUIRE_EQ(luminance_mapping[255], test_palette[palette_len - 1], "Brightest should map to last char for length %d", palette_len);
 
   SAFE_FREE(test_palette);
 }
@@ -329,14 +310,12 @@ typedef struct {
   int expected_result;
 } luminance_error_test_case_t;
 
-static luminance_error_test_case_t luminance_error_cases[] = {{" .:-=+*#%@", 10, false, "Valid palette", 0},
-                                                              {"", 10, false, "NULL palette chars", -1},
-                                                              {" .:-=+*#%@", 0, false, "Zero length", -1},
-                                                              {" .:-=+*#%@", 10, true, "NULL output buffer", -1}};
+static luminance_error_test_case_t luminance_error_cases[] = {
+    {" .:-=+*#%@", 10, false, "Valid palette", 0}, {"", 10, false, "NULL palette chars", -1}, {" .:-=+*#%@", 0, false, "Zero length", -1}, {" .:-=+*#%@", 10, true, "NULL output buffer", -1}};
 
-
-
-TEST_CASE("palette_tests/luminance_palette_error_tests", "[palette_tests]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(luminance_error_cases)); auto *tc = &generated_case;
+TEST_CASE("palette_tests/luminance_palette_error_tests", "[palette_tests]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(luminance_error_cases));
+  auto *tc = &generated_case;
   char luminance_mapping[256] = {0};
   const char *palette_to_test = (tc->palette_chars[0] == '\0') ? NULL : tc->palette_chars;
   char *output_buffer = tc->pass_null_output ? NULL : luminance_mapping;
@@ -364,16 +343,15 @@ typedef struct {
   char expected_duplicate_char;
 } duplicate_test_case_t;
 
-static duplicate_test_case_t duplicate_test_cases[] = {
-    {"   ...',;:clodxkO0KXNWM", "Standard palette with duplicate spaces", 23, 0, 3, ' '},
-    {"AAA", "Triple ASCII duplicate", 3, 0, 3, 'A'},
-    {"ABCAAA", "ASCII with trailing duplicates", 6, 3, 3, 'A'},
-    {"🌑🌑🌑", "Triple emoji duplicate", 3, 0, 3, '\0'}, // Special case for emoji
-    {"A🌑🌑B", "Mixed with emoji duplicates", 4, 1, 2, '\0'}};
+static duplicate_test_case_t duplicate_test_cases[] = {{"   ...',;:clodxkO0KXNWM", "Standard palette with duplicate spaces", 23, 0, 3, ' '},
+                                                       {"AAA", "Triple ASCII duplicate", 3, 0, 3, 'A'},
+                                                       {"ABCAAA", "ASCII with trailing duplicates", 6, 3, 3, 'A'},
+                                                       {"🌑🌑🌑", "Triple emoji duplicate", 3, 0, 3, '\0'}, // Special case for emoji
+                                                       {"A🌑🌑B", "Mixed with emoji duplicates", 4, 1, 2, '\0'}};
 
-
-
-TEST_CASE("palette_tests/duplicate_character_tests", "[palette_tests]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(duplicate_test_cases)); auto *tc = &generated_case;
+TEST_CASE("palette_tests/duplicate_character_tests", "[palette_tests]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(duplicate_test_cases));
+  auto *tc = &generated_case;
   utf8_palette_t *palette = utf8_palette_create(tc->palette_string);
   ASCIICHAT_REQUIRE_NOT_NULL(palette, "Palette should be created for %s", tc->description);
 
@@ -386,8 +364,7 @@ TEST_CASE("palette_tests/duplicate_character_tests", "[palette_tests]") { auto&&
     for (size_t i = tc->duplicate_start_index; i < tc->duplicate_start_index + tc->duplicate_count; i++) {
       const utf8_char_info_t *char_info = utf8_palette_get_char(palette, i);
       ASCIICHAT_REQUIRE_EQ(char_info->byte_len, 1, "Duplicate char should be 1 byte for %s at index %zu", tc->description, i);
-      ASCIICHAT_REQUIRE_EQ(char_info->bytes[0], tc->expected_duplicate_char, "Duplicate char should match for %s at index %zu",
-                   tc->description, i);
+      ASCIICHAT_REQUIRE_EQ(char_info->bytes[0], tc->expected_duplicate_char, "Duplicate char should match for %s at index %zu", tc->description, i);
     }
   }
 
@@ -402,51 +379,42 @@ typedef struct {
   size_t expected_bytes_per_char;
 } emoji_test_case_t;
 
-static emoji_test_case_t emoji_test_cases[] = {{"😀😃😄😁😆😅😂🤣", "Smiley face emojis (4-byte)", 8, 4},
-                                               {"🌑🌒🌓🌔🌕", "Moon phase emojis (4-byte)", 5, 4},
-                                               {"🔥💧🌊", "Element emojis (4-byte)", 3, 4}};
+static emoji_test_case_t emoji_test_cases[] = {
+    {"😀😃😄😁😆😅😂🤣", "Smiley face emojis (4-byte)", 8, 4}, {"🌑🌒🌓🌔🌕", "Moon phase emojis (4-byte)", 5, 4}, {"🔥💧🌊", "Element emojis (4-byte)", 3, 4}};
 
-
-
-TEST_CASE("palette_tests/emoji_palette_tests", "[palette_tests]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(emoji_test_cases)); auto *tc = &generated_case;
+TEST_CASE("palette_tests/emoji_palette_tests", "[palette_tests]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(emoji_test_cases));
+  auto *tc = &generated_case;
   utf8_palette_t *palette = utf8_palette_create(tc->emoji_palette);
 
   ASCIICHAT_REQUIRE_NOT_NULL(palette, "Palette should be created for %s", tc->description);
-  ASCIICHAT_REQUIRE_EQ(utf8_palette_get_char_count(palette), tc->expected_count, "Emoji count should match for %s",
-               tc->description);
+  ASCIICHAT_REQUIRE_EQ(utf8_palette_get_char_count(palette), tc->expected_count, "Emoji count should match for %s", tc->description);
 
   // Each emoji should be expected_bytes_per_char bytes
   for (size_t i = 0; i < tc->expected_count; i++) {
     const utf8_char_info_t *char_info = utf8_palette_get_char(palette, i);
-    ASCIICHAT_REQUIRE_EQ(char_info->byte_len, tc->expected_bytes_per_char, "Emoji byte length should match for %s at index %zu",
-                 tc->description, i);
+    ASCIICHAT_REQUIRE_EQ(char_info->byte_len, tc->expected_bytes_per_char, "Emoji byte length should match for %s at index %zu", tc->description, i);
   }
 
   utf8_palette_destroy(palette);
 }
 
 // Test case structure for NULL handling tests
-typedef enum {
-  NULL_TEST_REQUIRES_UTF8,
-  NULL_TEST_VALIDATE_CHARS,
-  NULL_TEST_CREATE_PALETTE,
-  NULL_TEST_INIT_CUSTOM_PALETTE
-} null_test_function_t;
+typedef enum { NULL_TEST_REQUIRES_UTF8, NULL_TEST_VALIDATE_CHARS, NULL_TEST_CREATE_PALETTE, NULL_TEST_INIT_CUSTOM_PALETTE } null_test_function_t;
 
 typedef struct {
   null_test_function_t function;
   char description[64];
 } null_handling_test_case_t;
 
-static null_handling_test_case_t null_handling_cases[] = {
-    {NULL_TEST_REQUIRES_UTF8, "palette_requires_utf8_encoding with NULL"},
-    {NULL_TEST_VALIDATE_CHARS, "validate_palette_chars with NULL"},
-    {NULL_TEST_CREATE_PALETTE, "utf8_palette_create with NULL"},
-    {NULL_TEST_INIT_CUSTOM_PALETTE, "initialize_client_palette with NULL custom"}};
+static null_handling_test_case_t null_handling_cases[] = {{NULL_TEST_REQUIRES_UTF8, "palette_requires_utf8_encoding with NULL"},
+                                                          {NULL_TEST_VALIDATE_CHARS, "validate_palette_chars with NULL"},
+                                                          {NULL_TEST_CREATE_PALETTE, "utf8_palette_create with NULL"},
+                                                          {NULL_TEST_INIT_CUSTOM_PALETTE, "initialize_client_palette with NULL custom"}};
 
-
-
-TEST_CASE("palette_tests/null_handling_tests", "[palette_tests]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(null_handling_cases)); auto *tc = &generated_case;
+TEST_CASE("palette_tests/null_handling_tests", "[palette_tests]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(null_handling_cases));
+  auto *tc = &generated_case;
   switch (tc->function) {
   case NULL_TEST_REQUIRES_UTF8: {
     bool requires_utf8 = palette_requires_utf8_encoding(NULL, 10);
@@ -467,8 +435,7 @@ TEST_CASE("palette_tests/null_handling_tests", "[palette_tests]") { auto&& gener
     char client_palette_chars[256];
     size_t client_palette_len;
     char client_luminance_palette[256];
-    int result = initialize_client_palette(PALETTE_CUSTOM, NULL, client_palette_chars, &client_palette_len,
-                                           client_luminance_palette);
+    int result = initialize_client_palette(PALETTE_CUSTOM, NULL, client_palette_chars, &client_palette_len, client_luminance_palette);
     ASCIICHAT_REQUIRE_EQ(result, -1, "%s should return -1", tc->description);
     break;
   }
@@ -476,8 +443,7 @@ TEST_CASE("palette_tests/null_handling_tests", "[palette_tests]") { auto&& gener
 }
 
 // Theory: UTF-8 character boundary property - all palettes should correctly parse UTF-8 boundaries
-static constexpr const char *utf8_boundary_cases[] = {
-    "ABC", "→→→", "🌑🌑", "A→B🌑C", " .:-=+*#%@", "   ...',;:clodxkO0KXNWM", "😀😃😄😁"};
+static constexpr const char *utf8_boundary_cases[] = {"ABC", "→→→", "🌑🌑", "A→B🌑C", " .:-=+*#%@", "   ...',;:clodxkO0KXNWM", "😀😃😄😁"};
 
 TEST_CASE("palette/utf8_boundary_property", "[palette]") {
   const char *palette_string = GENERATE(Catch::Generators::from_range(utf8_boundary_cases));
@@ -493,12 +459,10 @@ TEST_CASE("palette/utf8_boundary_property", "[palette]") {
   for (size_t i = 0; i < char_count; i++) {
     const utf8_char_info_t *char_info = utf8_palette_get_char(palette, i);
     ASCIICHAT_REQUIRE_NOT_NULL(char_info, "Every character should be accessible at index %zu", i);
-    ASCIICHAT_REQUIRE(char_info->byte_len > 0 && char_info->byte_len <= 4,
-              "Character byte length should be 1-4 at index %zu (got %zu)", i, char_info->byte_len);
+    ASCIICHAT_REQUIRE(char_info->byte_len > 0 && char_info->byte_len <= 4, "Character byte length should be 1-4 at index %zu (got %zu)", i, char_info->byte_len);
     calculated_total += char_info->byte_len;
   }
-  ASCIICHAT_REQUIRE_EQ(calculated_total, palette->total_bytes, "Sum of character bytes should equal total bytes for '%s'",
-               palette_string);
+  ASCIICHAT_REQUIRE_EQ(calculated_total, palette->total_bytes, "Sum of character bytes should equal total bytes for '%s'", palette_string);
 
   // PROPERTY: Raw string should match input
   ASCIICHAT_REQUIRE_STR_EQ(palette->raw_string, palette_string, "Raw string should be preserved for '%s'", palette_string);

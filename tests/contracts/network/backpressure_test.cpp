@@ -31,8 +31,7 @@ static asciichat_error_t backend_send(acip_transport_t *transport, const void *d
       SET_ERRNO(ERROR_INVALID_STATE, "Unrelated backend diagnostic");
       return backend->failure;
     }
-    errno_set_with_system_error_and_message(backend->failure, __FILE__, __LINE__, __func__, EPIPE,
-                                            "Backend rejected outgoing packet");
+    errno_set_with_system_error_and_message(backend->failure, __FILE__, __LINE__, __func__, EPIPE, "Backend rejected outgoing packet");
     return backend->wrap_context ? SET_ERRNO(backend->failure, "Backend failure wrapper") : backend->failure;
   }
   return ASCIICHAT_OK;
@@ -43,8 +42,7 @@ static asciichat_error_t close_backend(acip_transport_t *transport) {
 }
 static const acip_transport_methods_t methods = {.send = backend_send, .close = close_backend, .queued_bytes = queued};
 
-static asciichat_error_t backend_send_classified(acip_transport_t *transport, const socket_buffer_t *buffers,
-                                                 size_t count, const acip_send_options_t *options) {
+static asciichat_error_t backend_send_classified(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count, const acip_send_options_t *options) {
   ASCIICHAT_WORKER_ASSERT(count == 1 && options && options->delivery == ACIP_DELIVERY_RELIABLE);
   backend_t *backend = transport->impl_data;
   atomic_store_u64(&backend->traffic_class, options->traffic_class);
@@ -87,16 +85,12 @@ static acip_transport_t *create(void) {
   ASCIICHAT_REQUIRE_EQ(acip_outbound_create(transport), ASCIICHAT_OK);
   return transport;
 }
-static acip_admission_t submit(acip_transport_t *transport, uint16_t type, uint32_t stream, size_t size,
-                               bool keyframe) {
+static acip_admission_t submit(acip_transport_t *transport, uint16_t type, uint32_t stream, size_t size, bool keyframe) {
   uint8_t *payload = buffer_alloc(NULL, size);
   ASCIICHAT_WORKER_ASSERT(payload);
   memset(payload, 0, size);
   payload[0] = keyframe ? 1 : 0;
-  packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
-                            .type = HOST_TO_NET_U16(type),
-                            .length = HOST_TO_NET_U32((uint32_t)size),
-                            .client_id = HOST_TO_NET_U32(stream)};
+  packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(type), .length = HOST_TO_NET_U32((uint32_t)size), .client_id = HOST_TO_NET_U32(stream)};
   socket_buffer_t buffers[] = {{&header, sizeof(header)}, {payload, size}};
   acip_admission_t admission;
   ASCIICHAT_WORKER_ASSERT((acip_outbound_submitv(transport, buffers, 2, &admission)) == (ASCIICHAT_OK));
@@ -118,8 +112,7 @@ static void await_submitted(acip_transport_t *transport, uint64_t expected) {
 TEST_CASE("transport_backpressure/plaintext_class_reaches_backend_and_unsupported_delivery_is_rejected", "[transport_backpressure]") {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
-  static const acip_transport_methods_t classified_methods = {
-      .sendv_ex = backend_send_classified, .close = close_backend, .queued_bytes = queued};
+  static const acip_transport_methods_t classified_methods = {.sendv_ex = backend_send_classified, .close = close_backend, .queued_bytes = queued};
   backend_t backend = {0};
   acip_transport_t transport = {.methods = &classified_methods, .impl_data = &backend};
   ASCIICHAT_REQUIRE_EQ(acip_outbound_create(&transport), ASCIICHAT_OK);
@@ -127,14 +120,9 @@ TEST_CASE("transport_backpressure/plaintext_class_reaches_backend_and_unsupporte
     uint16_t type;
     acip_traffic_class_t expected;
     bool keyframe;
-  } cases[] = {{PACKET_TYPE_PING, ACIP_TRAFFIC_CONTROL, false},
-               {PACKET_TYPE_AUDIO_MESSAGE, ACIP_TRAFFIC_AUDIO, false},
-               {PACKET_TYPE_AUDIO_BATCH, ACIP_TRAFFIC_AUDIO, false},
-               {PACKET_TYPE_AUDIO_OPUS_BATCH, ACIP_TRAFFIC_AUDIO, false},
-               {PACKET_TYPE_ASCII_FRAME, ACIP_TRAFFIC_VISUAL, false},
-               {PACKET_TYPE_IMAGE_FRAME, ACIP_TRAFFIC_VISUAL, false},
-               {PACKET_TYPE_IMAGE_FRAME_H264, ACIP_TRAFFIC_VISUAL, true},
-               {PACKET_TYPE_IMAGE_FRAME_H265, ACIP_TRAFFIC_VISUAL, true}};
+  } cases[] = {{PACKET_TYPE_PING, ACIP_TRAFFIC_CONTROL, false},           {PACKET_TYPE_AUDIO_MESSAGE, ACIP_TRAFFIC_AUDIO, false},   {PACKET_TYPE_AUDIO_BATCH, ACIP_TRAFFIC_AUDIO, false},
+               {PACKET_TYPE_AUDIO_OPUS_BATCH, ACIP_TRAFFIC_AUDIO, false}, {PACKET_TYPE_ASCII_FRAME, ACIP_TRAFFIC_VISUAL, false},    {PACKET_TYPE_IMAGE_FRAME, ACIP_TRAFFIC_VISUAL, false},
+               {PACKET_TYPE_IMAGE_FRAME_H264, ACIP_TRAFFIC_VISUAL, true}, {PACKET_TYPE_IMAGE_FRAME_H265, ACIP_TRAFFIC_VISUAL, true}};
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
     ASCIICHAT_REQUIRE_EQ(submit(&transport, cases[i].type, (uint32_t)i, 1, cases[i].keyframe), ACIP_ADMISSION_ACCEPTED);
     await_submitted(&transport, i + 1);
@@ -155,8 +143,7 @@ TEST_CASE("transport_backpressure/plaintext_class_reaches_backend_and_unsupporte
 }
 
 TEST_CASE("transport_backpressure/destruction_serializes_backend_close_after_a_blocked_send_fails", "[transport_backpressure]") {
-  static const acip_transport_methods_t shutdown_methods = {
-      .send = blocked_shutdown_send, .close = close_shutdown_backend, .interrupt = interrupt_shutdown_backend};
+  static const acip_transport_methods_t shutdown_methods = {.send = blocked_shutdown_send, .close = close_shutdown_backend, .interrupt = interrupt_shutdown_backend};
   shutdown_backend_t backend = {0};
   acip_transport_t transport = {.methods = &shutdown_methods, .impl_data = &backend};
   ASCIICHAT_REQUIRE_EQ(acip_outbound_create(&transport), ASCIICHAT_OK);
@@ -178,8 +165,7 @@ typedef struct {
 static void *produce(void *arg) {
   producer_t *producer = arg;
   for (int i = 0; i < 250; ++i)
-    ASCIICHAT_WORKER_ASSERT((submit(producer->transport, PACKET_TYPE_IMAGE_FRAME, producer->stream, 4096, false)) ==
-                     (ACIP_ADMISSION_ACCEPTED));
+    ASCIICHAT_WORKER_ASSERT((submit(producer->transport, PACKET_TYPE_IMAGE_FRAME, producer->stream, 4096, false)) == (ACIP_ADMISSION_ACCEPTED));
   return NULL;
 }
 
@@ -368,9 +354,7 @@ static void check_backend_failure(asciichat_error_t code, bool omit_context, boo
     ASCIICHAT_REQUIRE_EQ(producers[i].result, code);
     ASCIICHAT_REQUIRE(producers[i].has_cause);
     ASCIICHAT_REQUIRE_EQ(producers[i].cause.code, code);
-    ASCIICHAT_REQUIRE_STR_EQ(producers[i].cause.context_message, omit_context   ? "Outbound backend submission failed"
-                                                         : wrap_context ? "Backend failure wrapper"
-                                                                        : "Backend rejected outgoing packet");
+    ASCIICHAT_REQUIRE_STR_EQ(producers[i].cause.context_message, omit_context ? "Outbound backend submission failed" : wrap_context ? "Backend failure wrapper" : "Backend rejected outgoing packet");
     if (!omit_context) {
       ASCIICHAT_REQUIRE(producers[i].detail.has_system_error);
       ASCIICHAT_REQUIRE_EQ(producers[i].detail.system_errno, EPIPE);

@@ -166,8 +166,7 @@ TEST_CASE("mcp_requests/malformed_arguments_and_incompatible_sources_are_rejecte
   for (unsigned i = 0; i < ARRAY_SIZE(cases); ++i) {
     yyjson_doc *doc = read_json(cases[i].json);
     http_renderer_process_request_t request;
-    ASCIICHAT_REQUIRE_NE(mcp_request_parse(&policy, cases[i].tool, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK,
-                  "case %u: %s", i, cases[i].json);
+    ASCIICHAT_REQUIRE_NE(mcp_request_parse(&policy, cases[i].tool, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK, "case %u: %s", i, cases[i].json);
     mcp_request_destroy(&request);
     ASCIICHAT_REQUIRE_EQ(request.argc, 0);
     ASCIICHAT_REQUIRE_NULL(request.argv);
@@ -203,8 +202,7 @@ TEST_CASE("mcp_requests/accepted_sources_produce_bounded_cli_arguments_and_stage
   for (unsigned i = 0; i < ARRAY_SIZE(cases); ++i) {
     yyjson_doc *doc = read_json(cases[i].json);
     http_renderer_process_request_t request;
-    ASCIICHAT_REQUIRE_EQ(mcp_request_parse(&policy, cases[i].tool, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK,
-                 "case %u: %s", i, cases[i].json);
+    ASCIICHAT_REQUIRE_EQ(mcp_request_parse(&policy, cases[i].tool, yyjson_doc_get_root(doc), &request), ASCIICHAT_OK, "case %u: %s", i, cases[i].json);
     ASCIICHAT_REQUIRE(has_arg(&request, cases[i].expected), "case %u missing %s", i, cases[i].expected);
     ASCIICHAT_REQUIRE_NULL(request.argv[request.argc]);
     char upload[PLATFORM_MAX_PATH_LENGTH];
@@ -302,11 +300,10 @@ TEST_CASE("mcp_requests/protocol_envelopes_reject_invalid_types_and_worker_start
                    "{\"jsonrpc\":\"2.0\",\"method\":\"tools/"
                    "call\",\"params\":{\"name\":\"device_list\",\"arguments\":{\"unknown\":1}},\"id\":1}",
                    -32602);
-  expect_rpc_error(
-      &server,
-      "{\"jsonrpc\":\"2.0\",\"method\":\"tools/"
-      "call\",\"params\":{\"name\":\"render_file\",\"arguments\":{\"options\":{\"test-pattern\":true}}},\"id\":1}",
-      -32603);
+  expect_rpc_error(&server,
+                   "{\"jsonrpc\":\"2.0\",\"method\":\"tools/"
+                   "call\",\"params\":{\"name\":\"render_file\",\"arguments\":{\"options\":{\"test-pattern\":true}}},\"id\":1}",
+                   -32603);
   ASCIICHAT_REQUIRE_NOT(server.jobs[0].started);
   ASCIICHAT_REQUIRE_NULL(server.jobs[0].message);
   ASCIICHAT_REQUIRE_NULL(server.jobs[0].request.argv);
@@ -314,8 +311,7 @@ TEST_CASE("mcp_requests/protocol_envelopes_reject_invalid_types_and_worker_start
 
 TEST_CASE("mcp_requests/device_results_include_defaults_and_report_partial_enumeration_failure", "[mcp_requests]") {
   yyjson_mut_doc *response = device_list_result(NULL, NULL);
-  yyjson_mut_val *root = yyjson_mut_doc_get_root(response), *result = yyjson_mut_obj_get(root, "result"),
-                 *data = yyjson_mut_obj_get(result, "structuredContent");
+  yyjson_mut_val *root = yyjson_mut_doc_get_root(response), *result = yyjson_mut_obj_get(root, "result"), *data = yyjson_mut_obj_get(result, "structuredContent");
   ASCIICHAT_REQUIRE_NOT_NULL(data);
   ASCIICHAT_REQUIRE_EQ(yyjson_mut_arr_size(yyjson_mut_obj_get(data, "video_devices")), 2);
   ASCIICHAT_REQUIRE_EQ(yyjson_mut_arr_size(yyjson_mut_obj_get(data, "audio_devices")), 2);
@@ -366,8 +362,7 @@ TEST_CASE("mcp_requests/hosted_download_names_are_strict_and_expiration_is_ancho
   yyjson_mut_arr_add_strcpy(doc, files, path);
   ASCIICHAT_REQUIRE_EQ(mcp_download_finalize(&policy, doc, 1700000100), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_STR_EQ(yyjson_mut_get_str(yyjson_mut_obj_get(data, "expires_at")), "2023-11-14T22:45:00Z");
-  ASCIICHAT_REQUIRE_STR_EQ(yyjson_mut_get_str(yyjson_mut_obj_get(data, "download_url")),
-                   "https://example.test/downloads/1700001900-0123456789abcdef0123456789abcdef.png");
+  ASCIICHAT_REQUIRE_STR_EQ(yyjson_mut_get_str(yyjson_mut_obj_get(data, "download_url")), "https://example.test/downloads/1700001900-0123456789abcdef0123456789abcdef.png");
   ASCIICHAT_REQUIRE_NE(platform_access(path, PLATFORM_ACCESS_EXISTS), 0);
   SAFE_SNPRINTF(path, sizeof(path), "%s/1700001900-0123456789abcdef0123456789abcdef.png", directory);
   ASCIICHAT_REQUIRE_EQ(platform_access(path, PLATFORM_ACCESS_EXISTS), 0);

@@ -9,13 +9,11 @@
 TEST_CASE("option_validation_boundaries/finite_float_and_volume_inputs", "[option_validation_boundaries]") {
   char error[256];
   float (*validators[])(const char *, char *, size_t) = {validate_opt_float_non_negative, validate_opt_volume};
-  const char *invalid[] = {NULL,           "",    "garbage", "0.5junk",  "-0.01", "nan", "NAN",
-                           "nan(payload)", "inf", "-inf",    "Infinity", "1e1000"};
+  const char *invalid[] = {NULL, "", "garbage", "0.5junk", "-0.01", "nan", "NAN", "nan(payload)", "inf", "-inf", "Infinity", "1e1000"};
   for (size_t v = 0; v < sizeof(validators) / sizeof(*validators); ++v) {
     for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
       error[0] = '\0';
-      ASCIICHAT_REQUIRE_EQ(validators[v](invalid[i], error, sizeof(error)), -1.0f, "validator %zu accepted %s", v,
-                   invalid[i] ? invalid[i] : "NULL");
+      ASCIICHAT_REQUIRE_EQ(validators[v](invalid[i], error, sizeof(error)), -1.0f, "validator %zu accepted %s", v, invalid[i] ? invalid[i] : "NULL");
       ASCIICHAT_REQUIRE_NE(error[0], '\0');
       ASCIICHAT_REQUIRE_EQ(validators[v](invalid[i], NULL, 0), -1.0f);
     }
@@ -30,10 +28,8 @@ TEST_CASE("option_validation_boundaries/finite_float_and_volume_inputs", "[optio
 }
 
 TEST_CASE("option_validation_boundaries/address_literals_and_local_hostname", "[option_validation_boundaries]") {
-  const char *inputs[] = {"127.0.0.1",     "0.0.0.0",   "192.0.2.123",       "::1", "[::1]", "2001:db8::1",
-                          "[2001:db8::1]", "localhost", "ｌｏｃａｌｈｏｓｔ"};
-  const char *expected[] = {"127.0.0.1",   "0.0.0.0",     "192.0.2.123", "::1",      "::1",
-                            "2001:db8::1", "2001:db8::1", "127.0.0.1",   "127.0.0.1"};
+  const char *inputs[] = {"127.0.0.1", "0.0.0.0", "192.0.2.123", "::1", "[::1]", "2001:db8::1", "[2001:db8::1]", "localhost", "ｌｏｃａｌｈｏｓｔ"};
+  const char *expected[] = {"127.0.0.1", "0.0.0.0", "192.0.2.123", "::1", "::1", "2001:db8::1", "2001:db8::1", "127.0.0.1", "127.0.0.1"};
   char parsed[256], error[256];
   for (size_t i = 0; i < sizeof(inputs) / sizeof(*inputs); ++i)
     for (int client = 0; client <= 1; ++client) {
@@ -54,9 +50,8 @@ TEST_CASE("option_validation_boundaries/address_literals_and_local_hostname", "[
 TEST_CASE("option_validation_boundaries/numeric_ranges_and_error_messages", "[option_validation_boundaries]") {
   char error[256];
   const char *invalid[] = {NULL, "", "invalid", "1junk", "999999999999999999999"};
-  int (*validators[])(const char *, char *,
-                      size_t) = {validate_opt_positive_int, validate_opt_non_negative_int,  validate_opt_fps,
-                                 validate_opt_max_clients,  validate_opt_compression_level, validate_opt_port};
+  int (*validators[])(const char *, char *, size_t) = {validate_opt_positive_int, validate_opt_non_negative_int,  validate_opt_fps,
+                                                       validate_opt_max_clients,  validate_opt_compression_level, validate_opt_port};
   for (size_t v = 0; v < sizeof(validators) / sizeof(*validators); ++v)
     for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
       error[0] = '\0';
@@ -94,16 +89,14 @@ TEST_CASE("option_validation_boundaries/passwords_and_remote_identity_key_scheme
   ASCIICHAT_REQUIRE_EQ(validate_opt_password("short", error, sizeof(error)), -1);
   ASCIICHAT_REQUIRE_EQ(validate_opt_password("long-enough-password", error, sizeof(error)), 0);
   ASCIICHAT_REQUIRE_EQ(validate_opt_password(password, error, sizeof(error)), -1);
-  const char *remote[] = {"github:zfogg", "gitlab:user", "gpg:ABCDEF", "http://example.test/key",
-                          "https://example.test/key"};
+  const char *remote[] = {"github:zfogg", "gitlab:user", "gpg:ABCDEF", "http://example.test/key", "https://example.test/key"};
   for (size_t i = 0; i < sizeof(remote) / sizeof(*remote); ++i)
     ASCIICHAT_REQUIRE(is_remote_key_path(remote[i]));
   ASCIICHAT_REQUIRE_NOT(is_remote_key_path(NULL));
   ASCIICHAT_REQUIRE_NOT(is_remote_key_path(""));
   ASCIICHAT_REQUIRE_NOT(is_remote_key_path("/tmp/local-key"));
   options_t *options = SAFE_CALLOC(1, sizeof(*options), options_t *);
-  char *argv[] = {
-      "ascii-chat", "server", "--key", "github:zfogg", "-K", "gpg:ABCDEF", "--key=https://example.test/key"};
+  char *argv[] = {"ascii-chat", "server", "--key", "github:zfogg", "-K", "gpg:ABCDEF", "--key=https://example.test/key"};
   ASCIICHAT_REQUIRE_EQ(options_collect_identity_keys(options, 7, argv), 3);
   ASCIICHAT_REQUIRE_EQ(options->num_identity_keys, 3);
   ASCIICHAT_REQUIRE_STR_EQ(options->encrypt_key, "github:zfogg");
@@ -113,9 +106,7 @@ TEST_CASE("option_validation_boundaries/passwords_and_remote_identity_key_scheme
 }
 
 TEST_CASE("option_validation_boundaries/enum_parsers_reject_unknown_values_without_overwriting_destination", "[option_validation_boundaries]") {
-  bool (*parsers[])(const char *, void *, char **) = {parse_color_mode,   parse_color_filter, parse_render_mode,
-                                                      parse_render_theme, parse_palette_type, parse_log_level,
-                                                      parse_port_option};
+  bool (*parsers[])(const char *, void *, char **) = {parse_color_mode, parse_color_filter, parse_render_mode, parse_render_theme, parse_palette_type, parse_log_level, parse_port_option};
   for (size_t i = 0; i < sizeof(parsers) / sizeof(*parsers); ++i) {
     int value = 12345;
     char *error = NULL;

@@ -239,9 +239,7 @@ static DNSServiceGetAddrInfoReply address_reply;
 static unsigned fault, callbacks, closed_refs;
 static asciichat_mdns_discovery_t received;
 
-static DNSServiceErrorType mock_browse(DNSServiceRef *out, DNSServiceFlags flags, uint32_t interface_index,
-                                       const char *type, const char *domain, DNSServiceBrowseReply reply,
-                                       void *context) {
+static DNSServiceErrorType mock_browse(DNSServiceRef *out, DNSServiceFlags flags, uint32_t interface_index, const char *type, const char *domain, DNSServiceBrowseReply reply, void *context) {
   ASCIICHAT_REQUIRE_STR_EQ(type, "_ascii-chat._tcp");
   ASCIICHAT_REQUIRE_STR_EQ(domain, "local.");
   if (fault == 1)
@@ -254,9 +252,8 @@ static DNSServiceErrorType mock_browse(DNSServiceRef *out, DNSServiceFlags flags
   (void)domain;
   return kDNSServiceErr_NoError;
 }
-static DNSServiceErrorType mock_resolve(DNSServiceRef *out, DNSServiceFlags flags, uint32_t interface_index,
-                                        const char *name, const char *type, const char *domain,
-                                        DNSServiceResolveReply reply, void *context) {
+static DNSServiceErrorType mock_resolve(DNSServiceRef *out, DNSServiceFlags flags, uint32_t interface_index, const char *name, const char *type, const char *domain, DNSServiceResolveReply reply,
+                                        void *context) {
   ASCIICHAT_REQUIRE_STR_EQ(name, "fixture-27224");
   if (fault == 2 || fault == 13)
     return fault == 13 ? kDNSServiceErr_NoSuchName : kDNSServiceErr_BadParam;

@@ -45,8 +45,7 @@ static rate_limiter_t *service_rate_create(const char *path) {
 static thread_pool_t *service_pool_create(const char *name) {
   return fail_pool_create ? NULL : thread_pool_create(name);
 }
-static asciichat_error_t service_spawn(thread_pool_t *pool, void *(*fn)(void *), void *arg, int order,
-                                       const char *name) {
+static asciichat_error_t service_spawn(thread_pool_t *pool, void *(*fn)(void *), void *arg, int order, const char *name) {
   (void)pool;
   (void)fn;
   (void)arg;
@@ -54,17 +53,14 @@ static asciichat_error_t service_spawn(thread_pool_t *pool, void *(*fn)(void *),
   (void)name;
   return ERROR_THREAD;
 }
-static asciichat_error_t service_rate_check(rate_limiter_t *rate, const char *ip, rate_event_type_t event,
-                                            const rate_limit_config_t *config, bool *allowed) {
+static asciichat_error_t service_rate_check(rate_limiter_t *rate, const char *ip, rate_event_type_t event, const rate_limit_config_t *config, bool *allowed) {
   if (rate_mode) {
     *allowed = false;
     return rate_mode == 1 ? ASCIICHAT_OK : ERROR_INVALID_STATE;
   }
   return rate_limiter_check(rate, ip, event, config, allowed);
 }
-static asciichat_error_t service_broadcast(sqlite3 *db, network_server_t *network, const uint8_t id[16],
-                                           packet_type_t type, const void *packet, size_t length,
-                                           const uint8_t *exclude) {
+static asciichat_error_t service_broadcast(sqlite3 *db, network_server_t *network, const uint8_t id[16], packet_type_t type, const void *packet, size_t length, const uint8_t *exclude) {
   (void)db;
   (void)network;
   (void)id;
@@ -204,12 +200,7 @@ static void teardown(void) {
   log_destroy();
 }
 static void make_network(void) {
-  network_server_config_t config = {.port = 27001,
-                                    .ipv4_address = "127.0.0.1",
-                                    .bind_ipv4 = true,
-                                    .max_connections = 8,
-                                    .callbacks = {.packet = acds_connection_packet},
-                                    .user_data = &authority};
+  network_server_config_t config = {.port = 27001, .ipv4_address = "127.0.0.1", .bind_ipv4 = true, .max_connections = 8, .callbacks = {.packet = acds_connection_packet}, .user_data = &authority};
   ASCIICHAT_REQUIRE_EQ(network_server_create(&config, &service_network), ASCIICHAT_OK);
 }
 static void initialize(void) {
@@ -219,10 +210,7 @@ static void initialize(void) {
   authority_ready = true;
 }
 static acip_session_create_t create_request(void) {
-  acip_session_create_t req = {.timestamp = time_ns_to_ms(time_get_realtime_ns()),
-                               .capabilities = 3,
-                               .max_participants = 3,
-                               .session_type = SESSION_TYPE_WEBRTC};
+  acip_session_create_t req = {.timestamp = time_ns_to_ms(time_get_realtime_ns()), .capabilities = 3, .max_participants = 3, .session_type = SESSION_TYPE_WEBRTC};
   return req;
 }
 static void create_session_fixture(void) {
@@ -274,13 +262,11 @@ TEST_CASE("discovery_service_callbacks/session_create_lookup_join_and_leave_comm
   acip_session_info_t info;
   memcpy(&info, response, sizeof(info));
   ASCIICHAT_REQUIRE(info.found);
-  acip_session_join_t request = {.session_string_len = created.session_string_len,
-                                 .timestamp = time_ns_to_ms(time_get_realtime_ns())};
+  acip_session_join_t request = {.session_string_len = created.session_string_len, .timestamp = time_ns_to_ms(time_get_realtime_ns())};
   memcpy(request.session_string, created.session_string, created.session_string_len);
   uint8_t secret[64];
   ASCIICHAT_REQUIRE_EQ(crypto_sign_keypair(request.identity_pubkey, secret), 0);
-  ASCIICHAT_REQUIRE_EQ(acds_sign_session_join(secret, request.timestamp, request.session_string, request.signature),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(acds_sign_session_join(secret, request.timestamp, request.session_string, request.signature), ASCIICHAT_OK);
   sodium_memzero(secret, sizeof(secret));
   acds_on_session_join(&request, &joiner_transport, "127.0.0.2", &authority);
   ASCIICHAT_REQUIRE_EQ(joined_responses, 1);
@@ -375,8 +361,7 @@ TEST_CASE("discovery_service_callbacks/connection_open_installs_identity_and_clo
   ASCIICHAT_REQUIRE_ARRAY_EQ(c.handshake.server_private_key.key.ed25519, authority.identity_secret, 64);
   authority.config.require_client_identity = false;
   create_session_fixture();
-  acip_session_join_t join = {.session_string_len = created.session_string_len,
-                              .timestamp = time_ns_to_ms(time_get_realtime_ns())};
+  acip_session_join_t join = {.session_string_len = created.session_string_len, .timestamp = time_ns_to_ms(time_get_realtime_ns())};
   memcpy(join.session_string, created.session_string, created.session_string_len);
   acds_on_session_join(&join, &c.transport, "127.0.0.8", &authority);
   ASCIICHAT_REQUIRE(joined.success);
@@ -399,8 +384,7 @@ TEST_CASE("discovery_service_callbacks/partial_creation_allows_keepalive_but_blo
   acds_client_data_t *client = c.context;
   client->create_keys.count = 1;
   acip_session_lookup_t lookup = {0};
-  ASCIICHAT_REQUIRE_EQ(acds_connection_packet(connection, PACKET_TYPE_ACIP_SESSION_LOOKUP, &lookup, sizeof(lookup), &authority),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(acds_connection_packet(connection, PACKET_TYPE_ACIP_SESSION_LOOKUP, &lookup, sizeof(lookup), &authority), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(response_type, PACKET_TYPE_ERROR_MESSAGE);
   ASCIICHAT_REQUIRE_EQ(client->create_keys.count, 1);
   ASCIICHAT_REQUIRE_EQ(atomic_load_u64(&authority.stats.packets_received), 1);
@@ -410,9 +394,7 @@ TEST_CASE("discovery_service_callbacks/partial_creation_allows_keepalive_but_blo
   ASCIICHAT_REQUIRE_EQ(acds_connection_packet(connection, PACKET_TYPE_PONG, NULL, 0, &authority), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(atomic_load_u64(&authority.stats.packets_received), 3);
   client->create_keys.count = 0;
-  ASCIICHAT_REQUIRE_EQ(
-      acds_connection_packet(connection, PACKET_TYPE_ACIP_SESSION_LOOKUP, &lookup, sizeof(lookup) - 1, &authority),
-      ERROR_INVALID_PARAM);
+  ASCIICHAT_REQUIRE_EQ(acds_connection_packet(connection, PACKET_TYPE_ACIP_SESSION_LOOKUP, &lookup, sizeof(lookup) - 1, &authority), ERROR_INVALID_PARAM);
   crypto_handshake_destroy(&c.handshake);
   acds_connection_closed(connection, &authority);
 }
@@ -485,8 +467,7 @@ TEST_CASE("discovery_service_callbacks/startup_options_trim_and_bound_servers_an
   SAFE_STRNCPY(v->discovery_database_path, ":memory:", sizeof(v->discovery_database_path));
   SAFE_STRNCPY(v->log_file, "authority-test.log", sizeof(v->log_file));
   SAFE_STRNCPY(v->stun_servers, "  stun:one  , ,stun:two,stun:three,stun:four,stun:ignored", sizeof(v->stun_servers));
-  SAFE_STRNCPY(v->turn_servers, " turn:one ,	turn:two	,turn:three,turn:four,turn:ignored",
-               sizeof(v->turn_servers));
+  SAFE_STRNCPY(v->turn_servers, " turn:one ,	turn:two	,turn:three,turn:four,turn:ignored", sizeof(v->turn_servers));
   SAFE_STRNCPY(v->turn_username, "fixture-user", sizeof(v->turn_username));
   SAFE_STRNCPY(v->turn_credential, "fixture-password", sizeof(v->turn_credential));
   SAFE_STRNCPY(v->turn_secret, "fixture-hmac", sizeof(v->turn_secret));

@@ -36,11 +36,7 @@ TEST_CASE("nat_quality/deterministic_host_selection_respects_tiers_and_tiebreake
   nat_quality_init(&worst);
   ASCIICHAT_REQUIRE_EQ(nat_compute_tier(NULL), 4);
   ASCIICHAT_REQUIRE_EQ(nat_compute_tier(&worst), 4);
-  nat_quality_t ranked[] = {{.lan_reachable = true},
-                            {.has_public_ip = true},
-                            {.upnp_available = true},
-                            {.nat_type = ACIP_NAT_TYPE_RESTRICTED},
-                            worst};
+  nat_quality_t ranked[] = {{.lan_reachable = true}, {.has_public_ip = true}, {.upnp_available = true}, {.nat_type = ACIP_NAT_TYPE_RESTRICTED}, worst};
   for (unsigned i = 0; i < 5; ++i) {
     ASCIICHAT_REQUIRE_EQ(nat_compute_tier(&ranked[i]), (int)i);
     for (unsigned j = 0; j < 5; ++j) {

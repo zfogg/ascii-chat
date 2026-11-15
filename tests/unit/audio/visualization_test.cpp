@@ -93,10 +93,8 @@ TEST_CASE("audio_visualization/waveform_and_fft_render_bounded_plain_and_colored
       options_t options = *options_get();
       options.render_mode = modes[i];
       ASCIICHAT_REQUIRE_EQ(options_state_set(&options), ASCIICHAT_OK);
-      char *wave =
-          audio_visualization_render_waveform(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, color != 0, color, true, true);
-      char *fft =
-          audio_visualization_render_fft(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, color != 0, color, false, false);
+      char *wave = audio_visualization_render_waveform(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, color != 0, color, true, true);
+      char *fft = audio_visualization_render_fft(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, color != 0, color, false, false);
       ASCIICHAT_REQUIRE_NOT_NULL(wave);
       ASCIICHAT_REQUIRE_NOT_NULL(fft);
       ASCIICHAT_REQUIRE_GT(strlen(wave), 0);

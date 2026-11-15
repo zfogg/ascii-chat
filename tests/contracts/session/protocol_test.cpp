@@ -144,8 +144,7 @@ static asciichat_error_t settings_send(acip_transport_t *transport, const socket
   packet_header_t packet;
   memcpy(&packet, buffers[0].data, sizeof(packet));
   ASCIICHAT_REQUIRE_EQ(NET_TO_HOST_U16(packet.type), PACKET_TYPE_ACIP_SETTINGS_SYNC);
-  return acip_settings_request(&test->host, buffers[1].data, buffers[1].len, test->reply, sizeof(test->reply),
-                               &test->reply_length);
+  return acip_settings_request(&test->host, buffers[1].data, buffers[1].len, test->reply, sizeof(test->reply), &test->reply_length);
 }
 
 static void settings_changed(session_participant_t *participant, const session_settings_t *effective, void *context) {
@@ -164,8 +163,7 @@ static void test_participant_settings(void) {
   session_participant_config_t config = {.address = "127.0.0.1", .port = 1, .callbacks.on_settings_changed = settings_changed, .user_data = &test};
   session_participant_t *participant = session_participant_create(&config);
   ASCIICHAT_REQUIRE(participant);
-  session_settings_t requested = {
-      .width = 80, .height = 24, .color_mode = TERM_COLOR_TRUECOLOR, .palette_type = PALETTE_STANDARD, .fps = 30};
+  session_settings_t requested = {.width = 80, .height = 24, .color_mode = TERM_COLOR_TRUECOLOR, .palette_type = PALETTE_STANDARD, .fps = 30};
   ASCIICHAT_REQUIRE_EQ(session_participant_request_settings(participant, &requested), ERROR_INVALID_STATE);
   CLEAR_ERRNO();
   ASCIICHAT_REQUIRE_EQ(session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
@@ -204,9 +202,8 @@ static void test_participant_settings(void) {
   memset(&test.host, 0, sizeof(test.host));
   ASCIICHAT_REQUIRE_EQ(session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED), ASCIICHAT_OK);
   asciichat_error_t request_result = session_participant_request_settings(participant, &requested);
-  ASCIICHAT_REQUIRE_EQ(request_result, ASCIICHAT_OK, "request result %d width %d height %d fps %u palette %u color %d",
-               request_result, requested.width, requested.height, requested.fps, requested.palette_type,
-               requested.color_mode);
+  ASCIICHAT_REQUIRE_EQ(request_result, ASCIICHAT_OK, "request result %d width %d height %d fps %u palette %u color %d", request_result, requested.width, requested.height, requested.fps,
+                       requested.palette_type, requested.color_mode);
   ASCIICHAT_REQUIRE_EQ(requested.color_mode, TERM_COLOR_AUTO);
   ASCIICHAT_REQUIRE_EQ(requested.fps, 0);
   ASCIICHAT_REQUIRE_EQ(test.host.caps.desired_fps, DEFAULT_MAX_FPS);
@@ -245,8 +242,7 @@ static void test_rendered_frame_validation(void) {
       {"zzzz\n____\n|+|+", 4, 3},
   };
   for (size_t i = 0; i < sizeof(valid) / sizeof(valid[0]); ++i)
-    ASCIICHAT_REQUIRE_EQ(session_frame_validate(valid[i].text, strlen(valid[i].text), valid[i].width, valid[i].height),
-                 ASCIICHAT_OK, "valid renderer contract case %zu", i);
+    ASCIICHAT_REQUIRE_EQ(session_frame_validate(valid[i].text, strlen(valid[i].text), valid[i].width, valid[i].height), ASCIICHAT_OK, "valid renderer contract case %zu", i);
   const char *invalid[] = {
       "abc",
       "abcde",
@@ -285,8 +281,7 @@ static void test_rendered_frame_validation(void) {
       "abc界",
   };
   for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
-    ASCIICHAT_REQUIRE_EQ(session_frame_validate(invalid[i], strlen(invalid[i]), 4, 1), ERROR_INVALID_FRAME,
-                 "negative frame case %zu", i);
+    ASCIICHAT_REQUIRE_EQ(session_frame_validate(invalid[i], strlen(invalid[i]), 4, 1), ERROR_INVALID_FRAME, "negative frame case %zu", i);
     CLEAR_ERRNO();
   }
   const char embedded[] = {'a', 'b', 'c', 'd', 0, 'x'};
@@ -333,8 +328,7 @@ static void test_rendered_frame_validation(void) {
     CLEAR_ERRNO();
   }
   metadata[3] = 2;
-  ASCIICHAT_REQUIRE_EQ(frame_render_contract_decode(metadata, metadata_size, &decoded, &effects, &consumed),
-               ERROR_INVALID_FRAME);
+  ASCIICHAT_REQUIRE_EQ(frame_render_contract_decode(metadata, metadata_size, &decoded, &effects, &consumed), ERROR_INVALID_FRAME);
   CLEAR_ERRNO();
   // Explicit wire contract is attached to the frame, not whichever settings
   // happen to be current when a queued frame is received.
@@ -361,25 +355,17 @@ static void test_rendered_frame_validation(void) {
   ASCIICHAT_REQUIRE_EQ(dispatch_result, ASCIICHAT_OK, "Valid contract dispatch: %s", dispatch_error.context_message);
   ASCIICHAT_REQUIRE_EQ(sink.frames, 1);
   packet[sizeof(wire_header) + FRAME_RENDER_CONTRACT_HEADER] = 'X';
-  ASCIICHAT_REQUIRE_EQ(
-      session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, packet, sizeof(wire_header) + metadata_size + 4),
-      ERROR_INVALID_FRAME);
+  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, packet, sizeof(wire_header) + metadata_size + 4), ERROR_INVALID_FRAME);
   ASCIICHAT_REQUIRE_EQ(sink.frames, 1);
   CLEAR_ERRNO();
   packet[sizeof(wire_header) + FRAME_RENDER_CONTRACT_HEADER] = 'a';
-  ASCIICHAT_REQUIRE_EQ(
-      session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, packet, sizeof(wire_header) + metadata_size + 3),
-      ERROR_INVALID_FRAME);
+  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, packet, sizeof(wire_header) + metadata_size + 3), ERROR_INVALID_FRAME);
   CLEAR_ERRNO();
   packet[sizeof(wire_header) + 3] = 9; // Schema, never reinterpret as text/legacy.
-  ASCIICHAT_REQUIRE_EQ(
-      session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, packet, sizeof(wire_header) + metadata_size + 4),
-      ERROR_INVALID_FRAME);
+  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, packet, sizeof(wire_header) + metadata_size + 4), ERROR_INVALID_FRAME);
   CLEAR_ERRNO();
   packet[sizeof(wire_header) + 3] = 1;
-  ASCIICHAT_REQUIRE_EQ(
-      session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, packet, sizeof(wire_header) + metadata_size + 4),
-      ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, packet, sizeof(wire_header) + metadata_size + 4), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(sink.frames, 2);
   // Deterministic arbitrary-byte corpus. Neither rejection nor a subsequent
   // valid frame may poison parser state; no content is emitted by validation.
@@ -417,8 +403,7 @@ void test_session_protocol(void) {
   ascii_frame_packet_t header = {.width = HOST_TO_NET_U32(4), .height = HOST_TO_NET_U32(1), .original_size = HOST_TO_NET_U32(4), .checksum = HOST_TO_NET_U32(asciichat_crc32("abcd", 4))};
   memcpy(payload, &header, sizeof(header));
   memcpy(payload + sizeof(header), "abcd", 4);
-  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + 4),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + 4), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE(sinks[0].frames == 1 && sinks[1].frames == 0);
   ASCIICHAT_REQUIRE(protocols[0].frames_received == 1 && protocols[1].frames_received == 0);
   // Even a checksum-valid hostile frame must never reach presentation. A
@@ -429,9 +414,7 @@ void test_session_protocol(void) {
   hostile_header.checksum = HOST_TO_NET_U32(asciichat_crc32(hostile, sizeof(hostile) - 1));
   memcpy(payload, &hostile_header, sizeof(hostile_header));
   memcpy(payload + sizeof(hostile_header), hostile, sizeof(hostile) - 1);
-  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, payload,
-                                         sizeof(hostile_header) + sizeof(hostile) - 1),
-               ERROR_INVALID_FRAME);
+  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, payload, sizeof(hostile_header) + sizeof(hostile) - 1), ERROR_INVALID_FRAME);
   ASCIICHAT_REQUIRE_EQ(sinks[0].frames, 1);
   ASCIICHAT_REQUIRE_EQ(protocols[0].frames_received, 1);
   CLEAR_ERRNO();
@@ -449,15 +432,13 @@ void test_session_protocol(void) {
   memcpy(payload, &wide, sizeof(wide));
   memset(payload + sizeof(wide), ' ', 21);
   protocols[0].media.terminal_output = true;
-  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + 21),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + 21), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(sinks[0].frames, 1);
   ASCIICHAT_REQUIRE_EQ(protocols[0].frames_skipped_viewport, 1);
   ASCIICHAT_REQUIRE_EQ(options_set_int("width", 80), ASCIICHAT_OK);
   memcpy(payload, &header, sizeof(header));
   memcpy(payload + sizeof(header), "abcd", 4);
-  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + 4),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + 4), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(sinks[0].frames, 2);
   // A redirected snapshot may exceed the controller's synthetic80x24 fallback.
   // Effective output dimensions still bound it; there is no physical viewport.
@@ -473,8 +454,7 @@ void test_session_protocol(void) {
       .width = HOST_TO_NET_U32(110), .height = HOST_TO_NET_U32(70), .original_size = HOST_TO_NET_U32(large_length), .checksum = HOST_TO_NET_U32(asciichat_crc32(large + sizeof(header), large_length))};
   memcpy(large, &large_header, sizeof(header));
   protocols[0].media.on_frame = redirected_frame;
-  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, large, sizeof(header) + large_length),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, large, sizeof(header) + large_length), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(sinks[0].frames, 3);
   ASCIICHAT_REQUIRE_EQ(protocols[0].frames_skipped_viewport, 1);
   SAFE_FREE(large);
@@ -482,8 +462,7 @@ void test_session_protocol(void) {
   protocols[0].media.terminal_output = false;
   options_state_destroy();
   payload[sizeof(header)] ^= 1;
-  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[1], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + 4),
-               ERROR_INVALID_FRAME);
+  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[1], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + 4), ERROR_INVALID_FRAME);
   ASCIICHAT_REQUIRE_EQ(sinks[1].frames, 0);
   CLEAR_ERRNO();
   void *encoded = NULL;
@@ -495,15 +474,12 @@ void test_session_protocol(void) {
   header.flags = HOST_TO_NET_U32(FRAME_FLAG_IS_COMPRESSED);
   header.compressed_size = HOST_TO_NET_U32((uint32_t)compressed);
   memcpy(payload, &header, sizeof(header));
-  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[1], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + compressed),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[1], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + compressed), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(sinks[1].frames, 1);
   buffer_stats_t before, after;
   buffer_domain_stats(buffer_default_domain(), &before);
   for (unsigned i = 0; i < 100; ++i)
-    ASCIICHAT_REQUIRE_EQ(
-        session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + compressed),
-        ASCIICHAT_OK);
+    ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + compressed), ASCIICHAT_OK);
   buffer_domain_stats(buffer_default_domain(), &after);
   ASCIICHAT_REQUIRE(before.allocations == after.allocations && before.hits == after.hits);
   // A short successful zstd decode must fail before CRC reads stale workspace
@@ -513,9 +489,7 @@ void test_session_protocol(void) {
   memcpy(payload, &header, sizeof(header));
   for (unsigned i = 0; i < 2; ++i) {
     uint64_t received = protocols[i].frames_received;
-    ASCIICHAT_REQUIRE_EQ(
-        session_protocol_dispatch(&protocols[i], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + compressed),
-        ERROR_COMPRESSION);
+    ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[i], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + compressed), ERROR_COMPRESSION);
     ASCIICHAT_REQUIRE_EQ(protocols[i].frames_received, received);
     CLEAR_ERRNO();
   }
@@ -523,9 +497,7 @@ void test_session_protocol(void) {
   header.width = HOST_TO_NET_U32(4);
   memcpy(payload, &header, sizeof(header));
 
-  ASCIICHAT_REQUIRE_EQ(
-      session_protocol_dispatch(&protocols[1], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + compressed - 1),
-      ERROR_INVALID_FRAME);
+  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[1], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + compressed - 1), ERROR_INVALID_FRAME);
   CLEAR_ERRNO();
 
   sinks[0].expect_mono_expansion = true;
@@ -533,14 +505,10 @@ void test_session_protocol(void) {
   memcpy(payload, &audio, sizeof(audio));
   uint32_t quantized[2] = {HOST_TO_NET_U32(2147483647U), HOST_TO_NET_U32((uint32_t)-2147483647)};
   memcpy(payload + sizeof(audio), quantized, sizeof(quantized));
-  ASCIICHAT_REQUIRE_EQ(
-      session_protocol_dispatch(&protocols[0], PACKET_TYPE_AUDIO_BATCH, payload, sizeof(audio) + sizeof(quantized)),
-      ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[0], PACKET_TYPE_AUDIO_BATCH, payload, sizeof(audio) + sizeof(quantized)), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE(sinks[0].samples == 2 * AUDIO_CHANNELS && sinks[1].samples == 0);
   sinks[0].fail_audio = true;
-  ASCIICHAT_REQUIRE_EQ(
-      session_protocol_dispatch(&protocols[0], PACKET_TYPE_AUDIO_BATCH, payload, sizeof(audio) + sizeof(quantized)),
-      ERROR_AUDIO);
+  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[0], PACKET_TYPE_AUDIO_BATCH, payload, sizeof(audio) + sizeof(quantized)), ERROR_AUDIO);
   CLEAR_ERRNO();
 
   // Deliberately unaligned input checks size-table parsing without uint16_t loads.
@@ -553,8 +521,7 @@ void test_session_protocol(void) {
   opus[20] = opus[21] = 42;
   ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[1], PACKET_TYPE_AUDIO_OPUS_BATCH, opus, 22), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE(sinks[1].decodes == 2 && sinks[1].samples == 4);
-  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[1], PACKET_TYPE_AUDIO_OPUS_BATCH, opus, 21),
-               ERROR_NETWORK_PROTOCOL);
+  ASCIICHAT_REQUIRE_EQ(session_protocol_dispatch(&protocols[1], PACKET_TYPE_AUDIO_OPUS_BATCH, opus, 21), ERROR_NETWORK_PROTOCOL);
   ASCIICHAT_REQUIRE_EQ(sinks[1].decodes, 2); // Malformed batches deliver no partial audio.
   CLEAR_ERRNO();
 

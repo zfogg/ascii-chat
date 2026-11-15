@@ -89,8 +89,7 @@ TEST_CASE("ffmpeg_decoder/cancelled_prefetch_is_not_a_decode_failure", "[ffmpeg_
   image_t *frame = NULL;
   asciichat_error_context_t failure{};
   while (atomic_load_int(&callbacks) < 2 && platform_get_monotonic_time_us() < deadline) {
-    ASCIICHAT_REQUIRE_NE(ffmpeg_decoder_poll_video(decoder, &frame, &failure), FFMPEG_FRAME_FAILED, "%s",
-                  failure.context_message);
+    ASCIICHAT_REQUIRE_NE(ffmpeg_decoder_poll_video(decoder, &frame, &failure), FFMPEG_FRAME_FAILED, "%s", failure.context_message);
     platform_sleep_ms(1);
   }
   // One callback interrupts FFmpeg; the worker confirms cancellation before
@@ -98,8 +97,7 @@ TEST_CASE("ffmpeg_decoder/cancelled_prefetch_is_not_a_decode_failure", "[ffmpeg_
   ASCIICHAT_REQUIRE_GE(atomic_load_int(&callbacks), 2);
   ffmpeg_decoder_stop_prefetch(decoder);
   ASCIICHAT_REQUIRE_NOT(errno_notifications_pending(), "Cancellation must not leave an error popup");
-  ASCIICHAT_REQUIRE_NE(ffmpeg_decoder_poll_video(decoder, &frame, &failure), FFMPEG_FRAME_FAILED, "%s",
-                failure.context_message);
+  ASCIICHAT_REQUIRE_NE(ffmpeg_decoder_poll_video(decoder, &frame, &failure), FFMPEG_FRAME_FAILED, "%s", failure.context_message);
   asciichat_errno_history_t history[32];
   size_t count = errno_history_snapshot(history, 32);
   bool handled = false;

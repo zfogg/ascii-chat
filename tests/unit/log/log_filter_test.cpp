@@ -141,9 +141,9 @@ static plain_regex_test_t plain_regex_cases[] = {
     {"test.*end", "test something", false, "Dot-star no match without end"},
 };
 
-
-
-TEST_CASE("log_filter/plain_regex_format", "[log_filter]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(plain_regex_cases)); auto *tc = &generated_case;
+TEST_CASE("log_filter/plain_regex_format", "[log_filter]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(plain_regex_cases));
+  auto *tc = &generated_case;
   asciichat_error_t result = grep_init(tc->pattern);
   ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Plain pattern '%s' should be valid", tc->pattern);
 
@@ -212,9 +212,9 @@ static basic_match_test_t basic_match_cases[] = {
     {"/\\d+/", "No numbers here", false, "Digit pattern no match"},
 };
 
-
-
-TEST_CASE("log_filter/basic_regex_matching", "[log_filter]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(basic_match_cases)); auto *tc = &generated_case;
+TEST_CASE("log_filter/basic_regex_matching", "[log_filter]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(basic_match_cases));
+  auto *tc = &generated_case;
   asciichat_error_t result = grep_init(tc->pattern);
   ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Pattern '%s' should be valid", tc->pattern);
 
@@ -246,9 +246,9 @@ static fixed_string_test_t fixed_string_cases[] = {
     {"/test/Fi", "TEST in caps", true, "Flags order doesn't matter"},
 };
 
-
-
-TEST_CASE("log_filter/fixed_string_matching", "[log_filter]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(fixed_string_cases)); auto *tc = &generated_case;
+TEST_CASE("log_filter/fixed_string_matching", "[log_filter]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(fixed_string_cases));
+  auto *tc = &generated_case;
   asciichat_error_t result = grep_init(tc->pattern);
   ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Pattern '%s' should be valid", tc->pattern);
 
@@ -498,9 +498,9 @@ static flag_combo_test_t flag_combo_cases[] = {
     {"/test/FA3B2Iimsxg", "no match", true, "All flags different order"},
 };
 
-
-
-TEST_CASE("log_filter/flag_combinations", "[log_filter]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(flag_combo_cases)); auto *tc = &generated_case;
+TEST_CASE("log_filter/flag_combinations", "[log_filter]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(flag_combo_cases));
+  auto *tc = &generated_case;
   asciichat_error_t result = grep_init(tc->pattern);
   ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Pattern '%s' should be valid", tc->pattern);
 

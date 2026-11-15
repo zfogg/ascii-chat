@@ -38,30 +38,28 @@
 //   /* is_client */ true,
 //   { /* option_assertions using opt_* variables */ },
 //   { /* exit_assertions using exit_code */ });
-#define GENERATE_OPTIONS_TEST(test_name, argv_list, is_client_val, option_assertions, exit_assertions)                 \
+#define GENERATE_OPTIONS_TEST(test_name, argv_list, is_client_val, option_assertions, exit_assertions)                                                                                                 \
   GENERATE_OPTIONS_TEST_IN_SUITE(options, test_name, argv_list, is_client_val, option_assertions, exit_assertions)
 
-#define GENERATE_OPTIONS_TEST_IN_SUITE(suite_name, test_name, argv_list, is_client_val, option_assertions,             \
-                                       exit_assertions)                                                                \
-  TEST_CASE(ASCIICHAT_CATCH2_TEST_NAME(suite_name, test_##test_name),                                                  \
-            ASCIICHAT_CATCH2_TEST_TAG(suite_name)) {                                                                  \
-    auto argv_storage = argv_list;                                                                                     \
-    char **argv = const_cast<char **>(argv_storage.data());                                                           \
-    int argc = static_cast<int>(argv_storage.size()) - 1;                                                             \
-    options_backup_t backup;                                                                                           \
-    save_options(&backup);                                                                                             \
-                                                                                                                       \
-    /* Call options_init to test return value */                                                                       \
-    /* (no longer use fork since options_init returns error codes) */                                                  \
-    int exit_code = test_options_init_with_fork(argv, argc, is_client_val);                                            \
-                                                                                                                       \
-    /* Note: We don't call options_init() again because it modifies RCU state and would cause */                       \
-    /* crashes when called multiple times. The exit_code from the first call tells us if */                            \
-    /* options_init() succeeded or failed, which is what we're testing. */                                             \
-    /* (option_assertions not used anymore since we don't call options_init twice) */                                  \
-                                                                                                                       \
-    restore_options(&backup);                                                                                          \
-    exit_assertions                                                                                                    \
+#define GENERATE_OPTIONS_TEST_IN_SUITE(suite_name, test_name, argv_list, is_client_val, option_assertions, exit_assertions)                                                                            \
+  TEST_CASE(ASCIICHAT_CATCH2_TEST_NAME(suite_name, test_##test_name), ASCIICHAT_CATCH2_TEST_TAG(suite_name)) {                                                                                         \
+    auto argv_storage = argv_list;                                                                                                                                                                     \
+    char **argv = const_cast<char **>(argv_storage.data());                                                                                                                                            \
+    int argc = static_cast<int>(argv_storage.size()) - 1;                                                                                                                                              \
+    options_backup_t backup;                                                                                                                                                                           \
+    save_options(&backup);                                                                                                                                                                             \
+                                                                                                                                                                                                       \
+    /* Call options_init to test return value */                                                                                                                                                       \
+    /* (no longer use fork since options_init returns error codes) */                                                                                                                                  \
+    int exit_code = test_options_init_with_fork(argv, argc, is_client_val);                                                                                                                            \
+                                                                                                                                                                                                       \
+    /* Note: We don't call options_init() again because it modifies RCU state and would cause */                                                                                                       \
+    /* crashes when called multiple times. The exit_code from the first call tells us if */                                                                                                            \
+    /* options_init() succeeded or failed, which is what we're testing. */                                                                                                                             \
+    /* (option_assertions not used anymore since we don't call options_init twice) */                                                                                                                  \
+                                                                                                                                                                                                       \
+    restore_options(&backup);                                                                                                                                                                          \
+    exit_assertions                                                                                                                                                                                    \
   }
 
 // Helper function to save and restore RCU options state for test isolation
@@ -260,8 +258,7 @@ GENERATE_OPTIONS_TEST(
  * ============================================================================ */
 
 GENERATE_OPTIONS_TEST(
-    valid_ipv4_192_168_1_1, ARGV_LIST("client", "192.168.1.1"), true,
-    { ASCIICHAT_REQUIRE_STR_EQ(opts->address, "192.168.1.1"); },
+    valid_ipv4_192_168_1_1, ARGV_LIST("client", "192.168.1.1"), true, { ASCIICHAT_REQUIRE_STR_EQ(opts->address, "192.168.1.1"); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "Valid IP 192.168.1.1 should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
@@ -269,8 +266,7 @@ GENERATE_OPTIONS_TEST(
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "Valid IP 127.0.0.1 should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    valid_ipv4_255_255_255_255, ARGV_LIST("client", "255.255.255.255"), true,
-    { ASCIICHAT_REQUIRE_STR_EQ(opts->address, "255.255.255.255"); },
+    valid_ipv4_255_255_255_255, ARGV_LIST("client", "255.255.255.255"), true, { ASCIICHAT_REQUIRE_STR_EQ(opts->address, "255.255.255.255"); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "Valid IP 255.255.255.255 should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
@@ -309,14 +305,13 @@ typedef struct {
 } ip_validation_test_case_t;
 
 static ip_validation_test_case_t ip_validation_cases[] = {
-    {"192.168.1.1", true, 0, "Valid IP 192.168.1.1"},         {"127.0.0.1", true, 0, "Valid IP 127.0.0.1"},
-    {"255.255.255.255", true, 0, "Valid IP 255.255.255.255"}, {"256.1.1.1", false, 1, "Invalid IP - octet too large"},
-    {"192.168.1", false, 1, "Invalid IP - too few octets"},   {"192.168.1.abc", false, 1, "Invalid IP - non-numeric"},
+    {"192.168.1.1", true, 0, "Valid IP 192.168.1.1"},        {"127.0.0.1", true, 0, "Valid IP 127.0.0.1"},           {"255.255.255.255", true, 0, "Valid IP 255.255.255.255"},
+    {"256.1.1.1", false, 1, "Invalid IP - octet too large"}, {"192.168.1", false, 1, "Invalid IP - too few octets"}, {"192.168.1.abc", false, 1, "Invalid IP - non-numeric"},
 };
 
-
-
-TEST_CASE("options/ip_address_validation", "[options]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(ip_validation_cases)); auto *tc = &generated_case;
+TEST_CASE("options/ip_address_validation", "[options]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(ip_validation_cases));
+  auto *tc = &generated_case;
   char *argv[] = {"program", "client", (char *)tc->address, NULL};
   int argc = 3;
   options_backup_t backup;
@@ -330,17 +325,16 @@ TEST_CASE("options/ip_address_validation", "[options]") { auto&& generated_case 
     ASCIICHAT_REQUIRE_EQ(exit_code, 0, "%s should not cause exit", tc->description);
     // Reset getopt state before calling options_init again
 #ifndef _WIN32
-  optind = 1;
-  opterr = 1;
-  optopt = 0;
+    optind = 1;
+    opterr = 1;
+    optopt = 0;
 #endif
     options_init(argc, argv);
     // Get options from RCU for assertions
     const options_t *opts = options_get();
     ASCIICHAT_REQUIRE_STR_EQ(opts->address, tc->address, "%s should set address correctly", tc->description);
   } else {
-    ASCIICHAT_REQUIRE_EQ(exit_code, tc->expected_exit_code, "%s should cause exit with code %d", tc->description,
-                 tc->expected_exit_code);
+    ASCIICHAT_REQUIRE_EQ(exit_code, tc->expected_exit_code, "%s should cause exit with code %d", tc->description, tc->expected_exit_code);
   }
 
   restore_options(&backup);
@@ -350,13 +344,10 @@ TEST_CASE("options/ip_address_validation", "[options]") { auto&& generated_case 
 // Port Validation Tests
 // =============================================================================
 
-GENERATE_OPTIONS_TEST(
-    valid_port_80, ARGV_LIST("client", "-p", "80"), true, { ASCIICHAT_REQUIRE_EQ(opts->port, 80); },
-    { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "Valid port 80 should not cause exit"); })
+GENERATE_OPTIONS_TEST(valid_port_80, ARGV_LIST("client", "-p", "80"), true, { ASCIICHAT_REQUIRE_EQ(opts->port, 80); }, { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "Valid port 80 should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    valid_port_65535, ARGV_LIST("client", "-p", "65535"), true, { ASCIICHAT_REQUIRE_EQ(opts->port, 65535); },
-    { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "Valid port 65535 should not cause exit"); })
+    valid_port_65535, ARGV_LIST("client", "-p", "65535"), true, { ASCIICHAT_REQUIRE_EQ(opts->port, 65535); }, { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "Valid port 65535 should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
     invalid_port_too_low, ARGV_LIST("client", "-p", "0"), true,
@@ -419,9 +410,9 @@ static port_validation_test_case_t port_validation_cases[] = {
     {"", false, 1, "Invalid port - empty string"},
 };
 
-
-
-TEST_CASE("options/port_validation", "[options]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(port_validation_cases)); auto *tc = &generated_case;
+TEST_CASE("options/port_validation", "[options]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(port_validation_cases));
+  auto *tc = &generated_case;
   char *argv[] = {"program", "client", "-p", (char *)tc->port, NULL};
   int argc = 4;
   options_backup_t backup;
@@ -435,17 +426,16 @@ TEST_CASE("options/port_validation", "[options]") { auto&& generated_case = GENE
     ASCIICHAT_REQUIRE_EQ(exit_code, 0, "%s should not cause exit", tc->description);
     // Reset getopt state before calling options_init again
 #ifndef _WIN32
-  optind = 1;
-  opterr = 1;
-  optopt = 0;
+    optind = 1;
+    opterr = 1;
+    optopt = 0;
 #endif
     options_init(argc, argv);
     // Get options from RCU for assertions
     const options_t *opts = options_get();
     ASCIICHAT_REQUIRE_EQ(opts->port, strtoint_safe(tc->port), "%s should set port correctly", tc->description);
   } else {
-    ASCIICHAT_REQUIRE_EQ(exit_code, tc->expected_exit_code, "%s should cause exit with code %d", tc->description,
-                 tc->expected_exit_code);
+    ASCIICHAT_REQUIRE_EQ(exit_code, tc->expected_exit_code, "%s should cause exit with code %d", tc->description, tc->expected_exit_code);
   }
 
   restore_options(&backup);
@@ -466,49 +456,40 @@ GENERATE_OPTIONS_TEST(
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "Valid dimensions should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_dimension_zero, ARGV_LIST("client", "-x", "0"), true,
-    { ASCIICHAT_FAIL("Should not reach this point - invalid dimension should cause exit"); },
+    invalid_dimension_zero, ARGV_LIST("client", "-x", "0"), true, { ASCIICHAT_FAIL("Should not reach this point - invalid dimension should cause exit"); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 1, "Invalid dimension 0 should cause exit with code 1"); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_dimension_negative, ARGV_LIST("client", "-x", "-1"), true,
-    { ASCIICHAT_FAIL("Should not reach this point - invalid dimension should cause exit"); },
+    invalid_dimension_negative, ARGV_LIST("client", "-x", "-1"), true, { ASCIICHAT_FAIL("Should not reach this point - invalid dimension should cause exit"); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 1, "Invalid dimension -1 should cause exit with code 1"); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_dimension_non_numeric, ARGV_LIST("client", "-x", "abc"), true,
-    { ASCIICHAT_FAIL("Should not reach this point - invalid dimension should cause exit"); },
+    invalid_dimension_non_numeric, ARGV_LIST("client", "-x", "abc"), true, { ASCIICHAT_FAIL("Should not reach this point - invalid dimension should cause exit"); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 1, "Invalid dimension abc should cause exit with code 1"); })
 
 /* ============================================================================
  * Webcam Options Tests
  * ============================================================================ */
 
-GENERATE_OPTIONS_TEST(valid_webcam_index, ARGV_LIST("client", "-c", "2"), true,
-                      {/* no option assertions needed for success-only check */}, { ASCIICHAT_REQUIRE_EQ(exit_code, 0); })
+GENERATE_OPTIONS_TEST(valid_webcam_index, ARGV_LIST("client", "-c", "2"), true, {/* no option assertions needed for success-only check */}, { ASCIICHAT_REQUIRE_EQ(exit_code, 0); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_webcam_index_neg1, ARGV_LIST("client", "-c", "-1"), true,
-    { ASCIICHAT_FAIL("Should not reach this point - invalid webcam index should cause exit"); },
+    invalid_webcam_index_neg1, ARGV_LIST("client", "-c", "-1"), true, { ASCIICHAT_FAIL("Should not reach this point - invalid webcam index should cause exit"); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 1); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_webcam_index_abc, ARGV_LIST("client", "-c", "abc"), true,
-    { ASCIICHAT_FAIL("Should not reach this point - invalid webcam index should cause exit"); },
+    invalid_webcam_index_abc, ARGV_LIST("client", "-c", "abc"), true, { ASCIICHAT_FAIL("Should not reach this point - invalid webcam index should cause exit"); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 1); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_webcam_index_decimal, ARGV_LIST("client", "-c", "2.5"), true,
-    { ASCIICHAT_FAIL("Should not reach this point - invalid webcam index should cause exit"); },
+    invalid_webcam_index_decimal, ARGV_LIST("client", "-c", "2.5"), true, { ASCIICHAT_FAIL("Should not reach this point - invalid webcam index should cause exit"); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 1); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_webcam_index_empty, ARGV_LIST("client", "-c", ""), true,
-    { ASCIICHAT_FAIL("Should not reach this point - invalid webcam index should cause exit"); },
+    invalid_webcam_index_empty, ARGV_LIST("client", "-c", ""), true, { ASCIICHAT_FAIL("Should not reach this point - invalid webcam index should cause exit"); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 1); })
 
-GENERATE_OPTIONS_TEST(valid_webcam_flip, ARGV_LIST("client", "--flip-x"), true, {/* flip flag only */},
-                      { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "Webcam flip flag should not cause exit"); })
+GENERATE_OPTIONS_TEST(valid_webcam_flip, ARGV_LIST("client", "--flip-x"), true, {/* flip flag only */}, { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "Webcam flip flag should not cause exit"); })
 
 /* ============================================================================
  * Color Mode Tests
@@ -549,9 +530,9 @@ static color_mode_test_case_t color_mode_cases[] = {
     {"", false, 1, "Invalid mode: empty string"},
 };
 
-
-
-TEST_CASE("options/color_mode_validation", "[options]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(color_mode_cases)); auto *tc = &generated_case;
+TEST_CASE("options/color_mode_validation", "[options]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(color_mode_cases));
+  auto *tc = &generated_case;
   char *argv[] = {"program", "client", "--color-mode", (char *)tc->mode_string, NULL};
   int argc = 4;
   options_backup_t backup;
@@ -560,8 +541,7 @@ TEST_CASE("options/color_mode_validation", "[options]") { auto&& generated_case 
   // Test exit behavior with fork
   int exit_code = test_options_init_with_fork(argv, argc, true);
 
-  ASCIICHAT_REQUIRE_EQ(exit_code, tc->expected_exit_code, "%s should %s", tc->description,
-               tc->should_succeed ? "not cause exit" : "cause exit");
+  ASCIICHAT_REQUIRE_EQ(exit_code, tc->expected_exit_code, "%s should %s", tc->description, tc->should_succeed ? "not cause exit" : "cause exit");
 
   restore_options(&backup);
 }
@@ -709,8 +689,7 @@ GENERATE_OPTIONS_TEST(
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "Valid encryption key should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_encryption_key, ARGV_LIST("client", "--key", ""), true,
-    { ASCIICHAT_FAIL("Should not reach this point - empty key should cause exit"); },
+    invalid_encryption_key, ARGV_LIST("client", "--key", ""), true, { ASCIICHAT_FAIL("Should not reach this point - empty key should cause exit"); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 1, "Empty key should exit with code 1"); })
 
 /* ============================================================================
@@ -722,8 +701,7 @@ TEST_CASE("options/flag_options", "[options]") {
   save_options(&backup);
 
   // NOTE: --quiet is now a global option, removed from this test
-  char *argv[] = {"program",   "client",     "--show-capabilities", "--utf8", "--audio",
-                  "--stretch", "--snapshot", "--encrypt",           NULL};
+  char *argv[] = {"program", "client", "--show-capabilities", "--utf8", "--audio", "--stretch", "--snapshot", "--encrypt", NULL};
   int result = test_options_init_with_fork(argv, 8, true);
   ASCIICHAT_REQUIRE_EQ(result, 0);
 
@@ -757,13 +735,11 @@ GENERATE_OPTIONS_TEST(help_short, ARGV_LIST("client", "-h"), true,
  * ============================================================================ */
 
 GENERATE_OPTIONS_TEST_IN_SUITE(
-    options_errors, unknown_option, ARGV_LIST("client", "--unknown-option"), true,
-    { ASCIICHAT_FAIL("Should not reach this point - unknown option should cause exit"); },
+    options_errors, unknown_option, ARGV_LIST("client", "--unknown-option"), true, { ASCIICHAT_FAIL("Should not reach this point - unknown option should cause exit"); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 1, "Unknown option should exit with code 1"); })
 
 GENERATE_OPTIONS_TEST_IN_SUITE(
-    options_errors, missing_argument_port, ARGV_LIST("client", "--port"), true,
-    { ASCIICHAT_FAIL("Should not reach this point - missing argument should cause exit"); },
+    options_errors, missing_argument_port, ARGV_LIST("client", "--port"), true, { ASCIICHAT_FAIL("Should not reach this point - missing argument should cause exit"); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 1, "Missing argument should exit with code 1"); })
 
 /* ============================================================================
@@ -790,23 +766,9 @@ TEST_CASE("options/complex_client_combination", "[options]") {
   save_options(&backup);
 
   // NOTE: --quiet and --log-file are now global options, removed from this test
-  char *argv[] = {"program",
-                  "client",
-                  "192.168.1.100:8080",
-                  "--width=120",
-                  "--height=60",
-                  "--webcam-index=1",
-                  "--flip-x",
-                  "--color-mode=256",
-                  "--render-mode=background",
-                  "--palette=blocks",
-                  "--audio",
-                  "--stretch",
-                  "--snapshot",
-                  "--snapshot-delay=2.5",
-                  "--encrypt",
-                  "--key=mysecretpassword",
-                  NULL};
+  char *argv[] = {
+      "program", "client",    "192.168.1.100:8080", "--width=120",          "--height=60", "--webcam-index=1",       "--flip-x", "--color-mode=256", "--render-mode=background", "--palette=blocks",
+      "--audio", "--stretch", "--snapshot",         "--snapshot-delay=2.5", "--encrypt",   "--key=mysecretpassword", NULL};
   int argc = 16;
 
   log_set_level(LOG_DEBUG);
@@ -931,9 +893,7 @@ TEST_CASE("options/maximum_values", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {
-      "program", "client", "--width=512", "--height=256", "--webcam-index=10", "--snapshot", "--snapshot-delay=999.999",
-      NULL};
+  char *argv[] = {"program", "client", "--width=512", "--height=256", "--webcam-index=10", "--snapshot", "--snapshot-delay=999.999", NULL};
   int argc = 7;
 
   int result = test_options_init_with_fork(argv, argc, true);
@@ -946,8 +906,7 @@ TEST_CASE("options/minimum_values", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"program",          "client",     "--width=20",           "--height=10",
-                  "--webcam-index=0", "--snapshot", "--snapshot-delay=0.0", NULL};
+  char *argv[] = {"program", "client", "--width=20", "--height=10", "--webcam-index=0", "--snapshot", "--snapshot-delay=0.0", NULL};
   int argc = 7;
 
   int result = test_options_init_with_fork(argv, argc, true);
@@ -1009,43 +968,35 @@ GENERATE_OPTIONS_TEST(
     })
 
 GENERATE_OPTIONS_TEST(
-    color_mode_auto, ARGV_LIST("client", "--color-mode", "auto"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->color_mode, COLOR_MODE_AUTO); },
+    color_mode_auto, ARGV_LIST("client", "--color-mode", "auto"), true, { ASCIICHAT_REQUIRE_EQ(opts->color_mode, COLOR_MODE_AUTO); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "auto color mode should not exit"); })
 
 GENERATE_OPTIONS_TEST(
-    color_mode_256, ARGV_LIST("client", "--color-mode", "256"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->color_mode, COLOR_MODE_256_COLOR); },
+    color_mode_256, ARGV_LIST("client", "--color-mode", "256"), true, { ASCIICHAT_REQUIRE_EQ(opts->color_mode, COLOR_MODE_256_COLOR); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "256 color mode should not exit"); })
 
 GENERATE_OPTIONS_TEST(
-    color_mode_truecolor, ARGV_LIST("client", "--color-mode", "truecolor"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->color_mode, COLOR_MODE_TRUECOLOR); },
+    color_mode_truecolor, ARGV_LIST("client", "--color-mode", "truecolor"), true, { ASCIICHAT_REQUIRE_EQ(opts->color_mode, COLOR_MODE_TRUECOLOR); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "truecolor mode should not exit"); })
 
 GENERATE_OPTIONS_TEST(
-    render_mode_foreground, ARGV_LIST("client", "--render-mode", "foreground"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->render_mode, RENDER_MODE_FOREGROUND); },
+    render_mode_foreground, ARGV_LIST("client", "--render-mode", "foreground"), true, { ASCIICHAT_REQUIRE_EQ(opts->render_mode, RENDER_MODE_FOREGROUND); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "foreground render mode should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    render_mode_background, ARGV_LIST("client", "--render-mode", "background"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->render_mode, RENDER_MODE_BACKGROUND); },
+    render_mode_background, ARGV_LIST("client", "--render-mode", "background"), true, { ASCIICHAT_REQUIRE_EQ(opts->render_mode, RENDER_MODE_BACKGROUND); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "background render mode should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    render_mode_half_block, ARGV_LIST("client", "--render-mode", "half-block"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->render_mode, RENDER_MODE_HALF_BLOCK); },
+    render_mode_half_block, ARGV_LIST("client", "--render-mode", "half-block"), true, { ASCIICHAT_REQUIRE_EQ(opts->render_mode, RENDER_MODE_HALF_BLOCK); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "half-block render mode should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    palette_standard, ARGV_LIST("client", "--palette", "standard"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_STANDARD); },
+    palette_standard, ARGV_LIST("client", "--palette", "standard"), true, { ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_STANDARD); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "standard palette should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    palette_blocks, ARGV_LIST("client", "--palette", "blocks"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_BLOCKS); },
+    palette_blocks, ARGV_LIST("client", "--palette", "blocks"), true, { ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_BLOCKS); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "blocks palette should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
@@ -1060,8 +1011,7 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(
     test_flag_values,
     // NOTE: --quiet is now a global option, removed from this test
-    ARGV_LIST("client", "--audio", "--stretch", "--snapshot", "--encrypt", "--utf8", "--show-capabilities", "--flip-x"),
-    true,
+    ARGV_LIST("client", "--audio", "--stretch", "--snapshot", "--encrypt", "--utf8", "--show-capabilities", "--flip-x"), true,
     {
       // Test all flags were set
       ASCIICHAT_REQUIRE_EQ(opts->audio_enabled, 1);
@@ -1084,8 +1034,7 @@ GENERATE_OPTIONS_TEST(
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "encryption key should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_snapshot_delay_values, ARGV_LIST("client", "--snapshot", "--snapshot-delay", "2.5"), true,
-    { ASCIICHAT_REQUIRE_FLOAT_EQ(opts->snapshot_delay, 2.5f, 0.01); },
+    test_snapshot_delay_values, ARGV_LIST("client", "--snapshot", "--snapshot-delay", "2.5"), true, { ASCIICHAT_REQUIRE_FLOAT_EQ(opts->snapshot_delay, 2.5f, 0.01); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "snapshot delay should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
@@ -1099,9 +1048,8 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(
     test_comprehensive_client_values,
     // NOTE: --quiet and --log-file are now global options, removed from this test
-    ARGV_LIST("client", "10.0.0.1:9999", "--width=200", "--height=100", "--webcam-index=2", "--flip-x",
-              "--color-mode=256", "--render-mode=background", "--renderer=luminance", "--palette=digital", "--audio", "--stretch", "--snapshot",
-              "--snapshot-delay=5.0", "--encrypt", "--key=testkey123"),
+    ARGV_LIST("client", "10.0.0.1:9999", "--width=200", "--height=100", "--webcam-index=2", "--flip-x", "--color-mode=256", "--render-mode=background", "--renderer=luminance", "--palette=digital",
+              "--audio", "--stretch", "--snapshot", "--snapshot-delay=5.0", "--encrypt", "--key=testkey123"),
     true,
     {
       // Verify ALL values
@@ -1181,50 +1129,41 @@ GENERATE_OPTIONS_TEST(
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "none mode should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_16color_mode, ARGV_LIST("client", "--color-mode", "16"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->color_mode, COLOR_MODE_16_COLOR); },
+    test_16color_mode, ARGV_LIST("client", "--color-mode", "16"), true, { ASCIICHAT_REQUIRE_EQ(opts->color_mode, COLOR_MODE_16_COLOR); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "16color mode should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_16color_alias, ARGV_LIST("client", "--color-mode", "16color"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->color_mode, COLOR_MODE_16_COLOR); },
+    test_16color_alias, ARGV_LIST("client", "--color-mode", "16color"), true, { ASCIICHAT_REQUIRE_EQ(opts->color_mode, COLOR_MODE_16_COLOR); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "16color alias should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_256color_alias, ARGV_LIST("client", "--color-mode", "256color"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->color_mode, COLOR_MODE_256_COLOR); },
+    test_256color_alias, ARGV_LIST("client", "--color-mode", "256color"), true, { ASCIICHAT_REQUIRE_EQ(opts->color_mode, COLOR_MODE_256_COLOR); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "256color alias should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_truecolor_alias, ARGV_LIST("client", "--color-mode", "24bit"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->color_mode, COLOR_MODE_TRUECOLOR); },
+    test_truecolor_alias, ARGV_LIST("client", "--color-mode", "24bit"), true, { ASCIICHAT_REQUIRE_EQ(opts->color_mode, COLOR_MODE_TRUECOLOR); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "truecolor alias should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_palette_digital, ARGV_LIST("client", "--palette", "digital", "--renderer", "luminance"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_DIGITAL); },
+    test_palette_digital, ARGV_LIST("client", "--palette", "digital", "--renderer", "luminance"), true, { ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_DIGITAL); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "digital palette should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_palette_minimal, ARGV_LIST("client", "--palette", "minimal"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_MINIMAL); },
+    test_palette_minimal, ARGV_LIST("client", "--palette", "minimal"), true, { ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_MINIMAL); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "minimal palette should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_palette_cool, ARGV_LIST("client", "--palette", "cool"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_COOL); },
+    test_palette_cool, ARGV_LIST("client", "--palette", "cool"), true, { ASCIICHAT_REQUIRE_EQ(opts->palette_type, PALETTE_COOL); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "cool palette should not cause exit"); })
 
 /* Converted looped palette test into specific GENERATE_OPTIONS_TEST cases above. */
 
 GENERATE_OPTIONS_TEST(
-    test_render_mode_fg_alias, ARGV_LIST("client", "--render-mode", "fg"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->render_mode, RENDER_MODE_FOREGROUND); },
+    test_render_mode_fg_alias, ARGV_LIST("client", "--render-mode", "fg"), true, { ASCIICHAT_REQUIRE_EQ(opts->render_mode, RENDER_MODE_FOREGROUND); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "fg alias should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_render_mode_bg_alias, ARGV_LIST("client", "--render-mode", "bg"), true,
-    { ASCIICHAT_REQUIRE_EQ(opts->render_mode, RENDER_MODE_BACKGROUND); },
+    test_render_mode_bg_alias, ARGV_LIST("client", "--render-mode", "bg"), true, { ASCIICHAT_REQUIRE_EQ(opts->render_mode, RENDER_MODE_BACKGROUND); },
     { ASCIICHAT_REQUIRE_EQ(exit_code, 0, "bg alias should not cause exit"); })
 
 // NOTE: --log-file is now a global option handled at binary level, not mode-specific
@@ -1391,13 +1330,11 @@ TEST_CASE("options/deferred_action_first_wins", "[options]") {
 
   // Try to defer second action
   action_list_microphones();
-  ASCIICHAT_REQUIRE_EQ(actions_get_deferred(), ACTION_LIST_WEBCAMS,
-               "First action should still be deferred, second action should be ignored");
+  ASCIICHAT_REQUIRE_EQ(actions_get_deferred(), ACTION_LIST_WEBCAMS, "First action should still be deferred, second action should be ignored");
 
   // Try to defer third action
   action_show_capabilities();
-  ASCIICHAT_REQUIRE_EQ(actions_get_deferred(), ACTION_LIST_WEBCAMS,
-               "First action should still be deferred, third action should be ignored");
+  ASCIICHAT_REQUIRE_EQ(actions_get_deferred(), ACTION_LIST_WEBCAMS, "First action should still be deferred, third action should be ignored");
 }
 
 TEST_CASE("options/deferred_action_arguments", "[options]") {
@@ -1452,8 +1389,7 @@ TEST_CASE("options_errors/custom_validator_does_not_reuse_stale_errno", "[option
 }
 
 TEST_CASE("options/repeated_media_arguments_share_one_ordered_playlist", "[options]") {
-  char *argv[] = {"program",          "mirror", "--file", "first.mp4", "--url", "https://example.com/second.webm",
-                  "--file=third.mp4", NULL};
+  char *argv[] = {"program", "mirror", "--file", "first.mp4", "--url", "https://example.com/second.webm", "--file=third.mp4", NULL};
 #ifndef _WIN32
   optind = 1;
 #endif

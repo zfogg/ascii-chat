@@ -152,15 +152,14 @@ static ob_u8_test_case_t ob_u8_cases[] = {
     {100, "100", "Boundary: first triple digit"},
 };
 
-
-
-TEST_CASE("output_buffer/ob_u8_values", "[output_buffer]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(ob_u8_cases)); auto *tc = &generated_case;
+TEST_CASE("output_buffer/ob_u8_values", "[output_buffer]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(ob_u8_cases));
+  auto *tc = &generated_case;
   outbuf_t ob = {0};
 
   ob_u8(&ob, tc->value);
   ob_term(&ob);
-  ASCIICHAT_REQUIRE_STR_EQ(ob.buf, tc->expected_output, "%s: Expected '%s', got '%s'", tc->description, tc->expected_output,
-                   ob.buf);
+  ASCIICHAT_REQUIRE_STR_EQ(ob.buf, tc->expected_output, "%s: Expected '%s', got '%s'", tc->description, tc->expected_output, ob.buf);
 
   SAFE_FREE(ob.buf);
 }
@@ -186,15 +185,14 @@ static ob_u32_test_case_t ob_u32_cases[] = {
     {10000, "10000", "Boundary: first quintuple digit"},
 };
 
-
-
-TEST_CASE("output_buffer/ob_u32_values", "[output_buffer]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(ob_u32_cases)); auto *tc = &generated_case;
+TEST_CASE("output_buffer/ob_u32_values", "[output_buffer]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(ob_u32_cases));
+  auto *tc = &generated_case;
   outbuf_t ob = {0};
 
   ob_u32(&ob, tc->value);
   ob_term(&ob);
-  ASCIICHAT_REQUIRE_STR_EQ(ob.buf, tc->expected_output, "%s: Expected '%s', got '%s'", tc->description, tc->expected_output,
-                   ob.buf);
+  ASCIICHAT_REQUIRE_STR_EQ(ob.buf, tc->expected_output, "%s: Expected '%s', got '%s'", tc->description, tc->expected_output, ob.buf);
 
   SAFE_FREE(ob.buf);
 }

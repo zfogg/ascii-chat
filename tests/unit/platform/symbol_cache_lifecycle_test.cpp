@@ -131,12 +131,10 @@ TEST_CASE("symbol_cache_lifecycle/source_paths_classify_project_external_and_tru
   ASCIICHAT_REQUIRE_NOT(symbol_module_is_project(NULL));
   char output[256];
   bool external;
-  ASCIICHAT_REQUIRE_EQ(symbol_format_source_path("libasciichat.so", "lib/audio/audio.c", output, sizeof(output), &external, NULL),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(symbol_format_source_path("libasciichat.so", "lib/audio/audio.c", output, sizeof(output), &external, NULL), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_NOT(external);
   ASCIICHAT_REQUIRE_STR_EQ(output, "lib/audio/audio.c");
-  ASCIICHAT_REQUIRE_EQ(symbol_format_source_path("libc.so", "/a/b/c/d/e/f/source.c", output, sizeof(output), &external, NULL),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(symbol_format_source_path("libc.so", "/a/b/c/d/e/f/source.c", output, sizeof(output), &external, NULL), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE(external);
   ASCIICHAT_REQUIRE_NOT_NULL(strstr(output, "c/d/e/f/source.c"));
   strcpy(output, "unchanged");

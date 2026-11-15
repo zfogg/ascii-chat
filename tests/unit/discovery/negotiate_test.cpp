@@ -64,8 +64,7 @@ TEST_CASE("negotiate/elected_endpoint_uses_public_address_mapping_and_connection
       ASCIICHAT_REQUIRE_EQ(context.we_are_host, host_is_local != 0);
       ASCIICHAT_REQUIRE_STR_EQ(context.host_address, "203.0.113.7");
       ASCIICHAT_REQUIRE_EQ(context.host_port, kind == 1 ? 34567 : ACIP_HOST_DEFAULT_PORT);
-      const uint8_t expected[] = {ACIP_CONNECTION_TYPE_DIRECT_PUBLIC, ACIP_CONNECTION_TYPE_UPNP,
-                                  ACIP_CONNECTION_TYPE_STUN};
+      const uint8_t expected[] = {ACIP_CONNECTION_TYPE_DIRECT_PUBLIC, ACIP_CONNECTION_TYPE_UPNP, ACIP_CONNECTION_TYPE_STUN};
       ASCIICHAT_REQUIRE_EQ(context.connection_type, expected[kind]);
     }
   }

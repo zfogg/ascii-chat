@@ -212,8 +212,7 @@ static void peer_released(network_connection_t *connection, void *context) {
 }
 
 TEST_CASE("session_connections/disconnected_peer_preserves_receive_cause_without_queuing_rejection", "[session_connections]") {
-  const acip_transport_methods_t methods = {
-      .recv = peer_closed_recv, .send = peer_closed_send, .close = peer_close, .is_connected = peer_disconnected};
+  const acip_transport_methods_t methods = {.recv = peer_closed_recv, .send = peer_closed_send, .close = peer_close, .is_connected = peer_disconnected};
   acip_transport_t *transport = SAFE_CALLOC(1, sizeof(*transport), acip_transport_t *);
   transport->methods = &methods;
   network_connection_t *connection = NULL;

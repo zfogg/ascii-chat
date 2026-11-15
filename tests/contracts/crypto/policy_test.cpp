@@ -54,11 +54,9 @@ TEST_CASE("crypto_policy/checks_all_mode_constraints", "[crypto_policy]") {
       for (unsigned no_encrypt = 0; no_encrypt < 2; ++no_encrypt) {
         for (unsigned require_auth = 0; require_auth < 2; ++require_auth) {
           for (uint8_t mode = 0; mode <= ACIP_CRYPTO_FULL; ++mode) {
-            bool accepted = !(encrypt && no_encrypt) && (!require_auth || ACIP_CRYPTO_HAS_AUTH(mode)) &&
-                            (!(encrypt || (!secure && !no_encrypt)) || ACIP_CRYPTO_HAS_ENCRYPT(mode)) &&
+            bool accepted = !(encrypt && no_encrypt) && (!require_auth || ACIP_CRYPTO_HAS_AUTH(mode)) && (!(encrypt || (!secure && !no_encrypt)) || ACIP_CRYPTO_HAS_ENCRYPT(mode)) &&
                             (!no_encrypt || !ACIP_CRYPTO_HAS_ENCRYPT(mode));
-            ASCIICHAT_REQUIRE_EQ((crypto_policy_check_mode(secure, encrypt, no_encrypt, require_auth, mode) == ASCIICHAT_OK),
-                         accepted);
+            ASCIICHAT_REQUIRE_EQ((crypto_policy_check_mode(secure, encrypt, no_encrypt, require_auth, mode) == ASCIICHAT_OK), accepted);
             CLEAR_ERRNO();
           }
         }
@@ -79,8 +77,7 @@ TEST_CASE("crypto_policy/rejects_missing_arguments_without_writing_output", "[cr
 
 TEST_CASE("crypto_policy/rejects_unknown_wire_modes", "[crypto_policy]") {
   for (unsigned mode = ACIP_CRYPTO_FULL + 1; mode <= UINT8_MAX; ++mode) {
-    ASCIICHAT_REQUIRE_EQ(crypto_policy_check_mode(true, false, false, false, (uint8_t)mode), ERROR_CRYPTO,
-                 "Unknown wire mode %u must not bypass security policy", mode);
+    ASCIICHAT_REQUIRE_EQ(crypto_policy_check_mode(true, false, false, false, (uint8_t)mode), ERROR_CRYPTO, "Unknown wire mode %u must not bypass security policy", mode);
     CLEAR_ERRNO();
   }
 }

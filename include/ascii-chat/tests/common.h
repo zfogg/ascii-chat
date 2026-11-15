@@ -202,7 +202,6 @@ extern uint64_t g_snapshot_last_capture_elapsed_ns;
 }
 #endif
 
-
 // =============================================================================
 // Test Environment Detection
 // =============================================================================
@@ -384,7 +383,11 @@ static inline void test_set_height(unsigned short int value) {
 #define ASCIICHAT_REQUIRE_STR_EMPTY(value, ...) REQUIRE((value)[0] == '\0')
 #define ASCIICHAT_REQUIRE_STR_NOT_EMPTY(value, ...) REQUIRE((value)[0] != '\0')
 #define ASCIICHAT_SKIP(...) SKIP("test skipped")
-#define ASCIICHAT_ASSUME(condition) do { if (!(condition)) SKIP("assumption not satisfied"); } while (false)
+#define ASCIICHAT_ASSUME(condition)                                                                                                                                                                    \
+  do {                                                                                                                                                                                                 \
+    if (!(condition))                                                                                                                                                                                  \
+      SKIP("assumption not satisfied");                                                                                                                                                                \
+  } while (false)
 #define ASCIICHAT_FAIL(...) FAIL(__VA_ARGS__)
 #define ASCIICHAT_INFO(...) INFO(__VA_ARGS__)
 #define ASCIICHAT_WARN(...) WARN(__VA_ARGS__)

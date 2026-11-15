@@ -96,55 +96,49 @@ typedef struct {
   char description[128];
 } invalid_dimensions_test_case_t;
 
-static invalid_dimensions_test_case_t invalid_dimensions_cases[] = {
-    // aspect_ratio invalid image dimensions
-    {0, 1080, 80, 24, 1, 1, "aspect_ratio: zero image width"},
-    {1920, 0, 80, 24, 1, 1, "aspect_ratio: zero image height"},
-    {-1920, 1080, 80, 24, 1, 1, "aspect_ratio: negative image width"},
-    {1920, -1080, 80, 24, 1, 1, "aspect_ratio: negative image height"},
+static invalid_dimensions_test_case_t invalid_dimensions_cases[] = {// aspect_ratio invalid image dimensions
+                                                                    {0, 1080, 80, 24, 1, 1, "aspect_ratio: zero image width"},
+                                                                    {1920, 0, 80, 24, 1, 1, "aspect_ratio: zero image height"},
+                                                                    {-1920, 1080, 80, 24, 1, 1, "aspect_ratio: negative image width"},
+                                                                    {1920, -1080, 80, 24, 1, 1, "aspect_ratio: negative image height"},
 
-    // aspect_ratio2 invalid image dimensions
-    {0, 1080, 80, 24, 1, 1, "aspect_ratio2: zero image width"},
-    {1920, 0, 80, 24, 1, 1, "aspect_ratio2: zero image height"},
-    {-1920, 1080, 80, 24, 1, 1, "aspect_ratio2: negative image width"},
-    {1920, -1080, 80, 24, 1, 1, "aspect_ratio2: negative image height"},
+                                                                    // aspect_ratio2 invalid image dimensions
+                                                                    {0, 1080, 80, 24, 1, 1, "aspect_ratio2: zero image width"},
+                                                                    {1920, 0, 80, 24, 1, 1, "aspect_ratio2: zero image height"},
+                                                                    {-1920, 1080, 80, 24, 1, 1, "aspect_ratio2: negative image width"},
+                                                                    {1920, -1080, 80, 24, 1, 1, "aspect_ratio2: negative image height"},
 
-    // aspect_ratio2 invalid target dimensions
-    {1920, 1080, 0, 24, 1, 1, "aspect_ratio2: zero target width"},
-    {1920, 1080, 80, 0, 1, 1, "aspect_ratio2: zero target height"},
-    {1920, 1080, -80, 24, 1, 1, "aspect_ratio2: negative target width"},
-    {1920, 1080, 80, -24, 1, 1, "aspect_ratio2: negative target height"},
+                                                                    // aspect_ratio2 invalid target dimensions
+                                                                    {1920, 1080, 0, 24, 1, 1, "aspect_ratio2: zero target width"},
+                                                                    {1920, 1080, 80, 0, 1, 1, "aspect_ratio2: zero target height"},
+                                                                    {1920, 1080, -80, 24, 1, 1, "aspect_ratio2: negative target width"},
+                                                                    {1920, 1080, 80, -24, 1, 1, "aspect_ratio2: negative target height"},
 
-    // calculate_fit_dimensions_pixel invalid image dimensions
-    {0, 1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: zero image width"},
-    {1920, 0, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: zero image height"},
-    {-1920, 1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: negative image width"},
-    {1920, -1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: negative image height"}};
+                                                                    // calculate_fit_dimensions_pixel invalid image dimensions
+                                                                    {0, 1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: zero image width"},
+                                                                    {1920, 0, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: zero image height"},
+                                                                    {-1920, 1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: negative image width"},
+                                                                    {1920, -1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: negative image height"}};
 
-
-
-TEST_CASE("aspect_ratio/invalid_dimensions_parameterized", "[aspect_ratio]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(invalid_dimensions_cases)); auto *test_case = &generated_case;
+TEST_CASE("aspect_ratio/invalid_dimensions_parameterized", "[aspect_ratio]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(invalid_dimensions_cases));
+  auto *test_case = &generated_case;
   ssize_t out_width, out_height;
 
   // Determine which function to test based on description
   if (strstr(test_case->description, "aspect_ratio2:") != NULL) {
-    aspect_ratio2(test_case->img_w, test_case->img_h, test_case->target_w, test_case->target_h, &out_width,
-                  &out_height);
+    aspect_ratio2(test_case->img_w, test_case->img_h, test_case->target_w, test_case->target_h, &out_width, &out_height);
   } else if (strstr(test_case->description, "calculate_fit_dimensions_pixel:") != NULL) {
     int out_w, out_h;
-    calculate_fit_dimensions_pixel((int)test_case->img_w, (int)test_case->img_h, (int)test_case->target_w,
-                                   (int)test_case->target_h, &out_w, &out_h);
+    calculate_fit_dimensions_pixel((int)test_case->img_w, (int)test_case->img_h, (int)test_case->target_w, (int)test_case->target_h, &out_w, &out_h);
     out_width = (ssize_t)out_w;
     out_height = (ssize_t)out_h;
   } else {
-    aspect_ratio(test_case->img_w, test_case->img_h, test_case->target_w, test_case->target_h, false, &out_width,
-                 &out_height);
+    aspect_ratio(test_case->img_w, test_case->img_h, test_case->target_w, test_case->target_h, false, &out_width, &out_height);
   }
 
-  ASCIICHAT_REQUIRE_EQ(out_width, test_case->expected_w, "%s: expected width %zd, got %zd", test_case->description,
-               test_case->expected_w, out_width);
-  ASCIICHAT_REQUIRE_EQ(out_height, test_case->expected_h, "%s: expected height %zd, got %zd", test_case->description,
-               test_case->expected_h, out_height);
+  ASCIICHAT_REQUIRE_EQ(out_width, test_case->expected_w, "%s: expected width %zd, got %zd", test_case->description, test_case->expected_w, out_width);
+  ASCIICHAT_REQUIRE_EQ(out_height, test_case->expected_h, "%s: expected height %zd, got %zd", test_case->description, test_case->expected_h, out_height);
 }
 
 TEST_CASE("aspect_ratio/very_small_image", "[aspect_ratio]") {
@@ -342,10 +336,8 @@ TEST_CASE("aspect_ratio/random_values_comprehensive", "[aspect_ratio]") {
 
     aspect_ratio(img_w, img_h, term_w, term_h, stretch, &out_width, &out_height);
 
-    ASCIICHAT_REQUIRE_GT(out_width, 0, "Random test %d: img_w=%zd, img_h=%zd, term_w=%zd, term_h=%zd, stretch=%d", i, img_w,
-                 img_h, term_w, term_h, stretch);
-    ASCIICHAT_REQUIRE_GT(out_height, 0, "Random test %d: img_w=%zd, img_h=%zd, term_w=%zd, term_h=%zd, stretch=%d", i, img_w,
-                 img_h, term_w, term_h, stretch);
+    ASCIICHAT_REQUIRE_GT(out_width, 0, "Random test %d: img_w=%zd, img_h=%zd, term_w=%zd, term_h=%zd, stretch=%d", i, img_w, img_h, term_w, term_h, stretch);
+    ASCIICHAT_REQUIRE_GT(out_height, 0, "Random test %d: img_w=%zd, img_h=%zd, term_w=%zd, term_h=%zd, stretch=%d", i, img_w, img_h, term_w, term_h, stretch);
 
     if (stretch) {
       ASCIICHAT_REQUIRE_EQ(out_width, term_w);
@@ -370,10 +362,8 @@ TEST_CASE("aspect_ratio2/random_values_comprehensive", "[aspect_ratio2]") {
 
     aspect_ratio2(img_w, img_h, target_w, target_h, &out_width, &out_height);
 
-    ASCIICHAT_REQUIRE_GT(out_width, 0, "Random test %d: img_w=%zd, img_h=%zd, target_w=%zd, target_h=%zd", i, img_w, img_h,
-                 target_w, target_h);
-    ASCIICHAT_REQUIRE_GT(out_height, 0, "Random test %d: img_w=%zd, img_h=%zd, target_w=%zd, target_h=%zd", i, img_w, img_h,
-                 target_w, target_h);
+    ASCIICHAT_REQUIRE_GT(out_width, 0, "Random test %d: img_w=%zd, img_h=%zd, target_w=%zd, target_h=%zd", i, img_w, img_h, target_w, target_h);
+    ASCIICHAT_REQUIRE_GT(out_height, 0, "Random test %d: img_w=%zd, img_h=%zd, target_w=%zd, target_h=%zd", i, img_w, img_h, target_w, target_h);
     ASCIICHAT_REQUIRE_LE(out_width, target_w);
     ASCIICHAT_REQUIRE_LE(out_height, target_h);
   }
@@ -393,8 +383,7 @@ TEST_CASE("calculate_fit_dimensions_pixel/random_values_comprehensive", "[calcul
     calculate_fit_dimensions_pixel(img_w, img_h, max_w, max_h, &out_width, &out_height);
 
     ASCIICHAT_REQUIRE_GT(out_width, 0, "Random test %d: img_w=%d, img_h=%d, max_w=%d, max_h=%d", i, img_w, img_h, max_w, max_h);
-    ASCIICHAT_REQUIRE_GT(out_height, 0, "Random test %d: img_w=%d, img_h=%d, max_w=%d, max_h=%d", i, img_w, img_h, max_w,
-                 max_h);
+    ASCIICHAT_REQUIRE_GT(out_height, 0, "Random test %d: img_w=%d, img_h=%d, max_w=%d, max_h=%d", i, img_w, img_h, max_w, max_h);
     ASCIICHAT_REQUIRE_LE(out_width, max_w);
     ASCIICHAT_REQUIRE_LE(out_height, max_h);
   }
@@ -540,25 +529,20 @@ TEST_CASE("aspect_ratio/aspect_ratio_preservation_property", "[aspect_ratio]") {
   float input_aspect = (float)img_w / (float)img_h;
   float output_aspect = (float)out_w2 / (float)out_h2;
   float aspect_error = fabsf(output_aspect - input_aspect) / input_aspect;
-  ASCIICHAT_REQUIRE_LT(aspect_error, 0.25f, "aspect_ratio2: aspect ratio not preserved (input=%.2f, output=%.2f, error=%.1f%%)",
-               input_aspect, output_aspect, aspect_error * 100.0f);
+  ASCIICHAT_REQUIRE_LT(aspect_error, 0.25f, "aspect_ratio2: aspect ratio not preserved (input=%.2f, output=%.2f, error=%.1f%%)", input_aspect, output_aspect, aspect_error * 100.0f);
 
   // Test calculate_fit_dimensions_pixel (same properties)
   int out_w_pix, out_h_pix;
   calculate_fit_dimensions_pixel((int)img_w, (int)img_h, (int)target_w, (int)target_h, &out_w_pix, &out_h_pix);
 
-  ASCIICHAT_REQUIRE_LE(out_w_pix, (int)target_w, "calculate_fit_dimensions_pixel: width %d exceeds target %zd", out_w_pix,
-                target_w);
-  ASCIICHAT_REQUIRE_LE(out_h_pix, (int)target_h, "calculate_fit_dimensions_pixel: height %d exceeds target %zd", out_h_pix,
-                target_h);
+  ASCIICHAT_REQUIRE_LE(out_w_pix, (int)target_w, "calculate_fit_dimensions_pixel: width %d exceeds target %zd", out_w_pix, target_w);
+  ASCIICHAT_REQUIRE_LE(out_h_pix, (int)target_h, "calculate_fit_dimensions_pixel: height %d exceeds target %zd", out_h_pix, target_h);
   ASCIICHAT_REQUIRE_GT(out_w_pix, 0, "calculate_fit_dimensions_pixel: width must be positive");
   ASCIICHAT_REQUIRE_GT(out_h_pix, 0, "calculate_fit_dimensions_pixel: height must be positive");
 
   output_aspect = (float)out_w_pix / (float)out_h_pix;
   aspect_error = fabsf(output_aspect - input_aspect) / input_aspect;
-  ASCIICHAT_REQUIRE_LT(aspect_error, 0.25f,
-               "calculate_fit_dimensions_pixel: aspect ratio not preserved (input=%.2f, output=%.2f, error=%.1f%%)",
-               input_aspect, output_aspect, aspect_error * 100.0f);
+  ASCIICHAT_REQUIRE_LT(aspect_error, 0.25f, "calculate_fit_dimensions_pixel: aspect ratio not preserved (input=%.2f, output=%.2f, error=%.1f%%)", input_aspect, output_aspect, aspect_error * 100.0f);
 }
 
 // Keep one simple precision test for aspect_ratio with CHAR_ASPECT correction

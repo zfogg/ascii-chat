@@ -79,8 +79,7 @@ static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t
   void *payload = NULL;
   size_t payload_len = 0;
 
-  if (receive_packet(server_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK ||
-      pkt_type != PACKET_TYPE_PROTOCOL_VERSION) {
+  if (receive_packet(server_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK || pkt_type != PACKET_TYPE_PROTOCOL_VERSION) {
     if (payload)
       buffer_release(payload);
     return -1;
@@ -93,8 +92,7 @@ static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t
     return -1;
 
   payload = NULL;
-  if (receive_packet(server_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK ||
-      pkt_type != PACKET_TYPE_CRYPTO_CAPABILITIES) {
+  if (receive_packet(server_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK || pkt_type != PACKET_TYPE_CRYPTO_CAPABILITIES) {
     if (payload)
       buffer_release(payload);
     return -1;
@@ -136,8 +134,7 @@ static int client_protocol_negotiation(int client_fd, crypto_handshake_context_t
   if (send_protocol_version_packet(client_fd, &client_version) != 0)
     return -1;
 
-  if (receive_packet(client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK ||
-      pkt_type != PACKET_TYPE_PROTOCOL_VERSION) {
+  if (receive_packet(client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK || pkt_type != PACKET_TYPE_PROTOCOL_VERSION) {
     if (payload)
       buffer_release(payload);
     return -1;
@@ -152,8 +149,7 @@ static int client_protocol_negotiation(int client_fd, crypto_handshake_context_t
     return -1;
 
   payload = NULL;
-  if (receive_packet(client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK ||
-      pkt_type != PACKET_TYPE_CRYPTO_CAPABILITIES) {
+  if (receive_packet(client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK || pkt_type != PACKET_TYPE_CRYPTO_CAPABILITIES) {
     if (payload)
       buffer_release(payload);
     return -1;
@@ -161,8 +157,7 @@ static int client_protocol_negotiation(int client_fd, crypto_handshake_context_t
   buffer_release(payload);
 
   payload = NULL;
-  if (receive_packet(client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK ||
-      pkt_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
+  if (receive_packet(client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK || pkt_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
     if (payload)
       buffer_release(payload);
     return -1;
@@ -199,8 +194,7 @@ static void *client_handshake_thread(void *arg) {
   // Receive server's KEY_EXCHANGE_INIT
   if (receive_packet(args->client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK)
     return NULL;
-  if (crypto_handshake_client_key_exchange(args->ctx, args->transport, pkt_type, payload, payload_len) !=
-      ASCIICHAT_OK) {
+  if (crypto_handshake_client_key_exchange(args->ctx, args->transport, pkt_type, payload, payload_len) != ASCIICHAT_OK) {
     buffer_release(payload);
     return NULL;
   }
@@ -210,8 +204,7 @@ static void *client_handshake_thread(void *arg) {
   payload = NULL;
   if (receive_packet(args->client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK)
     return NULL;
-  if (crypto_handshake_client_auth_response(args->ctx, args->transport, pkt_type, payload, payload_len) !=
-      ASCIICHAT_OK) {
+  if (crypto_handshake_client_auth_response(args->ctx, args->transport, pkt_type, payload, payload_len) != ASCIICHAT_OK) {
     buffer_release(payload);
     return NULL;
   }
@@ -278,17 +271,13 @@ TEST_CASE("gpg_handshake/complete_gpg_handshake_with_authentication", "[gpg_hand
   void *payload = NULL;
   size_t payload_len = 0;
   ASCIICHAT_REQUIRE_EQ(receive_packet(g_network.server_fd, &pkt_type, &payload, &payload_len), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(
-      crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len),
-      ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len), ASCIICHAT_OK);
   buffer_release(payload);
 
   if (server_ctx.state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
     payload = NULL;
     ASCIICHAT_REQUIRE_EQ(receive_packet(g_network.server_fd, &pkt_type, &payload, &payload_len), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(
-        crypto_handshake_server_complete(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len),
-        ASCIICHAT_OK);
+    ASCIICHAT_REQUIRE_EQ(crypto_handshake_server_complete(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len), ASCIICHAT_OK);
     buffer_release(payload);
   }
 

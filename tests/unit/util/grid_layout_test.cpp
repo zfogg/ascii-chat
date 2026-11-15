@@ -20,8 +20,7 @@ typedef struct {
 } grid_test_case_t;
 
 // Calculate optimal grid layout based on terminal size and client count
-static void calculate_optimal_grid(int terminal_width, int terminal_height, int num_clients, int *out_cols,
-                                   int *out_rows, int *out_cell_width, int *out_cell_height) {
+static void calculate_optimal_grid(int terminal_width, int terminal_height, int num_clients, int *out_cols, int *out_rows, int *out_cell_width, int *out_cell_height) {
   if (num_clients == 0) {
     *out_cols = 0;
     *out_rows = 0;
@@ -379,22 +378,19 @@ static grid_test_case_t test_cases[] = {
     {150, 60, 9, 4, 3, 37, 20},  // 4x3 grid, total 148x60 (off by 2)
 };
 
-
-
-TEST_CASE("grid_layout/parameterized_comprehensive", "[grid_layout]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(test_cases)); auto *tc = &generated_case;
+TEST_CASE("grid_layout/parameterized_comprehensive", "[grid_layout]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(test_cases));
+  auto *tc = &generated_case;
   int cols, rows, cell_width, cell_height;
 
-  calculate_optimal_grid(tc->terminal_width, tc->terminal_height, tc->num_clients, &cols, &rows, &cell_width,
-                         &cell_height);
+  calculate_optimal_grid(tc->terminal_width, tc->terminal_height, tc->num_clients, &cols, &rows, &cell_width, &cell_height);
 
-  ASCIICHAT_CHECK_EQ(cols, tc->expected_cols, "Terminal %dx%d, %d clients: Expected %d cols, got %d", tc->terminal_width,
-               tc->terminal_height, tc->num_clients, tc->expected_cols, cols);
-  ASCIICHAT_CHECK_EQ(rows, tc->expected_rows, "Terminal %dx%d, %d clients: Expected %d rows, got %d", tc->terminal_width,
-               tc->terminal_height, tc->num_clients, tc->expected_rows, rows);
-  ASCIICHAT_CHECK_EQ(cell_width, tc->expected_cell_width, "Terminal %dx%d, %d clients: Expected cell width %d, got %d",
-               tc->terminal_width, tc->terminal_height, tc->num_clients, tc->expected_cell_width, cell_width);
-  ASCIICHAT_CHECK_EQ(cell_height, tc->expected_cell_height, "Terminal %dx%d, %d clients: Expected cell height %d, got %d",
-               tc->terminal_width, tc->terminal_height, tc->num_clients, tc->expected_cell_height, cell_height);
+  ASCIICHAT_CHECK_EQ(cols, tc->expected_cols, "Terminal %dx%d, %d clients: Expected %d cols, got %d", tc->terminal_width, tc->terminal_height, tc->num_clients, tc->expected_cols, cols);
+  ASCIICHAT_CHECK_EQ(rows, tc->expected_rows, "Terminal %dx%d, %d clients: Expected %d rows, got %d", tc->terminal_width, tc->terminal_height, tc->num_clients, tc->expected_rows, rows);
+  ASCIICHAT_CHECK_EQ(cell_width, tc->expected_cell_width, "Terminal %dx%d, %d clients: Expected cell width %d, got %d", tc->terminal_width, tc->terminal_height, tc->num_clients,
+                     tc->expected_cell_width, cell_width);
+  ASCIICHAT_CHECK_EQ(cell_height, tc->expected_cell_height, "Terminal %dx%d, %d clients: Expected cell height %d, got %d", tc->terminal_width, tc->terminal_height, tc->num_clients,
+                     tc->expected_cell_height, cell_height);
 
   // NOTE: We don't assert full space utilization here because integer division can cause
   // off-by-one or off-by-two rounding (e.g., 160/3=53, so 3*53=159 not 160).

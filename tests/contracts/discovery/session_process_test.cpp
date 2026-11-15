@@ -53,19 +53,17 @@ static asciichat_error_t discovery_session_send(acip_transport_t *transport, con
   return send_result;
 }
 /** @brief Inject a framed signaling packet or a controlled transport receive failure. */
-static asciichat_error_t discovery_session_receive(acip_transport_t *transport, void **buffer, size_t *len,
-                                                   void **allocation) {
+static asciichat_error_t discovery_session_receive(acip_transport_t *transport, void **buffer, size_t *len, void **allocation) {
   (void)transport;
   receives++;
   if (recv_result != ASCIICHAT_OK)
     return recv_result;
   packet_header_t *header = buffer_alloc(NULL, sizeof(*header) + incoming_length);
   ASCIICHAT_REQUIRE(header);
-  *header = (packet_header_t){
-      .magic = HOST_TO_NET_U64(PACKET_MAGIC),
-      .type = HOST_TO_NET_U16(incoming_type),
-      .length = HOST_TO_NET_U32((uint32_t)incoming_length),
-      .crc32 = HOST_TO_NET_U32(incoming_length ? asciichat_crc32(incoming_payload, incoming_length) : 0)};
+  *header = (packet_header_t){.magic = HOST_TO_NET_U64(PACKET_MAGIC),
+                              .type = HOST_TO_NET_U16(incoming_type),
+                              .length = HOST_TO_NET_U32((uint32_t)incoming_length),
+                              .crc32 = HOST_TO_NET_U32(incoming_length ? asciichat_crc32(incoming_payload, incoming_length) : 0)};
   if (incoming_length)
     memcpy(header + 1, incoming_payload, incoming_length);
 
@@ -74,8 +72,7 @@ static asciichat_error_t discovery_session_receive(acip_transport_t *transport, 
   return ASCIICHAT_OK;
 }
 static discovery_session_t discovery_session_fixture(discovery_state_t state) {
-  return (discovery_session_t){
-      .state = state, .on_state_change = discovery_session_transition, .handoff_last_sample_ms = now_ms};
+  return (discovery_session_t){.state = state, .on_state_change = discovery_session_transition, .handoff_last_sample_ms = now_ms};
 }
 static void discovery_test_pong(void *context) {
   discovery_session_host_pong(context);
@@ -90,8 +87,7 @@ static void discovery_check_pong_clock(acip_transport_t *transport) {
   session.liveness.timeout_ms = 10000;
   session.liveness.max_failures = 3;
   session_protocol_t protocol;
-  session_protocol_init(&protocol, transport, (session_protocol_media_t){0},
-                        (acip_client_callbacks_t){.on_pong = discovery_test_pong, .app_ctx = &session});
+  session_protocol_init(&protocol, transport, (session_protocol_media_t){0}, (acip_client_callbacks_t){.on_pong = discovery_test_pong, .app_ctx = &session});
   for (int reply = 0; reply < 4; ++reply) {
     session.liveness.last_ping_sent_ms = now_ms;
     session.liveness.ping_in_flight = true;
@@ -162,8 +158,7 @@ static void discovery_session_check_tcp(int scenario) {
     asciichat_error_t result = discovery_session_step(&session, 0);
     if (result != ASCIICHAT_OK) {
       asciichat_error_context_t error;
-      log_error("Host connection result %d: %s", result,
-                HAS_ERRNO(&error) ? error.context_message : "no error context");
+      log_error("Host connection result %d: %s", result, HAS_ERRNO(&error) ? error.context_message : "no error context");
     }
     ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK);
     ASCIICHAT_REQUIRE(session.state == DISCOVERY_STATE_ACTIVE && session.participant_ctx);
@@ -209,8 +204,7 @@ static void discovery_session_check_negotiation(void) {
   session.negotiate.peer_quality.has_public_ip = true;
   ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE(!session.is_host && session.state == DISCOVERY_STATE_NEGOTIATING);
-  SAFE_STRNCPY(session.negotiate.peer_quality.public_address, "127.0.0.2",
-               sizeof(session.negotiate.peer_quality.public_address));
+  SAFE_STRNCPY(session.negotiate.peer_quality.public_address, "127.0.0.2", sizeof(session.negotiate.peer_quality.public_address));
   ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE(!session.is_host && session.state == DISCOVERY_STATE_CONNECTING_HOST);
   ASCIICHAT_REQUIRE(!strcmp(session.host_address, "127.0.0.2"));
@@ -223,19 +217,14 @@ TEST_CASE("discovery_session_process/state_dispatch_keepalive_and_migration", "[
   ASCIICHAT_REQUIRE_EQ(options_state_set(&opts), ASCIICHAT_OK);
   app_callbacks_t callbacks = {.platform_get_monotonic_time_us = discovery_session_clock};
   app_callbacks_register(&callbacks);
-  acip_transport_methods_t methods = {.send = discovery_session_send,
-                                      .recv = discovery_session_receive,
-                                      .is_connected = discovery_session_connected,
-                                      .has_pending_data = discovery_session_pending};
+  acip_transport_methods_t methods = {.send = discovery_session_send, .recv = discovery_session_receive, .is_connected = discovery_session_connected, .has_pending_data = discovery_session_pending};
   acip_transport_t transport = {.methods = &methods};
   discovery_check_pong_clock(&transport);
 
   ASCIICHAT_REQUIRE_EQ(discovery_session_process(NULL, 0), ERROR_INVALID_PARAM);
   discovery_session_t session = discovery_session_fixture((discovery_state_t)-1);
   ASCIICHAT_REQUIRE_EQ(discovery_session_step(&session, 0), ERROR_INVALID_STATE);
-  discovery_state_t idle_states[] = {DISCOVERY_STATE_INIT, DISCOVERY_STATE_CONNECTING_ACDS,
-                                     DISCOVERY_STATE_CREATING_SESSION, DISCOVERY_STATE_JOINING_SESSION,
-                                     DISCOVERY_STATE_ENDED};
+  discovery_state_t idle_states[] = {DISCOVERY_STATE_INIT, DISCOVERY_STATE_CONNECTING_ACDS, DISCOVERY_STATE_CREATING_SESSION, DISCOVERY_STATE_JOINING_SESSION, DISCOVERY_STATE_ENDED};
   for (size_t i = 0; i < sizeof(idle_states) / sizeof(idle_states[0]); i++) {
     session = discovery_session_fixture(idle_states[i]);
     ASCIICHAT_REQUIRE(discovery_session_step(&session, 0) == ASCIICHAT_OK && session.state == idle_states[i]);
@@ -366,10 +355,7 @@ TEST_CASE("discovery_session_process/authoritative_designation_is_idempotent_and
   ASCIICHAT_REQUIRE_EQ(options_state_init(), ASCIICHAT_OK);
   app_callbacks_t callbacks = {.platform_get_monotonic_time_us = discovery_session_clock};
   app_callbacks_register(&callbacks);
-  acip_transport_methods_t methods = {.send = discovery_session_send,
-                                      .recv = discovery_session_receive,
-                                      .is_connected = discovery_session_connected,
-                                      .has_pending_data = discovery_session_pending};
+  acip_transport_methods_t methods = {.send = discovery_session_send, .recv = discovery_session_receive, .is_connected = discovery_session_connected, .has_pending_data = discovery_session_pending};
   acip_transport_t transport = {.methods = &methods};
   discovery_session_t session = discovery_session_fixture(DISCOVERY_STATE_ACTIVE);
   session.is_host = true;
@@ -377,11 +363,7 @@ TEST_CASE("discovery_session_process/authoritative_designation_is_idempotent_and
   session.session_id[0] = 2;
   session.acds_transport = &transport;
   session.last_acds_keepalive_ns = time_get_ns();
-  acip_host_designated_t host = {.session_id = {2},
-                                 .host_id = {1},
-                                 .host_address = "127.0.0.1",
-                                 .host_port = 3000,
-                                 .generation = HOST_TO_NET_U32(3)};
+  acip_host_designated_t host = {.session_id = {2}, .host_id = {1}, .host_address = "127.0.0.1", .host_port = 3000, .generation = HOST_TO_NET_U32(3)};
   incoming_type = PACKET_TYPE_ACIP_HOST_DESIGNATED;
   incoming_payload = &host;
   incoming_length = sizeof(host);
@@ -425,8 +407,7 @@ TEST_CASE("discovery_session_process/authoritative_designation_is_idempotent_and
   ASCIICHAT_REQUIRE_NOT(session.handoff_pending);
   ASCIICHAT_REQUIRE_EQ(session.state, DISCOVERY_STATE_ACTIVE);
   // A duplicated commit must not queue another worker teardown either.
-  consensus_handoff_message_t commit = {
-      .kind = HANDOFF_COMMIT, .session = {2}, .participant = {7}, .generation = 5, .port = 4000};
+  consensus_handoff_message_t commit = {.kind = HANDOFF_COMMIT, .session = {2}, .participant = {7}, .generation = 5, .port = 4000};
   uint8_t bytes[CONSENSUS_HANDOFF_HEADER];
   consensus_handoff_encode(&commit, bytes);
   incoming_type = (packet_type_t)CONSENSUS_HANDOFF_PACKET;
@@ -523,9 +504,8 @@ static asciichat_error_t designation_send(acip_transport_t *transport, const voi
     atomic_fetch_add_int(&peer->designated, 1);
   } else if (type == PACKET_TYPE_ACIP_HOST_DESIGNATED && len > sizeof(*header) + sizeof(peer->last)) {
     memcpy(&peer->last, header + 1, sizeof(peer->last));
-    if (acds_transport_metadata_decode((const uint8_t *)(header + 1) + sizeof(peer->last),
-                                       len - sizeof(*header) - sizeof(peer->last), &peer->quic_port,
-                                       peer->webtransport_url, sizeof(peer->webtransport_url)) != ASCIICHAT_OK)
+    if (acds_transport_metadata_decode((const uint8_t *)(header + 1) + sizeof(peer->last), len - sizeof(*header) - sizeof(peer->last), &peer->quic_port, peer->webtransport_url,
+                                       sizeof(peer->webtransport_url)) != ASCIICHAT_OK)
       return ERROR_NETWORK_PROTOCOL;
     atomic_fetch_add_int(&peer->extended, 1);
   } else if (type == PACKET_TYPE_ERROR_MESSAGE) {
@@ -553,8 +533,7 @@ static asciichat_error_t designation_open(network_connection_t *connection, void
   atomic_store_bool(&peer->opened, true);
   return ASCIICHAT_OK;
 }
-static asciichat_error_t designation_packet(network_connection_t *connection, packet_type_t type, const void *data,
-                                            size_t length, void *context) {
+static asciichat_error_t designation_packet(network_connection_t *connection, packet_type_t type, const void *data, size_t length, void *context) {
   (void)connection;
   (void)type;
   (void)data;
@@ -562,12 +541,8 @@ static asciichat_error_t designation_packet(network_connection_t *connection, pa
   (void)context;
   return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unexpected packet in outbound designation fixture");
 }
-static acip_transport_t *designation_peer(network_server_t *server, const uint8_t session[16],
-                                          const uint8_t participant[16], bool joined) {
-  static const acip_transport_methods_t methods = {.send = designation_send,
-                                                   .recv = designation_recv,
-                                                   .close = designation_close,
-                                                   .is_connected = discovery_session_connected};
+static acip_transport_t *designation_peer(network_server_t *server, const uint8_t session[16], const uint8_t participant[16], bool joined) {
+  static const acip_transport_methods_t methods = {.send = designation_send, .recv = designation_recv, .close = designation_close, .is_connected = discovery_session_connected};
   acip_transport_t *transport = SAFE_CALLOC(1, sizeof(*transport), acip_transport_t *);
   designation_peer_t *peer = SAFE_CALLOC(1, sizeof(*peer), designation_peer_t *);
   transport->methods = &methods;
@@ -592,26 +567,21 @@ TEST_CASE("discovery_session_process/host_fanout_authority_isolation_and_reconne
   ASCIICHAT_REQUIRE_EQ(database_init(":memory:", &server.db), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(mutex_init(&server.handoff_mutex, "designation-test"), ASCIICHAT_OK);
   server.handoff_mutex_initialized = true;
-  acip_session_create_t request = {
-      .session_type = SESSION_TYPE_WEBRTC, .max_participants = 8, .expose_ip_publicly = true};
+  acip_session_create_t request = {.session_type = SESSION_TYPE_WEBRTC, .max_participants = 8, .expose_ip_publicly = true};
   acip_session_created_t created;
   ASCIICHAT_REQUIRE_EQ(database_session_create(server.db, &request, &server.config, &created), ASCIICHAT_OK);
   acip_session_join_t join = {.session_string_len = created.session_string_len};
   SAFE_STRNCPY(join.session_string, created.session_string, sizeof(join.session_string));
   acip_session_joined_t first;
   ASCIICHAT_REQUIRE_EQ(database_session_join(server.db, &join, &server.config, &first), ASCIICHAT_OK);
-  network_server_config_t config = {.bind_ipv4 = true,
-                                    .ipv4_address = "127.0.0.1",
-                                    .max_connections = 8,
-                                    .callbacks = {.open = designation_open, .packet = designation_packet}};
+  network_server_config_t config = {.bind_ipv4 = true, .ipv4_address = "127.0.0.1", .max_connections = 8, .callbacks = {.open = designation_open, .packet = designation_packet}};
   ASCIICHAT_REQUIRE_EQ(network_server_create(&config, &server.network_server), ASCIICHAT_OK);
   uint8_t other[16] = {99}, outsider[16] = {98};
   acip_transport_t *host = designation_peer(server.network_server, created.session_id, first.participant_id, true);
   acip_transport_t *peer = designation_peer(server.network_server, created.session_id, other, true);
   acip_transport_t *foreign = designation_peer(server.network_server, outsider, other, true);
   acip_transport_t *unjoined = designation_peer(server.network_server, created.session_id, other, false);
-  acip_host_announcement_t announcement = {
-      .host_address = "127.0.0.1", .host_port = 3456, .generation = HOST_TO_NET_U32(1)};
+  acip_host_announcement_t announcement = {.host_address = "127.0.0.1", .host_port = 3456, .generation = HOST_TO_NET_U32(1)};
   memcpy(announcement.session_id, created.session_id, 16);
   memcpy(announcement.host_id, first.participant_id, 16);
   acds_on_host_announcement(&announcement, host, "fixture", &server);
@@ -659,9 +629,7 @@ TEST_CASE("discovery_session_process/host_fanout_authority_isolation_and_reconne
   ASCIICHAT_REQUIRE_EQ(sqlite3_exec(server.db, "UPDATE sessions SET expose_ip_publicly = 1", NULL, NULL, NULL), SQLITE_OK);
   uint8_t metadata[ACDS_TRANSPORT_METADATA_MAX];
   size_t metadata_length = 0;
-  ASCIICHAT_REQUIRE_EQ(acds_transport_metadata_encode(4567, "https://example.test:4568/acip", metadata, sizeof(metadata),
-                                              &metadata_length),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(acds_transport_metadata_encode(4567, "https://example.test:4568/acip", metadata, sizeof(metadata), &metadata_length), ASCIICHAT_OK);
   int legacy_before = atomic_load_int(&replay->designated);
   acds_on_host_announcement_ex(&announcement, metadata, metadata_length, host, "fixture", &server);
   ASCIICHAT_REQUIRE_EQ(atomic_load_int(&replay->extended), 1);

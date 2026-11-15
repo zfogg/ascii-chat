@@ -112,9 +112,7 @@ static void run_join(uint8_t expected) {
   ASCIICHAT_REQUIRE_EQ(response.success, expected == ACIP_ERROR_NONE);
   session_entry_t *entry = database_session_find_by_string(db, session.session_string);
   ASCIICHAT_REQUIRE_NOT_NULL(entry);
-  ASCIICHAT_REQUIRE_EQ(entry->current_participants, expected == ACIP_ERROR_NONE           ? 1
-                                            : expected == ACIP_ERROR_SESSION_FULL ? 2
-                                                                                  : 0);
+  ASCIICHAT_REQUIRE_EQ(entry->current_participants, expected == ACIP_ERROR_NONE ? 1 : expected == ACIP_ERROR_SESSION_FULL ? 2 : 0);
   session_entry_destroy(entry);
 }
 TEST_CASE("discovery_password_lock/unrelated_lookup_proceeds_during_password_verification", "[discovery_password_lock]") {

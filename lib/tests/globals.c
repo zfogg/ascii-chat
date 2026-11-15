@@ -21,7 +21,6 @@
  */
 __attribute__((constructor)) static void init_test_environment(void) {
   platform_setenv("TESTING", "1");
-
 }
 
 /**

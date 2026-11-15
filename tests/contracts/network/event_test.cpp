@@ -114,9 +114,7 @@ static void read_data(platform_event_stream_t *stream, const void *data, size_t 
 }
 static void closed(void *arg, asciichat_error_t result) {
   fixture_t *fixture = arg;
-  ASCIICHAT_WORKER_ASSERT((result) == ((fixture->cancel   ? ERROR_NETWORK
-                                 : fixture->expire ? ERROR_NETWORK_TIMEOUT
-                                                   : ASCIICHAT_OK)));
+  ASCIICHAT_WORKER_ASSERT((result) == ((fixture->cancel ? ERROR_NETWORK : fixture->expire ? ERROR_NETWORK_TIMEOUT : ASCIICHAT_OK)));
   ++fixture->closed;
   ASCIICHAT_WORKER_ASSERT((fixture->queued_bytes) == (0));
   if (fixture->completions)
@@ -185,22 +183,19 @@ static void event_test(bool expire, bool cancel, bool push, bool zerocopy, bool 
   socklen_t size = sizeof(address);
   ASCIICHAT_WORKER_ASSERT((socket_getsockname(listener, (struct sockaddr *)&address, &size)) == (0));
   platform_event_listener_t *event_listener;
-  ASCIICHAT_WORKER_ASSERT((platform_event_listen(fixture.loop, &listener, accepted, &fixture, &event_listener)) ==
-                   (ASCIICHAT_OK));
+  ASCIICHAT_WORKER_ASSERT((platform_event_listen(fixture.loop, &listener, accepted, &fixture, &event_listener)) == (ASCIICHAT_OK));
   ASCIICHAT_WORKER_ASSERT((listener) == (INVALID_SOCKET_VALUE));
   platform_thread_t thread;
   ASCIICHAT_WORKER_ASSERT((platform_thread_create(&thread, "event_test", run_loop, &fixture)) == (ASCIICHAT_OK));
   socket_t client = socket_create("event-test-client", AF_INET, SOCK_STREAM, 0);
   if (push && expire) {
     int receive_buffer = 4096;
-    ASCIICHAT_WORKER_ASSERT((socket_setsockopt(client, SOL_SOCKET, SO_RCVBUF, &receive_buffer, sizeof(receive_buffer))) ==
-                     (0));
+    ASCIICHAT_WORKER_ASSERT((socket_setsockopt(client, SOL_SOCKET, SO_RCVBUF, &receive_buffer, sizeof(receive_buffer))) == (0));
   }
   ASCIICHAT_WORKER_ASSERT((socket_connect(client, (struct sockaddr *)&address, sizeof(address))) == (0));
   if (push && !expire) {
     char received[256 * 1024 + 12];
-    ASCIICHAT_WORKER_ASSERT((recv_with_timeout(client, received, sizeof(received), 10 * NS_PER_SEC_INT)) ==
-                     ((ssize_t)sizeof(received)));
+    ASCIICHAT_WORKER_ASSERT((recv_with_timeout(client, received, sizeof(received), 10 * NS_PER_SEC_INT)) == ((ssize_t)sizeof(received)));
     ASCIICHAT_WORKER_ASSERT((memcmp(received, "prefix", 6)) == (0));
     for (size_t i = 6; i < sizeof(received) - 6; ++i)
       ASCIICHAT_WORKER_ASSERT((received[i]) == (0x5a));
@@ -213,10 +208,8 @@ static void event_test(bool expire, bool cancel, bool push, bool zerocopy, bool 
   } else if (!expire && !cancel) {
     char expected[256 * 1024], received[sizeof(expected)];
     memset(expected, 0x5a, sizeof(expected));
-    ASCIICHAT_WORKER_ASSERT((send_with_timeout(client, expected, sizeof(expected), 10 * NS_PER_SEC_INT)) ==
-                     ((ssize_t)sizeof(expected)));
-    ASCIICHAT_WORKER_ASSERT((recv_with_timeout(client, received, sizeof(received), 10 * NS_PER_SEC_INT)) ==
-                     ((ssize_t)sizeof(received)));
+    ASCIICHAT_WORKER_ASSERT((send_with_timeout(client, expected, sizeof(expected), 10 * NS_PER_SEC_INT)) == ((ssize_t)sizeof(expected)));
+    ASCIICHAT_WORKER_ASSERT((recv_with_timeout(client, received, sizeof(received), 10 * NS_PER_SEC_INT)) == ((ssize_t)sizeof(received)));
     ASCIICHAT_WORKER_ASSERT((memcmp(expected, received, sizeof(expected))) == (0));
     socket_shutdown(client, SHUT_WR);
   } else if (!push) {
@@ -229,9 +222,8 @@ static void event_test(bool expire, bool cancel, bool push, bool zerocopy, bool 
   ASCIICHAT_WORKER_ASSERT((fixture.completions) == ((push ? (expire ? 1 : 3) : cancel ? 256 : fixture.jobs)));
   if (push && !expire) {
     ASCIICHAT_WORKER_ASSERT((fixture.stats.zerocopy_calls) == (fixture.stats.zerocopy_completions));
-    log_warn("Event output: zerocopy=%d submissions=%llu completions=%llu copied=%llu", zerocopy,
-             (unsigned long long)fixture.stats.zerocopy_calls, (unsigned long long)fixture.stats.zerocopy_completions,
-             (unsigned long long)fixture.stats.zerocopy_copied);
+    log_warn("Event output: zerocopy=%d submissions=%llu completions=%llu copied=%llu", zerocopy, (unsigned long long)fixture.stats.zerocopy_calls,
+             (unsigned long long)fixture.stats.zerocopy_completions, (unsigned long long)fixture.stats.zerocopy_copied);
   }
   ASCIICHAT_WORKER_ASSERT((platform_event_loop_destroy(fixture.loop)) == (ASCIICHAT_OK));
   socket_close(client);

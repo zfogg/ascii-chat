@@ -71,8 +71,7 @@ TEST_CASE("acds_ip_privacy/password_protected_reveals_ip", "[acds_ip_privacy]") 
 
   // Hash password "test-password-123" using Argon2id
   const char *password = "test-password-123";
-  int hash_result = crypto_pwhash_str((char *)create_req.password_hash, password, strlen(password),
-                                      crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE);
+  int hash_result = crypto_pwhash_str((char *)create_req.password_hash, password, strlen(password), crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE);
   ASCIICHAT_REQUIRE_EQ(hash_result, 0, "Password hashing should succeed");
 
   acip_session_created_t create_resp;
@@ -93,8 +92,7 @@ TEST_CASE("acds_ip_privacy/password_protected_reveals_ip", "[acds_ip_privacy]") 
   ASCIICHAT_REQUIRE_EQ(join_resp.success, 1, "Join should be successful");
 
   // Verify IP is revealed (password was verified)
-  ASCIICHAT_REQUIRE_STR_EQ(join_resp.server_address, "192.168.1.100",
-                   "Server address should be revealed after password verification");
+  ASCIICHAT_REQUIRE_STR_EQ(join_resp.server_address, "192.168.1.100", "Server address should be revealed after password verification");
   ASCIICHAT_REQUIRE_EQ(join_resp.server_port, 27224, "Server port should be revealed");
   ASCIICHAT_REQUIRE_EQ(join_resp.session_type, SESSION_TYPE_DIRECT_TCP, "Session type should be revealed");
 
@@ -229,8 +227,7 @@ TEST_CASE("acds_ip_privacy/wrong_password_withholds_ip", "[acds_ip_privacy]") {
 
   // Hash the correct password
   const char *password = "test-password-123";
-  int hash_result = crypto_pwhash_str((char *)create_req.password_hash, password, strlen(password),
-                                      crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE);
+  int hash_result = crypto_pwhash_str((char *)create_req.password_hash, password, strlen(password), crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE);
   ASCIICHAT_REQUIRE_EQ(hash_result, 0, "Password hashing should succeed");
 
   acip_session_created_t create_resp;

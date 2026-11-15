@@ -9,8 +9,7 @@
 #include <math.h>
 #include <string.h>
 
-static const gotel_operation_t operations[] = {
-    {"fixture.root", false}, {"fixture.hot", true}, {"fixture.child", false}};
+static const gotel_operation_t operations[] = {{"fixture.root", false}, {"fixture.hot", true}, {"fixture.child", false}};
 static const double bounds[] = {.001, .01, 1};
 static const gotel_metric_t metrics[] = {
     {"fixture.bytes", "By", OTLP_METRIC_COUNTER, NULL, 0},
@@ -285,9 +284,7 @@ TEST_CASE("otel/signal_parser_rejects_ambiguous_lists", "[otel]") {
 }
 TEST_CASE("otel/http_names_redact_secrets_and_bound_output", "[otel]") {
   char name[256];
-  ASCIICHAT_REQUIRE_EQ(gotel_http_name(name, sizeof(name), "fixture", false, "GET",
-                               "https://user:password@host/a/123?q=secret#fragment"),
-               OTLP_OK);
+  ASCIICHAT_REQUIRE_EQ(gotel_http_name(name, sizeof(name), "fixture", false, "GET", "https://user:password@host/a/123?q=secret#fragment"), OTLP_OK);
   ASCIICHAT_REQUIRE_STR_EQ(name, "fixture.http.client.GET host/a/{id}");
   ASCIICHAT_REQUIRE_EQ(gotel_http_name(name, 4, "fixture", false, "GET", "https://host/a"), OTLP_ERR_OVERFLOW);
   ASCIICHAT_REQUIRE_EQ(name[0], 0);
@@ -440,8 +437,7 @@ TEST_CASE("otel/stats_share_canonical_metrics_without_mirror_series", "[otel]") 
       ASCIICHAT_REQUIRE(strncmp(names[metric], "ascii-chat.stats.", 17) != 0);
     }
   }
-  ASCIICHAT_REQUIRE_EQ(ascii_otel_stats_metric(STATS_RECORD_COUNTER, STATS_COUNTER_FRAMES_CAPTURED),
-               ASCII_OTEL_METRIC_FRAME_CAPTURED);
+  ASCIICHAT_REQUIRE_EQ(ascii_otel_stats_metric(STATS_RECORD_COUNTER, STATS_COUNTER_FRAMES_CAPTURED), ASCII_OTEL_METRIC_FRAME_CAPTURED);
   ASCIICHAT_REQUIRE_EQ(ascii_otel_stats_metric(STATS_RECORD_COUNTER, STATS_COUNTER_RECONNECTS), ASCII_OTEL_METRIC_RECONNECT);
   ASCIICHAT_REQUIRE_EQ(ascii_otel_stats_metric(STATS_RECORD_COUNTER, STATS_COUNTER_BYTES_SENT), ASCII_OTEL_METRIC_NET_TX);
   ASCIICHAT_REQUIRE_EQ(ascii_otel_stats_metric(STATS_RECORD_COUNTER, STATS_COUNTER_BYTES_RECEIVED), ASCII_OTEL_METRIC_NET_RX);
@@ -516,12 +512,9 @@ TEST_CASE("otel/classifies_actionable_failures_without_cancellation_or_incomplet
   ASCIICHAT_REQUIRE_EQ(ascii_otel_failure_operation(ERROR_NETWORK_PROTOCOL, ""), ASCII_OTEL_FAILURE_PROTOCOL);
   ASCIICHAT_REQUIRE_EQ(ascii_otel_failure_operation(ERROR_UNKNOWN_PACKET, ""), ASCII_OTEL_FAILURE_PROTOCOL);
   ASCIICHAT_REQUIRE_EQ(ascii_otel_failure_operation(ERROR_SESSION_NOT_FOUND, ""), ASCII_OTEL_FAILURE_DISCOVERY);
-  ASCIICHAT_REQUIRE_EQ(ascii_otel_failure_operation(ERROR_NETWORK_CONNECT, "ascii-chat.discovery.connect"),
-               ASCII_OTEL_FAILURE_DISCOVERY);
-  ASCIICHAT_REQUIRE_EQ(ascii_otel_failure_operation(ERROR_SIGNAL_INTERRUPT, "ascii-chat.discovery.connect"),
-               ASCII_OTEL_OPERATION_COUNT);
-  ASCIICHAT_REQUIRE_EQ(ascii_otel_failure_operation(ERROR_NETWORK_INCOMPLETE, "ascii-chat.discovery.connect"),
-               ASCII_OTEL_OPERATION_COUNT);
+  ASCIICHAT_REQUIRE_EQ(ascii_otel_failure_operation(ERROR_NETWORK_CONNECT, "ascii-chat.discovery.connect"), ASCII_OTEL_FAILURE_DISCOVERY);
+  ASCIICHAT_REQUIRE_EQ(ascii_otel_failure_operation(ERROR_SIGNAL_INTERRUPT, "ascii-chat.discovery.connect"), ASCII_OTEL_OPERATION_COUNT);
+  ASCIICHAT_REQUIRE_EQ(ascii_otel_failure_operation(ERROR_NETWORK_INCOMPLETE, "ascii-chat.discovery.connect"), ASCII_OTEL_OPERATION_COUNT);
   ASCIICHAT_REQUIRE_EQ(ascii_otel_failure_operation(ERROR_NETWORK, "ascii-chat.network.receive"), ASCII_OTEL_OPERATION_COUNT);
 }
 TEST_CASE("otel/pipeline_stall_requires_recent_capture_and_an_expected_stage", "[otel]") {

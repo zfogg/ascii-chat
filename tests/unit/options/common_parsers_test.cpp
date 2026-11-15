@@ -21,12 +21,9 @@ TEST_CASE("common_parsers/display_aliases_and_rejected_values_preserve_previous_
   const struct {
     const char *text;
     int mode;
-  } colors[] = {{"auto", COLOR_MODE_AUTO},       {"a", COLOR_MODE_AUTO},
-                {"mono", COLOR_MODE_NONE},       {"none", COLOR_MODE_NONE},
-                {"ansi", COLOR_MODE_16_COLOR},   {"16color", COLOR_MODE_16_COLOR},
-                {"256", COLOR_MODE_256_COLOR},   {"256color", COLOR_MODE_256_COLOR},
-                {"24bit", COLOR_MODE_TRUECOLOR}, {"tc", COLOR_MODE_TRUECOLOR},
-                {"rgb", COLOR_MODE_TRUECOLOR},   {"true", COLOR_MODE_TRUECOLOR}};
+  } colors[] = {{"auto", COLOR_MODE_AUTO},       {"a", COLOR_MODE_AUTO},           {"mono", COLOR_MODE_NONE},     {"none", COLOR_MODE_NONE},
+                {"ansi", COLOR_MODE_16_COLOR},   {"16color", COLOR_MODE_16_COLOR}, {"256", COLOR_MODE_256_COLOR}, {"256color", COLOR_MODE_256_COLOR},
+                {"24bit", COLOR_MODE_TRUECOLOR}, {"tc", COLOR_MODE_TRUECOLOR},     {"rgb", COLOR_MODE_TRUECOLOR}, {"true", COLOR_MODE_TRUECOLOR}};
   for (size_t i = 0; i < sizeof(colors) / sizeof(*colors); ++i) {
     ASCIICHAT_REQUIRE_EQ(parse_color_mode_option(colors[i].text, options), ASCIICHAT_OK);
     ASCIICHAT_REQUIRE_EQ(options->color_mode, colors[i].mode);
@@ -36,9 +33,7 @@ TEST_CASE("common_parsers/display_aliases_and_rejected_values_preserve_previous_
   const char *renders[] = {"fg", "foreground", "bg", "background", "half-block", "halfblock"};
   for (size_t i = 0; i < 6; ++i) {
     ASCIICHAT_REQUIRE_EQ(parse_render_mode_option(renders[i], options), ASCIICHAT_OK);
-    ASCIICHAT_REQUIRE_EQ(options->render_mode, i < 2   ? RENDER_MODE_FOREGROUND
-                                       : i < 4 ? RENDER_MODE_BACKGROUND
-                                               : RENDER_MODE_HALF_BLOCK);
+    ASCIICHAT_REQUIRE_EQ(options->render_mode, i < 2 ? RENDER_MODE_FOREGROUND : i < 4 ? RENDER_MODE_BACKGROUND : RENDER_MODE_HALF_BLOCK);
   }
   ASCIICHAT_REQUIRE_EQ(parse_render_mode_option("bad", options), ERROR_INVALID_PARAM);
   ASCIICHAT_REQUIRE_EQ(options->render_mode, RENDER_MODE_HALF_BLOCK);
@@ -108,8 +103,7 @@ TEST_CASE("common_parsers/suggestions_explain_mode_restrictions_and_reject_unrel
   ASCIICHAT_REQUIRE_NULL(find_similar_option_with_mode("--unrelated-unknown-flag", &config, OPTION_MODE_CLIENT));
   ASCIICHAT_REQUIRE_STR_EQ(format_available_modes(OPTION_MODE_BINARY), "global options");
   ASCIICHAT_REQUIRE_STR_EQ(format_available_modes(static_cast<option_mode_bitmask_t>(0)), "unknown mode");
-  const char *all = format_available_modes(static_cast<option_mode_bitmask_t>(OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_MIRROR |
-                                           OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC));
+  const char *all = format_available_modes(static_cast<option_mode_bitmask_t>(OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC));
   ASCIICHAT_REQUIRE_NOT_NULL(strstr(all, "default"));
   ASCIICHAT_REQUIRE_NOT_NULL(strstr(all, "discovery-service"));
 }

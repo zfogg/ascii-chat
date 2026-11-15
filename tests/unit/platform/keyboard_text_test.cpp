@@ -15,8 +15,7 @@ TEST_CASE("keyboard_text/every_unicode_scalar_round_trips", "[keyboard_text]") {
     keyboard_text_decoder_t decoder = {0};
     for (size_t i = 0; i < bytes; ++i) {
       ASCIICHAT_REQUIRE_EQ(keyboard_text_decode(&decoder, 0), KEY_NONE);
-      ASCIICHAT_REQUIRE_EQ(keyboard_text_decode(&decoder, (unsigned char)text[i]), i + 1 == bytes ? expected : KEY_NONE,
-                   "U+%x byte %zu", cp, i);
+      ASCIICHAT_REQUIRE_EQ(keyboard_text_decode(&decoder, (unsigned char)text[i]), i + 1 == bytes ? expected : KEY_NONE, "U+%x byte %zu", cp, i);
     }
     ASCIICHAT_REQUIRE_EQ(decoder.length, 0);
   }
@@ -32,9 +31,7 @@ TEST_CASE("keyboard_text/rejects_non_text_and_invalid_scalar_keys", "[keyboard_t
 }
 
 TEST_CASE("keyboard_text/malformed_sequences_are_discarded_without_losing_next_key", "[keyboard_text]") {
-  const char *invalid[] = {"\x80",         "\xbf",         "\xc0\xaf",         "\xc1\xbf",         "\xe0\x80\xaf",
-                           "\xed\xa0\x80", "\xed\xbf\xbf", "\xf0\x80\x80\xaf", "\xf4\x90\x80\x80", "\xf5\x80\x80\x80",
-                           "\xff"};
+  const char *invalid[] = {"\x80", "\xbf", "\xc0\xaf", "\xc1\xbf", "\xe0\x80\xaf", "\xed\xa0\x80", "\xed\xbf\xbf", "\xf0\x80\x80\xaf", "\xf4\x90\x80\x80", "\xf5\x80\x80\x80", "\xff"};
   for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
     keyboard_text_decoder_t decoder = {0};
     for (const unsigned char *p = (const unsigned char *)invalid[i]; *p; ++p)

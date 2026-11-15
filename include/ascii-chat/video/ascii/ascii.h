@@ -206,7 +206,6 @@ char *ascii_convert_with_capabilities_fit(image_t *original, const ssize_t width
 
 #include <ascii-chat/video/ascii/render/render.h>
 
-
 /** Caller owns the reusable resize image; calls using it must be serialized. */
 char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
                                                 const char *palette_chars, const bool contain, image_t **workspace);

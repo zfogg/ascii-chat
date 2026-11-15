@@ -59,9 +59,8 @@ static asciichat_error_t load(const char *toml, bool strict, options_t *options)
 }
 TEST_CASE("config_typed_contract/typed_toml_loads_enum_names_scalars_and_escaped_strings", "[config_typed_contract]") {
   options_t options = options_t_new();
-  const char *toml =
-      "[contract]\ncolor_mode='truecolor'\nrender_mode='background'\npalette_type='blocks'\ncolor_filter='none'\n"
-      "fps=24\nstretch=true\nsnapshot_delay=1.25\nlog_file=\"folder\\\\trace\\\"name.log\"\n";
+  const char *toml = "[contract]\ncolor_mode='truecolor'\nrender_mode='background'\npalette_type='blocks'\ncolor_filter='none'\n"
+                     "fps=24\nstretch=true\nsnapshot_delay=1.25\nlog_file=\"folder\\\\trace\\\"name.log\"\n";
   ASCIICHAT_REQUIRE_EQ(load(toml, true, &options), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(options.color_mode, TERM_COLOR_TRUECOLOR);
   ASCIICHAT_REQUIRE_EQ(options.render_mode, RENDER_MODE_BACKGROUND);

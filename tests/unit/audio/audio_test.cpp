@@ -123,9 +123,9 @@ static ringbuffer_operation_test_case_t ringbuffer_operation_cases[] = {{100, 50
                                                                         {512, 0, "Write only", true},
                                                                         {0, 0, "Zero operations", true}};
 
-
-
-TEST_CASE("audio/ringbuffer_operations", "[audio]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(ringbuffer_operation_cases)); auto *tc = &generated_case;
+TEST_CASE("audio/ringbuffer_operations", "[audio]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(ringbuffer_operation_cases));
+  auto *tc = &generated_case;
   buffer_system_init(); // Initialize buffer domain for ring buffer allocation
 
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
@@ -185,16 +185,13 @@ typedef struct {
   const char *description;
 } ringbuffer_capacity_test_case_t;
 
-static ringbuffer_capacity_test_case_t ringbuffer_capacity_cases[] = {{100, 1, 1, "Single write/read cycle"},
-                                                                      {100, 5, 3, "Multiple write cycles, fewer reads"},
-                                                                      {100, 3, 5, "Multiple read cycles, fewer writes"},
-                                                                      {100, 10, 10, "Equal write/read cycles"},
-                                                                      {256, 2, 2, "Larger buffer, two cycles"},
-                                                                      {50, 20, 20, "Small buffer, many cycles"}};
+static ringbuffer_capacity_test_case_t ringbuffer_capacity_cases[] = {
+    {100, 1, 1, "Single write/read cycle"},   {100, 5, 3, "Multiple write cycles, fewer reads"}, {100, 3, 5, "Multiple read cycles, fewer writes"},
+    {100, 10, 10, "Equal write/read cycles"}, {256, 2, 2, "Larger buffer, two cycles"},          {50, 20, 20, "Small buffer, many cycles"}};
 
-
-
-TEST_CASE("audio/ringbuffer_capacity_scenarios", "[audio]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(ringbuffer_capacity_cases)); auto *tc = &generated_case;
+TEST_CASE("audio/ringbuffer_capacity_scenarios", "[audio]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(ringbuffer_capacity_cases));
+  auto *tc = &generated_case;
   buffer_system_init(); // Initialize buffer domain for ring buffer allocation
 
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
@@ -267,9 +264,7 @@ TEST_CASE("audio/ringbuffer_roundtrip_property", "[audio]") {
 
   // PROPERTY: Roundtrip must preserve data
   for (int i = 0; i < read; i++) {
-    ASCIICHAT_REQUIRE_FLOAT_EQ(read_data[i], test_data[i], 0.0001f,
-                       "Ringbuffer roundtrip must preserve sample %d/%d (expected %.6f, got %.6f)", i, read,
-                       test_data[i], read_data[i]);
+    ASCIICHAT_REQUIRE_FLOAT_EQ(read_data[i], test_data[i], 0.0001f, "Ringbuffer roundtrip must preserve sample %d/%d (expected %.6f, got %.6f)", i, read, test_data[i], read_data[i]);
   }
 
   SAFE_FREE(test_data);
@@ -318,8 +313,7 @@ TEST_CASE("audio/ringbuffer_write_read", "[audio]") {
 
   // Verify data integrity
   for (int i = 0; i < read; i++) {
-    ASCIICHAT_REQUIRE_FLOAT_EQ(read_data[i], test_data[i], 0.0001f, "Sample %d should match (expected %.6f, got %.6f)", i,
-                       test_data[i], read_data[i]);
+    ASCIICHAT_REQUIRE_FLOAT_EQ(read_data[i], test_data[i], 0.0001f, "Sample %d should match (expected %.6f, got %.6f)", i, test_data[i], read_data[i]);
   }
 
   SAFE_FREE(test_data);
@@ -345,8 +339,7 @@ TEST_CASE("audio/ringbuffer_overflow_property", "[audio]") {
 
   // PROPERTY: Write should not exceed available space
   int written = audio_ring_buffer_write(rb, test_data, write_size);
-  ASCIICHAT_REQUIRE_LE(written, available_space, "Should not write more than available space (requested=%d, available=%d)",
-                write_size, available_space);
+  ASCIICHAT_REQUIRE_LE(written, available_space, "Should not write more than available space (requested=%d, available=%d)", write_size, available_space);
   ASCIICHAT_REQUIRE_GE(written, 0, "Should not return negative for write_size=%d", write_size);
 
   SAFE_FREE(test_data);
@@ -510,8 +503,7 @@ TEST_CASE("audio/audio_constants", "[audio]") {
   ASCIICHAT_REQUIRE_LE(AUDIO_FRAMES_PER_BUFFER, 2048, "Frame buffer should be reasonable size");
 
   // Verify buffer size calculation
-  ASCIICHAT_REQUIRE_EQ(AUDIO_BUFFER_SIZE, AUDIO_FRAMES_PER_BUFFER * AUDIO_CHANNELS,
-               "Buffer size should match frames × channels");
+  ASCIICHAT_REQUIRE_EQ(AUDIO_BUFFER_SIZE, AUDIO_FRAMES_PER_BUFFER * AUDIO_CHANNELS, "Buffer size should match frames × channels");
 }
 
 TEST_CASE("audio/audio_realtime_priority", "[audio]") {
@@ -610,8 +602,7 @@ TEST_CASE("audio/audio_context_integration", "[audio]") {
 TEST_CASE("audio/audio_buffer_size_consistency", "[audio]") {
   // Test that audio constants are consistent
   ASCIICHAT_REQUIRE_GT(AUDIO_BUFFER_SIZE, 0, "Buffer size should be positive");
-  ASCIICHAT_REQUIRE_EQ(AUDIO_BUFFER_SIZE, AUDIO_FRAMES_PER_BUFFER * AUDIO_CHANNELS,
-               "Buffer size should equal frames × channels");
+  ASCIICHAT_REQUIRE_EQ(AUDIO_BUFFER_SIZE, AUDIO_FRAMES_PER_BUFFER * AUDIO_CHANNELS, "Buffer size should equal frames × channels");
 
   // Test reasonable buffer sizes for real-time audio
   ASCIICHAT_REQUIRE_GE(AUDIO_FRAMES_PER_BUFFER, 64, "Frame buffer should be at least 64 samples");
@@ -700,12 +691,11 @@ typedef struct {
   const char *description;
 } audio_buffer_test_case_t;
 
-static audio_buffer_test_case_t audio_buffer_cases[] = {
-    {64, "Small buffer"}, {256, "Medium buffer"}, {1024, "Large buffer"}, {4096, "Very large buffer"}};
+static audio_buffer_test_case_t audio_buffer_cases[] = {{64, "Small buffer"}, {256, "Medium buffer"}, {1024, "Large buffer"}, {4096, "Very large buffer"}};
 
-
-
-TEST_CASE("audio/buffer_sizes", "[audio]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(audio_buffer_cases)); auto *tc = &generated_case;
+TEST_CASE("audio/buffer_sizes", "[audio]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(audio_buffer_cases));
+  auto *tc = &generated_case;
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed for %s", tc->description);
 
@@ -743,13 +733,12 @@ typedef struct {
   const char *description;
 } audio_frequency_test_case_t;
 
-static audio_frequency_test_case_t audio_frequency_cases[] = {{440.0f, "A4 note"},       {880.0f, "A5 note"},
-                                                              {220.0f, "A3 note"},       {1000.0f, "1kHz tone"},
-                                                              {100.0f, "Low frequency"}, {10000.0f, "High frequency"}};
+static audio_frequency_test_case_t audio_frequency_cases[] = {{440.0f, "A4 note"},    {880.0f, "A5 note"},       {220.0f, "A3 note"},
+                                                              {1000.0f, "1kHz tone"}, {100.0f, "Low frequency"}, {10000.0f, "High frequency"}};
 
-
-
-TEST_CASE("audio/frequency_tests", "[audio]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(audio_frequency_cases)); auto *tc = &generated_case;
+TEST_CASE("audio/frequency_tests", "[audio]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(audio_frequency_cases));
+  auto *tc = &generated_case;
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed for %s", tc->description);
 
@@ -783,12 +772,11 @@ typedef struct {
   const char *description;
 } audio_stress_test_case_t;
 
-static audio_stress_test_case_t audio_stress_cases[] = {
-    {10, "Light stress test"}, {50, "Medium stress test"}, {100, "Heavy stress test"}, {500, "Intensive stress test"}};
+static audio_stress_test_case_t audio_stress_cases[] = {{10, "Light stress test"}, {50, "Medium stress test"}, {100, "Heavy stress test"}, {500, "Intensive stress test"}};
 
-
-
-TEST_CASE("audio/stress_tests", "[audio]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(audio_stress_cases)); auto *tc = &generated_case;
+TEST_CASE("audio/stress_tests", "[audio]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(audio_stress_cases));
+  auto *tc = &generated_case;
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed for %s", tc->description);
 
@@ -826,14 +814,13 @@ typedef struct {
   const char *description;
 } audio_edge_test_case_t;
 
-static audio_edge_test_case_t audio_edge_cases[] = {
-    {0, 0, "Zero size operations"},         {1, 1, "Single sample"},
-    {10, 5, "Write more than read"},        {5, 10, "Read more than available"},
-    {1000, 100, "Large write, small read"}, {100, 1000, "Small write, large read"}};
+static audio_edge_test_case_t audio_edge_cases[] = {{0, 0, "Zero size operations"},         {1, 1, "Single sample"},
+                                                    {10, 5, "Write more than read"},        {5, 10, "Read more than available"},
+                                                    {1000, 100, "Large write, small read"}, {100, 1000, "Small write, large read"}};
 
-
-
-TEST_CASE("audio/edge_cases", "[audio]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(audio_edge_cases)); auto *tc = &generated_case;
+TEST_CASE("audio/edge_cases", "[audio]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(audio_edge_cases));
+  auto *tc = &generated_case;
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   ASCIICHAT_REQUIRE_NOT_NULL(rb, "Ringbuffer creation should succeed for %s", tc->description);
 

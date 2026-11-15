@@ -360,11 +360,9 @@ TEST_CASE("recording/microphone_worker_copies_audio_without_draining_transmissio
     ASCIICHAT_REQUIRE_EQ(audio_ring_buffer_write(ctx.raw_capture_rb, mic, 480), ASCIICHAT_OK);
     platform_sleep_ns(10 * NS_PER_MS_INT);
   }
-  ASCIICHAT_REQUIRE_LE(audio_ring_buffer_available_read(ctx.capture_buffer), AUDIO_JITTER_HIGH_WATER_MARK,
-                "An undrained microphone monitor queue must not enter the overflow/logging path");
+  ASCIICHAT_REQUIRE_LE(audio_ring_buffer_available_read(ctx.capture_buffer), AUDIO_JITTER_HIGH_WATER_MARK, "An undrained microphone monitor queue must not enter the overflow/logging path");
   float energy = recorded_energy_since(started);
-  ASCIICHAT_REQUIRE_GT(energy, 1.0f, "Mic energy %f, sensitivity %f, queued %zu", energy, GET_OPTION(microphone_sensitivity),
-               audio_ring_buffer_available_read(ctx.capture_buffer));
+  ASCIICHAT_REQUIRE_GT(energy, 1.0f, "Mic energy %f, sensitivity %f, queued %zu", energy, GET_OPTION(microphone_sensitivity), audio_ring_buffer_available_read(ctx.capture_buffer));
   ASCIICHAT_REQUIRE_GT(audio_ring_buffer_available_read(ctx.capture_buffer), 0);
   audio_stop_duplex(&ctx);
   audio_destroy(&ctx);
@@ -388,8 +386,7 @@ TEST_CASE("recording/file_audio_worker_feeds_transmission_playback_and_recording
   audio_recording_start(recording, started);
   wait_for_captured_samples(&ctx, 960);
   platform_sleep_ns(300 * NS_PER_MS_INT);
-  ASCIICHAT_REQUIRE_LE(audio_ring_buffer_available_read(ctx.capture_buffer), AUDIO_JITTER_HIGH_WATER_MARK,
-                "An undrained local monitor queue must stay below the overflow/logging threshold");
+  ASCIICHAT_REQUIRE_LE(audio_ring_buffer_available_read(ctx.capture_buffer), AUDIO_JITTER_HIGH_WATER_MARK, "An undrained local monitor queue must stay below the overflow/logging threshold");
   float energy = recorded_energy_since(started);
   ASCIICHAT_REQUIRE_GT(energy, 1.0f, "Recorded file audio must contain the tone, not only a silent track");
   ASCIICHAT_REQUIRE_EQ(audio_stop_duplex(&ctx), ASCIICHAT_OK);
@@ -444,8 +441,7 @@ TEST_CASE("recording/media_audio_recording_runs_without_input_or_output_devices"
   uint64_t started = time_get_ns();
   audio_recording_start(recording, started);
   wait_for_captured_samples(&ctx, 960);
-  ASCIICHAT_REQUIRE_GT(recorded_energy_since(started), 1.0f,
-               "Media audio should be recorded when no PortAudio input or output stream is available");
+  ASCIICHAT_REQUIRE_GT(recorded_energy_since(started), 1.0f, "Media audio should be recorded when no PortAudio input or output stream is available");
 
   ASCIICHAT_REQUIRE_EQ(audio_stop_duplex(&ctx), ASCIICHAT_OK);
   audio_destroy(&ctx);

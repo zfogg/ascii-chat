@@ -5,8 +5,7 @@
 #include <string.h>
 #include <locale.h>
 
-#define ui_input_edit_key(buffer, capacity, length, cursor, key) \
-  ::ui_input_edit_key((buffer), (capacity), (length), (cursor), static_cast<keyboard_key_t>(key))
+#define ui_input_edit_key(buffer, capacity, length, cursor, key) ::ui_input_edit_key((buffer), (capacity), (length), (cursor), static_cast<keyboard_key_t>(key))
 
 TEST_CASE("text_edit/insertion_is_atomic_and_keeps_valid_utf8", "[text_edit]") {
   char text[16] = "a界b";

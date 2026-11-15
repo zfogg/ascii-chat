@@ -37,8 +37,7 @@ TEST_CASE("consensus_metrics/measure_basic", "[consensus_metrics]") {
   ASCIICHAT_REQUIRE(metrics.nat_tier >= 0 && metrics.nat_tier <= 4, "NAT tier should be 0-4 range");
   ASCIICHAT_REQUIRE_EQ(metrics.upload_kbps, 0, "Unknown upload must not become an observation");
   ASCIICHAT_REQUIRE_EQ(metrics.measurement_window_ns, 0, "Missing observations have no measurement window");
-  ASCIICHAT_REQUIRE(metrics.stun_probe_success_pct >= 0 && metrics.stun_probe_success_pct <= 100,
-            "Success rate should be 0-100 range");
+  ASCIICHAT_REQUIRE(metrics.stun_probe_success_pct >= 0 && metrics.stun_probe_success_pct <= 100, "Success rate should be 0-100 range");
 }
 
 /**
@@ -216,8 +215,7 @@ TEST_CASE("consensus_metrics/stun_probe_success", "[consensus_metrics]") {
   consensus_metrics_measure(my_id, &metrics);
 
   // Verify success rate is valid
-  ASCIICHAT_REQUIRE(metrics.stun_probe_success_pct >= 0 && metrics.stun_probe_success_pct <= 100,
-            "Success rate should be 0-100 percent");
+  ASCIICHAT_REQUIRE(metrics.stun_probe_success_pct >= 0 && metrics.stun_probe_success_pct <= 100, "Success rate should be 0-100 percent");
 
   // In current implementation, should be exactly 90
   ASCIICHAT_REQUIRE_EQ(metrics.stun_probe_success_pct, 0, "No probes means no observed successes");

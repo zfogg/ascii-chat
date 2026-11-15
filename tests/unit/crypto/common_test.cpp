@@ -94,9 +94,9 @@ static error_code_test_case_t error_code_cases[] = {
     {ERROR_BUFFER_FULL, "ERROR_BUFFER_FULL", "Buffer full error code"},
 };
 
-
-
-TEST_CASE("common/error_code_definitions", "[common]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(error_code_cases)); auto *tc = &generated_case;
+TEST_CASE("common/error_code_definitions", "[common]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(error_code_cases));
+  auto *tc = &generated_case;
   // Error codes should be defined
   ASCIICHAT_REQUIRE(tc->error_code != -999999, "%s should be defined", tc->error_name);
 
@@ -159,16 +159,14 @@ static min_max_test_case_t min_max_cases[] = {
     {INT_MAX, INT_MAX, INT_MAX, INT_MAX, "Both INT_MAX"},
 };
 
-
-
-TEST_CASE("common/min_max_macros", "[common]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(min_max_cases)); auto *tc = &generated_case;
+TEST_CASE("common/min_max_macros", "[common]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(min_max_cases));
+  auto *tc = &generated_case;
   int min_result = MIN(tc->a, tc->b);
   int max_result = MAX(tc->a, tc->b);
 
-  ASCIICHAT_REQUIRE_EQ(min_result, tc->expected_min, "%s: MIN(%d, %d) should be %d", tc->description, tc->a, tc->b,
-               tc->expected_min);
-  ASCIICHAT_REQUIRE_EQ(max_result, tc->expected_max, "%s: MAX(%d, %d) should be %d", tc->description, tc->a, tc->b,
-               tc->expected_max);
+  ASCIICHAT_REQUIRE_EQ(min_result, tc->expected_min, "%s: MIN(%d, %d) should be %d", tc->description, tc->a, tc->b, tc->expected_min);
+  ASCIICHAT_REQUIRE_EQ(max_result, tc->expected_max, "%s: MAX(%d, %d) should be %d", tc->description, tc->a, tc->b, tc->expected_max);
 }
 
 TEST_CASE("common/array_size_macro", "[common]") {

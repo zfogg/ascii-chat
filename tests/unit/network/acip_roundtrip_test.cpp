@@ -54,11 +54,7 @@ static socket_t no_socket(acip_transport_t *transport) {
   (void)transport;
   return INVALID_SOCKET_VALUE;
 }
-static const acip_transport_methods_t methods = {.send = send_wire,
-                                                 .recv = recv_wire,
-                                                 .is_connected = connected,
-                                                 .has_pending_data = pending,
-                                                 .get_socket = no_socket};
+static const acip_transport_methods_t methods = {.send = send_wire, .recv = recv_wire, .is_connected = connected, .has_pending_data = pending, .get_socket = no_socket};
 
 static void client_ping(void *context) {
   ((wire_t *)context)->callbacks++;
@@ -100,17 +96,14 @@ TEST_CASE("acip_roundtrip/authenticated_envelopes_validate_inner_boundaries_befo
       size_t length = scenario == 1 ? sizeof(header) - 1 : sizeof(plaintext);
       crypto_session_t *session = NULL;
       ASCIICHAT_REQUIRE_EQ(crypto_session_lock(&sender, &session), ASCIICHAT_OK);
-      ASCIICHAT_REQUIRE_EQ(crypto_record_seal_into(&session->records, ACIP_TRAFFIC_CONTROL, CRYPTO_RECORD_RELIABLE, plaintext,
-                                           length, ciphertext, sizeof(ciphertext), &ciphertext_length),
-                   ASCIICHAT_OK);
+      ASCIICHAT_REQUIRE_EQ(crypto_record_seal_into(&session->records, ACIP_TRAFFIC_CONTROL, CRYPTO_RECORD_RELIABLE, plaintext, length, ciphertext, sizeof(ciphertext), &ciphertext_length),
+                           ASCIICHAT_OK);
       crypto_session_unlock(session);
       if (scenario == 3)
         ciphertext[ciphertext_length - 1] ^= 1;
-      ASCIICHAT_REQUIRE_EQ(packet_send_via_transport(&transport, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_length, 0),
-                   ASCIICHAT_OK);
+      ASCIICHAT_REQUIRE_EQ(packet_send_via_transport(&transport, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_length, 0), ASCIICHAT_OK);
       wire.callbacks = 0;
-      asciichat_error_t result = peer ? acip_server_receive_and_dispatch(&transport, &wire, &server)
-                                      : acip_client_receive_and_dispatch(&transport, &client);
+      asciichat_error_t result = peer ? acip_server_receive_and_dispatch(&transport, &wire, &server) : acip_client_receive_and_dispatch(&transport, &client);
       asciichat_error_t expected = !scenario ? ASCIICHAT_OK : scenario == 3 ? ERROR_CRYPTO : ERROR_NETWORK_PROTOCOL;
       ASCIICHAT_REQUIRE_EQ(result, expected, "peer %u scenario %u result %d", peer, scenario, result);
       ASCIICHAT_REQUIRE_EQ(wire.callbacks, scenario ? 0 : 1);
@@ -136,8 +129,7 @@ TEST_CASE("acip_roundtrip/control_senders_produce_network_order_packets_and_rece
   wire_t wire = {.connected = true};
   acip_transport_t transport = {.methods = &methods, .user_data = &wire};
   int client;
-  acip_server_callbacks_t callbacks = {
-      .on_stream_start = stream_start, .on_stream_stop = stream_start, .app_ctx = &wire};
+  acip_server_callbacks_t callbacks = {.on_stream_start = stream_start, .on_stream_stop = stream_start, .app_ctx = &wire};
   const uint8_t values[] = {0, 1, 3, 0xff};
   for (size_t i = 0; i < sizeof(values); ++i) {
     uint32_t payload = HOST_TO_NET_U32(values[i]);
@@ -218,8 +210,7 @@ TEST_CASE("acip_roundtrip/incomplete_headers_and_inconsistent_lengths_never_disp
     ASCIICHAT_REQUIRE_EQ(acip_server_receive_and_dispatch(&transport, NULL, &server), ERROR_NETWORK_PROTOCOL);
     ASCIICHAT_REQUIRE_EQ(wire.callbacks, 0);
   }
-  ASCIICHAT_REQUIRE_EQ(packet_send_via_transport(&transport, (packet_type_t)0xffff, &payload, sizeof(payload), 0),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(packet_send_via_transport(&transport, (packet_type_t)0xffff, &payload, sizeof(payload), 0), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(acip_client_receive_and_dispatch(&transport, &client), ERROR_INVALID_PARAM);
   ASCIICHAT_REQUIRE_EQ(acip_server_receive_and_dispatch(&transport, NULL, &server), ERROR_INVALID_PARAM);
   ASCIICHAT_REQUIRE_EQ(wire.callbacks, 0);

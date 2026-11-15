@@ -71,8 +71,7 @@ TEST_CASE("source_audio_contract/local_path_url_probe_preserves_preexisting_erro
   media_source_t *second = media_source_create(MEDIA_SOURCE_FILE, path);
   ASCIICHAT_REQUIRE_NOT_NULL(second);
   ASCIICHAT_REQUIRE(errno_scope_is_clean(before_open));
-  ASCIICHAT_REQUIRE_EQ(asciichat_error_stats_get().total_errors, errors_before,
-               "A successful local-file open must not create even dismissed URL errors");
+  ASCIICHAT_REQUIRE_EQ(asciichat_error_stats_get().total_errors, errors_before, "A successful local-file open must not create even dismissed URL errors");
   asciichat_error_context_t error;
   ASCIICHAT_REQUIRE(HAS_ERRNO(&error));
   ASCIICHAT_REQUIRE_EQ(error.code, ERROR_NETWORK);

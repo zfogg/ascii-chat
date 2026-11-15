@@ -101,9 +101,7 @@ TEST_CASE("stereo/invalid_resampler_arguments_set_errno_without_mutating_state_o
   };
   for (size_t i = 0; i < ARRAY_SIZE(cases); i++) {
     CLEAR_ERRNO_ALL();
-    ASCIICHAT_REQUIRE_EQ(audio_resample_stereo(cases[i].state, cases[i].input, cases[i].frames, cases[i].input_rate,
-                                       cases[i].output, ARRAY_SIZE(output) / 2, cases[i].output_rate),
-                 0);
+    ASCIICHAT_REQUIRE_EQ(audio_resample_stereo(cases[i].state, cases[i].input, cases[i].frames, cases[i].input_rate, cases[i].output, ARRAY_SIZE(output) / 2, cases[i].output_rate), 0);
     asciichat_error_context_t error;
     ASCIICHAT_REQUIRE(HAS_ERRNO(&error), "Missing resampler error for case %zu", i);
     ASCIICHAT_REQUIRE_EQ(error.code, ERROR_INVALID_PARAM);

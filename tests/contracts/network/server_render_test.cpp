@@ -98,8 +98,7 @@ static asciichat_error_t render_audio(client_info_t *recipient, const void *data
 static bool render_sources(void) {
   return true;
 }
-static char *render_ascii(const char *id, unsigned short width, unsigned short height, bool stretch, size_t *size,
-                          bool *changed, int *sources, acip_render_settings_t *settings) {
+static char *render_ascii(const char *id, unsigned short width, unsigned short height, bool stretch, size_t *size, bool *changed, int *sources, acip_render_settings_t *settings) {
   (void)changed;
   ASCIICHAT_REQUIRE_STR_EQ(id, client.client_id);
   ASCIICHAT_REQUIRE_NOT(stretch);
@@ -116,8 +115,8 @@ static char *render_ascii(const char *id, unsigned short width, unsigned short h
   SAFE_STRDUP(text, "X\n");
   return text;
 }
-static void render_video(client_info_t *recipient, acip_frame_workspace_t *workspace, const char *text, size_t size,
-                         uint32_t width, uint32_t height, int sources, const acip_render_settings_t *settings) {
+static void render_video(client_info_t *recipient, acip_frame_workspace_t *workspace, const char *text, size_t size, uint32_t width, uint32_t height, int sources,
+                         const acip_render_settings_t *settings) {
   ASCIICHAT_REQUIRE_EQ(recipient, &client);
   ASCIICHAT_REQUIRE_NOT_NULL(workspace);
   ASCIICHAT_REQUIRE_STR_EQ(text, "X\n");

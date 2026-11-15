@@ -61,8 +61,7 @@ static bool contract_can_prompt(bool user_setting) {
   (void)user_setting;
   return can_prompt;
 }
-static bool contract_disclosure(ui_prompt_kind_t kind, ui_notice_severity_t severity, const char *text,
-                                unsigned timeout) {
+static bool contract_disclosure(ui_prompt_kind_t kind, ui_notice_severity_t severity, const char *text, unsigned timeout) {
   ASCIICHAT_REQUIRE_EQ(kind, UI_PROMPT_IP_DISCLOSURE);
   ASCIICHAT_REQUIRE_EQ(severity, UI_NOTICE_DANGER);
   ASCIICHAT_REQUIRE_NOT_NULL(strstr(text, "PUBLIC IP DISCLOSURE"));
@@ -227,9 +226,9 @@ TEST_CASE("server_main_contract/ice_relay_encodes_two_strings_and_bounds_combine
   ASCIICHAT_REQUIRE_ARRAY_EQ(header.sender_id, g_server_participant_id, 16);
   ASCIICHAT_REQUIRE_EQ(contract_length, sizeof(header) + 12);
   ASCIICHAT_REQUIRE_ARRAY_EQ(contract_payload + sizeof(header),
-                   "candidate\0"
-                   "0\0",
-                   12);
+                             "candidate\0"
+                             "0\0",
+                             12);
   char oversized[8193];
   memset(oversized, 'x', sizeof(oversized) - 1);
   oversized[sizeof(oversized) - 1] = 0;
@@ -530,8 +529,7 @@ TEST_CASE("server_main_contract/lan_advertisements_preserve_session_identity_por
   ASCIICHAT_REQUIRE_EQ(advertisement_calls, 1);
   ASCIICHAT_REQUIRE_EQ(advertisement_port, 27001);
   ASCIICHAT_REQUIRE_STR_EQ(advertisement_txt[0], "session_string=river-cloud-tree");
-  ASCIICHAT_REQUIRE_STR_EQ(advertisement_txt[1],
-                   "host_pubkey=0000000000000000000000000000000000000000000000000000000000000000");
+  ASCIICHAT_REQUIRE_STR_EQ(advertisement_txt[1], "host_pubkey=0000000000000000000000000000000000000000000000000000000000000000");
   g_server_encryption_enabled = true;
   for (unsigned i = 0; i < 32; ++i)
     g_server_private_key.public_key[i] = i;
@@ -540,8 +538,7 @@ TEST_CASE("server_main_contract/lan_advertisements_preserve_session_identity_por
   ASCIICHAT_REQUIRE_EQ(advertisement_calls, 2);
   ASCIICHAT_REQUIRE_EQ(advertisement_port, 27002);
   ASCIICHAT_REQUIRE_STR_EQ(advertisement_txt[0], "session_string=other-session-string");
-  ASCIICHAT_REQUIRE_STR_EQ(advertisement_txt[1],
-                   "host_pubkey=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+  ASCIICHAT_REQUIRE_STR_EQ(advertisement_txt[1], "host_pubkey=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
   ASCIICHAT_REQUIRE(g_server_encryption_enabled);
   advertisement_context = NULL;
 }

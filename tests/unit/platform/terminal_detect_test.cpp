@@ -32,8 +32,7 @@ TEST_CASE("terminal_detect/hyperlink_format_and_plain_fallback", "[terminal_dete
   ASCIICHAT_REQUIRE_GT(length, 0);
   ASCIICHAT_REQUIRE_EQ((size_t)length, strlen(output));
   ASCIICHAT_REQUIRE_STR_EQ(output, "\033]8;;https://ascii-chat.com\033\\\033[4mascii-chat.com\033[24m\033]8;;\033\\");
-  ASCIICHAT_REQUIRE_EQ(terminal_format_hyperlink(output, sizeof(output), "https://ascii-chat.com", "ascii-chat.com", false),
-               14);
+  ASCIICHAT_REQUIRE_EQ(terminal_format_hyperlink(output, sizeof(output), "https://ascii-chat.com", "ascii-chat.com", false), 14);
   ASCIICHAT_REQUIRE_STR_EQ(output, "ascii-chat.com");
 }
 
@@ -90,8 +89,7 @@ TEST_CASE("terminal_detect/detect_terminal_capabilities_basic", "[terminal_detec
   ASCIICHAT_REQUIRE_GE(caps.color_count, 0);
 
   // Render mode should be valid
-  ASCIICHAT_REQUIRE(caps.render_mode == RENDER_MODE_FOREGROUND || caps.render_mode == RENDER_MODE_BACKGROUND ||
-            caps.render_mode == RENDER_MODE_HALF_BLOCK);
+  ASCIICHAT_REQUIRE(caps.render_mode == RENDER_MODE_FOREGROUND || caps.render_mode == RENDER_MODE_BACKGROUND || caps.render_mode == RENDER_MODE_HALF_BLOCK);
 }
 
 // Parameterized test for COLORTERM variable detection
@@ -110,9 +108,9 @@ static colorterm_test_case_t colorterm_cases[] = {
     {"other", TERM_COLOR_NONE, 0, false, "COLORTERM=other (unknown value)"},
 };
 
-
-
-TEST_CASE("terminal_detect/colorterm_variable_detection_parameterized", "[terminal_detect]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(colorterm_cases)); auto *tc = &generated_case;
+TEST_CASE("terminal_detect/colorterm_variable_detection_parameterized", "[terminal_detect]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(colorterm_cases));
+  auto *tc = &generated_case;
   // Save original environment
   char *original_colorterm = getenv("COLORTERM");
   char *original_term = getenv("TERM");
@@ -129,12 +127,10 @@ TEST_CASE("terminal_detect/colorterm_variable_detection_parameterized", "[termin
 
   terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
 
-  ASCIICHAT_REQUIRE_EQ(caps.color_level, tc->expected_color_level, "%s: expected color level %d, got %d", tc->description,
-               tc->expected_color_level, caps.color_level);
+  ASCIICHAT_REQUIRE_EQ(caps.color_level, tc->expected_color_level, "%s: expected color level %d, got %d", tc->description, tc->expected_color_level, caps.color_level);
 
   if (tc->expected_color_count > 0) {
-    ASCIICHAT_REQUIRE_EQ(caps.color_count, tc->expected_color_count, "%s: expected %d colors, got %d", tc->description,
-                 tc->expected_color_count, caps.color_count);
+    ASCIICHAT_REQUIRE_EQ(caps.color_count, tc->expected_color_count, "%s: expected %d colors, got %d", tc->description, tc->expected_color_count, caps.color_count);
   }
 
   if (tc->should_have_truecolor_cap) {
@@ -175,9 +171,9 @@ static term_color_test_case_t term_color_cases[] = {
     {"dumb", TERM_COLOR_NONE, 0, 0, "TERM=dumb"},
 };
 
-
-
-TEST_CASE("terminal_detect/term_variable_color_detection_parameterized", "[terminal_detect]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(term_color_cases)); auto *tc = &generated_case;
+TEST_CASE("terminal_detect/term_variable_color_detection_parameterized", "[terminal_detect]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(term_color_cases));
+  auto *tc = &generated_case;
   // Save original environment
   char *original_term = getenv("TERM");
   char *original_colorterm = getenv("COLORTERM");
@@ -190,17 +186,14 @@ TEST_CASE("terminal_detect/term_variable_color_detection_parameterized", "[termi
 
   terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
 
-  ASCIICHAT_REQUIRE_EQ(caps.color_level, tc->expected_color_level, "%s: expected color level %d, got %d", tc->description,
-               tc->expected_color_level, caps.color_level);
+  ASCIICHAT_REQUIRE_EQ(caps.color_level, tc->expected_color_level, "%s: expected color level %d, got %d", tc->description, tc->expected_color_level, caps.color_level);
 
   if (tc->expected_color_count > 0) {
-    ASCIICHAT_REQUIRE_EQ(caps.color_count, tc->expected_color_count, "%s: expected %d colors, got %d", tc->description,
-                 tc->expected_color_count, caps.color_count);
+    ASCIICHAT_REQUIRE_EQ(caps.color_count, tc->expected_color_count, "%s: expected %d colors, got %d", tc->description, tc->expected_color_count, caps.color_count);
   }
 
   if (tc->expected_capability_flag != 0) {
-    ASCIICHAT_REQUIRE_NE(caps.capabilities & tc->expected_capability_flag, 0, "%s: expected capability flag 0x%x",
-                  tc->description, tc->expected_capability_flag);
+    ASCIICHAT_REQUIRE_NE(caps.capabilities & tc->expected_capability_flag, 0, "%s: expected capability flag 0x%x", tc->description, tc->expected_capability_flag);
   }
 
   // Restore original environment
@@ -231,9 +224,9 @@ static utf8_test_case_t utf8_cases[] = {
     {"C", "", "en_US.utf8", true, "LC_CTYPE=en_US.utf8"}, {"C", "", "", false, "LANG=C (no UTF-8)"}, {"", "", "", false, "All locale vars unset"},
 };
 
-
-
-TEST_CASE("terminal_detect/utf8_support_detection_parameterized", "[terminal_detect]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(utf8_cases)); auto *tc = &generated_case;
+TEST_CASE("terminal_detect/utf8_support_detection_parameterized", "[terminal_detect]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(utf8_cases));
+  auto *tc = &generated_case;
   // Save original environment
   char *original_lang = getenv("LANG");
   char *original_lc_all = getenv("LC_ALL");
@@ -260,8 +253,7 @@ TEST_CASE("terminal_detect/utf8_support_detection_parameterized", "[terminal_det
 
   terminal_capabilities_t caps = detect_terminal_capabilities(options_terminal_settings());
 
-  ASCIICHAT_REQUIRE_EQ(caps.utf8_support, tc->expected_utf8_support, "%s: expected UTF-8 support=%d, got %d", tc->description,
-               tc->expected_utf8_support, caps.utf8_support);
+  ASCIICHAT_REQUIRE_EQ(caps.utf8_support, tc->expected_utf8_support, "%s: expected UTF-8 support=%d, got %d", tc->description, tc->expected_utf8_support, caps.utf8_support);
 
   if (tc->expected_utf8_support) {
     ASCIICHAT_REQUIRE_NE(caps.capabilities & TERM_CAP_UTF8, 0, "%s: expected TERM_CAP_UTF8 capability", tc->description);

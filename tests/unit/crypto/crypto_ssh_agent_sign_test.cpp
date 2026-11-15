@@ -70,8 +70,7 @@ TEST_CASE("crypto_ssh_agent_sign/zero_message_length", "[crypto_ssh_agent_sign]"
 
   // Should either succeed (if agent is available) or fail gracefully
   if (result != ASCIICHAT_OK) {
-    ASCIICHAT_REQUIRE(result == ERROR_CRYPTO || result == ERROR_NETWORK,
-              "Should return appropriate error for zero-length message");
+    ASCIICHAT_REQUIRE(result == ERROR_CRYPTO || result == ERROR_NETWORK, "Should return appropriate error for zero-length message");
   }
 }
 

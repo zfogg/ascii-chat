@@ -20,8 +20,7 @@ static options_config_t *documentation_config(void) {
   options_builder_add_mode(builder, "server", "Host a session");
   options_builder_add_mode(builder, "client", "Join a session");
   options_builder_add_example(builder, OPTION_MODE_SERVER, "--port 27224", "Host securely", false);
-  options_builder_add_example_utility(builder, OPTION_MODE_MIRROR, "cat sample.mp4 | ascii-chat mirror -f -",
-                                      "Pipe a video", true);
+  options_builder_add_example_utility(builder, OPTION_MODE_MIRROR, "cat sample.mp4 | ascii-chat mirror -f -", "Pipe a video", true);
   options_config_t *config = options_builder_build(builder);
   options_builder_destroy(builder);
   ASCIICHAT_REQUIRE_NOT_NULL(config);
@@ -91,8 +90,7 @@ TEST_CASE("option_documentation/templates_and_merged_manpages_contain_generated_
     platform_close(fd);
   const char *modes[] = {NULL, "server", "client", "mirror", "discovery-service"};
   for (size_t i = 0; i < sizeof(modes) / sizeof(*modes); ++i) {
-    ASCIICHAT_REQUIRE_EQ(options_config_generate_manpage_template(config, "ascii-chat", modes[i], path, "Terminal chat"),
-                 ASCIICHAT_OK);
+    ASCIICHAT_REQUIRE_EQ(options_config_generate_manpage_template(config, "ascii-chat", modes[i], path, "Terminal chat"), ASCIICHAT_OK);
     FILE *stream = platform_fopen("manpage-test", path, "r");
     ASCIICHAT_REQUIRE_NOT_NULL(stream);
     char *text = read_stream(stream);
@@ -120,11 +118,10 @@ TEST_CASE("option_documentation/templates_and_merged_manpages_contain_generated_
 }
 
 TEST_CASE("option_documentation/parser_preserves_manual_merge_and_unmarked_section_content", "[option_documentation]") {
-  const char *input =
-      ".TH TEST 1\n.\\\" AUTO-START: OPTIONS\n.SH OPTIONS\nGenerated options\n.\\\" AUTO-END: OPTIONS\n"
-      ".\\\" MANUAL-START: DESCRIPTION\n.SH \"DESCRIPTION\"\nKeep this prose\n.\\\" MANUAL-END: DESCRIPTION\n"
-      ".\" MERGE-START: ENVIRONMENT\n.SH ENVIRONMENT\nCUSTOM_ENV\n.\" MERGE-END: ENVIRONMENT\n.SH NOTES\nUnmarked "
-      "prose\n";
+  const char *input = ".TH TEST 1\n.\\\" AUTO-START: OPTIONS\n.SH OPTIONS\nGenerated options\n.\\\" AUTO-END: OPTIONS\n"
+                      ".\\\" MANUAL-START: DESCRIPTION\n.SH \"DESCRIPTION\"\nKeep this prose\n.\\\" MANUAL-END: DESCRIPTION\n"
+                      ".\" MERGE-START: ENVIRONMENT\n.SH ENVIRONMENT\nCUSTOM_ENV\n.\" MERGE-END: ENVIRONMENT\n.SH NOTES\nUnmarked "
+                      "prose\n";
   parsed_section_t *sections = NULL;
   size_t count = 0;
   ASCIICHAT_REQUIRE_EQ(manpage_parser_parse_memory(input, strlen(input), &sections, &count), ASCIICHAT_OK);

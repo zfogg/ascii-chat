@@ -94,8 +94,7 @@ TEST_CASE("session_ui/native_view_resize_and_paused_recovery", "[session_ui]") {
   ui_session_t *session = ui_session_create();
   ASCIICHAT_REQUIRE_NOT_NULL(session);
   view_fixture_t fixture = {.text = "retained media"};
-  ui_session_view_t view = {
-      .screen = UI_SCREEN_MEDIA, .minimum = {.cols = 20, .rows = 10}, .draw = draw, .context = &fixture};
+  ui_session_view_t view = {.screen = UI_SCREEN_MEDIA, .minimum = {.cols = 20, .rows = 10}, .draw = draw, .context = &fixture};
   ASCIICHAT_REQUIRE_NOT_NULL(strstr(ui_session_render(session, &view, 1), fixture.text));
   ASCIICHAT_REQUIRE_NULL(ui_session_render(session, &view, 2));
   ui_session_resize(session, 10, 5);
@@ -116,8 +115,7 @@ TEST_CASE("session_ui/native_view_resize_and_paused_recovery", "[session_ui]") {
 TEST_CASE("session_ui/covered_splash_clock_pauses_even_without_host_ticks", "[session_ui]") {
   ui_session_t *session = ui_session_create();
   view_fixture_t fixture = {.text = "splash"};
-  ui_session_view_t view = {
-      .screen = UI_SCREEN_SPLASH, .minimum = {.cols = 20, .rows = 10}, .draw = draw, .context = &fixture};
+  ui_session_view_t view = {.screen = UI_SCREEN_SPLASH, .minimum = {.cols = 20, .rows = 10}, .draw = draw, .context = &fixture};
   ui_session_render(session, &view, 1000000000ULL);
   ui_session_render(session, &view, 2000000000ULL);
   ASCIICHAT_REQUIRE_FLOAT_EQ(fixture.seconds, 1, 0.001);
@@ -134,11 +132,7 @@ TEST_CASE("session_ui/covered_splash_clock_pauses_even_without_host_ticks", "[se
 TEST_CASE("session_ui/progress_refresh_is_throttled_but_dirty_snapshots_are_immediate", "[session_ui]") {
   ui_session_t *session = ui_session_create();
   view_fixture_t fixture = {.text = "progress"};
-  ui_session_view_t view = {.screen = UI_SCREEN_RENDER_PROGRESS,
-                            .minimum = {.cols = 1, .rows = 1},
-                            .refresh_ns = 125000000,
-                            .draw = draw,
-                            .context = &fixture};
+  ui_session_view_t view = {.screen = UI_SCREEN_RENDER_PROGRESS, .minimum = {.cols = 1, .rows = 1}, .refresh_ns = 125000000, .draw = draw, .context = &fixture};
   ASCIICHAT_REQUIRE_NOT_NULL(ui_session_render(session, &view, 1));
   ASCIICHAT_REQUIRE_NULL(ui_session_render(session, &view, 100000001));
   ASCIICHAT_REQUIRE_NOT_NULL(ui_session_render(session, &view, 125000001));

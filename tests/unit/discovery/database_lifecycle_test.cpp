@@ -151,9 +151,7 @@ TEST_CASE("database_lifecycle/transport_storage_failure_rolls_back_session_creat
   acip_session_create_t request = {.session_type = SESSION_TYPE_WEBRTC, .max_participants = 4};
   uint8_t keys[1][32] = {{0}}, metadata[10] = {'A', 'C', 'Q', 'T', 1};
   acip_session_created_t response;
-  ASCIICHAT_REQUIRE_NE(database_session_create_keys_with_transport(db, &request, keys, 1, &config, &response, metadata,
-                                                            sizeof(metadata)),
-                ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_NE(database_session_create_keys_with_transport(db, &request, keys, 1, &config, &response, metadata, sizeof(metadata)), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(response.session_string[0], 0);
   sqlite3_stmt *statement = NULL;
   ASCIICHAT_REQUIRE_EQ(sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM sessions", -1, &statement, NULL), SQLITE_OK);
@@ -171,9 +169,7 @@ TEST_CASE("database_lifecycle/successor_transports_follow_the_host_and_failed_re
   ASCIICHAT_REQUIRE_EQ(database_session_update_host(db, session.session_id, first, "127.0.0.2", 30000, 0), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(length, 0);
-  ASCIICHAT_REQUIRE_EQ((database_session_update_host_with_transport(db, session.session_id, first, "127.0.0.2", 30000, 0,
-                                                                    fresh_metadata, 10)),
-                       ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ((database_session_update_host_with_transport(db, session.session_id, first, "127.0.0.2", 30000, 0, fresh_metadata, 10)), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(length, 10);
   ASCIICHAT_REQUIRE_ARRAY_EQ(output, fresh_metadata, 10);
@@ -182,9 +178,7 @@ TEST_CASE("database_lifecycle/successor_transports_follow_the_host_and_failed_re
                                      "BEGIN SELECT RAISE(FAIL, 'test rejection'); END;",
                                      NULL, NULL, NULL)),
                        SQLITE_OK);
-  ASCIICHAT_REQUIRE_NE((database_session_update_host_with_transport(db, session.session_id, second, "127.0.0.3", 31000, 0,
-                                                                     old_metadata, 10)),
-                       ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_NE((database_session_update_host_with_transport(db, session.session_id, second, "127.0.0.3", 31000, 0, old_metadata, 10)), ASCIICHAT_OK);
   session_entry_t *stored = database_session_find_by_id(db, session.session_id);
   ASCIICHAT_REQUIRE_NOT_NULL(stored);
   ASCIICHAT_REQUIRE_ARRAY_EQ(stored->host_participant_id, first, 16);
@@ -203,9 +197,7 @@ TEST_CASE("database_lifecycle/successor_transports_follow_the_host_and_failed_re
 TEST_CASE("database_lifecycle/clearing_a_failed_host_cannot_republish_its_old_transport", "[database_lifecycle]") {
   uint8_t metadata[10] = {'A', 'C', 'Q', 'T', 1}, host[16] = {42}, output[10];
   size_t length = 0;
-  ASCIICHAT_REQUIRE_EQ(
-      database_session_update_host_with_transport(db, session.session_id, host, "127.0.0.2", 30000, 0, metadata, 10),
-      ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(database_session_update_host_with_transport(db, session.session_id, host, "127.0.0.2", 30000, 0, metadata, 10), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(database_session_clear_host(db, session.session_id), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(database_session_transport_get(db, session.session_id, output, 10, &length), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(length, 0);
@@ -233,8 +225,7 @@ static void *concurrent_failed_host_refresh(void *data) {
   uint8_t host[SESSION_ID_SIZE] = {42};
   uint8_t metadata[10] = {'A', 'C', 'Q', 'T', 1};
   for (int i = 0; i < CONCURRENT_HOST_REFRESHES; ++i) {
-    if (database_session_update_host_with_transport(db, session.session_id, host, "127.0.0.2", 30000, 0, metadata,
-                                                    sizeof(metadata)) == ASCIICHAT_OK) {
+    if (database_session_update_host_with_transport(db, session.session_id, host, "127.0.0.2", 30000, 0, metadata, sizeof(metadata)) == ASCIICHAT_OK) {
       race->refresh_ok = false;
       break;
     }

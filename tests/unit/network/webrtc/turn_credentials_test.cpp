@@ -66,8 +66,7 @@ TEST_CASE("turn_credentials/password_base64", "[turn_credentials]") {
   // Base64 characters: A-Za-z0-9+/= (and padding)
   for (size_t i = 0; creds.password[i] != '\0'; i++) {
     char c = creds.password[i];
-    bool valid =
-        (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '+' || c == '/' || c == '=';
+    bool valid = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '+' || c == '/' || c == '=';
     ASCIICHAT_REQUIRE(valid, "Password character '%c' is not valid base64", c);
   }
 }
@@ -111,8 +110,7 @@ TEST_CASE("turn_credentials/expiration_time", "[turn_credentials]") {
 
   // Expiration should be approximately now + validity (allow 2 second tolerance)
   time_t expected_expiration = now + validity;
-  time_t diff = creds.expires_at > expected_expiration ? creds.expires_at - expected_expiration
-                                                       : expected_expiration - creds.expires_at;
+  time_t diff = creds.expires_at > expected_expiration ? creds.expires_at - expected_expiration : expected_expiration - creds.expires_at;
   ASCIICHAT_REQUIRE_LT(diff, 2, "Expiration time should be approximately now + validity");
 }
 

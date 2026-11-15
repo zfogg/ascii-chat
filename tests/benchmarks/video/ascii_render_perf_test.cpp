@@ -35,8 +35,7 @@ static size_t benchmark_ascii_conversion(image_t *image, const bool color_mode) 
   return length;
 }
 
-static void run_ascii_conversion_batch(image_t *image, const ssize_t width, const ssize_t height,
-                                       const bool color_mode) {
+static void run_ascii_conversion_batch(image_t *image, const ssize_t width, const ssize_t height, const bool color_mode) {
   const char *palette = "@%#*+=-:. ";
   char luminance_palette[257];
   build_luminance_palette(luminance_palette, palette);
@@ -79,8 +78,12 @@ TEST_CASE("ASCII renderer benchmark", "[benchmark][renderer]") {
   image_t *image = image_new(width, height);
   REQUIRE(image != nullptr);
   fill_gradient_image(image, width, height);
-  BENCHMARK("monochrome conversion") { return benchmark_ascii_conversion(image, false); };
-  BENCHMARK("color conversion") { return benchmark_ascii_conversion(image, true); };
+  BENCHMARK("monochrome conversion") {
+    return benchmark_ascii_conversion(image, false);
+  };
+  BENCHMARK("color conversion") {
+    return benchmark_ascii_conversion(image, true);
+  };
 
   image_destroy(image);
 }

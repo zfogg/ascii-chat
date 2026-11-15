@@ -68,8 +68,7 @@ TEST_CASE("tcp_transport/socket_ownership_survives_peer_eof", "[tcp_transport]")
   for (int owned = 0; owned < 2; ++owned) {
     int sockets[2];
     ASCIICHAT_REQUIRE_EQ(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
-    acip_transport_t *transport = owned ? acip_tcp_transport_create_owned("owned-eof", sockets[0], NULL)
-                                        : acip_tcp_transport_create("borrowed-eof", sockets[0], NULL);
+    acip_transport_t *transport = owned ? acip_tcp_transport_create_owned("owned-eof", sockets[0], NULL) : acip_tcp_transport_create("borrowed-eof", sockets[0], NULL);
     ASCIICHAT_REQUIRE_NOT_NULL(transport);
     socket_close(sockets[1]);
     void *buffer = NULL, *allocated = NULL;
@@ -105,8 +104,7 @@ static void check_timeout(size_t header_bytes, bool payload_byte, bool retryable
   void *buffer = NULL;
   void *allocated = NULL;
   size_t length = 0;
-  ASCIICHAT_REQUIRE_EQ(acip_transport_recv(transport, &buffer, &length, &allocated),
-               retryable ? ERROR_NETWORK_TIMEOUT : ERROR_NETWORK);
+  ASCIICHAT_REQUIRE_EQ(acip_transport_recv(transport, &buffer, &length, &allocated), retryable ? ERROR_NETWORK_TIMEOUT : ERROR_NETWORK);
   ASCIICHAT_REQUIRE_EQ(acip_transport_is_connected(transport), retryable);
   ASCIICHAT_REQUIRE(HAS_ERRNO_CODE(ERROR_NETWORK_TIMEOUT));
   acip_transport_destroy(transport);
@@ -181,11 +179,9 @@ TEST_CASE("tcp_transport/discovery_joined_rejection_is_failure", "[tcp_transport
 TEST_CASE("tcp_transport/error_response_hides_internal_details", "[tcp_transport]") {
   int sockets[2];
   ASCIICHAT_REQUIRE_EQ(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
-  ASCIICHAT_REQUIRE_EQ(packet_send_error(sockets[0], NULL, ERROR_FILE_NOT_FOUND, "private/path and subprocess details"),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(packet_send_error(sockets[0], NULL, ERROR_FILE_NOT_FOUND, "private/path and subprocess details"), ASCIICHAT_OK);
   packet_envelope_t envelope = {0};
-  ASCIICHAT_REQUIRE_EQ(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT),
-               PACKET_RECV_SUCCESS);
+  ASCIICHAT_REQUIRE_EQ(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT), PACKET_RECV_SUCCESS);
   asciichat_error_t code;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1];
   ASCIICHAT_REQUIRE_EQ(packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t),
@@ -208,8 +204,7 @@ TEST_CASE("tcp_transport/error_response_hides_errno_stack_locations", "[tcp_tran
   ASCIICHAT_REQUIRE_EQ(packet_send_error(sockets[0], NULL, ERROR_NETWORK_PROTOCOL, NULL), ASCIICHAT_OK);
 
   packet_envelope_t envelope = {0};
-  ASCIICHAT_REQUIRE_EQ(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT),
-               PACKET_RECV_SUCCESS);
+  ASCIICHAT_REQUIRE_EQ(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT), PACKET_RECV_SUCCESS);
   asciichat_error_t code;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1];
   ASCIICHAT_REQUIRE_EQ(packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t),
@@ -242,8 +237,7 @@ TEST_CASE("tcp_transport/acip_error_response_hides_errno_stack_locations", "[tcp
   ASCIICHAT_REQUIRE_EQ(acip_send_error(transport, ERROR_NETWORK_PROTOCOL, NULL), ASCIICHAT_OK);
 
   packet_envelope_t envelope = {0};
-  ASCIICHAT_REQUIRE_EQ(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT),
-               PACKET_RECV_SUCCESS);
+  ASCIICHAT_REQUIRE_EQ(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT), PACKET_RECV_SUCCESS);
   asciichat_error_t code;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1];
   ASCIICHAT_REQUIRE_EQ(packet_parse_error_message((const uint8_t *)envelope.data + sizeof(packet_header_t),

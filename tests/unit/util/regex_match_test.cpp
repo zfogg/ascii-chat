@@ -36,8 +36,7 @@ TEST_CASE("regex_match/no_match_retains_native_error", "[regex_match]") {
 }
 
 TEST_CASE("regex_match/partial_mode_falls_back_when_not_jit_compiled", "[regex_match]") {
-  ASCIICHAT_REQUIRE_EQ(asciichat_pcre2_match(pattern, (PCRE2_SPTR) "to", 2, 0, PCRE2_PARTIAL_HARD, matches, NULL),
-               PCRE2_ERROR_PARTIAL);
+  ASCIICHAT_REQUIRE_EQ(asciichat_pcre2_match(pattern, (PCRE2_SPTR) "to", 2, 0, PCRE2_PARTIAL_HARD, matches, NULL), PCRE2_ERROR_PARTIAL);
 }
 
 TEST_CASE("regex_match/nonzero_start_offset_is_forwarded", "[regex_match]") {

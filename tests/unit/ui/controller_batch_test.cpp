@@ -12,7 +12,7 @@
 #include <string>
 
 class stdout_capture final {
- public:
+public:
   stdout_capture() : saved_fd_(platform_dup(STDOUT_FILENO)), file_(platform_tmpfile()) {
     REQUIRE(saved_fd_ >= 0);
     REQUIRE(file_ != nullptr);
@@ -42,7 +42,7 @@ class stdout_capture final {
     return result;
   }
 
- private:
+private:
   int saved_fd_;
   FILE *file_;
 };
@@ -74,8 +74,7 @@ TEST_CASE("controller_batch/redirected_output_is_synchronous_and_restores_owners
   terminal_size_t minimum = {.cols = 8, .rows = 4};
   const char snapshot[] = "rendered";
   ASCIICHAT_REQUIRE_NOT(ui_controller_is_owner());
-  ASCIICHAT_REQUIRE_EQ(ui_controller_submit(UI_SCREEN_STATUS, fd, minimum, render_snapshot, snapshot, sizeof(snapshot)),
-               ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(ui_controller_submit(UI_SCREEN_STATUS, fd, minimum, render_snapshot, snapshot, sizeof(snapshot)), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_NOT(ui_controller_is_owner());
   ASCIICHAT_REQUIRE_NOT(ui_controller_is_presenting());
   ASCIICHAT_REQUIRE_EQ(ui_controller_write(fd, "direct\n", 7), ASCIICHAT_OK);
@@ -100,21 +99,16 @@ TEST_CASE("controller_batch/redirected_output_is_synchronous_and_restores_owners
 TEST_CASE("controller_batch/invalid_snapshots_and_frames_are_rejected_before_rendering", "[controller_batch]") {
   terminal_size_t minimum = {.cols = 8, .rows = 4};
   const char snapshot[] = "unused";
-  ASCIICHAT_REQUIRE_EQ(ui_controller_submit(UI_SCREEN_COUNT, -1, minimum, render_snapshot, snapshot, sizeof(snapshot)),
-               ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(ui_controller_submit(UI_SCREEN_STATUS, -1, minimum, NULL, snapshot, sizeof(snapshot)),
-               ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(ui_controller_submit(UI_SCREEN_STATUS, -1, minimum, render_snapshot, NULL, sizeof(snapshot)),
-               ERROR_INVALID_PARAM);
+  ASCIICHAT_REQUIRE_EQ(ui_controller_submit(UI_SCREEN_COUNT, -1, minimum, render_snapshot, snapshot, sizeof(snapshot)), ERROR_INVALID_PARAM);
+  ASCIICHAT_REQUIRE_EQ(ui_controller_submit(UI_SCREEN_STATUS, -1, minimum, NULL, snapshot, sizeof(snapshot)), ERROR_INVALID_PARAM);
+  ASCIICHAT_REQUIRE_EQ(ui_controller_submit(UI_SCREEN_STATUS, -1, minimum, render_snapshot, NULL, sizeof(snapshot)), ERROR_INVALID_PARAM);
   ASCIICHAT_REQUIRE_EQ(ui_controller_submit(UI_SCREEN_STATUS, -1, minimum, render_snapshot, snapshot, 0), ERROR_INVALID_PARAM);
   minimum.cols = 0;
-  ASCIICHAT_REQUIRE_EQ(ui_controller_submit(UI_SCREEN_STATUS, -1, minimum, render_snapshot, snapshot, sizeof(snapshot)),
-               ERROR_INVALID_PARAM);
+  ASCIICHAT_REQUIRE_EQ(ui_controller_submit(UI_SCREEN_STATUS, -1, minimum, render_snapshot, snapshot, sizeof(snapshot)), ERROR_INVALID_PARAM);
   minimum.cols = 8;
   ASCIICHAT_REQUIRE_EQ(ui_controller_present(UI_SCREEN_STATUS, -1, minimum, NULL, 1), ERROR_INVALID_PARAM);
   ASCIICHAT_REQUIRE_EQ(ui_controller_present(UI_SCREEN_STATUS, -1, minimum, snapshot, 0), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(ui_controller_present(UI_SCREEN_STATUS, -1, minimum, snapshot, UI_CONTROLLER_MAX_FRAME_BYTES + 1),
-               ERROR_INVALID_PARAM);
+  ASCIICHAT_REQUIRE_EQ(ui_controller_present(UI_SCREEN_STATUS, -1, minimum, snapshot, UI_CONTROLLER_MAX_FRAME_BYTES + 1), ERROR_INVALID_PARAM);
   ASCIICHAT_REQUIRE_EQ(ui_controller_write(-1, NULL, 1), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(ui_controller_write(-1, snapshot, 0), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_NOT(ui_controller_is_owner());
@@ -141,9 +135,7 @@ TEST_CASE("controller_batch/sync_mailbox_dismissal_does_not_emit_batch_newline",
   stdout_capture capture;
   ui_controller_select_interactive(UI_SCREEN_SYNC);
   const bool snapshot = true;
-  asciichat_error_t result =
-      ui_controller_submit(UI_SCREEN_STATUS, STDOUT_FILENO, (terminal_size_t){.cols = 8, .rows = 4}, dismiss_over_sync,
-                           &snapshot, sizeof(snapshot));
+  asciichat_error_t result = ui_controller_submit(UI_SCREEN_STATUS, STDOUT_FILENO, (terminal_size_t){.cols = 8, .rows = 4}, dismiss_over_sync, &snapshot, sizeof(snapshot));
   ui_controller_select_interactive(-1);
   ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(ui_controller_write(STDOUT_FILENO, "sentinel", 8), ASCIICHAT_OK);

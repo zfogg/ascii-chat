@@ -48,9 +48,9 @@ static image_new_test_case_t image_new_cases[] = {
     {IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT, true, "Maximum allowed dimensions"},
 };
 
-
-
-TEST_CASE("image/image_new_dimensions", "[image]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(image_new_cases)); auto *tc = &generated_case;
+TEST_CASE("image/image_new_dimensions", "[image]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(image_new_cases));
+  auto *tc = &generated_case;
   image_t *img = image_new(tc->width, tc->height);
 
   if (tc->should_succeed) {
@@ -399,32 +399,31 @@ typedef struct {
 } rgb_color_test_case_t;
 
 static rgb_color_test_case_t rgb_color_cases[] = {
-    {255, 0, 0, "Red (255, 0, 0)"},           {0, 255, 0, "Green (0, 255, 0)"},
-    {0, 0, 255, "Blue (0, 0, 255)"},          {0, 0, 0, "Black (0, 0, 0)"},
-    {255, 255, 255, "White (255, 255, 255)"}, {255, 128, 64, "Mid-range orange (255, 128, 64)"},
+    {255, 0, 0, "Red (255, 0, 0)"}, {0, 255, 0, "Green (0, 255, 0)"},         {0, 0, 255, "Blue (0, 0, 255)"},
+    {0, 0, 0, "Black (0, 0, 0)"},   {255, 255, 255, "White (255, 255, 255)"}, {255, 128, 64, "Mid-range orange (255, 128, 64)"},
 };
 
-
-
-TEST_CASE("image/rgb_to_ansi_fg_variations", "[image]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(rgb_color_cases)); auto *tc = &generated_case;
+TEST_CASE("image/rgb_to_ansi_fg_variations", "[image]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(rgb_color_cases));
+  auto *tc = &generated_case;
   char *result = rgb_to_ansi_fg(tc->r, tc->g, tc->b);
   ASCIICHAT_REQUIRE_NOT_NULL(result, "%s: FG result should not be NULL", tc->description);
   ASCIICHAT_REQUIRE_GT(strlen(result), 0, "%s: FG result should not be empty", tc->description);
   // Note: result points to static buffer, no need to free
 }
 
-
-
-TEST_CASE("image/rgb_to_ansi_bg_variations", "[image]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(rgb_color_cases)); auto *tc = &generated_case;
+TEST_CASE("image/rgb_to_ansi_bg_variations", "[image]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(rgb_color_cases));
+  auto *tc = &generated_case;
   char *result = rgb_to_ansi_bg(tc->r, tc->g, tc->b);
   ASCIICHAT_REQUIRE_NOT_NULL(result, "%s: BG result should not be NULL", tc->description);
   ASCIICHAT_REQUIRE_GT(strlen(result), 0, "%s: BG result should not be empty", tc->description);
   // Note: result points to static buffer, no need to free
 }
 
-
-
-TEST_CASE("image/rgb_to_ansi_8bit_variations", "[image]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(rgb_color_cases)); auto *tc = &generated_case;
+TEST_CASE("image/rgb_to_ansi_8bit_variations", "[image]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(rgb_color_cases));
+  auto *tc = &generated_case;
   int fg_code, bg_code;
   rgb_to_ansi_8bit(tc->r, tc->g, tc->b, &fg_code, &bg_code);
 
@@ -457,9 +456,9 @@ static precalc_palette_test_case_t precalc_palette_cases[] = {
     {10.0f, 10.0f, 10.0f, "Large values (10.0)"},
 };
 
-
-
-TEST_CASE("image/precalc_rgb_palettes_variations", "[image]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(precalc_palette_cases)); auto *tc = &generated_case;
+TEST_CASE("image/precalc_rgb_palettes_variations", "[image]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(precalc_palette_cases));
+  auto *tc = &generated_case;
   // Should not crash with any values
   precalc_rgb_palettes(tc->r_factor, tc->g_factor, tc->b_factor);
   ASCIICHAT_REQUIRE(true, "%s should not crash", tc->description);

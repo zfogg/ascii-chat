@@ -899,24 +899,19 @@ TEST_CASE("ringbuffer/fifo_ordering_property", "[ringbuffer]") {
   }
 
   // PROPERTY: Size should equal number of writes
-  ASCIICHAT_REQUIRE_EQ(ringbuffer_size(rb), num_ops, "Size should equal number of writes for capacity %zu, num_ops %zu",
-               capacity, num_ops);
+  ASCIICHAT_REQUIRE_EQ(ringbuffer_size(rb), num_ops, "Size should equal number of writes for capacity %zu, num_ops %zu", capacity, num_ops);
 
   // PROPERTY: Read back in same order (FIFO property)
   for (size_t i = 0; i < num_ops; i++) {
     int read_value;
     bool result = ringbuffer_read(rb, &read_value);
     ASCIICHAT_REQUIRE(result, "Read should succeed at index %zu for capacity %zu", i, capacity);
-    ASCIICHAT_REQUIRE_EQ(read_value, written_values[i],
-                 "FIFO ordering violated: expected %d at position %zu, got %d (capacity=%zu, num_ops=%zu)",
-                 written_values[i], i, read_value, capacity, num_ops);
+    ASCIICHAT_REQUIRE_EQ(read_value, written_values[i], "FIFO ordering violated: expected %d at position %zu, got %d (capacity=%zu, num_ops=%zu)", written_values[i], i, read_value, capacity, num_ops);
   }
 
   // PROPERTY: Buffer should be empty after reading all values
-  ASCIICHAT_REQUIRE(ringbuffer_is_empty(rb), "Buffer should be empty after reading all values (capacity=%zu, num_ops=%zu)",
-            capacity, num_ops);
-  ASCIICHAT_REQUIRE_EQ(ringbuffer_size(rb), 0, "Size should be 0 after reading all values (capacity=%zu, num_ops=%zu)",
-               capacity, num_ops);
+  ASCIICHAT_REQUIRE(ringbuffer_is_empty(rb), "Buffer should be empty after reading all values (capacity=%zu, num_ops=%zu)", capacity, num_ops);
+  ASCIICHAT_REQUIRE_EQ(ringbuffer_size(rb), 0, "Size should be 0 after reading all values (capacity=%zu, num_ops=%zu)", capacity, num_ops);
 
   SAFE_FREE(written_values);
   ringbuffer_destroy(rb);

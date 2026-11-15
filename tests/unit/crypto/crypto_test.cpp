@@ -175,8 +175,7 @@ TEST_CASE("crypto/encryption_roundtrip_property", "[crypto]") {
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Decryption should succeed for size %zu", data_size);
 
   ASCIICHAT_REQUIRE_EQ(decrypted_len, data_size, "Decrypted length must match plaintext length for size %zu", data_size);
-  ASCIICHAT_REQUIRE_EQ(memcmp(decrypted, plaintext, data_size), 0,
-               "Decrypted data must match plaintext for size %zu (roundtrip property)", data_size);
+  ASCIICHAT_REQUIRE_EQ(memcmp(decrypted, plaintext, data_size), 0, "Decrypted data must match plaintext for size %zu (roundtrip property)", data_size);
 
   SAFE_FREE(plaintext);
   crypto_destroy(&ctx);
@@ -218,8 +217,7 @@ TEST_CASE("crypto/key_exchange_roundtrip_property", "[crypto]") {
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Decryption should succeed for key exchange size %zu", data_size);
 
   ASCIICHAT_REQUIRE_EQ(decrypted_len, data_size, "Decrypted length must match for key exchange size %zu", data_size);
-  ASCIICHAT_REQUIRE_EQ(memcmp(decrypted, plaintext, data_size), 0, "Key exchange roundtrip must preserve data for size %zu",
-               data_size);
+  ASCIICHAT_REQUIRE_EQ(memcmp(decrypted, plaintext, data_size), 0, "Key exchange roundtrip must preserve data for size %zu", data_size);
 
   SAFE_FREE(plaintext);
   crypto_destroy(&ctx1);
@@ -235,8 +233,7 @@ TEST_CASE("crypto/encrypt_not_ready", "[crypto]") {
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Init should succeed");
 
   // Try to encrypt before key exchange or password
-  result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, strlen(plaintext), ciphertext, sizeof(ciphertext),
-                          &ciphertext_len);
+  result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, strlen(plaintext), ciphertext, sizeof(ciphertext), &ciphertext_len);
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE, "Encryption should fail when not ready");
 }
 
@@ -248,8 +245,7 @@ TEST_CASE("crypto/encrypt_invalid_params", "[crypto]") {
   size_t ciphertext_len;
 
   // Test NULL parameters
-  crypto_result_t result = crypto_encrypt(NULL, (const uint8_t *)plaintext, strlen(plaintext), ciphertext,
-                                          sizeof(ciphertext), &ciphertext_len);
+  crypto_result_t result = crypto_encrypt(NULL, (const uint8_t *)plaintext, strlen(plaintext), ciphertext, sizeof(ciphertext), &ciphertext_len);
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_ERROR_INVALID_PARAMS, "NULL context should fail");
 
   result = crypto_encrypt(&ctx1, NULL, strlen(plaintext), ciphertext, sizeof(ciphertext), &ciphertext_len);
@@ -258,8 +254,7 @@ TEST_CASE("crypto/encrypt_invalid_params", "[crypto]") {
   result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, 0, ciphertext, sizeof(ciphertext), &ciphertext_len);
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_ERROR_INVALID_PARAMS, "Zero length should fail");
 
-  result =
-      crypto_encrypt(&ctx1, (const uint8_t *)plaintext, strlen(plaintext), NULL, sizeof(ciphertext), &ciphertext_len);
+  result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, strlen(plaintext), NULL, sizeof(ciphertext), &ciphertext_len);
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_ERROR_INVALID_PARAMS, "NULL ciphertext should fail");
 
   result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, strlen(plaintext), ciphertext, sizeof(ciphertext), NULL);
@@ -273,8 +268,7 @@ TEST_CASE("crypto/decrypt_invalid_data", "[crypto]") {
   uint8_t plaintext[1024];
   size_t plaintext_len;
 
-  crypto_result_t result = crypto_decrypt(&ctx1, invalid_ciphertext, sizeof(invalid_ciphertext), plaintext,
-                                          sizeof(plaintext), &plaintext_len);
+  crypto_result_t result = crypto_decrypt(&ctx1, invalid_ciphertext, sizeof(invalid_ciphertext), plaintext, sizeof(plaintext), &plaintext_len);
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_ERROR_INVALID_PARAMS, "Too small ciphertext should fail");
 }
 
@@ -321,15 +315,13 @@ TEST_CASE("crypto/encrypted_data_packet", "[crypto]") {
   // Create encrypted packet
   uint8_t packet[1024];
   size_t packet_len;
-  crypto_result_t result = crypto_create_encrypted_packet(&ctx1, (const uint8_t *)test_data, test_data_len, packet,
-                                                          sizeof(packet), &packet_len);
+  crypto_result_t result = crypto_create_encrypted_packet(&ctx1, (const uint8_t *)test_data, test_data_len, packet, sizeof(packet), &packet_len);
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Creating encrypted packet should succeed");
 
   // Process encrypted packet
   uint8_t decrypted_data[1024];
   size_t decrypted_len;
-  result = crypto_process_encrypted_packet(&ctx2, packet, packet_len, decrypted_data, sizeof(decrypted_data),
-                                           &decrypted_len);
+  result = crypto_process_encrypted_packet(&ctx2, packet, packet_len, decrypted_data, sizeof(decrypted_data), &decrypted_len);
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Processing encrypted packet should succeed");
   ASCIICHAT_REQUIRE_EQ(decrypted_len, test_data_len, "Decrypted length should match");
   ASCIICHAT_REQUIRE_EQ(memcmp(decrypted_data, test_data, test_data_len), 0, "Decrypted data should match");
@@ -415,8 +407,7 @@ TEST_CASE("crypto/nonce_uniqueness_property", "[crypto]") {
   crypto_encrypt(&ctx, plaintext, data_size, ciphertext2, sizeof(ciphertext2), &ciphertext2_len);
 
   size_t min_len = ciphertext1_len < ciphertext2_len ? ciphertext1_len : ciphertext2_len;
-  ASCIICHAT_REQUIRE_NE(memcmp(ciphertext1, ciphertext2, min_len), 0,
-                "Nonce uniqueness property: same plaintext size %zu must produce different ciphertext", data_size);
+  ASCIICHAT_REQUIRE_NE(memcmp(ciphertext1, ciphertext2, min_len), 0, "Nonce uniqueness property: same plaintext size %zu must produce different ciphertext", data_size);
 
   SAFE_FREE(plaintext);
   crypto_destroy(&ctx);
@@ -431,8 +422,7 @@ TEST_CASE("crypto/buffer_size_checks", "[crypto]") {
   uint8_t small_buffer[10]; // Too small
   size_t output_len;
 
-  crypto_result_t result =
-      crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, small_buffer, sizeof(small_buffer), &output_len);
+  crypto_result_t result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, small_buffer, sizeof(small_buffer), &output_len);
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_ERROR_BUFFER_TOO_SMALL, "Small buffer should fail");
 }
 
@@ -462,8 +452,7 @@ TEST_CASE("crypto/nonce_counter_exhaustion", "[crypto]") {
   size_t ciphertext_len;
 
   // Test 1: Normal operation - counter starts at 1 after init
-  crypto_result_t result =
-      crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
+  crypto_result_t result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Normal encryption should succeed");
   ASCIICHAT_REQUIRE_EQ(ctx1.nonce_counter, 2, "Counter should increment from 1 to 2");
 
@@ -471,28 +460,23 @@ TEST_CASE("crypto/nonce_counter_exhaustion", "[crypto]") {
   ctx1.nonce_counter = 0;
 
   // This encryption should fail because counter is 0 (exhausted)
-  result =
-      crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
+  result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_ERROR_NONCE_EXHAUSTED, "Encryption should fail when nonce counter is 0 (exhausted)");
   ASCIICHAT_REQUIRE_EQ(ctx1.nonce_counter, 0, "Counter should remain 0 after failed encryption");
 
   // Test 3: Verify that counter stays at 0 and continues to fail
-  result =
-      crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
-  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_ERROR_NONCE_EXHAUSTED,
-               "Subsequent encryptions should continue to fail with exhausted counter");
+  result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
+  ASCIICHAT_REQUIRE_EQ(result, CRYPTO_ERROR_NONCE_EXHAUSTED, "Subsequent encryptions should continue to fail with exhausted counter");
   ASCIICHAT_REQUIRE_EQ(ctx1.nonce_counter, 0, "Counter should remain at 0 (exhausted state)");
 
   // Test 4: Verify edge case - UINT64_MAX counter should fail (prevent overflow)
   ctx1.nonce_counter = UINT64_MAX;
-  result =
-      crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
+  result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_ERROR_NONCE_EXHAUSTED, "Encryption at UINT64_MAX should fail to prevent overflow");
   ASCIICHAT_REQUIRE_EQ(ctx1.nonce_counter, UINT64_MAX, "Counter should remain at UINT64_MAX (exhausted state)");
 
   // Verify that counter stays at UINT64_MAX and continues to fail
-  result =
-      crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
+  result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_ERROR_NONCE_EXHAUSTED, "Subsequent encryptions should continue to fail at UINT64_MAX");
 }
 
@@ -511,16 +495,15 @@ typedef struct {
   bool test_null_length_out;
 } crypto_error_test_case_t;
 
-static crypto_error_test_case_t crypto_error_cases[] = {
-    {"NULL context", CRYPTO_ERROR_INVALID_PARAMS, true, false, false, false, false},
-    {"NULL plaintext", CRYPTO_ERROR_INVALID_PARAMS, false, true, false, false, false},
-    {"Zero length", CRYPTO_ERROR_INVALID_PARAMS, false, false, true, false, false},
-    {"NULL ciphertext", CRYPTO_ERROR_INVALID_PARAMS, false, false, false, true, false},
-    {"NULL length out", CRYPTO_ERROR_INVALID_PARAMS, false, false, false, false, true}};
+static crypto_error_test_case_t crypto_error_cases[] = {{"NULL context", CRYPTO_ERROR_INVALID_PARAMS, true, false, false, false, false},
+                                                        {"NULL plaintext", CRYPTO_ERROR_INVALID_PARAMS, false, true, false, false, false},
+                                                        {"Zero length", CRYPTO_ERROR_INVALID_PARAMS, false, false, true, false, false},
+                                                        {"NULL ciphertext", CRYPTO_ERROR_INVALID_PARAMS, false, false, false, true, false},
+                                                        {"NULL length out", CRYPTO_ERROR_INVALID_PARAMS, false, false, false, false, true}};
 
-
-
-TEST_CASE("crypto/error_conditions", "[crypto]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(crypto_error_cases)); auto *tc = &generated_case;
+TEST_CASE("crypto/error_conditions", "[crypto]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(crypto_error_cases));
+  auto *tc = &generated_case;
   crypto_context_t ctx;
   crypto_init_with_password(&ctx, "password");
 
@@ -531,15 +514,13 @@ TEST_CASE("crypto/error_conditions", "[crypto]") { auto&& generated_case = GENER
   crypto_result_t result;
 
   if (tc->test_null_context) {
-    result = crypto_encrypt(NULL, (const uint8_t *)plaintext, strlen(plaintext), ciphertext, sizeof(ciphertext),
-                            &ciphertext_len);
+    result = crypto_encrypt(NULL, (const uint8_t *)plaintext, strlen(plaintext), ciphertext, sizeof(ciphertext), &ciphertext_len);
   } else if (tc->test_null_plaintext) {
     result = crypto_encrypt(&ctx, NULL, strlen(plaintext), ciphertext, sizeof(ciphertext), &ciphertext_len);
   } else if (tc->test_zero_length) {
     result = crypto_encrypt(&ctx, (const uint8_t *)plaintext, 0, ciphertext, sizeof(ciphertext), &ciphertext_len);
   } else if (tc->test_null_ciphertext) {
-    result =
-        crypto_encrypt(&ctx, (const uint8_t *)plaintext, strlen(plaintext), NULL, sizeof(ciphertext), &ciphertext_len);
+    result = crypto_encrypt(&ctx, (const uint8_t *)plaintext, strlen(plaintext), NULL, sizeof(ciphertext), &ciphertext_len);
   } else {
     result = crypto_encrypt(&ctx, (const uint8_t *)plaintext, strlen(plaintext), ciphertext, sizeof(ciphertext), NULL);
   }
@@ -557,15 +538,14 @@ typedef struct {
   crypto_result_t expected_result;
 } crypto_init_test_case_t;
 
-static crypto_init_test_case_t crypto_init_cases[] = {
-    {"Valid password", "test-password-123", true, CRYPTO_OK},
-    {"Empty password", "", false, CRYPTO_ERROR_INVALID_PARAMS},
-    {"Long password", "very-long-password-that-is-still-valid", true, CRYPTO_OK},
-    {"Special chars password", "p@ssw0rd!@#$%", true, CRYPTO_OK}};
+static crypto_init_test_case_t crypto_init_cases[] = {{"Valid password", "test-password-123", true, CRYPTO_OK},
+                                                      {"Empty password", "", false, CRYPTO_ERROR_INVALID_PARAMS},
+                                                      {"Long password", "very-long-password-that-is-still-valid", true, CRYPTO_OK},
+                                                      {"Special chars password", "p@ssw0rd!@#$%", true, CRYPTO_OK}};
 
-
-
-TEST_CASE("crypto/init_conditions", "[crypto]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(crypto_init_cases)); auto *tc = &generated_case;
+TEST_CASE("crypto/init_conditions", "[crypto]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(crypto_init_cases));
+  auto *tc = &generated_case;
   crypto_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
@@ -596,9 +576,9 @@ static crypto_verify_test_case_t crypto_verify_cases[] = {{true, "my-password", 
                                                           {false, "MyPassword", "mypassword", "Case sensitive"},
                                                           {false, "password", " password ", "Extra spaces"}};
 
-
-
-TEST_CASE("crypto/password_verification_comprehensive", "[crypto]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(crypto_verify_cases)); auto *tc = &generated_case;
+TEST_CASE("crypto/password_verification_comprehensive", "[crypto]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(crypto_verify_cases));
+  auto *tc = &generated_case;
   crypto_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
@@ -620,17 +600,16 @@ typedef struct {
   char description[64];
 } crypto_result_string_test_case_t;
 
-static crypto_result_string_test_case_t crypto_result_string_cases[] = {
-    {CRYPTO_OK, "Success", "Success result"},
-    {CRYPTO_ERROR_INVALID_PARAMS, "Invalid parameters", "Invalid params result"},
-    {CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE, "Key exchange not complete", "Key exchange incomplete result"},
-    {CRYPTO_ERROR_BUFFER_TOO_SMALL, "Buffer too small", "Buffer too small result"},
-    {CRYPTO_ERROR_NONCE_EXHAUSTED, "Nonce counter exhausted", "Nonce exhausted result"},
-    {(crypto_result_t)999, "Unknown error", "Unknown result"}};
+static crypto_result_string_test_case_t crypto_result_string_cases[] = {{CRYPTO_OK, "Success", "Success result"},
+                                                                        {CRYPTO_ERROR_INVALID_PARAMS, "Invalid parameters", "Invalid params result"},
+                                                                        {CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE, "Key exchange not complete", "Key exchange incomplete result"},
+                                                                        {CRYPTO_ERROR_BUFFER_TOO_SMALL, "Buffer too small", "Buffer too small result"},
+                                                                        {CRYPTO_ERROR_NONCE_EXHAUSTED, "Nonce counter exhausted", "Nonce exhausted result"},
+                                                                        {(crypto_result_t)999, "Unknown error", "Unknown result"}};
 
-
-
-TEST_CASE("crypto/result_strings", "[crypto]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(crypto_result_string_cases)); auto *tc = &generated_case;
+TEST_CASE("crypto/result_strings", "[crypto]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(crypto_result_string_cases));
+  auto *tc = &generated_case;
   const char *result_str = crypto_result_to_string(tc->result);
   ASCIICHAT_REQUIRE_STR_EQ(result_str, tc->expected_string, "Result string should match for %s", tc->description);
 }
@@ -831,8 +810,7 @@ TEST_CASE("crypto/rekey_process_response", "[crypto]") {
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Process response should succeed");
 
   // Both should have computed the same shared secret
-  ASCIICHAT_REQUIRE_EQ(memcmp(ctx1.temp_shared_key, ctx2.temp_shared_key, CRYPTO_SHARED_KEY_SIZE), 0,
-               "Both sides should compute same shared secret");
+  ASCIICHAT_REQUIRE_EQ(memcmp(ctx1.temp_shared_key, ctx2.temp_shared_key, CRYPTO_SHARED_KEY_SIZE), 0, "Both sides should compute same shared secret");
 }
 
 TEST_CASE("crypto/rekey_commit", "[crypto]") {
@@ -869,10 +847,8 @@ TEST_CASE("crypto/rekey_commit", "[crypto]") {
   ASCIICHAT_REQUIRE_EQ(ctx1.rekey_failure_count, 0, "Failure count should reset");
 
   // Check that shared key was updated
-  ASCIICHAT_REQUIRE_EQ(memcmp(ctx1.shared_key, temp_shared_key_copy, CRYPTO_SHARED_KEY_SIZE), 0,
-               "Shared key should be updated to temp key");
-  ASCIICHAT_REQUIRE_NE(memcmp(ctx1.shared_key, old_shared_key, CRYPTO_SHARED_KEY_SIZE), 0,
-                "Shared key should differ from old key");
+  ASCIICHAT_REQUIRE_EQ(memcmp(ctx1.shared_key, temp_shared_key_copy, CRYPTO_SHARED_KEY_SIZE), 0, "Shared key should be updated to temp key");
+  ASCIICHAT_REQUIRE_NE(memcmp(ctx1.shared_key, old_shared_key, CRYPTO_SHARED_KEY_SIZE), 0, "Shared key should differ from old key");
 
   // Check that temp keys are wiped
   uint8_t zero_key[CRYPTO_SHARED_KEY_SIZE] = {0};
@@ -929,13 +905,11 @@ TEST_CASE("crypto/rekey_full_exchange", "[crypto]") {
   const char *test_data = "Hello before rekey";
   uint8_t ciphertext_before[256];
   size_t ciphertext_before_len;
-  crypto_encrypt(&ctx1, (const uint8_t *)test_data, strlen(test_data), ciphertext_before, sizeof(ciphertext_before),
-                 &ciphertext_before_len);
+  crypto_encrypt(&ctx1, (const uint8_t *)test_data, strlen(test_data), ciphertext_before, sizeof(ciphertext_before), &ciphertext_before_len);
 
   uint8_t decrypted_before[256];
   size_t decrypted_before_len;
-  crypto_decrypt(&ctx2, ciphertext_before, ciphertext_before_len, decrypted_before, sizeof(decrypted_before),
-                 &decrypted_before_len);
+  crypto_decrypt(&ctx2, ciphertext_before, ciphertext_before_len, decrypted_before, sizeof(decrypted_before), &decrypted_before_len);
   ASCIICHAT_REQUIRE_EQ(memcmp(decrypted_before, test_data, strlen(test_data)), 0, "Original encryption should work");
 
   // Save original shared keys
@@ -963,8 +937,7 @@ TEST_CASE("crypto/rekey_full_exchange", "[crypto]") {
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Process response should succeed");
 
   // Both should have same temp shared key
-  ASCIICHAT_REQUIRE_EQ(memcmp(ctx1.temp_shared_key, ctx2.temp_shared_key, CRYPTO_SHARED_KEY_SIZE), 0,
-               "Temp shared keys should match");
+  ASCIICHAT_REQUIRE_EQ(memcmp(ctx1.temp_shared_key, ctx2.temp_shared_key, CRYPTO_SHARED_KEY_SIZE), 0, "Temp shared keys should match");
 
   // Step 4: Both commit to new key
   result = crypto_rekey_commit(&ctx1);
@@ -983,23 +956,19 @@ TEST_CASE("crypto/rekey_full_exchange", "[crypto]") {
   const char *test_data_after = "Hello after rekey";
   uint8_t ciphertext_after[256];
   size_t ciphertext_after_len;
-  result = crypto_encrypt(&ctx1, (const uint8_t *)test_data_after, strlen(test_data_after), ciphertext_after,
-                          sizeof(ciphertext_after), &ciphertext_after_len);
+  result = crypto_encrypt(&ctx1, (const uint8_t *)test_data_after, strlen(test_data_after), ciphertext_after, sizeof(ciphertext_after), &ciphertext_after_len);
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Encryption with new key should work");
 
   uint8_t decrypted_after[256];
   size_t decrypted_after_len;
-  result = crypto_decrypt(&ctx2, ciphertext_after, ciphertext_after_len, decrypted_after, sizeof(decrypted_after),
-                          &decrypted_after_len);
+  result = crypto_decrypt(&ctx2, ciphertext_after, ciphertext_after_len, decrypted_after, sizeof(decrypted_after), &decrypted_after_len);
   ASCIICHAT_REQUIRE_EQ(result, CRYPTO_OK, "Decryption with new key should work");
-  ASCIICHAT_REQUIRE_EQ(memcmp(decrypted_after, test_data_after, strlen(test_data_after)), 0,
-               "Decrypted data should match with new key");
+  ASCIICHAT_REQUIRE_EQ(memcmp(decrypted_after, test_data_after, strlen(test_data_after)), 0, "Decrypted data should match with new key");
 
   // Verify old ciphertext cannot be decrypted with new key
   uint8_t decrypted_old_with_new[256];
   size_t decrypted_old_with_new_len;
-  result = crypto_decrypt(&ctx2, ciphertext_before, ciphertext_before_len, decrypted_old_with_new,
-                          sizeof(decrypted_old_with_new), &decrypted_old_with_new_len);
+  result = crypto_decrypt(&ctx2, ciphertext_before, ciphertext_before_len, decrypted_old_with_new, sizeof(decrypted_old_with_new), &decrypted_old_with_new_len);
   ASCIICHAT_REQUIRE_NE(result, CRYPTO_OK, "Old ciphertext should not decrypt with new key");
 }
 

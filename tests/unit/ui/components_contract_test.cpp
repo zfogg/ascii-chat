@@ -14,8 +14,7 @@
 
 #define terminal_should_use_utf8() terminal_should_use_utf8(static_cast<terminal_utf8_setting_t>(options_get()->force_utf8))
 #define ui_viewport_key(view, count, rows, key) ui_viewport_key((view), (count), (rows), static_cast<keyboard_key_t>(key))
-#define ui_input_edit_key(buffer, capacity, length, cursor, key) \
-  ui_input_edit_key((buffer), (capacity), (length), (cursor), static_cast<keyboard_key_t>(key))
+#define ui_input_edit_key(buffer, capacity, length, cursor, key) ui_input_edit_key((buffer), (capacity), (length), (cursor), static_cast<keyboard_key_t>(key))
 #define ui_buttons_key(state, buttons, count, key) ui_buttons_key((state), (buttons), (count), static_cast<keyboard_key_t>(key))
 
 static void setup(void) {
@@ -143,9 +142,7 @@ TEST_CASE("ui_components/unicode_line_editor_deletes_whole_codepoints", "[ui_com
   ASCIICHAT_REQUIRE_STR_EQ(text, "aXb");
 }
 TEST_CASE("ui_components/buttons_navigate_wrap_and_disabled_actions_do_not_activate", "[ui_components]") {
-  const ui_button_t b[] = {{"Update", static_cast<keyboard_key_t>('u'), false},
-                           {"Unavailable", static_cast<keyboard_key_t>('x'), true},
-                           {"Close", static_cast<keyboard_key_t>('c'), false}};
+  const ui_button_t b[] = {{"Update", static_cast<keyboard_key_t>('u'), false}, {"Unavailable", static_cast<keyboard_key_t>('x'), true}, {"Close", static_cast<keyboard_key_t>('c'), false}};
   ui_buttons_t s = {0};
   ASCIICHAT_REQUIRE_EQ(ui_buttons_key(&s, b, 3, KEY_LEFT), -1);
   ASCIICHAT_REQUIRE_EQ(s.selected, 2);
@@ -186,13 +183,7 @@ TEST_CASE("ui_components/invalid_widget_arguments_set_context", "[ui_components]
 TEST_CASE("ui_components/help_measure_includes_settings_and_popup_chrome", "[ui_components]") {
   const ui_help_entry_t entries[] = {{"Ctrl-U / Left", "Older logs"}, {"0", "Sync primitives"}};
   const char *settings[] = {"Current Settings:", "Volume : 100%", "Audio : enabled"};
-  ui_help_menu_t m = {.title = "Help",
-                      .entries = entries,
-                      .count = 2,
-                      .settings = settings,
-                      .settings_count = 3,
-                      .footer = "? closes",
-                      .top_margin = 5};
+  ui_help_menu_t m = {.title = "Help", .entries = entries, .count = 2, .settings = settings, .settings_count = 3, .footer = "? closes", .top_margin = 5};
   terminal_size_t size = ui_help_menu_measure(&m);
   ASCIICHAT_REQUIRE_GE(size.cols, 40);
   ASCIICHAT_REQUIRE_EQ(size.rows, 16);

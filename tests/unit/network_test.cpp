@@ -94,9 +94,9 @@ static invalid_socket_test_case_t invalid_socket_cases[] = {
     {OP_SEND_PONG, "send_pong_packet with invalid socket"},
 };
 
-
-
-TEST_CASE("network/invalid_socket_operations", "[network]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(invalid_socket_cases)); auto *tc = &generated_case;
+TEST_CASE("network/invalid_socket_operations", "[network]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(invalid_socket_cases));
+  auto *tc = &generated_case;
   int result;
   ssize_t sresult;
   bool bresult;
@@ -236,15 +236,14 @@ typedef struct {
 } parse_size_message_test_case_t;
 
 static parse_size_message_test_case_t parse_size_message_cases[] = {
-    {"SIZE:80,24\n", false, 0, 80, 24, "Valid message"},  {"SIZE:160,48\n", false, 0, 160, 48, "Valid large size"},
-    {"SIZE:1,1\n", false, 0, 1, 1, "Valid minimal size"}, {"INVALID:80,24\n", false, -1, 0, 0, "Invalid format"},
-    {"SIZE:80\n", false, -1, 0, 0, "Missing dimension"},  {"80,24\n", false, -1, 0, 0, "Missing SIZE prefix"},
+    {"SIZE:80,24\n", false, 0, 80, 24, "Valid message"},    {"SIZE:160,48\n", false, 0, 160, 48, "Valid large size"}, {"SIZE:1,1\n", false, 0, 1, 1, "Valid minimal size"},
+    {"INVALID:80,24\n", false, -1, 0, 0, "Invalid format"}, {"SIZE:80\n", false, -1, 0, 0, "Missing dimension"},      {"80,24\n", false, -1, 0, 0, "Missing SIZE prefix"},
     {"SIZE:80,24\n", true, -1, 0, 0, "NULL pointers"},
 };
 
-
-
-TEST_CASE("network/parse_size_message_variations", "[network]") { auto&& generated_case = GENERATE(Catch::Generators::from_range(parse_size_message_cases)); auto *tc = &generated_case;
+TEST_CASE("network/parse_size_message_variations", "[network]") {
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(parse_size_message_cases));
+  auto *tc = &generated_case;
   unsigned short width = 0, height = 0;
   int result;
 
@@ -254,14 +253,11 @@ TEST_CASE("network/parse_size_message_variations", "[network]") { auto&& generat
     result = parse_size_message(tc->message, &width, &height);
   }
 
-  ASCIICHAT_REQUIRE_EQ(result, tc->expected_result, "%s: expected result %d, got %d", tc->description, tc->expected_result,
-               result);
+  ASCIICHAT_REQUIRE_EQ(result, tc->expected_result, "%s: expected result %d, got %d", tc->description, tc->expected_result, result);
 
   if (tc->expected_result == 0 && !tc->use_null_pointers) {
-    ASCIICHAT_REQUIRE_EQ(width, tc->expected_width, "%s: expected width %d, got %d", tc->description, tc->expected_width,
-                 width);
-    ASCIICHAT_REQUIRE_EQ(height, tc->expected_height, "%s: expected height %d, got %d", tc->description, tc->expected_height,
-                 height);
+    ASCIICHAT_REQUIRE_EQ(width, tc->expected_width, "%s: expected width %d, got %d", tc->description, tc->expected_width, width);
+    ASCIICHAT_REQUIRE_EQ(height, tc->expected_height, "%s: expected height %d, got %d", tc->description, tc->expected_height, height);
   }
 }
 

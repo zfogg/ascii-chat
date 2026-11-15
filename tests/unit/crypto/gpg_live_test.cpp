@@ -47,18 +47,8 @@ static void setup(void) {
     SAFE_STRDUP(old_home, original);
   ASCIICHAT_REQUIRE_EQ(platform_mkdtemp(directory, sizeof(directory), "gpg-live"), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(platform_setenv("GNUPGHOME", directory), 0);
-  const char *create[] = {"gpg",
-                          "--batch",
-                          "--pinentry-mode",
-                          "loopback",
-                          "--passphrase",
-                          "",
-                          "--quick-generate-key",
-                          "Coverage Fixture <coverage@example.invalid>",
-                          "ed25519",
-                          "sign,auth",
-                          "0",
-                          NULL};
+  const char *create[] = {"gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--quick-generate-key", "Coverage Fixture <coverage@example.invalid>", "ed25519", "sign,auth",
+                          "0",   NULL};
   ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("gpg", create, NULL, 0, NULL, NULL), 0);
   const char *list[] = {"gpg", "--batch", "--with-colons", "--list-keys", NULL};
   char output[4096];
@@ -84,9 +74,7 @@ TEST_CASE("gpg_live/packet_signatures_verify_and_reject_altered_messages_signatu
   ASCIICHAT_REQUIRE_EQ(gpg_verify_signature_with_binary(signature, length, message, sizeof(message), fingerprint), 0);
   ASCIICHAT_REQUIRE_EQ(gpg_verify_signature_with_binary(signature, length, message, sizeof(message), NULL), 0);
   ASCIICHAT_REQUIRE_EQ(gpg_verify_signature_with_binary(signature, length, message, sizeof(message), ""), 0);
-  ASCIICHAT_REQUIRE_NE(gpg_verify_signature_with_binary(signature, length, message, sizeof(message),
-                                                 "0000000000000000000000000000000000000000"),
-                0);
+  ASCIICHAT_REQUIRE_NE(gpg_verify_signature_with_binary(signature, length, message, sizeof(message), "0000000000000000000000000000000000000000"), 0);
   message[2] ^= 1;
   ASCIICHAT_REQUIRE_NE(gpg_verify_signature_with_binary(signature, length, message, sizeof(message), fingerprint), 0);
   message[2] ^= 1;
@@ -104,9 +92,7 @@ TEST_CASE("gpg_live/exported_public_key_matches_independent_gpg_ssh_export", "[g
   ASCIICHAT_REQUIRE_NOT_NULL(end);
   uint8_t wire[128];
   size_t length = 0;
-  ASCIICHAT_REQUIRE_EQ((sodium_base642bin(wire, sizeof(wire), output + 12, (size_t)(end - output - 12), NULL, &length, NULL,
-                                          sodium_base64_VARIANT_ORIGINAL)),
-                       0);
+  ASCIICHAT_REQUIRE_EQ((sodium_base642bin(wire, sizeof(wire), output + 12, (size_t)(end - output - 12), NULL, &length, NULL, sodium_base64_VARIANT_ORIGINAL)), 0);
   ASCIICHAT_REQUIRE_EQ(length, 51);
   ASCIICHAT_REQUIRE_ARRAY_EQ(wire + 4, "ssh-ed25519", 11);
   uint8_t public_key[32];
@@ -143,8 +129,7 @@ TEST_CASE("gpg_live/real_armored_keys_parse_to_the_same_public_key_and_a_usable_
   ASCIICHAT_REQUIRE_EQ(gpg_get_public_key(fingerprint, exported, NULL), 0);
   ASCIICHAT_REQUIRE_EQ(openpgp_parse_armored_pubkey(armor, parsed), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_ARRAY_EQ(parsed, exported, 32);
-  const char *secargs[] = {"gpg", "--batch", "--pinentry-mode",      "loopback",  "--passphrase",
-                           "",    "--armor", "--export-secret-keys", fingerprint, NULL};
+  const char *secargs[] = {"gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "", "--armor", "--export-secret-keys", fingerprint, NULL};
   ASCIICHAT_REQUIRE_EQ(platform_execute_subprocess("gpg", secargs, armor, sizeof(armor), NULL, NULL), 0);
   ASCIICHAT_REQUIRE_EQ(openpgp_parse_armored_seckey(armor, secret_public, seed), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_ARRAY_EQ(secret_public, exported, 32);
@@ -205,8 +190,7 @@ TEST_CASE("gpg_live/short_signature_integers_are_restored_to_exactly_32_bytes_ea
         ASCIICHAT_REQUIRE_NE(gpg_sign_detached_ed25519(fingerprint, message, sizeof(message), actual), 0);
         continue;
       }
-      ASCIICHAT_REQUIRE_EQ(gpg_sign_detached_ed25519(fingerprint, message, sizeof(message), actual), 0,
-                   "R length %zu, S length %zu", lengths[r], lengths[s]);
+      ASCIICHAT_REQUIRE_EQ(gpg_sign_detached_ed25519(fingerprint, message, sizeof(message), actual), 0, "R length %zu, S length %zu", lengths[r], lengths[s]);
       ASCIICHAT_REQUIRE_ARRAY_EQ(actual, expected, sizeof(actual));
     }
   }

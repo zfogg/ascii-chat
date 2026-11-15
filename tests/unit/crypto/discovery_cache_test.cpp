@@ -60,9 +60,7 @@ TEST_CASE("discovery_cache/saved_key_is_standard_openssh_and_roundtrips", "[disc
   ASCIICHAT_REQUIRE_STR_EQ(algorithm, "ssh-ed25519");
   uint8_t wire[64];
   size_t length = 0;
-  ASCIICHAT_REQUIRE_EQ((sodium_base642bin(wire, sizeof(wire), encoded, strlen(encoded), NULL, &length, NULL,
-                                          sodium_base64_VARIANT_ORIGINAL)),
-                       0);
+  ASCIICHAT_REQUIRE_EQ((sodium_base642bin(wire, sizeof(wire), encoded, strlen(encoded), NULL, &length, NULL, sodium_base64_VARIANT_ORIGINAL)), 0);
   const uint8_t prefix[] = {0, 0, 0, 11, 's', 's', 'h', '-', 'e', 'd', '2', '5', '5', '1', '9', 0, 0, 0, 32};
   ASCIICHAT_REQUIRE_EQ(length, sizeof(prefix) + sizeof(key));
   ASCIICHAT_REQUIRE_ARRAY_EQ(wire, prefix, sizeof(prefix));

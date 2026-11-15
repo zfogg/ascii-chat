@@ -43,8 +43,7 @@
 #define setenv(name, value, overwrite) platform_setenv((name), (value))
 #define unsetenv platform_unsetenv
 
-#define config_load_and_apply(mode, path, strict, opts) \
-  config_load_and_apply(static_cast<asciichat_mode_t>(mode), path, strict, opts)
+#define config_load_and_apply(mode, path, strict, opts) config_load_and_apply(static_cast<asciichat_mode_t>(mode), path, strict, opts)
 
 // Test suite setup with quiet logging
 // =============================================================================
@@ -122,7 +121,6 @@ static char *create_temp_dir(void) {
   char path[256];
   return platform_mkdtemp(path, sizeof(path), "ascii-chat-config-dir") == ASCIICHAT_OK ? platform_strdup(path) : NULL;
 }
-
 
 // =============================================================================
 // Basic Loading Tests
@@ -486,14 +484,10 @@ TEST_CASE("config_sections/client_color_mode_none", "[config_sections]") {
 
   asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
   ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid color mode none should succeed");
-  ASCIICHAT_REQUIRE_EQ(backup.color_mode, TERM_COLOR_NONE,
-               "After config_load_and_apply: backup.color_mode should be TERM_COLOR_NONE (got %d, expected %d)",
-               backup.color_mode, TERM_COLOR_NONE);
+  ASCIICHAT_REQUIRE_EQ(backup.color_mode, TERM_COLOR_NONE, "After config_load_and_apply: backup.color_mode should be TERM_COLOR_NONE (got %d, expected %d)", backup.color_mode, TERM_COLOR_NONE);
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->color_mode, TERM_COLOR_NONE,
-               "After options_state_set: color_mode should be none (got %d, expected %d)", opts->color_mode,
-               TERM_COLOR_NONE);
+  ASCIICHAT_REQUIRE_EQ(opts->color_mode, TERM_COLOR_NONE, "After options_state_set: color_mode should be none (got %d, expected %d)", opts->color_mode, TERM_COLOR_NONE);
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -511,13 +505,10 @@ TEST_CASE("config_sections/client_color_mode_256", "[config_sections]") {
 
   asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
   ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid color mode 256 should succeed");
-  ASCIICHAT_REQUIRE_EQ(backup.color_mode, TERM_COLOR_256,
-               "After config_load_and_apply: backup.color_mode should be TERM_COLOR_256 (got %d, expected %d)",
-               backup.color_mode, TERM_COLOR_256);
+  ASCIICHAT_REQUIRE_EQ(backup.color_mode, TERM_COLOR_256, "After config_load_and_apply: backup.color_mode should be TERM_COLOR_256 (got %d, expected %d)", backup.color_mode, TERM_COLOR_256);
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->color_mode, TERM_COLOR_256, "Color mode should be 256 (got %d, expected %d)", opts->color_mode,
-               TERM_COLOR_256);
+  ASCIICHAT_REQUIRE_EQ(opts->color_mode, TERM_COLOR_256, "Color mode should be 256 (got %d, expected %d)", opts->color_mode, TERM_COLOR_256);
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -535,13 +526,11 @@ TEST_CASE("config_sections/client_color_mode_truecolor", "[config_sections]") {
 
   asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
   ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Valid color mode truecolor should succeed");
-  ASCIICHAT_REQUIRE_EQ(backup.color_mode, TERM_COLOR_TRUECOLOR,
-               "After config_load_and_apply: backup.color_mode should be TERM_COLOR_TRUECOLOR (got %d, expected %d)",
-               backup.color_mode, TERM_COLOR_TRUECOLOR);
+  ASCIICHAT_REQUIRE_EQ(backup.color_mode, TERM_COLOR_TRUECOLOR, "After config_load_and_apply: backup.color_mode should be TERM_COLOR_TRUECOLOR (got %d, expected %d)", backup.color_mode,
+                       TERM_COLOR_TRUECOLOR);
   options_state_set(&backup);
   const options_t *opts = options_get();
-  ASCIICHAT_REQUIRE_EQ(opts->color_mode, TERM_COLOR_TRUECOLOR, "Color mode should be truecolor (got %d, expected %d)",
-               opts->color_mode, TERM_COLOR_TRUECOLOR);
+  ASCIICHAT_REQUIRE_EQ(opts->color_mode, TERM_COLOR_TRUECOLOR, "Color mode should be truecolor (got %d, expected %d)", opts->color_mode, TERM_COLOR_TRUECOLOR);
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -808,11 +797,8 @@ TEST_CASE("config_sections/audio_config_ignored_for_server", "[config_sections]"
   // Load as server - audio config should be ignored
   asciichat_error_t result = config_load_and_apply(MODE_SERVER, config_path, false, &backup);
   ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Loading audio config as server should succeed");
-  ASCIICHAT_REQUIRE_EQ(backup.audio_enabled, 0, "After config_load: backup.audio_enabled should remain 0 for server (got %d)",
-               backup.audio_enabled);
-  ASCIICHAT_REQUIRE_EQ(backup.microphone_index, 0,
-               "After config_load: backup.microphone_index should remain 0 for server (got %d)",
-               backup.microphone_index);
+  ASCIICHAT_REQUIRE_EQ(backup.audio_enabled, 0, "After config_load: backup.audio_enabled should remain 0 for server (got %d)", backup.audio_enabled);
+  ASCIICHAT_REQUIRE_EQ(backup.microphone_index, 0, "After config_load: backup.microphone_index should remain 0 for server (got %d)", backup.microphone_index);
   options_state_set(&backup);
   const options_t *opts = options_get();
   ASCIICHAT_REQUIRE_EQ(opts->audio_enabled, 0, "Audio enabled should remain unchanged for server");
@@ -1274,8 +1260,7 @@ TEST_CASE("config_create/creates_file_with_content", "[config_create]") {
   ASCIICHAT_REQUIRE_NOT_NULL(buffer, "Should allocate enough space for the generated config");
   size_t bytes_read = fread(buffer, 1, (size_t)st.st_size, f);
   buffer[bytes_read] = '\0';
-  ASCIICHAT_REQUIRE_EQ(bytes_read, (size_t)st.st_size, "Read %zu of %zu config bytes (ferror=%d)", bytes_read,
-               (size_t)st.st_size, ferror(f));
+  ASCIICHAT_REQUIRE_EQ(bytes_read, (size_t)st.st_size, "Read %zu of %zu config bytes (ferror=%d)", bytes_read, (size_t)st.st_size, ferror(f));
   fclose(f);
 
   // Verify key sections exist
@@ -1722,8 +1707,7 @@ TEST_CASE("config/negative_snapshot_delay_skipped", "[config]") {
 
   asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
   ASCIICHAT_REQUIRE_EQ(result, ASCIICHAT_OK, "Negative snapshot delay should be skipped");
-  ASCIICHAT_REQUIRE_FLOAT_EQ(backup.snapshot_delay, 1.0f, 0.01f,
-                     "After config_load: backup.snapshot_delay should remain 1.0 (got %.2f)", backup.snapshot_delay);
+  ASCIICHAT_REQUIRE_FLOAT_EQ(backup.snapshot_delay, 1.0f, 0.01f, "After config_load: backup.snapshot_delay should remain 1.0 (got %.2f)", backup.snapshot_delay);
   options_state_set(&backup);
   const options_t *opts = options_get();
   ASCIICHAT_REQUIRE_FLOAT_EQ(opts->snapshot_delay, 1.0f, 0.01f, "Snapshot delay should remain unchanged");

@@ -42,9 +42,7 @@ static acip_session_create_t create_request(size_t index, uint8_t total) {
   req.session_type = SESSION_TYPE_WEBRTC;
   req.total_keys = total;
   req.key_index = (uint8_t)index;
-  ASCIICHAT_REQUIRE_EQ(
-      acds_sign_session_create(secrets[index], req.timestamp, req.capabilities, req.max_participants, req.signature),
-      ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(acds_sign_session_create(secrets[index], req.timestamp, req.capabilities, req.max_participants, req.signature), ASCIICHAT_OK);
   return req;
 }
 static acip_session_join_t join_request(const acip_session_created_t *session, size_t index) {
@@ -141,8 +139,7 @@ TEST_CASE("discovery_key_set/malformed_sequences_clear_partial_state", "[discove
       next.capabilities ^= 1;
       break;
     }
-    ASCIICHAT_REQUIRE_NE(acds_create_key_set_collect(&set, &next, false, &complete), ASCIICHAT_OK,
-                  "Malformed sequence scenario %d", scenario);
+    ASCIICHAT_REQUIRE_NE(acds_create_key_set_collect(&set, &next, false, &complete), ASCIICHAT_OK, "Malformed sequence scenario %d", scenario);
     ASCIICHAT_REQUIRE_EQ(set.count, 0);
     ASCIICHAT_REQUIRE_NOT(complete);
     CLEAR_ERRNO_ALL();
@@ -184,8 +181,7 @@ TEST_CASE("discovery_key_set/invalid_key_sets_and_storage_failures_leave_no_part
   memset(duplicate[1], 0, 32);
   ASCIICHAT_REQUIRE_EQ(database_session_create_keys(db, &req, duplicate, 2, &config, &session), ERROR_INVALID_PARAM);
   ASCIICHAT_REQUIRE_EQ(database_session_create_keys(db, &req, keys, 0, &config, &session), ERROR_INVALID_PARAM);
-  ASCIICHAT_REQUIRE_EQ(database_session_create_keys(db, &req, keys, MAX_SESSION_KEYS + 1, &config, &session),
-               ERROR_INVALID_PARAM);
+  ASCIICHAT_REQUIRE_EQ(database_session_create_keys(db, &req, keys, MAX_SESSION_KEYS + 1, &config, &session), ERROR_INVALID_PARAM);
   ASCIICHAT_REQUIRE_EQ((sqlite3_exec(db,
                                      "CREATE TRIGGER fail_key BEFORE INSERT ON session_identity_keys "
                                      "BEGIN SELECT RAISE(ABORT, 'injected key failure'); END",
@@ -218,12 +214,11 @@ TEST_CASE("discovery_key_set/migration_retains_old_sessions_keys_revocations_and
   // Reconstruct the pre-migration schema and retain a revoked host key plus a
   // second legacy rotation key. The old tables are left in place by migration.
   sqlite3_stmt *stmt;
-  ASCIICHAT_REQUIRE_EQ(
-      sqlite3_prepare_v2(db,
-                         "INSERT INTO session_keys "
-                         "(session_string, identity_pubkey, key_version, added_at, revoked) VALUES (?, ?, 7, 123, ?)",
-                         -1, &stmt, NULL),
-      SQLITE_OK);
+  ASCIICHAT_REQUIRE_EQ(sqlite3_prepare_v2(db,
+                                          "INSERT INTO session_keys "
+                                          "(session_string, identity_pubkey, key_version, added_at, revoked) VALUES (?, ?, 7, 123, ?)",
+                                          -1, &stmt, NULL),
+                       SQLITE_OK);
   for (size_t i = 0; i < 2; ++i) {
     sqlite3_bind_text(stmt, 1, session.session_string, -1, SQLITE_STATIC);
     sqlite3_bind_blob(stmt, 2, keys[i], 32, SQLITE_STATIC);
@@ -241,8 +236,7 @@ TEST_CASE("discovery_key_set/migration_retains_old_sessions_keys_revocations_and
                                      "PRAGMA foreign_keys = ON;",
                                      NULL, NULL, NULL)),
                        SQLITE_OK);
-  ASCIICHAT_REQUIRE_EQ(sqlite3_exec(db, "DROP TABLE session_identity_keys; DROP TABLE session_key_policy;", NULL, NULL, NULL),
-               SQLITE_OK);
+  ASCIICHAT_REQUIRE_EQ(sqlite3_exec(db, "DROP TABLE session_identity_keys; DROP TABLE session_key_policy;", NULL, NULL, NULL), SQLITE_OK);
   database_close(db);
   ASCIICHAT_REQUIRE_EQ(database_init(db_path, &db), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_NOT(database_session_verify_key(db, session.session_string, keys[0]));
@@ -272,9 +266,7 @@ TEST_CASE("discovery_key_set/malformed_join_names_are_rejected_before_authentica
 TEST_CASE("discovery_key_set/restricted_sessions_still_require_passwords_and_typed_storage", "[discovery_key_set]") {
   acip_session_create_t req = create_request(0, 2);
   req.has_password = 1;
-  ASCIICHAT_REQUIRE_EQ(
-      crypto_pwhash_str((char *)req.password_hash, "secret", 6, crypto_pwhash_OPSLIMIT_MIN, crypto_pwhash_MEMLIMIT_MIN),
-      0);
+  ASCIICHAT_REQUIRE_EQ(crypto_pwhash_str((char *)req.password_hash, "secret", 6, crypto_pwhash_OPSLIMIT_MIN, crypto_pwhash_MEMLIMIT_MIN), 0);
   acip_session_created_t session;
   ASCIICHAT_REQUIRE_EQ(database_session_create_keys(db, &req, keys, 2, &config, &session), ASCIICHAT_OK);
   acip_session_join_t join = join_request(&session, 1);
@@ -305,8 +297,7 @@ TEST_CASE("discovery_key_set/restricted_sessions_still_require_passwords_and_typ
   ASCIICHAT_REQUIRE_EQ(count, 2);
 }
 
-static void count_create_callback(const acip_session_create_t *req, acip_transport_t *transport, const char *ip,
-                                  const uint8_t *extension, size_t extension_length, void *ctx) {
+static void count_create_callback(const acip_session_create_t *req, acip_transport_t *transport, const char *ip, const uint8_t *extension, size_t extension_length, void *ctx) {
   (void)extension;
   (void)extension_length;
   (void)req;
@@ -318,25 +309,17 @@ TEST_CASE("discovery_key_set/malformed_wire_fields_never_reach_create_callback",
   size_t callbacks_called = 0;
   acip_acds_callbacks_t callbacks = {.on_session_create = count_create_callback, .app_ctx = &callbacks_called};
   acip_session_create_t req = create_request(0, 0);
-  ASCIICHAT_REQUIRE_EQ(
-      acip_handle_acds_packet(NULL, PACKET_TYPE_ACIP_SESSION_CREATE, &req, sizeof(req), "127.0.0.1", &callbacks),
-      ASCIICHAT_OK);
+  ASCIICHAT_REQUIRE_EQ(acip_handle_acds_packet(NULL, PACKET_TYPE_ACIP_SESSION_CREATE, &req, sizeof(req), "127.0.0.1", &callbacks), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(callbacks_called, 1);
   req.reserved_string_len = 4;
-  ASCIICHAT_REQUIRE_EQ(
-      acip_handle_acds_packet(NULL, PACKET_TYPE_ACIP_SESSION_CREATE, &req, sizeof(req), "127.0.0.1", &callbacks),
-      ERROR_INVALID_PARAM);
+  ASCIICHAT_REQUIRE_EQ(acip_handle_acds_packet(NULL, PACKET_TYPE_ACIP_SESSION_CREATE, &req, sizeof(req), "127.0.0.1", &callbacks), ERROR_INVALID_PARAM);
   req.reserved_string_len = 0;
   memset(req.server_address, 'x', sizeof(req.server_address));
-  ASCIICHAT_REQUIRE_EQ(
-      acip_handle_acds_packet(NULL, PACKET_TYPE_ACIP_SESSION_CREATE, &req, sizeof(req), "127.0.0.1", &callbacks),
-      ERROR_INVALID_PARAM);
+  ASCIICHAT_REQUIRE_EQ(acip_handle_acds_packet(NULL, PACKET_TYPE_ACIP_SESSION_CREATE, &req, sizeof(req), "127.0.0.1", &callbacks), ERROR_INVALID_PARAM);
   req.server_address[0] = 0;
   req.has_password = 1;
   memset(req.password_hash, 'x', sizeof(req.password_hash));
-  ASCIICHAT_REQUIRE_EQ(
-      acip_handle_acds_packet(NULL, PACKET_TYPE_ACIP_SESSION_CREATE, &req, sizeof(req), "127.0.0.1", &callbacks),
-      ERROR_INVALID_PARAM);
+  ASCIICHAT_REQUIRE_EQ(acip_handle_acds_packet(NULL, PACKET_TYPE_ACIP_SESSION_CREATE, &req, sizeof(req), "127.0.0.1", &callbacks), ERROR_INVALID_PARAM);
   ASCIICHAT_REQUIRE_EQ(callbacks_called, 1);
 }
 
@@ -350,8 +333,7 @@ TEST_CASE("discovery_key_set/host_only_legacy_database_is_backfilled_and_new_res
   acip_session_create_t req = create_request(0, 0);
   acip_session_created_t legacy, restricted;
   ASCIICHAT_REQUIRE_EQ(database_session_create(db, &req, &config, &legacy), ASCIICHAT_OK);
-  ASCIICHAT_REQUIRE_EQ(sqlite3_exec(db, "DROP TABLE session_identity_keys; DROP TABLE session_key_policy", NULL, NULL, NULL),
-               SQLITE_OK);
+  ASCIICHAT_REQUIRE_EQ(sqlite3_exec(db, "DROP TABLE session_identity_keys; DROP TABLE session_key_policy", NULL, NULL, NULL), SQLITE_OK);
   database_close(db);
   ASCIICHAT_REQUIRE_EQ(database_init(db_path, &db), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE(database_session_verify_key(db, legacy.session_string, keys[0]));
@@ -370,10 +352,10 @@ TEST_CASE("discovery_key_set/host_only_legacy_database_is_backfilled_and_new_res
 TEST_CASE("discovery_key_set/fresh_databases_do_not_create_superseded_key_tables_or_indexes", "[discovery_key_set]") {
   sqlite3_stmt *stmt;
   ASCIICHAT_REQUIRE_EQ(sqlite3_prepare_v2(db,
-                                  "SELECT COUNT(*) FROM sqlite_master WHERE name IN "
-                                  "('session_keys', 'idx_session_keys_session', 'idx_session_keys_active')",
-                                  -1, &stmt, NULL),
-               SQLITE_OK);
+                                          "SELECT COUNT(*) FROM sqlite_master WHERE name IN "
+                                          "('session_keys', 'idx_session_keys_session', 'idx_session_keys_active')",
+                                          -1, &stmt, NULL),
+                       SQLITE_OK);
   ASCIICHAT_REQUIRE_EQ(sqlite3_step(stmt), SQLITE_ROW);
   ASCIICHAT_REQUIRE_EQ(sqlite3_column_int(stmt, 0), 0);
   sqlite3_finalize(stmt);
@@ -388,8 +370,7 @@ TEST_CASE("discovery_key_set/maximum_create_sequence_round_trips_storage", "[dis
     ASCIICHAT_REQUIRE_EQ(crypto_sign_keypair(req.identity_pubkey, secret), 0);
     req.key_index = (uint8_t)i;
     req.max_participants = MAX_SESSION_PARTICIPANTS;
-    ASCIICHAT_REQUIRE_EQ(acds_sign_session_create(secret, req.timestamp, req.capabilities, req.max_participants, req.signature),
-                 ASCIICHAT_OK);
+    ASCIICHAT_REQUIRE_EQ(acds_sign_session_create(secret, req.timestamp, req.capabilities, req.max_participants, req.signature), ASCIICHAT_OK);
     sodium_memzero(secret, sizeof(secret));
     ASCIICHAT_REQUIRE_EQ(acds_create_key_set_collect(&set, &req, true, &complete), ASCIICHAT_OK);
     ASCIICHAT_REQUIRE_EQ(complete, i == MAX_SESSION_KEYS - 1);

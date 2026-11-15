@@ -50,8 +50,7 @@ static void setup(void) {
   ASCIICHAT_REQUIRE_NOT_NULL(image);
   for (unsigned i = 0; i < 32; ++i)
     image->pixels[i] = (rgb_pixel_t){.r = 120, .g = 80, .b = 40};
-  session_display_config_t config = {
-      .palette_type = PALETTE_CUSTOM, .custom_palette = "XX", .color_mode = TERM_COLOR_NONE};
+  session_display_config_t config = {.palette_type = PALETTE_CUSTOM, .custom_palette = "XX", .color_mode = TERM_COLOR_NONE};
   display = session_display_create(&config);
   ASCIICHAT_REQUIRE_NOT_NULL(display);
   captures = sleeps = 0;
@@ -127,8 +126,7 @@ TEST_CASE("render_loop_contract/event_callbacks_deliver_frames_and_temporary_gap
   ASCIICHAT_REQUIRE_EQ(run(), ASCIICHAT_OK);
   ASCIICHAT_REQUIRE_EQ(captures, 3);
   ASCIICHAT_REQUIRE_EQ(sleeps, 3);
-  ASCIICHAT_REQUIRE_EQ(count_pixels(), 2 * 40 * 12, "pixel count: %zu, output bytes: %ld, prefix: %s", count_pixels(),
-               output_size, output_preview);
+  ASCIICHAT_REQUIRE_EQ(count_pixels(), 2 * 40 * 12, "pixel count: %zu, output bytes: %ld, prefix: %s", count_pixels(), output_size, output_preview);
   ASCIICHAT_REQUIRE_NULL(session_display_get_global_context());
 }
 TEST_CASE("render_loop_contract/capture_failure_propagates_and_unregisters_display", "[render_loop_contract]") {
@@ -162,8 +160,7 @@ TEST_CASE("render_loop_contract/immediate_snapshot_renders_one_frame_and_starts_
   ASCIICHAT_REQUIRE_EQ(options_state_set(values), ASCIICHAT_OK);
   SAFE_FREE(values);
   session_display_destroy(display);
-  session_display_config_t config = {
-      .snapshot_mode = true, .palette_type = PALETTE_CUSTOM, .custom_palette = "XX", .color_mode = TERM_COLOR_NONE};
+  session_display_config_t config = {.snapshot_mode = true, .palette_type = PALETTE_CUSTOM, .custom_palette = "XX", .color_mode = TERM_COLOR_NONE};
   display = session_display_create(&config);
   ASCIICHAT_REQUIRE_NOT_NULL(display);
   g_snapshot_first_frame_rendered = false;
@@ -174,8 +171,7 @@ TEST_CASE("render_loop_contract/immediate_snapshot_renders_one_frame_and_starts_
   ASCIICHAT_REQUIRE_EQ(sleeps, 1);
   ASCIICHAT_REQUIRE(g_snapshot_first_frame_rendered);
   ASCIICHAT_REQUIRE_GT(g_snapshot_first_frame_rendered_ns, 0);
-  ASCIICHAT_REQUIRE_EQ(count_pixels(), 40 * 12, "pixel count: %zu, output bytes: %ld, prefix: %s", count_pixels(), output_size,
-               output_preview);
+  ASCIICHAT_REQUIRE_EQ(count_pixels(), 40 * 12, "pixel count: %zu, output bytes: %ld, prefix: %s", count_pixels(), output_size, output_preview);
   ASCIICHAT_REQUIRE_NULL(session_display_get_global_context());
 }
 
