@@ -57,7 +57,8 @@ target_include_directories(libplatform PRIVATE
     ${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc)
 if(TARGET libplatform-objects)
     target_include_directories(libplatform-objects PRIVATE
-        ${_ascii_chat_repo_root}/include)
+        ${_ascii_chat_repo_root}/include
+        ${_ascii_chat_repo_root}/deps)
 endif()
 if(LIBSODIUM_INCLUDE_DIRS)
     target_include_directories(libplatform PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
