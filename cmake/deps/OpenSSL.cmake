@@ -168,7 +168,12 @@ if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
     if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
         find_package(OpenSSL 3.0 QUIET COMPONENTS SSL Crypto)
     endif()
-    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND AND OpenSSL_FOUND)
+    # QUIC requires SSL_set_quic_tls_cbs, introduced by OpenSSL 3.6. A host
+    # package can satisfy pkg-config's generic 3.0 requirement while still
+    # being unusable for ascii-chat's QUIC transport; fall through to the
+    # pinned source build in that case.
+    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND AND OpenSSL_FOUND AND
+       ASCIICHAT_SYSTEM_OPENSSL_VERSION VERSION_GREATER_EQUAL "3.6.0")
         message(STATUS "Using system OpenSSL ${OPENSSL_VERSION}")
         return()
     endif()
@@ -347,7 +352,7 @@ if(USE_MUSL)
 endif()
 
 # Skip if already configured by MuslDependencies.cmake
-if(TARGET OpenSSL::Crypto)
+if(TARGET OpenSSL::Crypto AND NOT (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT USE_MUSL))
     message(STATUS "  ${BoldBlue}OpenSSL${ColorReset} already configured")
     return()
 endif()
@@ -356,7 +361,9 @@ endif()
 # the host's OpenSSL ABI; do not silently replace it with a source-built copy
 # from the dependency cache.  The musl and iOS branches above remain separate
 # because those targets do not have a usable host OpenSSL installation.
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT USE_MUSL)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT USE_MUSL AND
+   (NOT ASCIICHAT_SYSTEM_OPENSSL_FOUND OR
+    ASCIICHAT_SYSTEM_OPENSSL_VERSION VERSION_GREATER_EQUAL "3.6.0"))
     # A restored build cache may point at OpenSSL files that are absent on the
     # current machine.  Clear those entries before find_package so CMake can
     # rediscover the host installation and create its imported targets.

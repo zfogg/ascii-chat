@@ -22,6 +22,12 @@ function(configure_gcc_pre_project)
     # on the GCC host instead of sending a Python/libclang worker through a
     # Windows-mounted source tree.
     set(DEFER_BACKEND NATIVE CACHE STRING "defer transformer backend" FORCE)
+    # GCC 11, still shipped by supported Ubuntu LTS releases, does not accept
+    # C++26. Select the supported C++23 dialect before project() performs
+    # compiler feature detection.
+    set(CMAKE_C_STANDARD 23 CACHE STRING "C standard" FORCE)
+    set(CMAKE_CXX_STANDARD 23 CACHE STRING "C++ standard" FORCE)
+    set(GOTEL_CXX_STANDARD 23 CACHE STRING "C++ standard for gotel" FORCE)
     message(STATUS "Using GCC toolchain: ${CMAKE_C_COMPILER}")
 endfunction()
 
