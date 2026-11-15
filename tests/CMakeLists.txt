@@ -118,6 +118,7 @@ if(BUILD_TESTS)
     # the generated ascii-chat headers.
     set(standalone_includes
         --native-include=${CMAKE_BINARY_DIR}/generated
+        --native-include=${CMAKE_SOURCE_DIR}/lib
         --native-include=${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include)
     foreach(include_dir IN LISTS LIBSODIUM_INCLUDE_DIRS PCRE2_INCLUDE_DIRS PORTAUDIO_INCLUDE_DIRS OPUS_INCLUDE_DIRS)
         if(IS_ABSOLUTE "${include_dir}")
