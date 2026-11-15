@@ -1,7 +1,7 @@
-#include <runtime.h>
+#include <options/runtime.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/tui/session.h>
-#include <options.h>
+#include <options/options.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/video/anim/fft.h>

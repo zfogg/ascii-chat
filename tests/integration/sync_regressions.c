@@ -15,8 +15,8 @@
 #include <libplatform/rwlock.h>
 #include <libplatform/thread.h>
 #include <libplatform/debug/sync.h>
-#include <options.h>
-#include <colorscheme.h>
+#include <options/options.h>
+#include <options/colorscheme.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/sync.h>
 #include <ascii-chat/util/time.h>

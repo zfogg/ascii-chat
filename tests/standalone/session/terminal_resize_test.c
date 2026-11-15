@@ -6,7 +6,7 @@
 #include <io.h>
 #include <fcntl.h>
 #include <ascii-chat/tui/controller.h>
-#include <rcu.h>
+#include <options/rcu.h>
 #include <libplatform/system.h>
 
 #define CHECK(expr)                                                                                                                                                                                    \

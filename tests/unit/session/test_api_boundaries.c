@@ -5,7 +5,7 @@
 #include "common/session/audio.h"
 #include "common/session/participant.h"
 #include "common/session/pipeline.h"
-#include <rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/util/endian.h>
 #include <string.h>
 

@@ -39,8 +39,8 @@
 #include <ascii-chat/discovery/nouns.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <options.h>
-#include <rcu.h> // For RCU-based options access
+#include <options/options.h>
+#include <options/rcu.h> // For RCU-based options access
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/packet/packet.h>

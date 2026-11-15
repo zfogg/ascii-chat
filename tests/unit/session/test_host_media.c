@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include "common/session/host.h"
 #include "common/session/frame_validation.h"
-#include <rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/audio/opus.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/util/endian.h>

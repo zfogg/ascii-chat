@@ -9,7 +9,7 @@
 #include <ascii-chat/network/acip/acds_client.h>
 #include "session/host.h"
 #include "session/protocol.h"
-#include <rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/path.h>

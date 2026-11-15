@@ -1,6 +1,6 @@
 #pragma once
 
-#include <options.h>
+#include <options/options.h>
 #include <stdint.h>
 
 /** Runtime edits are applied to the latest snapshot under the writer mutex. */

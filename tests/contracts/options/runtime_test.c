@@ -1,7 +1,7 @@
 #include "../worker_assert.h"
 #include <criterion/criterion.h>
-#include <runtime.h>
-#include <rcu.h>
+#include <options/runtime.h>
+#include <options/rcu.h>
 #include <ascii-chat/network/acip/settings.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/common.h>

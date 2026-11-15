@@ -10,8 +10,8 @@
  * @date February 2026
  */
 
-#include <options.h>
-#include <registry_core.h>
+#include <options/options.h>
+#include <options/registry_core.h>
 #include <string.h>
 
 /**

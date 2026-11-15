@@ -25,7 +25,7 @@
 #include <ascii-chat/video/ascii/scalar/foreground.h>
 
 #include <ascii-chat/video/terminal/ansi.h>
-#include <options.h>
+#include <options/options.h>
 #include <ascii-chat/buffer.h> // For buffer domain allocation functions
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/image.h>

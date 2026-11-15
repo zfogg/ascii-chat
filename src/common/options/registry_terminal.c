@@ -11,10 +11,10 @@
  */
 
 #include <ascii-chat/tui/too_small.h>
-#include <registry_common.h>
-#include <registry_metadata.h>
+#include <options/registry_common.h>
+#include <options/registry_metadata.h>
 
-#include <parsers.h>
+#include <options/parsers.h>
 
 // ============================================================================
 // TERMINAL CATEGORY - Terminal display options

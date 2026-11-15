@@ -9,8 +9,8 @@
  * @date January 2026
  */
 
-#include <registry_common.h>
-#include <parsers.h>
+#include <options/registry_common.h>
+#include <options/parsers.h>
 #include <string.h>
 
 // ============================================================================

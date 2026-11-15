@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include <strings.h>
+#include <options/strings.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <string.h>

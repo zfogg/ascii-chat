@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include "session/display.h"
 #include <ascii-chat/tui/controller.h>
-#include <rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/util/endian.h>

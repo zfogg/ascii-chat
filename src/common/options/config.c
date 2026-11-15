@@ -9,13 +9,13 @@
 
 #include <ascii-chat/tui/notice.h>
 
-#include <config.h>
-#include <enums.h>
+#include <options/config.h>
+#include <options/enums.h>
 #include <ascii-chat/common/error_codes.h>
-#include <options.h>
-#include <validation.h>
-#include <registry.h>
-#include <rcu.h>
+#include <options/options.h>
+#include <options/validation.h>
+#include <options/registry.h>
+#include <options/rcu.h>
 #include <ascii-chat/util/path.h>
 #include <util/string.h>
 #include <ascii-chat/util/utf8.h>

@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include "session/connection.h"
 #include <ascii-chat/network/negotiation.h>
-#include <rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/util/password.h>
 #include <string.h>
 

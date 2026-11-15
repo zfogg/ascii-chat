@@ -10,11 +10,11 @@
  * @date January 2026
  */
 
-#include <registry_common.h>
-#include <registry_metadata.h>
+#include <options/registry_common.h>
+#include <options/registry_metadata.h>
 #include <ascii-chat/util/string.h>
 
-#include <parsers.h>
+#include <options/parsers.h>
 #include <ascii-chat/common.h>
 #include <string.h>
 #include <stdlib.h>

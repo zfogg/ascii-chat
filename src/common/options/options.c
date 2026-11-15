@@ -56,25 +56,25 @@
 #include <ascii-chat/crypto/policy.h>
 #include <ctype.h>
 #include <sys/stat.h>
-#include <options.h>
+#include <options/options.h>
 #include <ascii-chat/source_root.h>
-#include <rcu.h> // RCU-based thread-safe options
-#include <common.h>
-#include <parsers.h>
-#include <validation.h>
-#include <actions.h>
-#include <registry_mode_defaults.h> // Mode-aware defaults
-#include <registry_core.h>
-#include <registry.h>
+#include <options/rcu.h> // RCU-based thread-safe options
+#include <options/common.h>
+#include <options/parsers.h>
+#include <options/validation.h>
+#include <options/actions.h>
+#include <options/registry_mode_defaults.h> // Mode-aware defaults
+#include <options/registry_core.h>
+#include <options/registry.h>
 
-#include <config.h>
-#include <strings.h> // Enum/mode string conversions
+#include <options/config.h>
+#include <options/strings.h> // Enum/mode string conversions
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/coverage.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/grep.h>
-#include <colorscheme.h>
+#include <options/colorscheme.h>
 #include <libplatform/system.h>
 #include <libflags/flags.h>
 #include <libflags/builder.h>

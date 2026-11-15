@@ -1,5 +1,5 @@
 #include <ascii-chat/ui/progress.h>
-#include <options.h>
+#include <options/options.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/util/string.h>
 #include <math.h>

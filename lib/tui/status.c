@@ -19,7 +19,7 @@
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <libplatform/keyboard.h>
-#include <options.h>
+#include <options/options.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/string.h>

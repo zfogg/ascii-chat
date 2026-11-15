@@ -7,8 +7,8 @@
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/util/time.h>
 #include <libplatform/system.h>
-#include <options.h>
-#include <rcu.h>
+#include <options/options.h>
+#include <options/rcu.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
 #include <libavcodec/avcodec.h>

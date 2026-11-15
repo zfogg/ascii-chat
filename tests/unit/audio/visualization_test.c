@@ -2,7 +2,7 @@
 #include <ascii-chat/audio/visualization.h>
 #include <ascii-chat/video/anim/waveform.h>
 #include <ascii-chat/video/anim/fft.h>
-#include <rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <libplatform/compiler.h>

@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
-#include <parsers.h>
-#include <options.h>
+#include <options/parsers.h>
+#include <options/options.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/common.h>

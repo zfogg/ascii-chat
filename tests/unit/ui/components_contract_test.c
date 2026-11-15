@@ -5,8 +5,8 @@
 #include <ascii-chat/ui/layout.h>
 #include <ascii-chat/ui/input.h>
 #include <ascii-chat/ui/progress.h>
-#include <rcu.h>
-#include <options.h>
+#include <options/rcu.h>
+#include <options/options.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/utf8.h>
 #include <string.h>

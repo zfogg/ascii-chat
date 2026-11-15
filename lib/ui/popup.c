@@ -4,7 +4,7 @@
 
 #include <ascii-chat/ui/popup.h>
 #include <ascii-chat/log/log.h>
-#include <options.h>
+#include <options/options.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/string.h>
 #include <string.h>

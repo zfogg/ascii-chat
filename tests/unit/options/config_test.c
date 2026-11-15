@@ -23,9 +23,9 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include <config.h>
-#include <options.h>
-#include <rcu.h>
+#include <options/config.h>
+#include <options/options.h>
+#include <options/rcu.h>
 #include <libflags/schema.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/tests/common.h>

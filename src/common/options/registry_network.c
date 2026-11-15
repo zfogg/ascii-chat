@@ -9,11 +9,11 @@
  * @date January 2026
  */
 
-#include <registry_common.h>
-#include <registry_metadata.h>
-#include <registry_mode_defaults.h>
+#include <options/registry_common.h>
+#include <options/registry_metadata.h>
+#include <options/registry_mode_defaults.h>
 
-#include <parsers.h>
+#include <options/parsers.h>
 #include <ascii-chat/util/ip.h>
 
 // ============================================================================

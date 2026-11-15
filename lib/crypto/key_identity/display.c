@@ -2,7 +2,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/crypto/key_identity/keymask.h>
-#include <options.h>
+#include <options/options.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/notice.h>
 #include <string.h>

@@ -10,16 +10,16 @@
 #define OPTIONS_PARSING_PARSERS_MSG_EXTENDED_BUFFER_SIZE 512
 #define OPTIONS_PARSING_PARSERS_BUF_BUFFER_SIZE 256
 
-#include <parsers.h>
+#include <options/parsers.h>
 #include <ascii-chat/util/string.h>
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <stddef.h>
 #include <ascii-chat/common.h>
-#include <options.h>
-#include <enums.h>                      // For OPT_* enum constants
-#include <strings.h>                    // For fuzzy matching suggestions
+#include <options/options.h>
+#include <options/enums.h>                      // For OPT_* enum constants
+#include <options/strings.h>                    // For fuzzy matching suggestions
 #include <ascii-chat/discovery/strings.h>       // For is_session_string() validation
 #include <ascii-chat/util/parsing.h>            // For parse_port() validation
 #include <ascii-chat/util/path.h>               // For path_validate_user_path()

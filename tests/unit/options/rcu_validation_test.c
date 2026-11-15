@@ -9,8 +9,8 @@
 #include <criterion/criterion.h>
 #include <math.h>
 
-#include <rcu.h>
-#include <options.h>
+#include <options/rcu.h>
+#include <options/options.h>
 #include <ascii-chat/tui/session.h>
 #include <ascii-chat/asciichat_errno.h>
 

@@ -3,14 +3,14 @@
  * @brief 🔒 RCU-based thread-safe options state implementation
  */
 
-#include <rcu.h>
-#include <runtime.h>
-#include <validation.h>
+#include <options/rcu.h>
+#include <options/runtime.h>
+#include <options/validation.h>
 #include <math.h>
 #include <yyjson.h>
 #include <limits.h>
-#include <registry_core.h>
-#include <registry_common.h>
+#include <options/registry_core.h>
+#include <options/registry_common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>

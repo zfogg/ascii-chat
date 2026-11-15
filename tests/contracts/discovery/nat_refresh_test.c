@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include <rcu.h>
+#include <options/rcu.h>
 #include <libplatform/filesystem.h>
 #include "../../../src/discovery/session.h"
 #include <ascii-chat/network/webrtc/peer_manager.h>

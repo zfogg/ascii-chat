@@ -5,8 +5,8 @@
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/url.h>
-#include <parsers.h>
-#include <options.h>
+#include <options/parsers.h>
+#include <options/options.h>
 
 static void setup(void) {
   setenv("ASCII_CHAT_PCRE2_DISABLE_JIT", "1", 1);

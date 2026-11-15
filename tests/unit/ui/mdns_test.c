@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/tui/mdns.h>
-#include <options.h>
-#include <parsers.h>
+#include <options/options.h>
+#include <options/parsers.h>
 #include <string.h>
 
 Test(mdns_selection, instance_label_is_never_used_as_a_destination) {

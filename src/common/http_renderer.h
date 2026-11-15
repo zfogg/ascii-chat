@@ -2,7 +2,7 @@
 
 #include <ascii-chat/common.h>
 #include <libplatform/atomic.h>
-#include <options.h>
+#include <options/options.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/thread.h>
 #include <libplatform/mutex.h>

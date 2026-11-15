@@ -1,7 +1,7 @@
 /** Deterministic native UI entry points for Docker/tmux integration tests. */
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/io.h>
-#include <options.h>
+#include <options/options.h>
 #include <libplatform/question.h>
 #include <libplatform/keyboard.h>
 #include <ascii-chat/util/password.h>

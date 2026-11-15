@@ -51,7 +51,7 @@ def test_external_defer_incremental_addition(tmp_path: Path) -> None:
         f"-DDEFER_NATIVE_BINARY={binary}")
     run(cmake, "--build", str(build))
     source.write_text(
-        '#include "defer.h"\n#include <stdio.h>\n#include <config.h>\n'
+        '#include "defer.h"\n#include <stdio.h>\n#include <options/config.h>\n'
         '#if !REQUIRE_DEFINE || __STDC_VERSION__ != 201710L\n#error incorrect compiler flags\n#endif\n'
         'int main(void) { defer(puts(CLEANUP_TEXT)); return 0; }\n', encoding="utf-8"
     )

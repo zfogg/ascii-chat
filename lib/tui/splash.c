@@ -45,7 +45,7 @@
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/terminal/ansi.h>
-#include <options.h>
+#include <options/options.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 

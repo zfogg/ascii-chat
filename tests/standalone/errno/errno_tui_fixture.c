@@ -1,7 +1,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
-#include <options.h>
+#include <options/options.h>
 #include <libplatform/thread.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tui/errno_stacks.h>

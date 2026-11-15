@@ -6,7 +6,7 @@
 #include <ascii-chat/media/source.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
-#include <rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <math.h>

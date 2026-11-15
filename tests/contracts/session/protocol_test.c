@@ -7,7 +7,7 @@
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/endian.h>
 #include <string.h>
-#include <rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/network/compression.h>
 
 typedef struct {

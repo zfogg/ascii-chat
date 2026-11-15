@@ -24,7 +24,7 @@
 #include <stdint.h>
 
 #include <ascii-chat/common.h>
-#include <options.h>
+#include <options/options.h>
 
 #ifdef __cplusplus
 extern "C" {

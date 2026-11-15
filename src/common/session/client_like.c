@@ -29,8 +29,8 @@
 #include <ascii-chat/debug/sync.h>
 
 #include <ascii-chat/log/log.h>
-#include <options.h>
-#include <runtime.h>
+#include <options/options.h>
+#include <options/runtime.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>

@@ -15,8 +15,8 @@
 #include <unistd.h>
 
 #include <ascii-chat/tests/common.h>
-#include <options.h>
-#include <rcu.h>
+#include <options/options.h>
+#include <options/rcu.h>
 #include <ascii-chat/tests/logging.h>
 
 // External getopt variable that needs resetting between tests

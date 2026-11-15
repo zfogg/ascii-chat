@@ -10,7 +10,7 @@
  * @date January 2026
  */
 
-#include <registry_common.h>
+#include <options/registry_common.h>
 
 // ============================================================================
 // GENERAL CATEGORY - General-purpose options

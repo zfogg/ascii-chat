@@ -1,5 +1,5 @@
 #include "session/settings.h"
-#include <runtime.h>
+#include <options/runtime.h>
 #include <ascii-chat/common.h>
 #include <string.h>
 

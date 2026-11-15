@@ -76,7 +76,7 @@
 #ifndef OPTIONS_COMMON_H
 #define OPTIONS_COMMON_H
 
-#include <options.h>
+#include <options/options.h>
 #include <libplatform/terminal.h>
 #include <stdbool.h>
 #include <stddef.h>

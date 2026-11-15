@@ -11,9 +11,9 @@
  * @date January 2026
  */
 
-#include <registry_common.h>
-#include <registry_categories.h>
-#include <registry_core.h>
+#include <options/registry_common.h>
+#include <options/registry_categories.h>
+#include <options/registry_core.h>
 #include <string.h>
 
 // ============================================================================

@@ -46,7 +46,7 @@
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/crypto/key_types.h>
 #include "session/host.h"
-#include <options.h>
+#include <options/options.h>
 #include "stats.h"
 #include "client.h"
 #include "session/h265/server.h"

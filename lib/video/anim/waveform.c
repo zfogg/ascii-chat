@@ -2,7 +2,7 @@
 
 #include "visualization_internal.h"
 
-#include <options.h>
+#include <options/options.h>
 #include <libplatform/memory.h>
 
 #include <math.h>

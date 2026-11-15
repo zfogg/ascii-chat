@@ -1,8 +1,8 @@
 /** Explicit, bounded local probe: only two read-only statements in an in-memory DB. */
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <options.h>
-#include <rcu.h>
+#include <options/options.h>
+#include <options/rcu.h>
 #include <ascii-chat/otel.h>
 #include <stdio.h>
 

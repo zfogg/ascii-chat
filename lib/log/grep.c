@@ -14,7 +14,7 @@
  */
 
 #include <ascii-chat/log/grep.h>
-#include <colorscheme.h>
+#include <options/colorscheme.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <libplatform/lifecycle.h>

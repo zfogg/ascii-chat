@@ -79,7 +79,7 @@ typedef void PaStream;
 #include <libplatform/mutex.h>
 #include <libplatform/cond.h>
 #include "../ringbuffer.h"
-#include <options.h>
+#include <options/options.h>
 
 /* ============================================================================
  * Data Structures

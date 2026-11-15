@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include <rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/network/rate_limit/rate_limit.h>

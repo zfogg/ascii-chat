@@ -11,10 +11,10 @@
  * @date January 2026
  */
 
-#include <registry_common.h>
-#include <registry_core.h>
-#include <registry.h>
-#include <actions.h>
+#include <options/registry_common.h>
+#include <options/registry_core.h>
+#include <options/registry.h>
+#include <options/actions.h>
 #include <libflags/config/keys.h>
 #include <string.h>
 #include <stdlib.h>

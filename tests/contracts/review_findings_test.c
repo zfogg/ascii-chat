@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/common.h>
-#include <rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/network/consensus/handoff.h>
 #include <ascii-chat/video/face_follow.h>
 #include <ascii-chat/audio/mixer.h>

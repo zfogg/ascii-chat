@@ -4,8 +4,8 @@
  * @brief Implementation of options validation functions
  */
 
-#include <enums.h>
-#include <validation.h>
+#include <options/enums.h>
+#include <options/validation.h>
 
 #include <limits.h>
 #include <math.h>
@@ -21,7 +21,7 @@
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/render/render.h>
-#include <options.h>
+#include <options/options.h>
 #include <libflags/values.h>
 
 asciichat_error_t validate_glyph_palette(const options_t *opts) {

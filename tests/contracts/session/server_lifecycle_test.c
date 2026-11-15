@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 #include "../../../src/common/session/server_like.h"
-#include <rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/util/time.h>
 static unsigned network_token, mdns_token;
 static unsigned fail_stage, created, started, ran, stopped, destroyed, initialized, cleaned, interrupted, mapped, unmapped, renewed, joined, advertised, status_draws;

@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 
-#include <config.h>
-#include <options.h>
+#include <options/config.h>
+#include <options/options.h>
 #include <libflags/manpage/manpage.h>
 
 #include <string.h>

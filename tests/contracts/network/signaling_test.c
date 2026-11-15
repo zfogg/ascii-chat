@@ -4,7 +4,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/crc32.h>
-#include <rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/util/endian.h>
 #include <string.h>
 

@@ -2,7 +2,7 @@
 #include <ascii-chat/common.h>
 #include <emscripten.h>
 #include <stdint.h>
-#include <options.h>
+#include <options/options.h>
 
 /* Uploads carry pixels, not remote flip preferences. Resolve orientation from
  * the same C option store used by local rendering, before any upload codec. */

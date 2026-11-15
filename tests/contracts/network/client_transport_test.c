@@ -4,7 +4,7 @@
 #include "client/display.h"
 #include "client/keepalive.h"
 #include "session/display.h"
-#include <rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/network/acip/handlers.h>
 #include <ascii-chat/network/acip/send.h>

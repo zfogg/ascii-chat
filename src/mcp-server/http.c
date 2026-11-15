@@ -7,7 +7,7 @@
 
 #include "mcp.h"
 #include <ascii-chat/stats/runtime.h>
-#include <options.h>
+#include <options/options.h>
 #include <ascii-chat/tui/status.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/util/time.h>

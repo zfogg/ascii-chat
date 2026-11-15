@@ -22,7 +22,7 @@
 #include <libplatform/thread.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/url.h>
-#include <options.h>
+#include <options/options.h>
 
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>

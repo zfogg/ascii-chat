@@ -26,7 +26,7 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/packet/packet.h>
-#include <options.h>
+#include <options/options.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>

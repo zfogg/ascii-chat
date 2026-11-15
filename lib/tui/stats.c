@@ -29,7 +29,7 @@
 #include <math.h>
 #include <ctype.h>
 #include <stdlib.h>
-#include <options.h>
+#include <options/options.h>
 #include <string.h>
 
 #include <ascii-chat/tui/stats.h>

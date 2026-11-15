@@ -8,7 +8,7 @@
 
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
-#include <options.h>
+#include <options/options.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
 

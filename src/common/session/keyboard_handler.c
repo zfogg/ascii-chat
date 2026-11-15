@@ -18,7 +18,7 @@
 #include "session/display.h"
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/media/source.h>
-#include <options.h>
+#include <options/options.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/audio/audio.h>
 #include <libplatform/terminal.h>

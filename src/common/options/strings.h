@@ -14,8 +14,8 @@
 
 // Include headers for type definitions
 // Note: options.h includes these, so we just need options.h
-#include <options.h>
-#include <enums.h>
+#include <options/options.h>
+#include <options/enums.h>
 
 // ============================================================================
 // Mode String Conversions

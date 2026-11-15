@@ -186,8 +186,8 @@
 
 #pragma once
 
-#include <options.h>
-#include <types.h>
+#include <options/options.h>
+#include <options/types.h>
 #include <libflags/builder.h>
 
 #ifdef __cplusplus

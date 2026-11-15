@@ -3,9 +3,9 @@
 #include <optional>
 #include <string>
 extern "C" {
-#include <options.h>
-#include <rcu.h>
-#include <runtime.h>
+#include <options/options.h>
+#include <options/rcu.h>
+#include <options/runtime.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 }

@@ -12,8 +12,8 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/audio/audio.h>
 #include <string.h>
-#include <options.h>
-#include <rcu.h>
+#include <options/options.h>
+#include <options/rcu.h>
 #include <ascii-chat/network/terminal_capabilities.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>

@@ -9,8 +9,8 @@
 
 #pragma once
 
-#include <types.h>
-#include <options.h>
+#include <options/types.h>
+#include <options/options.h>
 #include <stdbool.h>
 #include <stddef.h>
 

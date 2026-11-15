@@ -94,8 +94,8 @@
 #include <ascii-chat/audio/client_pipeline.h> // Unified audio processing pipeline
 #include <ascii-chat/audio/wav_writer.h>      // WAV file dumping for debugging
 #include <ascii-chat/common.h>
-#include <options.h>
-#include <rcu.h>        // For RCU-based options access
+#include <options/options.h>
+#include <options/rcu.h>        // For RCU-based options access
 #include <libplatform/system.h> // For platform_memcpy
 
 #include <libplatform/atomic.h>

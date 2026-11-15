@@ -16,7 +16,7 @@
 #include <ascii-chat/media/yt_dlp.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/video/rgba/image.h>
-#include <options.h>
+#include <options/options.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/asciichat_errno.h>

@@ -3,7 +3,7 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define SESSION_SETTINGS_PALETTE_CUSTOM_BUFFER_SIZE 64
 
-#include <options.h>
+#include <options/options.h>
 #include <ascii-chat/asciichat_errno.h>
 
 /** A participant's rendering preferences/effective values. Security is session policy. */
