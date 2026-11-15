@@ -360,7 +360,7 @@ const registry_entry_t g_network_entries[] = {{.long_name = "webtransport-public
                                                offsetof(options_t, discovery_server),
                                                OPT_ENDPOINT_DISCOVERY_SERVICE,
                                                0,
-                                                "Discovery service URL, including an optional port (for example, ws://host:27225 or wss://host:443).",
+                                               "Discovery service URL, including an optional port (for example, ws://host:27225 or wss://host:443).",
                                                "NETWORK",
                                                NULL,
                                                false,
