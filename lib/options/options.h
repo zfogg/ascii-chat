@@ -1300,35 +1300,6 @@ const terminal_options_t *options_terminal_settings_ptr(void);
   })
 
 /**
- * @brief Check if an option was explicitly set via command-line
- *
- * Convenience macro for checking if a specific option was explicitly provided
- * by the user via command-line arguments (as opposed to using a default value).
- *
- * **Usage Examples**:
- * @code{.c}
- * // Check if user explicitly provided --width
- * if (IS_OPTION_EXPLICIT("width")) {
- *     printf("User set width explicitly\n");
- * }
- *
- * // Use in conditional logic
- * if (!IS_OPTION_EXPLICIT("color") && terminal_is_dark_mode()) {
- *     // Color not set, apply dark mode defaults
- * }
- * @endcode
- *
- * @param option_name The long name of the option (e.g., "width", "port", "color")
- * @return true if option was explicitly set, false otherwise
- *
- * @note Option name must be a string literal matching the long_name from registry
- * @note Case-sensitive: must match exact option name
- * @note No locks needed - lock-free read via atomic pointer
- *
- * @ingroup options
- */
-
-/**
  * @brief Set a single option field (thread-safe, RCU-based)
  *
  * Convenience function for updating a single field in the options struct.

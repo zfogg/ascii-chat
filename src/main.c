@@ -1047,7 +1047,7 @@ int main(int argc, char *argv[]) {
 #ifndef NDEBUG
   // Handle --debug-state (debug builds only)
   // Sleep for specified time AFTER mode initialization so locks are created
-  if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) && opts->debug_sync_state_time > 0.0) {
+  if (opts->debug_sync_state_time > 0.0) {
     log_info("Will print sync state after %f seconds", opts->debug_sync_state_time);
   }
 #endif
@@ -1143,9 +1143,9 @@ int main(int argc, char *argv[]) {
 #ifndef NDEBUG
   uint64_t sync_state_delay_ns = 0;
   uint64_t debug_backtrace_delay_ns = 0;
-  if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) && opts->debug_sync_state_time > 0.0)
+  if (opts->debug_sync_state_time > 0.0)
     sync_state_delay_ns = (uint64_t)(opts->debug_sync_state_time * 1000000000.0);
-  if (IS_OPTION_EXPLICIT(debug_backtrace_time, opts) && opts->debug_backtrace_time > 0.0)
+  if (opts->debug_backtrace_time > 0.0)
     debug_backtrace_delay_ns = (uint64_t)(opts->debug_backtrace_time * 1000000000.0);
   if (debug_sync_start_thread(sync_state_delay_ns, debug_backtrace_delay_ns) != 0) {
     FATAL(ERROR_THREAD, "Cannot start synchronization worker");
