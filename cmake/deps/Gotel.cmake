@@ -10,8 +10,6 @@ endif()
 
 set(GOTEL_BUILD_TEST_SUPPORT ${BUILD_TESTS} CACHE BOOL
     "Build reusable telemetry test helpers" FORCE)
-set(GOTEL_WITH_SQLITE ON CACHE BOOL "Build SQLite telemetry adapter" FORCE)
-set(GOTEL_WITH_GRPC ON CACHE BOOL "Build native OTLP/gRPC telemetry transport" FORCE)
 set(GOTEL_UTF8PROC_TARGET utf8proc CACHE STRING
     "Use ascii-chat's utf8proc target" FORCE)
 
