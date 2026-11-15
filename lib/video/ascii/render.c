@@ -463,6 +463,16 @@ void ascii_frame_emit_halfrow(ascii_frame_t *frame, ascii_color_t mode, bool mor
 
 #endif
 
+static uint32_t temporal_blend_color(uint32_t previous, uint32_t current, unsigned weight) {
+  uint32_t result = 0;
+  for (unsigned shift = 0; shift <= 16; shift += 8) {
+    unsigned old_channel = (previous >> shift) & 255;
+    unsigned new_channel = (current >> shift) & 255;
+    result |= (uint32_t)((old_channel * (256 - weight) + new_channel * weight + 128) / 256) << shift;
+  }
+  return result;
+}
+
 /* Compare a small spatial image patch against glyph coverage masks.
  * The source is fitted at 8x8 samples per output cell, then averaged to 4x4.
  * ASCII coverage comes from DejaVu Sans Mono; real terminal fonts may differ. */
