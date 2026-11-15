@@ -1,6 +1,6 @@
 #include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <ascii-chat/util/time.h>
 #include <libplatform/system.h>
 #include <string.h>

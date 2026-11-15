@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <vector>
 #ifdef _WIN32
-#include <ascii-chat/os/windows/getopt.h>
+#include <libplatform/windows/getopt.h>
 #else
 #include <getopt.h>
 #endif

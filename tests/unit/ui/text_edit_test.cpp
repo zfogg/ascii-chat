@@ -1,7 +1,7 @@
 #include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/ui/input.h>
-#include <ascii-chat/os/keyboard.h>
+#include <libplatform/keyboard.h>
 #include <string.h>
 #include <locale.h>
 
