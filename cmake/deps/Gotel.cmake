@@ -15,7 +15,15 @@ set(GOTEL_WITH_SQLITE ON CACHE BOOL "Build SQLite telemetry adapter" FORCE)
 # pinned gotel/otlp-c sources expose overlapping HTTP request symbols when
 # combined with the application's HTTP exporter on Windows; telemetry uses
 # OTLP/HTTP here and nghttp2 remains available to the native HTTP server.
-set(GOTEL_WITH_GRPC OFF CACHE BOOL "Build native OTLP/gRPC telemetry transport" FORCE)
+# Musl release builds also use Gotel's toolchain-built nghttp2_static target
+# for ascii-chat's native HTTP/2 server.  The dependency is only populated
+# when Gotel's gRPC module is enabled; keep that module disabled on the normal
+# platform builds where its duplicate HTTP symbols conflict with the app.
+if(USE_MUSL)
+    set(GOTEL_WITH_GRPC ON CACHE BOOL "Build native OTLP/gRPC telemetry transport" FORCE)
+else()
+    set(GOTEL_WITH_GRPC OFF CACHE BOOL "Build native OTLP/gRPC telemetry transport" FORCE)
+endif()
 set(GOTEL_UTF8PROC_TARGET utf8proc CACHE STRING
     "Use ascii-chat's utf8proc target" FORCE)
 
