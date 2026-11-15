@@ -1889,8 +1889,8 @@ void update_dimensions_for_full_height(options_t *opts);
  */
 extern ASCIICHAT_API bool g_snapshot_first_frame_rendered;
 extern ASCIICHAT_API uint64_t g_snapshot_first_frame_rendered_ns; // Timestamp when first frame was rendered (nanoseconds)
-extern uint64_t g_snapshot_first_capture_ns;        // Timestamp when first frame was captured (nanoseconds)
-extern uint64_t g_snapshot_actual_duration_ms;      // Actual wall-clock duration in ms when snapshot timeout reached
+extern uint64_t g_snapshot_first_capture_ns;                      // Timestamp when first frame was captured (nanoseconds)
+extern uint64_t g_snapshot_actual_duration_ms;                    // Actual wall-clock duration in ms when snapshot timeout reached
 
 /** @} */
 
