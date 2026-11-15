@@ -15,7 +15,7 @@
 #define FFT_SIZE 1024
 #define FFT_MAX_COLUMNS MAX_TERMINAL_WIDTH
 #define FFT_CACHE_CELLS (MAX_TERMINAL_WIDTH * MAX_TERMINAL_HEIGHT * 2)
-#define FFT_REFRESH_NS (NS_PER_SEC_INT / 60)
+#define FFT_REFRESH_NS 0
 
 static static_mutex_t fft_cache_mutex = STATIC_MUTEX_INIT;
 static struct {

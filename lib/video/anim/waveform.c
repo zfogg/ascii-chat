@@ -9,32 +9,23 @@
 #include <string.h>
 
 static float waveform_spectral_centroid(const float *samples, size_t sample_count, size_t center) {
-  static const float coefficients[] = {1.999948168f, 1.999792673f, 1.999170736f, 1.996683633f, 1.986745531f, 1.947157806f, 1.791423520f, 1.209198230f, -0.537839641f};
-  static const float log_frequencies[] = {4.007333185f, 4.700480366f, 5.393627546f, 6.086774727f, 6.779921907f, 7.473069088f, 8.166216269f, 8.859363449f, 9.552510630f};
   const size_t window_size = 1024;
   const size_t half_window = window_size / 2;
   size_t start = center > half_window ? center - half_window : 0;
   if (start + window_size > sample_count)
     start = sample_count - window_size;
 
-  float weighted_log_frequency = 0.0f;
-  float total_weight = 0.0f;
-  for (size_t frequency_index = 0; frequency_index < sizeof(coefficients) / sizeof(coefficients[0]); frequency_index++) {
-    float coefficient = coefficients[frequency_index];
-    float q1 = 0.0f, q2 = 0.0f;
-    for (size_t i = 0; i < window_size; i++) {
-      float position = (float)i / (float)(window_size - 1);
-      float taper = 1.0f - fabsf(2.0f * position - 1.0f);
-      float q0 = coefficient * q1 - q2 + samples[start + i] * taper;
-      q2 = q1;
-      q1 = q0;
-    }
-    float power = fmaxf(q1 * q1 + q2 * q2 - coefficient * q1 * q2, 0.0f);
-    float magnitude = sqrtf(power);
-    weighted_log_frequency += magnitude * log_frequencies[frequency_index];
-    total_weight += magnitude;
+  /* A zero-crossing estimate is sufficient for the decorative color ramp
+   * and is linear in the window size. The previous nine resonator passes
+   * made every waveform column do substantially more work than necessary. */
+  size_t crossings = 0;
+  for (size_t i = 1; i < window_size; i++) {
+    float previous = samples[start + i - 1];
+    float current = samples[start + i];
+    if ((previous < 0.0f && current >= 0.0f) || (previous >= 0.0f && current < 0.0f))
+      crossings++;
   }
-  return total_weight > 0.0001f ? expf(weighted_log_frequency / total_weight) : 900.0f;
+  return 22.0f * (float)crossings;
 }
 
 char *audio_visualization_render_waveform(unsigned int width, unsigned int height, audio_visualization_source_t source, bool use_color, int color_mode, bool flip_x, bool flip_y) {
