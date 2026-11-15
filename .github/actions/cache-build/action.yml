@@ -85,7 +85,7 @@ runs:
       env:
         BUILD_SUFFIX_INPUT: ${{ inputs.build-cache-key }}
         CCACHE_SUFFIX_INPUT: ${{ inputs.ccache-cache-key }}
-        CACHE_HASH: ${{ hashFiles('CMakeLists.txt', 'cmake/**/*.cmake') }}
+        CACHE_HASH: ${{ hashFiles('CMakeLists.txt', 'cmake/deps/*.cmake') }}
       run: |
         build_suffix="$CACHE_HASH"
         ccache_suffix="$CACHE_HASH"
