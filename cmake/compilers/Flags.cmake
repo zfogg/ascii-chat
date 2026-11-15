@@ -299,7 +299,7 @@ endfunction()
 # The detect_x86_64_level() function is now in CPUDetection.cmake
 # Include it to get access to the function
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/CPUDetection.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compilers/CPUDetection.cmake)
 
 # Configure release build optimization flags
 # Args:

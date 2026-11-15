@@ -167,7 +167,7 @@ else()
     set(_BASH_SEARCH_PATHS /bin /usr/bin /usr/sbin)
 endif()
 
-# Export LLVM search paths for use by other modules (e.g., LLVM.cmake)
+# Export LLVM search paths for use by other modules (e.g., Clang.cmake)
 set(ASCIICHAT_LLVM_SEARCH_PATHS "${_LLVM_SEARCH_PATHS}" CACHE INTERNAL "LLVM search paths")
 unset(_LLVM_SEARCH_PATHS)
 

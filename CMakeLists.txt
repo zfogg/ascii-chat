@@ -12,7 +12,7 @@ endif()
 # =============================================================================
 # CMake Build Types
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/ProjectSettings.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compilers/ProjectSettings.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
 # INFO: CMAKE_BUILD_TYPE is now configured.
 
@@ -267,7 +267,7 @@ endif()
 # =============================================================================
 # Compiler config
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/CCache.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compilers/CCache.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compilers/Detection.cmake)
 configure_base_compiler_flags()
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
@@ -297,8 +297,8 @@ asciichat_validate_optional_programs()
 # Hardware Acceleration Detection (must be before build type configuration)
 # =============================================================================
 # Note: CRC32 detection depends on SIMD detection, so SIMD must come first
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/SIMD.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/CRC32.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compilers/SIMD.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compilers/CRC32.cmake)
 
 # =============================================================================
 # pkg-config Setup (must come before any pkg-config-dependent dependencies)
@@ -341,7 +341,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/Include.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Mimalloc.cmake)
 
 configure_include_directories()
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/HeaderChecks.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compilers/HeaderChecks.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/BuildIdentity.cmake)
 
 if(USE_MUSL)
@@ -523,7 +523,7 @@ ascii_query_prepare()
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/ToolingRuntime.cmake)
 ascii_build_tooling_runtime()
 
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compilers/PCH.cmake)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
 # Defer transformation consumes the compile database during the build. Apply
