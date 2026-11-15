@@ -13,6 +13,23 @@ endif()
 option(ASCIICHAT_USE_SYSTEM_OPENSSL
     "Use the host OpenSSL when it provides the required QUIC-capable API"
     ON)
+
+# CMake keeps explicit OpenSSL paths in the cache across reconfiguration.  A
+# stale dependency cache must not make a later configure fail before the
+# system/source discovery below gets a chance to recover.
+foreach(_asciichat_openssl_path_var
+        OPENSSL_ROOT_DIR
+        OPENSSL_INCLUDE_DIR
+        OPENSSL_CRYPTO_LIBRARY
+        OPENSSL_SSL_LIBRARY)
+    if(DEFINED ${_asciichat_openssl_path_var}
+       AND NOT EXISTS "${${_asciichat_openssl_path_var}}")
+        unset(${_asciichat_openssl_path_var} CACHE)
+        unset(${_asciichat_openssl_path_var})
+    endif()
+endforeach()
+unset(_asciichat_openssl_path_var)
+
 # Handle iOS builds - OpenSSL is built from source at configure time
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}OpenSSL${ColorReset} from source (iOS cross-compile)...")
