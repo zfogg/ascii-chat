@@ -936,7 +936,6 @@ if(NOT BUILDING_OBJECT_LIBS)
     # Include necessary headers
     target_include_directories(test-static-lib PRIVATE
         ${CMAKE_SOURCE_DIR}/lib
-        ${CMAKE_SOURCE_DIR}/lib/platform
         ${CMAKE_BINARY_DIR}/generated
         ${_asciichat_mimalloc_include}
     )
@@ -1036,7 +1035,6 @@ if(TARGET ascii-chat-shared)
     # Include necessary headers
     target_include_directories(test-shared-lib PRIVATE
         ${CMAKE_SOURCE_DIR}/lib
-        ${CMAKE_SOURCE_DIR}/lib/platform
         ${CMAKE_BINARY_DIR}/generated
         ${_asciichat_mimalloc_include}
     )

@@ -617,8 +617,8 @@ implementations.
 
 Use libplatform APIs and the existing `platform_*`/`mutex_*` abstractions in
 application code; do not call platform-specific POSIX or Win32 APIs directly.
-The repository-local `lib/platform/` directory is limited to ascii-chat
-integration code, currently including `wakeup.cpp` and WASM stubs.
+The repository-local `os/` directory contains ascii-chat-specific operating
+system integration: `os/wakeup.cpp` and the `os/wasm/` stubs.
 
 ## Session Management (lib/session)
 
@@ -865,7 +865,7 @@ ascii-chat/
 │   ├── api-server/              # HTTP API server mode
 │   └── web/                    # Web components and WebRTC integration for browser-based clients
 ├── lib/                        # Core reusable libraries for all modes
-│   ├── platform/               # ascii-chat integration and WASM stubs; core APIs come from libplatform
+│   ├── os/                     # ascii-chat-specific OS integration and WASM stubs
 │   ├── terminal/               # Terminal capability and output support
 │   ├── tui/                    # Interactive terminal UI controllers and screens
 │   ├── stats/                  # Runtime statistics and telemetry state
@@ -1200,7 +1200,7 @@ cmake --build build
 ## Resources
 
 - **Crypto Protocol**: `docs/crypto.md`
-- **Platform Abstraction**: `lib/platform/README.md`
+- **Platform Abstraction**: standalone `libplatform` dependency under `deps/ascii-chat-deps/libplatform/`
 - **Build System**: `cmake/` directory
 
 ## Shared limits
