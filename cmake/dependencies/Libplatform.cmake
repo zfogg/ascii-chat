@@ -42,7 +42,7 @@ endif()
 # that source is present in the checked-out dependency.
 if(TARGET libplatform-objects)
     get_target_property(_ascii_chat_libplatform_sources libplatform-objects SOURCES)
-    list(FILTER _ascii_chat_libplatform_sources EXCLUDE REGEX "(^|/)(signal|backtrace)\\.c$")
+    list(FILTER _ascii_chat_libplatform_sources EXCLUDE REGEX "(^|/)posix/(signal|backtrace)\\.c$")
     set_property(TARGET libplatform-objects PROPERTY SOURCES
         "${_ascii_chat_libplatform_sources}")
     set_property(SOURCE
