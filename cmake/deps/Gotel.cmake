@@ -115,6 +115,16 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                  "${_asciichat_gotel_cache_dir}/build"
                  EXCLUDE_FROM_ALL)
 
+# The vendored Gotel shared target calls its TLS selection helper directly,
+# while some Apple linkers do not export that helper from the separately built
+# otlp-c dylib.  Keep the helper implementation in Gotel as well so the
+# application does not depend on dylib export behavior for this internal API.
+if(APPLE AND TARGET gotel)
+    target_sources(gotel PRIVATE
+        "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/src/tls.c")
+    target_link_libraries(gotel PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+endif()
+
 # gotel's gRPC adapter uses one private URL bit to distinguish its HTTP/2
 # transport. Keep that integration detail in the generated bridge header; do
 # not modify the pinned otlp-c checkout or require a commit in that repository.

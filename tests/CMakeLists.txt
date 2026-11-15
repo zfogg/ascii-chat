@@ -1173,6 +1173,16 @@ if(TARGET ascii-chat-static)
 endif()
 
 # Criterion buffer ownership, queue, budget, and concurrency contracts.
+# Some Linux test presets run an additional FindZLIB probe after dependency
+# setup and leave the legacy singular cache variable at NOTFOUND, even though
+# the provider populated the plural variable used by the application. Keep
+# contract-test generation from propagating that stale value.
+if(DEFINED ZLIB_LIBRARIES AND NOT ZLIB_LIBRARIES STREQUAL "")
+    if(NOT DEFINED ZLIB_LIBRARY OR ZLIB_LIBRARY MATCHES "-NOTFOUND$")
+        set(ZLIB_LIBRARY "${ZLIB_LIBRARIES}" CACHE STRING "zlib libraries" FORCE)
+    endif()
+endif()
+
 if(TARGET ascii-chat-static AND BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     add_executable(test-buffer-ownership EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/contracts/buffer/buffer_test.c)
     asciichat_configure_contract(test-buffer-ownership)
