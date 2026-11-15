@@ -625,7 +625,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
   // Synthetic test patterns are already oriented for diagnostics.  Do not
   // inherit the webcam's mirrored default unless the user explicitly chose
   // horizontal flipping.
-  bool flip_x_enabled = GET_OPTION(flip_x) && (!GET_OPTION(test_pattern) || GET_OPTION(flip_x_explicit));
+  bool flip_x_enabled = GET_OPTION(flip_x);
   bool flip_y_enabled = GET_OPTION(flip_y);
 
   color_filter_t color_filter = GET_OPTION(color_filter);

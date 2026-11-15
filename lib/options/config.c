@@ -176,6 +176,8 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   }
 
   const bool loaded = flags_config_load_toml(context, config_path);
+  if (loaded)
+    options_resolve_flip_x(opts, flags_was_explicitly_set(context, "flip-x"));
   flags_destroy_preserving_storage(context);
   flags_schema_builder_destroy(builder);
   if (!loaded && !strict)

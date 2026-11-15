@@ -1821,6 +1821,8 @@ static asciichat_error_t parse_mode_options(options_t *opts, asciichat_mode_t de
   flags_parse_result_t parsed = {0};
   const bool parsed_ok = flags_parse(flags_context, mode_argc, mode_argv, &parsed);
   const bool schema_valid = parsed_ok && flags_validate(flags_context);
+  if (parsed_ok && schema_valid)
+    options_resolve_flip_x(opts, flags_was_explicitly_set(flags_context, "flip-x"));
   flags_destroy_preserving_storage(flags_context);
   flags_schema_builder_destroy(flags_builder);
   if (!parsed_ok || !schema_valid)
@@ -1837,7 +1839,6 @@ static asciichat_error_t parse_mode_options(options_t *opts, asciichat_mode_t de
   // Restore flip_x and flip_y - they should keep their values unless explicitly overridden
   if (!cli_flip_x && !SAFE_GETENV("ASCII_CHAT_FLIP_X"))
     opts->flip_x = saved_flip_x_for_parse;
-  opts->flip_x_explicit |= cli_flip_x || SAFE_GETENV("ASCII_CHAT_FLIP_X") != NULL;
   if (!cli_flip_y)
     opts->flip_y = saved_flip_y_for_parse;
   // json is already restored via the call to options_state_set which calls restore_binary_level
@@ -2413,7 +2414,6 @@ static asciichat_error_t publish_final_options(options_t *opts, asciichat_mode_t
   opts->media_input = opts->media_file[0] != '\0' || opts->media_url[0] != '\0';
   if (opts->test_pattern)
     opts->flip_x = false;
-  options_resolve_flip_x(opts);
 
   // Save the quiet flag before publishing (RCU will be cleaned up before memory report runs)
 #if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
@@ -2639,11 +2639,13 @@ cleanup:
   return result;
 }
 
-void options_resolve_flip_x(options_t *opts) {
-  if (!opts->flip_x_explicit) {
-    if (opts->test_pattern)
-      opts->flip_x = false;
-    else
-      opts->flip_x = !opts->media_input && !opts->waveform && !opts->fft;
-  }
+void options_resolve_flip_x(options_t *opts, bool explicitly_set) {
+  if (!opts)
+    return;
+  if (explicitly_set)
+    return;
+  if (opts->test_pattern)
+    opts->flip_x = false;
+  else
+    opts->flip_x = !opts->media_input && !opts->waveform && !opts->fft;
 }

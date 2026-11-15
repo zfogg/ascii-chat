@@ -1075,7 +1075,6 @@ typedef struct options_state {
   bool face_follow;                                              ///< Automatically frame and follow the selected face
   bool face_follow_debug;                                        ///< Developer diagnostic face outline
   bool flip_x;                                                   ///< Effective horizontal orientation
-  bool flip_x_explicit;                                          ///< User selected an orientation for this process lifetime
   bool media_input;                                              ///< Active input is a file/URL rather than the webcam
   bool flip_y;                                                   ///< Flip video vertically (Y-axis)
 
@@ -1875,4 +1874,4 @@ extern uint64_t g_snapshot_actual_duration_ms;                    // Actual wall
 /** @} */
 
 /** Resolve source defaults without turning them into a user selection. */
-void options_resolve_flip_x(options_t *opts);
+void options_resolve_flip_x(options_t *opts, bool explicitly_set);

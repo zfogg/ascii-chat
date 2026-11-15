@@ -22,10 +22,10 @@ static void *writer(void *argument) {
 }
 
 static void test_flip_defaults(void) {
-  cr_assert(GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit));
+  cr_assert(GET_OPTION(flip_x));
   for (int i = 0; i < 3; ++i) {
     cr_assert_eq(options_set_bool("media_input", true), ASCIICHAT_OK);
-    cr_assert(!GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit));
+    cr_assert(!GET_OPTION(flip_x));
     cr_assert_eq(options_set_bool("media_input", false), ASCIICHAT_OK);
     cr_assert(GET_OPTION(flip_x));
     cr_assert_eq(options_set_bool("waveform", true), ASCIICHAT_OK);
@@ -39,10 +39,8 @@ static void test_flip_defaults(void) {
   options_patch_t patch = {.edits = invalid, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
   cr_assert_neq(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
   CLEAR_ERRNO();
-  cr_assert(GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit));
-  // An explicit assignment of the current value still selects an orientation.
+  cr_assert(GET_OPTION(flip_x));
   cr_assert_eq(options_set_bool("flip_x", true), ASCIICHAT_OK);
-  cr_assert(GET_OPTION(flip_x_explicit));
   cr_assert_eq(options_set_bool("media_input", true), ASCIICHAT_OK);
   cr_assert_eq(options_set_bool("waveform", true), ASCIICHAT_OK);
   cr_assert(GET_OPTION(flip_x));
@@ -50,15 +48,12 @@ static void test_flip_defaults(void) {
   cr_assert_eq(options_set_bool("media_input", false), ASCIICHAT_OK);
   cr_assert_eq(options_set_bool("waveform", false), ASCIICHAT_OK);
   cr_assert(!GET_OPTION(flip_x));
-  cr_assert_neq(options_set_bool("flip_x_explicit", false), ASCIICHAT_OK);
-  CLEAR_ERRNO();
-  cr_assert(GET_OPTION(flip_x_explicit));
   options_t defaults = options_t_new();
   cr_assert_eq(options_state_set(&defaults), ASCIICHAT_OK);
-  cr_assert(!GET_OPTION(flip_x) && GET_OPTION(flip_x_explicit));
+  cr_assert(!GET_OPTION(flip_x));
   options_state_destroy();
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
-  cr_assert(GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit));
+  cr_assert(GET_OPTION(flip_x));
 }
 
 static void test_transactions(void) {

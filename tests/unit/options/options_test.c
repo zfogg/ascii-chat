@@ -124,7 +124,6 @@ Test(options, explicit_flip_values_survive_mode_parsing) {
   cr_assert_eq(options_init(5, argv), ASCIICHAT_OK);
   const options_t *opts = options_get();
   cr_assert_eq(opts->flip_x, false);
-  cr_assert(opts->flip_x_explicit);
   cr_assert_eq(opts->flip_y, true);
 }
 
@@ -135,7 +134,6 @@ Test(options, test_pattern_defaults_to_unflipped) {
   const options_t *opts = options_get();
   cr_assert(opts->test_pattern);
   cr_assert_not(opts->flip_x);
-  cr_assert_not(opts->flip_x_explicit);
 }
 
 Test(options, test_pattern_respects_explicit_flip) {
@@ -145,7 +143,6 @@ Test(options, test_pattern_respects_explicit_flip) {
   const options_t *opts = options_get();
   cr_assert(opts->test_pattern);
   cr_assert(opts->flip_x);
-  cr_assert(opts->flip_x_explicit);
 }
 
 Test(options, default_values) {
@@ -171,7 +168,6 @@ Test(options, default_values) {
   cr_assert_eq(opts->port, 27224);
   cr_assert_eq(opts->webcam_index, 0);
   cr_assert_eq(opts->flip_x, true);
-  cr_assert_not(opts->flip_x_explicit);
   cr_assert_eq(opts->color_mode, COLOR_MODE_AUTO);
   cr_assert_eq(opts->render_mode, RENDER_MODE_FOREGROUND);
   cr_assert_eq(opts->show_capabilities, 0);
