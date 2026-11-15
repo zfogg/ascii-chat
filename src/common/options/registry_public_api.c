@@ -32,6 +32,8 @@ static bool registry_flags_validate(const flags_context_t *context, const char *
   const double minimum = entry->metadata.numeric_range.min;
   const double maximum = entry->metadata.numeric_range.max;
   const double step = entry->metadata.numeric_range.step;
+  if (minimum == 0.0 && maximum == 0.0 && step == 0.0)
+    return true;
   if (number < minimum || number > maximum)
     return false;
   if (step > 0.0 && fmod(number - minimum, step) != 0.0)
@@ -78,6 +80,11 @@ static bool registry_flags_parse(flags_context_t *context, const char *text, fla
   free(error);
   if (!parsed)
     return false;
+  if (strcmp(entry->long_name, "palette-chars") == 0) {
+    options_t *options = storage;
+    options->palette_custom_set = true;
+    options->palette_type = PALETTE_CUSTOM;
+  }
   value->string = text;
   return true;
 }
