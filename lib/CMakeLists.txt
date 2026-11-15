@@ -119,7 +119,6 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/options_parsing_validation.c
     ${CMAKE_SOURCE_DIR}/src/common/options_parsing_actions.c
     # options/manpage/
-    # options/completions/
     # version
     ${LIB_DIR}/version.c
     # discovery/ (library)

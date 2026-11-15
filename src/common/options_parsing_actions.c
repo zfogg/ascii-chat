@@ -29,7 +29,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/update_checker.h>
 #include <ascii-chat/options/config.h>
-#include <ascii-chat/options/completions/completions.h>
+#include <libflags/completions/completions.h>
 #include <libplatform/terminal.h>
 #include <libplatform/question.h>
 #include <sys/stat.h>
@@ -541,8 +541,8 @@ void action_completions(const char *shell_name, const char *output_path) {
     action_exit(ERROR_USAGE);
   }
 
-  completion_format_t format = completions_parse_shell_name(shell_name);
-  if (format == COMPLETION_FORMAT_UNKNOWN) {
+  flags_completion_shell_t format = flags_completion_shell_parse(shell_name);
+  if (format == FLAGS_COMPLETION_UNKNOWN) {
     log_error("Unknown shell '%s' (supported: bash, fish, zsh, powershell)", shell_name);
     action_exit(ERROR_USAGE);
   }
@@ -579,14 +579,25 @@ void action_completions(const char *shell_name, const char *output_path) {
     should_close = true;
   }
 
-  asciichat_error_t result = completions_generate_for_shell(format, output);
+  flags_schema_builder_t *builder = flags_schema_builder_create();
+  if (!builder || options_registry_add_all_to_flags_builder(builder, OPTION_MODE_ALL) != ASCIICHAT_OK) {
+    if (builder)
+      flags_schema_builder_destroy(builder);
+    if (should_close)
+      fclose(output);
+    log_error("Failed to build completion schema");
+    action_exit(ERROR_CONFIG);
+  }
+  const bool written = flags_completion_write(flags_schema_builder_schema(builder), "ascii-chat", format, output);
+  flags_schema_builder_destroy(builder);
+  asciichat_error_t result = written ? ASCIICHAT_OK : SET_ERRNO(ERROR_FILE_OPERATION, "Failed to write completion script");
 
   if (should_close) {
     fclose(output);
   }
 
   if (result != ASCIICHAT_OK) {
-    log_error("Failed to generate %s completions", completions_get_shell_name(format));
+    log_error("Failed to generate %s completions", flags_completion_shell_name(format));
     action_exit(ERROR_USAGE);
   }
 

@@ -62,7 +62,6 @@
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/parsers.h>
 #include <ascii-chat/options/validation.h>
-#include <ascii-chat/options/completions/completions.h>
 #include <ascii-chat/options/actions.h>
 #include <ascii-chat/options/registry/mode_defaults.h> // Mode-aware defaults
 #include <ascii-chat/options/registry/core.h>
@@ -227,50 +226,6 @@ asciichat_error_t options_json_parse_value(const char *name, yyjson_val *value, 
 
 static void js_log_options(const char *msg) {
   (void)msg;
-}
-
-static asciichat_error_t options_generate_completion_with_libflags(completion_format_t format, FILE *output) {
-  flags_schema_builder_t *builder = flags_schema_builder_create();
-  if (!builder) {
-    return SET_ERRNO(ERROR_CONFIG, "Failed to build completion schema");
-  }
-  if (options_registry_add_all_to_flags_builder(builder, OPTION_MODE_ALL) != ASCIICHAT_OK) {
-    flags_schema_builder_destroy(builder);
-    return SET_ERRNO(ERROR_CONFIG, "Failed to populate completion schema");
-  }
-
-  flags_completion_shell_t shell = format == COMPLETION_FORMAT_BASH   ? FLAGS_COMPLETION_BASH
-                                   : format == COMPLETION_FORMAT_FISH ? FLAGS_COMPLETION_FISH
-                                   : format == COMPLETION_FORMAT_ZSH  ? FLAGS_COMPLETION_ZSH
-                                                                      : FLAGS_COMPLETION_POWERSHELL;
-  bool written = flags_completion_write(flags_schema_builder_schema(builder), "ascii-chat", shell, output);
-  flags_schema_builder_destroy(builder);
-  return written ? ASCIICHAT_OK : SET_ERRNO(ERROR_FILE_OPERATION, "Failed to write completion script");
-}
-
-asciichat_error_t completions_generate_for_shell(completion_format_t format, FILE *output) {
-  if (!output)
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Output stream cannot be NULL");
-  switch (format) {
-  case COMPLETION_FORMAT_BASH:
-  case COMPLETION_FORMAT_FISH:
-  case COMPLETION_FORMAT_ZSH:
-  case COMPLETION_FORMAT_POWERSHELL:
-    return options_generate_completion_with_libflags(format, output);
-  default:
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Unknown completion format: %d", format);
-  }
-}
-
-const char *completions_get_shell_name(completion_format_t format) {
-  return flags_completion_shell_name((flags_completion_shell_t)format);
-}
-
-completion_format_t completions_parse_shell_name(const char *shell_name) {
-  if (!shell_name)
-    return COMPLETION_FORMAT_UNKNOWN;
-  flags_completion_shell_t parsed = flags_completion_shell_parse(shell_name);
-  return parsed == FLAGS_COMPLETION_UNKNOWN ? COMPLETION_FORMAT_UNKNOWN : (completion_format_t)parsed;
 }
 
 // ============================================================================
