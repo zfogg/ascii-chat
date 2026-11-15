@@ -189,7 +189,7 @@ TEST_CASE("session_ui/embedded_log_help_uses_the_session_viewport", "[session_ui
   ui_session_t *session = ui_session_create();
   ASCIICHAT_REQUIRE_NOT_NULL(session);
   ui_session_resize(session, 100, 40);
-  ASCIICHAT_REQUIRE_EQ(ui_session_input(session, ']'), UI_ACTION_LOGS);
+  ASCIICHAT_REQUIRE_EQ(ui_session_input(session, static_cast<keyboard_key_t>(']')), UI_ACTION_LOGS);
   ASCIICHAT_REQUIRE_EQ(ui_session_input(session, KEY_QUESTION), UI_ACTION_LOGS);
   const char *frame = ui_session_tick(session, NS_PER_SEC_INT);
   ASCIICHAT_REQUIRE_NOT_NULL(frame);
