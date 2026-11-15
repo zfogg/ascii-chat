@@ -5,8 +5,12 @@
  * when a shared C header is parsed as C++. */
 #ifdef __cplusplus
 #include <atomic>
+#ifndef _Atomic
 #define _Atomic(type) std::atomic<type>
+#endif
+#ifndef _Static_assert
 #define _Static_assert static_assert
+#endif
 #else
 /* MSVC's C headers do not expose C11 max_align_t in C mode. */
 typedef double max_align_t;
