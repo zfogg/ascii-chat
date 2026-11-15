@@ -20,18 +20,15 @@
 #include <stdlib.h>
 #include <errno.h>
 
-static bool registry_flags_validate(const flags_context_t *context, const char *text, const flags_value_t *value, char *error, size_t error_size, void *user_data) {
+static bool registry_flags_validate(const flags_context_t *context, const char *name, const flags_value_t *value, char *error, size_t error_size, void *user_data) {
   (void)context;
-  (void)value;
+  (void)name;
   (void)error;
   (void)error_size;
   const registry_entry_t *entry = user_data;
-  if (!entry || strcmp(entry->long_name, "snapshot-delay") != 0 || !text)
+  if (!entry || strcmp(entry->long_name, "snapshot-delay") != 0 || !value)
     return true;
-  errno = 0;
-  char *end = NULL;
-  double delay = strtod(text, &end);
-  return errno != ERANGE && end != text && *end == '\0' && delay >= 0.0;
+  return value->number >= 0.0;
 }
 
 static void registry_flags_change(flags_context_t *context, const char *name, const flags_value_t *old_value, const flags_value_t *new_value, void *user_data) {
