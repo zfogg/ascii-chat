@@ -10,6 +10,13 @@ endif()
 
 set(GOTEL_BUILD_TEST_SUPPORT ${BUILD_TESTS} CACHE BOOL
     "Build reusable telemetry test helpers" FORCE)
+if(USE_MUSL)
+    # The static musl application links nghttp2_static directly.  The master
+    # gotel default disables its gRPC adapter, which would leave that required
+    # target undefined; keep the adapter enabled only for this build contract.
+    set(GOTEL_WITH_GRPC ON CACHE BOOL
+        "Build native OTLP/gRPC telemetry transport" FORCE)
+endif()
 set(GOTEL_UTF8PROC_TARGET utf8proc CACHE STRING
     "Use ascii-chat's utf8proc target" FORCE)
 
@@ -86,6 +93,21 @@ endif()]=])
     endif()
     if(NOT _asciichat_gotel_cmake_patched STREQUAL _asciichat_gotel_cmake_contents)
         file(WRITE "${_asciichat_gotel_cmake}" "${_asciichat_gotel_cmake_patched}")
+    endif()
+endif()
+
+# gotel master briefly renamed the TLS-staged http_client.c to http1_client.c
+# before its GRPC adapter reads the former path.  Keep the master source and
+# apply the compatibility correction in the consumer checkout, idempotently.
+set(_asciichat_gotel_tls_cmake "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/cmake/TLS.cmake")
+if(EXISTS "${_asciichat_gotel_tls_cmake}")
+    file(READ "${_asciichat_gotel_tls_cmake}" _asciichat_gotel_tls_contents)
+    set(_asciichat_gotel_tls_rename
+        "  if(_name STREQUAL \"http_client.c\" AND GOTEL_WITH_GRPC)\n    set(_output_name \"http1_client.c\")\n  endif()\n")
+    string(REPLACE "${_asciichat_gotel_tls_rename}" ""
+        _asciichat_gotel_tls_patched "${_asciichat_gotel_tls_contents}")
+    if(NOT _asciichat_gotel_tls_patched STREQUAL _asciichat_gotel_tls_contents)
+        file(WRITE "${_asciichat_gotel_tls_cmake}" "${_asciichat_gotel_tls_patched}")
     endif()
 endif()
 
