@@ -71,6 +71,33 @@ target_include_directories(libplatform PRIVATE
     ${_ascii_chat_repo_root}/deps
     ${_ascii_chat_repo_root}/deps/ascii-chat-deps/yyjson/src
     ${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc)
+
+# libplatform is built from the project's coverage-instrumented object target
+# in coverage CI.  Shared libraries must carry their own profile runtime;
+# otherwise executables that link libplatform fail with unresolved/non-exported
+# llvm_gcda_* symbols under lld.
+if(ASCIICHAT_ENABLE_COVERAGE)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64|ARM64")
+        set(_ascii_chat_profile_names "libclang_rt.profile_osx.a" "libclang_rt.profile-arm64.a")
+    else()
+        set(_ascii_chat_profile_names "libclang_rt.profile-x86_64.a" "libclang_rt.profile_osx.a")
+    endif()
+    foreach(_ascii_chat_profile_name ${_ascii_chat_profile_names})
+        execute_process(
+            COMMAND ${CMAKE_C_COMPILER} --print-file-name=${_ascii_chat_profile_name}
+            OUTPUT_VARIABLE _ascii_chat_profile_library
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        if(EXISTS "${_ascii_chat_profile_library}")
+            target_link_libraries(libplatform PRIVATE "${_ascii_chat_profile_library}")
+            target_link_options(libplatform PRIVATE --coverage)
+            break()
+        endif()
+    endforeach()
+    unset(_ascii_chat_profile_library)
+    unset(_ascii_chat_profile_name)
+    unset(_ascii_chat_profile_names)
+endif()
 if(TARGET libplatform-objects)
     target_include_directories(libplatform-objects PRIVATE
         ${_ascii_chat_repo_root}/include
