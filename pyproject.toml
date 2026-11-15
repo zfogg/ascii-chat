@@ -37,6 +37,13 @@ telemetry = [
   "gotel @ git+https://github.com/zfogg/gotel.git@v0.14.0#subdirectory=python",
 ]
 
+[dependency-groups]
+test = [
+  "PyGetWindow>=0.0.9",
+  "PyMonCtl>=0.92",
+  "pywin32>=311; sys_platform == 'win32'",
+]
+
 [tool.setuptools]
 packages = ["ascii_chat_tests"]
 package-dir = { ascii_chat_tests = "tests/python/ascii_chat_tests" }

@@ -39,8 +39,8 @@ file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 
 set(_asciichat_parent_shared_libs ${BUILD_SHARED_LIBS})
 # Musl cannot safely consume host/shared dependency builds. Otherwise honor
-# ASCIICHAT_SHARED_DEPS: static remains the default, including Release, while
-# ASCIICHAT_SHARED_DEPS=ON explicitly selects shared dependencies.
+# ASCIICHAT_SHARED_DEPS selects the dependency mode; Debug and Dev presets
+# enable it, while Release and RelWithDebInfo remain static by default.
 if(USE_MUSL OR ASCIICHAT_STATIC_DEPS)
     set(_asciichat_gotel_shared OFF)
 else()
@@ -49,6 +49,18 @@ endif()
 set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared})
 set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared} CACHE BOOL
     "Build gotel and its public dependencies as shared libraries" FORCE)
+
+# These dependency revisions are pinned in the vendored Gotel checkout.  Keep
+# FetchContent from running its git update step on every configure: updating a
+# populated git checkout refreshes all source mtimes, which makes Ninja treat
+# the entire gotel/nghttp2/otlp-c dependency tree as stale on the next build.
+# First-time population still occurs when a source directory is absent.
+set(_asciichat_parent_fetchcontent_updates_disconnected
+    ${FETCHCONTENT_UPDATES_DISCONNECTED})
+set(_asciichat_parent_fetchcontent_fully_disconnected
+    ${FETCHCONTENT_FULLY_DISCONNECTED})
+set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
+set(FETCHCONTENT_FULLY_DISCONNECTED ON)
 set(_asciichat_fetchcontent_base_dir_was_defined FALSE)
 if(DEFINED FETCHCONTENT_BASE_DIR)
     set(_asciichat_fetchcontent_base_dir_was_defined TRUE)
@@ -143,8 +155,14 @@ set_property(TARGET otlp_c PROPERTY SOURCES "${_otel_sources}")
 target_sources(otlp_c PRIVATE "${CMAKE_BINARY_DIR}/generated/otlp_exporter.c")
 
 set(BUILD_SHARED_LIBS ${_asciichat_parent_shared_libs})
+set(FETCHCONTENT_UPDATES_DISCONNECTED
+    ${_asciichat_parent_fetchcontent_updates_disconnected})
+set(FETCHCONTENT_FULLY_DISCONNECTED
+    ${_asciichat_parent_fetchcontent_fully_disconnected})
 unset(_asciichat_parent_fetchcontent_base_dir)
 unset(_asciichat_fetchcontent_base_dir_was_defined)
+unset(_asciichat_parent_fetchcontent_updates_disconnected)
+unset(_asciichat_parent_fetchcontent_fully_disconnected)
 add_compile_definitions(GOTEL_WITH_SQLITE=1)
 include_directories($<TARGET_PROPERTY:gotel,INTERFACE_INCLUDE_DIRECTORIES>
                     $<TARGET_PROPERTY:otlp_c,INTERFACE_INCLUDE_DIRECTORIES>)
