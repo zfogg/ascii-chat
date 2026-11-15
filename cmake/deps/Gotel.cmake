@@ -101,6 +101,32 @@ endif()
 set(FETCHCONTENT_BASE_DIR "${_asciichat_gotel_cache_dir}" CACHE PATH
     "Persistent Gotel dependency source/build cache" FORCE)
 
+# gotel's CMake enables disconnected mode before it declares its nested
+# FetchContent dependencies. A restored CI cache can contain gotel itself
+# while missing one of those nested source trees, so prepopulate both pinned
+# repositories while the top-level cache-recovery check has retrieval enabled.
+set(_asciichat_gotel_sources_ready TRUE)
+foreach(_asciichat_gotel_source IN ITEMS sequel-src otlp_c-src)
+    if(NOT EXISTS "${_asciichat_gotel_cache_dir}/${_asciichat_gotel_source}")
+        set(_asciichat_gotel_sources_ready FALSE)
+    endif()
+endforeach()
+if(NOT _asciichat_gotel_sources_ready)
+    set(_asciichat_gotel_fetchcontent_disconnected ${FETCHCONTENT_FULLY_DISCONNECTED})
+    set(FETCHCONTENT_FULLY_DISCONNECTED OFF)
+    FetchContent_Declare(sequel
+        GIT_REPOSITORY https://github.com/zfogg/sequel.git
+        GIT_TAG f0865335e0c90b872ad2d4b40d2590509439f1fe)
+    FetchContent_MakeAvailable(sequel)
+    FetchContent_Declare(otlp_c
+        GIT_REPOSITORY https://github.com/riboseinc/otlp-c.git
+        GIT_TAG 0798449d66331c3953b8ba9354164cfbf2f3bdaf)
+    FetchContent_MakeAvailable(otlp_c)
+    set(FETCHCONTENT_FULLY_DISCONNECTED ${_asciichat_gotel_fetchcontent_disconnected})
+    unset(_asciichat_gotel_fetchcontent_disconnected)
+endif()
+unset(_asciichat_gotel_sources_ready)
+
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                  "${_asciichat_gotel_cache_dir}/build"
                  EXCLUDE_FROM_ALL)
