@@ -36,6 +36,7 @@
 #include <libplatform/terminal.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
+#include <libplatform/thread.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/video/ascii/palette.h>
@@ -1135,7 +1136,21 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
       frame_rows += display_frame[i] == '\n';
     int output_fd = ctx->tty_info.fd >= 0 ? ctx->tty_info.fd : STDOUT_FILENO;
     terminal_size_t terminal = {0};
-    if (terminal_get_size_fd(output_fd, &terminal) == ASCIICHAT_OK && frame_rows >= (size_t)terminal.rows)
+    static _Thread_local int trace_terminal_size;
+    if (!trace_terminal_size) {
+      const char *value = SAFE_GETENV("ASCII_CHAT_TRACE_TERMINAL_WRITES");
+      trace_terminal_size = value && strcmp(value, "1") == 0 ? 1 : -1;
+    }
+    bool trace_size = trace_terminal_size > 0;
+    if (trace_size)
+      log_file_msg("TERMINAL_CALL_BEGIN: thread=%llu caller=display call=terminal_get_size_fd fd=%d at_ns=%llu", (unsigned long long)thread_current_id(), output_fd, (unsigned long long)time_get_ns());
+    uint64_t size_started_ns = trace_size ? time_get_ns() : 0;
+    int size_result = terminal_get_size_fd(output_fd, &terminal);
+    uint64_t size_returned_ns = trace_size ? time_get_ns() : 0;
+    if (trace_size)
+      log_file_msg("TERMINAL_CALL_END: thread=%llu caller=display call=terminal_get_size_fd fd=%d result=%d cols=%d rows=%d elapsed_ms=%.3f at_ns=%llu", (unsigned long long)thread_current_id(),
+                   output_fd, size_result, terminal.cols, terminal.rows, (double)(size_returned_ns - size_started_ns) / NS_PER_MS_INT, (unsigned long long)size_returned_ns);
+    if (size_result == ASCIICHAT_OK && frame_rows >= (size_t)terminal.rows)
       erase_below_len = 0;
     // The frame is shorter than the terminal in some configurations.  Erase
     // from the final frame cursor to the bottom of the screen in the same

@@ -82,6 +82,46 @@ static void draw(frame_buffer_t *output, terminal_size_t size, const animation_s
   frame_buffer_append(output, fixture->text, strlen(fixture->text));
 }
 
+Test(session_ui, media_hides_cursor_in_frame_after_idle) {
+  ui_session_t *session = ui_session_create();
+  cr_assert_not_null(session);
+  view_fixture_t fixture = {.text = "ASCII art"};
+  ui_session_view_t view = {.screen = UI_SCREEN_MEDIA, .draw = draw, .context = &fixture};
+  const char *frame = ui_session_render(session, &view, 1);
+  cr_assert_not_null(frame);
+  cr_assert_not_null(strstr(frame, "\033[?25l"));
+  ui_session_view_t hidden = {.screen = -1};
+  cr_assert_null(ui_session_render(session, &hidden, 2));
+  frame = ui_session_render(session, &view, 3);
+  cr_assert_not_null(frame);
+  const char *hide = strstr(frame, "\033[?25l");
+  const char *art = strstr(frame, fixture.text);
+  cr_assert_not_null(hide);
+  cr_assert_not_null(art);
+  cr_assert(hide < art, "Hide the cursor before positioning it to draw media");
+  ui_session_destroy(session);
+}
+
+Test(session_ui, media_frames_hide_cursor_after_editor) {
+  ui_session_t *session = ui_session_create();
+  cr_assert_not_null(session);
+  view_fixture_t fixture = {.text = "\033[?25hEditor"};
+  ui_session_view_t view = {.screen = UI_SCREEN_PROMPT, .draw = draw, .context = &fixture};
+  const char *frame = ui_session_render(session, &view, 1);
+  cr_assert_not_null(frame);
+  cr_assert_not_null(strstr(frame, "\033[?25h"));
+  view.screen = UI_SCREEN_MEDIA;
+  view.dirty = true;
+  fixture.text = "ASCII art";
+  for (uint64_t now = 2; now < 5; ++now) {
+    frame = ui_session_render(session, &view, now);
+    cr_assert_not_null(frame);
+    cr_assert_not_null(strstr(frame, "\033[?25l"));
+    cr_assert_null(strstr(frame, "\033[?25h"));
+  }
+  ui_session_destroy(session);
+}
+
 Test(session_ui, shared_priority_order) {
   cr_assert_eq(ui_session_select_screen(0), -1);
   uint32_t visible = 0;

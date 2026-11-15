@@ -815,7 +815,6 @@ static const int default_max_clients_value = OPT_MAX_CLIENTS_DEFAULT;
 static const int default_reconnect_attempts_value = OPT_RECONNECT_ATTEMPTS_DEFAULT;
 static const int default_discovery_port_value = OPT_ACDS_PORT_INT_DEFAULT;
 static const bool default_discovery_value = OPT_ACDS_DEFAULT;
-static const bool default_webrtc_value = OPT_WEBRTC_DEFAULT;
 static const bool default_enable_upnp_value = OPT_ENABLE_UPNP_DEFAULT;
 static const bool default_lan_discovery_value = OPT_LAN_DISCOVERY_DEFAULT;
 static const bool default_prefer_webrtc_value = OPT_PREFER_WEBRTC_DEFAULT;
@@ -827,7 +826,6 @@ static const bool default_webrtc_skip_host_value = OPT_WEBRTC_SKIP_HOST_DEFAULT;
 
 static const int default_webrtc_ice_timeout_ms_value = OPT_WEBRTC_ICE_TIMEOUT_MS_DEFAULT;
 
-static const int default_webrtc_reconnect_attempts_value = OPT_WEBRTC_RECONNECT_ATTEMPTS_DEFAULT;
 static const bool default_media_loop_value = OPT_MEDIA_LOOP_DEFAULT;
 static const bool default_pause_value = OPT_PAUSE_DEFAULT;
 static const double default_media_seek_value = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT;
@@ -1008,11 +1006,8 @@ typedef struct options_state {
   char mcp_transport[OPTIONS_BUFF_SIZE];            ///< MCP transport: stdio or http
   char http_origin[OPTIONS_BUFF_SIZE];              ///< Allowed HTTP Origin
   int discovery_port;                               ///< discovery server port (default: 27225)
-  char discovery_service_url[OPTIONS_BUFF_SIZE];    ///< discovery server WebSocket URL (ws:// or wss://, mutually
-                                                    ///< exclusive with discovery_port)
   char discovery_service_key[OPTIONS_BUFF_SIZE];    ///< discovery server public key for trust verification (SSH/GPG key or
                                                     ///< HTTPS URL)
-  bool webrtc;                                      ///< Enable WebRTC mode for discovery session (default: true, P2P WebRTC)
   char discovery_database_path[OPTIONS_BUFF_SIZE];  ///< discovery database file path (default:
                                                     ///< ~/.ascii-chat/discovery.db)
 
@@ -1177,7 +1172,6 @@ typedef struct options_state {
   bool webrtc_disable_turn;                    ///< --webrtc-disable-turn: Disable Stage 3 (TURN), use STUN only
   bool webrtc_skip_host;                       ///< --webrtc-skip-host: Skip host candidates, force STUN/TURN only
   int webrtc_ice_timeout_ms;                   ///< --webrtc-ice-timeout: ICE gathering timeout in milliseconds (default: 10000)
-  int webrtc_reconnect_attempts;               ///< --webrtc-reconnect-attempts: Number of retry attempts (default: 3)
 
   // ============================================================================
   // WebRTC Connectivity Options (ACDS mode only)

@@ -68,6 +68,7 @@
 #include <ascii-chat/log/log.h>
 #include <options/options.h>
 #include <options/common.h>
+#include <ascii-chat/network/connection_endpoint.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/endian.h>
 #include <libplatform/compiler.h>
@@ -850,14 +851,15 @@ int discovery_main(void) {
 
   log_debug("Discovery: is_initiator=%d, port=%d", is_initiator, port_int);
 
-  // Validate mutually exclusive options: discovery_service_url vs discovery_port
-  const char *service_url = GET_OPTION(discovery_service_url);
-  if (service_url && service_url[0] != '\0') {
-    int discovery_port = GET_OPTION(discovery_port);
-    if (discovery_port != ACIP_DISCOVERY_DEFAULT_PORT) {
-      log_fatal("--discovery-service-url and --discovery-service-port are mutually exclusive");
+  char service_url_override[URL_BUFFER_SIZE];
+  const char *service_url = GET_OPTION(discovery_server);
+  if (GET_OPTION(discovery_port) != ACIP_DISCOVERY_DEFAULT_PORT) {
+    asciichat_error_t override_result = connection_endpoint_override_port(service_url, (uint16_t)GET_OPTION(discovery_port), service_url_override, sizeof(service_url_override));
+    if (override_result != ASCIICHAT_OK) {
+      log_fatal("Invalid --discovery-service URL for --discovery-service-port override");
       return ERROR_USAGE;
     }
+    service_url = service_url_override;
   }
 
   discovery_ui_state_t ui = {0};
@@ -867,8 +869,8 @@ int discovery_main(void) {
 
   // Create discovery session configuration
   discovery_config_t discovery_config = {
-      .acds_address = GET_OPTION(discovery_server),
-      .acds_port = (uint16_t)GET_OPTION(discovery_port),
+      .acds_address = NULL,
+      .acds_port = ACIP_DISCOVERY_DEFAULT_PORT,
       .acds_url = service_url,
       .session_string = is_initiator ? NULL : session_string,
       .password = GET_OPTION(password),

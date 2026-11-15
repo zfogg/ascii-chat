@@ -377,7 +377,7 @@ Test(nat_refresh, retry_exhaustion_is_terminal_and_retry_rebuilds_the_peer_manag
   options_t *v = recovery_options();
   v->webrtc_skip_stun = true;
   v->webrtc_disable_turn = true;
-  v->webrtc_reconnect_attempts = 2;
+  v->reconnect_attempts = 2;
   recovery_publish(v);
   session.webrtc_retry_attempt = 0;
   session.webrtc_connection_initiated = true;

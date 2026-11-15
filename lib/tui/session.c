@@ -34,7 +34,6 @@ struct ui_session {
   animation_t animation;
   ui_splash_view_t splash;
   bool loading, help, show_logs, dirty, owns_logs;
-  bool media_cursor_hidden;
   time_t started;
   int active;
   bool covered;
@@ -208,19 +207,11 @@ const char *ui_session_render(ui_session_t *s, const ui_session_view_t *view, ui
   if (covered)
     ui_too_small_render(s->frame, s->size, view->minimum);
   else {
-    // Media frames may follow another UI screen that showed the editing
-    // cursor. Hide it once when media takes ownership. Calling the Windows
-    // terminal abstraction for every frame routes through stdio and flushes
-    // stdout, which can make ConPTY frontends such as Alacritty visibly flash
-    // the cursor and throttles the frame presenter.
-    if (view->screen == UI_SCREEN_MEDIA) {
-      if (!s->media_cursor_hidden) {
-        (void)terminal_cursor_hide();
-        s->media_cursor_hidden = true;
-      }
-    } else {
-      s->media_cursor_hidden = false;
-    }
+    // Hide the cursor in the submitted media frame, before moving it to draw
+    // the art. A separate stdout write can be reordered against presentation,
+    // and cached visibility becomes stale when another screen shows the cursor.
+    if (view->screen == UI_SCREEN_MEDIA)
+      frame_buffer_append(s->frame, "\033[?25l", 6);
     if (view->screen == UI_SCREEN_HELP) {
       int top = (s->size.rows - view->minimum.rows) / 2;
       terminal_color_mode_t mode = GET_OPTION(color_mode);
