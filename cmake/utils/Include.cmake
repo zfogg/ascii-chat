@@ -49,6 +49,7 @@ function(configure_include_directories)
         ${CMAKE_SOURCE_DIR}/lib      # Private implementation headers (if any remain)
         ${CMAKE_SOURCE_DIR}/src      # Application headers
         ${CMAKE_SOURCE_DIR}/src/common # Co-located ascii-chat option headers
+        ${libflags_SOURCE_DIR}/include # Public libflags headers for tooling and consumers
         ${_asciichat_sqlite_include_dirs} # Public discovery/database declarations
     )
     # Windows: Add compat directory for POSIX header stubs (unistd.h, etc.)
