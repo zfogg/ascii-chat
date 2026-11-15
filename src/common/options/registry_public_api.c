@@ -105,7 +105,7 @@ asciichat_error_t registry_add_all_to_flags_builder(flags_schema_builder_t *buil
                                                           : entry->optional_arg                                                ? FLAGS_ARGUMENT_OPTIONAL
                                                                                                                                : FLAGS_ARGUMENT_REQUIRED,
                                   .storage_offset = entry->offset,
-                                  .storage_size = entry->type == OPTION_TYPE_STRING   ? sizeof(char *)
+                                  .storage_size = entry->type == OPTION_TYPE_STRING   ? (entry->owns_memory ? sizeof(char *) : entry->default_value_size)
                                                   : entry->type == OPTION_TYPE_DOUBLE ? sizeof(double)
                                                   : entry->type == OPTION_TYPE_BOOL   ? sizeof(bool)
                                                                                       : sizeof(int),
