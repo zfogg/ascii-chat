@@ -230,7 +230,7 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   safe_snprintf(combined_buf2, sizeof(combined_buf2), "%s --url 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'", example_buf4);
   safe_snprintf(combined_buf3, sizeof(combined_buf3), "%s -f -", example_buf5);
   safe_snprintf(combined_buf4, sizeof(combined_buf4), "%s --palette-chars '@%%#*+=-:. '", example_buf6);
-  safe_snprintf(combined_buf5, sizeof(combined_buf5), "%s --discovery-service --discovery-service-port 27225", example_buf2);
+  safe_snprintf(combined_buf5, sizeof(combined_buf5), "%s --discovery-service wss://discovery.ascii.chat", example_buf2);
 
   options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf1, "Join session and stream from local video file", false);
   options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf2, "Join session and stream from YouTube video", false);

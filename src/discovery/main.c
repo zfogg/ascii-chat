@@ -850,15 +850,7 @@ int discovery_main(void) {
 
   log_debug("Discovery: is_initiator=%d, port=%d", is_initiator, port_int);
 
-  // Validate mutually exclusive options: discovery_service_url vs discovery_port
-  const char *service_url = GET_OPTION(discovery_service_url);
-  if (service_url && service_url[0] != '\0') {
-    int discovery_port = GET_OPTION(discovery_port);
-    if (discovery_port != ACIP_DISCOVERY_DEFAULT_PORT) {
-      log_fatal("--discovery-service-url and --discovery-service-port are mutually exclusive");
-      return ERROR_USAGE;
-    }
-  }
+  const char *service_url = GET_OPTION(discovery_server);
 
   discovery_ui_state_t ui = {0};
   asciichat_error_t ui_result = mutex_init(&ui.mutex, "discovery_ui");
@@ -867,8 +859,8 @@ int discovery_main(void) {
 
   // Create discovery session configuration
   discovery_config_t discovery_config = {
-      .acds_address = GET_OPTION(discovery_server),
-      .acds_port = (uint16_t)GET_OPTION(discovery_port),
+      .acds_address = NULL,
+      .acds_port = ACIP_DISCOVERY_DEFAULT_PORT,
       .acds_url = service_url,
       .session_string = is_initiator ? NULL : session_string,
       .password = GET_OPTION(password),
