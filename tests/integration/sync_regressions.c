@@ -16,7 +16,7 @@
 #include <libplatform/thread.h>
 #include <libplatform/debug/sync.h>
 #include <options.h>
-#include <options_colorscheme.h>
+#include <colorscheme.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/sync.h>
 #include <ascii-chat/util/time.h>

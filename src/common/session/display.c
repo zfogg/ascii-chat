@@ -27,11 +27,11 @@
 #include "session/render.h"
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
-#include <options_colorscheme.h>
+#include <colorscheme.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/tui/splash.h>
 #include <options.h>
-#include <options_runtime.h>
+#include <runtime.h>
 #include <ascii-chat/util/time.h>
 #include <libplatform/terminal.h>
 #include <libplatform/compiler.h>

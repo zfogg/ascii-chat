@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include <options_rcu.h>
+#include <rcu.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/tui/session.h>
 #include <ascii-chat/tui/terminal_screen.h>

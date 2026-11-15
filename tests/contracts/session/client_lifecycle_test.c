@@ -2,7 +2,7 @@
 #include "../../../src/common/session/client_like.h"
 #include "../../../src/common/session/capture.h"
 #include "../../../src/common/session/display.h"
-#include <options_rcu.h>
+#include <rcu.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/terminal/fd/reader.h>
 #include <ascii-chat/audio/audio.h>

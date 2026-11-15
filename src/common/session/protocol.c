@@ -13,7 +13,7 @@
 #include <ascii-chat/audio/audio.h>
 #include <string.h>
 #include <options.h>
-#include <options_rcu.h>
+#include <rcu.h>
 #include <ascii-chat/network/terminal_capabilities.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>

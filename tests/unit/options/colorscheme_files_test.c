@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include <options_colorscheme.h>
+#include <colorscheme.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/common.h>

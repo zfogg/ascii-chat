@@ -5,7 +5,7 @@
 #include <ascii-chat/tui/session.h>
 #include <ascii-chat/common.h>
 #include <options.h>
-#include <options_runtime.h>
+#include <runtime.h>
 #include "session/display.h"
 #include <string.h>
 

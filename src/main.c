@@ -46,7 +46,7 @@
 #include "mirror/main.h"
 #include "mcp-server/mcp.h"
 #include "api-server/main.h"
-#include <options_registry_core.h>
+#include <registry_core.h>
 #include "discovery-service/main.h"
 #include "discovery/main.h"
 #include <ascii-chat/discovery/session.h>
@@ -76,10 +76,10 @@
 #include <libplatform/system.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/debug/named.h>
-#include <options_common.h>
-#include <options_rcu.h>
-#include <options_actions.h>
-#include <options_colorscheme.h>
+#include <common.h>
+#include <rcu.h>
+#include <actions.h>
+#include <colorscheme.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/log/grep.h>
@@ -88,7 +88,7 @@
 #include <libplatform/process.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/pcre2.h>
-#include <options_colorscheme.h>
+#include <colorscheme.h>
 #include <ascii-chat/network/update_checker.h>
 #include <ascii-chat/tui/update_banner.h>
 #include <ascii-chat/tui/splash.h>

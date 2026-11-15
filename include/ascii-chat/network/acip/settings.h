@@ -4,7 +4,7 @@
 #define NETWORK_ACIP_SETTINGS_PALETTE_BUFFER_SIZE 256
 #define NETWORK_ACIP_SETTINGS_LUMINANCE_BUFFER_SIZE 256
 
-#include <options_runtime.h>
+#include <runtime.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/packet/packet.h>
 

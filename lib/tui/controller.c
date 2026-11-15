@@ -38,7 +38,7 @@
 #include <libplatform/lifecycle.h>
 #include <ascii-chat/util/time.h>
 #include <options.h>
-#include <options_runtime.h>
+#include <runtime.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>

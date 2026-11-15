@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 
-#include <options_config.h>
+#include <config.h>
 #include <options.h>
 #include <libflags/manpage/manpage.h>
 

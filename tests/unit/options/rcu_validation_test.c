@@ -9,7 +9,7 @@
 #include <criterion/criterion.h>
 #include <math.h>
 
-#include <options_rcu.h>
+#include <rcu.h>
 #include <options.h>
 #include <ascii-chat/tui/session.h>
 #include <ascii-chat/asciichat_errno.h>

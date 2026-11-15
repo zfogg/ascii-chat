@@ -21,7 +21,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/source_root.h>
 #include <options.h>
-#include <options_rcu.h> // For RCU-based options access
+#include <rcu.h> // For RCU-based options access
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
@@ -54,7 +54,7 @@ int terminal_choose_log_fd(int level);
 #include <libplatform/systemd.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/log/search.h>
-#include <options_colorscheme.h>
+#include <colorscheme.h>
 #include <libplatform/thread.h>
 #include <libplatform/mutex.h>
 #include <ascii-chat/network/packet/packet.h>

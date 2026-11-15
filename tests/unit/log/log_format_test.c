@@ -16,7 +16,7 @@
 #include <ascii-chat/log/colorize.h>
 #include <ascii-chat/util/time.h>
 #include <options.h>
-#include <options_rcu.h>
+#include <rcu.h>
 
 /* ============================================================================
  * Test Setup/Teardown

@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include <options_common.h>
+#include <common.h>
 #include <libflags/levenshtein.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>

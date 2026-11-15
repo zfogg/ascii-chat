@@ -4,7 +4,7 @@
 #include <ascii-chat/crypto/session.h>
 #include <ascii-chat/network/crc32.h>
 #include <libplatform/socket.h>
-#include <options_rcu.h>
+#include <rcu.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/buffer.h>

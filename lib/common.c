@@ -24,12 +24,12 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/common.h> // For simd_caches_destroy_all()
-#include <options_colorscheme.h>           // For colorscheme_destroy()
+#include <colorscheme.h>           // For colorscheme_destroy()
 #include <ascii-chat/util/time.h>          // For timer_system_destroy()
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/crypto/known_hosts.h>
 #include <options.h>
-#include <options_rcu.h>                    // For RCU-based options access
+#include <rcu.h>                    // For RCU-based options access
 #include <ascii-chat/discovery/strings.h>   // For RCU-based options access
 #include <ascii-chat/debug/sync.h>          // Synchronization diagnostics lifecycle
 #include <ascii-chat/debug/mutex.h>         // For mutex_stack_cleanup

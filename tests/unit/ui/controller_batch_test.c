@@ -3,7 +3,7 @@
 #include <ascii-chat/tui/prompt.h>
 #include <ascii-chat/tui/controller.h>
 #include <options.h>
-#include <options_rcu.h>
+#include <rcu.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/common.h>

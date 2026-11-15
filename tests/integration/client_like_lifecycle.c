@@ -7,7 +7,7 @@
  * Session capture/display creation and teardown use the actual library code.
  */
 #include "session/client_like.h"
-#include <options_rcu.h>
+#include <rcu.h>
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/common.h>
 #include <stdlib.h>

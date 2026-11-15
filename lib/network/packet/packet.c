@@ -24,7 +24,7 @@
 #include <ascii-chat/source_root.h>
 #include <ascii-chat/audio/audio.h>
 #include <options.h>
-#include <options_rcu.h> // For RCU-based options access
+#include <rcu.h> // For RCU-based options access
 #include <stdint.h>
 #include <errno.h>
 #include <stdbool.h>

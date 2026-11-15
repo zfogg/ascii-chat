@@ -5,7 +5,7 @@
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/url.h>
-#include <options_parsers.h>
+#include <parsers.h>
 #include <options.h>
 
 static void setup(void) {

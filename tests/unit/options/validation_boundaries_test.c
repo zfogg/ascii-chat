@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
-#include <options_validation.h>
-#include <options_parsers.h>
+#include <validation.h>
+#include <parsers.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <limits.h>

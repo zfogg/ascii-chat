@@ -13,7 +13,7 @@
 #include <ascii-chat/util/utf8.h>
 
 #include <options.h>
-#include <options_rcu.h>
+#include <rcu.h>
 #include <ascii-chat/common/sync.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>

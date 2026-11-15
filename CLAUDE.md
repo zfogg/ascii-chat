@@ -728,7 +728,7 @@ Stream URLs extracted by yt-dlp are cached for 30 seconds to avoid repeated subp
 
 - **lib/media/yt_dlp.c/h** - yt-dlp subprocess integration with caching
 - **lib/media/source.c** - Smart routing logic and media source creation
-- **src/common/options.h** - `yt_dlp_options` STRING option
+- **src/common/options/options.h** - `yt_dlp_options` STRING option
 
 ## Cryptographic Protocol
 

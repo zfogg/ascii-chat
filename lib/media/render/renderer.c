@@ -1,5 +1,5 @@
 #include <ascii-chat/util/time.h>
-#include <options_colorscheme.h>
+#include <colorscheme.h>
 /**
  * @file media/render/renderer.c
  * @ingroup media

@@ -88,36 +88,36 @@ set(CORE_SRCS
     ${LIB_DIR}/tui/shortcuts.c
     ${LIB_DIR}/tui/errno_stacks.c
     # options/
-    ${CMAKE_SOURCE_DIR}/src/common/options_colorscheme.c
-    ${CMAKE_SOURCE_DIR}/src/common/options.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_common.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_enums.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_strings.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_runtime.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_help.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/colorscheme.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/options.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/common.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/enums.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/strings.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/runtime.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/help.c
     # options/config/
-    ${CMAKE_SOURCE_DIR}/src/common/options_config.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/config.c
     # options/registry/
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_metadata.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_general.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_logging.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_configuration.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_terminal.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_webcam.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_display.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_network.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_security.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_media.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_audio.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_database.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_registry.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_core.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_public_api.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_mode_defaults.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_metadata.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_general.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_logging.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_configuration.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_terminal.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_webcam.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_display.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_network.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_security.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_media.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_audio.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_database.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_registry.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_core.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_public_api.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_mode_defaults.c
     # options/parsing/
-    ${CMAKE_SOURCE_DIR}/src/common/options_parsing_parsers.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_parsing_validation.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_parsing_actions.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/parsing_parsers.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/parsing_validation.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/parsing_actions.c
     # options/manpage/
     # version
     ${LIB_DIR}/version.c
@@ -174,7 +174,7 @@ endif()
 list(APPEND CORE_SRCS
     ${LIB_DIR}/debug/stats.c
     ${LIB_DIR}/debug/errno.c
-    ${CMAKE_SOURCE_DIR}/src/common/options_registry_debug.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/registry_debug.c
 )
 
 # Additional debug sources only in non-Release builds

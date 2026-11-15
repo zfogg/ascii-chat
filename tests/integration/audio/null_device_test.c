@@ -4,7 +4,7 @@
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <options.h>
-#include <options_rcu.h>
+#include <rcu.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <math.h>

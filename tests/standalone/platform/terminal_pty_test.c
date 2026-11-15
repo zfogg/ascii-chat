@@ -1,7 +1,7 @@
 #include <libplatform/terminal.h>
 #include <libplatform/system.h>
 #include <libplatform/filesystem.h>
-#include <options_rcu.h>
+#include <rcu.h>
 #include <options.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>

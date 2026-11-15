@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 #include "server/stream.h"
-#include <options_rcu.h>
+#include <rcu.h>
 #include "session/frame_validation.h"
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/video/rgba/video_frame.h>

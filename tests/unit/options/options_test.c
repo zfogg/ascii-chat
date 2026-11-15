@@ -12,9 +12,9 @@
 #include <sys/ioctl.h>
 
 #include <options.h>
-#include <options_registry.h>
-#include <options_rcu.h>     // For RCU-based options access
-#include <options_actions.h> // For deferred action tests
+#include <registry.h>
+#include <rcu.h>     // For RCU-based options access
+#include <actions.h> // For deferred action tests
 #include <ascii-chat/tests/common.h>
 #include <libplatform/terminal.h>
 #include <libplatform/system.h>

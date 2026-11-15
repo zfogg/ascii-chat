@@ -16,7 +16,7 @@
 
 #include <ascii-chat/tests/common.h>
 #include <options.h>
-#include <options_rcu.h>
+#include <rcu.h>
 #include <ascii-chat/tests/logging.h>
 
 // External getopt variable that needs resetting between tests

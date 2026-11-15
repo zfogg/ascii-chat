@@ -24,7 +24,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/app_callbacks.h>
 #include <options.h>
-#include <options_rcu.h> // For RCU-based options access
+#include <rcu.h> // For RCU-based options access
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>

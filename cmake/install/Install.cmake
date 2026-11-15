@@ -489,7 +489,7 @@ endif()
 # in sync with the current options and help system.
 #
 # The completions are generated using the unified API:
-#   - options_registry_get_for_display() provides options to all generators
+#   - registry_get_for_display() provides options to all generators
 #   - Both help system and all shell generators use identical filtering logic
 #
 # This replaces the static completion files with auto-generated ones

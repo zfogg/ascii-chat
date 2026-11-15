@@ -30,7 +30,7 @@ bool browser_client_ready(browser_transport_t *transport);
 #include <stdint.h>
 
 #include <options.h>
-#include <options_rcu.h>
+#include <rcu.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/crypto/crypto.h>

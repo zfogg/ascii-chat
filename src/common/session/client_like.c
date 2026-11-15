@@ -30,7 +30,7 @@
 
 #include <ascii-chat/log/log.h>
 #include <options.h>
-#include <options_runtime.h>
+#include <runtime.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>

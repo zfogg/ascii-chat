@@ -33,7 +33,7 @@
 #include <ascii-chat/util/validation.h>
 #include <ascii-chat/util/format.h>
 #include <options.h>
-#include <options_rcu.h> // For RCU-based options access
+#include <rcu.h> // For RCU-based options access
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/crypto/crypto.h>

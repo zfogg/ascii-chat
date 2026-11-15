@@ -4,8 +4,8 @@
 #include <string>
 extern "C" {
 #include <options.h>
-#include <options_rcu.h>
-#include <options_runtime.h>
+#include <rcu.h>
+#include <runtime.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 }

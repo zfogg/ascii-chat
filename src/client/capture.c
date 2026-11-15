@@ -103,7 +103,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <options.h>
-#include <options_rcu.h> // For RCU-based options access
+#include <rcu.h> // For RCU-based options access
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/thread.h> // For THREAD_IS_CREATED macro

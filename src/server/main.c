@@ -121,7 +121,7 @@
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/thread_pool.h>
 #include <options.h>
-#include <options_rcu.h> // For RCU-based options access
+#include <rcu.h> // For RCU-based options access
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/audio/audio.h>

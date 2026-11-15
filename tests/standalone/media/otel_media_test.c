@@ -8,7 +8,7 @@
 #include <ascii-chat/util/time.h>
 #include <libplatform/system.h>
 #include <options.h>
-#include <options_rcu.h>
+#include <rcu.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
 #include <libavcodec/avcodec.h>

@@ -35,8 +35,8 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
 
             <ascii-chat/log/log.h>
             <options.h>
-            <options_enums.h>
-            <options_colorscheme.h>
+            <enums.h>
+            <colorscheme.h>
             <ascii-chat/buffer.h>
             <ascii-chat/asciichat_errno.h>
             <ascii-chat/ringbuffer.h>

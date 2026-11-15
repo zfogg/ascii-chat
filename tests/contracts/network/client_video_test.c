@@ -2,7 +2,7 @@
 #include "../../../src/client/connection_internal.h"
 #include "../../../src/client/capture.h"
 #include "../../../src/client/display.h"
-#include <options_rcu.h>
+#include <rcu.h>
 #include <ascii-chat/thread_pool.h>
 #include <libplatform/filesystem.h>
 #include <ascii-chat/util/endian.h>

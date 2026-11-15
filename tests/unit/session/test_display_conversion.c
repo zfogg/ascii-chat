@@ -1,8 +1,8 @@
 #include <criterion/criterion.h>
 #include "common/session/display.h"
 #include "common/session/frame_validation.h"
-#include <options_rcu.h>
-#include <options_runtime.h>
+#include <rcu.h>
+#include <runtime.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <string.h>

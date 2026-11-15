@@ -101,7 +101,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/json.h>
 #include <options.h>
-#include <options_rcu.h>          // For RCU-based options access
+#include <rcu.h>          // For RCU-based options access
 #include <ascii-chat/util/time.h> // For time macros
 #include <ascii-chat/util/url.h>  // For URL parsing and WebSocket detection
 #include <ascii-chat/buffer.h>

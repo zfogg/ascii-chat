@@ -411,7 +411,7 @@ test("shared rendering constants match the native definitions", async ({
   );
   const options = readFileSync(
     new URL(
-      "../../../../src/common/options.h",
+      "../../../../src/common/options/options.h",
       import.meta.url,
     ),
     "utf8",

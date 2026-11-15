@@ -89,7 +89,7 @@
 #include <ascii-chat/common.h>
 #include "display.h"
 #include <options.h>
-#include <options_rcu.h> // For RCU-based options access
+#include <rcu.h> // For RCU-based options access
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/media/codecs.h>
 #include <ascii-chat/buffer.h>

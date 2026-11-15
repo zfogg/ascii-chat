@@ -2,7 +2,7 @@
 #include <ascii-chat/common.h>
 #include <libplatform/system.h>
 #include <libplatform/filesystem.h>
-#include <options_rcu.h>
+#include <rcu.h>
 #include <setjmp.h>
 static bool help_active;
 static unsigned help_toggles, interrupts;

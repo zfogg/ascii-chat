@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <options.h>
-#include <options_rcu.h>
+#include <rcu.h>
 #include <libplatform/system.h>
 
 /**
