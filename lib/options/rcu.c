@@ -350,7 +350,7 @@ static void deferred_free_all(void) {
 static void options_rcu_atfork_child(void) {
   /* Reset the lifecycle state to allow reinitialization after fork */
   /* This is safe because lifecycle_t is just an atomic int, can be reset directly */
-  __c11_atomic_store(&g_options_lifecycle.state, LIFECYCLE_UNINITIALIZED, __ATOMIC_RELEASE);
+  atomic_store_explicit(&g_options_lifecycle.state, LIFECYCLE_UNINITIALIZED, memory_order_release);
 
   /* Reset the atomic options pointer to avoid dangling references */
   /* The parent's allocated memory is not accessible/valid in the child */
