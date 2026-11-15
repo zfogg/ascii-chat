@@ -139,7 +139,7 @@ jobs:
         uses: ./.github/actions/install-deps
         with:
           os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}
-          extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr libc6-dbg' || 'gcovr' }}
+          extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr libc6-dbg' || '' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Python test dependencies
@@ -366,7 +366,7 @@ jobs:
         uses: ./.github/actions/install-deps
         with:
           os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}
-          extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr pulseaudio pulseaudio-utils' || 'gcovr' }}
+          extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr pulseaudio pulseaudio-utils' || '' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache build, dependencies, and ccache
