@@ -172,7 +172,7 @@ const char *test_get_binary_path(void);
 // Test Options Helpers (for RCU pattern)
 // =============================================================================
 
-#include "../options/rcu.h"
+#include <options_rcu.h>
 
 /**
  * @brief Helper to set test_pattern option in tests
