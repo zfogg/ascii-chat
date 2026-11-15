@@ -199,7 +199,7 @@ set(LIB_SRC_COMMON
     ${LIBFLAGS_ROOT}/lib/options.c
     ${LIBFLAGS_ROOT}/lib/parsing/parsers.c
     ${LIBFLAGS_ROOT}/lib/storage.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/options/core.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/common.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/enums.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/strings.c

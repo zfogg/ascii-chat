@@ -11,7 +11,7 @@
  *
  * **Implementation**: libflags schemas and command trees, with ascii-chat
  * application callbacks and mode-specific positional parsing in
- * `src/common/options/options.c`.
+ * `src/common/options/core.c`.
  *
  * **Key Features**:
  * - Command-line argument parsing with libflags

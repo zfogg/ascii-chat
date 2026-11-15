@@ -1,5 +1,5 @@
 /**
- * @file options.c
+ * @file core.c
  * @ingroup options
  * @brief ⚙️ Main entry point for unified options parsing with mode detection
  *

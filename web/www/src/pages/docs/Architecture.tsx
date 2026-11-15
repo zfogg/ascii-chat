@@ -103,7 +103,7 @@ const FLOWS: Record<string, Flow> = {
           "Scans argv for mode keywords (server/client/mirror/discovery-service) or a session string. Parses binary-level flags before mode is known.",
         files: [
           {
-            path: "src/common/options/options.c",
+            path: "src/common/options/core.c",
             fn: "detect_mode_and_parse_binary_options()",
             note: "Determines mode before builder runs",
           },

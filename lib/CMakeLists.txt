@@ -89,7 +89,7 @@ set(CORE_SRCS
     ${LIB_DIR}/tui/errno_stacks.c
     # options/
     ${CMAKE_SOURCE_DIR}/src/common/options/colorscheme.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/options.c
+    ${CMAKE_SOURCE_DIR}/src/common/options/core.c
     ${CMAKE_SOURCE_DIR}/src/common/options/common.c
     ${CMAKE_SOURCE_DIR}/src/common/options/enums.c
     ${CMAKE_SOURCE_DIR}/src/common/options/strings.c

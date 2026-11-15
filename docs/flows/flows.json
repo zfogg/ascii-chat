@@ -23,7 +23,7 @@
               "note": "Calls options_init() then options_get()"
             },
             {
-              "path": "src/common/options/options.c",
+              "path": "src/common/options/core.c",
               "fn": "options_init()",
               "line": 1,
               "note": "Unified entry point for all parsing"
@@ -36,7 +36,7 @@
           "description": "Scans argv for the mode keyword (server, client, mirror, discovery-service) or a session string. Falls back to discovery mode if no mode given. Binary-level flags (--log-file, --verbose, etc.) are parsed here too.",
           "files": [
             {
-              "path": "src/common/options/options.c",
+              "path": "src/common/options/core.c",
               "fn": "detect_mode_and_parse_binary_options()",
               "line": 100,
               "note": "Detects mode before builder runs"
@@ -92,7 +92,7 @@
           "description": "The option builder walks argv using the mode-specific preset (options_preset_unified). For each --flag, it finds the registry entry and calls the appropriate typed parser. Custom parsers handle complex types (timestamps, port ranges, palette strings, PCRE2 grep patterns, session strings).",
           "files": [
             {
-              "path": "src/common/options/options.c",
+              "path": "src/common/options/core.c",
               "fn": "options_config_parse_args()",
               "line": 200,
               "note": "Builder-based argv walking"
@@ -711,7 +711,7 @@
           "description": "options_init(argc, argv) runs the full parsing pipeline (see Options flow). After this, GET_OPTION() is live.",
           "files": [
             {
-              "path": "src/common/options/options.c",
+              "path": "src/common/options/core.c",
               "fn": "options_init()",
               "line": 1,
               "note": "Full parse + RCU publish"

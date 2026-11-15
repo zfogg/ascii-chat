@@ -31,7 +31,7 @@
  * 3. **Presets** (presets.h): Pre-built configurations for common modes (unified, server, client,
  *    mirror, discovery service). The ascii-chat registry supplies the mode-specific libflags schema.
  *
- * 4. **Unified Parsing** (options.c): Single entry point `options_init()` that:
+ * 4. **Unified Parsing** (core.c): Single entry point `options_init()` that:
  *    - Detects mode from command-line arguments
  *    - Parses binary-level options (--help, --version, --log-file)
  *    - Parses mode-specific options
