@@ -89,11 +89,6 @@
 #define OPTIONS_COMMON_H
 
 #include "../options/options.h"
-#ifdef _WIN32
-#include <libplatform/windows/getopt.h>
-#else
-#include <getopt.h>
-#endif
 #include <libplatform/terminal.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -106,28 +101,6 @@ extern "C" {
 // ============================================================================
 // Option Parsing Helpers
 // ============================================================================
-
-/**
- * @brief Find a similar option name for typo suggestions
- *
- * Uses Levenshtein distance to find the most similar option name from the
- * provided options array. Only suggests options within a reasonable edit distance.
- *
- * @param unknown_opt The unknown/misspelled option name
- * @param options Array of valid option structures (must be NULL-terminated)
- * @return Suggested option name, or NULL if no good match found
- *
- * @note Uses libflags's suggestion threshold to filter poor matches.
- *
- * Example:
- * @code
- * const char *suggestion = find_similar_option("--colr", client_options);
- * if (suggestion) {
- *     fprintf(stderr, "Did you mean '--%s'?\n", suggestion);
- * }
- * @endcode
- */
-const char *find_similar_option(const char *unknown_opt, const struct option *options);
 
 /**
  * @brief Format all available modes for an option as comma-separated list
