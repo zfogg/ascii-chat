@@ -337,8 +337,9 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
     return ERROR_INVALID_PARAM;
   prepare_output(frame, capacity, target);
   frame->width = (size_t)image->w;
-  if (g_stabilizer_target && g_stabilizer_target->cells && g_stabilizer_target->width == (size_t)image->w && g_stabilizer_target->height == (size_t)image->h)
-    frame->stabilizer = g_stabilizer_target;
+  ascii_stabilizer_t *stabilizer_target = ascii_stabilizer_target();
+  if (stabilizer_target && stabilizer_target->cells && stabilizer_target->width == (size_t)image->w && stabilizer_target->height == (size_t)image->h)
+    frame->stabilizer = stabilizer_target;
   for (size_t i = 0; i < 64; ++i)
     memcpy(frame->table + i, cache->cache64[i].utf8_bytes, cache->cache64[i].byte_len);
   frame->scratch = acquire_scratch(frame->inline_scratch, bytes);
