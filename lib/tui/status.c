@@ -20,6 +20,7 @@
 #include <libplatform/terminal.h>
 #include <libplatform/keyboard.h>
 #include <options/options.h>
+#include <libflags/explicit.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/string.h>
@@ -109,7 +110,7 @@ void ui_status_display(const ui_status_t *status) {
   // 1. Terminal is interactive (default behavior), OR
   // 2. User explicitly set --status-screen on command line (force it regardless of terminal)
   // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
-  if (!terminal_is_interactive() && !options_was_explicitly_set("status-screen")) {
+  if (!terminal_is_interactive() && !flags_explicit_state_was_set("status-screen")) {
     return;
   }
 
@@ -159,7 +160,7 @@ bool ui_status_display_interactive(const ui_status_t *status) {
   // 1. Terminal is interactive (default behavior), OR
   // 2. User explicitly set --status-screen on command line (force it regardless of terminal)
   // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
-  if (!terminal_is_interactive() && !options_was_explicitly_set("status-screen")) {
+  if (!terminal_is_interactive() && !flags_explicit_state_was_set("status-screen")) {
     return true;
   }
 

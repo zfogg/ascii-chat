@@ -1676,19 +1676,6 @@ options_t options_t_new(void);
 asciichat_error_t options_init(int argc, char **argv);
 
 /**
- * @brief Reports whether libflags recorded an explicit assignment.
- * @param option_name Canonical libflags option name.
- * @return true when the option was assigned by config, environment, or CLI.
- */
-bool options_was_explicitly_set(const char *option_name);
-
-/** @brief Releases the libflags explicitness snapshot owned by options. */
-void options_explicit_state_destroy(void);
-
-/** @brief Merges explicit source metadata from a live libflags context. */
-bool options_explicit_state_merge(const flags_context_t *context);
-
-/**
  * @brief Validates parsed values with the libflags schema and ascii-chat policy.
  *
  * @param options Parsed option storage.

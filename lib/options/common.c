@@ -206,9 +206,6 @@ char *read_password_from_stdin(const char *prompt) {
 // These flags are used during parsing, not part of RCU options
 ASCIICHAT_API bool auto_width = true, auto_height = true;
 
-// Track if --port was explicitly set via command-line flag (for mutual exclusion validation)
-bool port_explicitly_set_via_flag = false;
-
 // Default weights; must add up to 1.0
 ASCIICHAT_API const float weight_red = 0.2989f;
 ASCIICHAT_API const float weight_green = 0.5866f;

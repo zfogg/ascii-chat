@@ -177,7 +177,7 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   }
 
   const bool loaded = flags_config_load_toml(context, config_path);
-  if (loaded && !options_explicit_state_merge(context)) {
+  if (loaded && !flags_explicit_state_merge(context)) {
     flags_destroy_preserving_storage(context);
     flags_schema_builder_destroy(builder);
     return SET_ERRNO(ERROR_MEMORY, "Failed to record explicit option state");

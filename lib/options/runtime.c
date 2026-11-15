@@ -6,6 +6,7 @@
 #include <options/rcu.h>
 #include <options/runtime.h>
 #include <options/validation.h>
+#include <libflags/explicit.h>
 #include <math.h>
 #include <yyjson.h>
 #include <limits.h>
@@ -466,7 +467,7 @@ void options_state_destroy(void) {
     return;
   }
 
-  options_explicit_state_destroy();
+  flags_explicit_state_destroy();
 
   /* Shutdown lifecycle to mark as no longer initialized */
   lifecycle_shutdown(&g_options_lifecycle);

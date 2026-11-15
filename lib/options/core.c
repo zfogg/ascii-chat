@@ -101,25 +101,6 @@
 #include <string.h>
 #include <math.h>
 
-static flags_explicit_snapshot_t *g_explicit_snapshot;
-
-bool options_was_explicitly_set(const char *option_name) {
-  return flags_explicit_snapshot_was_set(g_explicit_snapshot, option_name);
-}
-
-void options_explicit_state_destroy(void) {
-  flags_explicit_snapshot_destroy(g_explicit_snapshot);
-  g_explicit_snapshot = NULL;
-}
-
-bool options_explicit_state_merge(const flags_context_t *context) {
-  if (!g_explicit_snapshot)
-    g_explicit_snapshot = flags_explicit_snapshot_create(context);
-  else if (!flags_explicit_snapshot_merge(g_explicit_snapshot, context))
-    return false;
-  return g_explicit_snapshot != NULL;
-}
-
 static void options_flags_log_event(const flags_log_event_t *event, void *user_data) {
   (void)user_data;
   if (event && event->message)
@@ -1832,7 +1813,7 @@ static asciichat_error_t parse_mode_options(options_t *opts, asciichat_mode_t de
   flags_parse_result_t parsed = {0};
   const bool parsed_ok = flags_parse(flags_context, mode_argc, mode_argv, &parsed);
   const bool schema_valid = parsed_ok && flags_validate(flags_context);
-  if (parsed_ok && schema_valid && !options_explicit_state_merge(flags_context)) {
+  if (parsed_ok && schema_valid && !flags_explicit_state_merge(flags_context)) {
     flags_destroy_preserving_storage(flags_context);
     flags_schema_builder_destroy(flags_builder);
     return SET_ERRNO(ERROR_MEMORY, "Failed to record explicit option state");
@@ -2000,7 +1981,7 @@ static void apply_screen_defaults(options_t *opts, int mode_argc, char **mode_ar
   }
 
   if (grep_was_provided) {
-    if (!options_was_explicitly_set("splash-screen")) {
+    if (!flags_explicit_state_was_set("splash-screen")) {
       opts->splash_screen = false;
       log_debug("Auto-disabled splash because --grep was provided");
     }
@@ -2013,11 +1994,11 @@ static void apply_screen_defaults(options_t *opts, int mode_argc, char **mode_ar
   bool should_auto_disable_screens = !is_terminal_interactive || is_claudecode_set;
 
   if (should_auto_disable_screens) {
-    if (!options_was_explicitly_set("splash-screen")) {
+    if (!flags_explicit_state_was_set("splash-screen")) {
       opts->splash_screen = false;
       log_debug("Auto-disabled splash (non-interactive terminal or CLAUDECODE set)");
     }
-    if (!options_was_explicitly_set("status-screen")) {
+    if (!flags_explicit_state_was_set("status-screen")) {
       opts->status_screen = false;
       log_debug("Auto-disabled status screen (non-interactive terminal or CLAUDECODE set)");
     }
