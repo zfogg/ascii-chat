@@ -135,7 +135,6 @@ set(WEB_SRC_MIRROR
 
 # Platform implementations are supplied by the shared libplatform target.
 set(PLATFORM_SRC
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/backtrace.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/filesystem.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/init.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/string.c
@@ -144,7 +143,6 @@ set(PLATFORM_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/actions.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/audio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/backtrace.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/comprehensive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/crypto.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/ffmpeg_decoder.c
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/log.c
@@ -181,6 +179,21 @@ else()
     message(STATUS "WASM: Using computed parent build directory: ${PARENT_BUILD_DIR}")
 endif()
 
+# Emscripten uses the WASM build directory as its working directory when it
+# emits TypeScript declarations. Make the workspace's installed TypeScript
+# toolchain discoverable there without requiring callers to modify PATH.
+set(WEB_NODE_MODULES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../web/web/node_modules")
+if(EXISTS "${WEB_NODE_MODULES_DIR}" AND NOT EXISTS "${CMAKE_BINARY_DIR}/node_modules")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E create_symlink
+            "${WEB_NODE_MODULES_DIR}"
+            "${CMAKE_BINARY_DIR}/node_modules"
+        RESULT_VARIABLE _web_node_modules_link_result)
+    if(NOT _web_node_modules_link_result EQUAL 0)
+        message(WARNING "Could not link web node_modules into the WASM build directory")
+    endif()
+endif()
+
 set(GENERATED_FONT_FILE "${PARENT_BUILD_DIR}/generated/data/fonts/default.c")
 set(GENERATED_FONT_MATRIX_FILE "${PARENT_BUILD_DIR}/generated/data/fonts/matrix_resurrected.c")
 
@@ -208,6 +221,7 @@ set(LIB_SRC_COMMON
     ${LIBFLAGS_ROOT}/lib/config/config.c
     ${LIBFLAGS_ROOT}/lib/config/keys.c
     ${LIBFLAGS_ROOT}/lib/format.c
+    ${LIBFLAGS_ROOT}/lib/explicit.c
     ${LIBFLAGS_ROOT}/lib/help.c
     ${LIBFLAGS_ROOT}/lib/json.c
     ${LIBFLAGS_ROOT}/lib/levenshtein.c
@@ -478,6 +492,7 @@ include(${_cmake_dir}/deps/FaceDetection.cmake)
 # Create WASM mirror module
 add_executable(mirror-web
     ${WEB_SRC_MIRROR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/comprehensive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/session_ui.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/mirror_session.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/terminal_renderer.cpp
@@ -572,6 +587,15 @@ target_compile_options(client-web PRIVATE -pthread -sUSE_FREETYPE=1)
 target_link_options(client-web PRIVATE
     -pthread -sUSE_PTHREADS=1 "-sPTHREAD_POOL_SIZE=Module['pthreadPoolSize']??4" -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1
 )
+
+if(EMSCRIPTEN AND EXISTS "${WEB_NODE_MODULES_DIR}/.bin/tsc")
+    foreach(_web_wasm_target IN ITEMS mirror-web client-web)
+        set_property(
+            TARGET ${_web_wasm_target}
+            PROPERTY RULE_LAUNCH_LINK
+            "${CMAKE_COMMAND} -E env PATH=${WEB_NODE_MODULES_DIR}/.bin:$ENV{PATH}")
+    endforeach()
+endif()
 
 # Add library search paths if needed
 

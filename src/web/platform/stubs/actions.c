@@ -5,7 +5,7 @@
  */
 
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/options/actions.h>
+#include <options/actions.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -92,10 +92,8 @@ option_action_fn options_action_callback(const char *name, bool immediate) {
     option_action_fn callback;
     option_action_fn early_callback;
   } actions[] = {
-      {"list-webcams", action_list_webcams, action_list_webcams},
-      {"list-microphones", action_list_microphones, action_list_microphones},
-      {"list-speakers", action_list_speakers, action_list_speakers},
-      {"show-capabilities", action_show_capabilities, action_show_capabilities_immediate},
+      {"list-webcams", action_list_webcams, action_list_webcams},           {"list-microphones", action_list_microphones, action_list_microphones},
+      {"list-speakers", action_list_speakers, action_list_speakers},        {"show-capabilities", action_show_capabilities, action_show_capabilities_immediate},
       {"check-update", action_check_update, action_check_update_immediate},
   };
   if (!name)

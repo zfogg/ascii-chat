@@ -38,8 +38,7 @@ int platform_backtrace(void **buffer, int size) {
   return 0; // No backtrace support in WASM
 }
 
-void platform_print_backtrace_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
-                                      backtrace_frame_filter_t filter) {
+void platform_print_backtrace_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames, backtrace_frame_filter_t filter) {
   (void)label;
   (void)symbols;
   (void)count;

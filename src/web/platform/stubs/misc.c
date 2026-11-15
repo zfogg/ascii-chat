@@ -5,13 +5,23 @@
  */
 
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/tui/update_banner.h>
+#include <libplatform/terminal.h>
+#include <libplatform/keyboard.h>
+#include <libplatform/socket.h>
 #include <stdint.h>
 #include <stddef.h>
 
 /* Forward declarations */
 typedef void audio_context_t;
 typedef void ui_mdns_server_t;
+
+int keyboard_init(void) {
+  return 0;
+}
+
+int socket_init(void) {
+  return 0;
+}
 
 /* Audio stubs */
 asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
@@ -22,10 +32,6 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
 void audio_terminate_portaudio_final(void) {}
 
 /* Terminal/rendering stubs */
-bool update_banner_is_checking(void) {
-  return false;
-}
-
 tty_info_t get_current_tty(void) {
   tty_info_t tty = {0};
   return tty;
@@ -39,8 +45,7 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps, 
 typedef void render_file_t;
 typedef void media_source_t;
 
-render_file_t *render_file_create(const char *output_file, int width, int height, int fps, int vcodec_id,
-                                  int acodec_id) {
+render_file_t *render_file_create(const char *output_file, int width, int height, int fps, int vcodec_id, int acodec_id) {
   (void)output_file;
   (void)width;
   (void)height;
@@ -79,12 +84,12 @@ void render_file_set_snapshot_actual_duration(render_file_t *rf, double duration
 }
 
 /* Terminal stubs */
-asciichat_error_t terminal_clear_scrollback(int fd) {
+int terminal_clear_scrollback(int fd) {
   (void)fd;
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t terminal_reset(int fd) {
+int terminal_reset(int fd) {
   (void)fd;
   return ASCIICHAT_OK;
 }
@@ -99,7 +104,7 @@ void terminal_stop_resize_detection(void) {}
 /* Known hosts stubs */
 void known_hosts_destroy(void) {}
 
-asciichat_error_t platform_restore_timer_resolution(void) {
+int platform_restore_timer_resolution(void) {
   return ASCIICHAT_OK;
 }
 

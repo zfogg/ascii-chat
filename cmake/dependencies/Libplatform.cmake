@@ -81,7 +81,11 @@ if(LIBSODIUM_INCLUDE_DIRS)
     endforeach()
 endif()
 if(EMSCRIPTEN)
-    target_compile_options(libplatform PRIVATE -pthread -matomics -mbulk-memory)
+    foreach(_libplatform_target IN ITEMS libplatform libplatform-objects)
+        if(TARGET ${_libplatform_target})
+            target_compile_options(${_libplatform_target} PRIVATE -pthread -matomics -mbulk-memory)
+        endif()
+    endforeach()
 endif()
 
 

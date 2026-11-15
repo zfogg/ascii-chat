@@ -88,8 +88,7 @@ int socket_get_last_error(void) {
 
 /* ===== H.265 encoding stubs ===== */
 
-asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t height, const uint8_t *pixel_data,
-                              uint8_t *out_data, size_t *out_len) {
+asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t height, const uint8_t *pixel_data, uint8_t *out_data, size_t *out_len) {
   (void)encoder;
   (void)width;
   (void)height;
@@ -194,8 +193,7 @@ void client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const flo
 
 /* ===== ACIP protocol stubs ===== */
 
-asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void *pixel_data, uint32_t width,
-                                        uint32_t height, uint32_t pixel_format) {
+asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void *pixel_data, uint32_t width, uint32_t height, uint32_t pixel_format) {
   (void)transport;
   (void)pixel_data;
   (void)width;
@@ -204,8 +202,7 @@ asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void 
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "ACIP not supported in WASM");
 }
 
-asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
-                                                   const acip_client_callbacks_t *callbacks) {
+asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport, const acip_client_callbacks_t *callbacks) {
   (void)transport;
   (void)callbacks;
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "ACIP not supported in WASM");
@@ -294,8 +291,7 @@ void acds_client_disconnect(acds_client_t *client) {
   (void)client;
 }
 
-asciichat_error_t acds_session_lookup(acds_client_t *client, const char *session_string,
-                                      acds_session_lookup_result_t *result) {
+asciichat_error_t acds_session_lookup(acds_client_t *client, const char *session_string, acds_session_lookup_result_t *result) {
   (void)client;
   (void)session_string;
   (void)result;
@@ -304,8 +300,7 @@ asciichat_error_t acds_session_lookup(acds_client_t *client, const char *session
 
 /* ===== Thread pool stubs ===== */
 
-asciichat_error_t thread_pool_spawn(void *pool, void *(*thread_func)(void *), void *thread_arg, int stop_id,
-                                    const char *name) {
+asciichat_error_t thread_pool_spawn(void *pool, void *(*thread_func)(void *), void *thread_arg, int stop_id, const char *name) {
   (void)pool;
   (void)thread_func;
   (void)thread_arg;

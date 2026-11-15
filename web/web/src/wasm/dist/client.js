@@ -37,9 +37,9 @@ async function ClientModule(moduleArg = {}) {
             userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/)[1],
           )
         : 2147483647;
-    if (currentSafariVersion < 150400)
+    if (currentSafariVersion < 15e4)
       throw new Error(
-        `This emscripten-generated code requires Safari v${packedVersionToHumanReadable(150400)} (detected v${currentSafariVersion})`,
+        `This emscripten-generated code requires Safari v${packedVersionToHumanReadable(15e4)} (detected v${currentSafariVersion})`,
       );
     const currentFirefoxVersion = userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/)
       ? parseFloat(userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/)[1])
@@ -51,9 +51,9 @@ async function ClientModule(moduleArg = {}) {
     const currentChromeVersion = userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/)
       ? parseFloat(userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/)[1])
       : 2147483647;
-    if (currentChromeVersion < 93)
+    if (currentChromeVersion < 85)
       throw new Error(
-        `This emscripten-generated code requires Chrome v93 (detected v${currentChromeVersion})`,
+        `This emscripten-generated code requires Chrome v85 (detected v${currentChromeVersion})`,
       );
   })();
   var ENVIRONMENT_IS_WEB = !!globalThis.window;
@@ -213,7 +213,6 @@ async function ClientModule(moduleArg = {}) {
         },
       });
   }
-  var workerID = 0;
   (function () {
     function getLogPrefix() {
       let t = 0;
@@ -252,6 +251,70 @@ async function ClientModule(moduleArg = {}) {
   }
   function growMemViews() {
     if (wasmMemory.buffer != HEAP8.buffer) updateMemoryViews();
+  }
+  var workerID = 0;
+  var startWorker;
+  if (ENVIRONMENT_IS_PTHREAD) {
+    var initializedJS = false;
+    self.onunhandledrejection = (e) => {
+      throw e.reason || e;
+    };
+    self.onmessage = function handleMessage(e) {
+      try {
+        var msgData = e.data;
+        var cmd = msgData.cmd;
+        if (cmd == 1) {
+          workerID = msgData.workerID;
+          let messageQueue = [];
+          self.onmessage = (e) => messageQueue.push(e);
+          startWorker = () => {
+            postMessage({ cmd: 3 });
+            for (let msg of messageQueue) handleMessage(msg);
+            self.onmessage = handleMessage;
+          };
+          for (const handler of msgData.handlers)
+            if (!Module[handler] || Module[handler].proxy) {
+              Module[handler] = (...args) => {
+                postMessage({ cmd: 9, handler, args });
+              };
+              if (handler == "print") out = Module[handler];
+              if (handler == "printErr") err = Module[handler];
+            }
+          wasmMemory = msgData.wasmMemory;
+          updateMemoryViews();
+          wasmModule = msgData.wasmModule;
+          createWasm();
+          run();
+          startWorker();
+        } else if (cmd == 2) {
+          assert(msgData.pthread_ptr);
+          assert(wasmMemory, "CMD_RUN received before CMD_LOAD");
+          establishStackSpace(msgData.pthread_ptr);
+          __emscripten_thread_init(msgData.pthread_ptr, 0, 0, 1, 0, 0);
+          PThread.threadInitTLS();
+          __emscripten_thread_mailbox_await(msgData.pthread_ptr);
+          if (!initializedJS) {
+            __embind_initialize_bindings();
+            initializedJS = true;
+          }
+          try {
+            invokeEntryPoint(msgData.start_routine, msgData.arg);
+          } catch (ex) {
+            if (ex != "unwind") throw ex;
+          }
+        } else if (cmd == 4) {
+          if (initializedJS) checkMailbox();
+        } else if (cmd) {
+          err(`worker: received unknown command ${cmd}`);
+          err(msgData);
+        }
+      } catch (ex) {
+        err(`worker: onmessage() captured an uncaught exception: ${ex}`);
+        if (ex?.stack) err(ex.stack);
+        if (runtimeInitialized) __emscripten_thread_crashed();
+        throw ex;
+      }
+    };
   }
   var runtimeInitialized = false;
   function getMemoryBuffer() {
@@ -342,7 +405,8 @@ async function ClientModule(moduleArg = {}) {
   async function getWasmBinary(binaryFile) {
     if (true)
       try {
-        return await readAsync(binaryFile);
+        var response = await readAsync(binaryFile);
+        return new Uint8Array(response);
       } catch {}
     return getBinarySync(binaryFile);
   }
@@ -432,15 +496,34 @@ async function ClientModule(moduleArg = {}) {
   var HEAP32;
   var HEAP8;
   var HEAPU32;
+  var terminateWorker = (worker) => {
+    worker.terminate();
+    worker.onmessage = (e) => {
+      var cmd = e.data.cmd;
+      err(
+        `received "${cmd}" command from terminated worker: ${worker.workerID}`,
+      );
+    };
+  };
+  var cleanupThread = (pthread_ptr) => {
+    assert(
+      !ENVIRONMENT_IS_PTHREAD,
+      "cleanupThread() should only be called from the main thread",
+    );
+    assert(pthread_ptr, "null pthread_ptr passed to cleanupThread");
+    var worker = PThread.pthreads[pthread_ptr];
+    assert(worker);
+    PThread.returnWorkerToPool(worker);
+  };
   var callRuntimeCallbacks = (callbacks) => {
     while (callbacks.length > 0) callbacks.shift()(Module);
   };
   var onPreRuns = [];
   var addOnPreRun = (cb) => onPreRuns.push(cb);
   var dependenciesPromise = null;
-  var dependenciesPromiseResolve = null;
   var resolveRunDependencies = async () => dependenciesPromise;
   var runDependencies = 0;
+  var dependenciesPromiseResolve = null;
   var runDependencyTracking = {};
   var runDependencyWatcher = null;
   var removeRunDependency = (id) => {
@@ -485,127 +568,6 @@ async function ClientModule(moduleArg = {}) {
         if (shown) err("(end of list)");
       }, 1e4);
   };
-  var handleException = (e) => {
-    if (e instanceof ExitStatus || e == "unwind") return EXITSTATUS;
-    checkStackCookie();
-    if (e instanceof WebAssembly.RuntimeError)
-      if (_emscripten_stack_get_current() <= 0)
-        err(
-          "Stack overflow detected.  You can try increasing -sSTACK_SIZE (currently set to 2097152)",
-        );
-    quit_(0, e);
-  };
-  var runtimeKeepaliveCounter = 0;
-  var keepRuntimeAlive = () => noExitRuntime || runtimeKeepaliveCounter > 0;
-  var HEAP64;
-  var HEAPF64;
-  var stackAlloc = (sz) => __emscripten_stack_alloc(sz);
-  var stackRestore = (val) => __emscripten_stack_restore(val);
-  var stackSave = () => _emscripten_stack_get_current();
-  var proxyToMainThread = (funcIndex, emAsmAddr, proxyMode, ...callArgs) => {
-    var bufSize = 8 * callArgs.length * 2;
-    var sp = stackSave();
-    var args = stackAlloc(bufSize);
-    var b = args >> 3;
-    for (var arg of callArgs)
-      if (typeof arg === "bigint") {
-        (growMemViews(), HEAP64)[b++] = 1n;
-        (growMemViews(), HEAP64)[b++] = arg;
-      } else {
-        (growMemViews(), HEAP64)[b++] = 0n;
-        (growMemViews(), HEAPF64)[b++] = arg;
-      }
-    var rtn = __emscripten_run_js_on_main_thread(
-      funcIndex,
-      emAsmAddr,
-      bufSize,
-      args,
-      proxyMode,
-    );
-    stackRestore(sp);
-    return rtn;
-  };
-  function exitOnMainThread(returnCode) {
-    if (ENVIRONMENT_IS_PTHREAD) return proxyToMainThread(0, 0, 0, returnCode);
-    _exit(returnCode);
-  }
-  function _proc_exit(code) {
-    if (ENVIRONMENT_IS_PTHREAD) return proxyToMainThread(1, 0, 1, code);
-    EXITSTATUS = code;
-    if (!keepRuntimeAlive()) {
-      PThread.terminateAllThreads();
-      Module["onExit"]?.(code);
-      ABORT = true;
-    }
-    quit_(0, new ExitStatus(code));
-  }
-  var maybeExit = () => {
-    if (!keepRuntimeAlive())
-      try {
-        if (ENVIRONMENT_IS_PTHREAD) {
-          if (_pthread_self()) __emscripten_thread_exit(EXITSTATUS);
-          return;
-        }
-        _exit(EXITSTATUS);
-      } catch (e) {
-        handleException(e);
-      }
-  };
-  var callUserCallback = (func, ...args) => {
-    if (ABORT) {
-      err(
-        "user callback triggered after runtime exited or application aborted.  Ignoring.",
-      );
-      return;
-    }
-    try {
-      return func(...args);
-    } catch (e) {
-      handleException(e);
-    } finally {
-      maybeExit();
-    }
-  };
-  var waitAsyncPolyfilled = !Atomics.waitAsync;
-  var __emscripten_thread_mailbox_await = (pthread_ptr) => {
-    if (!waitAsyncPolyfilled) {
-      var wait = Atomics.waitAsync(
-        (growMemViews(), HEAP32),
-        pthread_ptr >> 2,
-        pthread_ptr,
-      );
-      assert(wait.async);
-      wait.value.then(checkMailbox);
-      var waitingAsync = pthread_ptr + 112;
-      Atomics.store((growMemViews(), HEAP32), waitingAsync >> 2, 1);
-    }
-  };
-  var checkMailbox = () => {
-    var pthread_ptr = _pthread_self();
-    if (!pthread_ptr) return;
-    callUserCallback(() => {
-      __emscripten_thread_mailbox_await(pthread_ptr);
-      __emscripten_check_mailbox();
-    });
-  };
-  var cleanupThread = (pthread_ptr) => {
-    assert(
-      !ENVIRONMENT_IS_PTHREAD,
-      "cleanupThread() should only be called from the main thread",
-    );
-    assert(pthread_ptr, "null pthread_ptr passed to cleanupThread");
-    var worker = PThread.pthreads[pthread_ptr];
-    assert(worker);
-    PThread.returnWorkerToPool(worker);
-  };
-  function ptrToString(ptr) {
-    assert(
-      typeof ptr === "number",
-      "ptrToString expects a number, got " + typeof ptr,
-    );
-    ptr >>>= 0;
-    return "0x" + ptr.toString(16).padStart(8, "0");
-  }
   var spawnThread = (threadParams) => {
     assert(
       !ENVIRONMENT_IS_PTHREAD,
@@ -629,16 +591,77 @@ async function ClientModule(moduleArg = {}) {
     worker.postMessage(msg, threadParams.transferList);
     return 0;
   };
-  var terminateWorker = (worker) => {
-    worker.terminate();
-    worker.onmessage = (e) => {
-      var cmd = e.data.cmd;
-      err(
-        `received "${cmd}" command from terminated worker: ${worker.workerID}`,
-      );
-    };
+  var runtimeKeepaliveCounter = 0;
+  var keepRuntimeAlive = () => noExitRuntime || runtimeKeepaliveCounter > 0;
+  var stackSave = () => _emscripten_stack_get_current();
+  var stackRestore = (val) => __emscripten_stack_restore(val);
+  var stackAlloc = (sz) => __emscripten_stack_alloc(sz);
+  var HEAPF64;
+  var HEAP64;
+  var proxyToMainThread = (funcIndex, emAsmAddr, proxyMode, ...callArgs) => {
+    var bufSize = 8 * callArgs.length * 2;
+    var sp = stackSave();
+    var args = stackAlloc(bufSize);
+    var b = args >> 3;
+    for (var arg of callArgs)
+      if (typeof arg === "bigint") {
+        (growMemViews(), HEAP64)[b++] = 1n;
+        (growMemViews(), HEAP64)[b++] = arg;
+      } else {
+        (growMemViews(), HEAP64)[b++] = 0n;
+        (growMemViews(), HEAPF64)[b++] = arg;
+      }
+    var rtn = __emscripten_run_js_on_main_thread(
+      funcIndex,
+      emAsmAddr,
+      bufSize,
+      args,
+      proxyMode,
+    );
+    stackRestore(sp);
+    return rtn;
   };
-  var wasmMemory;
+  function _proc_exit(code) {
+    if (ENVIRONMENT_IS_PTHREAD) return proxyToMainThread(0, 0, 1, code);
+    EXITSTATUS = code;
+    if (!keepRuntimeAlive()) {
+      PThread.terminateAllThreads();
+      Module["onExit"]?.(code);
+      ABORT = true;
+    }
+    quit_(0, new ExitStatus(code));
+  }
+  function exitOnMainThread(returnCode) {
+    if (ENVIRONMENT_IS_PTHREAD) return proxyToMainThread(1, 0, 0, returnCode);
+    _exit(returnCode);
+  }
+  var _exit = (status, implicit) => {
+    EXITSTATUS = status;
+    checkUnflushedContent();
+    if (ENVIRONMENT_IS_PTHREAD) {
+      assert(!implicit);
+      exitOnMainThread(status);
+      throw "unwind";
+    }
+    if (keepRuntimeAlive() && !implicit) {
+      var msg = `program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}) due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;
+      err(msg);
+    }
+    _proc_exit(status);
+  };
+  var waitAsyncPolyfilled =
+    !Atomics.waitAsync ||
+    (globalThis.navigator?.userAgent &&
+      Number((navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./) || [])[2]) <
+        91);
+  function ptrToString(ptr) {
+    assert(
+      typeof ptr === "number",
+      "ptrToString expects a number, got " + typeof ptr,
+    );
+    ptr >>>= 0;
+    return "0x" + ptr.toString(16).padStart(8, "0");
+  }
   var PThread = {
     unusedWorkers: [],
     tlsInitFunctions: [],
@@ -827,7 +850,7 @@ async function ClientModule(moduleArg = {}) {
       err(text);
     }
   };
-  var HEAPU8;
+  var wasmMemory;
   var UTF8Decoder = globalThis.TextDecoder && new TextDecoder();
   var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
     var maxIdx = idx + maxBytesToRead;
@@ -873,6 +896,7 @@ async function ClientModule(moduleArg = {}) {
     }
     return str;
   };
+  var HEAPU8;
   var UTF8ToString = (ptr, maxBytesToRead, ignoreNul) => {
     assert(
       typeof ptr === "number",
@@ -952,144 +976,6 @@ async function ClientModule(moduleArg = {}) {
     uncaughtExceptionCount++;
     __Unwind_RaiseException();
   };
-  var ERRNO_CODES = {
-    EPERM: 63,
-    ENOENT: 44,
-    ESRCH: 71,
-    EINTR: 27,
-    EIO: 29,
-    ENXIO: 60,
-    E2BIG: 1,
-    ENOEXEC: 45,
-    EBADF: 8,
-    ECHILD: 12,
-    EAGAIN: 6,
-    EWOULDBLOCK: 6,
-    ENOMEM: 48,
-    EACCES: 2,
-    EFAULT: 21,
-    ENOTBLK: 105,
-    EBUSY: 10,
-    EEXIST: 20,
-    EXDEV: 75,
-    ENODEV: 43,
-    ENOTDIR: 54,
-    EISDIR: 31,
-    EINVAL: 28,
-    ENFILE: 41,
-    EMFILE: 33,
-    ENOTTY: 59,
-    ETXTBSY: 74,
-    EFBIG: 22,
-    ENOSPC: 51,
-    ESPIPE: 70,
-    EROFS: 69,
-    EMLINK: 34,
-    EPIPE: 64,
-    EDOM: 18,
-    ERANGE: 68,
-    ENOMSG: 49,
-    EIDRM: 24,
-    ECHRNG: 106,
-    EL2NSYNC: 156,
-    EL3HLT: 107,
-    EL3RST: 108,
-    ELNRNG: 109,
-    EUNATCH: 110,
-    ENOCSI: 111,
-    EL2HLT: 112,
-    EDEADLK: 16,
-    ENOLCK: 46,
-    EBADE: 113,
-    EBADR: 114,
-    EXFULL: 115,
-    ENOANO: 104,
-    EBADRQC: 103,
-    EBADSLT: 102,
-    EDEADLOCK: 16,
-    EBFONT: 101,
-    ENOSTR: 100,
-    ENODATA: 116,
-    ETIME: 117,
-    ENOSR: 118,
-    ENONET: 119,
-    ENOPKG: 120,
-    EREMOTE: 121,
-    ENOLINK: 47,
-    EADV: 122,
-    ESRMNT: 123,
-    ECOMM: 124,
-    EPROTO: 65,
-    EMULTIHOP: 36,
-    EDOTDOT: 125,
-    EBADMSG: 9,
-    ENOTUNIQ: 126,
-    EBADFD: 127,
-    EREMCHG: 128,
-    ELIBACC: 129,
-    ELIBBAD: 130,
-    ELIBSCN: 131,
-    ELIBMAX: 132,
-    ELIBEXEC: 133,
-    ENOSYS: 52,
-    ENOTEMPTY: 55,
-    ENAMETOOLONG: 37,
-    ELOOP: 32,
-    EOPNOTSUPP: 138,
-    EPFNOSUPPORT: 139,
-    ECONNRESET: 15,
-    ENOBUFS: 42,
-    EAFNOSUPPORT: 5,
-    EPROTOTYPE: 67,
-    ENOTSOCK: 57,
-    ENOPROTOOPT: 50,
-    ESHUTDOWN: 140,
-    ECONNREFUSED: 14,
-    EADDRINUSE: 3,
-    ECONNABORTED: 13,
-    ENETUNREACH: 40,
-    ENETDOWN: 38,
-    ETIMEDOUT: 73,
-    EHOSTDOWN: 142,
-    EHOSTUNREACH: 23,
-    EINPROGRESS: 26,
-    EALREADY: 7,
-    EDESTADDRREQ: 17,
-    EMSGSIZE: 35,
-    EPROTONOSUPPORT: 66,
-    ESOCKTNOSUPPORT: 137,
-    EADDRNOTAVAIL: 4,
-    ENETRESET: 39,
-    EISCONN: 30,
-    ENOTCONN: 53,
-    ETOOMANYREFS: 141,
-    EUSERS: 136,
-    EDQUOT: 19,
-    ESTALE: 72,
-    ENOTSUP: 138,
-    ENOMEDIUM: 148,
-    EILSEQ: 25,
-    EOVERFLOW: 61,
-    ECANCELED: 11,
-    ENOTRECOVERABLE: 56,
-    EOWNERDEAD: 62,
-    ESTRPIPE: 135,
-  };
-  const FS_MAX_OPEN_FDS = 4096;
-  var FS_createDataFile = (...args) => FS.createDataFile(...args);
-  var preloadPlugins = [];
-  var FS_handledByPreloadPlugin = async (byteArray, fullname) => {
-    if (typeof Browser !== "undefined") Browser.init();
-    for (var plugin of preloadPlugins)
-      if (plugin["canHandle"](fullname)) {
-        assert(
-          plugin["handle"].constructor.name === "AsyncFunction",
-          "Filesystem plugin handlers must be async functions (See #24914)",
-        );
-        return plugin["handle"](byteArray, fullname);
-      }
-    return byteArray;
-  };
   var PATH = {
     isAbs: (path) => path.charAt(0) === "/",
     splitPath: (filename) =>
@@ -1135,6 +1021,11 @@ async function ClientModule(moduleArg = {}) {
     join: (...paths) => PATH.normalize(paths.join("/")),
     join2: (l, r) => PATH.normalize(l + "/" + r),
   };
+  var initRandomFill = () => (view) => (
+    view.set(crypto.getRandomValues(new Uint8Array(view.byteLength))),
+    0
+  );
+  var randomFill = (view) => (randomFill = initRandomFill())(view);
   var PATH_FS = {
     resolve: (...args) => {
       var resolvedPath = "",
@@ -1180,53 +1071,17 @@ async function ClientModule(moduleArg = {}) {
       return outputParts.join("/");
     },
   };
-  var asyncLoad = async (url) => {
-    var arrayBuffer = await readAsync(url);
-    assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
-    return new Uint8Array(arrayBuffer);
-  };
-  var getUniqueRunDependency = (id) => {
-    var orig = id;
-    while (1) {
-      if (!runDependencyTracking[id]) return id;
-      id = orig + Math.random();
-    }
-  };
-  var FS_preloadFile = async (
-    parent,
-    name,
-    url,
-    canRead,
-    canWrite,
-    dontCreateFile,
-    canOwn,
-    preFinish,
-  ) => {
-    var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
-    var dep = getUniqueRunDependency(`cp ${fullname}`);
-    addRunDependency(dep);
-    try {
-      var byteArray = url;
-      if (typeof url === "string") byteArray = await asyncLoad(url);
-      byteArray = await FS_handledByPreloadPlugin(byteArray, fullname);
-      preFinish?.();
-      if (!dontCreateFile)
-        FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
-    } finally {
-      removeRunDependency(dep);
-    }
-  };
+  var FS_stdin_getChar_buffer = [];
   var lengthBytesUTF8 = (str) => {
     var len = 0;
     for (var i = 0; i < str.length; ++i) {
-      var u = str.codePointAt(i);
-      if (u <= 127) len++;
-      else if (u <= 2047) len += 2;
-      else if (u <= 65535) len += 3;
-      else {
+      var c = str.charCodeAt(i);
+      if (c <= 127) len++;
+      else if (c <= 2047) len += 2;
+      else if (c >= 55296 && c <= 57343) {
         len += 4;
-        i++;
-      }
+        ++i;
+      } else len += 3;
     }
     return len;
   };
@@ -1280,30 +1135,128 @@ async function ClientModule(moduleArg = {}) {
     if (dontAddNull) u8array.length = numBytesWritten;
     return u8array;
   };
-  var FS_fileDataToTypedArray = (data) => {
-    if (typeof data === "string") data = intArrayFromString(data, true);
-    if (!data.subarray) data = new Uint8Array(data);
-    return data;
+  var FS_stdin_getChar = () => {
+    if (!FS_stdin_getChar_buffer.length) {
+      var result = null;
+      if (globalThis.window?.prompt) {
+        result = window.prompt("Input: ");
+        if (result !== null) result += "\n";
+      }
+      if (!result) return null;
+      FS_stdin_getChar_buffer = intArrayFromString(result, true);
+    }
+    return FS_stdin_getChar_buffer.shift();
   };
-  var FS_getMode = (canRead, canWrite) => {
-    var mode = 0;
-    if (canRead) mode |= 365;
-    if (canWrite) mode |= 146;
-    return mode;
+  var TTY = {
+    ttys: [],
+    init() {},
+    shutdown() {},
+    register(dev, ops) {
+      TTY.ttys[dev] = { input: [], output: [], ops };
+      FS.registerDevice(dev, TTY.stream_ops);
+    },
+    stream_ops: {
+      open(stream) {
+        var tty = TTY.ttys[stream.node.rdev];
+        if (!tty) throw new FS.ErrnoError(43);
+        stream.tty = tty;
+        stream.seekable = false;
+      },
+      close(stream) {
+        stream.tty.ops.fsync(stream.tty);
+      },
+      fsync(stream) {
+        stream.tty.ops.fsync(stream.tty);
+      },
+      read(stream, buffer, offset, length, pos) {
+        if (!stream.tty || !stream.tty.ops.get_char)
+          throw new FS.ErrnoError(60);
+        var bytesRead = 0;
+        for (var i = 0; i < length; i++) {
+          var result;
+          try {
+            result = stream.tty.ops.get_char(stream.tty);
+          } catch (e) {
+            throw new FS.ErrnoError(29);
+          }
+          if (result === void 0 && !bytesRead) throw new FS.ErrnoError(6);
+          if (result === null || result === void 0) break;
+          bytesRead++;
+          buffer[offset + i] = result;
+          if (result === 10) break;
+        }
+        if (bytesRead) stream.node.atime = Date.now();
+        return bytesRead;
+      },
+      write(stream, buffer, offset, length, pos) {
+        if (!stream.tty || !stream.tty.ops.put_char)
+          throw new FS.ErrnoError(60);
+        try {
+          for (var i = 0; i < length; i++)
+            stream.tty.ops.put_char(stream.tty, buffer[offset + i]);
+        } catch (e) {
+          throw new FS.ErrnoError(29);
+        }
+        if (length) stream.node.mtime = stream.node.ctime = Date.now();
+        return i;
+      },
+    },
+    default_tty_ops: {
+      get_char(tty) {
+        return FS_stdin_getChar();
+      },
+      put_char(tty, val) {
+        if (val === null || val === 10) {
+          out(UTF8ArrayToString(tty.output));
+          tty.output = [];
+        } else if (val != 0) tty.output.push(val);
+      },
+      fsync(tty) {
+        if (tty.output?.length > 0) {
+          out(UTF8ArrayToString(tty.output));
+          tty.output = [];
+        }
+      },
+      ioctl_tcgets(tty) {
+        return {
+          c_iflag: 25856,
+          c_oflag: 5,
+          c_cflag: 191,
+          c_lflag: 35387,
+          c_cc: [
+            3, 28, 127, 21, 4, 0, 1, 0, 17, 19, 26, 0, 18, 15, 23, 22, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          ],
+        };
+      },
+      ioctl_tcsets(tty, optional_actions, data) {
+        return 0;
+      },
+      ioctl_tiocgwinsz(tty) {
+        return [24, 80];
+      },
+    },
+    default_tty1_ops: {
+      put_char(tty, val) {
+        if (val === null || val === 10) {
+          err(UTF8ArrayToString(tty.output));
+          tty.output = [];
+        } else if (val != 0) tty.output.push(val);
+      },
+      fsync(tty) {
+        if (tty.output?.length > 0) {
+          err(UTF8ArrayToString(tty.output));
+          tty.output = [];
+        }
+      },
+    },
   };
-  var FS_modeStringToFlags = (str) => {
-    if (typeof str !== "string") return str;
-    var flags = { r: 0, "r+": 2, w: 577, "w+": 578, a: 1089, "a+": 1090 }[str];
-    if (typeof flags === "undefined")
-      throw new Error(`Unknown file open mode: ${str}`);
-    return flags;
-  };
+  var zeroMemory = (ptr, size) =>
+    (growMemViews(), HEAPU8).fill(0, ptr, ptr + size);
   var alignMemory = (size, alignment) => {
     assert(alignment, "alignment argument is required");
     return Math.ceil(size / alignment) * alignment;
   };
-  var zeroMemory = (ptr, size) =>
-    (growMemViews(), HEAPU8).fill(0, ptr, ptr + size);
   var mmapAlloc = (size) => {
     size = alignMemory(size, 65536);
     var ptr = _emscripten_builtin_memalign(65536, size);
@@ -1543,7 +1496,12 @@ async function ClientModule(moduleArg = {}) {
             if (position > 0 || position + length < contents.length)
               if (contents.subarray)
                 contents = contents.subarray(position, position + length);
-              else contents = contents.slice(position, position + length);
+              else
+                contents = Array.prototype.slice.call(
+                  contents,
+                  position,
+                  position + length,
+                );
             (growMemViews(), HEAP8).set(contents, ptr);
           }
         }
@@ -1555,129 +1513,198 @@ async function ClientModule(moduleArg = {}) {
       },
     },
   };
-  var FS_stdin_getChar_buffer = [];
-  var FS_stdin_getChar = () => {
-    if (!FS_stdin_getChar_buffer.length) {
-      var result = null;
-      if (globalThis.window?.prompt) {
-        result = window.prompt("Input: ");
-        if (result !== null) result += "\n";
-      }
-      if (!result) return null;
-      FS_stdin_getChar_buffer = intArrayFromString(result, true);
-    }
-    return FS_stdin_getChar_buffer.shift();
+  var FS_modeStringToFlags = (str) => {
+    if (typeof str !== "string") return str;
+    var flags = { r: 0, "r+": 2, w: 577, "w+": 578, a: 1089, "a+": 1090 }[str];
+    if (typeof flags === "undefined")
+      throw new Error(`Unknown file open mode: ${str}`);
+    return flags;
   };
-  var TTY = {
-    ttys: [],
-    init() {},
-    shutdown() {},
-    register(dev, ops) {
-      TTY.ttys[dev] = { input: [], output: [], ops };
-      FS.registerDevice(dev, TTY.stream_ops);
-    },
-    stream_ops: {
-      open(stream) {
-        var tty = TTY.ttys[stream.node.rdev];
-        if (!tty) throw new FS.ErrnoError(43);
-        stream.tty = tty;
-        stream.seekable = false;
-      },
-      close(stream) {
-        stream.tty.ops.fsync(stream.tty);
-      },
-      fsync(stream) {
-        stream.tty.ops.fsync(stream.tty);
-      },
-      read(stream, buffer, offset, length, pos) {
-        if (!stream.tty || !stream.tty.ops.get_char)
-          throw new FS.ErrnoError(60);
-        var bytesRead = 0;
-        for (var i = 0; i < length; i++) {
-          var result;
-          try {
-            result = stream.tty.ops.get_char(stream.tty);
-          } catch (e) {
-            throw new FS.ErrnoError(29);
-          }
-          if (result === void 0 && !bytesRead) throw new FS.ErrnoError(6);
-          if (result === null || result === void 0) break;
-          bytesRead++;
-          buffer[offset + i] = result;
-          if (result === 10) break;
-        }
-        if (bytesRead) stream.node.atime = Date.now();
-        return bytesRead;
-      },
-      write(stream, buffer, offset, length, pos) {
-        if (!stream.tty || !stream.tty.ops.put_char)
-          throw new FS.ErrnoError(60);
-        try {
-          for (var i = 0; i < length; i++)
-            stream.tty.ops.put_char(stream.tty, buffer[offset + i]);
-        } catch (e) {
-          throw new FS.ErrnoError(29);
-        }
-        if (length) stream.node.mtime = stream.node.ctime = Date.now();
-        return i;
-      },
-    },
-    default_tty_ops: {
-      get_char(tty) {
-        return FS_stdin_getChar();
-      },
-      put_char(tty, val) {
-        if (val === null || val === 10) {
-          out(UTF8ArrayToString(tty.output));
-          tty.output = [];
-        } else if (val != 0) tty.output.push(val);
-      },
-      fsync(tty) {
-        if (tty.output?.length > 0) {
-          out(UTF8ArrayToString(tty.output));
-          tty.output = [];
-        }
-      },
-      ioctl_tcgets(tty) {
-        return {
-          c_iflag: 25856,
-          c_oflag: 5,
-          c_cflag: 191,
-          c_lflag: 35387,
-          c_cc: [
-            3, 28, 127, 21, 4, 0, 1, 0, 17, 19, 26, 0, 18, 15, 23, 22, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          ],
-        };
-      },
-      ioctl_tcsets(tty, optional_actions, data) {
-        return 0;
-      },
-      ioctl_tiocgwinsz(tty) {
-        return [24, 80];
-      },
-    },
-    default_tty1_ops: {
-      put_char(tty, val) {
-        if (val === null || val === 10) {
-          err(UTF8ArrayToString(tty.output));
-          tty.output = [];
-        } else if (val != 0) tty.output.push(val);
-      },
-      fsync(tty) {
-        if (tty.output?.length > 0) {
-          err(UTF8ArrayToString(tty.output));
-          tty.output = [];
-        }
-      },
-    },
+  var FS_fileDataToTypedArray = (data) => {
+    if (typeof data === "string") data = intArrayFromString(data, true);
+    if (!data.subarray) data = new Uint8Array(data);
+    return data;
   };
-  var initRandomFill = () => (view) => (
-    view.set(crypto.getRandomValues(new Uint8Array(view.byteLength))),
-    0
-  );
-  var randomFill = (view) => (randomFill = initRandomFill())(view);
+  var FS_getMode = (canRead, canWrite) => {
+    var mode = 0;
+    if (canRead) mode |= 365;
+    if (canWrite) mode |= 146;
+    return mode;
+  };
   var strError = (errno) => UTF8ToString(_strerror(errno));
+  var ERRNO_CODES = {
+    EPERM: 63,
+    ENOENT: 44,
+    ESRCH: 71,
+    EINTR: 27,
+    EIO: 29,
+    ENXIO: 60,
+    E2BIG: 1,
+    ENOEXEC: 45,
+    EBADF: 8,
+    ECHILD: 12,
+    EAGAIN: 6,
+    EWOULDBLOCK: 6,
+    ENOMEM: 48,
+    EACCES: 2,
+    EFAULT: 21,
+    ENOTBLK: 105,
+    EBUSY: 10,
+    EEXIST: 20,
+    EXDEV: 75,
+    ENODEV: 43,
+    ENOTDIR: 54,
+    EISDIR: 31,
+    EINVAL: 28,
+    ENFILE: 41,
+    EMFILE: 33,
+    ENOTTY: 59,
+    ETXTBSY: 74,
+    EFBIG: 22,
+    ENOSPC: 51,
+    ESPIPE: 70,
+    EROFS: 69,
+    EMLINK: 34,
+    EPIPE: 64,
+    EDOM: 18,
+    ERANGE: 68,
+    ENOMSG: 49,
+    EIDRM: 24,
+    ECHRNG: 106,
+    EL2NSYNC: 156,
+    EL3HLT: 107,
+    EL3RST: 108,
+    ELNRNG: 109,
+    EUNATCH: 110,
+    ENOCSI: 111,
+    EL2HLT: 112,
+    EDEADLK: 16,
+    ENOLCK: 46,
+    EBADE: 113,
+    EBADR: 114,
+    EXFULL: 115,
+    ENOANO: 104,
+    EBADRQC: 103,
+    EBADSLT: 102,
+    EDEADLOCK: 16,
+    EBFONT: 101,
+    ENOSTR: 100,
+    ENODATA: 116,
+    ETIME: 117,
+    ENOSR: 118,
+    ENONET: 119,
+    ENOPKG: 120,
+    EREMOTE: 121,
+    ENOLINK: 47,
+    EADV: 122,
+    ESRMNT: 123,
+    ECOMM: 124,
+    EPROTO: 65,
+    EMULTIHOP: 36,
+    EDOTDOT: 125,
+    EBADMSG: 9,
+    ENOTUNIQ: 126,
+    EBADFD: 127,
+    EREMCHG: 128,
+    ELIBACC: 129,
+    ELIBBAD: 130,
+    ELIBSCN: 131,
+    ELIBMAX: 132,
+    ELIBEXEC: 133,
+    ENOSYS: 52,
+    ENOTEMPTY: 55,
+    ENAMETOOLONG: 37,
+    ELOOP: 32,
+    EOPNOTSUPP: 138,
+    EPFNOSUPPORT: 139,
+    ECONNRESET: 15,
+    ENOBUFS: 42,
+    EAFNOSUPPORT: 5,
+    EPROTOTYPE: 67,
+    ENOTSOCK: 57,
+    ENOPROTOOPT: 50,
+    ESHUTDOWN: 140,
+    ECONNREFUSED: 14,
+    EADDRINUSE: 3,
+    ECONNABORTED: 13,
+    ENETUNREACH: 40,
+    ENETDOWN: 38,
+    ETIMEDOUT: 73,
+    EHOSTDOWN: 142,
+    EHOSTUNREACH: 23,
+    EINPROGRESS: 26,
+    EALREADY: 7,
+    EDESTADDRREQ: 17,
+    EMSGSIZE: 35,
+    EPROTONOSUPPORT: 66,
+    ESOCKTNOSUPPORT: 137,
+    EADDRNOTAVAIL: 4,
+    ENETRESET: 39,
+    EISCONN: 30,
+    ENOTCONN: 53,
+    ETOOMANYREFS: 141,
+    EUSERS: 136,
+    EDQUOT: 19,
+    ESTALE: 72,
+    ENOTSUP: 138,
+    ENOMEDIUM: 148,
+    EILSEQ: 25,
+    EOVERFLOW: 61,
+    ECANCELED: 11,
+    ENOTRECOVERABLE: 56,
+    EOWNERDEAD: 62,
+    ESTRPIPE: 135,
+  };
+  var asyncLoad = async (url) => {
+    var arrayBuffer = await readAsync(url);
+    assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
+    return new Uint8Array(arrayBuffer);
+  };
+  var FS_createDataFile = (...args) => FS.createDataFile(...args);
+  var getUniqueRunDependency = (id) => {
+    var orig = id;
+    while (1) {
+      if (!runDependencyTracking[id]) return id;
+      id = orig + Math.random();
+    }
+  };
+  var preloadPlugins = [];
+  var FS_handledByPreloadPlugin = async (byteArray, fullname) => {
+    if (typeof Browser !== "undefined") Browser.init();
+    for (var plugin of preloadPlugins)
+      if (plugin["canHandle"](fullname)) {
+        assert(
+          plugin["handle"].constructor.name === "AsyncFunction",
+          "Filesystem plugin handlers must be async functions (See #24914)",
+        );
+        return plugin["handle"](byteArray, fullname);
+      }
+    return byteArray;
+  };
+  var FS_preloadFile = async (
+    parent,
+    name,
+    url,
+    canRead,
+    canWrite,
+    dontCreateFile,
+    canOwn,
+    preFinish,
+  ) => {
+    var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
+    var dep = getUniqueRunDependency(`cp ${fullname}`);
+    addRunDependency(dep);
+    try {
+      var byteArray = url;
+      if (typeof url === "string") byteArray = await asyncLoad(url);
+      byteArray = await FS_handledByPreloadPlugin(byteArray, fullname);
+      preFinish?.();
+      if (!dontCreateFile)
+        FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
+    } finally {
+      removeRunDependency(dep);
+    }
+  };
   var FS = {
     root: null,
     mounts: [],
@@ -1966,8 +1993,9 @@ async function ClientModule(moduleArg = {}) {
       if (!op) throw new FS.ErrnoError(err);
       return op;
     },
+    MAX_OPEN_FDS: 4096,
     nextfd() {
-      for (var fd = 0; fd <= FS_MAX_OPEN_FDS; fd++)
+      for (var fd = 0; fd <= FS.MAX_OPEN_FDS; fd++)
         if (!FS.streams[fd]) return fd;
       throw new FS.ErrnoError(33);
     },
@@ -2992,7 +3020,7 @@ async function ClientModule(moduleArg = {}) {
       if (fd === newfd) return -28;
       if (flags & -524289) return -28;
       var old = SYSCALLS.getStreamFromFD(fd);
-      if (newfd < 0 || newfd >= FS_MAX_OPEN_FDS) return -8;
+      if (newfd < 0 || newfd >= FS.MAX_OPEN_FDS) return -8;
       var existing = FS.getStream(newfd);
       if (existing) FS.close(existing);
       var stream = FS.dupStream(old, newfd);
@@ -3003,13 +3031,14 @@ async function ClientModule(moduleArg = {}) {
       return -e.errno;
     }
   }
-  var HEAP16;
   var syscallGetVarargI = () => {
     assert(SYSCALLS.varargs != void 0);
     var ret = (growMemViews(), HEAP32)[+SYSCALLS.varargs >> 2];
     SYSCALLS.varargs += 4;
     return ret;
   };
+  var syscallGetVarargP = syscallGetVarargI;
+  var HEAP16;
   function ___syscall_fcntl64(fd, cmd, varargs) {
     if (ENVIRONMENT_IS_PTHREAD)
       return proxyToMainThread(4, 0, 1, fd, cmd, varargs);
@@ -3232,19 +3261,38 @@ async function ClientModule(moduleArg = {}) {
       str += String.fromCharCode(ch);
     }
   };
-  var embindRepr = (v) => {
-    if (v === null) return "null";
-    var t = typeof v;
-    if (t === "object" || t === "array" || t === "function")
-      return v.toString();
-    else return "" + v;
+  var awaitingDependencies = {};
+  var registeredTypes = {};
+  var typeDependencies = {};
+  class BindingError extends Error {
+    constructor(message) {
+      super(message);
+      this.name = "BindingError";
+    }
+  }
+  var throwBindingError = (message) => {
+    throw new BindingError(message);
   };
-  var assertIntegerRange = (typeName, value, minRange, maxRange) => {
-    if (value < minRange || value > maxRange)
-      throw new TypeError(
-        `Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${typeName}", which is outside the valid range [${minRange}, ${maxRange}]!`,
+  function sharedRegisterType(rawType, registeredInstance, options = {}) {
+    var name = registeredInstance.name;
+    if (!rawType)
+      throwBindingError(
+        `type "${name}" must have a positive integer typeid pointer`,
       );
-  };
+    if (registeredTypes.hasOwnProperty(rawType))
+      if (options.ignoreDuplicateRegistrations) return;
+      else throwBindingError(`Cannot register type '${name}' twice`);
+    registeredTypes[rawType] = registeredInstance;
+    delete typeDependencies[rawType];
+    if (awaitingDependencies.hasOwnProperty(rawType)) {
+      var callbacks = awaitingDependencies[rawType];
+      delete awaitingDependencies[rawType];
+      callbacks.forEach((cb) => cb());
+    }
+  }
+  function registerType(rawType, registeredInstance, options = {}) {
+    return sharedRegisterType(rawType, registeredInstance, options);
+  }
   var HEAPU16;
   var HEAPU64;
   var integerReadValueFromPointer = (name, width, signed) => {
@@ -3269,39 +3317,26 @@ async function ClientModule(moduleArg = {}) {
         throw new TypeError(`invalid integer width (${width}): ${name}`);
     }
   };
-  var awaitingDependencies = {};
-  var registeredTypes = {};
-  class BindingError extends Error {
-    constructor(message) {
-      super(message);
-      this.name = "BindingError";
-    }
-  }
-  var throwBindingError = (message) => {
-    throw new BindingError(message);
+  var embindRepr = (v) => {
+    if (v === null) return "null";
+    var t = typeof v;
+    if (t === "object" || t === "array" || t === "function")
+      return v.toString();
+    else return "" + v;
   };
-  var typeDependencies = {};
-  function sharedRegisterType(typeID, registeredInstance, options = {}) {
-    var name = registeredInstance.name;
-    if (!typeID)
-      throwBindingError(
-        `type "${name}" must have a positive integer typeid pointer`,
+  var assertIntegerRange = (typeName, value, minRange, maxRange) => {
+    if (value < minRange || value > maxRange)
+      throw new TypeError(
+        `Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${typeName}", which is outside the valid range [${minRange}, ${maxRange}]!`,
       );
-    if (registeredTypes[typeID])
-      if (options.ignoreDuplicateRegistrations) return;
-      else throwBindingError(`Cannot register type '${name}' twice`);
-    registeredTypes[typeID] = registeredInstance;
-    delete typeDependencies[typeID];
-    if (awaitingDependencies[typeID]) {
-      var callbacks = awaitingDependencies[typeID];
-      delete awaitingDependencies[typeID];
-      callbacks.forEach((cb) => cb());
-    }
-  }
-  function registerType(typeID, registeredInstance, options = {}) {
-    return sharedRegisterType(typeID, registeredInstance, options);
-  }
-  var __embind_register_bigint = (typeID, name, size, minRange, maxRange) => {
+  };
+  var __embind_register_bigint = (
+    primitiveType,
+    name,
+    size,
+    minRange,
+    maxRange,
+  ) => {
     name = AsciiToString(name);
     const isUnsignedType = minRange === 0n;
     let fromWireType = (value) => value;
@@ -3310,7 +3345,7 @@ async function ClientModule(moduleArg = {}) {
       fromWireType = (value) => BigInt.asUintN(bitSize, value);
       maxRange = fromWireType(maxRange);
     }
-    registerType(typeID, {
+    registerType(primitiveType, {
       name,
       fromWireType,
       toWireType: (destructors, value) => {
@@ -3330,9 +3365,9 @@ async function ClientModule(moduleArg = {}) {
       destructorFunction: null,
     });
   };
-  var __embind_register_bool = (typeID, name, trueValue, falseValue) => {
+  var __embind_register_bool = (rawType, name, trueValue, falseValue) => {
     name = AsciiToString(name);
-    registerType(typeID, {
+    registerType(rawType, {
       name,
       fromWireType: function (wt) {
         return !!wt;
@@ -3346,6 +3381,33 @@ async function ClientModule(moduleArg = {}) {
       destructorFunction: null,
     });
   };
+  var shallowCopyInternalPointer = (o) => ({
+    count: o.count,
+    deleteScheduled: o.deleteScheduled,
+    preservePointerOnDelete: o.preservePointerOnDelete,
+    ptr: o.ptr,
+    ptrType: o.ptrType,
+    smartPtr: o.smartPtr,
+    smartPtrType: o.smartPtrType,
+  });
+  var throwInstanceAlreadyDeleted = (obj) => {
+    throwBindingError(
+      (function (handle) {
+        return handle.$$.ptrType.registeredClass.name;
+      })(obj) + " instance already deleted",
+    );
+  };
+  var finalizationRegistry = false;
+  var detachFinalizer = () => {};
+  var runDestructor = ($$) => {
+    if ($$.smartPtr) $$.smartPtrType.rawDestructor($$.smartPtr);
+    else $$.ptrType.registeredClass.rawDestructor($$.ptr);
+  };
+  var releaseClassHandle = ($$) => {
+    $$.count.value -= 1;
+    var toDelete = 0 === $$.count.value;
+    if (toDelete) runDestructor($$);
+  };
   var downcastPointer = (ptr, ptrClass, desiredClass) => {
     if (ptrClass === desiredClass) return ptr;
     if (void 0 === desiredClass.baseClass) return null;
@@ -3353,6 +3415,8 @@ async function ClientModule(moduleArg = {}) {
     if (rv === null) return null;
     return desiredClass.downcast(rv);
   };
+  var registeredPointers = {};
+  var registeredInstances = {};
   var getBasestPointer = (class_, ptr) => {
     if (ptr === void 0) throwBindingError("ptr should not be undefined");
     while (class_.baseClass) {
@@ -3361,7 +3425,6 @@ async function ClientModule(moduleArg = {}) {
     }
     return ptr;
   };
-  var registeredInstances = {};
   var getInheritedInstance = (class_, ptr) => {
     ptr = getBasestPointer(class_, ptr);
     return registeredInstances[ptr];
@@ -3387,7 +3450,6 @@ async function ClientModule(moduleArg = {}) {
       Object.create(prototype, { $$: { value: record, writable: true } }),
     );
   };
-  var registeredPointers = {};
   function RegisteredPointer_fromWireType(ptr) {
     var rawPointer = this.getPointee(ptr);
     if (!rawPointer) {
@@ -3447,17 +3509,6 @@ async function ClientModule(moduleArg = {}) {
         ptr: dp,
       });
   }
-  var finalizationRegistry = false;
-  var detachFinalizer = () => {};
-  var runDestructor = ($$) => {
-    if ($$.smartPtr) $$.smartPtrType.rawDestructor($$.smartPtr);
-    else $$.ptrType.registeredClass.rawDestructor($$.ptr);
-  };
-  var releaseClassHandle = ($$) => {
-    $$.count.value -= 1;
-    var toDelete = 0 === $$.count.value;
-    if (toDelete) runDestructor($$);
-  };
   var attachFinalizer = (handle) => {
     if (!globalThis.FinalizationRegistry) {
       attachFinalizer = (handle) => handle;
@@ -3494,23 +3545,49 @@ async function ClientModule(moduleArg = {}) {
       obj["delete"]();
     }
   };
-  var shallowCopyInternalPointer = (o) => ({
-    count: o.count,
-    deleteScheduled: o.deleteScheduled,
-    preservePointerOnDelete: o.preservePointerOnDelete,
-    ptr: o.ptr,
-    ptrType: o.ptrType,
-    smartPtr: o.smartPtr,
-    smartPtrType: o.smartPtrType,
-  });
-  var throwInstanceAlreadyDeleted = (obj) => {
-    throwBindingError(
-      (function (handle) {
-        return handle.$$.ptrType.registeredClass.name;
-      })(obj) + " instance already deleted",
-    );
-  };
   function ClassHandle() {}
+  var createNamedFunction = (name, func) =>
+    Object.defineProperty(func, "name", { value: name });
+  var ensureOverloadTable = (proto, methodName, humanName) => {
+    if (void 0 === proto[methodName].overloadTable) {
+      var prevFunc = proto[methodName];
+      proto[methodName] = function (...args) {
+        if (!proto[methodName].overloadTable.hasOwnProperty(args.length))
+          throwBindingError(
+            `Function '${humanName}' called with an invalid number of arguments (${args.length}) - expects one of (${proto[methodName].overloadTable})!`,
+          );
+        return proto[methodName].overloadTable[args.length].apply(this, args);
+      };
+      proto[methodName].overloadTable = [];
+      proto[methodName].overloadTable[prevFunc.argCount] = prevFunc;
+    }
+  };
+  var exposePublicSymbol = (name, value, numArguments) => {
+    if (Module.hasOwnProperty(name)) {
+      if (
+        void 0 === numArguments ||
+        (void 0 !== Module[name].overloadTable &&
+          void 0 !== Module[name].overloadTable[numArguments])
+      )
+        throwBindingError(`Cannot register public name '${name}' twice`);
+      ensureOverloadTable(Module, name, name);
+      if (Module[name].overloadTable.hasOwnProperty(numArguments))
+        throwBindingError(
+          `Cannot register multiple overloads of a function with the same number of arguments (${numArguments})!`,
+        );
+      Module[name].overloadTable[numArguments] = value;
+    } else {
+      Module[name] = value;
+      Module[name].argCount = numArguments;
+    }
+  };
+  var makeLegalFunctionName = (name) => {
+    assert(typeof name === "string");
+    name = name.replace(/[^a-zA-Z0-9_]/g, "$");
+    var f = name.charCodeAt(0);
+    if (f >= 48 && f <= 57) return `_${name}`;
+    return name;
+  };
   function RegisteredClass(
     name,
     constructor,
@@ -3560,37 +3637,6 @@ async function ClientModule(moduleArg = {}) {
     var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
     return ptr;
   }
-  var emval_freelist = [];
-  var emval_handles = [0, 1, , 1, null, 1, true, 1, false, 1];
-  var Emval = {
-    toValue: (handle) => {
-      if (!handle)
-        throwBindingError(`Cannot use deleted val. handle = ${handle}`);
-      assert(
-        handle === 2 || (emval_handles[handle] !== void 0 && handle % 2 === 0),
-        `invalid handle: ${handle}`,
-      );
-      return emval_handles[handle];
-    },
-    toHandle: (value) => {
-      switch (value) {
-        case void 0:
-          return 2;
-        case null:
-          return 4;
-        case true:
-          return 6;
-        case false:
-          return 8;
-        default: {
-          const handle = emval_freelist.pop() || emval_handles.length;
-          emval_handles[handle] = value;
-          emval_handles[handle + 1] = 1;
-          return handle;
-        }
-      }
-    },
-  };
   function genericPointerToWireType(destructors, handle) {
     var ptr;
     if (handle === null) {
@@ -3647,9 +3693,6 @@ async function ClientModule(moduleArg = {}) {
     }
     return ptr;
   }
-  function readPointer(pointer) {
-    return this.fromWireType((growMemViews(), HEAPU32)[pointer >> 2]);
-  }
   function nonConstNoSmartPtrRawPointerToWireType(destructors, handle) {
     if (handle === null) {
       if (this.isReference)
@@ -3671,6 +3714,9 @@ async function ClientModule(moduleArg = {}) {
     var handleClass = handle.$$.ptrType.registeredClass;
     var ptr = upcastPointer(handle.$$.ptr, handleClass, this.registeredClass);
     return ptr;
+  }
+  function readPointer(pointer) {
+    return this.fromWireType((growMemViews(), HEAPU32)[pointer >> 2]);
   }
   function RegisteredPointer(
     name,
@@ -3706,8 +3752,16 @@ async function ClientModule(moduleArg = {}) {
       }
     else this.toWireType = genericPointerToWireType;
   }
-  var createNamedFunction = (name, func) =>
-    Object.defineProperty(func, "name", { value: name });
+  var replacePublicSymbol = (name, value, numArguments) => {
+    if (!Module.hasOwnProperty(name))
+      throwInternalError("Replacing nonexistent public symbol");
+    if (void 0 !== Module[name].overloadTable && void 0 !== numArguments)
+      Module[name].overloadTable[numArguments] = value;
+    else {
+      Module[name] = value;
+      Module[name].argCount = numArguments;
+    }
+  };
   var embind__requireFunction = (signature, rawFunction, isAsync = false) => {
     assert(!isAsync, "async bindings are only supported with JSPI");
     signature = AsciiToString(signature);
@@ -3721,60 +3775,9 @@ async function ClientModule(moduleArg = {}) {
       );
     return fp;
   };
-  var ensureOverloadTable = (proto, methodName, humanName) => {
-    if (void 0 === proto[methodName].overloadTable) {
-      var prevFunc = proto[methodName];
-      proto[methodName] = function (...args) {
-        if (!proto[methodName].overloadTable[args.length])
-          throwBindingError(
-            `Function '${humanName}' called with an invalid number of arguments (${args.length}) - expects one of (${proto[methodName].overloadTable})!`,
-          );
-        return proto[methodName].overloadTable[args.length].apply(this, args);
-      };
-      proto[methodName].overloadTable = [];
-      proto[methodName].overloadTable[prevFunc.argCount] = prevFunc;
-    }
-  };
-  var hasOwn = Object.hasOwn;
-  var exposePublicSymbol = (name, value, numArguments) => {
-    if (hasOwn(Module, name)) {
-      if (
-        void 0 === numArguments ||
-        (void 0 !== Module[name].overloadTable &&
-          void 0 !== Module[name].overloadTable[numArguments])
-      )
-        throwBindingError(`Cannot register public name '${name}' twice`);
-      ensureOverloadTable(Module, name, name);
-      if (Module[name].overloadTable[numArguments])
-        throwBindingError(
-          `Cannot register multiple overloads of a function with the same number of arguments (${numArguments})!`,
-        );
-      Module[name].overloadTable[numArguments] = value;
-    } else {
-      Module[name] = value;
-      Module[name].argCount = numArguments;
-    }
-  };
-  var makeLegalFunctionName = (name) => {
-    assert(typeof name === "string");
-    name = name.replace(/[^a-zA-Z0-9_]/g, "$");
-    var f = name.charCodeAt(0);
-    if (f >= 48 && f <= 57) return `_${name}`;
-    return name;
-  };
-  var replacePublicSymbol = (name, value, numArguments) => {
-    if (!hasOwn(Module, name))
-      throwInternalError("Replacing nonexistent public symbol");
-    if (void 0 !== Module[name].overloadTable && void 0 !== numArguments)
-      Module[name].overloadTable[numArguments] = value;
-    else {
-      Module[name] = value;
-      Module[name].argCount = numArguments;
-    }
-  };
   class UnboundTypeError extends Error {}
-  var getTypeName = (typeID) => {
-    var ptr = ___getTypeName(typeID);
+  var getTypeName = (type) => {
+    var ptr = ___getTypeName(type);
     var rv = AsciiToString(ptr);
     _free(ptr);
     return rv;
@@ -3813,10 +3816,13 @@ async function ClientModule(moduleArg = {}) {
     var unregisteredTypes = [];
     var registered = 0;
     for (let [i, dt] of dependentTypes.entries())
-      if (registeredTypes[dt]) typeConverters[i] = registeredTypes[dt];
+      if (registeredTypes.hasOwnProperty(dt))
+        typeConverters[i] = registeredTypes[dt];
       else {
         unregisteredTypes.push(dt);
-        (awaitingDependencies[dt] ??= []).push(() => {
+        if (!awaitingDependencies.hasOwnProperty(dt))
+          awaitingDependencies[dt] = [];
+        awaitingDependencies[dt].push(() => {
           typeConverters[i] = registeredTypes[dt];
           ++registered;
           if (registered === unregisteredTypes.length)
@@ -3826,10 +3832,10 @@ async function ClientModule(moduleArg = {}) {
     if (0 === unregisteredTypes.length) onComplete(typeConverters);
   };
   var __embind_register_class = (
-    typeID,
-    pointerTypeID,
-    constPointerTypeID,
-    baseClassTypeID,
+    rawType,
+    rawPointerType,
+    rawConstPointerType,
+    baseClassRawType,
     getActualTypeSignature,
     getActualType,
     upcastSignature,
@@ -3851,17 +3857,17 @@ async function ClientModule(moduleArg = {}) {
     var legalFunctionName = makeLegalFunctionName(name);
     exposePublicSymbol(legalFunctionName, function () {
       throwUnboundTypeError(`Cannot construct ${name} due to unbound types`, [
-        baseClassTypeID,
+        baseClassRawType,
       ]);
     });
     whenDependentTypesAreResolved(
-      [typeID, pointerTypeID, constPointerTypeID],
-      baseClassTypeID ? [baseClassTypeID] : [],
+      [rawType, rawPointerType, rawConstPointerType],
+      baseClassRawType ? [baseClassRawType] : [],
       (base) => {
         base = base[0];
         var baseClass;
         var basePrototype;
-        if (baseClassTypeID) {
+        if (baseClassRawType) {
           baseClass = base.registeredClass;
           basePrototype = baseClass.instancePrototype;
         } else basePrototype = ClassHandle.prototype;
@@ -3916,7 +3922,7 @@ async function ClientModule(moduleArg = {}) {
           true,
           false,
         );
-        registeredPointers[typeID] = {
+        registeredPointers[rawType] = {
           pointerType: pointerConverter,
           constPointerType: constPointerConverter,
         };
@@ -3925,6 +3931,19 @@ async function ClientModule(moduleArg = {}) {
       },
     );
   };
+  var runDestructors = (destructors) => {
+    while (destructors.length) {
+      var ptr = destructors.pop();
+      var del = destructors.pop();
+      del(ptr);
+    }
+  };
+  function usesDestructorStack(argTypes) {
+    for (var i = 1; i < argTypes.length; ++i)
+      if (argTypes[i] !== null && argTypes[i].destructorFunction === void 0)
+        return true;
+    return false;
+  }
   function argsUseStackAlloc(argTypes) {
     for (var i = 1; i < argTypes.length; ++i)
       if (argTypes[i] !== null && argTypes[i].argStackAlloc) return true;
@@ -3945,12 +3964,6 @@ async function ClientModule(moduleArg = {}) {
       );
     }
   }
-  function usesDestructorStack(argTypes) {
-    for (var i = 1; i < argTypes.length; ++i)
-      if (argTypes[i] !== null && argTypes[i].destructorFunction === void 0)
-        return true;
-    return false;
-  }
   function createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync) {
     var needsDestructorStack = usesDestructorStack(argTypes);
     var argsNeedStack = argsUseStackAlloc(argTypes);
@@ -3970,7 +3983,7 @@ async function ClientModule(moduleArg = {}) {
     invokerFnBody +=
       "checkArgCount(arguments.length, minArgs, maxArgs, humanName, throwBindingError);\n";
     if (needsDestructorStack) invokerFnBody += "var destructors = [];\n";
-    if (useStackFrame) invokerFnBody += "var sp = stackSave();\n";
+    if (useStackFrame) invokerFnBody += "var sp = stackSave();\ntry {\n";
     var dtorStack = needsDestructorStack ? "destructors" : "null";
     var args1 = [
       "humanName",
@@ -3991,7 +4004,7 @@ async function ClientModule(moduleArg = {}) {
     }
     invokerFnBody +=
       (returns || isAsync ? "var rv = " : "") + `invoker(${argsListWired});\n`;
-    if (useStackFrame) invokerFnBody += "stackRestore(sp);\n";
+    if (useStackFrame) invokerFnBody += "} finally {\nstackRestore(sp);\n}\n";
     if (needsDestructorStack) invokerFnBody += "runDestructors(destructors);\n";
     else
       for (i = isClassMethodFunc ? 1 : 2; i < argTypes.length; ++i) {
@@ -4015,13 +4028,6 @@ async function ClientModule(moduleArg = {}) {
     }
     return requiredArgCount;
   }
-  var runDestructors = (destructors) => {
-    while (destructors.length) {
-      var ptr = destructors.pop();
-      var del = destructors.pop();
-      del(ptr);
-    }
-  };
   function craftInvokerFunction(
     humanName,
     argTypes,
@@ -4074,6 +4080,12 @@ async function ClientModule(moduleArg = {}) {
     var invokerFn = invokerFactory(...closureArgs);
     return createNamedFunction(humanName, invokerFn);
   }
+  var heap32VectorToArray = (count, firstElement) => {
+    var array = [];
+    for (var i = 0; i < count; i++)
+      array.push((growMemViews(), HEAPU32)[(firstElement + i * 4) >> 2]);
+    return array;
+  };
   var getFunctionName = (signature) => {
     signature = signature.trim();
     const argsIndex = signature.indexOf("(");
@@ -4084,14 +4096,8 @@ async function ClientModule(moduleArg = {}) {
     );
     return signature.slice(0, argsIndex);
   };
-  var heap32VectorToArray = (count, firstElement) => {
-    var array = [];
-    for (var i = 0; i < count; i++)
-      array.push((growMemViews(), HEAPU32)[(firstElement + i * 4) >> 2]);
-    return array;
-  };
   var __embind_register_class_class_function = (
-    classTypeID,
+    rawClassType,
     methodName,
     argCount,
     rawArgTypesAddr,
@@ -4100,17 +4106,17 @@ async function ClientModule(moduleArg = {}) {
     fn,
     isAsync,
   ) => {
-    var argTypeIDs = heap32VectorToArray(argCount, rawArgTypesAddr);
+    var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = AsciiToString(methodName);
     methodName = getFunctionName(methodName);
     rawInvoker = embind__requireFunction(invokerSignature, rawInvoker, isAsync);
-    whenDependentTypesAreResolved([], [classTypeID], (classType) => {
+    whenDependentTypesAreResolved([], [rawClassType], (classType) => {
       classType = classType[0];
       var humanName = `${classType.name}.${methodName}`;
       function unboundTypesHandler() {
         throwUnboundTypeError(
           `Cannot call ${humanName} due to unbound types`,
-          argTypeIDs,
+          rawArgTypes,
         );
       }
       if (methodName.startsWith("@@"))
@@ -4123,7 +4129,7 @@ async function ClientModule(moduleArg = {}) {
         ensureOverloadTable(proto, methodName, humanName);
         proto[methodName].overloadTable[argCount - 1] = unboundTypesHandler;
       }
-      whenDependentTypesAreResolved([], argTypeIDs, (argTypes) => {
+      whenDependentTypesAreResolved([], rawArgTypes, (argTypes) => {
         var invokerArgsArray = [argTypes[0], null].concat(argTypes.slice(1));
         var func = craftInvokerFunction(
           humanName,
@@ -4139,14 +4145,15 @@ async function ClientModule(moduleArg = {}) {
         } else proto[methodName].overloadTable[argCount - 1] = func;
         if (classType.registeredClass.__derivedClasses)
           for (const derivedClass of classType.registeredClass.__derivedClasses)
-            derivedClass.constructor[methodName] ??= func;
+            if (!derivedClass.constructor.hasOwnProperty(methodName))
+              derivedClass.constructor[methodName] = func;
         return [];
       });
       return [];
     });
   };
   var __embind_register_class_constructor = (
-    classTypeID,
+    rawClassType,
     argCount,
     rawArgTypesAddr,
     invokerSignature,
@@ -4154,9 +4161,9 @@ async function ClientModule(moduleArg = {}) {
     rawConstructor,
   ) => {
     assert(argCount > 0);
-    var argTypeIDs = heap32VectorToArray(argCount, rawArgTypesAddr);
+    var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     invoker = embind__requireFunction(invokerSignature, invoker);
-    whenDependentTypesAreResolved([], [classTypeID], (classType) => {
+    whenDependentTypesAreResolved([], [rawClassType], (classType) => {
       classType = classType[0];
       var humanName = `constructor ${classType.name}`;
       if (void 0 === classType.registeredClass.constructor_body)
@@ -4168,10 +4175,10 @@ async function ClientModule(moduleArg = {}) {
       classType.registeredClass.constructor_body[argCount - 1] = () => {
         throwUnboundTypeError(
           `Cannot construct ${classType.name} due to unbound types`,
-          argTypeIDs,
+          rawArgTypes,
         );
       };
-      whenDependentTypesAreResolved([], argTypeIDs, (argTypes) => {
+      whenDependentTypesAreResolved([], rawArgTypes, (argTypes) => {
         argTypes.splice(1, 0, null);
         classType.registeredClass.constructor_body[argCount - 1] =
           craftInvokerFunction(
@@ -4187,7 +4194,7 @@ async function ClientModule(moduleArg = {}) {
     });
   };
   var __embind_register_class_function = (
-    classTypeID,
+    rawClassType,
     methodName,
     argCount,
     rawArgTypesAddr,
@@ -4197,11 +4204,11 @@ async function ClientModule(moduleArg = {}) {
     isPureVirtual,
     isAsync,
   ) => {
-    var argTypeIDs = heap32VectorToArray(argCount, rawArgTypesAddr);
+    var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = AsciiToString(methodName);
     methodName = getFunctionName(methodName);
     rawInvoker = embind__requireFunction(invokerSignature, rawInvoker, isAsync);
-    whenDependentTypesAreResolved([], [classTypeID], (classType) => {
+    whenDependentTypesAreResolved([], [rawClassType], (classType) => {
       classType = classType[0];
       var humanName = `${classType.name}.${methodName}`;
       if (methodName.startsWith("@@"))
@@ -4211,7 +4218,7 @@ async function ClientModule(moduleArg = {}) {
       function unboundTypesHandler() {
         throwUnboundTypeError(
           `Cannot call ${humanName} due to unbound types`,
-          argTypeIDs,
+          rawArgTypes,
         );
       }
       var proto = classType.registeredClass.instancePrototype;
@@ -4229,7 +4236,7 @@ async function ClientModule(moduleArg = {}) {
         ensureOverloadTable(proto, methodName, humanName);
         proto[methodName].overloadTable[argCount - 2] = unboundTypesHandler;
       }
-      whenDependentTypesAreResolved([], argTypeIDs, (argTypes) => {
+      whenDependentTypesAreResolved([], rawArgTypes, (argTypes) => {
         var memberFunction = craftInvokerFunction(
           humanName,
           argTypes,
@@ -4247,6 +4254,8 @@ async function ClientModule(moduleArg = {}) {
       return [];
     });
   };
+  var emval_freelist = [];
+  var emval_handles = [0, 1, , 1, null, 1, true, 1, false, 1];
   var __emval_decref = (handle) => {
     if (handle > 9 && 0 === --emval_handles[handle + 1]) {
       assert(emval_handles[handle] !== void 0, "decref for unallocated handle");
@@ -4254,6 +4263,35 @@ async function ClientModule(moduleArg = {}) {
       emval_handles[handle] = void 0;
       emval_freelist.push(handle);
     }
+  };
+  var Emval = {
+    toValue: (handle) => {
+      if (!handle)
+        throwBindingError(`Cannot use deleted val. handle = ${handle}`);
+      assert(
+        handle === 2 || (emval_handles[handle] !== void 0 && handle % 2 === 0),
+        `invalid handle: ${handle}`,
+      );
+      return emval_handles[handle];
+    },
+    toHandle: (value) => {
+      switch (value) {
+        case void 0:
+          return 2;
+        case null:
+          return 4;
+        case true:
+          return 6;
+        case false:
+          return 8;
+        default: {
+          const handle = emval_freelist.pop() || emval_handles.length;
+          emval_handles[handle] = value;
+          emval_handles[handle + 1] = 1;
+          return handle;
+        }
+      }
+    },
   };
   var EmValType = {
     name: "emscripten::val",
@@ -4266,7 +4304,7 @@ async function ClientModule(moduleArg = {}) {
     readValueFromPointer: readPointer,
     destructorFunction: null,
   };
-  var __embind_register_emval = (typeID) => registerType(typeID, EmValType);
+  var __embind_register_emval = (rawType) => registerType(rawType, EmValType);
   var HEAPF32;
   var floatReadValueFromPointer = (name, width) => {
     switch (width) {
@@ -4282,9 +4320,9 @@ async function ClientModule(moduleArg = {}) {
         throw new TypeError(`invalid float width (${width}): ${name}`);
     }
   };
-  var __embind_register_float = (typeID, name, size) => {
+  var __embind_register_float = (rawType, name, size) => {
     name = AsciiToString(name);
-    registerType(typeID, {
+    registerType(rawType, {
       name,
       fromWireType: (value) => value,
       toWireType: (destructors, value) => {
@@ -4296,7 +4334,13 @@ async function ClientModule(moduleArg = {}) {
       destructorFunction: null,
     });
   };
-  var __embind_register_integer = (typeID, name, size, minRange, maxRange) => {
+  var __embind_register_integer = (
+    primitiveType,
+    name,
+    size,
+    minRange,
+    maxRange,
+  ) => {
     name = AsciiToString(name);
     const isUnsignedType = minRange === 0;
     let fromWireType = (value) => value;
@@ -4305,7 +4349,7 @@ async function ClientModule(moduleArg = {}) {
       fromWireType = (value) => (value << bitshift) >>> bitshift;
       maxRange = fromWireType(maxRange);
     }
-    registerType(typeID, {
+    registerType(primitiveType, {
       name,
       fromWireType,
       toWireType: (destructors, value) => {
@@ -4324,7 +4368,7 @@ async function ClientModule(moduleArg = {}) {
       destructorFunction: null,
     });
   };
-  var __embind_register_memory_view = (typeID, dataTypeIndex, name) => {
+  var __embind_register_memory_view = (rawType, dataTypeIndex, name) => {
     var typeMapping = [
       Int8Array,
       Uint8Array,
@@ -4345,7 +4389,7 @@ async function ClientModule(moduleArg = {}) {
     }
     name = AsciiToString(name);
     registerType(
-      typeID,
+      rawType,
       {
         name,
         fromWireType: decodeMemoryView,
@@ -4355,8 +4399,8 @@ async function ClientModule(moduleArg = {}) {
     );
   };
   var EmValOptionalType = Object.assign({ optional: true }, EmValType);
-  var __embind_register_optional = (optionalTypeID) => {
-    registerType(optionalTypeID, EmValOptionalType);
+  var __embind_register_optional = (rawOptionalType) => {
+    registerType(rawOptionalType, EmValOptionalType);
   };
   var stringToUTF8 = (str, outPtr, maxBytesToWrite) => {
     assert(
@@ -4370,9 +4414,9 @@ async function ClientModule(moduleArg = {}) {
       maxBytesToWrite,
     );
   };
-  var __embind_register_std_string = (typeID, name) => {
+  var __embind_register_std_string = (rawType, name) => {
     name = AsciiToString(name);
-    registerType(typeID, {
+    registerType(rawType, {
       name,
       fromWireType(value) {
         var length = (growMemViews(), HEAPU32)[value >> 2];
@@ -4450,30 +4494,6 @@ async function ClientModule(moduleArg = {}) {
     }
     return str;
   };
-  var UTF32ToString = (ptr, maxBytesToRead, ignoreNul) => {
-    assert(
-      ptr % 4 == 0,
-      "pointer passed to UTF32ToString must be 2-byte aligned",
-    );
-    var str = "";
-    var startIdx = ptr >> 2;
-    for (var i = 0; !(i >= maxBytesToRead / 4); i++) {
-      var utf32 = (growMemViews(), HEAPU32)[startIdx + i];
-      if (!utf32 && !ignoreNul) break;
-      str += String.fromCodePoint(utf32);
-    }
-    return str;
-  };
-  var lengthBytesUTF16 = (str) => str.length * 2;
-  var lengthBytesUTF32 = (str) => {
-    var len = 0;
-    for (var i = 0; i < str.length; ++i) {
-      var codePoint = str.codePointAt(i);
-      if (codePoint > 65535) i++;
-      len += 4;
-    }
-    return len;
-  };
   var stringToUTF16 = (str, outPtr, maxBytesToWrite = 2147483647) => {
     assert(
       outPtr % 2 == 0,
@@ -4495,6 +4515,21 @@ async function ClientModule(moduleArg = {}) {
     }
     (growMemViews(), HEAP16)[outPtr >> 1] = 0;
     return outPtr - startPtr;
+  };
+  var lengthBytesUTF16 = (str) => str.length * 2;
+  var UTF32ToString = (ptr, maxBytesToRead, ignoreNul) => {
+    assert(
+      ptr % 4 == 0,
+      "pointer passed to UTF32ToString must be 2-byte aligned",
+    );
+    var str = "";
+    var startIdx = ptr >> 2;
+    for (var i = 0; !(i >= maxBytesToRead / 4); i++) {
+      var utf32 = (growMemViews(), HEAPU32)[startIdx + i];
+      if (!utf32 && !ignoreNul) break;
+      str += String.fromCodePoint(utf32);
+    }
+    return str;
   };
   var stringToUTF32 = (str, outPtr, maxBytesToWrite = 2147483647) => {
     assert(
@@ -4518,7 +4553,16 @@ async function ClientModule(moduleArg = {}) {
     (growMemViews(), HEAP32)[outPtr >> 2] = 0;
     return outPtr - startPtr;
   };
-  var __embind_register_std_wstring = (typeID, charSize, name) => {
+  var lengthBytesUTF32 = (str) => {
+    var len = 0;
+    for (var i = 0; i < str.length; ++i) {
+      var codePoint = str.codePointAt(i);
+      if (codePoint > 65535) i++;
+      len += 4;
+    }
+    return len;
+  };
+  var __embind_register_std_wstring = (rawType, charSize, name) => {
     name = AsciiToString(name);
     var decodeString, encodeString, lengthBytesUTF;
     if (charSize === 2) {
@@ -4534,7 +4578,7 @@ async function ClientModule(moduleArg = {}) {
       encodeString = stringToUTF32;
       lengthBytesUTF = lengthBytesUTF32;
     }
-    registerType(typeID, {
+    registerType(rawType, {
       name,
       fromWireType: (value) => {
         var length = (growMemViews(), HEAPU32)[value >> 2];
@@ -4560,12 +4604,12 @@ async function ClientModule(moduleArg = {}) {
       },
     });
   };
-  var __embind_register_user_type_definition = (typeID) => {
-    __embind_register_emval(typeID);
+  var __embind_register_user_type_definition = (rawType) => {
+    __embind_register_emval(rawType);
   };
-  var __embind_register_void = (typeID, name) => {
+  var __embind_register_void = (rawType, name) => {
     name = AsciiToString(name);
-    registerType(typeID, {
+    registerType(rawType, {
       isVoid: true,
       name,
       fromWireType: () => {},
@@ -4587,6 +4631,64 @@ async function ClientModule(moduleArg = {}) {
       false,
     );
     PThread.threadInitTLS();
+  };
+  var handleException = (e) => {
+    if (e instanceof ExitStatus || e == "unwind") return EXITSTATUS;
+    checkStackCookie();
+    if (e instanceof WebAssembly.RuntimeError)
+      if (_emscripten_stack_get_current() <= 0)
+        err(
+          "Stack overflow detected.  You can try increasing -sSTACK_SIZE (currently set to 2097152)",
+        );
+    quit_(0, e);
+  };
+  var maybeExit = () => {
+    if (!keepRuntimeAlive())
+      try {
+        if (ENVIRONMENT_IS_PTHREAD) {
+          if (_pthread_self()) __emscripten_thread_exit(EXITSTATUS);
+          return;
+        }
+        _exit(EXITSTATUS);
+      } catch (e) {
+        handleException(e);
+      }
+  };
+  var callUserCallback = (func, ...args) => {
+    if (ABORT) {
+      err(
+        "user callback triggered after runtime exited or application aborted.  Ignoring.",
+      );
+      return;
+    }
+    try {
+      return func(...args);
+    } catch (e) {
+      handleException(e);
+    } finally {
+      maybeExit();
+    }
+  };
+  var __emscripten_thread_mailbox_await = (pthread_ptr) => {
+    if (!waitAsyncPolyfilled) {
+      var wait = Atomics.waitAsync(
+        (growMemViews(), HEAP32),
+        pthread_ptr >> 2,
+        pthread_ptr,
+      );
+      assert(wait.async);
+      wait.value.then(checkMailbox);
+      var waitingAsync = pthread_ptr + 112;
+      Atomics.store((growMemViews(), HEAP32), waitingAsync >> 2, 1);
+    }
+  };
+  var checkMailbox = () => {
+    var pthread_ptr = _pthread_self();
+    if (!pthread_ptr) return;
+    callUserCallback(() => {
+      __emscripten_thread_mailbox_await(pthread_ptr);
+      __emscripten_check_mailbox();
+    });
   };
   var __emscripten_notify_mailbox_postmessage = (
     targetThread,
@@ -4635,14 +4737,12 @@ async function ClientModule(moduleArg = {}) {
     PThread.currentProxiedOperationCallerThread = callingThread;
     var rtn = func(...proxiedJSCallArgs);
     PThread.currentProxiedOperationCallerThread = 0;
-    var coerceRtn = (rtn) => rtn;
     if (ctx) {
       Promise.resolve(rtn).then((rtn) =>
-        __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, coerceRtn(rtn)),
+        __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, rtn),
       );
       return;
     }
-    rtn = coerceRtn(rtn);
     assert(typeof rtn !== "bigint");
     return rtn;
   };
@@ -4660,10 +4760,12 @@ async function ClientModule(moduleArg = {}) {
     emval_methodCallers.push(caller);
     return id;
   };
-  var requireRegisteredType = (typeID, humanName) => {
-    var impl = registeredTypes[typeID];
+  var requireRegisteredType = (rawType, humanName) => {
+    var impl = registeredTypes[rawType];
     if (void 0 === impl)
-      throwBindingError(`${humanName} has unknown type ${getTypeName(typeID)}`);
+      throwBindingError(
+        `${humanName} has unknown type ${getTypeName(rawType)}`,
+      );
     return impl;
   };
   var emval_lookupTypes = (argCount, argTypes) => {
@@ -4766,16 +4868,14 @@ async function ClientModule(moduleArg = {}) {
     handle = Emval.toValue(handle);
     return Emval.toHandle(typeof handle);
   };
-  var bigintToI53Checked = (num) =>
-    num < -9007199254740992 || num > 9007199254740992 ? NaN : Number(num);
+  var isLeapYear = (year) =>
+    year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   var MONTH_DAYS_LEAP_CUMULATIVE = [
     0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335,
   ];
   var MONTH_DAYS_REGULAR_CUMULATIVE = [
     0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334,
   ];
-  var isLeapYear = (year) =>
-    year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   var ydayFromDate = (date) => {
     var leap = isLeapYear(date.getFullYear());
     var monthDaysCumulative = leap
@@ -4784,6 +4884,8 @@ async function ClientModule(moduleArg = {}) {
     var yday = monthDaysCumulative[date.getMonth()] + date.getDate() - 1;
     return yday;
   };
+  var bigintToI53Checked = (num) =>
+    num < -9007199254740992 || num > 9007199254740992 ? NaN : Number(num);
   function __localtime_js(time, tmPtr) {
     time = bigintToI53Checked(time);
     var date = new Date(time * 1e3);
@@ -4886,10 +4988,10 @@ async function ClientModule(moduleArg = {}) {
       stringToUTF8(summerName, std_name, 17);
     }
   };
-  var checkWasiClock = (clock_id) => clock_id >= 0 && clock_id <= 3;
-  const nowIsMonotonic = 1;
-  var _emscripten_date_now = () => Date.now();
   var _emscripten_get_now = () => performance.timeOrigin + performance.now();
+  var _emscripten_date_now = () => Date.now();
+  var nowIsMonotonic = 1;
+  var checkWasiClock = (clock_id) => clock_id >= 0 && clock_id <= 3;
   function _clock_time_get(clk_id, ignored_precision, ptime) {
     ignored_precision = bigintToI53Checked(ignored_precision);
     if (!checkWasiClock(clk_id)) return 28;
@@ -4934,7 +5036,7 @@ async function ClientModule(moduleArg = {}) {
   var runEmAsmFunction = (code, sigPtr, argbuf) => {
     var args = readEmAsmArgs(sigPtr, argbuf);
     assert(
-      hasOwn(ASM_CONSTS, code),
+      ASM_CONSTS.hasOwnProperty(code),
       `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`,
     );
     return ASM_CONSTS[code](...args);
@@ -5167,21 +5269,6 @@ async function ClientModule(moduleArg = {}) {
       return e.errno;
     }
   }
-  var _exit = (status, implicit) => {
-    EXITSTATUS = status;
-    checkUnflushedContent();
-    if (ENVIRONMENT_IS_PTHREAD) {
-      assert(!implicit);
-      exitOnMainThread(status);
-      throw "unwind";
-    }
-    if (keepRuntimeAlive() && !implicit) {
-      var msg = `program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}) due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;
-      err(msg);
-    }
-    _proc_exit(status);
-  };
-  var syscallGetVarargP = syscallGetVarargI;
   PThread.init();
   FS.createPreloadedFile = (
     parent,
@@ -5419,6 +5506,7 @@ async function ClientModule(moduleArg = {}) {
     "addOnPreMain",
     "addOnExit",
     "STACK_SIZE",
+    "STACK_ALIGN",
     "POINTER_SIZE",
     "ASSERTIONS",
     "ccall",
@@ -5599,7 +5687,6 @@ async function ClientModule(moduleArg = {}) {
     "readEmAsmArgs",
     "runEmAsmFunction",
     "getExecutableName",
-    "getWasmTableEntry",
     "handleException",
     "keepRuntimeAlive",
     "runtimeKeepalivePush",
@@ -5616,7 +5703,6 @@ async function ClientModule(moduleArg = {}) {
     "removeRunDependency",
     "addOnPreRun",
     "addOnPostRun",
-    "STACK_ALIGN",
     "freeTableIndexes",
     "functionsInTableMap",
     "PATH",
@@ -5678,6 +5764,16 @@ async function ClientModule(moduleArg = {}) {
     "FS_createPath",
     "FS_createDevice",
     "FS_readFile",
+    "FS_root",
+    "FS_mounts",
+    "FS_devices",
+    "FS_streams",
+    "FS_nextInode",
+    "FS_nameTable",
+    "FS_currentPath",
+    "FS_initialized",
+    "FS_ignorePermissions",
+    "FS_syncFSRequests",
     "FS_lookupPath",
     "FS_getPath",
     "FS_hashName",
@@ -5709,6 +5805,7 @@ async function ClientModule(moduleArg = {}) {
     "FS_closeStream",
     "FS_dupStream",
     "FS_doSetAttr",
+    "FS_chrdev_stream_ops",
     "FS_major",
     "FS_minor",
     "FS_makedev",
@@ -5862,6 +5959,8 @@ async function ClientModule(moduleArg = {}) {
     "shallowCopyInternalPointer",
     "downcastPointer",
     "upcastPointer",
+    "char_0",
+    "char_9",
     "makeLegalFunctionName",
     "emval_freelist",
     "emval_handles",
@@ -5874,8 +5973,8 @@ async function ClientModule(moduleArg = {}) {
     "emval_addMethodCaller",
   ].forEach(unexportedRuntimeSymbol);
   var proxiedFunctionTable = [
-    exitOnMainThread,
     _proc_exit,
+    exitOnMainThread,
     ___syscall_dup,
     ___syscall_dup3,
     ___syscall_fcntl64,
@@ -5898,8 +5997,8 @@ async function ClientModule(moduleArg = {}) {
     _fd_write,
   ];
   var ASM_CONSTS = {
-    1932480: () => Module.getRandomValue(),
-    1932516: () => {
+    1918496: () => Module.getRandomValue(),
+    1918532: () => {
       if (Module.getRandomValue === void 0)
         try {
           var window_ = "object" === typeof window ? window : self;
@@ -5954,11 +6053,11 @@ async function ClientModule(moduleArg = {}) {
   var __embind_initialize_bindings = makeInvalidEarlyAccess(
     "__embind_initialize_bindings",
   );
-  var _free = makeInvalidEarlyAccess("_free");
+  var _strerror = makeInvalidEarlyAccess("_strerror");
   var _malloc = makeInvalidEarlyAccess("_malloc");
+  var _free = makeInvalidEarlyAccess("_free");
   var _fflush = makeInvalidEarlyAccess("_fflush");
   makeInvalidEarlyAccess("_htons");
-  var _strerror = makeInvalidEarlyAccess("_strerror");
   makeInvalidEarlyAccess("_ntohs");
   var _pthread_self = makeInvalidEarlyAccess("_pthread_self");
   makeInvalidEarlyAccess("__emscripten_tls_init");
@@ -6018,12 +6117,16 @@ async function ClientModule(moduleArg = {}) {
       "missing Wasm export: _embind_initialize_bindings",
     );
     assert(
-      typeof wasmExports["free"] !== "undefined",
-      "missing Wasm export: free",
+      typeof wasmExports["strerror"] !== "undefined",
+      "missing Wasm export: strerror",
     );
     assert(
       typeof wasmExports["malloc"] !== "undefined",
       "missing Wasm export: malloc",
+    );
+    assert(
+      typeof wasmExports["free"] !== "undefined",
+      "missing Wasm export: free",
     );
     assert(
       typeof wasmExports["fflush"] !== "undefined",
@@ -6032,10 +6135,6 @@ async function ClientModule(moduleArg = {}) {
     assert(
       typeof wasmExports["htons"] !== "undefined",
       "missing Wasm export: htons",
-    );
-    assert(
-      typeof wasmExports["strerror"] !== "undefined",
-      "missing Wasm export: strerror",
     );
     assert(
       typeof wasmExports["ntohs"] !== "undefined",
@@ -6136,11 +6235,11 @@ async function ClientModule(moduleArg = {}) {
       wasmExports["_embind_initialize_bindings"],
       0,
     );
-    _free = createExportWrapper("free", wasmExports["free"], 1);
+    _strerror = createExportWrapper("strerror", wasmExports["strerror"], 1);
     _malloc = createExportWrapper("malloc", wasmExports["malloc"], 1);
+    _free = createExportWrapper("free", wasmExports["free"], 1);
     _fflush = createExportWrapper("fflush", wasmExports["fflush"], 1);
     createExportWrapper("htons", wasmExports["htons"], 1);
-    _strerror = createExportWrapper("strerror", wasmExports["strerror"], 1);
     createExportWrapper("ntohs", wasmExports["ntohs"], 1);
     _pthread_self = wasmExports["pthread_self"];
     createExportWrapper(
@@ -6318,69 +6417,6 @@ async function ClientModule(moduleArg = {}) {
       if (!(e instanceof EmscriptenEH)) throw e;
       _setThrew(1, 0);
     }
-  }
-  var startWorker;
-  if (ENVIRONMENT_IS_PTHREAD) {
-    var initializedJS = false;
-    self.onunhandledrejection = (e) => {
-      throw e.reason || e;
-    };
-    self.onmessage = function handleMessage(e) {
-      try {
-        var msgData = e.data;
-        var cmd = msgData.cmd;
-        if (cmd == 1) {
-          workerID = msgData.workerID;
-          let messageQueue = [];
-          self.onmessage = (e) => messageQueue.push(e);
-          startWorker = () => {
-            postMessage({ cmd: 3 });
-            for (let msg of messageQueue) handleMessage(msg);
-            self.onmessage = handleMessage;
-          };
-          for (const handler of msgData.handlers)
-            if (!Module[handler] || Module[handler].proxy) {
-              Module[handler] = (...args) => {
-                postMessage({ cmd: 9, handler, args });
-              };
-              if (handler == "print") out = Module[handler];
-              if (handler == "printErr") err = Module[handler];
-            }
-          wasmMemory = msgData.wasmMemory;
-          updateMemoryViews();
-          wasmModule = msgData.wasmModule;
-          createWasm();
-          run();
-          startWorker();
-        } else if (cmd == 2) {
-          assert(msgData.pthread_ptr);
-          assert(wasmMemory, "CMD_RUN received before CMD_LOAD");
-          establishStackSpace(msgData.pthread_ptr);
-          __emscripten_thread_init(msgData.pthread_ptr, 0, 0, 1, 0, 0);
-          PThread.threadInitTLS();
-          __emscripten_thread_mailbox_await(msgData.pthread_ptr);
-          if (!initializedJS) {
-            __embind_initialize_bindings();
-            initializedJS = true;
-          }
-          try {
-            invokeEntryPoint(msgData.start_routine, msgData.arg);
-          } catch (ex) {
-            if (ex != "unwind") throw ex;
-          }
-        } else if (cmd == 4) {
-          if (initializedJS) checkMailbox();
-        } else if (cmd) {
-          err(`worker: received unknown command ${cmd}`);
-          err(msgData);
-        }
-      } catch (ex) {
-        err(`worker: onmessage() captured an uncaught exception: ${ex}`);
-        if (ex?.stack) err(ex.stack);
-        if (runtimeInitialized) __emscripten_thread_crashed();
-        throw ex;
-      }
-    };
   }
   var calledRun;
   function stackCheckInit() {

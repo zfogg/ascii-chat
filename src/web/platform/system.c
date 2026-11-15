@@ -32,8 +32,7 @@
 // WASM-Specific Implementations
 // ============================================================================
 
-int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size,
-                                bool (*cancel)(void *), void *data) {
+int platform_execute_subprocess(const char *executable, const char **argv, char *output_buffer, size_t output_size, bool (*cancel)(void *), void *data) {
   (void)executable;
   (void)argv;
   (void)output_buffer;
@@ -91,4 +90,4 @@ ssize_t platform_write(int fd, const void *buf, size_t count) {
 // ============================================================================
 // Generic implementations (safe_snprintf, safe_fprintf, platform_print_backtrace_symbols, etc.)
 // are provided by the generic system.c which is included here
-#include "../system.c"
+#include "../../../deps/ascii-chat-deps/libplatform/lib/system.c"

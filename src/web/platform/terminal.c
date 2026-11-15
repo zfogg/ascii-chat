@@ -10,6 +10,7 @@
 #include <libplatform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common/limits.h>
+#include <options/options.h>
 #include <ascii-chat/terminal/fd/reader.h>
 #include <ascii-chat/tui/controller.h>
 #include <stdbool.h>
@@ -266,12 +267,13 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
 #include <stdio.h>
 
 void detect_terminal_capabilities_into(const terminal_options_t *options, terminal_capabilities_t *out) {
-  if (out) *out = detect_terminal_capabilities(options);
+  if (out)
+    *out = detect_terminal_capabilities(options);
 }
 
-void apply_color_mode_override_into(const terminal_capabilities_t *caps, const terminal_options_t *options,
-                                    terminal_capabilities_t *out) {
-  if (caps && out) *out = apply_color_mode_override(*caps, options);
+void apply_color_mode_override_into(const terminal_capabilities_t *caps, const terminal_options_t *options, terminal_capabilities_t *out) {
+  if (caps && out)
+    *out = apply_color_mode_override(*caps, options);
 }
 
 int terminal_set_echo(bool enabled) {

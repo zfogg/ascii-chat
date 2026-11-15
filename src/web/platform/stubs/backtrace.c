@@ -39,15 +39,15 @@ void backtrace_t_free(backtrace_t *bt) {
   }
 }
 
-void backtrace_symbolize(backtrace_t *bt) {
+void backtrace_symbolize(backtrace_t *bt, const char *const *owned_dirs) {
   (void)bt;
+  (void)owned_dirs;
   // No-op for WASM
 }
 
 typedef bool (*backtrace_frame_filter_t)(const char *frame);
 
-void backtrace_print(log_level_t level, const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
-                     backtrace_frame_filter_t filter) {
+void backtrace_print(int level, const char *label, const backtrace_t *bt, int skip_frames, int max_frames, backtrace_frame_filter_t filter) {
   (void)level;
   (void)label;
   (void)bt;

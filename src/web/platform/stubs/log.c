@@ -48,8 +48,7 @@ void server_status_log_append(const char *message) {
 }
 
 // JSON logging stub
-void log_json_write(int fd, int level, uint64_t time_ns, const char *file, int line, const char *func,
-                    const char *json_msg) {
+void log_json_write(int fd, int level, uint64_t time_ns, const char *file, int line, const char *func, const char *json_msg) {
   (void)fd;
   (void)level;
   (void)time_ns;
