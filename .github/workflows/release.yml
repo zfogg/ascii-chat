@@ -341,7 +341,6 @@ jobs:
           for path in "${required[@]}"; do
             if [[ ! -f "$path" ]]; then
               echo "Incomplete CMake dependency cache: missing $path"
-              rm -rf "$cache_root"
               break
             fi
           done
@@ -583,17 +582,6 @@ jobs:
           echo "llvm-static-dir=${LLVM_DIR}" >> $GITHUB_OUTPUT
           echo "LLVM static libraries downloaded to ${LLVM_DIR}"
 
-      - name: Clear WebRTC cache to force re-fetch with libc++ header fix
-        if: runner.os == 'macOS'
-        run: |
-          # Remove cached WebRTC source AFTER install-deps restores it
-          # This forces FetchContent to download fresh source and apply patches
-          # The fix in cmake/deps/WebRTC.cmake clears CMAKE_CXX_FLAGS before add_subdirectory()
-          # to allow WebRTC's project() command to properly configure libc++ implicit include paths
-          echo "Removing cached WebRTC source..."
-          rm -rf .deps-cache/Release/webrtc_aec3-src .deps-cache/Release/webrtc_aec3-build .deps-cache/Release/webrtc_aec3-subbuild
-          echo "WebRTC cache cleared - will re-fetch with patches applied"
-
       - name: Validate CMake dependency cache
         shell: bash
         run: |
@@ -606,7 +594,6 @@ jobs:
           for path in "${required[@]}"; do
             if [[ ! -f "$path" ]]; then
               echo "Incomplete CMake dependency cache: missing $path"
-              rm -rf "$cache_root"
               break
             fi
           done
@@ -877,7 +864,6 @@ jobs:
           foreach ($path in $required) {
             if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
               Write-Host "Incomplete CMake dependency cache: missing $path"
-              Remove-Item -LiteralPath $cacheRoot -Recurse -Force -ErrorAction SilentlyContinue
               break
             }
           }

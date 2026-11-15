@@ -2456,6 +2456,8 @@ static asciichat_error_t finalize_media_options(options_t *opts) {
 
 static asciichat_error_t publish_final_options(options_t *opts, asciichat_mode_t detected_mode, int mode_index) {
   opts->media_input = opts->media_file[0] != '\0' || opts->media_url[0] != '\0';
+  if (opts->test_pattern)
+    opts->flip_x = false;
   options_resolve_flip_x(opts);
 
   // Save the quiet flag before publishing (RCU will be cleaned up before memory report runs)
@@ -2683,6 +2685,10 @@ cleanup:
 }
 
 void options_resolve_flip_x(options_t *opts) {
-  if (!opts->flip_x_explicit)
-    opts->flip_x = !opts->media_input && !opts->test_pattern && !opts->waveform && !opts->fft;
+  if (!opts->flip_x_explicit) {
+    if (opts->test_pattern)
+      opts->flip_x = false;
+    else
+      opts->flip_x = !opts->media_input && !opts->waveform && !opts->fft;
+  }
 }

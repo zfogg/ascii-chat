@@ -307,9 +307,9 @@ ASCIICHAT_API bool auto_width = true, auto_height = true;
 bool port_explicitly_set_via_flag = false;
 
 // Default weights; must add up to 1.0
-const float weight_red = 0.2989f;
-const float weight_green = 0.5866f;
-const float weight_blue = 0.1145f;
+ASCIICHAT_API const float weight_red = 0.2989f;
+ASCIICHAT_API const float weight_green = 0.5866f;
+ASCIICHAT_API const float weight_blue = 0.1145f;
 
 // Color channel lookup tables (used by image.c for palette precomputation)
 // Size must match ASCII_LUMINANCE_LEVELS (256) from ascii.h

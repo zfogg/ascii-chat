@@ -51,11 +51,11 @@
  * ============================================================================ */
 
 // Global flags for snapshot mode timing
-bool g_snapshot_first_frame_rendered = false;
-uint64_t g_snapshot_first_frame_rendered_ns = 0; // Timestamp when first frame was rendered (for terminal output)
-uint64_t g_snapshot_first_capture_ns = 0;        // Timestamp when first frame was captured (for video output)
-uint64_t g_snapshot_actual_duration_ms = 0;      // Actual elapsed time in ms when capture thread hits snapshot timeout
-uint64_t g_snapshot_last_capture_elapsed_ns = 0; // Elapsed time from first to last frame capture (for PTS distribution)
+ASCIICHAT_API bool g_snapshot_first_frame_rendered = false;
+ASCIICHAT_API uint64_t g_snapshot_first_frame_rendered_ns = 0; // Timestamp when first frame was rendered (for terminal output)
+uint64_t g_snapshot_first_capture_ns = 0;                      // Timestamp when first frame was captured (for video output)
+uint64_t g_snapshot_actual_duration_ms = 0;                    // Actual elapsed time in ms when capture thread hits snapshot timeout
+uint64_t g_snapshot_last_capture_elapsed_ns = 0;               // Elapsed time from first to last frame capture (for PTS distribution)
 
 asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_display_ctx_t *display, session_should_exit_fn should_exit, session_capture_fn capture_cb,
                                       session_sleep_for_frame_fn sleep_cb, session_keyboard_handler_fn keyboard_handler, void *user_data) {
