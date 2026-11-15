@@ -140,6 +140,27 @@ if(NOT _asciichat_gotel_sources_ready)
     if(POLICY CMP0169)
         cmake_policy(POP)
     endif()
+
+    # Direct population marks the content as ready, which makes the later
+    # FetchContent_MakeAvailable calls in gotel skip add_subdirectory() on
+    # recent CMake versions. Add the populated projects here so their targets
+    # exist when gotel configures its TLS and exporter integration. Doxygen is
+    # disabled because these are consumer dependencies, not documentation
+    # projects; otherwise both projects can define a generic `docs` target.
+    set(_asciichat_gotel_disable_doxygen ${CMAKE_DISABLE_FIND_PACKAGE_Doxygen})
+    set(CMAKE_DISABLE_FIND_PACKAGE_Doxygen TRUE)
+    if(NOT TARGET sequel::sequel)
+        add_subdirectory("${sequel_SOURCE_DIR}"
+                         "${_asciichat_gotel_cache_dir}/sequel-build"
+                         EXCLUDE_FROM_ALL)
+    endif()
+    if(NOT TARGET otlp_c)
+        add_subdirectory("${otlp_c_SOURCE_DIR}"
+                         "${_asciichat_gotel_cache_dir}/otlp_c-build"
+                         EXCLUDE_FROM_ALL)
+    endif()
+    set(CMAKE_DISABLE_FIND_PACKAGE_Doxygen ${_asciichat_gotel_disable_doxygen})
+    unset(_asciichat_gotel_disable_doxygen)
     set(FETCHCONTENT_FULLY_DISCONNECTED ${_asciichat_gotel_fetchcontent_disconnected})
     unset(_asciichat_gotel_fetchcontent_disconnected)
 endif()
