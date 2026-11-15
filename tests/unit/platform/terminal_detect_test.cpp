@@ -16,7 +16,13 @@
 
 #define setenv(name, value, overwrite) platform_setenv((name), (value))
 #define unsetenv platform_unsetenv
-#define detect_terminal_capabilities() detect_terminal_capabilities(NULL)
+static inline terminal_capabilities_t detect_terminal_capabilities_test() {
+  return ::detect_terminal_capabilities(NULL);
+}
+static inline terminal_capabilities_t detect_terminal_capabilities_test(const terminal_options_t *options) {
+  return ::detect_terminal_capabilities(options);
+}
+#define detect_terminal_capabilities(...) detect_terminal_capabilities_test(__VA_ARGS__)
 
 // Use the enhanced macro with stdout/stderr enabled for debugging
 // Note: We don't disable stdout/stderr because terminal detection needs them
