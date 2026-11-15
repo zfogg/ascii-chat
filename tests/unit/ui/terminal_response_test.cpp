@@ -195,7 +195,10 @@ TEST_CASE("terminal_response/shifted_enter_is_distinct_and_survives_fragmented_i
 TEST_CASE("terminal_response/extended_keyboard_controls_preserve_cancel_and_edit_keys", "[terminal_response]") {
   keyboard_stream_reset();
   input = "\033[27u\033[13u\033[9u\033[127u\033[99;5u\033[27;5;99~\033[118;5u\033[27;5;118~";
-  const keyboard_key_t keys[] = {KEY_ESCAPE, 13, 9, 127, 3, 3, 22, 22};
+  const keyboard_key_t keys[] = {KEY_ESCAPE, static_cast<keyboard_key_t>(13), static_cast<keyboard_key_t>(9),
+                                 static_cast<keyboard_key_t>(127), static_cast<keyboard_key_t>(3),
+                                 static_cast<keyboard_key_t>(3), static_cast<keyboard_key_t>(22),
+                                 static_cast<keyboard_key_t>(22)};
   for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); ++i)
     ASCIICHAT_REQUIRE_EQ(keyboard_stream_read(next_byte), keys[i]);
 }
@@ -224,7 +227,8 @@ TEST_CASE("terminal_response/utf8_fragments_readiness_and_reset", "[terminal_res
 TEST_CASE("terminal_response/unicode_extended_keys_and_shift_enter_do_not_alias_pageup", "[terminal_response]") {
   keyboard_stream_reset();
   input = "\033[233;2u\033[30028u\033[128512u\033[13;2u\033[5~";
-  const keyboard_key_t expected[] = {233, 30028, 128512, KEY_SHIFT_ENTER, KEY_PAGEUP};
+  const keyboard_key_t expected[] = {static_cast<keyboard_key_t>(233), static_cast<keyboard_key_t>(30028),
+                                     static_cast<keyboard_key_t>(128512), KEY_SHIFT_ENTER, KEY_PAGEUP};
   ASCIICHAT_REQUIRE_NE(KEY_SHIFT_ENTER, KEY_PAGEUP);
   for (size_t i = 0; i < sizeof(expected) / sizeof(*expected); ++i)
     ASCIICHAT_REQUIRE_EQ(keyboard_stream_read(next_byte), expected[i]);
@@ -235,7 +239,8 @@ TEST_CASE("terminal_response/malformed_utf8_cannot_become_shortcuts", "[terminal
   input = "\xc0\xaf\xed\xa0\x80\xf4\x90\x80\x80o";
   ASCIICHAT_REQUIRE_EQ(keyboard_stream_read(next_byte), 'o');
   input = "\033[200~\xc3\xa9\033[201~";
-  const keyboard_key_t expected[] = {KEY_PASTE_BEGIN, 0xc3, 0xa9, KEY_PASTE_END};
+  const keyboard_key_t expected[] = {KEY_PASTE_BEGIN, static_cast<keyboard_key_t>(0xc3),
+                                     static_cast<keyboard_key_t>(0xa9), KEY_PASTE_END};
   for (size_t i = 0; i < sizeof(expected) / sizeof(*expected); ++i)
     ASCIICHAT_REQUIRE_EQ(keyboard_stream_read(next_byte), expected[i]);
 }
