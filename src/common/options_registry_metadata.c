@@ -13,8 +13,8 @@
 #include <ascii-chat/log/log.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/enums.h>
+#include <options.h>
+#include <options_enums.h>
 
 // ============================================================================
 // Log Level Metadata

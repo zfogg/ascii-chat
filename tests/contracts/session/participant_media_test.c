@@ -6,7 +6,7 @@
 #include "../../../src/discovery/session.h"
 #include <ascii-chat/common.h>
 #include <libplatform/atomic.h>
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include <ascii-chat/audio/opus.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/network/acip/transport.h>

@@ -1,8 +1,8 @@
 #include <criterion/criterion.h>
 #include <gotel/testing.h>
 #include <ascii-chat/otel.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>
+#include <options.h>
+#include <options_rcu.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <math.h>

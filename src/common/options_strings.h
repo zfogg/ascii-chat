@@ -14,8 +14,8 @@
 
 // Include headers for type definitions
 // Note: options.h includes these, so we just need options.h
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/enums.h>
+#include <options.h>
+#include <options_enums.h>
 
 // ============================================================================
 // Mode String Conversions

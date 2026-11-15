@@ -10,10 +10,10 @@
  * @date January 2026
  */
 
-#include <ascii-chat/options/registry/common.h>
-#include <ascii-chat/options/registry/metadata.h>
-#include <ascii-chat/options/registry/mode_defaults.h>
-#include <ascii-chat/options/parsers.h>
+#include <options_registry_common.h>
+#include <options_registry_metadata.h>
+#include <options_registry_mode_defaults.h>
+#include <options_parsers.h>
 
 // ============================================================================
 // LOGGING CATEGORY - Binary-level logging options

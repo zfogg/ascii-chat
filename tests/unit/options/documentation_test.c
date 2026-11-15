@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 
-#include <ascii-chat/options/config.h>
-#include <ascii-chat/options/options.h>
+#include <options_config.h>
+#include <options.h>
 #include <libflags/manpage/manpage.h>
 
 #include <string.h>

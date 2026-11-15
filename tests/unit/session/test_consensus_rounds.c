@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include "common/session/consensus.h"
 #include <ascii-chat/network/consensus/state.h>
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>
 

@@ -2,7 +2,7 @@
 #include "connection_internal.h"
 #include "crypto.h"
 #include "server.h"
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/crypto/discovery_keys.h>
 #include <ascii-chat/crypto/handshake/client.h>

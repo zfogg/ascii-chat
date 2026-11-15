@@ -5,7 +5,7 @@
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/media/yt_dlp.h>
 #include <ascii-chat/common/limits.h>
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include "session/capture.h"
 #include <string.h>
 #ifndef _WIN32
@@ -13,7 +13,7 @@
 #include <pthread.h>
 #include <stdatomic.h>
 #include <libplatform/keyboard.h>
-#include <ascii-chat/options/colorscheme.h>
+#include <options_colorscheme.h>
 
 static _Atomic bool stop_keyboard_poll;
 static void *poll_keyboard(void *unused) {

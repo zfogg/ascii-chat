@@ -54,7 +54,7 @@
 #include <ascii-chat/audio/format.h>
 #include <ascii-chat/audio/opus.h>
 extern "C" {
-#include <ascii-chat/options/options.h>
+#include <options.h>
 }
 #include <ascii-chat/audio/wav_writer.h>
 #include <ascii-chat/common.h>

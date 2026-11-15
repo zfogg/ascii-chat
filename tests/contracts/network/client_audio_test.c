@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 #include "../../../src/client/connection_internal.h"
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/audio/opus.h>
 #include <ascii-chat/network/acip/backpressure.h>

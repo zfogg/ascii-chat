@@ -3,9 +3,9 @@
 #include <optional>
 #include <string>
 extern "C" {
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>
-#include <ascii-chat/options/runtime.h>
+#include <options.h>
+#include <options_rcu.h>
+#include <options_runtime.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 }
@@ -14,21 +14,17 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(OptionsSnapshot);
 
 int patch_options(OptionsPatch patch, double expected_revision) {
   emscripten::val object = patch;
-  if (object.isNull() || object.isUndefined() || object.typeOf().as<std::string>() != "object" ||
-      emscripten::val::global("Array").call<bool>("isArray", object))
+  if (object.isNull() || object.isUndefined() || object.typeOf().as<std::string>() != "object" || emscripten::val::global("Array").call<bool>("isArray", object))
     return SET_ERRNO(ERROR_INVALID_PARAM, "Options patch must be an object");
   emscripten::val json = emscripten::val::global("JSON").call<emscripten::val>("stringify", object);
   if (json.isUndefined())
     return SET_ERRNO(ERROR_INVALID_PARAM, "Options patch cannot be serialized");
   std::string text = json.as<std::string>();
-  return options_apply_json(text.c_str(), text.size(),
-                            expected_revision < 0 ? OPTIONS_REVISION_ANY : static_cast<uint64_t>(expected_revision),
-                            OPTIONS_ORIGIN_LOCAL, nullptr);
+  return options_apply_json(text.c_str(), text.size(), expected_revision < 0 ? OPTIONS_REVISION_ANY : static_cast<uint64_t>(expected_revision), OPTIONS_ORIGIN_LOCAL, nullptr);
 }
 int initial_options(OptionsPatch patch) {
   emscripten::val object = patch;
-  if (!object.isNull() && !object.isUndefined() && object.typeOf().as<std::string>() == "object" &&
-      !emscripten::val::global("Array").call<bool>("isArray", object) &&
+  if (!object.isNull() && !object.isUndefined() && object.typeOf().as<std::string>() == "object" && !emscripten::val::global("Array").call<bool>("isArray", object) &&
       emscripten::val::global("Object").call<emscripten::val>("keys", object)["length"].as<unsigned>() == 0)
     return ASCIICHAT_OK;
   int result = patch_options(patch, -1);
@@ -85,8 +81,7 @@ public:
 EMSCRIPTEN_BINDINGS(ascii_chat_options) {
   emscripten::register_optional<std::string>();
   emscripten::register_type<OptionsPatch>("OptionsPatch", "Record<string, number | string | boolean>");
-  emscripten::register_type<OptionsSnapshot>(
-      "OptionsSnapshot", "{ revision: number; values: Record<string, number | string | boolean> } | null");
+  emscripten::register_type<OptionsSnapshot>("OptionsSnapshot", "{ revision: number; values: Record<string, number | string | boolean> } | null");
   emscripten::class_<OptionsBinding>("OptionsBinding")
       .class_function("revision", &OptionsBinding::revision)
       .class_function("patch", &OptionsBinding::patch)

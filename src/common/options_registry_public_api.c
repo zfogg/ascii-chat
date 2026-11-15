@@ -5,16 +5,16 @@
  *
  * This file contains all the public-facing functions that external code
  * uses to interact with the options registry. These functions are declared
- * in ascii-chat/options/registry.h.
+ * in options_registry.h.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026
  */
 
-#include <ascii-chat/options/registry/common.h>
-#include <ascii-chat/options/registry/core.h>
-#include <ascii-chat/options/registry.h>
-#include <ascii-chat/options/actions.h>
+#include <options_registry_common.h>
+#include <options_registry_core.h>
+#include <options_registry.h>
+#include <options_actions.h>
 #include <libflags/config/keys.h>
 #include <string.h>
 #include <stdlib.h>

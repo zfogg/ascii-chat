@@ -4,7 +4,7 @@
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/tui/session.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include "session/display.h"
 #include <string.h>
 

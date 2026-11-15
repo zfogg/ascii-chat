@@ -12,7 +12,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 
 static void client_sync_entries(client_connection_t *ctx, bool add) {
   if (add)

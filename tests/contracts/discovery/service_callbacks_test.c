@@ -2,7 +2,7 @@
 #include "../../../src/discovery-service/server.h"
 #include "../../../src/discovery-service/signaling.h"
 #include "session/server_like.h"
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/network/rate_limit/rate_limit.h>
 #include <ascii-chat/util/endian.h>

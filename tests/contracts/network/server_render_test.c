@@ -3,7 +3,7 @@
 #include "server/main.h"
 #include "server/connections.h"
 #include "server/stream.h"
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include <ascii-chat/audio/opus.h>
 #include <ascii-chat/audio/limits.h>
 #include <ascii-chat/util/endian.h>

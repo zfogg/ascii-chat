@@ -29,8 +29,8 @@ bool browser_client_ready(browser_transport_t *transport);
 #include <string.h>
 #include <stdint.h>
 
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>
+#include <options.h>
+#include <options_rcu.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/crypto/crypto.h>

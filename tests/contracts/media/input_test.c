@@ -32,7 +32,7 @@ static keyboard_key_t fake_keyboard(void) {
 #include "session/capture.h"
 #include "session/keyboard_handler.h"
 #include <libplatform/filesystem.h>
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include <ascii-chat/audio/audio.h>
 #include <signal.h>
 

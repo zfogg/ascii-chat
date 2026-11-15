@@ -11,9 +11,9 @@
 #define OPTIONS_COMMON_BUFFER_BUFFER_SIZE 256
 #define OPTIONS_COMMON_SUGGESTION_BUFFER_SIZE 256
 
-#include <ascii-chat/options/enums.h>
-#include <ascii-chat/options/common.h>
-#include <ascii-chat/options/registry.h>
+#include <options_enums.h>
+#include <options_common.h>
+#include <options_registry.h>
 #include <libflags/builder.h>
 #include <libflags/help.h>
 #include <libflags/format.h>
@@ -22,7 +22,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/options/validation.h>
+#include <options_validation.h>
 #include <libplatform/terminal.h>
 #include <sys/stat.h>
 #include <ascii-chat/util/parsing.h>

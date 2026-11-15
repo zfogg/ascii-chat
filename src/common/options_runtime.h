@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <stdint.h>
 
 /** Runtime edits are applied to the latest snapshot under the writer mutex. */

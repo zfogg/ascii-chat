@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include "../../../src/mcp-server/mcp.h"
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/video/webcam/webcam.h>

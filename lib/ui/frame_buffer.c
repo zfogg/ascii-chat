@@ -14,7 +14,7 @@
 #include <libplatform/terminal.h>
 #include <ascii-chat/util/display.h>
 #include "ascii-chat/common.h"
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <ascii-chat/log/log.h>
 
 #include <stdio.h>

@@ -23,7 +23,7 @@
 #include "session.h"
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/network/acip/acds.h>

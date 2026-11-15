@@ -19,7 +19,7 @@
 
 #include <ascii-chat/tui/notice.h>
 
-#include <ascii-chat/options/actions.h>
+#include <options_actions.h>
 #include <string.h>
 #include <stddef.h>
 
@@ -28,7 +28,7 @@
 #include <ascii-chat/debug/coverage.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/update_checker.h>
-#include <ascii-chat/options/config.h>
+#include <options_config.h>
 #include <libflags/completions/completions.h>
 #include <libplatform/terminal.h>
 #include <libplatform/question.h>

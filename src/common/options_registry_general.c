@@ -10,7 +10,7 @@
  * @date January 2026
  */
 
-#include <ascii-chat/options/registry/common.h>
+#include <options_registry_common.h>
 
 // ============================================================================
 // GENERAL CATEGORY - General-purpose options

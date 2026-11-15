@@ -1,7 +1,7 @@
 #include "font.h"
 #include <ascii-chat/font.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>
+#include <options.h>
+#include <options_rcu.h>
 
 /* Browser terminal rendering reads the embedded font directly from WASM memory. */
 const unsigned char *get_font_default_ptr(int selection) {

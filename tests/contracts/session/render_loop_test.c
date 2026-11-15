@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include "session/render.h"
-#include <ascii-chat/options/rcu.h>
-#include <ascii-chat/options/runtime.h>
+#include <options_rcu.h>
+#include <options_runtime.h>
 #include <libplatform/system.h>
 #include <libplatform/filesystem.h>
 #include <ascii-chat/video/ascii/common.h>

@@ -25,7 +25,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/media/source.h>

@@ -113,7 +113,7 @@
  *
  * To add a new option to the registry:
  *
- * 1. **Add field to `options_t` struct** in `include/ascii-chat/options/options.h`
+ * 1. **Add field to `options_t` struct** in `include/options.h`
  * 2. **Add default constant** in `options.h` (e.g., `OPT_MY_OPTION_DEFAULT`)
  * 3. **Add registry entry** in `src/common/options_registry_*.c` with:
  *    - Long and short names

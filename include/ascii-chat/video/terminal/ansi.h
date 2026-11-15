@@ -18,7 +18,7 @@
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/util/math.h>
 #include <ascii-chat/common/sync.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>

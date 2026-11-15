@@ -7,7 +7,7 @@
 #include <libplatform/keyboard.h>
 #include <stdatomic.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <ascii-chat/ui/popup.h>
 #include <ascii-chat/ui/help_menu.h>
 #include <ascii-chat/ui/text.h>

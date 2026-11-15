@@ -37,8 +37,8 @@
 #include <stdatomic.h>
 #include <libplatform/lifecycle.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/runtime.h>
+#include <options.h>
+#include <options_runtime.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>

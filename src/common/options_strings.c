@@ -14,11 +14,11 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define MODE_NAME_CAPACITY 32
 
-#include <ascii-chat/options/options.h> // For asciichat_mode_t and MODE_ enums
-#include <ascii-chat/options/strings.h>
+#include <options.h> // For asciichat_mode_t and MODE_ enums
+#include <options_strings.h>
 #include <libflags/levenshtein.h>
-#include <ascii-chat/options/enums.h>
-#include <ascii-chat/options/registry.h>
+#include <options_enums.h>
+#include <options_registry.h>
 #include <libplatform/terminal.h>           // For terminal color modes
 #include <ascii-chat/video/ascii/palette.h> // For palette_type_t
 #include <ascii-chat/common.h>

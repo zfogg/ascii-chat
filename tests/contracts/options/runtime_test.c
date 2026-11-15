@@ -1,7 +1,7 @@
 #include "../worker_assert.h"
 #include <criterion/criterion.h>
-#include <ascii-chat/options/runtime.h>
-#include <ascii-chat/options/rcu.h>
+#include <options_runtime.h>
+#include <options_rcu.h>
 #include <ascii-chat/network/acip/settings.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/common.h>
@@ -168,17 +168,10 @@ static void test_remote(void) {
   cr_assert_eq(request(&clients[1], "{\"renderer\":1,\"palette_explicit\":false}", UINT32_MAX).status, 0);
   cr_assert_eq(clients[1].caps.text_renderer, ASCII_RENDERER_GLYPH);
   cr_assert_eq(clients[1].palette_length, 95);
-  cr_assert_eq(request(&clients[1],
-                       "{\"renderer\":1,\"palette_explicit\":false,\"palette_custom\":\" .+#\",\"palette_type\":1}",
-                       UINT32_MAX)
-                   .status,
-               0);
+  cr_assert_eq(request(&clients[1], "{\"renderer\":1,\"palette_explicit\":false,\"palette_custom\":\" .+#\",\"palette_type\":1}", UINT32_MAX).status, 0);
   cr_assert_not(clients[1].caps.palette_explicit);
   cr_assert_eq(clients[1].palette_length, 95);
-  cr_assert_eq(
-      request(&clients[1], "{\"palette_type\":1,\"palette_custom\":\" .+#\",\"palette_explicit\":false}", UINT32_MAX)
-          .status,
-      0);
+  cr_assert_eq(request(&clients[1], "{\"palette_type\":1,\"palette_custom\":\" .+#\",\"palette_explicit\":false}", UINT32_MAX).status, 0);
   cr_assert_not(clients[1].caps.palette_explicit);
   cr_assert_eq(clients[1].palette_length, 95);
   cr_assert_eq(clients[0].caps.text_renderer, ASCII_RENDERER_LUMINANCE);

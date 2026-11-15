@@ -209,7 +209,7 @@
 #include "session/render.h"
 #include "session/keyboard_handler.h"
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>

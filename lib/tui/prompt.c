@@ -10,7 +10,7 @@
 #include <ascii-chat/ui/buttons.h>
 #include <ascii-chat/ui/text.h>
 #include <ascii-chat/tui/notice.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <ascii-chat/tui/prompt.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/ui/frame_buffer.h>

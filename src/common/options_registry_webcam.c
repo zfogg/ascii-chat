@@ -10,8 +10,8 @@
  * @date January 2026
  */
 
-#include <ascii-chat/options/registry/common.h>
-#include <ascii-chat/options/registry/metadata.h>
+#include <options_registry_common.h>
+#include <options_registry_metadata.h>
 #include <ascii-chat/util/string.h>
 #include <string.h>
 

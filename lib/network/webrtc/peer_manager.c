@@ -19,7 +19,7 @@
 
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/network/webrtc/peer_manager.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/log/log.h>

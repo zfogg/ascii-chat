@@ -26,7 +26,7 @@
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/ui/selectable_list.h>
 #include <ascii-chat/tui/invitation.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <ascii-chat/util/time.h>
 #include <libplatform/atomic.h>
 #include <ascii-chat/network/mdns/discovery.h>

@@ -18,7 +18,7 @@
 #include <ascii-chat/ui/help_menu.h>
 #include <ascii-chat/tui/session.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/string.h>

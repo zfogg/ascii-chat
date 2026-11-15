@@ -23,10 +23,10 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include <ascii-chat/options/config.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>
-#include <ascii-chat/options/schema.h>
+#include <options_config.h>
+#include <options.h>
+#include <options_rcu.h>
+#include <libflags/schema.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>

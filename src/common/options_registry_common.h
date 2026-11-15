@@ -9,8 +9,8 @@
 
 #pragma once
 
-#include <ascii-chat/options/types.h>
-#include <ascii-chat/options/options.h>
+#include <options_types.h>
+#include <options.h>
 #include <stdbool.h>
 #include <stddef.h>
 

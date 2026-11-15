@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include "../../../src/common/session/host.h"
 #include "../../../src/common/session/audio.h"
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include <ascii-chat/ringbuffer.h>
 static uint64_t fault_clock_us = 1000000;
 static uint64_t fault_clock_ns(void) {

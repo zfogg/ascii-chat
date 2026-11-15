@@ -2,7 +2,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/font.h>
 #include <ascii-chat/media/render/renderer.h>
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include <string.h>
 
 static void setup(void) {

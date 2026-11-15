@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <ascii-chat/options/options.h>
+#include <options.h>
 
 /** @brief Origin type used by the ascii-chat registry before conversion to libflags. */
 typedef enum {

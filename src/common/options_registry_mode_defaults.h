@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <stddef.h>
 
 #ifdef __cplusplus

@@ -33,7 +33,7 @@
 #include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/network/webrtc/turn.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/mutex.h>

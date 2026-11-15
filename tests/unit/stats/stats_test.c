@@ -370,7 +370,7 @@ Test(stats, capabilities_are_copied_and_wrap_rebaselines) {
   stats_scope_destroy(scope);
 }
 #include <ascii-chat/stats/runtime.h>
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/packet/parsing.h>
 

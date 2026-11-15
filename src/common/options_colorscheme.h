@@ -1,5 +1,5 @@
 /**
- * @file include/ascii-chat/options/colorscheme.h
+ * @file include/options_colorscheme.h
  * @brief Color scheme management system for ascii-chat
  * @ingroup options
  *

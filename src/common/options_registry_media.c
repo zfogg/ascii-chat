@@ -11,11 +11,11 @@
  */
 
 #include <math.h>
-#include <ascii-chat/options/registry/common.h>
-#include <ascii-chat/options/registry/metadata.h>
+#include <options_registry_common.h>
+#include <options_registry_metadata.h>
 #include <ascii-chat/util/string.h>
 
-#include <ascii-chat/options/parsers.h>
+#include <options_parsers.h>
 #include <libplatform/memory.h>
 #include <string.h>
 #include <libflags/flags.h>

@@ -11,10 +11,10 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/registry.h>
-#include <ascii-chat/options/rcu.h>     // For RCU-based options access
-#include <ascii-chat/options/actions.h> // For deferred action tests
+#include <options.h>
+#include <options_registry.h>
+#include <options_rcu.h>     // For RCU-based options access
+#include <options_actions.h> // For deferred action tests
 #include <ascii-chat/tests/common.h>
 #include <libplatform/terminal.h>
 #include <libplatform/system.h>

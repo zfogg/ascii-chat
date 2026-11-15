@@ -6,7 +6,7 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/audio/recording.h>
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>

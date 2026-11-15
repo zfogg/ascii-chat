@@ -32,7 +32,7 @@
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/util/overflow.h>

@@ -25,7 +25,7 @@
 #include <ascii-chat/common/error_codes.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>

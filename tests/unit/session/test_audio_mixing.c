@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include "common/session/audio.h"
 #include <ascii-chat/audio/audio.h>
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include <string.h>
 
 static session_audio_ctx_t *host, *participant;

@@ -34,9 +34,9 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             <libplatform/terminal.h>
 
             <ascii-chat/log/log.h>
-            <ascii-chat/options/options.h>
-            <ascii-chat/options/enums.h>
-            <ascii-chat/options/colorscheme.h>
+            <options.h>
+            <options_enums.h>
+            <options_colorscheme.h>
             <ascii-chat/buffer.h>
             <ascii-chat/asciichat_errno.h>
             <ascii-chat/ringbuffer.h>

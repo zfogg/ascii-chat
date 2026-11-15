@@ -8,7 +8,7 @@
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <ascii-chat/util/string.h>
 
 // Custom test suite setup function to initialize globals

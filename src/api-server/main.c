@@ -1,5 +1,5 @@
 #include "main.h"
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <ascii-chat/app_callbacks.h>
 #include <ascii-chat/network/http/server/server.h>
 #include <ascii-chat/network/quic/quic.h>

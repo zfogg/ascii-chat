@@ -51,7 +51,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/util/utf8.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <stdatomic.h>
 #include <inttypes.h>
 #include <string.h>

@@ -1,5 +1,5 @@
 #include <criterion/criterion.h>
-#include <ascii-chat/options/runtime.h>
+#include <options_runtime.h>
 /* Capability packets must affect the frames delivered by the discovery host. */
 #include "session/host.h"
 #include "session/display.h"
@@ -14,7 +14,7 @@
 
 #include "session/protocol.h"
 #include <ascii-chat/common.h>
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/video/ascii/common.h>

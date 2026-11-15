@@ -1,6 +1,6 @@
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/crypto/policy.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <string.h>
 
 asciichat_error_t acip_security_init_options(acip_security_t *security, bool server, bool transport_secure, const char *password_override) {

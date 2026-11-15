@@ -100,10 +100,10 @@
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/json.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h> // For RCU-based options access
-#include <ascii-chat/util/time.h>   // For time macros
-#include <ascii-chat/util/url.h>    // For URL parsing and WebSocket detection
+#include <options.h>
+#include <options_rcu.h>          // For RCU-based options access
+#include <ascii-chat/util/time.h> // For time macros
+#include <ascii-chat/util/url.h>  // For URL parsing and WebSocket detection
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/network/network.h>

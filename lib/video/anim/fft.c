@@ -2,7 +2,7 @@
 
 #include "visualization_internal.h"
 
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <ascii-chat/common/sync.h>
 #include <ascii-chat/debug/named.h>
 #include <libplatform/memory.h>

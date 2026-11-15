@@ -35,7 +35,7 @@
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/video/webcam/webcam.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/scalar/halfblock.h>
 #include <ascii-chat/video/ascii/scalar/background.h>

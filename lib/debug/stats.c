@@ -1,13 +1,13 @@
 #include <ascii-chat/debug/stats.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <libplatform/thread.h>
 #include <libplatform/cond.h>
 #include <libplatform/atomic.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/debug_helpers.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 
 static atomic_t g_debug_stats_signal = {0};
 static atomic_t g_debug_stats_memory_signal = {0};

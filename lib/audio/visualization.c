@@ -1,6 +1,6 @@
 #include <ascii-chat/audio/visualization.h>
 
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <ascii-chat/common/sync.h>
 #include <libplatform/memory.h>
 #include <ascii-chat/video/ascii/palette.h>

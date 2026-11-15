@@ -1,6 +1,6 @@
 #include "../worker_assert.h"
 #include "discovery/nat.h"
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/util/time.h>
 #include <limits.h>

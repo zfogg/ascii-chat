@@ -66,8 +66,8 @@
 #include <stdio.h>
 
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/common.h>
+#include <options.h>
+#include <options_common.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/endian.h>
 #include <libplatform/compiler.h>

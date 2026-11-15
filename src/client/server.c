@@ -88,8 +88,8 @@
 #include <ascii-chat/util/url.h> // For WebSocket URL detection
 #include <ascii-chat/common.h>
 #include "display.h"
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <options.h>
+#include <options_rcu.h> // For RCU-based options access
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/media/codecs.h>
 #include <ascii-chat/buffer.h>

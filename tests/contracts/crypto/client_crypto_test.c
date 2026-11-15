@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include "client/connection_internal.h"
 #include "client/crypto.h"
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include <ascii-chat/util/endian.h>
 #include <sodium.h>
 #include <string.h>

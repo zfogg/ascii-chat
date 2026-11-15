@@ -120,8 +120,8 @@
 #include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/thread_pool.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <options.h>
+#include <options_rcu.h> // For RCU-based options access
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/audio/audio.h>

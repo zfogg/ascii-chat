@@ -2,7 +2,7 @@
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>

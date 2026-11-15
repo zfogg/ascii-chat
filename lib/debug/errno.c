@@ -1,6 +1,6 @@
 #include <ascii-chat/debug/errno.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <libplatform/thread.h>
 #include <libplatform/cond.h>
 #include <libplatform/atomic.h>

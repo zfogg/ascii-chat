@@ -4,7 +4,7 @@
 #include "session/client_like.h"
 #include <ascii-chat/audio/client_pipeline.h>
 #include <ascii-chat/audio/audio.h>
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include <ascii-chat/tui/controller.h>
 #include "session/audio.h"
 #include "session/capture.h"

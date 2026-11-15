@@ -29,7 +29,7 @@
 #include <libplatform/mutex.h>
 #include "ascii-chat/log/grep.h"
 #include "ascii-chat/log/log.h"
-#include "ascii-chat/options/options.h"
+#include "options.h"
 #include "ascii-chat/common.h"
 #include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>

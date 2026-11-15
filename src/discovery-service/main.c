@@ -35,8 +35,8 @@
 #include <ascii-chat/version.h>
 #include <util/string.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>
+#include <options.h>
+#include <options_rcu.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/filesystem.h>

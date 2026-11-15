@@ -16,8 +16,8 @@
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/media/yt_dlp.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>
+#include <options.h>
+#include <options_rcu.h>
 #include <ascii-chat/common.h>
 #include <string.h>
 #include <stdio.h>

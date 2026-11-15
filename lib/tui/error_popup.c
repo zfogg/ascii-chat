@@ -28,7 +28,7 @@
 #include <ascii-chat/ui/text.h>
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>

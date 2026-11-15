@@ -23,7 +23,7 @@
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/options/options.h>
+#include <options.h>
 #include <libplatform/atomic.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>

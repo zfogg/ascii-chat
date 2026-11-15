@@ -7,8 +7,8 @@
 #include <libplatform/atomic.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>
+#include <options.h>
+#include <options_rcu.h>
 #include <libplatform/system.h>
 
 /**

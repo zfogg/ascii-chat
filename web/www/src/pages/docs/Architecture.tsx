@@ -258,7 +258,7 @@ const FLOWS: Record<string, Flow> = {
             note: "Copy-on-write: allocate → memcpy → updater → swap → deferred-free old",
           },
           {
-            path: "include/ascii-chat/options/rcu.h",
+            path: "include/options_rcu.h",
             fn: "GET_OPTION(field)",
             note: "Macro: options_get()->field — used everywhere in the codebase",
           },

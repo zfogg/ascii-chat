@@ -9,7 +9,7 @@
 #include <ascii-chat/common.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
-#include <ascii-chat/options/rcu.h>
+#include <options_rcu.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
 #include <ctype.h>

@@ -26,7 +26,7 @@
 #include "ascii-chat/util/time.h"
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/ui/input.h>
-#include "ascii-chat/options/options.h"
+#include "options.h"
 #include <ascii-chat/video/terminal/ansi.h>
 
 #include <pcre2.h>
