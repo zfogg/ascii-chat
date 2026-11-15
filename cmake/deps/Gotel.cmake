@@ -104,8 +104,15 @@ set(FETCHCONTENT_BASE_DIR "${_asciichat_gotel_cache_dir}" CACHE PATH
 
 # gotel's CMake enables disconnected mode before it declares its nested
 # FetchContent dependencies. A restored CI cache can contain gotel itself
-# while missing one of those nested source trees, so prepopulate both pinned
+# while missing one of those nested source trees, so populate both pinned
 # repositories while the top-level cache-recovery check has retrieval enabled.
+#
+# This must use FetchContent_Populate rather than FetchContent_MakeAvailable.
+# Recovery only needs to restore source trees. Adding the nested projects at
+# ascii-chat's top level also imports their consumer-facing targets, including
+# a generic `docs` target, before gotel is configured. Gotel's own CMake adds
+# the populated projects at the correct point and keeps their targets private
+# to the dependency integration.
 set(_asciichat_gotel_sources_ready TRUE)
 foreach(_asciichat_gotel_source IN ITEMS sequel-src otlp_c-src)
     if(NOT EXISTS "${_asciichat_gotel_cache_dir}/${_asciichat_gotel_source}")
@@ -118,11 +125,11 @@ if(NOT _asciichat_gotel_sources_ready)
     FetchContent_Declare(sequel
         GIT_REPOSITORY https://github.com/zfogg/sequel.git
         GIT_TAG f0865335e0c90b872ad2d4b40d2590509439f1fe)
-    FetchContent_MakeAvailable(sequel)
+    FetchContent_Populate(sequel)
     FetchContent_Declare(otlp_c
         GIT_REPOSITORY https://github.com/riboseinc/otlp-c.git
         GIT_TAG 0798449d66331c3953b8ba9354164cfbf2f3bdaf)
-    FetchContent_MakeAvailable(otlp_c)
+    FetchContent_Populate(otlp_c)
     set(FETCHCONTENT_FULLY_DISCONNECTED ${_asciichat_gotel_fetchcontent_disconnected})
     unset(_asciichat_gotel_fetchcontent_disconnected)
 endif()
