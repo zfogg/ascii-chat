@@ -224,17 +224,17 @@ atomic_t g_should_exit ATOMIC_INIT_AUTO(g_should_exit);
 
 // Register with descriptive name for debug output
 #ifndef NDEBUG
-#define REGISTER_GLOBAL_ATOMICS()                                                                                                                                                                      \
-  do {                                                                                                                                                                                                 \
-    static bool _global_atomics_registered = false;                                                                                                                                                    \
-    if (!_global_atomics_registered) {                                                                                                                                                                 \
-      NAMED_REGISTER_ATOMIC(&g_should_exit, "application_exit_flag", NULL);                                                                                                                            \
-      _global_atomics_registered = true;                                                                                                                                                               \
-    }                                                                                                                                                                                                  \
+#define REGISTER_GLOBAL_ATOMICS()                                           \
+  do {                                                                      \
+    static bool _global_atomics_registered = false;                         \
+    if (!_global_atomics_registered) {                                      \
+      NAMED_REGISTER_ATOMIC(&g_should_exit, "application_exit_flag", NULL); \
+      _global_atomics_registered = true;                                    \
+    }                                                                       \
   } while (0)
 #else
-#define REGISTER_GLOBAL_ATOMICS()                                                                                                                                                                      \
-  do {                                                                                                                                                                                                 \
+#define REGISTER_GLOBAL_ATOMICS() \
+  do {                            \
   } while (0)
 #endif
 

@@ -4,10 +4,10 @@
 #include <ascii-chat/network/acip/acds_client.h>
 #include <string.h>
 
-#define CHECK(expression)                                                                                                                                                                              \
-  do {                                                                                                                                                                                                 \
-    if (!(expression))                                                                                                                                                                                 \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expression);                                                                                                                             \
+#define CHECK(expression)                                                  \
+  do {                                                                     \
+    if (!(expression))                                                     \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expression); \
   } while (0)
 
 static nghttp3_ssize keep_open(nghttp3_conn *conn, int64_t stream_id, nghttp3_vec *vec, size_t count, uint32_t *flags, void *context, void *stream_context) {

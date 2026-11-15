@@ -220,28 +220,28 @@ const char *get_level_string_padded(log_level_t level) {
 
 /* Internal error macro - uses g_log directly, only used in this file */
 #ifdef NDEBUG
-#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                                                                                                    \
-  do {                                                                                                                                                                                                 \
-    errno_set_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                                                                                                              \
-    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                                                                                                 \
-    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);                                                                                               \
-    int _log_fd = atomic_load_int(&g_log.file);                                                                                                                                                        \
-    platform_write(_log_fd, msg_header, strlen(msg_header));                                                                                                                                           \
-    platform_write(_log_fd, message, strlen(message));                                                                                                                                                 \
-    platform_write(_log_fd, "\n", 1);                                                                                                                                                                  \
-    backtrace_print_simple(0);                                                                                                                                                                         \
+#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                      \
+  do {                                                                                                   \
+    errno_set_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                \
+    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                   \
+    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message); \
+    int _log_fd = atomic_load_int(&g_log.file);                                                          \
+    platform_write(_log_fd, msg_header, strlen(msg_header));                                             \
+    platform_write(_log_fd, message, strlen(message));                                                   \
+    platform_write(_log_fd, "\n", 1);                                                                    \
+    backtrace_print_simple(0);                                                                           \
   } while (0)
 #else
-#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                                                                                                    \
-  do {                                                                                                                                                                                                 \
-    errno_set_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                                                                                                               \
-    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                                                                                                 \
-    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);                                                                                               \
-    int _log_fd = atomic_load_int(&g_log.file);                                                                                                                                                        \
-    platform_write(_log_fd, msg_header, strlen(msg_header));                                                                                                                                           \
-    platform_write(_log_fd, message, strlen(message));                                                                                                                                                 \
-    platform_write(_log_fd, "\n", 1);                                                                                                                                                                  \
-    backtrace_print_simple(0);                                                                                                                                                                         \
+#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                      \
+  do {                                                                                                   \
+    errno_set_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                 \
+    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                   \
+    log_terminal_printf(STDERR_FILENO, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message); \
+    int _log_fd = atomic_load_int(&g_log.file);                                                          \
+    platform_write(_log_fd, msg_header, strlen(msg_header));                                             \
+    platform_write(_log_fd, message, strlen(message));                                                   \
+    platform_write(_log_fd, "\n", 1);                                                                    \
+    backtrace_print_simple(0);                                                                           \
   } while (0)
 #endif
 

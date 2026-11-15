@@ -16,10 +16,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CHECK(x)                                                                                                                                                                                       \
-  do {                                                                                                                                                                                                 \
-    if (!(x))                                                                                                                                                                                          \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #x);                                                                                                                                      \
+#define CHECK(x)                                                  \
+  do {                                                            \
+    if (!(x))                                                     \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #x); \
   } while (0)
 #define META_COUNT 8192
 

@@ -362,14 +362,14 @@ typedef enum { AUDIO_CAPTURE_SOURCE_AUTO = 0, AUDIO_CAPTURE_SOURCE_MIC = 1, AUDI
 #define OPT_COLOR_SCHEME_NAME_DEFAULT "pastel"
 
 /** @brief Default log format string - release mode (simple format with timestamp, level, and message) */
-#define OPT_LOG_TEMPLATE_DEFAULT_RELEASE                                                                                                                                                               \
-  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                                                                                                            \
+#define OPT_LOG_TEMPLATE_DEFAULT_RELEASE                                                    \
+  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] " \
   "%colored_message"
 
 /** @brief Default log format string - debug mode (verbose with thread name, file relative path, line, and function) */
-#define OPT_LOG_TEMPLATE_DEFAULT_DEBUG                                                                                                                                                                 \
-  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                                                                                                            \
-  "[thread/%color(GREY, %tname)] %color(DEBUG, %file_relative):%color(GREY, %line)@%color(DEV, %func)(): "                                                                                             \
+#define OPT_LOG_TEMPLATE_DEFAULT_DEBUG                                                                     \
+  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                \
+  "[thread/%color(GREY, %tname)] %color(DEBUG, %file_relative):%color(GREY, %line)@%color(DEV, %func)(): " \
   "%colored_message"
 
 /** @brief Default log template string (selected based on build mode)
@@ -1281,14 +1281,14 @@ const terminal_options_t *options_terminal_settings_ptr(void);
  *
  * @ingroup options
  */
-#define GET_OPTION(field)                                                                                                                                                                              \
-  ({                                                                                                                                                                                                   \
-    const options_t *_opts = options_get();                                                                                                                                                            \
-    if (!_opts) {                                                                                                                                                                                      \
-      log_warn("GET_OPTION(" #field ") called but options not initialized");                                                                                                                           \
-    }                                                                                                                                                                                                  \
-    static typeof(((options_t *)0)->field) _default = {0};                                                                                                                                             \
-    (_opts ? (_opts->field) : _default);                                                                                                                                                               \
+#define GET_OPTION(field)                                                    \
+  ({                                                                         \
+    const options_t *_opts = options_get();                                  \
+    if (!_opts) {                                                            \
+      log_warn("GET_OPTION(" #field ") called but options not initialized"); \
+    }                                                                        \
+    static typeof(((options_t *)0)->field) _default = {0};                   \
+    (_opts ? (_opts->field) : _default);                                     \
   })
 
 /**

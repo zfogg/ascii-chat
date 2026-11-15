@@ -29,10 +29,10 @@ static void teardown(void) {
   log_destroy();
 }
 TestSuite(session_api_boundaries, .init = setup, .fini = teardown, .timeout = 20);
-#define INVALID(call)                                                                                                                                                                                  \
-  do {                                                                                                                                                                                                 \
-    cr_assert_eq((call), ERROR_INVALID_PARAM);                                                                                                                                                         \
-    CLEAR_ERRNO_ALL();                                                                                                                                                                                 \
+#define INVALID(call)                          \
+  do {                                         \
+    cr_assert_eq((call), ERROR_INVALID_PARAM); \
+    CLEAR_ERRNO_ALL();                         \
   } while (0)
 Test(session_api_boundaries, capture_null_queries_and_rejected_transmission_do_not_take_ownership) {
   cr_assert_null(session_mirror_capture_create(NULL));

@@ -34,27 +34,27 @@ TestSuite(options_errors);
 //   /* is_client */ true,
 //   { /* option_assertions using opt_* variables */ },
 //   { /* exit_assertions using exit_code */ });
-#define GENERATE_OPTIONS_TEST(test_name, argv_list, is_client_val, option_assertions, exit_assertions)                                                                                                 \
+#define GENERATE_OPTIONS_TEST(test_name, argv_list, is_client_val, option_assertions, exit_assertions) \
   GENERATE_OPTIONS_TEST_IN_SUITE(options, test_name, argv_list, is_client_val, option_assertions, exit_assertions)
 
-#define GENERATE_OPTIONS_TEST_IN_SUITE(suite_name, test_name, argv_list, is_client_val, option_assertions, exit_assertions)                                                                            \
-  Test(suite_name, test_##test_name) {                                                                                                                                                                 \
-    char *argv[] = argv_list;                                                                                                                                                                          \
-    int argc = (int)(sizeof(argv) / sizeof(argv[0])) - 1;                                                                                                                                              \
-    options_backup_t backup;                                                                                                                                                                           \
-    save_options(&backup);                                                                                                                                                                             \
-                                                                                                                                                                                                       \
-    /* Call options_init to test return value */                                                                                                                                                       \
-    /* (no longer use fork since options_init returns error codes) */                                                                                                                                  \
-    int exit_code = test_options_init_with_fork(argv, argc, is_client_val);                                                                                                                            \
-                                                                                                                                                                                                       \
-    /* Note: We don't call options_init() again because it modifies RCU state and would cause */                                                                                                       \
-    /* crashes when called multiple times. The exit_code from the first call tells us if */                                                                                                            \
-    /* options_init() succeeded or failed, which is what we're testing. */                                                                                                                             \
-    /* (option_assertions not used anymore since we don't call options_init twice) */                                                                                                                  \
-                                                                                                                                                                                                       \
-    restore_options(&backup);                                                                                                                                                                          \
-    exit_assertions                                                                                                                                                                                    \
+#define GENERATE_OPTIONS_TEST_IN_SUITE(suite_name, test_name, argv_list, is_client_val, option_assertions, exit_assertions) \
+  Test(suite_name, test_##test_name) {                                                                                      \
+    char *argv[] = argv_list;                                                                                               \
+    int argc = (int)(sizeof(argv) / sizeof(argv[0])) - 1;                                                                   \
+    options_backup_t backup;                                                                                                \
+    save_options(&backup);                                                                                                  \
+                                                                                                                            \
+    /* Call options_init to test return value */                                                                            \
+    /* (no longer use fork since options_init returns error codes) */                                                       \
+    int exit_code = test_options_init_with_fork(argv, argc, is_client_val);                                                 \
+                                                                                                                            \
+    /* Note: We don't call options_init() again because it modifies RCU state and would cause */                            \
+    /* crashes when called multiple times. The exit_code from the first call tells us if */                                 \
+    /* options_init() succeeded or failed, which is what we're testing. */                                                  \
+    /* (option_assertions not used anymore since we don't call options_init twice) */                                       \
+                                                                                                                            \
+    restore_options(&backup);                                                                                               \
+    exit_assertions                                                                                                         \
   }
 
 // Helper function to save and restore RCU options state for test isolation

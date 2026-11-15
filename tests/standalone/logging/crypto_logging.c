@@ -4,10 +4,10 @@
 #include <ascii-chat/util/time.h>
 #include <string.h>
 
-#define CHECK(expr)                                                                                                                                                                                    \
-  do {                                                                                                                                                                                                 \
-    if (!(expr))                                                                                                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "Logging regression failed at line %d: %s", __LINE__, #expr);                                                                                                      \
+#define CHECK(expr)                                                                               \
+  do {                                                                                            \
+    if (!(expr))                                                                                  \
+      FATAL(ERROR_ASSERTION_FAILED, "Logging regression failed at line %d: %s", __LINE__, #expr); \
   } while (0)
 
 // Exercise production crypto and logging without Criterion, including on Windows.

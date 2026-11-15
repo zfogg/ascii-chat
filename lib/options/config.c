@@ -65,9 +65,9 @@ flags_schema_builder_t *options_config_build_flags_schema(option_mode_bitmask_t 
  * Uses log_warn so that config warnings respect the --quiet flag and
  * are routed through the logging system for proper filtering.
  */
-#define CONFIG_WARN(fmt, ...)                                                                                                                                                                          \
-  do {                                                                                                                                                                                                 \
-    log_warn("Config file: " fmt, ##__VA_ARGS__);                                                                                                                                                      \
+#define CONFIG_WARN(fmt, ...)                     \
+  do {                                            \
+    log_warn("Config file: " fmt, ##__VA_ARGS__); \
   } while (0)
 
 /**
@@ -76,11 +76,11 @@ flags_schema_builder_t *options_config_build_flags_schema(option_mode_bitmask_t 
  * Debug messages use the logging system if it's initialized, otherwise
  * they are silently dropped.
  */
-#define CONFIG_DEBUG(fmt, ...)                                                                                                                                                                         \
-  do {                                                                                                                                                                                                 \
-    /* Debug messages are only shown in debug builds after logging is initialized */                                                                                                                   \
-    /* Use log_dev which safely checks initialization itself */                                                                                                                                        \
-    log_dev(fmt, ##__VA_ARGS__);                                                                                                                                                                       \
+#define CONFIG_DEBUG(fmt, ...)                                                       \
+  do {                                                                               \
+    /* Debug messages are only shown in debug builds after logging is initialized */ \
+    /* Use log_dev which safely checks initialization itself */                      \
+    log_dev(fmt, ##__VA_ARGS__);                                                     \
   } while (0)
 
 /** @} */

@@ -19,10 +19,10 @@
 #include <ascii-chat/tui/keyboard_help.h>
 #include "../../../src/common/session/display.h"
 
-#define REQUIRE(condition)                                                                                                                                                                             \
-  do {                                                                                                                                                                                                 \
-    if (!(condition))                                                                                                                                                                                  \
-      return SET_ERRNO(ERROR_INVALID_STATE, "Terminal contract failed: %s", #condition);                                                                                                               \
+#define REQUIRE(condition)                                                               \
+  do {                                                                                   \
+    if (!(condition))                                                                    \
+      return SET_ERRNO(ERROR_INVALID_STATE, "Terminal contract failed: %s", #condition); \
   } while (0)
 
 static bool wait_for_screen(ui_screen_t screen) {

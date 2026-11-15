@@ -26,10 +26,10 @@
 #include <math.h>
 
 #ifndef CHECK
-#define CHECK(expr)                                                                                                                                                                                    \
-  do {                                                                                                                                                                                                 \
-    if (!(expr))                                                                                                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                                                                                                   \
+#define CHECK(expr)                                                  \
+  do {                                                               \
+    if (!(expr))                                                     \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr); \
   } while (0)
 #endif
 #define BUDGET (10 * NS_PER_SEC_INT)

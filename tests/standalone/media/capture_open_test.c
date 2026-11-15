@@ -13,10 +13,10 @@
 #include <ascii-chat/video/face_follow_image.h>
 #include <math.h>
 
-#define CHECK(expr)                                                                                                                                                                                    \
-  do {                                                                                                                                                                                                 \
-    if (!(expr))                                                                                                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                                                                                                   \
+#define CHECK(expr)                                                  \
+  do {                                                               \
+    if (!(expr))                                                     \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr); \
   } while (0)
 static audio_context_t audio;
 static bool audio_running, fail_audio_start;

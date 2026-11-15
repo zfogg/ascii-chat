@@ -8,10 +8,10 @@
 #include "../../../lib/discovery/queries.h"
 
 #ifndef CHECK
-#define CHECK(value)                                                                                                                                                                                   \
-  do {                                                                                                                                                                                                 \
-    if (!(value))                                                                                                                                                                                      \
-      FATAL(ERROR_ASSERTION_FAILED, "%s", #value);                                                                                                                                                     \
+#define CHECK(value)                               \
+  do {                                             \
+    if (!(value))                                  \
+      FATAL(ERROR_ASSERTION_FAILED, "%s", #value); \
   } while (0)
 #endif
 

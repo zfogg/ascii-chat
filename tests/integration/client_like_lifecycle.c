@@ -13,13 +13,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CHECK(condition)                                                                                                                                                                               \
-  do {                                                                                                                                                                                                 \
-    if (!(condition)) {                                                                                                                                                                                \
-      log_set_terminal_output(true);                                                                                                                                                                   \
-      log_error("Lifecycle check failed: %s (%s:%d)", #condition, __FILE__, __LINE__);                                                                                                                 \
-      abort();                                                                                                                                                                                         \
-    }                                                                                                                                                                                                  \
+#define CHECK(condition)                                                               \
+  do {                                                                                 \
+    if (!(condition)) {                                                                \
+      log_set_terminal_output(true);                                                   \
+      log_error("Lifecycle check failed: %s (%s:%d)", #condition, __FILE__, __LINE__); \
+      abort();                                                                         \
+    }                                                                                  \
   } while (0)
 
 static int calls, prepares, stops, retries;

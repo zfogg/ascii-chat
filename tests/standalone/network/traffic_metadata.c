@@ -7,10 +7,10 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
 
-#define CHECK(expression)                                                                                                                                                                              \
-  do {                                                                                                                                                                                                 \
-    if (!(expression))                                                                                                                                                                                 \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expression);                                                                                                                             \
+#define CHECK(expression)                                                  \
+  do {                                                                     \
+    if (!(expression))                                                     \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expression); \
   } while (0)
 
 typedef struct {

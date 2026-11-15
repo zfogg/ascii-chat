@@ -9,10 +9,10 @@
 #include <ascii-chat/util/time.h>
 #include <string.h>
 
-#define CHECK(expr)                                                                                                                                                                                    \
-  do {                                                                                                                                                                                                 \
-    if (!(expr))                                                                                                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "%s", #expr);                                                                                                                                                      \
+#define CHECK(expr)                               \
+  do {                                            \
+    if (!(expr))                                  \
+      FATAL(ERROR_ASSERTION_FAILED, "%s", #expr); \
   } while (0)
 static size_t allocations, copies;
 static void *measured_alloc(buffer_domain_t *domain, size_t size) {

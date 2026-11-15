@@ -111,33 +111,33 @@ typedef struct {
  * @brief Component enable/disable flags
  * @brief Default flags with all processing enabled
  */
-#define CLIENT_AUDIO_PIPELINE_FLAGS_ALL                                                                                                                                                                \
-  ((client_audio_pipeline_flags_t){                                                                                                                                                                    \
-      .echo_cancel = true,                                                                                                                                                                             \
-      .noise_suppress = true,                                                                                                                                                                          \
-      .agc = true,                                                                                                                                                                                     \
-      .vad = true,                                                                                                                                                                                     \
-      .jitter_buffer = true,                                                                                                                                                                           \
-      .compressor = true,                                                                                                                                                                              \
-      .noise_gate = true,                                                                                                                                                                              \
-      .highpass = true,                                                                                                                                                                                \
-      .lowpass = true,                                                                                                                                                                                 \
+#define CLIENT_AUDIO_PIPELINE_FLAGS_ALL \
+  ((client_audio_pipeline_flags_t){     \
+      .echo_cancel = true,              \
+      .noise_suppress = true,           \
+      .agc = true,                      \
+      .vad = true,                      \
+      .jitter_buffer = true,            \
+      .compressor = true,               \
+      .noise_gate = true,               \
+      .highpass = true,                 \
+      .lowpass = true,                  \
   })
 
 /**
  * @brief Minimal flags for testing (only codec, no processing)
  */
-#define CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL                                                                                                                                                            \
-  ((client_audio_pipeline_flags_t){                                                                                                                                                                    \
-      .echo_cancel = false,                                                                                                                                                                            \
-      .noise_suppress = false,                                                                                                                                                                         \
-      .agc = false,                                                                                                                                                                                    \
-      .vad = false,                                                                                                                                                                                    \
-      .jitter_buffer = false,                                                                                                                                                                          \
-      .compressor = false,                                                                                                                                                                             \
-      .noise_gate = false,                                                                                                                                                                             \
-      .highpass = false,                                                                                                                                                                               \
-      .lowpass = false,                                                                                                                                                                                \
+#define CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL \
+  ((client_audio_pipeline_flags_t){         \
+      .echo_cancel = false,                 \
+      .noise_suppress = false,              \
+      .agc = false,                         \
+      .vad = false,                         \
+      .jitter_buffer = false,               \
+      .compressor = false,                  \
+      .noise_gate = false,                  \
+      .highpass = false,                    \
+      .lowpass = false,                     \
   })
 
 /**

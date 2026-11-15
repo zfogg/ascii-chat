@@ -9,10 +9,10 @@
 #include <options/rcu.h>
 #include <libplatform/system.h>
 
-#define CHECK(expr)                                                                                                                                                                                    \
-  do {                                                                                                                                                                                                 \
-    if (!(expr))                                                                                                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                                                                                                   \
+#define CHECK(expr)                                                  \
+  do {                                                               \
+    if (!(expr))                                                     \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr); \
   } while (0)
 
 static void render(terminal_size_t size, const void *snapshot) {

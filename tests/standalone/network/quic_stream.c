@@ -8,10 +8,10 @@
 #include <network/quic/datagram.h>
 #include <string.h>
 
-#define CHECK(expression)                                                                                                                                                                              \
-  do {                                                                                                                                                                                                 \
-    if (!(expression))                                                                                                                                                                                 \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expression);                                                                                                                             \
+#define CHECK(expression)                                                  \
+  do {                                                                     \
+    if (!(expression))                                                     \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expression); \
   } while (0)
 
 typedef struct {

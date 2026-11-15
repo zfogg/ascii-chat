@@ -180,17 +180,17 @@ ascii_otel_metric_t ascii_otel_stats_metric(stats_record_kind_t kind, unsigned i
     return ASCII_OTEL_METRIC_COUNT;
   ascii_otel_metric_t metric;
   switch (((unsigned)kind << 16) | id) {
-#define ASCII_STATS_COUNTER(id, metric_id, name, unit)                                                                                                                                                 \
-  case (STATS_RECORD_COUNTER << 16) | STATS_COUNTER_##id:                                                                                                                                              \
-    metric = ASCII_OTEL_METRIC_##metric_id;                                                                                                                                                            \
+#define ASCII_STATS_COUNTER(id, metric_id, name, unit)    \
+  case (STATS_RECORD_COUNTER << 16) | STATS_COUNTER_##id: \
+    metric = ASCII_OTEL_METRIC_##metric_id;               \
     break;
-#define ASCII_STATS_GAUGE(id, metric_id, name, unit)                                                                                                                                                   \
-  case (STATS_RECORD_GAUGE << 16) | STATS_GAUGE_##id:                                                                                                                                                  \
-    metric = ASCII_OTEL_METRIC_##metric_id;                                                                                                                                                            \
+#define ASCII_STATS_GAUGE(id, metric_id, name, unit)  \
+  case (STATS_RECORD_GAUGE << 16) | STATS_GAUGE_##id: \
+    metric = ASCII_OTEL_METRIC_##metric_id;           \
     break;
-#define ASCII_STATS_DURATION(id, metric_id, name, unit)                                                                                                                                                \
-  case (STATS_RECORD_DURATION << 16) | STATS_DURATION_##id:                                                                                                                                            \
-    metric = ASCII_OTEL_METRIC_##metric_id;                                                                                                                                                            \
+#define ASCII_STATS_DURATION(id, metric_id, name, unit)     \
+  case (STATS_RECORD_DURATION << 16) | STATS_DURATION_##id: \
+    metric = ASCII_OTEL_METRIC_##metric_id;                 \
     break;
 #include <ascii-chat/stats/telemetry.def>
 #undef ASCII_STATS_COUNTER

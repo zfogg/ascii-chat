@@ -83,13 +83,13 @@ static void *produce_errors(void *opaque) {
   return NULL;
 }
 
-#define CHECK(expression)                                                                                                                                                                              \
-  do {                                                                                                                                                                                                 \
-    if (!(expression)) {                                                                                                                                                                               \
-      fprintf(stderr, "Notification contract failed at line %d: %s\n", __LINE__, #expression);                                                                                                         \
-      log_error("Notification contract failed at line %d: %s", __LINE__, #expression);                                                                                                                 \
-      return 1;                                                                                                                                                                                        \
-    }                                                                                                                                                                                                  \
+#define CHECK(expression)                                                                      \
+  do {                                                                                         \
+    if (!(expression)) {                                                                       \
+      fprintf(stderr, "Notification contract failed at line %d: %s\n", __LINE__, #expression); \
+      log_error("Notification contract failed at line %d: %s", __LINE__, #expression);         \
+      return 1;                                                                                \
+    }                                                                                          \
   } while (0)
 
 static int journal_contract(void) {
