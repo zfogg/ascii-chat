@@ -240,7 +240,7 @@ def main() -> None:
             time.sleep(0.1)
         if previous is None:
             raise AssertionError("Alacritty window never produced visible content")
-        previous.save(frame_a)
+        frame_a_image = previous
         samples = []
         if args.no_fps_check:
             for index in range(args.samples):
@@ -264,6 +264,9 @@ def main() -> None:
                 client_right, client_bottom = win32gui.ClientToScreen(hwnd, (client_width, client_height))
                 box = (client_left, client_top, client_right, client_bottom)
             probe_frame = capture_image(box)
+            # Both artifacts must bracket the measured period. An earlier
+            # startup frame can differ even when all measured frames freeze.
+            frame_a_image = probe_frame
             changed_box = ImageChops.difference(previous, probe_frame).getbbox()
             if changed_box:
                 changed_left, changed_top, changed_right, changed_bottom = changed_box
@@ -303,7 +306,9 @@ def main() -> None:
                 index = max(index + 1, int(observed_at / interval))
             metrics = cadence_metrics(observations, time.monotonic() - start_time)
             print("cadence=" + json.dumps(metrics, sort_keys=True))
+            print(f"probe_region={region} client={box}")
             current = capture_image(box)
+        frame_a_image.save(frame_a)
         current.save(frame_b)
         print(f"monitor_index={args.monitor_index} monitor={target_rect}")
         print(f"window={actual} hwnd={hwnd} pid={process.pid} title={win32gui.GetWindowText(hwnd)!r}")
