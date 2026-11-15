@@ -191,7 +191,6 @@ static const options_t g_default_options = (options_t){
     .test_pattern = OPT_TEST_PATTERN_DEFAULT,
     .no_audio_mixer = OPT_NO_AUDIO_MIXER_DEFAULT,
     .stabilize = true,
-    .stabilize_explicit = false,
     .renderer = ASCII_RENDERER_DEFAULT,
     .stretch = OPT_STRETCH_DEFAULT,
     .flip_x = OPT_FLIP_X_DEFAULT,
@@ -801,9 +800,7 @@ asciichat_error_t options_prepare_patch(const options_t *current, const options_
     animation_changed |= !strcmp(name, "matrix_rain") || !strcmp(name, "waveform") || !strcmp(name, "fft");
     stabilize_changed |= !strcmp(name, "stabilize");
   }
-  if (stabilize_changed)
-    candidate->stabilize_explicit = true;
-  else if (animation_changed && !candidate->stabilize_explicit)
+  if (animation_changed && !stabilize_changed)
     candidate->stabilize = !(candidate->waveform || candidate->fft);
   for (size_t i = 0; i < patch->count; ++i) {
     asciichat_error_t error = validate_field(find_field(patch->edits[i].name), candidate);
