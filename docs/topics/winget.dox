@@ -1,0 +1,28 @@
+/**
+ * @page topic_winget WinGet package
+ *
+ * @brief Installing ascii-chat with Windows Package Manager.
+ *
+ * The Windows release publishes an x64 WiX MSI. The release workflow can
+ * generate a manifest for the exact MSI, calculate its SHA-256, and open a
+ * pull request in the publisher's fork of Microsoft's
+ * [winget-pkgs repository](https://github.com/microsoft/winget-pkgs).
+ *
+ * To enable the automated submission, create a fork named `winget-pkgs` under
+ * the publisher account, then add a repository secret named
+ * `WINGET_GITHUB_TOKEN`. The token needs permission to push to that fork and
+ * open pull requests against `microsoft/winget-pkgs`. Optionally set the
+ * `WINGET_FORK_REPOSITORY` repository variable if the fork is under another
+ * account.
+ *
+ * After Microsoft's manifest review merges the initial submission, users can
+ * install and update ascii-chat with:
+ *
+ * @code{.ps1}
+ * winget install ascii-chat
+ * winget upgrade ascii-chat
+ * @endcode
+ *
+ * The WinGet package is the runtime application only. The development ZIP and
+ * ARM64 portable ZIP remain available from the GitHub release page.
+ */
