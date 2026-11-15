@@ -86,13 +86,15 @@ set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared} CACHE BOOL
 # FetchContent from running its git update step on every configure: updating a
 # populated git checkout refreshes all source mtimes, which makes Ninja treat
 # the entire gotel/nghttp2/otlp-c dependency tree as stale on the next build.
-# First-time population still occurs when a source directory is absent.
+# First-time population still occurs when a source directory is absent.  Do
+# not force FETCHCONTENT_FULLY_DISCONNECTED here: a cold CI dependency cache
+# must be allowed to download the pinned sources.
 set(_asciichat_parent_fetchcontent_updates_disconnected
     ${FETCHCONTENT_UPDATES_DISCONNECTED})
 set(_asciichat_parent_fetchcontent_fully_disconnected
     ${FETCHCONTENT_FULLY_DISCONNECTED})
 set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
-set(FETCHCONTENT_FULLY_DISCONNECTED ON)
+set(FETCHCONTENT_FULLY_DISCONNECTED OFF)
 set(_asciichat_fetchcontent_base_dir_was_defined FALSE)
 if(DEFINED FETCHCONTENT_BASE_DIR)
     set(_asciichat_fetchcontent_base_dir_was_defined TRUE)
