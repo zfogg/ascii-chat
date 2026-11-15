@@ -88,36 +88,36 @@ set(CORE_SRCS
     ${LIB_DIR}/tui/shortcuts.c
     ${LIB_DIR}/tui/errno_stacks.c
     # options/
-    ${CMAKE_SOURCE_DIR}/src/common/options/colorscheme.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/core.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/common.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/enums.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/strings.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/runtime.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/help.c
+    ${CMAKE_SOURCE_DIR}/lib/options/colorscheme.c
+    ${CMAKE_SOURCE_DIR}/lib/options/core.c
+    ${CMAKE_SOURCE_DIR}/lib/options/common.c
+    ${CMAKE_SOURCE_DIR}/lib/options/enums.c
+    ${CMAKE_SOURCE_DIR}/lib/options/strings.c
+    ${CMAKE_SOURCE_DIR}/lib/options/runtime.c
+    ${CMAKE_SOURCE_DIR}/lib/options/help.c
     # options/config/
-    ${CMAKE_SOURCE_DIR}/src/common/options/config.c
+    ${CMAKE_SOURCE_DIR}/lib/options/config.c
     # options/registry/
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_metadata.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_general.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_logging.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_configuration.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_terminal.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_webcam.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_display.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_network.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_security.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_media.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_audio.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_database.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_registry.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_core.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_public_api.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_mode_defaults.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_metadata.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_general.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_logging.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_configuration.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_terminal.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_webcam.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_display.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_network.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_security.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_media.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_audio.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_database.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_registry.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_core.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_public_api.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_mode_defaults.c
     # options/parsing/
-    ${CMAKE_SOURCE_DIR}/src/common/options/parsing_parsers.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/parsing_validation.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/parsing_actions.c
+    ${CMAKE_SOURCE_DIR}/lib/options/parsing_parsers.c
+    ${CMAKE_SOURCE_DIR}/lib/options/parsing_validation.c
+    ${CMAKE_SOURCE_DIR}/lib/options/parsing_actions.c
     # options/manpage/
     # version
     ${LIB_DIR}/version.c
@@ -174,7 +174,7 @@ endif()
 list(APPEND CORE_SRCS
     ${LIB_DIR}/debug/stats.c
     ${LIB_DIR}/debug/errno.c
-    ${CMAKE_SOURCE_DIR}/src/common/options/registry_debug.c
+        ${CMAKE_SOURCE_DIR}/lib/options/registry_debug.c
 )
 
 # Additional debug sources only in non-Release builds
@@ -728,7 +728,7 @@ target_include_directories(ascii-chat-core PRIVATE ${PCRE2_INCLUDE_DIRS})
 
 # Add session headers directory (refactored from lib/session to src/common/session)
 # Using src/common allows #include "session/display.h" style includes
-target_include_directories(ascii-chat-core PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
+target_include_directories(ascii-chat-core PRIVATE ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_SOURCE_DIR}/lib)
 
 # Session server headers include the public WebSocket server API, which in turn
 # includes libwebsockets.h. Core needs its include path even though the

@@ -382,7 +382,7 @@ endif()
 target_include_directories(ascii-chat PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>)
 target_include_directories(ascii-chat PRIVATE ${PCRE2_INCLUDE_DIRS} ${LIBWEBSOCKETS_INCLUDE_DIRS})
 # Add src/common for session headers (allows #include "session/display.h" style)
-target_include_directories(ascii-chat PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
+target_include_directories(ascii-chat PRIVATE ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_SOURCE_DIR}/lib)
 
 # Add mimalloc include directory for executable (needed for SAFE_MALLOC macros in src/)
 if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)

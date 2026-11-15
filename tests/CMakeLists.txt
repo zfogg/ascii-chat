@@ -476,6 +476,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             ${CRITERION_INCLUDE_DIRS}
             ${_ascii_tests_mimalloc_include}
             ${LIBWEBSOCKETS_INCLUDE_DIRS}
+            ${CMAKE_SOURCE_DIR}/lib
         )
 
         # Define CRITERION_TEST for test environment detection
