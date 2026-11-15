@@ -153,7 +153,6 @@ asciichat_error_t config_create_default(const char *config_path) {
 }
 
 asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const char *config_path, bool strict, options_t *opts) {
-  (void)detected_mode;
   if (!opts)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing configuration path or destination");
   if (!config_path)
@@ -166,7 +165,8 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
     return SET_ERRNO(ERROR_CONFIG, "Unable to access configuration file '%s': %s", config_path, strerror(errno));
   }
 
-  flags_schema_builder_t *builder = options_config_build_flags_schema(OPTION_MODE_ALL);
+  const option_mode_bitmask_t mode_mask = detected_mode == MODE_DISCOVERY ? OPTION_MODE_ALL : (option_mode_bitmask_t)(OPTION_MODE_BINARY | (1U << detected_mode));
+  flags_schema_builder_t *builder = options_config_build_flags_schema(mode_mask);
   if (!builder)
     return SET_ERRNO(ERROR_CONFIG, "Failed to build configuration schema");
   flags_context_t *context = flags_create(flags_schema_builder_schema(builder), opts, sizeof(*opts));
