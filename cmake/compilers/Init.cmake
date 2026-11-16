@@ -1,6 +1,13 @@
 include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/Common.cmake")
 
+# Windows Clang uses the same vcpkg dependency source as MSVC when vcpkg is
+# installed. Keep this in compiler initialization so the Clang presets remain
+# usable on Linux with system packages and do not inherit a disabled preset.
+if(WIN32 AND DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED USE_VCPKG)
+    set(USE_VCPKG ON CACHE BOOL "Use vcpkg for Windows compiler dependencies")
+endif()
+
 if(NOT _ASCIICHAT_COMPILER_MODULE)
     # Configure presets may provide CMAKE_C_COMPILER before project().  Use
     # that native CMake variable as the explicit compiler selection when it is
