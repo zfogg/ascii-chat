@@ -37,7 +37,8 @@ if(WIN32 AND SQLITE3_LIBRARIES MATCHES "(^|;)sqlite3[.]lib($|;)")
     # selected library. Resolve it to the configuration-specific absolute
     # path so lld-link does not search only the current build directory.
     find_library(_asciichat_gotel_sqlite_library NAMES sqlite3 libsqlite3
-        PATHS "${VCPKG_DEBUG_LIB_PATH}" "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
+        PATHS "${VCPKG_DEBUG_LIB_PATH}" "${VCPKG_LIB_PATH}"
+              "${SQLITE3_LIBRARY_DIRS}" "${SQLITE3_LIBDIR}" NO_DEFAULT_PATH)
     if(_asciichat_gotel_sqlite_library)
         target_link_libraries(asciichat-gotel-sqlite INTERFACE
             "${_asciichat_gotel_sqlite_library}")
