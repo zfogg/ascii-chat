@@ -30,11 +30,11 @@ int glyph_shape_correlation_neon(const int16_t samples[16], const int16_t mask[1
 int glyph_shape_correlation_sve(const int16_t samples[16], const int16_t mask[16]);
 
 const simd_cells_t *simd_cells_backend(void);
-#define DECLARE_SIMD_CELLS(isa)                                                                                                                                                                        \
-  void simd_pack_##isa(const uint8_t *, uint32_t *, size_t);                                                                                                                                           \
-  void simd_lookup_##isa(const uint8_t *, const uint32_t[64], uint32_t *, size_t);                                                                                                                     \
-  void simd_quantize_##isa(const uint32_t *, uint32_t *, size_t, unsigned);                                                                                                                            \
-  void simd_halfblock_##isa(const uint32_t *, const uint32_t *, uint32_t *, uint32_t *, uint32_t *, size_t, unsigned, const uint32_t[5]);                                                              \
+#define DECLARE_SIMD_CELLS(isa)                                                                                                           \
+  void simd_pack_##isa(const uint8_t *, uint32_t *, size_t);                                                                              \
+  void simd_lookup_##isa(const uint8_t *, const uint32_t[64], uint32_t *, size_t);                                                        \
+  void simd_quantize_##isa(const uint32_t *, uint32_t *, size_t, unsigned);                                                               \
+  void simd_halfblock_##isa(const uint32_t *, const uint32_t *, uint32_t *, uint32_t *, uint32_t *, size_t, unsigned, const uint32_t[5]); \
   size_t simd_run_##isa(const uint32_t *, const uint32_t *, const uint32_t *, size_t)
 DECLARE_SIMD_CELLS(scalar);
 DECLARE_SIMD_CELLS(sse2);
