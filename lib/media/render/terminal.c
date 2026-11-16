@@ -708,7 +708,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
       for (int col = 0; col < RENDER_DEBUG_SIGNATURE_COLUMNS && col < r->cols; col++) {
         VTermScreenCell cell;
         vterm_screen_get_cell(r->vts, (VTermPos){row, col}, &cell);
-        curr_row_sigs[row][col] = (cell.chars[0] >= 32 && cell.chars[0] <= 126) ? cell.chars[0] : '.';
+        curr_row_sigs[row][col] = (char)((cell.chars[0] >= 32 && cell.chars[0] <= 126) ? cell.chars[0] : '.');
       }
       curr_row_sigs[row][RENDER_DEBUG_SIGNATURE_COLUMNS] = 0;
     }

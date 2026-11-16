@@ -254,7 +254,7 @@ char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_ce
       glyph->fine_row_sum[y] = 0;
       for (int x = 0; x < 8; ++x) {
         int centered = (int)glyph->fine[y * 8 + x] - glyph->fine_mean;
-        glyph->fine_row_sum[y] += centered;
+        glyph->fine_row_sum[y] = (int16_t)(glyph->fine_row_sum[y] + centered);
         glyph->fine_energy += centered * centered;
       }
     }
