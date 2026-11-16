@@ -103,7 +103,11 @@ function(asciichat_configure_quic)
     endforeach()
     if(USE_MUSL)
         list(APPEND _quic_common_args
-            "-DCMAKE_TRY_COMPILE_TARGET_TYPE:STRING=STATIC_LIBRARY")
+            "-DCMAKE_TRY_COMPILE_TARGET_TYPE:STRING=STATIC_LIBRARY"
+            "-DCMAKE_C_FLAGS:STRING=${CMAKE_C_FLAGS} -pthread"
+            "-DCMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS} -pthread"
+            "-DCMAKE_EXE_LINKER_FLAGS:STRING=${CMAKE_EXE_LINKER_FLAGS} -pthread"
+            "-DCMAKE_SHARED_LINKER_FLAGS:STRING=${CMAKE_SHARED_LINKER_FLAGS} -pthread")
         foreach(_variable ASCIICHAT_DEPS_CACHE_DIR ASCIICHAT_MUSL_SYSROOT MUSL_TARGET MUSL_INCLUDE_DIR MUSL_LIBDIR
                           KERNEL_HEADERS_DIR)
             if(DEFINED ${_variable} AND NOT "${${_variable}}" STREQUAL "")
