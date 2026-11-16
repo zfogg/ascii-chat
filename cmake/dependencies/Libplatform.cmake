@@ -54,6 +54,18 @@ if(TARGET asciichat-project-includes)
         "${_ascii_chat_libplatform_source}/lib")
 endif()
 
+# libplatform's current POSIX implementation uses the application's public
+# error and utility contracts. Keep that mapping private to libplatform so its
+# headers and symbols are never propagated to consumers.
+target_include_directories(libplatform-objects PRIVATE
+    "${_ascii_chat_repo_root}/include"
+    "${_ascii_chat_repo_root}/deps"
+    "${_ascii_chat_repo_root}/deps/ascii-chat-deps/yyjson/src"
+    "${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc"
+    "${_ascii_chat_repo_root}/deps/ascii-chat-deps/gotel/c/include"
+    "${CMAKE_BINARY_DIR}/_deps/gotel/otlp_c-src/include"
+    ${SQLITE3_INCLUDE_DIRS})
+
 # libplatform owns the shared path/logging helpers, so give it the checkout
 # root that CMake already knows instead of letting it fall back to ".".
 if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_ENABLE_COVERAGE)
