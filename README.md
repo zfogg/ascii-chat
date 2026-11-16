@@ -115,7 +115,7 @@ library is also available as `ascii-chat/libasciichat`.
 Add the publisher repository once, then install the package:
 
 ```powershell
-ncl add-repo https://raw.githubusercontent.com/zfogg/npackd-repository/main/repository.xml
+ncl add-repo --url https://raw.githubusercontent.com/zfogg/npackd-repository/main/repository.xml
 ncl add ascii-chat
 ```
 

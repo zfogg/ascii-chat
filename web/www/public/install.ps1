@@ -38,7 +38,7 @@
         $ncl = Get-Command ncl -ErrorAction SilentlyContinue
         if ($ncl) {
             $npackdPackage = if ($arch -eq 'arm64') { 'ascii-chat-arm64' } else { 'ascii-chat' }
-            & ncl add-repo https://raw.githubusercontent.com/zfogg/npackd-repository/main/repository.xml 2>$null
+            & ncl add-repo --url https://raw.githubusercontent.com/zfogg/npackd-repository/main/repository.xml 2>$null
             & ncl path --package $npackdPackage *> $null
             $npackdInstalled = $LASTEXITCODE -eq 0
             if ($npackdInstalled) {
