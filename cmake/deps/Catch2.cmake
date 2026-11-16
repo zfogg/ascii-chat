@@ -8,6 +8,15 @@ option(ASCIICHAT_FORCE_TESTS
 set(ASCIICHAT_TEST_FRAMEWORKS "catch2" CACHE STRING
     "Semicolon-separated native test frameworks to enable")
 
+# Dependency subprojects may change the normal BUILD_TESTS variable while
+# leaving the top-level cache entry intact. Restore the user/CI selection at
+# the point where the test adapter is configured.
+get_property(_build_tests_cache CACHE BUILD_TESTS PROPERTY VALUE)
+if(ASCIICHAT_FORCE_TESTS OR _build_tests_cache)
+    set(BUILD_TESTS ON CACHE BOOL "Build test executables" FORCE)
+    set(BUILD_TESTS ON)
+endif()
+
 # The force switch is used by CI and release-like configurations.  Make it
 # authoritative even when another configuration layer defaulted BUILD_TESTS
 # back to OFF before this dependency module was reached.
