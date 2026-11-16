@@ -673,7 +673,6 @@ options_t options_t_new(void) {
   opts.no_mdns_advertise = OPT_NO_MDNS_ADVERTISE_DEFAULT;
   opts.enable_upnp = OPT_ENABLE_UPNP_DEFAULT;
   // WebRTC Mode & Strategy Options
-  opts.webrtc = OPT_WEBRTC_DEFAULT;
   opts.prefer_webrtc = OPT_PREFER_WEBRTC_DEFAULT;
   opts.no_webrtc = OPT_NO_WEBRTC_DEFAULT;
   opts.webrtc_skip_stun = OPT_WEBRTC_SKIP_STUN_DEFAULT;
@@ -681,7 +680,6 @@ options_t options_t_new(void) {
   opts.webrtc_disable_turn = OPT_WEBRTC_DISABLE_TURN_DEFAULT;
   opts.webrtc_skip_host = OPT_WEBRTC_SKIP_HOST_DEFAULT;
   opts.webrtc_ice_timeout_ms = OPT_WEBRTC_ICE_TIMEOUT_MS_DEFAULT;
-  opts.webrtc_reconnect_attempts = OPT_WEBRTC_RECONNECT_ATTEMPTS_DEFAULT;
   SAFE_STRNCPY(opts.stun_servers, OPT_STUN_SERVERS_DEFAULT, sizeof(opts.stun_servers));
   SAFE_STRNCPY(opts.turn_servers, OPT_TURN_SERVERS_DEFAULT, sizeof(opts.turn_servers));
   SAFE_STRNCPY(opts.turn_username, OPT_TURN_USERNAME_DEFAULT, sizeof(opts.turn_username));

@@ -102,3 +102,18 @@ asciichat_error_t connection_endpoint_resolve(const char *input, uint16_t defaul
   url_parts_destroy(&parts);
   return result;
 }
+
+asciichat_error_t connection_endpoint_override_port(const char *input, uint16_t port, char *output, size_t output_size) {
+  if (!input || !*input || !output || output_size == 0 || port == 0)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid endpoint port override");
+  url_parts_t parts = {0};
+  asciichat_error_t result = url_parse(input, &parts);
+  if (result != ASCIICHAT_OK)
+    return result;
+  const char *host = parts.ipv6 ? parts.ipv6 : parts.host;
+  const char *path = parts.path ? parts.path : "";
+  result =
+      (safe_snprintf(output, output_size, "%s://%s%s%s:%u%s", parts.scheme, parts.ipv6 ? "[" : "", host, parts.ipv6 ? "]" : "", ":", (unsigned)port, path) < 0) ? ERROR_INVALID_PARAM : ASCIICHAT_OK;
+  url_parts_destroy(&parts);
+  return result;
+}

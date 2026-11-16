@@ -129,12 +129,12 @@ runs:
         # Output cache keys
         # Versioned keys invalidate incompatible dependency caches.
         # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
-        echo "cmake-cache-key=${os}-${arch}-cmake-deps-v18-${deps_hash}-${install_hash}" >> $GITHUB_OUTPUT
+        echo "cmake-cache-key=${os}-${arch}-cmake-deps-v19-${deps_hash}-${install_hash}" >> $GITHUB_OUTPUT
         echo "ccache-key=${os}-${arch}-ccache-v2" >> $GITHUB_OUTPUT
         echo "build-cache-key=${os}-${arch}-build-v10" >> $GITHUB_OUTPUT
 
         echo "Computed cache keys:"
-        echo "  cmake: ${os}-${arch}-cmake-deps-v18-${deps_hash}-${install_hash}"
+        echo "  cmake: ${os}-${arch}-cmake-deps-v19-${deps_hash}-${install_hash}"
         echo "  ccache: ${os}-${arch}-ccache-v2"
         echo "  build: ${os}-${arch}-build-v10"
 
@@ -163,7 +163,7 @@ runs:
         # Output cache keys
         # Versioned keys invalidate incompatible dependency caches.
         # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "cmake-cache-key=${os}-${arch}-cmake-deps-v18-${depsHash}-${installHash}"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "cmake-cache-key=${os}-${arch}-cmake-deps-v19-${depsHash}-${installHash}"
         Add-Content -Path $env:GITHUB_OUTPUT -Value "ccache-key=${os}-${arch}-ccache-v2"
         Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v10"
 

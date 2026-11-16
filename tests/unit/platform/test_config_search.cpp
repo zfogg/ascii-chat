@@ -74,7 +74,7 @@ TEST_CASE("platform_config_search/basic_allocation", "[platform_config_search]")
 // XDG Base Directory Specification Implementation Notes
 // ============================================================================
 //
-// XDG support is implemented in lib/platform/posix/filesystem.c and provides:
+// XDG support is implemented in libplatform's POSIX filesystem backend and provides:
 // 1. XDG_CONFIG_HOME support (default: ~/.config)
 // 2. XDG_CONFIG_DIRS colon-separated parsing (default: /etc/xdg)
 // 3. Proper priority ordering (user config before system configs)

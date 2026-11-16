@@ -42,6 +42,7 @@ telemetry = [
 
 [package.dev-dependencies]
 test = [
+    { name = "mss", marker = "sys_platform == 'win32'" },
     { name = "pygetwindow" },
     { name = "pymonctl" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
@@ -79,6 +80,7 @@ provides-extras = ["audio", "telemetry"]
 
 [package.metadata.requires-dev]
 test = [
+    { name = "mss", marker = "sys_platform == 'win32'", specifier = ">=10.2,<11" },
     { name = "pygetwindow", specifier = ">=0.0.9" },
     { name = "pymonctl", specifier = ">=0.92" },
     { name = "pywin32", marker = "sys_platform == 'win32'", specifier = ">=311" },
@@ -573,6 +575,15 @@ name = "msgpack"
 version = "1.1.2"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/4d/f2/bfb55a6236ed8725a96b0aa3acbd0ec17588e6a2c3b62a93eb513ed8783f/msgpack-1.1.2.tar.gz", hash = "sha256:3b60763c1373dd60f398488069bcdc703cd08a711477b5d480eecc9f9626f47e", size = 173581, upload-time = "2025-10-08T09:15:56.596Z" }
+
+[[package]]
+name = "mss"
+version = "10.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e5/5d/eee782a6d674f562c946ae6a026f4c595ea2b7b031f290bf9fbf60da09b5/mss-10.2.0.tar.gz", hash = "sha256:ab271860775545e62f29d7b11f82f279ac1048f5bbdd26cfad84830208dbd393", size = 200317, upload-time = "2026-04-23T10:44:57.305Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f2/c3/313e14f245c79b4c05bd0f3a84a4813aa26fa10f8993aebd91d04c5fad3f/mss-10.2.0-py3-none-any.whl", hash = "sha256:e79f428899280e7e64e38365b5bfed683851ebea807eeaeadaf06eb8e0d67197", size = 67106, upload-time = "2026-04-23T10:44:56.266Z" },
+]
 
 [[package]]
 name = "neovim"

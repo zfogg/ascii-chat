@@ -325,7 +325,7 @@ const char *named_describe(uintptr_t key, const char *type_hint);
  * Platform-specific conversion. On POSIX, pthread_t is cast directly.
  * On Windows, HANDLE is cast directly.
  *
- * This function is defined in lib/platform/posix/thread.c or lib/platform/windows/thread.c
+ * This function is defined in libplatform's POSIX or Windows thread implementation.
  */
 uintptr_t thread_to_key(platform_thread_t thread);
 

@@ -130,6 +130,6 @@
  *
  * @see src/client/display.c
  * @see src/client/display.h
- * @see lib/platform/terminal.h
+ * @see libplatform/terminal.h
  * @see @ref topic_client "Client Overview"
  */

@@ -170,7 +170,7 @@ static acip_websocket_runtime_t *g_websocket_runtime;
 
 /* Signal handling is now centralized in src/main.c via setup_signal_handlers()
  * Signal handlers publish application exit; the owner interrupts network I/O
- * in normal thread context. Resize detection is polled through lib/platform.
+ * in normal thread context. Resize detection is polled through libplatform.
  */
 
 /**

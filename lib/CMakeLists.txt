@@ -9,15 +9,15 @@ endif()
 # Store lib directory since this file may be included() from parent scope
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 
-if(NOT TARGET ascii-chat-utf8proc)
-    add_library(ascii-chat-utf8proc STATIC
+if(NOT TARGET utf8proc)
+    add_library(utf8proc STATIC
         ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/utf8proc/utf8proc.c)
-    target_include_directories(ascii-chat-utf8proc PUBLIC
+    target_include_directories(utf8proc PUBLIC
         ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/utf8proc)
-    target_compile_definitions(ascii-chat-utf8proc PUBLIC UTF8PROC_STATIC=1)
-    set_target_properties(ascii-chat-utf8proc PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_compile_definitions(utf8proc PUBLIC UTF8PROC_STATIC=1)
+    set_target_properties(utf8proc PROPERTIES POSITION_INDEPENDENT_CODE ON)
 endif()
-set(LIBPLATFORM_UTF8PROC_TARGET ascii-chat-utf8proc CACHE STRING
+set(LIBPLATFORM_UTF8PROC_TARGET utf8proc CACHE STRING
     "utf8proc target supplied by ascii-chat" FORCE)
 
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libplatform.cmake)
@@ -606,6 +606,7 @@ set_property(SOURCE
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/render/common.c"
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/render/luminance.c"
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/render/glyph.c"
+    "${CMAKE_SOURCE_DIR}/lib/video/ascii/stabilize.c"
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/output_buffer.c"
     "${CMAKE_SOURCE_DIR}/src/common/session/frame_validation.c"
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/ascii.c"
@@ -621,7 +622,8 @@ set_property(SOURCE
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/sve/luminance.c"
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/sve/color.c"
     APPEND PROPERTY
-    COMPILE_OPTIONS "$<$<CONFIG:Debug>:-O2;-finline-functions>")
+    # -finline cancels Debug's -fno-inline; -finline-functions alone does not.
+    COMPILE_OPTIONS "$<$<CONFIG:Debug>:-O2;-finline>")
 # The core module's Debug precompiled header uses -O0 and cannot be reused by
 # this optimized source with Clang.
 set_source_files_properties("${CMAKE_SOURCE_DIR}/src/common/session/frame_validation.c"

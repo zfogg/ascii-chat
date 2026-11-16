@@ -18,9 +18,9 @@
  * - `lib/ui/` and `include/ascii-chat/ui/` contain reusable widgets.
  * - `lib/tui/` and `include/ascii-chat/tui/` contain complete screens, snapshots,
  *   input routing, and the controller.
- * - `lib/platform/keyboard.c` normalizes POSIX escape sequences, Windows console
+ * - libplatform's keyboard implementation normalizes POSIX escape sequences, Windows console
  *   events, UTF-8, and UTF-16 into `keyboard_key_t`.
- * - `lib/platform/terminal.c` owns terminal geometry, capabilities, raw mode,
+ * - libplatform's terminal implementation owns terminal geometry, capabilities, raw mode,
  *   and restoration.
  *
  * @section ui_controller Controller and screens

@@ -111,6 +111,14 @@ function(configure_base_compiler_flags)
         target_compile_options(asciichat-project-options INTERFACE -resource-dir "${CLANG_RESOURCE_DIR}")
     endif()
 
+    # Use LLVM's compiler runtime on non-Windows Clang targets.  The Windows
+    # MSVC-targeted link path supplies its runtime explicitly and warns that
+    # -rtlib=compiler-rt is unused.
+    if(NOT WIN32 AND (CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
+                      CMAKE_OBJC_COMPILER_ID MATCHES "Clang" OR CMAKE_OBJCXX_COMPILER_ID MATCHES "Clang"))
+        target_link_options(asciichat-project-options INTERFACE -rtlib=compiler-rt)
+    endif()
+
     # Base warning flags for Clang/GCC compilers
     # -Wall: Enable common warnings
     # -Wextra: Enable extra warnings

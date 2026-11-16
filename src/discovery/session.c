@@ -1751,7 +1751,7 @@ static asciichat_error_t discovery_session_start_host(discovery_session_t *sessi
 }
 
 static asciichat_error_t discovery_session_retry_webrtc(discovery_session_t *session, int timeout_ms) {
-  int max_attempts = GET_OPTION(webrtc_reconnect_attempts);
+  int max_attempts = GET_OPTION(reconnect_attempts);
   if (session->webrtc_retry_attempt >= max_attempts) {
     log_error("WebRTC connection failed after %d attempts (timeout: %dms)", max_attempts + 1, timeout_ms);
     char error_msg[DISCOVERY_SESSION_ERROR_MSG_BUFFER_SIZE];
@@ -1795,7 +1795,7 @@ static asciichat_error_t discovery_session_connect_webrtc(discovery_session_t *s
 
   // If not ready and we haven't initiated connection yet, initiate it
   if (session->peer_manager && !session->webrtc_connection_initiated) {
-    log_info("Initiating WebRTC connection to host (attempt %d/%d)...", session->webrtc_retry_attempt + 1, GET_OPTION(webrtc_reconnect_attempts) + 1);
+    log_info("Initiating WebRTC connection to host (attempt %d/%d)...", session->webrtc_retry_attempt + 1, GET_OPTION(reconnect_attempts) + 1);
 
     // Initiate connection (generates offer, triggers SDP exchange)
     asciichat_error_t conn_result = webrtc_peer_manager_connect(session->peer_manager, session->session_id, session->host_id);

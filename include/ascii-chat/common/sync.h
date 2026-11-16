@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file platform/init.h
+ * @file common/sync.h
  * @brief Platform initialization and static synchronization helpers
  * @ingroup platform
  * @addtogroup platform

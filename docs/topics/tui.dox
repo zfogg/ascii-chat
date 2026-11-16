@@ -33,6 +33,8 @@
  * new media frame, so the controller checks geometry on its presentation tick.
  * Paused media retains its last frame and clips it after a smaller resize rather
  * than resuming capture. Redirected and non-TTY output renders synchronously.
+ * Media frames include the cursor-hide sequence before the art, keeping cursor
+ * visibility ordered with presentation after prompts, idle screens, and resize.
  *
  * @section tui_debug Diagnostics
  *

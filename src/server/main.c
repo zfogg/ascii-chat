@@ -79,6 +79,7 @@
 #endif
 
 #include <ascii-chat/network/platform.h> // Consolidates platform-specific network headers
+#include <ascii-chat/network/connection_endpoint.h>
 #include <ascii-chat/app_callbacks.h>
 
 #include <errno.h>
@@ -1438,17 +1439,17 @@ static void __attribute__((unused)) server_prepare_discovery_request(acds_sessio
   log_debug("Server setting acds_expose_ip=%d (explicit_expose=%d, has_password=%d, has_identity=%d)", params->acds_expose_ip, policy->explicit_expose, policy->has_password, policy->has_identity);
 
   // Set session type (Direct TCP or WebRTC)
-  // Auto-detect: Use WebRTC if UPnP failed OR if explicitly requested via --webrtc
+  // Auto-detect: Use WebRTC if UPnP failed or if WebRTC remains enabled.
   // Exception: If bind address is 0.0.0.0, server is on public IP - use Direct TCP
   const char *bind_addr = GET_OPTION(address);
   bool bind_all_interfaces = (strcmp(bind_addr, "0.0.0.0") == 0);
 
   // Determine session type: prefer WebRTC by default (unless explicitly disabled)
-  // Priority: explicit --webrtc flag > connection type detection > UPnP > default
-  if (GET_OPTION(webrtc)) {
+  // Priority: connection type detection > UPnP > default; WebRTC is enabled unless --no-webrtc is set.
+  if (!GET_OPTION(no_webrtc)) {
     // Explicit WebRTC request
     params->session_type = SESSION_TYPE_WEBRTC;
-    log_info("ACDS session type: WebRTC (explicitly requested via --webrtc)");
+    log_info("ACDS session type: WebRTC (enabled by default; use --no-webrtc to disable)");
   } else if (bind_all_interfaces) {
     // Bind to 0.0.0.0: use WebRTC as default (better NAT compatibility)
     params->session_type = SESSION_TYPE_WEBRTC;
@@ -1682,10 +1683,20 @@ static void server_register_discovery(server_discovery_startup_t *startup, int p
     return;
   }
   // Security is configured, proceed with ACDS connection
+  char discovery_url[URL_BUFFER_SIZE];
   const char *acds_server = GET_OPTION(discovery_server);
-  uint16_t acds_port = (uint16_t)GET_OPTION(discovery_port);
+  uint16_t acds_port = ACIP_DISCOVERY_DEFAULT_PORT;
+  if (GET_OPTION(discovery_port) != ACIP_DISCOVERY_DEFAULT_PORT) {
+    asciichat_error_t override_result = connection_endpoint_override_port(acds_server, (uint16_t)GET_OPTION(discovery_port),
+                                                                          discovery_url, sizeof(discovery_url));
+    if (override_result != ASCIICHAT_OK) {
+      log_error("Invalid --discovery-service URL for --discovery-service-port override");
+      return;
+    }
+    acds_server = discovery_url;
+  }
 
-  log_info("Attempting to create session on ACDS server at %s:%d...", acds_server, acds_port);
+  log_info("Attempting to create session on ACDS server at %s...", acds_server);
 
   acds_client_config_t acds_config;
   acds_client_config_init_defaults(&acds_config);

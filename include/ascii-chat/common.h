@@ -67,7 +67,7 @@ typedef unsigned long long uint64_t;
  * Platform Maximum Path Length
  * ============================================================================
  * Defined here (before logging.h) to avoid circular dependencies.
- * Also defined in platform/system.h for documentation purposes.
+ * Also defined in libplatform/system.h for documentation purposes.
  */
 #ifdef _WIN32
 #include <limits.h>
@@ -654,7 +654,7 @@ void asciichat_shared_destroy(void);
 
 /**
  * @brief Global argc for early argument inspection (e.g., --color flag detection)
- * Set by main() for access from lib/platform/terminal.c during early execution
+ * Set by main() for access from libplatform's terminal implementation during early execution
  */
 #ifdef __cplusplus
 extern "C" {
@@ -664,7 +664,7 @@ extern ASCIICHAT_API int g_argc;
 
 /**
  * @brief Global argv for early argument inspection (e.g., --color flag detection)
- * Set by main() for access from lib/platform/terminal.c during early execution
+ * Set by main() for access from libplatform's terminal implementation during early execution
  */
 extern ASCIICHAT_API char **g_argv;
 
