@@ -65,6 +65,9 @@ function(asciichat_configure_quic)
 
     set(_quic_common_args
         "-DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"
+        "-DCMAKE_PROJECT_INCLUDE:FILEPATH=${CMAKE_SOURCE_DIR}/cmake/deps/QuicExternalSetup.cmake"
+        "-DCMAKE_PROJECT_INCLUDE_BEFORE:FILEPATH=${CMAKE_SOURCE_DIR}/cmake/deps/QuicExternalSetup.cmake"
+        "-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES:FILEPATH=${CMAKE_SOURCE_DIR}/cmake/deps/QuicExternalSetup.cmake"
         "-DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}"
         "-DCMAKE_MAKE_PROGRAM:FILEPATH=${CMAKE_MAKE_PROGRAM}"
         "-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON"
