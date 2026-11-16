@@ -1013,6 +1013,14 @@ char *options_values_json(const options_t *values, bool remote_only) {
       break;
     }
   }
+  /*
+   * The effective flip value is source-dependent: webcam input is mirrored
+   * automatically until the user explicitly chooses an orientation. Expose
+   * that provenance beside the effective value so browser clients can echo
+   * engine-owned changes without turning them into an explicit preference.
+   */
+  if (!remote_only)
+    yyjson_mut_obj_add_bool(doc, root, "flip_x_explicit", flags_explicit_state_was_set("flip-x"));
   char *json = yyjson_mut_write_opts(doc, 0, &runtime_json_allocator, NULL, NULL);
   yyjson_mut_doc_free(doc);
   return json;
