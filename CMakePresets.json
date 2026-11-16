@@ -88,7 +88,7 @@
       "name": "default-msvc",
       "displayName": "Default (MSVC)",
       "description": "Debug build using MSVC and the Visual C++ tools",
-      "inherits": "default",
+      "inherits": ["default", "base-vcpkg"],
       "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
       "binaryDir": "${sourceDir}/build/${presetName}"
@@ -114,7 +114,7 @@
       "name": "dev-msvc",
       "displayName": "Dev (MSVC)",
       "description": "Fast developer build using MSVC",
-      "inherits": "dev",
+      "inherits": ["dev", "base-vcpkg"],
       "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
       "binaryDir": "${sourceDir}/build/${presetName}"
@@ -140,7 +140,7 @@
       "name": "release-msvc",
       "displayName": "Release (MSVC)",
       "description": "Release build using MSVC",
-      "inherits": "release",
+      "inherits": ["release", "base-vcpkg"],
       "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
       "binaryDir": "${sourceDir}/build/${presetName}"
