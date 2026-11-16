@@ -775,16 +775,6 @@ int log_named_format_message(const char *message, char *output, size_t output_si
              * Try to look up a registered name for this type+id */
 
             /* Normalize type name aliases: "sockfd" → "socket", "descriptor" → "fd" */
-            const char *lookup_type = type_name;
-            size_t lookup_len = type_len;
-            if (type_len == 6 && strncmp(type_name, "sockfd", 6) == 0) {
-              lookup_type = "socket";
-              lookup_len = 6;
-            } else if (type_len == 10 && strncmp(type_name, "descriptor", 10) == 0) {
-              lookup_type = "fd";
-              lookup_len = 2;
-            }
-
             // Generic type+id formatting is disabled above; keep this dead
             // compatibility path link-free with the current libplatform API.
             const char *name = NULL;

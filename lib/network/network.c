@@ -133,7 +133,7 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, uint64_
     pfd.events = POLLOUT;
     pfd.revents = 0;
 
-    int64_t effective_timeout_ns = network_is_test_environment() ? (100LL * NS_PER_MS_INT) : (int64_t)timeout_ns;
+    int64_t effective_timeout_ns = network_is_test_environment() ? (int64_t)(100LL * NS_PER_MS_INT) : (int64_t)timeout_ns;
     int result = socket_poll(&pfd, 1, effective_timeout_ns);
     if (result <= 0) {
       if (result == 0) {
