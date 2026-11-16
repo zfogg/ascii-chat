@@ -613,7 +613,7 @@ static bool is_sensitive_system_path(const char *path) {
     }
     if (strncmp(path, base, base_len) == 0) {
       // Make sure it's followed by a path separator, not a partial match
-      if (path[base_len] == PATH_DELIM || path[base_len] == '/' || path[base_len] == '\\') {
+      if (path[base_len] == '/' || path[base_len] == '\\') {
         return true;
       }
     }
@@ -629,7 +629,7 @@ static bool is_sensitive_system_path(const char *path) {
       return true;
     }
     if (strncmp(path, base, base_len) == 0) {
-      if (path[base_len] == PATH_DELIM || path[base_len] == '/' || path[base_len] == '\\') {
+      if (path[base_len] == '/' || path[base_len] == '\\') {
         return true;
       }
     }
@@ -716,7 +716,7 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     // Check if input contains path separators or parent directory references
     bool is_simple_filename = true;
     for (const char *p = input; *p; p++) {
-      if (*p == PATH_DELIM || *p == '/' || *p == '\\') {
+      if (*p == '/' || *p == '\\') {
         is_simple_filename = false;
         break;
       }
