@@ -217,7 +217,7 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
 
             # Apply the compatibility patch only for clang-cl. Native MSVC
             # uses the upstream headers and compiler directly.
-            if(ASCIICHAT_COMPILER STREQUAL "LLVM")
+            if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND CMAKE_C_COMPILER MATCHES "clang-cl")
                 apply_patch(
                     TARGET_DIR "${BEARSSL_SOURCE_DIR}"
                     PATCH_FILE "${CMAKE_SOURCE_DIR}/cmake/deps/patches/bearssl-0-windows-clang.patch"
@@ -232,7 +232,7 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
                 message(FATAL_ERROR "nmake not found. Required for building BearSSL on Windows.")
             endif()
             set(NMAKE_EXECUTABLE "${ASCIICHAT_NMAKE_EXECUTABLE}")
-            if(ASCIICHAT_COMPILER STREQUAL "LLVM")
+            if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND CMAKE_C_COMPILER MATCHES "clang-cl")
                 if(NOT ASCIICHAT_CLANG_CL_EXECUTABLE)
                     message(FATAL_ERROR "clang-cl not found. Required for building BearSSL with LLVM on Windows.")
                 endif()

@@ -261,23 +261,26 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 
 /* Safe memory allocation with error checking - returns allocated pointer */
 #if defined(_MSC_VER) && defined(__cplusplus)
-#define SAFE_MALLOC(size, cast) \
-  ([&]() { \
-    cast _ptr = (cast)ALLOC_MALLOC(size); \
-    if (!_ptr) FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", (size_t)(size)); \
-    return _ptr; \
+#define SAFE_MALLOC(size, cast)                                                                                                                                                                        \
+  ([&]() {                                                                                                                                                                                             \
+    cast _ptr = (cast)ALLOC_MALLOC(size);                                                                                                                                                              \
+    if (!_ptr)                                                                                                                                                                                         \
+      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", (size_t)(size));                                                                                                                      \
+    return _ptr;                                                                                                                                                                                       \
   }())
-#define SAFE_CALLOC(count, size, cast) \
-  ([&]() { \
-    cast _ptr = (cast)ALLOC_CALLOC((count), (size)); \
-    if (!_ptr) FATAL(ERROR_MEMORY, "Memory allocation failed: %zu elements x %zu bytes", (size_t)(count), (size_t)(size)); \
-    return _ptr; \
+#define SAFE_CALLOC(count, size, cast)                                                                                                                                                                 \
+  ([&]() {                                                                                                                                                                                             \
+    cast _ptr = (cast)ALLOC_CALLOC((count), (size));                                                                                                                                                   \
+    if (!_ptr)                                                                                                                                                                                         \
+      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu elements x %zu bytes", (size_t)(count), (size_t)(size));                                                                                      \
+    return _ptr;                                                                                                                                                                                       \
   }())
-#define SAFE_REALLOC(ptr, size, cast) \
-  ([&]() { \
-    void *tmp_ptr = ALLOC_REALLOC((ptr), (size)); \
-    if (!tmp_ptr) FATAL(ERROR_MEMORY, "Memory reallocation failed: %zu bytes", (size_t)(size)); \
-    return (cast)(tmp_ptr); \
+#define SAFE_REALLOC(ptr, size, cast)                                                                                                                                                                  \
+  ([&]() {                                                                                                                                                                                             \
+    void *tmp_ptr = ALLOC_REALLOC((ptr), (size));                                                                                                                                                      \
+    if (!tmp_ptr)                                                                                                                                                                                      \
+      FATAL(ERROR_MEMORY, "Memory reallocation failed: %zu bytes", (size_t)(size));                                                                                                                    \
+    return (cast)(tmp_ptr);                                                                                                                                                                            \
   }())
 #elif defined(_MSC_VER)
 #define SAFE_MALLOC(size, cast) ((cast)ALLOC_MALLOC(size))

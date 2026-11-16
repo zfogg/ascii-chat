@@ -1,6 +1,10 @@
 # Native network I/O uses epoll, kqueue or IOCP through libuv. Browser transports
 # own their event loops and do not link this native dependency.
-if(NOT EMSCRIPTEN)
+function(configure_libuv)
+    if(EMSCRIPTEN)
+        return()
+    endif()
+
     if(WIN32)
         find_package(libuv CONFIG REQUIRED)
         if(ASCIICHAT_SHARED_DEPS AND TARGET libuv::uv)
@@ -8,7 +12,8 @@ if(NOT EMSCRIPTEN)
         elseif(TARGET libuv::uv_a)
             set(ASCIICHAT_LIBUV_TARGET libuv::uv_a)
         else()
-            set(ASCIICHAT_LIBUV_TARGET libuv::uv)
+            message(FATAL_ERROR
+                "libuv was found, but its CMake package exported neither libuv::uv nor libuv::uv_a")
         endif()
     elseif(USE_MUSL)
         include(FetchContent)
@@ -54,4 +59,13 @@ if(NOT EMSCRIPTEN)
             set(ASCIICHAT_LIBUV_TARGET asciichat-libuv-static)
         endif()
     endif()
-endif()
+
+    if(NOT ASCIICHAT_LIBUV_TARGET)
+        message(FATAL_ERROR "libuv configuration did not produce a link target")
+    endif()
+
+    set(ASCIICHAT_LIBUV_TARGET "${ASCIICHAT_LIBUV_TARGET}" PARENT_SCOPE)
+    set(ASCIICHAT_LIBUV_INCLUDE_DIRS "${ASCIICHAT_LIBUV_INCLUDE_DIRS}" PARENT_SCOPE)
+endfunction()
+
+configure_libuv()
