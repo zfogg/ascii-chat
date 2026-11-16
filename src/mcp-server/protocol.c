@@ -302,9 +302,9 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *s, yyjson_doc *message, void *connect
       break;
     }
   if (!j) {
-    char message[128];
-    safe_snprintf(message, sizeof(message), "Server busy; at most %u render%s may run concurrently", s->policy.max_jobs, s->policy.max_jobs == 1 ? "" : "s");
-    return mcp_error(id, -32000, message);
+    char busy_message[128];
+    safe_snprintf(busy_message, sizeof(busy_message), "Server busy; at most %u render%s may run concurrently", s->policy.max_jobs, s->policy.max_jobs == 1 ? "" : "s");
+    return mcp_error(id, -32000, busy_message);
   }
   yyjson_val *arguments = mcp_get(params, "arguments");
   yyjson_doc *empty = NULL;

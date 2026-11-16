@@ -179,7 +179,7 @@ typedef struct {
   int rendered_page;
   int rendered_cols;
   int rendered_rows;
-  char text[];
+  char text[1];
   /**
    * @brief This is the handoff point for notice snapshot. Callers fill `severity`, `unicode`, `color`, `started` before
    * passing it on; consumers read the values during the operation and return ownership only where the member contract

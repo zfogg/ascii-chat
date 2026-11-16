@@ -329,9 +329,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // snapshot_delay=0 means exit after first frame
         // snapshot_delay>0 means wait that many seconds before exiting
         // Exit is based on elapsed wall-clock time, not frame count
-        bool should_exit = (snapshot_delay == 0.0) || (elapsed_sec >= snapshot_delay);
+        bool snapshot_should_exit = (snapshot_delay == 0.0) || (elapsed_sec >= snapshot_delay);
 
-        if (should_exit) {
+        if (snapshot_should_exit) {
           log_debug("SNAPSHOT: RENDER_DONE at iteration %lu - elapsed=%.3f target=%.2f (setting snapshot_done=true)", frames_rendered_since_first, elapsed_sec, snapshot_delay);
           // We don't end frames with newlines so the next log would print on the same line as the frame's
           // last row without an \n here. We only need this \n in stdout when interactive,

@@ -72,7 +72,7 @@ typedef struct {
   screen_terminal_t *terminal;
   uint64_t frame_id, submitted_ns, acquisition_started_ns;
   uint64_t media_epoch;
-  _Alignas(max_align_t) char data[];
+  _Alignas(max_align_t) char data[1];
   /**
    */
 } screen_snapshot_t;

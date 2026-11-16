@@ -364,7 +364,7 @@ void terminal_screen_set_output_fd(int fd) {
 
 typedef struct {
   terminal_screen_config_t config;
-  unsigned char header[];
+  unsigned char header[1];
 } screen_snapshot_t;
 static void render_screen_snapshot(terminal_size_t size, const void *data) {
   (void)size;
