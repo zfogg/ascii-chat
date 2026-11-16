@@ -95,21 +95,20 @@ message(STATUS "Patched WebRTC AEC3 CMakeLists.txt - updated cmake version and C
 # target from the source layout in that case, then apply the same architecture
 # handling used for older snapshots.
 if(NOT EXISTS "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/CMakeLists.txt")
-    file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/CMakeLists.txt"
-"file(GLOB AUDIO_PROCESS_SOURCES CONFIGURE_DEPENDS
-    \"\\${CMAKE_CURRENT_SOURCE_DIR}/*.cc\"
-    \"\\${CMAKE_CURRENT_SOURCE_DIR}/*.c\"
-    \"\\${CMAKE_CURRENT_SOURCE_DIR}/utility/*.cc\"
-    \"\\${CMAKE_CURRENT_SOURCE_DIR}/resampler/*.cc\")
-add_library(AudioProcess STATIC \\${AUDIO_PROCESS_SOURCES})
+    file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/CMakeLists.txt" [=[
+file(GLOB AUDIO_PROCESS_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/utility/*.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resampler/*.cc")
 if(ASCIICHAT_TARGET_ARM64)
-    list(FILTER AUDIO_PROCESS_SOURCES EXCLUDE REGEX \"(ooura_fft_sse2|sinc_resampler_sse)\\.cc$")
-    set_property(TARGET AudioProcess PROPERTY SOURCES \\${AUDIO_PROCESS_SOURCES})
+    list(FILTER AUDIO_PROCESS_SOURCES EXCLUDE REGEX "(ooura_fft_sse2|sinc_resampler_sse)\\.cc$")
 endif()
+add_library(AudioProcess STATIC ${AUDIO_PROCESS_SOURCES})
 target_include_directories(AudioProcess PUBLIC
-    \\${CMAKE_CURRENT_SOURCE_DIR}
-    \\${CMAKE_CURRENT_SOURCE_DIR}/../)
-")
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../)
+]=])
     message(STATUS "Created missing WebRTC AEC3 audio_processing/CMakeLists.txt")
 endif()
 file(READ "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/CMakeLists.txt" AP_CMAKE_CONTENT)
