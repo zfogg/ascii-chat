@@ -30,10 +30,10 @@ static void teardown(void) {
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-#define INVALID(call)                                                                                                                                                                                  \
-  do {                                                                                                                                                                                                 \
-    REQUIRE(((call)) == (ERROR_INVALID_PARAM));                                                                                                                                                        \
-    CLEAR_ERRNO_ALL();                                                                                                                                                                                 \
+#define INVALID(call)                           \
+  do {                                          \
+    REQUIRE(((call)) == (ERROR_INVALID_PARAM)); \
+    CLEAR_ERRNO_ALL();                          \
   } while (0)
 TEST_CASE("session_api_boundaries/capture_null_queries_and_rejected_transmission_do_not_take_ownership", "[session_api_boundaries]") {
   REQUIRE((session_mirror_capture_create(NULL)) == nullptr);
