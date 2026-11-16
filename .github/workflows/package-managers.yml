@@ -59,6 +59,16 @@ jobs:
         with:
           ref: master
 
+      - name: Install gomplate
+        if: steps.selection.outputs.run == 'true'
+        run: |
+          curl --fail --location --retry 3 \
+            https://github.com/hairyhenderson/gomplate/releases/download/v4.3.0/gomplate_linux-amd64-slim \
+            --output "$RUNNER_TEMP/gomplate"
+          chmod +x "$RUNNER_TEMP/gomplate"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/gomplate" --version
+
       - name: Submit package-manager update
         if: steps.selection.outputs.run == 'true'
         env:
