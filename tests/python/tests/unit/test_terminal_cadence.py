@@ -1,8 +1,31 @@
 """Ensure the desktop integration test rejects frozen or intermittent output."""
 
 import pytest
+from PIL import Image, ImageDraw
 
-from ascii_chat_tests.terminal_cadence import cadence_metrics, probe_box, require_cadence
+from ascii_chat_tests.terminal_cadence import cadence_metrics, motion_point, probe_box, require_cadence
+
+
+@pytest.mark.unit
+def test_motion_probe_ignores_isolated_bright_cursor_pixel() -> None:
+    before = Image.new("RGB", (1920, 1200))
+    after = before.copy()
+    after.putpixel((0, 1199), (255, 255, 255))
+    ImageDraw.Draw(after).rectangle((960, 0, 1279, 199), fill=(0, 0, 3))
+    x, y = motion_point(before, after)
+    assert 960 <= x < 1280 and 0 <= y < 200
+
+
+@pytest.mark.unit
+def test_identical_frames_select_client_center() -> None:
+    image = Image.new("RGB", (1920, 1200), "blue")
+    assert motion_point(image, image) == (960, 600)
+
+
+@pytest.mark.unit
+def test_resize_during_motion_selection_is_rejected() -> None:
+    with pytest.raises(ValueError, match="dimensions changed"):
+        motion_point(Image.new("RGB", (640, 400)), Image.new("RGB", (1280, 800)))
 
 
 @pytest.mark.unit

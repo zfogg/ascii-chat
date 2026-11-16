@@ -87,30 +87,36 @@ uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samp
 
 uint32_t ascii_stabilizer_glyph(ascii_temporal_cell_t *cell, const uint8_t samples[16], const int16_t rgb_samples[3][16], bool colored, uint32_t candidate, uint64_t candidate_error,
                                 uint64_t previous_error, uint32_t previous_color, uint64_t elapsed_ns, uint32_t *color, uint32_t *background) {
-  ascii_temporal_cell_t old = *cell;
   unsigned motion = 0, color_motion = 0;
-  for (int i = 0; i < 16; ++i)
-    motion += (unsigned)abs((int)samples[i] - (int)old.samples[i]);
-  if (old.valid && colored) {
+  if (cell->valid)
+    for (int i = 0; i < 16; ++i)
+      motion += (unsigned)abs((int)samples[i] - (int)cell->samples[i]);
+  if (cell->valid && colored) {
     for (int channel = 0; channel < 3; ++channel)
       for (int i = 0; i < 16; ++i)
-        color_motion += (unsigned)abs(rgb_samples[channel][i] - (int)old.rgb_samples[channel][i]);
+        color_motion += (unsigned)abs(rgb_samples[channel][i] - (int)cell->rgb_samples[channel][i]);
     color_motion /= 48;
   }
-  uint64_t effective_elapsed = color_motion > ASCII_TEMPORAL_MOTION_LIMIT ? UINT64_MAX : elapsed_ns;
-  uint32_t selected = ascii_stabilizer_choose(cell, samples, candidate, candidate_error, previous_error, *color, effective_elapsed, color);
-  if (selected != candidate) {
-    *cell = old;
-    selected = ascii_stabilizer_choose(cell, samples, candidate, candidate_error, previous_error, previous_color, effective_elapsed, color);
-  }
-  if (old.valid && motion / 16 <= ASCII_TEMPORAL_MOTION_LIMIT && color_motion <= ASCII_TEMPORAL_MOTION_LIMIT && elapsed_ns <= ASCII_TEMPORAL_MAX_INTERVAL_NS) {
+  uint32_t selected = candidate;
+  if (cell->valid && motion / 16 <= ASCII_TEMPORAL_MOTION_LIMIT && color_motion <= ASCII_TEMPORAL_MOTION_LIMIT && elapsed_ns <= ASCII_TEMPORAL_MAX_INTERVAL_NS) {
+    uint64_t margin = candidate_error / 8 + 128;
+    if (previous_error != UINT64_MAX && (previous_error <= candidate_error || previous_error - candidate_error <= margin))
+      selected = cell->glyph;
+    // Glyph choice is independent of color. Select the matching foreground
+    // before blending, instead of updating and restoring the whole cell.
+    uint32_t foreground = selected != candidate ? previous_color : *color;
     unsigned weight = (unsigned)(elapsed_ns * 256 / (elapsed_ns + ASCII_TEMPORAL_COLOR_TIME_NS));
-    *background = ascii_stabilizer_blend_color(old.background, *background, weight);
+    *color = ascii_stabilizer_blend_color(cell->color, foreground, weight);
+    *background = ascii_stabilizer_blend_color(cell->background, *background, weight);
   }
+  memcpy(cell->samples, samples, sizeof(cell->samples));
   for (int channel = 0; channel < 3; ++channel)
     for (int i = 0; i < 16; ++i)
       cell->rgb_samples[channel][i] = (uint8_t)rgb_samples[channel][i];
   cell->background = *background;
+  cell->glyph = selected;
+  cell->color = *color;
+  cell->valid = true;
   return selected;
 }
 
