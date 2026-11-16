@@ -81,6 +81,10 @@ endif()
 set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared})
 set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared} CACHE BOOL
     "Build gotel and its public dependencies as shared libraries" FORCE)
+if(USE_MUSL)
+    set(GOTEL_WITH_GRPC ON CACHE BOOL
+        "Build gotel's in-tree nghttp2 target for musl release linking" FORCE)
+endif()
 
 # These dependency revisions are pinned in the vendored Gotel checkout.  Keep
 # FetchContent from running its git update step on every configure: updating a
