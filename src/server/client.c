@@ -1130,7 +1130,7 @@ static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_
   uint64_t decode_start = time_get_ns();
   int result;
   {
-    ASCII_OTEL_SCOPE(FFMPEG_PACKET_SEND);
+    ASCII_OTEL_SCOPE_AS(packet_scope, FFMPEG_PACKET_SEND);
     result = avcodec_send_packet(ctx, packet);
     if (result < 0 && result != AVERROR(EAGAIN) && result != AVERROR_EOF)
       ascii_otel_error("FFmpeg server packet send failed");
@@ -1162,7 +1162,7 @@ static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_
     av_image_fill_arrays(rgb->data, rgb->linesize, pixels, AV_PIX_FMT_RGB24, frame->width, frame->height, 32);
     int rows;
     {
-      ASCII_OTEL_SCOPE(FFMPEG_SCALE);
+      ASCII_OTEL_SCOPE_AS(scale_scope, FFMPEG_SCALE);
       rows = sws_scale(sws, (const uint8_t *const *)frame->data, frame->linesize, 0, frame->height, rgb->data, rgb->linesize);
       if (rows != frame->height)
         ascii_otel_error("FFmpeg server frame scale failed");
