@@ -155,7 +155,8 @@
         "CMAKE_C_COMPILER": "cl",
         "CMAKE_CXX_COMPILER": "cl",
         "ASCIICHAT_SHARED_DEPS": "OFF",
-        "ASCIICHAT_ENFORCE_STATIC_RELEASE": "ON"
+        "ASCIICHAT_ENFORCE_STATIC_RELEASE": "ON",
+        "USE_MUSL": "OFF"
       },
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
       "binaryDir": "${sourceDir}/build/${presetName}"
