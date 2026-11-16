@@ -82,7 +82,7 @@ submit_pr() {
     return 0
   fi
   git -C "$WORK_DIR/repo" commit -m "$title"
-  git -C "$WORK_DIR/repo" push --force origin "$branch"
+  git -C "$WORK_DIR/repo" push origin "$branch"
   local head="$(cut -d/ -f1 <<< "$fork"):$branch"
   local pr="$(gh pr list --repo "$upstream" --head "$head" --state open --json number --jq '.[0].number // empty')"
   if [[ -n "$pr" ]]; then
@@ -250,7 +250,7 @@ EOF
     git -C "$WORK_DIR/repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
     git -C "$WORK_DIR/repo" add "manifests/a/ascii-chat/$VERSION"
     git -C "$WORK_DIR/repo" commit -m "New version: ascii-chat version $VERSION"
-    git -C "$WORK_DIR/repo" push --force origin "ascii-chat-$VERSION"
+    git -C "$WORK_DIR/repo" push origin "ascii-chat-$VERSION"
     head="$(cut -d/ -f1 <<< "$WINGET_FORK_REPOSITORY"):ascii-chat-$VERSION"
     pr="$(gh pr list --repo microsoft/winget-pkgs --head "$head" --state open --json number --jq '.[0].number // empty')"
     title="New version: ascii-chat version $VERSION"
