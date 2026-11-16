@@ -12,6 +12,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+static inline bool app_callback_macro_continue(void) { return false; }
+
 typedef void (*app_debug_write_fn)(const char *text, void *context);
 
 typedef struct {
@@ -60,7 +62,7 @@ const app_callbacks_t *app_callbacks_get(void);
     if (__cb && __cb->callback_name) {                 \
       __cb->callback_name();                           \
     }                                                  \
-  } while (0)
+  } while (app_callback_macro_continue())
 
 /**
  * Call a void(void) callback and return bool
@@ -92,6 +94,6 @@ static inline uint64_t app_callback_platform_get_monotonic_time_us(void) {
     if (__cb && __cb->callback_name) {                 \
       __cb->callback_name(value);                      \
     }                                                  \
-  } while (0)
+  } while (app_callback_macro_continue())
 
 #endif

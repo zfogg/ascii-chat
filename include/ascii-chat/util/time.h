@@ -352,7 +352,7 @@ bool timer_is_initialized(void);
       snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), "%s_tid%llu", _timer_name_buf, (unsigned long long)thread_current_id()); \
       (void)timer_start(_timer_name_with_tid);                                                                                              \
     }                                                                                                                                       \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * @brief Start a timer without thread ID (for cross-thread timers)
@@ -373,7 +373,7 @@ bool timer_is_initialized(void);
       snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__); \
       (void)timer_start(_timer_name_buf);                                          \
     }                                                                              \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * @brief Stop a cross-thread timer and return elapsed time
@@ -620,7 +620,7 @@ int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t 
       time_pretty((uint64_t)_elapsed_ns, -1, _duration_str, sizeof(_duration_str));           \
       log_##log_level(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                        \
     }                                                                                         \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * @brief Stop a timer and log the result with rate limiting
@@ -662,7 +662,7 @@ int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t 
         }                                                                                        \
       }                                                                                          \
     }                                                                                            \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 // ============================================================================
 // Adaptive Sleep System

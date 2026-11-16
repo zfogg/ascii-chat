@@ -44,14 +44,14 @@ typedef enum remote_log_direction { REMOTE_LOG_DIRECTION_UNKNOWN = 0, REMOTE_LOG
     if ((client)->security_ready && (client)->transport) {                                                                   \
       log_net_message((client)->transport, level, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, NULL, 0, NULL, fmt, ##__VA_ARGS__); \
     }                                                                                                                        \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #else
 #define LOG_CLIENT_IMPL(client, level, fmt, ...)                                                                                            \
   do {                                                                                                                                      \
     if ((client)->security_ready && (client)->transport) {                                                                                  \
       log_net_message((client)->transport, level, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__); \
     }                                                                                                                                       \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #endif
 
 /** @brief Server sends DEBUG log message to client */

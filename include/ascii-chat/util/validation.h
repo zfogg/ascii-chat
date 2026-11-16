@@ -51,7 +51,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
       disconnect_client_for_bad_data((client), "%s payload missing", (packet_name)); \
       return;                                                                        \
     }                                                                                \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * Validate that payload size is at least the minimum required.
@@ -63,7 +63,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
       disconnect_client_for_bad_data((client), "%s payload too small (len=%zu, min=%zu)", (packet_name), (len), (min_size)); \
       return;                                                                                                                \
     }                                                                                                                        \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * Validate that payload size is exactly the expected size.
@@ -75,7 +75,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
       disconnect_client_for_bad_data((client), "%s payload size mismatch (len=%zu, expected=%zu)", (packet_name), (len), (expected_size)); \
       return;                                                                                                                              \
     }                                                                                                                                      \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * Validate that audio stream is enabled for this client.
@@ -87,7 +87,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
       disconnect_client_for_bad_data((client), "%s received before audio stream enabled", (packet_name)); \
       return;                                                                                             \
     }                                                                                                     \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * Validate that audio sample count is within acceptable bounds.
@@ -99,7 +99,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
       disconnect_client_for_bad_data((client), "%s invalid sample count: %d (max %d)", (packet_name), (num_samples), (max_samples)); \
       return;                                                                                                                        \
     }                                                                                                                                \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * Validate that audio sample alignment is correct (must be multiple of sample size).
@@ -111,7 +111,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
       disconnect_client_for_bad_data((client), "%s payload not aligned (len=%zu, sample_size=%zu)", (packet_name), (len), (sample_size)); \
       return;                                                                                                                             \
     }                                                                                                                                     \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * Validate that a required resource/buffer is initialized.
@@ -123,7 +123,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
       disconnect_client_for_bad_data((client), "%s not initialized", (resource_name)); \
       return;                                                                          \
     }                                                                                  \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * Validate packet payload size and presence.
@@ -139,7 +139,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
       disconnect_client_for_bad_data((client), packet_name " payload size %zu (expected %zu)", (len), (expected_size)); \
       return;                                                                                                           \
     }                                                                                                                   \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * Validate that a numeric value is non-zero (for dimensions, counts, etc).
@@ -151,7 +151,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
       disconnect_client_for_bad_data((client), "%s %s cannot be zero", (packet_name), (value_name)); \
       return;                                                                                        \
     }                                                                                                \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * Validate that a numeric value is within a specified range (inclusive).
@@ -163,7 +163,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
       disconnect_client_for_bad_data((client), "%s %s out of range: %u (valid: %u-%u)", (packet_name), (value_name), (unsigned)(value), (unsigned)(min_val), (unsigned)(max_val)); \
       return;                                                                                                                                                                      \
     }                                                                                                                                                                              \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * Validate that at least one capability flag is set.
@@ -175,7 +175,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
       disconnect_client_for_bad_data((client), "%s no valid capability flags set (flags=0x%x, valid=0x%x)", (packet_name), (unsigned)(flags), (unsigned)(valid_mask)); \
       return;                                                                                                                                                          \
     }                                                                                                                                                                  \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * Validate that only known/valid flags are set.
@@ -187,7 +187,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
       disconnect_client_for_bad_data((client), "%s unknown flags set (flags=0x%x, valid=0x%x)", (packet_name), (unsigned)(flags), (unsigned)(valid_mask)); \
       return;                                                                                                                                              \
     }                                                                                                                                                      \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * Validate packet payload pointer is not NULL.

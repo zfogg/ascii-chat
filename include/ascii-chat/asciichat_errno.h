@@ -226,7 +226,7 @@ void asciichat_print_error_context(const asciichat_error_context_t *context);
       log_error("%s", (message));                       \
       errno_print_chain(_ctx.thread_id, _ctx.error_id); \
     }                                                   \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #define LOG_ERRNO_IF_CODE(error_code, message)           \
   do {                                                   \
     asciichat_error_context_t _ctx;                      \
@@ -234,14 +234,14 @@ void asciichat_print_error_context(const asciichat_error_context_t *context);
       log_error("%s", (message));                        \
       errno_print_chain(_ctx.thread_id, _ctx.error_id);  \
     }                                                    \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #define PRINT_ERRNO_IF_ERROR() LOG_ERRNO_IF_SET("Pending error")
 #ifndef NDEBUG
 #define ASSERT_NO_ERRNO_SINCE(scope)                                             \
   do {                                                                           \
     if (!errno_scope_is_clean(scope))                                            \
       FATAL(ERROR_INVALID_STATE, "Successful operation left unresolved errors"); \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #define ASSERT_NO_ERRNO()                                         \
   do {                                                            \
     asciichat_error_context_t _ctx;                               \
@@ -249,7 +249,7 @@ void asciichat_print_error_context(const asciichat_error_context_t *context);
       asciichat_print_error_context(&_ctx);                       \
       FATAL(_ctx.code, "Unresolved error at operation boundary"); \
     }                                                             \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #else
 #define ASSERT_NO_ERRNO_SINCE(scope) ((void)(scope))
 #define ASSERT_NO_ERRNO() ((void)0)

@@ -561,7 +561,7 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
   do {                                     \
     if ((bitmask) & LOG_BIT(level))        \
       log_as(level, __VA_ARGS__);          \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * @brief Log a DEV message (most verbose, development only)
@@ -716,7 +716,7 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
         log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                 \
       }                                                                              \
     }                                                                                \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #else
 #define log_every(log_level, interval_us, fmt, ...)                                  \
   do {                                                                               \
@@ -728,7 +728,7 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
         log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);  \
       }                                                                              \
     }                                                                                \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #endif
 
 /**
@@ -784,7 +784,7 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
     if (_log_nth_new % (uint64_t)(n) == 0) {                               \
       log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);         \
     }                                                                      \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #else
 #define log_nth(log_level, n, fmt, ...)                                           \
   do {                                                                            \
@@ -795,7 +795,7 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
     if (_log_nth_new % (uint64_t)(n) == 0) {                                      \
       log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__); \
     }                                                                             \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #endif
 
 /**
@@ -824,7 +824,7 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
       atomic_store_u64(&_log_once_counter, 1);                              \
       log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);          \
     }                                                                       \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #else
 #define log_once(log_level, fmt, ...)                                             \
   do {                                                                            \
@@ -834,7 +834,7 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
       atomic_store_u64(&_log_once_counter, 1);                                    \
       log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__); \
     }                                                                             \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #endif
 
 /**
