@@ -9,6 +9,7 @@ VERSION="${2:?usage: $0 <scoop|chocolatey|npackd> <version> [repository]}"
 REPOSITORY="${3:-zfogg/ascii-chat}"
 TOKEN="${PACKAGE_MANAGER_GITHUB_TOKEN:-${WINGET_GITHUB_TOKEN:-}}"
 SCOOP_REPOSITORY="${SCOOP_REPOSITORY:-zfogg/ascii-chat-scoop}"
+WINGET_FORK_REPOSITORY="${WINGET_FORK_REPOSITORY:-zfogg/winget-pkgs}"
 CHOCOLATEY_FORK="${CHOCOLATEY_FORK_REPOSITORY:-zfogg/chocolatey-packages}"
 N_PACKD_REPOSITORY="${NPACKD_REPOSITORY:-zfogg/npackd-repository}"
 
@@ -72,7 +73,65 @@ submit_pr() {
 mkdir -p "$WORK_DIR/generated"
 case "$TARGET" in
   winget)
-    PACKAGE_MANAGER_GITHUB_TOKEN="$TOKEN" bash scripts/winget/submit-manifest.sh "$VERSION" "$REPOSITORY"
+    mkdir -p "$WORK_DIR/generated/manifests/a/ascii-chat/$VERSION"
+    cat > "$WORK_DIR/generated/manifests/a/ascii-chat/$VERSION/ascii-chat.yaml" <<EOF
+PackageIdentifier: ascii-chat
+PackageVersion: $VERSION
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.10.0
+EOF
+    cat > "$WORK_DIR/generated/manifests/a/ascii-chat/$VERSION/ascii-chat.locale.en-US.yaml" <<EOF
+PackageIdentifier: ascii-chat
+PackageVersion: $VERSION
+PackageLocale: en-US
+Publisher: Zachary Fogg
+PublisherUrl: https://github.com/zfogg
+PublisherSupportUrl: https://github.com/zfogg/ascii-chat/issues
+PackageName: ascii-chat
+PackageUrl: https://ascii-chat.com
+License: MIT
+LicenseUrl: https://github.com/zfogg/ascii-chat/blob/master/LICENSE.txt
+ShortDescription: Video chat in your terminal
+Description: $description
+Moniker: ascii-chat
+Tags:
+- video
+- chat
+- terminal
+- ascii
+ManifestType: defaultLocale
+ManifestVersion: 1.10.0
+EOF
+    cat > "$WORK_DIR/generated/manifests/a/ascii-chat/$VERSION/ascii-chat.installer.yaml" <<EOF
+PackageIdentifier: ascii-chat
+PackageVersion: $VERSION
+Installers:
+- Architecture: x64
+  InstallerType: wix
+  InstallerUrl: $MSI_URL
+  InstallerSha256: $MSI_SHA256
+ManifestType: installer
+ManifestVersion: 1.10.0
+EOF
+    git clone --depth 1 "https://x-access-token:$TOKEN@github.com/$WINGET_FORK_REPOSITORY.git" "$WORK_DIR/repo"
+    git -C "$WORK_DIR/repo" checkout -B "ascii-chat-$VERSION"
+    rm -rf "$WORK_DIR/repo/manifests/a/ascii-chat/$VERSION"
+    mkdir -p "$WORK_DIR/repo/manifests/a/ascii-chat"
+    cp -R "$WORK_DIR/generated/manifests/a/ascii-chat/$VERSION" "$WORK_DIR/repo/manifests/a/ascii-chat/"
+    git -C "$WORK_DIR/repo" config user.name "github-actions[bot]"
+    git -C "$WORK_DIR/repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+    git -C "$WORK_DIR/repo" add "manifests/a/ascii-chat/$VERSION"
+    git -C "$WORK_DIR/repo" commit -m "New version: ascii-chat version $VERSION"
+    git -C "$WORK_DIR/repo" push --force origin "ascii-chat-$VERSION"
+    head="$(cut -d/ -f1 <<< "$WINGET_FORK_REPOSITORY"):ascii-chat-$VERSION"
+    pr="$(gh pr list --repo microsoft/winget-pkgs --head "$head" --state open --json number --jq '.[0].number // empty')"
+    title="New version: ascii-chat version $VERSION"
+    if [[ -n "$pr" ]]; then
+      gh pr edit "$pr" --repo microsoft/winget-pkgs --title "$title" --body "Automated update for ascii-chat $VERSION."
+    else
+      gh pr create --repo microsoft/winget-pkgs --head "$head" --base master --title "$title" --body "Automated update for ascii-chat $VERSION."
+    fi
     ;;
   scoop)
     mkdir -p "$WORK_DIR/generated/bucket"
