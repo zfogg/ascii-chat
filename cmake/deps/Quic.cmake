@@ -163,7 +163,7 @@ function(asciichat_configure_quic)
         set(_quic_crypto_file "${OPENSSL_CRYPTO_LIBRARY}")
     endif()
     if(DEFINED OPENSSL_LIBRARIES AND NOT "${OPENSSL_LIBRARIES}" STREQUAL "")
-        if(USE_MUSL AND NOT WIN32)
+        if(NOT WIN32)
             # The parent project may use target names (for example
             # asciichat-zlib) in OPENSSL_LIBRARIES. The isolated ngtcp2
             # configure cannot resolve parent targets, so pass concrete
