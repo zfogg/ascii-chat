@@ -18,7 +18,7 @@ function(configure_msvc_pre_project)
     set(RECAST_BACKEND PYTHON CACHE STRING "Recast transformer backend" FORCE)
     set(RECAST_TOOL_ROOT "${CMAKE_SOURCE_DIR}/deps/recast" CACHE PATH "Recast source tree" FORCE)
     set(RECAST_PYTHON_COMMAND "${_msvc_python}" CACHE FILEPATH "Recast Python interpreter" FORCE)
-    set(DEFER_LIBCLANG_PATH "${_msvc_libclang}" CACHE FILEPATH "libclang shared library" FORCE)
+    set(RECAST_LIBCLANG_PATH "${_msvc_libclang}" CACHE FILEPATH "libclang shared library" FORCE)
     # Native cl.exe rejects the generated PCH path form used by the project's
     # cross-compiler PCH helper. MSVC builds remain fully supported without it.
     set(ASCIICHAT_USE_PCH OFF CACHE BOOL "Use precompiled headers" FORCE)
