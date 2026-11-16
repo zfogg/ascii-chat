@@ -201,6 +201,25 @@ if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
         set(OPENSSL_CRYPTO_LIBRARY "${ASCIICHAT_SYSTEM_OPENSSL_CRYPTO_LIBRARY}" CACHE FILEPATH
             "OpenSSL Crypto library discovered through pkg-config" FORCE)
     endif()
+    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
+        if(NOT TARGET OpenSSL::Crypto)
+            add_library(OpenSSL::Crypto UNKNOWN IMPORTED GLOBAL)
+            set_target_properties(OpenSSL::Crypto PROPERTIES
+                IMPORTED_LOCATION "${OPENSSL_CRYPTO_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}")
+        endif()
+        if(NOT TARGET OpenSSL::SSL)
+            add_library(OpenSSL::SSL UNKNOWN IMPORTED GLOBAL)
+            set_target_properties(OpenSSL::SSL PROPERTIES
+                IMPORTED_LOCATION "${OPENSSL_SSL_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}"
+                INTERFACE_LINK_LIBRARIES OpenSSL::Crypto)
+        endif()
+        set(OPENSSL_VERSION "${ASCIICHAT_SYSTEM_OPENSSL_VERSION}")
+        set(OPENSSL_FOUND TRUE)
+        message(STATUS "Using system OpenSSL ${OPENSSL_VERSION} (pkg-config)")
+        return()
+    endif()
     if(ASCIICHAT_SYSTEM_OPENSSL_FOUND AND ASCIICHAT_SYSTEM_OPENSSL_PREFIX)
         find_package(OpenSSL 3.0 QUIET COMPONENTS SSL Crypto
             HINTS "${ASCIICHAT_SYSTEM_OPENSSL_PREFIX}" /usr)
