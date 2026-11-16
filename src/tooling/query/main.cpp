@@ -15,6 +15,7 @@
 #include "http_server.h"
 #include "json.h"
 #include "lldb_controller.h"
+#include <libplatform/process.h>
 #include <ascii-chat/util/parsing.h>
 
 #include <csignal>
@@ -23,12 +24,7 @@
 #include <cstring>
 #include <string>
 #include <climits>
-
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
+#include <vector>
 
 namespace {
 
@@ -36,6 +32,23 @@ namespace {
 ascii_query::LLDBController *g_controller = nullptr;
 ascii_query::HttpServer *g_server = nullptr;
 volatile sig_atomic_t g_shutdown_requested = 0;
+
+struct ProcessEntry {
+  pid_t pid;
+  std::string name;
+};
+
+int collectAsciiChatProcess(const platform_process_info_t *process, void *context) {
+  auto *result = static_cast<std::vector<ProcessEntry> *>(context);
+  result->push_back({process->pid, process->name});
+  return 0;
+}
+
+std::vector<ProcessEntry> listAsciiChatProcesses() {
+  std::vector<ProcessEntry> result;
+  if (platform_process_list("ascii-chat", collectAsciiChatProcess, &result) != 0) return {};
+  return result;
+}
 
 void signalHandler(int sig) {
   (void)sig;
@@ -50,6 +63,8 @@ void printUsage(const char *program) {
   fprintf(stderr, "Options:\n");
   fprintf(stderr, "  --attach <pid>         Attach to process by PID\n");
   fprintf(stderr, "  --attach-name <name>   Attach to process by name\n");
+  fprintf(stderr, "  --attach-ascii-chat    Attach to the first running ascii-chat process\n");
+  fprintf(stderr, "  --list-processes       List running processes with ascii-chat in the name\n");
   fprintf(stderr, "  --wait                 Wait for process to start (with --attach-name)\n");
   fprintf(stderr, "  --port <port>          HTTP server port (default: 9999)\n");
   fprintf(stderr, "  --help                 Show this help\n");
@@ -394,6 +409,8 @@ int main(int argc, char *argv[]) {
   pid_t attach_pid = 0;
   std::string attach_name;
   bool wait_for = false;
+  bool attach_ascii_chat = false;
+  bool list_processes = false;
   uint16_t port = 9999;
 
   for (int i = 1; i < argc; i++) {
@@ -410,6 +427,10 @@ int main(int argc, char *argv[]) {
       attach_pid = static_cast<pid_t>(pid_val);
     } else if (strcmp(argv[i], "--attach-name") == 0 && i + 1 < argc) {
       attach_name = argv[++i];
+    } else if (strcmp(argv[i], "--attach-ascii-chat") == 0) {
+      attach_ascii_chat = true;
+    } else if (strcmp(argv[i], "--list-processes") == 0 || strcmp(argv[i], "--list") == 0) {
+      list_processes = true;
     } else if (strcmp(argv[i], "--wait") == 0) {
       wait_for = true;
     } else if (strcmp(argv[i], "--port") == 0 && i + 1 < argc) {
@@ -423,6 +444,22 @@ int main(int argc, char *argv[]) {
       printUsage(argv[0]);
       return 1;
     }
+  }
+
+  if (list_processes) {
+    for (const auto &process : listAsciiChatProcesses()) {
+      fprintf(stdout, "%llu\t%s\n", static_cast<unsigned long long>(process.pid), process.name.c_str());
+    }
+    return 0;
+  }
+
+  if (attach_ascii_chat) {
+    const auto processes = listAsciiChatProcesses();
+    if (processes.empty()) {
+      fprintf(stderr, "Error: No running process with 'ascii-chat' in its name\n");
+      return 1;
+    }
+    attach_pid = processes.front().pid;
   }
 
   // Validate arguments

@@ -75,6 +75,14 @@ function(asciichat_build_libwebsockets)
     set(LWS_WITHOUT_EXTENSIONS OFF)
     set(LWS_WITH_ZLIB ON)
     set(LWS_WITH_BUNDLED_ZLIB OFF)
+    # libwebsockets' CMake uses the legacy singular variable when it links
+    # its target.  pkg-config may populate only ZLIB_LIBRARIES, while a prior
+    # FindZLIB probe can leave ZLIB_LIBRARY cached as NOTFOUND.
+    if(DEFINED ZLIB_LIBRARIES AND NOT ZLIB_LIBRARIES STREQUAL "")
+        if(NOT DEFINED ZLIB_LIBRARY OR ZLIB_LIBRARY MATCHES "-NOTFOUND$")
+            set(ZLIB_LIBRARY "${ZLIB_LIBRARIES}" CACHE STRING "zlib libraries" FORCE)
+        endif()
+    endif()
     set(LWS_WITH_SOCKS5 OFF)
     set(LWS_WITHOUT_DAEMONIZE ON)
     set(LWS_IPV6 ON)

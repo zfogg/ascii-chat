@@ -8,9 +8,9 @@
  * @page topic_defer Defer Statements
  * @ingroup defer
  *
- * Include `<defer.h>` and place `defer(action);` in a
+ * Include `<recast/DEFER.h>` and place `DEFER(action);` in a
  * compound statement. The action runs when execution leaves that block. A
- * block action can be written as `defer({ statements; });`.
+ * block action can be written as `DEFER({ statements; });`.
  * C++11 and later, including Objective-C++, use a native scope guard rather than build-time rewriting.
  * Its cleanup runs on exception unwinding as well as normal block exit;
  * cleanup must not throw because the guard destructor is `noexcept`.
@@ -26,7 +26,7 @@
  * @code{.c}
  * FILE *file = fopen(path, "r");
  * if (!file) return ERROR;
- * defer(fclose(file));
+ * DEFER(fclose(file));
  * // Use file; fclose runs when this block exits.
  * @endcode
  *
@@ -42,7 +42,7 @@
  * if (!populate(items, count)) return ERROR;
  * @endcode
  *
- * In C, ordinary macros may wrap `defer()` through multiple levels. The transformer
+ * In C, ordinary macros may wrap `DEFER()` through multiple levels. The transformer
  * expands those wrappers before analyzing cleanup. Wrapper definitions that
  * use stringification, token pasting, `__VA_OPT__`, `_Pragma`, or `__COUNTER__`
  * are rejected, as are multiline invocations and arguments containing non-defer
@@ -59,17 +59,17 @@
  * Nonlocal transfers such as longjmp and process
  * termination do not run deferred actions.
  *
- * `defer_named(handle, action);` registers a cancellable action, and
- * `defer_cancel(handle);` cancels it. The handle is a lexical name, not a C
+ * `DEFER_NAMED(handle, action);` registers a cancellable action, and
+ * `DEFER_CANCEL(handle);` cancels it. The handle is a lexical name, not a C
  * variable: it cannot be copied, stored, or passed to another function. It is
  * visible after registration in its block and nested blocks. Names of active
  * handles must be unique. Canceling an already canceled handle is harmless;
  * leaving and re-entering a loop body registers a fresh action.
  *
  * @code{.c}
- * defer_named(release_buffer, free(buffer));
+ * DEFER_NAMED(release_buffer, free(buffer));
  * if (hand_off(buffer) == SUCCESS)
- *   defer_cancel(release_buffer);
+ *   DEFER_CANCEL(release_buffer);
  * @endcode
  *
  * Defer is supported in project `.c` and `.m` files and supported inline
@@ -90,7 +90,7 @@
  *
  * CMake uses the standalone C++ transformer by default. It writes generated
  * sources below `build/defer_transformed/`; original source files are unchanged.
- * The `deps/defer` submodule supplies the CMake integration. CMake downloads a
+ * The `deps/recast` submodule supplies the CMake integration. CMake downloads a
  * release for the build host and verifies its checksum; `DEFER_NATIVE_BINARY`
  * can point to an existing host executable instead. The native build does not
  * require Python or LLVM development libraries for defer. The tool reads each

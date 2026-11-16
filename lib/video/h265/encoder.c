@@ -1,4 +1,4 @@
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 /**
@@ -107,7 +107,7 @@ h265_encoder_t *video_encoder_create(video_codec_t codec_type, uint16_t initial_
     return NULL;
   }
 
-  defer_named(cleanup, h265_encoder_destroy(enc));
+  DEFER_NAMED(cleanup, h265_encoder_destroy(enc));
 
   const AVCodec *codec = video_encoder_find_codec(codec_type);
   if (!codec) {
@@ -171,7 +171,7 @@ h265_encoder_t *video_encoder_create(video_codec_t codec_type, uint16_t initial_
   // Register encoder for debugging
   NAMED_REGISTER_H265_ENCODER(enc, "h265_encoder", NULL);
 
-  defer_cancel(cleanup);
+  DEFER_CANCEL(cleanup);
   return enc;
 }
 
