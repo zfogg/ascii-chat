@@ -72,8 +72,7 @@ const char *ui_status_log_controls(void);
  * @param[out] out_status Output status structure
  * @return ASCIICHAT_OK on success
  */
-asciichat_error_t ui_status_gather(network_server_t *server, const char *session_string, const char *ipv4_address,
-                                   const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
+asciichat_error_t ui_status_gather(network_server_t *server, const char *session_string, const char *ipv4_address, const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
                                    bool session_is_mdns_only, ui_status_t *out_status);
 
 /**
@@ -114,8 +113,7 @@ bool ui_status_display_interactive(const ui_status_t *status);
  * @param session_is_mdns_only Whether session is mDNS-only or ACDS
  * @param[in,out] last_update_ns Last update time in microseconds (from platform_get_monotonic_time_us)
  */
-void ui_status_update(network_server_t *server, const char *session_string, const char *ipv4_address,
-                      const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
+void ui_status_update(network_server_t *server, const char *session_string, const char *ipv4_address, const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
                       bool session_is_mdns_only, uint64_t *last_update_ns);
 
 /**

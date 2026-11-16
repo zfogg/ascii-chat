@@ -47,8 +47,7 @@ static image_new_test_case_t image_new_cases[] = {
 };
 
 ParameterizedTestParameters(image, image_new_dimensions) {
-  return cr_make_param_array(image_new_test_case_t, image_new_cases,
-                             sizeof(image_new_cases) / sizeof(image_new_cases[0]));
+  return cr_make_param_array(image_new_test_case_t, image_new_cases, sizeof(image_new_cases) / sizeof(image_new_cases[0]));
 }
 
 ParameterizedTest(image_new_test_case_t *tc, image, image_new_dimensions) {
@@ -400,14 +399,12 @@ typedef struct {
 } rgb_color_test_case_t;
 
 static rgb_color_test_case_t rgb_color_cases[] = {
-    {255, 0, 0, "Red (255, 0, 0)"},           {0, 255, 0, "Green (0, 255, 0)"},
-    {0, 0, 255, "Blue (0, 0, 255)"},          {0, 0, 0, "Black (0, 0, 0)"},
-    {255, 255, 255, "White (255, 255, 255)"}, {255, 128, 64, "Mid-range orange (255, 128, 64)"},
+    {255, 0, 0, "Red (255, 0, 0)"}, {0, 255, 0, "Green (0, 255, 0)"},         {0, 0, 255, "Blue (0, 0, 255)"},
+    {0, 0, 0, "Black (0, 0, 0)"},   {255, 255, 255, "White (255, 255, 255)"}, {255, 128, 64, "Mid-range orange (255, 128, 64)"},
 };
 
 ParameterizedTestParameters(image, rgb_to_ansi_fg_variations) {
-  return cr_make_param_array(rgb_color_test_case_t, rgb_color_cases,
-                             sizeof(rgb_color_cases) / sizeof(rgb_color_cases[0]));
+  return cr_make_param_array(rgb_color_test_case_t, rgb_color_cases, sizeof(rgb_color_cases) / sizeof(rgb_color_cases[0]));
 }
 
 ParameterizedTest(rgb_color_test_case_t *tc, image, rgb_to_ansi_fg_variations) {
@@ -418,8 +415,7 @@ ParameterizedTest(rgb_color_test_case_t *tc, image, rgb_to_ansi_fg_variations) {
 }
 
 ParameterizedTestParameters(image, rgb_to_ansi_bg_variations) {
-  return cr_make_param_array(rgb_color_test_case_t, rgb_color_cases,
-                             sizeof(rgb_color_cases) / sizeof(rgb_color_cases[0]));
+  return cr_make_param_array(rgb_color_test_case_t, rgb_color_cases, sizeof(rgb_color_cases) / sizeof(rgb_color_cases[0]));
 }
 
 ParameterizedTest(rgb_color_test_case_t *tc, image, rgb_to_ansi_bg_variations) {
@@ -430,8 +426,7 @@ ParameterizedTest(rgb_color_test_case_t *tc, image, rgb_to_ansi_bg_variations) {
 }
 
 ParameterizedTestParameters(image, rgb_to_ansi_8bit_variations) {
-  return cr_make_param_array(rgb_color_test_case_t, rgb_color_cases,
-                             sizeof(rgb_color_cases) / sizeof(rgb_color_cases[0]));
+  return cr_make_param_array(rgb_color_test_case_t, rgb_color_cases, sizeof(rgb_color_cases) / sizeof(rgb_color_cases[0]));
 }
 
 ParameterizedTest(rgb_color_test_case_t *tc, image, rgb_to_ansi_8bit_variations) {
@@ -468,8 +463,7 @@ static precalc_palette_test_case_t precalc_palette_cases[] = {
 };
 
 ParameterizedTestParameters(image, precalc_rgb_palettes_variations) {
-  return cr_make_param_array(precalc_palette_test_case_t, precalc_palette_cases,
-                             sizeof(precalc_palette_cases) / sizeof(precalc_palette_cases[0]));
+  return cr_make_param_array(precalc_palette_test_case_t, precalc_palette_cases, sizeof(precalc_palette_cases) / sizeof(precalc_palette_cases[0]));
 }
 
 ParameterizedTest(precalc_palette_test_case_t *tc, image, precalc_rgb_palettes_variations) {

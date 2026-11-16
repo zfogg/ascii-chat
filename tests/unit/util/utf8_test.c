@@ -106,17 +106,7 @@ Test(utf8, repeat_sequences_count_cells_without_splitting) {
 }
 
 Test(utf8, invalid_scalar_encodings_and_truncated_strings_are_rejected) {
-  const char *invalid[] = {"\xc0\x80",
-                           "\xc1\xbf",
-                           "\xe0\x80\xaf",
-                           "\xed\xa0\x80",
-                           "\xf0\x80\x80\xaf",
-                           "\xf4\x90\x80\x80",
-                           "\xf5\x80\x80\x80",
-                           "\xc3",
-                           "\xe2\x82",
-                           "\xf0\x9f\x98",
-                           "\x80"};
+  const char *invalid[] = {"\xc0\x80", "\xc1\xbf", "\xe0\x80\xaf", "\xed\xa0\x80", "\xf0\x80\x80\xaf", "\xf4\x90\x80\x80", "\xf5\x80\x80\x80", "\xc3", "\xe2\x82", "\xf0\x9f\x98", "\x80"};
   for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
     uint32_t cp = 42;
     cr_assert_eq(utf8_decode((const uint8_t *)invalid[i], &cp), -1);

@@ -2,7 +2,7 @@
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
@@ -83,25 +83,25 @@ static void *produce_errors(void *opaque) {
   return NULL;
 }
 
-#define CHECK(expression)                                                                                                                                                                              \
-  do {                                                                                                                                                                                                 \
-    if (!(expression)) {                                                                                                                                                                               \
-      fprintf(stderr, "Notification contract failed at line %d: %s\n", __LINE__, #expression);                                                                                                         \
-      log_error("Notification contract failed at line %d: %s", __LINE__, #expression);                                                                                                                 \
-      return 1;                                                                                                                                                                                        \
-    }                                                                                                                                                                                                  \
+#define CHECK(expression)                                                                      \
+  do {                                                                                         \
+    if (!(expression)) {                                                                       \
+      fprintf(stderr, "Notification contract failed at line %d: %s\n", __LINE__, #expression); \
+      log_error("Notification contract failed at line %d: %s", __LINE__, #expression);         \
+      return 1;                                                                                \
+    }                                                                                          \
   } while (0)
 
 static int journal_contract(void) {
   char source[512];
   bool external;
   if (ASCIICHAT_SOURCE_ROOT[0]) {
-    CHECK(symbol_format_source_path("test-error-popup-fixture.exe", ASCIICHAT_SOURCE_ROOT "\\tests\\standalone\\errno\\error_popup_fixture.c", source, sizeof(source), &external,
-                                    ASCIICHAT_OWNED_SOURCE_DIRS) == ASCIICHAT_OK);
+    CHECK(symbol_format_source_path("test-error-popup-fixture.exe", "test-error-popup-fixture", NULL, ASCIICHAT_SOURCE_ROOT "\\tests\\standalone\\errno\\error_popup_fixture.c", source, sizeof(source),
+                                    &external, ASCIICHAT_OWNED_SOURCE_DIRS) == ASCIICHAT_OK);
     CHECK(!external);
     CHECK(!strcmp(source, "tests\\standalone\\errno\\error_popup_fixture.c"));
   }
-  CHECK(symbol_format_source_path("vendor.dll", "D:\\external\\vendor.c", source, sizeof(source), &external, NULL) == ASCIICHAT_OK);
+  CHECK(symbol_format_source_path("vendor.dll", "test-error-popup-fixture", NULL, "D:\\external\\vendor.c", source, sizeof(source), &external, NULL) == ASCIICHAT_OK);
   CHECK(external);
   CHECK(!strcmp(source, "D:\\external\\vendor.c"));
   asciichat_error_context_t entries[ASCIICHAT_ERRNO_HISTORY_SIZE];

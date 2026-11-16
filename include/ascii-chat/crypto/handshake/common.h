@@ -90,16 +90,15 @@ typedef struct crypto_handshake_context_t {
   private_key_t server_private_key; /**< Server's long-term Ed25519 private key (for signing) */
 
   /** Client identity (client only) */
-  public_key_t client_public_key;   /**< Client's Ed25519 public key (for authentication) */
-  private_key_t client_private_key; /**< Client's Ed25519 private key (for signing challenges) */
-  char
-      expected_server_key[CRYPTO_HANDSHAKE_COMMON_EXPECTED_SERVER_KEY_BUFFER_SIZE]; /**< Expected server key fingerprint
-                                                                                       (client only, for known_hosts) */
-  uint8_t expected_server_key_bytes[ED25519_PUBLIC_KEY_SIZE]; /**< Expected Ed25519 identity key supplied by a browser
-                                                                 client */
-  bool expected_server_key_bytes_set;                         /**< Whether expected_server_key_bytes is configured */
-  char client_gpg_key_id[GPG_FINGERPRINT_HEX_BUFFER_SIZE];    /**< Client's GPG key ID (8/16/40 hex chars + null
-                                                                 terminator, for server verification) */
+  public_key_t client_public_key;                                                    /**< Client's Ed25519 public key (for authentication) */
+  private_key_t client_private_key;                                                  /**< Client's Ed25519 private key (for signing challenges) */
+  char expected_server_key[CRYPTO_HANDSHAKE_COMMON_EXPECTED_SERVER_KEY_BUFFER_SIZE]; /**< Expected server key fingerprint
+                                                                                        (client only, for known_hosts) */
+  uint8_t expected_server_key_bytes[ED25519_PUBLIC_KEY_SIZE];                        /**< Expected Ed25519 identity key supplied by a browser
+                                                                                        client */
+  bool expected_server_key_bytes_set;                                                /**< Whether expected_server_key_bytes is configured */
+  char client_gpg_key_id[GPG_FINGERPRINT_HEX_BUFFER_SIZE];                           /**< Client's GPG key ID (8/16/40 hex chars + null
+                                                                                        terminator, for server verification) */
 
   /** Connection info for known_hosts */
   char server_hostname[HOSTNAME_BUFFER_SIZE]; /**< Server hostname (user-provided) */
@@ -107,11 +106,11 @@ typedef struct crypto_handshake_context_t {
   uint16_t server_port;                       /**< Server port */
 
   /** Authentication configuration */
-  bool addressless_transport;          /**< Peer transports use explicit identities, not IP:port TOFU. */
-  bool verify_server_key;              /**< Client: verify server key against known_hosts */
-  bool require_client_auth;            /**< Server: require client authentication (whitelist) */
-  bool allow_unlisted_client_identity; ///< Require proof of key possession without whitelist membership (discovery)
-  bool server_uses_client_auth;        /**< Client: whether server requested client authentication */
+  bool addressless_transport;                      /**< Peer transports use explicit identities, not IP:port TOFU. */
+  bool verify_server_key;                          /**< Client: verify server key against known_hosts */
+  bool require_client_auth;                        /**< Server: require client authentication (whitelist) */
+  bool allow_unlisted_client_identity;             ///< Require proof of key possession without whitelist membership (discovery)
+  bool server_uses_client_auth;                    /**< Client: whether server requested client authentication */
   char client_keys_path[PLATFORM_MAX_PATH_LENGTH]; /**< Server: client keys file path (whitelist) */
 
   /** Client whitelist (server only) */
@@ -156,8 +155,7 @@ asciichat_error_t crypto_handshake_init(const char *name, crypto_handshake_conte
  * @param params Negotiated crypto parameters (from capabilities negotiation)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t crypto_handshake_set_parameters(crypto_handshake_context_t *ctx,
-                                                  const crypto_parameters_packet_t *params);
+asciichat_error_t crypto_handshake_set_parameters(crypto_handshake_context_t *ctx, const crypto_parameters_packet_t *params);
 
 /**
  * @brief Validate crypto packet size based on session parameters
@@ -166,8 +164,7 @@ asciichat_error_t crypto_handshake_set_parameters(crypto_handshake_context_t *ct
  * @param packet_size Actual packet size received
  * @return ASCIICHAT_OK if valid, error code on failure
  */
-asciichat_error_t crypto_handshake_validate_packet_size(const crypto_handshake_context_t *ctx, uint16_t packet_type,
-                                                        size_t packet_size);
+asciichat_error_t crypto_handshake_validate_packet_size(const crypto_handshake_context_t *ctx, uint16_t packet_type, size_t packet_size);
 
 /**
  * @brief Initialize named crypto handshake context with password authentication
@@ -179,8 +176,7 @@ asciichat_error_t crypto_handshake_validate_packet_size(const crypto_handshake_c
  *
  * The context is automatically registered with the debug naming system.
  */
-asciichat_error_t crypto_handshake_init_with_password(const char *name, crypto_handshake_context_t *ctx, bool is_server,
-                                                      const char *password);
+asciichat_error_t crypto_handshake_init_with_password(const char *name, crypto_handshake_context_t *ctx, bool is_server, const char *password);
 
 /**
  * @brief Cleanup crypto handshake context with secure memory wiping

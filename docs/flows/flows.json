@@ -23,7 +23,7 @@
               "note": "Calls options_init() then options_get()"
             },
             {
-              "path": "lib/options/options.c",
+              "path": "src/common/options/core.c",
               "fn": "options_init()",
               "line": 1,
               "note": "Unified entry point for all parsing"
@@ -36,13 +36,13 @@
           "description": "Scans argv for the mode keyword (server, client, mirror, discovery-service) or a session string. Falls back to discovery mode if no mode given. Binary-level flags (--log-file, --verbose, etc.) are parsed here too.",
           "files": [
             {
-              "path": "lib/options/options.c",
+              "path": "src/common/options/core.c",
               "fn": "detect_mode_and_parse_binary_options()",
               "line": 100,
               "note": "Detects mode before builder runs"
             },
             {
-              "path": "lib/options/strings.c",
+              "path": "src/common/options/strings.c",
               "fn": "asciichat_mode_from_string()",
               "line": 1,
               "note": "Maps 'server' → MODE_SERVER etc."
@@ -55,31 +55,31 @@
           "description": "A global registry_entry_t[] table (up to 2048 slots) holds every option's metadata: long name, short name, type (bool/int/string/enum/double), field offset in options_t, env var name, range constraints, validator. Categories (audio, display, network, security, media…) are merged at startup via registry_init_from_builders().",
           "files": [
             {
-              "path": "lib/options/registry/core.c",
+              "path": "src/common/options/registry_core.c",
               "fn": "registry_init_from_builders()",
               "line": 23,
               "note": "Merges all category arrays into g_options_registry[]"
             },
             {
-              "path": "lib/options/registry/general.c",
+              "path": "src/common/options/registry_general.c",
               "fn": "g_general_options[]",
               "line": 1,
               "note": "Example category: port, address, fps…"
             },
             {
-              "path": "lib/options/registry/audio.c",
+              "path": "src/common/options/registry_audio.c",
               "fn": "g_audio_options[]",
               "line": 1,
               "note": "Audio category entries"
             },
             {
-              "path": "lib/options/registry/display.c",
+              "path": "src/common/options/registry_display.c",
               "fn": "g_display_options[]",
               "line": 1,
               "note": "Color, palette, render mode…"
             },
             {
-              "path": "lib/options/registry/security.c",
+              "path": "src/common/options/registry_security.c",
               "fn": "g_security_options[]",
               "line": 1,
               "note": "Crypto/auth options"
@@ -92,31 +92,31 @@
           "description": "The option builder walks argv using the mode-specific preset (options_preset_unified). For each --flag, it finds the registry entry and calls the appropriate typed parser. Custom parsers handle complex types (timestamps, port ranges, palette strings, PCRE2 grep patterns, session strings).",
           "files": [
             {
-              "path": "lib/options/options.c",
+              "path": "src/common/options/core.c",
               "fn": "options_config_parse_args()",
               "line": 200,
               "note": "Builder-based argv walking"
             },
             {
-              "path": "lib/options/builder/builder.c",
+              "path": "libflags/lib/builder/builder.c",
               "fn": "options_build()",
               "line": 1,
               "note": "Core builder logic"
             },
             {
-              "path": "lib/options/parsing/parsers.c",
+              "path": "src/common/options/parsing_parsers.c",
               "fn": "parse_setting() / parse_enum() / parse_grep_pattern()",
               "line": 80,
               "note": "Typed parsers with PCRE2 validation"
             },
             {
-              "path": "lib/options/config/config.c",
+              "path": "src/common/options/config.c",
               "fn": "options_config_parse_toml()",
               "line": 1,
               "note": "TOML config file merge (--config)"
             },
             {
-              "path": "lib/options/config/presets.c",
+              "path": "src/common/options/registry_mode_defaults.c",
               "fn": "options_preset_unified()",
               "line": 1,
               "note": "Mode-specific option sets"
@@ -129,13 +129,13 @@
           "description": "After CLI parsing, each registry entry's env_var_name (e.g. ASCII_CHAT_FPS) is checked. Env vars override config-file values but are overridden by explicit CLI flags. The special ASCII_CHAT_QUESTION_PROMPT_RESPONSE stack pre-answers interactive prompts for automation.",
           "files": [
             {
-              "path": "lib/options/parsing/parsers.c",
+              "path": "src/common/options/parsing_parsers.c",
               "fn": "apply_env_var_overrides()",
               "line": 200,
               "note": "Iterates registry, applies env vars"
             },
             {
-              "path": "lib/options/parsing/validation.c",
+              "path": "src/common/options/parsing_validation.c",
               "fn": "options_validate()",
               "line": 1,
               "note": "Cross-field validation after env merge"
@@ -148,31 +148,31 @@
           "description": "options_state_init() allocates an options_t on the heap and stores its pointer in a global atomic_ptr_t (g_options). options_state_set() memcpy's the parsed struct in. Worker threads read via options_get() / GET_OPTION() which does a single atomic_ptr_load — no locks. Runtime updates (e.g. live FPS change) call options_set_int() which does a full copy-on-write: allocate new struct, memcpy, call updater, atomic swap, defer-free old.",
           "files": [
             {
-              "path": "lib/options/rcu.c",
+              "path": "src/common/options/runtime.c",
               "fn": "options_state_init()",
               "line": 365,
               "note": "Allocates initial options_t, stores in g_options"
             },
             {
-              "path": "lib/options/rcu.c",
+              "path": "src/common/options/runtime.c",
               "fn": "options_get()",
               "line": 482,
               "note": "Lock-free atomic_ptr_load; falls back to g_default_options"
             },
             {
-              "path": "lib/options/rcu.c",
+              "path": "src/common/options/runtime.c",
               "fn": "options_update()",
               "line": 506,
               "note": "Copy-on-write writer path (mutex-serialized)"
             },
             {
-              "path": "lib/options/rcu.c",
+              "path": "src/common/options/runtime.c",
               "fn": "deferred_free_add()",
               "line": 288,
               "note": "Old structs freed at shutdown (up to 64 deferred)"
             },
             {
-              "path": "include/ascii-chat/options/rcu.h",
+              "path": "src/common/options/rcu.h",
               "fn": "GET_OPTION(field)",
               "line": 1,
               "note": "Convenience macro: options_get()->field"
@@ -711,7 +711,7 @@
           "description": "options_init(argc, argv) runs the full parsing pipeline (see Options flow). After this, GET_OPTION() is live.",
           "files": [
             {
-              "path": "lib/options/options.c",
+              "path": "src/common/options/core.c",
               "fn": "options_init()",
               "line": 1,
               "note": "Full parse + RCU publish"

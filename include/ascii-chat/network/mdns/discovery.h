@@ -191,8 +191,7 @@ void discovery_config_init_defaults(discovery_config_t *config);
  * @note This function BLOCKS until one discovery method succeeds or both timeout
  * @note Not thread-safe for concurrent calls - use only one discovery at a time
  */
-asciichat_error_t discover_session_parallel(const char *session_string, const discovery_config_t *config,
-                                            discovery_result_t *result);
+asciichat_error_t discover_session_parallel(const char *session_string, const discovery_config_t *config, discovery_result_t *result);
 
 // ============================================================================
 // mDNS Query API (Core Module)

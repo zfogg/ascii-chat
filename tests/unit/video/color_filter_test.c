@@ -74,20 +74,14 @@ Test(color_filter, get_metadata) {
  * @brief Test CLI name to enum conversion
  */
 Test(color_filter, from_cli_name) {
-  cr_assert_eq(color_filter_from_cli_name("green"), COLOR_FILTER_GREEN,
-               "CLI name 'green' should map to COLOR_FILTER_GREEN");
-  cr_assert_eq(color_filter_from_cli_name("cyan"), COLOR_FILTER_CYAN,
-               "CLI name 'cyan' should map to COLOR_FILTER_CYAN");
-  cr_assert_eq(color_filter_from_cli_name("black"), COLOR_FILTER_BLACK,
-               "CLI name 'black' should map to COLOR_FILTER_BLACK");
-  cr_assert_eq(color_filter_from_cli_name("white"), COLOR_FILTER_WHITE,
-               "CLI name 'white' should map to COLOR_FILTER_WHITE");
-  cr_assert_eq(color_filter_from_cli_name("none"), COLOR_FILTER_NONE,
-               "CLI name 'none' should map to COLOR_FILTER_NONE");
+  cr_assert_eq(color_filter_from_cli_name("green"), COLOR_FILTER_GREEN, "CLI name 'green' should map to COLOR_FILTER_GREEN");
+  cr_assert_eq(color_filter_from_cli_name("cyan"), COLOR_FILTER_CYAN, "CLI name 'cyan' should map to COLOR_FILTER_CYAN");
+  cr_assert_eq(color_filter_from_cli_name("black"), COLOR_FILTER_BLACK, "CLI name 'black' should map to COLOR_FILTER_BLACK");
+  cr_assert_eq(color_filter_from_cli_name("white"), COLOR_FILTER_WHITE, "CLI name 'white' should map to COLOR_FILTER_WHITE");
+  cr_assert_eq(color_filter_from_cli_name("none"), COLOR_FILTER_NONE, "CLI name 'none' should map to COLOR_FILTER_NONE");
 
   // Test invalid name
-  cr_assert_eq(color_filter_from_cli_name("invalid-filter"), COLOR_FILTER_NONE,
-               "Invalid CLI name should map to COLOR_FILTER_NONE");
+  cr_assert_eq(color_filter_from_cli_name("invalid-filter"), COLOR_FILTER_NONE, "Invalid CLI name should map to COLOR_FILTER_NONE");
   cr_assert_eq(color_filter_from_cli_name(NULL), COLOR_FILTER_NONE, "NULL CLI name should map to COLOR_FILTER_NONE");
 }
 
@@ -203,12 +197,9 @@ Test(color_filter, metadata_colors) {
     uint8_t r, g, b;
     const char *name;
   } expected[] = {
-      {COLOR_FILTER_BLACK, 0, 0, 0, "black"},         {COLOR_FILTER_WHITE, 255, 255, 255, "white"},
-      {COLOR_FILTER_GREEN, 0, 255, 65, "green"},      {COLOR_FILTER_MAGENTA, 255, 0, 255, "magenta"},
-      {COLOR_FILTER_FUCHSIA, 255, 0, 170, "fuchsia"}, {COLOR_FILTER_ORANGE, 255, 136, 0, "orange"},
-      {COLOR_FILTER_TEAL, 0, 221, 221, "teal"},       {COLOR_FILTER_CYAN, 0, 255, 255, "cyan"},
-      {COLOR_FILTER_PINK, 255, 182, 193, "pink"},     {COLOR_FILTER_RED, 255, 51, 51, "red"},
-      {COLOR_FILTER_YELLOW, 255, 235, 153, "yellow"},
+      {COLOR_FILTER_BLACK, 0, 0, 0, "black"},         {COLOR_FILTER_WHITE, 255, 255, 255, "white"}, {COLOR_FILTER_GREEN, 0, 255, 65, "green"},      {COLOR_FILTER_MAGENTA, 255, 0, 255, "magenta"},
+      {COLOR_FILTER_FUCHSIA, 255, 0, 170, "fuchsia"}, {COLOR_FILTER_ORANGE, 255, 136, 0, "orange"}, {COLOR_FILTER_TEAL, 0, 221, 221, "teal"},       {COLOR_FILTER_CYAN, 0, 255, 255, "cyan"},
+      {COLOR_FILTER_PINK, 255, 182, 193, "pink"},     {COLOR_FILTER_RED, 255, 51, 51, "red"},       {COLOR_FILTER_YELLOW, 255, 235, 153, "yellow"},
   };
 
   for (size_t i = 0; i < sizeof(expected) / sizeof(expected[0]); i++) {

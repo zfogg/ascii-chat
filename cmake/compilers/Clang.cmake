@@ -309,6 +309,20 @@ endfunction()
 # =============================================================================
 
 function(configure_clang_post_project)
+    # Keep Clang's unwinder selection tied to the LLVM installation selected
+    # above. Do not silently pick an unrelated library from the host search
+    # path when the compiler is Clang.
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND UNIX AND NOT APPLE)
+        find_library(ASCIICHAT_LLVM_LIBUNWIND
+            NAMES unwind
+            PATHS "${LLVM_ROOT_PREFIX}/lib"
+            NO_DEFAULT_PATH)
+        if(ASCIICHAT_LLVM_LIBUNWIND)
+            set(ASCIICHAT_LLVM_LIBUNWIND "${ASCIICHAT_LLVM_LIBUNWIND}" PARENT_SCOPE)
+            message(STATUS "${BoldGreen}Using LLVM libunwind${ColorReset}: ${BoldCyan}${ASCIICHAT_LLVM_LIBUNWIND}${ColorReset}")
+        endif()
+    endif()
+
     if(NOT APPLE)
         return()
     endif()

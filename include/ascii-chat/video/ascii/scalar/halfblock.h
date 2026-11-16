@@ -81,8 +81,7 @@ char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int st
  * @note Caller must free the returned buffer with free().
  * @ingroup video
  */
-char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes,
-                                       const char *palette);
+char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes, const char *palette);
 
 /**
  * @brief Convert RGB to 256-color half-blocks using scalar code
@@ -101,7 +100,6 @@ char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height
  * @note Caller must free the returned buffer with free().
  * @ingroup video
  */
-char *rgb_to_256color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes,
-                                        const char *palette);
+char *rgb_to_256color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes, const char *palette);
 
 /** @} */

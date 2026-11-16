@@ -265,8 +265,7 @@ asciichat_error_t private_key_to_x25519(const private_key_t *key, uint8_t x25519
  *
  * @ingroup keys
  */
-asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_t message_len,
-                                       uint8_t signature[ED25519_SIGNATURE_SIZE]);
+asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *message, size_t message_len, uint8_t signature[ED25519_SIGNATURE_SIZE]);
 
 /**
  * @brief Verify an Ed25519 signature
@@ -289,8 +288,7 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
  *
  * @ingroup keys
  */
-asciichat_error_t ed25519_verify_signature(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], const uint8_t *message,
-                                           size_t message_len, const uint8_t signature[ED25519_SIGNATURE_SIZE],
+asciichat_error_t ed25519_verify_signature(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], const uint8_t *message, size_t message_len, const uint8_t signature[ED25519_SIGNATURE_SIZE],
                                            const char *gpg_key_id);
 
 /** @} */

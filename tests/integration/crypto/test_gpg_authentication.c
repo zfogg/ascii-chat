@@ -55,13 +55,11 @@ Test(gpg_authentication, verify_valid_signature) {
   size_t signature_len = 0;
 
   // First create a signature
-  int sign_result =
-      gpg_sign_with_key(test_key_id, (const uint8_t *)message, strlen(message), signature, &signature_len);
+  int sign_result = gpg_sign_with_key(test_key_id, (const uint8_t *)message, strlen(message), signature, &signature_len);
   cr_assert_eq(sign_result, 0, "Signing should succeed");
 
   // Now verify it
-  int verify_result = gpg_verify_signature_with_binary(signature, signature_len, (const uint8_t *)message,
-                                                       strlen(message), test_key_id);
+  int verify_result = gpg_verify_signature_with_binary(signature, signature_len, (const uint8_t *)message, strlen(message), test_key_id);
 
   cr_assert_eq(verify_result, 0, "Verification should succeed for valid signature");
 }
@@ -78,13 +76,11 @@ Test(gpg_authentication, reject_tampered_message) {
   size_t signature_len = 0;
 
   // Create signature for original message
-  int sign_result =
-      gpg_sign_with_key(test_key_id, (const uint8_t *)message, strlen(message), signature, &signature_len);
+  int sign_result = gpg_sign_with_key(test_key_id, (const uint8_t *)message, strlen(message), signature, &signature_len);
   cr_assert_eq(sign_result, 0, "Signing should succeed");
 
   // Try to verify with tampered message
-  int verify_result = gpg_verify_signature_with_binary(signature, signature_len, (const uint8_t *)tampered,
-                                                       strlen(tampered), test_key_id);
+  int verify_result = gpg_verify_signature_with_binary(signature, signature_len, (const uint8_t *)tampered, strlen(tampered), test_key_id);
 
   cr_assert_neq(verify_result, 0, "Verification should fail for tampered message");
 }

@@ -128,7 +128,7 @@ typedef struct {
  *
  * @ingroup video
  */
-typedef struct {
+typedef struct image {
   int w;               ///< Image width in pixels (must be > 0)
   int h;               ///< Image height in pixels (must be > 0)
   rgb_pixel_t *pixels; ///< Pixel data array (width * height RGB pixels, row-major order)

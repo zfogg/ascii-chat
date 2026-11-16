@@ -76,8 +76,7 @@ typedef void (*webrtc_state_callback_t)(webrtc_peer_connection_t *pc, webrtc_sta
  *
  * Application should send this SDP to the remote peer via signaling channel (ACDS).
  */
-typedef void (*webrtc_local_description_callback_t)(webrtc_peer_connection_t *pc, const char *sdp, const char *type,
-                                                    void *user_data);
+typedef void (*webrtc_local_description_callback_t)(webrtc_peer_connection_t *pc, const char *sdp, const char *type, void *user_data);
 
 /**
  * @brief Callback for local ICE candidate discovery
@@ -88,8 +87,7 @@ typedef void (*webrtc_local_description_callback_t)(webrtc_peer_connection_t *pc
  *
  * Application should send this candidate to the remote peer via signaling channel (ACDS).
  */
-typedef void (*webrtc_local_candidate_callback_t)(webrtc_peer_connection_t *pc, const char *candidate, const char *mid,
-                                                  void *user_data);
+typedef void (*webrtc_local_candidate_callback_t)(webrtc_peer_connection_t *pc, const char *candidate, const char *mid, void *user_data);
 
 /**
  * @brief Callback for ICE gathering state changes
@@ -97,8 +95,7 @@ typedef void (*webrtc_local_candidate_callback_t)(webrtc_peer_connection_t *pc, 
  * @param state New gathering state
  * @param user_data User-provided context pointer
  */
-typedef void (*webrtc_gathering_state_callback_t)(webrtc_peer_connection_t *pc, webrtc_gathering_state_t state,
-                                                  void *user_data);
+typedef void (*webrtc_gathering_state_callback_t)(webrtc_peer_connection_t *pc, webrtc_gathering_state_t state, void *user_data);
 
 /**
  * @brief Callback for DataChannel open event
@@ -114,8 +111,7 @@ typedef void (*webrtc_datachannel_open_callback_t)(webrtc_data_channel_t *dc, vo
  * @param size Message size in bytes
  * @param user_data User-provided context pointer
  */
-typedef void (*webrtc_datachannel_message_callback_t)(webrtc_data_channel_t *dc, const uint8_t *data, size_t size,
-                                                      void *user_data);
+typedef void (*webrtc_datachannel_message_callback_t)(webrtc_data_channel_t *dc, const uint8_t *data, size_t size, void *user_data);
 
 /**
  * @brief Callback for DataChannel error
@@ -285,8 +281,7 @@ asciichat_error_t webrtc_add_remote_candidate(webrtc_peer_connection_t *pc, cons
  * Creates a new DataChannel. The initiator should create the channel,
  * while the responder receives it via the datachannel callback.
  */
-asciichat_error_t webrtc_create_datachannel(webrtc_peer_connection_t *pc, const char *label,
-                                            webrtc_data_channel_t **dc_out);
+asciichat_error_t webrtc_create_datachannel(webrtc_peer_connection_t *pc, const char *label, webrtc_data_channel_t **dc_out);
 
 /**
  * @brief Send data over DataChannel
@@ -336,7 +331,7 @@ typedef struct {
   void (*on_close)(webrtc_data_channel_t *dc, void *user_data);                                    ///< Channel closed
   void (*on_error)(webrtc_data_channel_t *dc, const char *error, void *user_data);                 ///< Error occurred
   void (*on_message)(webrtc_data_channel_t *dc, const uint8_t *data, size_t len, void *user_data); ///< Message received
-  void *user_data; ///< Passed to all callbacks
+  void *user_data;                                                                                 ///< Passed to all callbacks
 } webrtc_datachannel_callbacks_t;
 
 /**
@@ -347,8 +342,7 @@ typedef struct {
  *
  * Registers callbacks for DataChannel events. Any NULL callback pointer is ignored.
  */
-asciichat_error_t webrtc_datachannel_set_callbacks(webrtc_data_channel_t *dc,
-                                                   const webrtc_datachannel_callbacks_t *callbacks);
+asciichat_error_t webrtc_datachannel_set_callbacks(webrtc_data_channel_t *dc, const webrtc_datachannel_callbacks_t *callbacks);
 
 /**
  * @brief Close a DataChannel

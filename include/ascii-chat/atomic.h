@@ -466,8 +466,7 @@ void atomic_ptr_on_exchange(atomic_ptr_t *a);
  * ATOMIC_REGISTER_AUTO(g_counter, NULL);
  * @endcode
  */
-#define ATOMIC_REGISTER_AUTO(name, parent_ptr)                                                                         \
-  NAMED_REGISTER_ATOMIC(&(name), #name, (uintptr_t)(const void *)(parent_ptr))
+#define ATOMIC_REGISTER_AUTO(name, parent_ptr) NAMED_REGISTER_ATOMIC(&(name), #name, (uintptr_t)(const void *)(parent_ptr))
 
 /**
  * @brief Register an atomic pointer variable for debug tracking with automatic name generation
@@ -523,18 +522,18 @@ void atomic_ptr_on_exchange(atomic_ptr_t *a);
 
 // Actual init functions (defined below - use a workaround pattern)
 // These are helpers that work with static initialization
-#define _atomic_init_auto(name)                                                                                        \
-  {0};                                                                                                                 \
-  static void __attribute__((constructor, used)) _atomic_reg_##name(void) {                                            \
-    NAMED_REGISTER_ATOMIC(&name, #name, NULL);                                                                         \
-  }                                                                                                                    \
+#define _atomic_init_auto(name)                                             \
+  {0};                                                                      \
+  static void __attribute__((constructor, used)) _atomic_reg_##name(void) { \
+    NAMED_REGISTER_ATOMIC(&name, #name, NULL);                              \
+  }                                                                         \
   typedef int _atomic_assert_##name
 
-#define _atomic_ptr_init_auto(name)                                                                                    \
-  {0};                                                                                                                 \
-  static void __attribute__((constructor, used)) _atomic_ptr_reg_##name(void) {                                        \
-    NAMED_REGISTER_ATOMIC_PTR(&name, #name, NULL);                                                                     \
-  }                                                                                                                    \
+#define _atomic_ptr_init_auto(name)                                             \
+  {0};                                                                          \
+  static void __attribute__((constructor, used)) _atomic_ptr_reg_##name(void) { \
+    NAMED_REGISTER_ATOMIC_PTR(&name, #name, NULL);                              \
+  }                                                                             \
   typedef int _atomic_ptr_assert_##name
 
 // ============================================================================

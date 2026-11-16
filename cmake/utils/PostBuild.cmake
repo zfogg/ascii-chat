@@ -58,8 +58,9 @@ function(copy_windows_dlls TARGET_NAME)
         endif()
 
         if(DEFINED VCPKG_INSTALLED AND DEFINED VCPKG_TARGET_TRIPLET)
-            # Use debug DLLs/PDBs for Debug build, release DLLs for Dev build
-            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            # Debug and Dev use vcpkg's debug runtime; release-style builds
+            # use the matching release runtime.
+            if(CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
                 set(DLL_SOURCE_DIR "${VCPKG_INSTALLED}/${VCPKG_TARGET_TRIPLET}/debug/bin")
             else()
                 set(DLL_SOURCE_DIR "${VCPKG_INSTALLED}/${VCPKG_TARGET_TRIPLET}/bin")
@@ -92,11 +93,10 @@ function(copy_windows_dlls TARGET_NAME)
                 )
             endforeach()
 
-            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-                set(VCPKG_PDBS zstd.pdb portaudio.pdb libsodium.pdb mimalloc-debug.dll.pdb)
-            else()
-                set(VCPKG_PDBS zstd.pdb portaudio.pdb libsodium.pdb mimalloc.dll.pdb)
-            endif()
+            file(GLOB VCPKG_PDBS
+                RELATIVE "${DLL_SOURCE_DIR}"
+                "${DLL_SOURCE_DIR}/*.pdb"
+            )
 
             stage_dlls_for_target(
                 TARGET ${TARGET_NAME}
@@ -105,17 +105,19 @@ function(copy_windows_dlls TARGET_NAME)
                 COMMENT "from vcpkg"
             )
 
-            stage_dlls_for_target(
-                TARGET ${TARGET_NAME}
-                NAMES ${VCPKG_PDBS}
-                SOURCE_DIR "${DLL_SOURCE_DIR}"
-                COMMENT "from vcpkg"
-            )
+            if(VCPKG_PDBS)
+                stage_dlls_for_target(
+                    TARGET ${TARGET_NAME}
+                    NAMES ${VCPKG_PDBS}
+                    SOURCE_DIR "${DLL_SOURCE_DIR}"
+                    COMMENT "from vcpkg"
+                )
+            endif()
 
             message(STATUS "DLL/PDB staging: using ${BoldCyan}cmake -E copy${ColorReset} from ${BoldBlue}${DLL_SOURCE_DIR}${ColorReset}")
 
             # vcpkg Debug DLLs use the MSVC Debug CRT, which is not on PATH.
-            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            if(CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
                 if(VCPKG_TARGET_TRIPLET MATCHES "^arm64-")
                     set(_debug_crt_arch arm64)
                 else()

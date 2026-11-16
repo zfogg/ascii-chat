@@ -2,8 +2,8 @@
 #include <criterion/redirect.h>
 #include <ascii-chat/tui/prompt.h>
 #include <ascii-chat/tui/controller.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>
+#include <options/options.h>
+#include <options/rcu.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/common.h>

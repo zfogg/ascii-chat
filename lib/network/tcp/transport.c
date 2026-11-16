@@ -22,7 +22,7 @@
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/debug/named.h>
 #include <string.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 
 /**
  * @brief tcp transport data is intentionally a small, concrete record. Fields such as `sockfd`, `owns_socket`,

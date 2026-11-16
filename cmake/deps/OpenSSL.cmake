@@ -161,15 +161,77 @@ endif()
 # it is new enough.  Release packages continue to use the pinned source build
 # unless this option is explicitly enabled.
 if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
+    # Prefer pkg-config when the distribution provides an OpenSSL module. Some
+    # distributions, including Arch installations without the development
+    # metadata package, provide usable headers/libraries without openssl.pc;
+    # fall back to CMake's finder in that case.
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
         pkg_check_modules(ASCIICHAT_SYSTEM_OPENSSL QUIET openssl>=3.0)
     endif()
+
+    # System mode must not inherit paths to a previous source-built OpenSSL
+    # from a reused build directory.
+    unset(OPENSSL_ROOT_DIR CACHE)
+    unset(OPENSSL_INCLUDE_DIR CACHE)
+    unset(OPENSSL_CRYPTO_LIBRARY CACHE)
+    unset(OPENSSL_SSL_LIBRARY CACHE)
     if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
+        unset(ASCIICHAT_SYSTEM_OPENSSL_SSL_LIBRARY CACHE)
+        unset(ASCIICHAT_SYSTEM_OPENSSL_CRYPTO_LIBRARY CACHE)
+        if(EXISTS "${ASCIICHAT_SYSTEM_OPENSSL_LIBDIR}/libssl.so")
+            set(ASCIICHAT_SYSTEM_OPENSSL_SSL_LIBRARY
+                "${ASCIICHAT_SYSTEM_OPENSSL_LIBDIR}/libssl.so")
+            set(ASCIICHAT_SYSTEM_OPENSSL_CRYPTO_LIBRARY
+                "${ASCIICHAT_SYSTEM_OPENSSL_LIBDIR}/libcrypto.so")
+        else()
+            find_file(ASCIICHAT_SYSTEM_OPENSSL_SSL_LIBRARY
+                NAMES libssl.so libssl.dylib libssl.dll.a
+                HINTS ${ASCIICHAT_SYSTEM_OPENSSL_LIBRARY_DIRS}
+                REQUIRED)
+            find_file(ASCIICHAT_SYSTEM_OPENSSL_CRYPTO_LIBRARY
+                NAMES libcrypto.so libcrypto.dylib libcrypto.dll.a
+                HINTS ${ASCIICHAT_SYSTEM_OPENSSL_LIBRARY_DIRS}
+                REQUIRED)
+        endif()
+        set(OPENSSL_INCLUDE_DIR "${ASCIICHAT_SYSTEM_OPENSSL_INCLUDE_DIRS}" CACHE PATH
+            "OpenSSL include directory discovered through pkg-config" FORCE)
+        set(OPENSSL_SSL_LIBRARY "${ASCIICHAT_SYSTEM_OPENSSL_SSL_LIBRARY}" CACHE FILEPATH
+            "OpenSSL SSL library discovered through pkg-config" FORCE)
+        set(OPENSSL_CRYPTO_LIBRARY "${ASCIICHAT_SYSTEM_OPENSSL_CRYPTO_LIBRARY}" CACHE FILEPATH
+            "OpenSSL Crypto library discovered through pkg-config" FORCE)
+    endif()
+    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
+        if(NOT TARGET OpenSSL::Crypto)
+            add_library(OpenSSL::Crypto UNKNOWN IMPORTED GLOBAL)
+            set_target_properties(OpenSSL::Crypto PROPERTIES
+                IMPORTED_LOCATION "${OPENSSL_CRYPTO_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}")
+        endif()
+        if(NOT TARGET OpenSSL::SSL)
+            add_library(OpenSSL::SSL UNKNOWN IMPORTED GLOBAL)
+            set_target_properties(OpenSSL::SSL PROPERTIES
+                IMPORTED_LOCATION "${OPENSSL_SSL_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}"
+                INTERFACE_LINK_LIBRARIES OpenSSL::Crypto)
+        endif()
+        set(OPENSSL_VERSION "${ASCIICHAT_SYSTEM_OPENSSL_VERSION}")
+        set(OPENSSL_FOUND TRUE)
+        message(STATUS "Using system OpenSSL ${OPENSSL_VERSION} (pkg-config)")
+        return()
+    endif()
+    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND AND ASCIICHAT_SYSTEM_OPENSSL_PREFIX)
+        find_package(OpenSSL 3.0 QUIET COMPONENTS SSL Crypto
+            HINTS "${ASCIICHAT_SYSTEM_OPENSSL_PREFIX}" /usr)
+    else()
         find_package(OpenSSL 3.0 QUIET COMPONENTS SSL Crypto)
     endif()
-    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND AND OpenSSL_FOUND)
-        message(STATUS "Using system OpenSSL ${OPENSSL_VERSION}")
+    if(OpenSSL_FOUND)
+        if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
+            message(STATUS "Using system OpenSSL ${ASCIICHAT_SYSTEM_OPENSSL_VERSION} (pkg-config)")
+        else()
+            message(STATUS "Using system OpenSSL ${OPENSSL_VERSION} (CMake discovery)")
+        endif()
         return()
     endif()
     message(STATUS "System OpenSSL is missing or too old; using pinned source build")
@@ -390,6 +452,13 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
     set(OPENSSL_SOURCE_DIR "${OPENSSL_BUILD_DIR}/src/openssl")
     set(OPENSSL_TARGET_STAMP "${OPENSSL_BUILD_DIR}/.target")
     set(OPENSSL_NO_ASM OFF)
+    # Emscripten cannot load host shared objects and cannot use OpenSSL's
+    # architecture-specific Linux assembly.  Treat the browser build as a
+    # static, no-assembly generic target even when the surrounding build is a
+    # shared/development configuration.
+    if(EMSCRIPTEN)
+        set(OPENSSL_NO_ASM ON)
+    endif()
     # Release packages should not retain a runtime dependency on the build
     # machine's OpenSSL dylib or its install path. Debug/dev builds keep shared
     # OpenSSL for faster iteration.
@@ -397,6 +466,9 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
         set(OPENSSL_BUILD_SHARED OFF)
     else()
         set(OPENSSL_BUILD_SHARED ON)
+    endif()
+    if(EMSCRIPTEN)
+        set(OPENSSL_BUILD_SHARED OFF)
     endif()
 
     set(OPENSSL_CONFIGURE_PREFIX "${OPENSSL_PREFIX}")

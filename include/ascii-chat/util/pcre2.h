@@ -41,8 +41,7 @@ pcre2_code *asciichat_pcre2_compile(const char *pattern, uint32_t flags);
  * pcre2_match_data_free(match_data);
  * @endcode
  */
-char *asciichat_pcre2_extract_named_group(pcre2_code *regex, pcre2_match_data *match_data, const char *group_name,
-                                          const char *subject);
+char *asciichat_pcre2_extract_named_group(pcre2_code *regex, pcre2_match_data *match_data, const char *group_name, const char *subject);
 
 /**
  * @brief Extract numbered capture group as allocated string
@@ -88,8 +87,7 @@ char *asciichat_pcre2_extract_group(pcre2_match_data *match_data, int group_num,
  * }
  * @endcode
  */
-const char *asciichat_pcre2_extract_group_ptr(pcre2_match_data *match_data, int group_num, const char *subject,
-                                              size_t *out_len);
+const char *asciichat_pcre2_extract_group_ptr(pcre2_match_data *match_data, int group_num, const char *subject, size_t *out_len);
 
 /**
  * @brief Extract numbered capture group and convert to unsigned long
@@ -111,12 +109,10 @@ const char *asciichat_pcre2_extract_group_ptr(pcre2_match_data *match_data, int 
  * }
  * @endcode
  */
-bool asciichat_pcre2_extract_group_ulong(pcre2_match_data *match_data, int group_num, const char *subject,
-                                         unsigned long *out_value);
+bool asciichat_pcre2_extract_group_ulong(pcre2_match_data *match_data, int group_num, const char *subject, unsigned long *out_value);
 
 /**
  * Match with the JIT fast path, using the interpreter when JIT is unavailable.
  * Returns the native PCRE2 capture count or negative PCRE2 error code.
  */
-int asciichat_pcre2_match(const pcre2_code *code, PCRE2_SPTR subject, PCRE2_SIZE length, PCRE2_SIZE startoffset,
-                          uint32_t options, pcre2_match_data *match_data, pcre2_match_context *context);
+int asciichat_pcre2_match(const pcre2_code *code, PCRE2_SPTR subject, PCRE2_SIZE length, PCRE2_SIZE startoffset, uint32_t options, pcre2_match_data *match_data, pcre2_match_context *context);

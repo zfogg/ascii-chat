@@ -2,7 +2,7 @@
 
 #include "visualization_internal.h"
 
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <libplatform/memory.h>
 
 #include <math.h>

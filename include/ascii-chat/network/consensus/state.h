@@ -43,8 +43,7 @@ typedef struct consensus_state consensus_state_t;
  * @param out_state Output state machine handle (caller must destroy)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_state_create(const uint8_t my_id[SESSION_ID_SIZE], const consensus_topology_t *topology,
-                                         consensus_state_t **out_state);
+asciichat_error_t consensus_state_create(const uint8_t my_id[SESSION_ID_SIZE], const consensus_topology_t *topology, consensus_state_t **out_state);
 
 /**
  * @brief Destroy state machine and free resources
@@ -129,8 +128,7 @@ consensus_state_machine_t consensus_state_get_current_state(const consensus_stat
  * @param out_host_id Output 16-byte host UUID (caller provides buffer)
  * @return ASCIICHAT_OK on success, ERROR_INVALID_STATE if election not complete
  */
-asciichat_error_t consensus_state_get_elected_host(const consensus_state_t *state,
-                                                   uint8_t out_host_id[SESSION_ID_SIZE]);
+asciichat_error_t consensus_state_get_elected_host(const consensus_state_t *state, uint8_t out_host_id[SESSION_ID_SIZE]);
 
 /**
  * @brief Get elected backup host ID from last election
@@ -141,8 +139,7 @@ asciichat_error_t consensus_state_get_elected_host(const consensus_state_t *stat
  * @param out_backup_id Output 16-byte backup UUID (caller provides buffer)
  * @return ASCIICHAT_OK on success, ERROR_INVALID_STATE if election not complete
  */
-asciichat_error_t consensus_state_get_elected_backup(const consensus_state_t *state,
-                                                     uint8_t out_backup_id[SESSION_ID_SIZE]);
+asciichat_error_t consensus_state_get_elected_backup(const consensus_state_t *state, uint8_t out_backup_id[SESSION_ID_SIZE]);
 
 /**
  * @brief Check if we are the elected leader for this round
@@ -170,8 +167,7 @@ int consensus_state_get_metrics_count(const consensus_state_t *state);
  * @param out_metrics Output metrics structure
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_state_get_metric_at(const consensus_state_t *state, int index,
-                                                participant_metrics_t *out_metrics);
+asciichat_error_t consensus_state_get_metric_at(const consensus_state_t *state, int index, participant_metrics_t *out_metrics);
 
 /** Store a selector result while completing the current election. */
 asciichat_error_t consensus_state_store_election(consensus_state_t *state, int best, int backup);

@@ -12,7 +12,7 @@
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
-#include <ascii-chat/options/rcu.h>
+#include <options/rcu.h>
 #include "../../../src/common/session/audio.h"
 
 // Recording workers consume injected PCM; no physical device or callback clock is needed.

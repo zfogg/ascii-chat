@@ -20,7 +20,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <ascii-chat/util/fnv1a.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 
 #define MIXER_LISTENER_SAMPLES 8192
 /**

@@ -30,10 +30,8 @@ typedef struct {
 } crypto_rekey_session_t;
 
 /** The caller serializes access with the associated record context. */
-asciichat_error_t crypto_rekey_session_init(crypto_rekey_session_t *, crypto_record_t *, crypto_rekey_emit_fn, void *,
-                                            uint64_t now_ns);
+asciichat_error_t crypto_rekey_session_init(crypto_rekey_session_t *, crypto_record_t *, crypto_rekey_emit_fn, void *, uint64_t now_ns);
 asciichat_error_t crypto_rekey_session_tick(crypto_rekey_session_t *, uint64_t now_ns);
 asciichat_error_t crypto_rekey_session_request(crypto_rekey_session_t *, uint64_t now_ns);
-asciichat_error_t crypto_rekey_session_receive(crypto_rekey_session_t *, unsigned, unsigned, crypto_rekey_message_t,
-                                               const void *, size_t, uint64_t now_ns, bool *consumed);
+asciichat_error_t crypto_rekey_session_receive(crypto_rekey_session_t *, unsigned, unsigned, crypto_rekey_message_t, const void *, size_t, uint64_t now_ns, bool *consumed);
 void crypto_rekey_session_cleanup(crypto_rekey_session_t *);

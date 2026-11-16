@@ -12,8 +12,8 @@
 #include "session/frame_validation.h"
 #include <ascii-chat/util/utf8.h>
 
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>
+#include <options/options.h>
+#include <options/rcu.h>
 #include <ascii-chat/common/sync.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>

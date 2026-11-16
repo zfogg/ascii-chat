@@ -20,7 +20,7 @@
  *
  * ## Local C transactions
  *
- * Use `options_apply_patch()` from `ascii-chat/options/runtime.h` for related edits:
+ * Use `options_apply_patch()` from `runtime.h` for related edits:
  *
  * ```c
  * options_edit_t edits[] = {

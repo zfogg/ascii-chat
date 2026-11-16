@@ -76,8 +76,7 @@ static int deflate_compress(const uint8_t *input, size_t input_len, uint8_t **ou
  * Helper to decompress data with DEFLATE (RFC 7692 format)
  * Simulates what libwebsockets does internally
  */
-static int deflate_decompress(const uint8_t *input, size_t input_len, uint8_t *output, size_t output_len,
-                              size_t *decompressed_len) {
+static int deflate_decompress(const uint8_t *input, size_t input_len, uint8_t *output, size_t output_len, size_t *decompressed_len) {
   if (!input || input_len == 0 || !output || output_len == 0) {
     return -1;
   }
@@ -174,8 +173,7 @@ Theory((size_t msg_size), permessage_deflate, small_messages) {
   cr_assert_eq(decompressed_len, msg_size, "Decompressed size must match original for size %zu", msg_size);
 
   // Verify data integrity
-  cr_assert_eq(memcmp(original, decompressed, msg_size), 0, "Decompressed data must match original for size %zu",
-               msg_size);
+  cr_assert_eq(memcmp(original, decompressed, msg_size), 0, "Decompressed data must match original for size %zu", msg_size);
 
   SAFE_FREE(original);
   SAFE_FREE(compressed);
@@ -380,8 +378,7 @@ Test(permessage_deflate, corrupted_data_handling) {
   ret = deflate_decompress(compressed, compressed_len, decompressed, msg_size, &decompressed_len);
 
   // Decompression should fail or produce corrupted data
-  cr_assert(ret != 0 || decompressed_len == 0 || memcmp(original, decompressed, msg_size) != 0,
-            "Decompression should fail or produce corrupted output for corrupted input");
+  cr_assert(ret != 0 || decompressed_len == 0 || memcmp(original, decompressed, msg_size) != 0, "Decompression should fail or produce corrupted output for corrupted input");
 
   SAFE_FREE(original);
   SAFE_FREE(compressed);

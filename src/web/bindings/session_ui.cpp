@@ -3,7 +3,7 @@
 extern "C" {
 #include <ascii-chat/tui/session.h>
 #include <ascii-chat/tui/controller.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include "../common/capture.h"
 #include "../mirror.h"
 }

@@ -228,8 +228,7 @@ bool ffmpeg_decoder_is_prefetch_running(ffmpeg_decoder_t *decoder);
  */
 typedef enum { FFMPEG_FRAME_READY, FFMPEG_FRAME_WAITING, FFMPEG_FRAME_EOF, FFMPEG_FRAME_FAILED } ffmpeg_frame_status_t;
 /** Failure is an owned snapshot; no worker stack or thread lifetime dependency. */
-ffmpeg_frame_status_t ffmpeg_decoder_poll_video(ffmpeg_decoder_t *decoder, image_t **frame,
-                                                asciichat_error_context_t *failure);
+ffmpeg_frame_status_t ffmpeg_decoder_poll_video(ffmpeg_decoder_t *decoder, image_t **frame, asciichat_error_context_t *failure);
 image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder);
 
 /**
@@ -385,6 +384,4 @@ double ffmpeg_decoder_get_position(ffmpeg_decoder_t *decoder);
 /** @} */
 
 ffmpeg_decoder_t *ffmpeg_decoder_create_interruptible(const char *path, bool (*cancel)(void *), void *data);
-ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, bool (*cancel)(void *), void *data,
-                                                             const char *headers, const char *cookies,
-                                                             const char *proxy);
+ffmpeg_decoder_t *ffmpeg_decoder_create_with_request_options(const char *path, bool (*cancel)(void *), void *data, const char *headers, const char *cookies, const char *proxy);

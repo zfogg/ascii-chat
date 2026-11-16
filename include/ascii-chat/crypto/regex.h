@@ -32,8 +32,7 @@
  * @note Caller must free all non-NULL output strings with SAFE_FREE()
  * @note Returns false if any output pointer is NULL
  */
-bool crypto_regex_match_known_hosts(const char *line, char **ip_port_out, char **key_type_out, char **hex_key_out,
-                                    char **comment_out);
+bool crypto_regex_match_known_hosts(const char *line, char **ip_port_out, char **key_type_out, char **hex_key_out, char **comment_out);
 
 /**
  * Match SSH Ed25519 public key line and extract base64

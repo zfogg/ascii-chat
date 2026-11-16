@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/util/parsing.h>
+#include <libflags/values.h>
 #include <ascii-chat/util/pcre2.h>
 #include <string.h>
 #include <errno.h>
@@ -234,18 +235,8 @@ asciichat_error_t parse_port(const char *str, uint16_t *out_port) {
   if (str[0] == '0' && str[1] != '\0') {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid port number: %s (leading zeros)", str);
   }
-  unsigned long port_value = 0;
-  for (const char *p = str; *p; p++) {
-    if (*p < '0' || *p > '9') {
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid port number: %s (must be 0-65535)", str);
-    }
-    port_value = port_value * 10 + (unsigned long)(*p - '0');
-    if (port_value > 65535) {
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid port number: %s (must be 0-65535)", str);
-    }
-  }
-
-  *out_port = (uint16_t)port_value;
+  if (!flags_parse_port(str, out_port))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid port number: %s (must be 0-65535)", str);
   return ASCIICHAT_OK;
 }
 

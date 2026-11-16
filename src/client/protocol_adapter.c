@@ -32,8 +32,8 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/validation.h>
 #include <ascii-chat/util/format.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <options/options.h>
+#include <options/rcu.h> // For RCU-based options access
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/crypto/crypto.h>

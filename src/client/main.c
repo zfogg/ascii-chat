@@ -100,10 +100,10 @@
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/json.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h> // For RCU-based options access
-#include <ascii-chat/util/time.h>   // For time macros
-#include <ascii-chat/util/url.h>    // For URL parsing and WebSocket detection
+#include <options/options.h>
+#include <options/rcu.h>          // For RCU-based options access
+#include <ascii-chat/util/time.h> // For time macros
+#include <ascii-chat/util/url.h>  // For URL parsing and WebSocket detection
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/network/network.h>
@@ -512,8 +512,8 @@ static asciichat_error_t client_select_destination(void *user_data) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Client options are unavailable during LAN discovery");
   if (!opts->lan_discovery)
     return ASCIICHAT_OK;
-  bool default_destination = !opts->address_explicit && strcmp(opts->address, OPT_ADDRESS_DEFAULT) == 0 && opts->port == OPT_PORT_INT_DEFAULT;
-  if (opts->address_explicit || !default_destination)
+  bool default_destination = strcmp(opts->address, OPT_ADDRESS_DEFAULT) == 0 && opts->port == OPT_PORT_INT_DEFAULT;
+  if (!default_destination)
     return ASCIICHAT_OK;
 
   ui_mdns_config_t config = {.timeout_ms = 2000, .max_servers = 20, .quiet = true};

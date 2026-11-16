@@ -57,8 +57,7 @@ public:
     if (type == "receive")
       return receive(ProtocolBytes(event["packet"]));
     if (type == "ack") {
-      const auto bytes = encode(static_cast<uint8_t>(event["kind"].as<int>()), event["generation"].as<unsigned>(),
-                                event["sequence"].as<unsigned>());
+      const auto bytes = encode(static_cast<uint8_t>(event["kind"].as<int>()), event["generation"].as<unsigned>(), event["sequence"].as<unsigned>());
       emscripten::val response = result(0);
       response.set("bytes", binding_copy_output(bytes.data(), bytes.size()));
       return response;
@@ -122,9 +121,7 @@ private:
     if (code) {
       asciichat_error_context_t context{};
       const bool has_context = errno_has(&context);
-      output.set("message", has_context && context.context_message[0]
-                                ? std::string(context.context_message)
-                                : std::string(asciichat_error_string(static_cast<asciichat_error_t>(code))));
+      output.set("message", has_context && context.context_message[0] ? std::string(context.context_message) : std::string(asciichat_error_string(static_cast<asciichat_error_t>(code))));
     }
     return output;
   }
@@ -162,8 +159,7 @@ public:
       return result(SET_ERRNO(ERROR_INVALID_STATE, "Discovery session is closed"));
     const std::string type = event["type"].as<std::string>();
     if (type == "enter")
-      return result(
-          enter(event["create"].as<bool>(), event["name"].as<std::string>(), ProtocolBytes(event["password"])));
+      return result(enter(event["create"].as<bool>(), event["name"].as<std::string>(), ProtocolBytes(event["password"])));
     if (type == "receive")
       return result(receive(event["packetType"].as<unsigned>(), ProtocolBytes(event["packet"])));
     if (type == "leave")
@@ -196,8 +192,7 @@ public:
   int receive(unsigned type, ProtocolBytes packet) {
     auto data = protocol_input(packet);
     uint8_t empty = 0;
-    int result = acds_protocol_receive(session_, static_cast<packet_type_t>(type), data.empty() ? &empty : data.data(),
-                                       data.size());
+    int result = acds_protocol_receive(session_, static_cast<packet_type_t>(type), data.empty() ? &empty : data.data(), data.size());
     if (!data.empty())
       sodium_memzero(data.data(), data.size());
     return result;
@@ -225,8 +220,7 @@ public:
     emscripten::val member = emscripten::val::object();
     member.set("participantId", binding_copy_output(joined.participant_id, SESSION_ID_SIZE));
     member.set("sessionId", binding_copy_output(joined.session_id, SESSION_ID_SIZE));
-    member.set("hostId",
-               binding_copy_output(joined.host_established ? joined.host_id : joined.initiator_id, SESSION_ID_SIZE));
+    member.set("hostId", binding_copy_output(joined.host_established ? joined.host_id : joined.initiator_id, SESSION_ID_SIZE));
     member.set("turnUsername", std::string(joined.turn_username));
     member.set("turnPassword", std::string(joined.turn_password));
     member.set("serverAddress", std::string(joined.server_address));
@@ -251,9 +245,7 @@ public:
     if (code) {
       asciichat_error_context_t context{};
       const bool has_context = errno_has(&context);
-      output.set("message", has_context && context.context_message[0]
-                                ? std::string(context.context_message)
-                                : std::string(asciichat_error_string(static_cast<asciichat_error_t>(code))));
+      output.set("message", has_context && context.context_message[0] ? std::string(context.context_message) : std::string(asciichat_error_string(static_cast<asciichat_error_t>(code))));
     }
     return output;
   }
@@ -270,11 +262,9 @@ static asciichat_error_t browser_send(void *user_data, packet_type_t type, const
 }
 
 EMSCRIPTEN_BINDINGS(ascii_chat_discovery) {
-  emscripten::register_type<DiscoverySnapshotValue>(
-      "DiscoverySnapshotValue",
-      "{ state: number; terminal: boolean; error: string; name: string; joined: { participantId: Uint8Array; "
-      "sessionId: Uint8Array; hostId: Uint8Array; turnUsername: string; turnPassword: string; serverAddress: string; "
-      "serverPort: number; sessionType: number; quicPort: number; webtransportUrl: string } }");
+  emscripten::register_type<DiscoverySnapshotValue>("DiscoverySnapshotValue", "{ state: number; terminal: boolean; error: string; name: string; joined: { participantId: Uint8Array; "
+                                                                              "sessionId: Uint8Array; hostId: Uint8Array; turnUsername: string; turnPassword: string; serverAddress: string; "
+                                                                              "serverPort: number; sessionType: number; quicPort: number; webtransportUrl: string } }");
   emscripten::register_type<ProtocolBytes>("ProtocolBytes", "Uint8Array");
   emscripten::class_<DiscoveryBinding>("DiscoveryBinding")
       .constructor<>()

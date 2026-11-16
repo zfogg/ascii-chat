@@ -27,26 +27,22 @@ void platform_event_loop_stop(platform_event_loop_t *loop);
 asciichat_error_t platform_event_loop_destroy(platform_event_loop_t *loop);
 const char *platform_event_backend(void);
 asciichat_error_t platform_event_loop_tick(platform_event_loop_t *, uint64_t, platform_event_task_fn, void *);
-asciichat_error_t platform_event_loop_work(platform_event_loop_t *, platform_event_task_fn, platform_event_task_fn,
-                                           void *);
+asciichat_error_t platform_event_loop_work(platform_event_loop_t *, platform_event_task_fn, platform_event_task_fn, void *);
 
 /** Sets *socket to INVALID_SOCKET_VALUE when ownership transfers, including if
  * listen subsequently fails. Accepted streams are owned by the
  * loop until their close callback returns. Set callbacks in the accept callback.
  */
-asciichat_error_t platform_event_listen(platform_event_loop_t *, socket_t *, platform_event_accept_fn, void *,
-                                        platform_event_listener_t **);
+asciichat_error_t platform_event_listen(platform_event_loop_t *, socket_t *, platform_event_accept_fn, void *, platform_event_listener_t **);
 void platform_event_listener_close(platform_event_listener_t *);
-asciichat_error_t platform_event_stream_start(platform_event_stream_t *, platform_event_read_fn,
-                                              platform_event_close_fn, void *);
+asciichat_error_t platform_event_stream_start(platform_event_stream_t *, platform_event_read_fn, platform_event_close_fn, void *);
 /** Adopt an already-connected socket, setting it invalid on ownership transfer. */
 asciichat_error_t platform_event_stream_adopt(platform_event_loop_t *, socket_t *, platform_event_stream_t **);
 /** Copies input before returning. Completion means local write completion, not
  * peer acknowledgement. Rejected writes never invoke completion. Accepted writes
  * invoke completion exactly once, including during shutdown, before on_close.
  */
-asciichat_error_t platform_event_stream_write(platform_event_stream_t *, const socket_buffer_t *, size_t,
-                                              platform_event_write_fn, void *);
+asciichat_error_t platform_event_stream_write(platform_event_stream_t *, const socket_buffer_t *, size_t, platform_event_write_fn, void *);
 void platform_event_stream_pause(platform_event_stream_t *);
 asciichat_error_t platform_event_stream_resume(platform_event_stream_t *);
 void platform_event_stream_close(platform_event_stream_t *, asciichat_error_t);
@@ -67,5 +63,4 @@ void platform_event_stream_observe_queue(platform_event_stream_t *, platform_eve
  * write(), request_close(), and queued_bytes() are thread-safe while the caller
  * holds a live stream reference; other stream operations are loop-only.
  */
-asciichat_error_t platform_event_stream_work(platform_event_stream_t *, platform_event_work_fn,
-                                             platform_event_work_done_fn, void *);
+asciichat_error_t platform_event_stream_work(platform_event_stream_t *, platform_event_work_fn, platform_event_work_done_fn, void *);

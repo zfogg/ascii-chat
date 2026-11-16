@@ -37,6 +37,7 @@ set(CORE_SRCS
     ${LIB_DIR}/common.c
     ${LIB_DIR}/otel.c
     ${LIB_DIR}/asciichat_errno.c
+    ${CMAKE_SOURCE_DIR}/src/common/http_renderer.c
     ${LIB_DIR}/app_callbacks.c
     ${LIB_DIR}/stats/stats.c
     ${LIB_DIR}/stats/descriptors.c
@@ -93,63 +94,37 @@ set(CORE_SRCS
     ${LIB_DIR}/tui/shortcuts.c
     ${LIB_DIR}/tui/errno_stacks.c
     # options/
-    ${LIB_DIR}/options/colorscheme.c
-    ${LIB_DIR}/options/options.c
-    ${LIB_DIR}/options/common.c
-    ${LIB_DIR}/options/enums.c
-    ${LIB_DIR}/options/strings.c
-    ${LIB_DIR}/options/levenshtein.c
-    ${LIB_DIR}/options/rcu.c
-    ${LIB_DIR}/options/layout.c
-    ${LIB_DIR}/options/manpage.c
-    ${LIB_DIR}/options/help_api.c
-    # options/builder/
-    ${LIB_DIR}/options/builder/builder.c
-    ${LIB_DIR}/options/builder/handlers.c
-    ${LIB_DIR}/options/builder/help.c
+    ${CMAKE_SOURCE_DIR}/lib/options/colorscheme.c
+    ${CMAKE_SOURCE_DIR}/lib/options/core.c
+    ${CMAKE_SOURCE_DIR}/lib/options/common.c
+    ${CMAKE_SOURCE_DIR}/lib/options/enums.c
+    ${CMAKE_SOURCE_DIR}/lib/options/strings.c
+    ${CMAKE_SOURCE_DIR}/lib/options/runtime.c
+    ${CMAKE_SOURCE_DIR}/lib/options/help.c
     # options/config/
-    ${LIB_DIR}/options/config/config.c
-    ${LIB_DIR}/options/config/schema.c
-    ${LIB_DIR}/options/config/presets.c
-    ${LIB_DIR}/options/json.c
+    ${CMAKE_SOURCE_DIR}/lib/options/config.c
     # options/registry/
-    ${LIB_DIR}/options/registry/metadata.c
-    ${LIB_DIR}/options/registry/general.c
-    ${LIB_DIR}/options/registry/logging.c
-    ${LIB_DIR}/options/registry/configuration.c
-    ${LIB_DIR}/options/registry/terminal.c
-    ${LIB_DIR}/options/registry/webcam.c
-    ${LIB_DIR}/options/registry/display.c
-    ${LIB_DIR}/options/registry/network.c
-    ${LIB_DIR}/options/registry/security.c
-    ${LIB_DIR}/options/registry/media.c
-    ${LIB_DIR}/options/registry/audio.c
-    ${LIB_DIR}/options/registry/database.c
-    ${LIB_DIR}/options/registry/registry.c
-    ${LIB_DIR}/options/registry/core.c
-    ${LIB_DIR}/options/registry/public_api.c
-    ${LIB_DIR}/options/registry/mode_defaults.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_metadata.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_general.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_logging.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_configuration.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_terminal.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_webcam.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_display.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_network.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_security.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_media.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_audio.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_database.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_registry.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_core.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_public_api.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry_mode_defaults.c
     # options/parsing/
-    ${LIB_DIR}/options/parsing/parsers.c
-    ${LIB_DIR}/options/parsing/validation.c
-    ${LIB_DIR}/options/parsing/actions.c
+    ${CMAKE_SOURCE_DIR}/lib/options/parsing_parsers.c
+    ${CMAKE_SOURCE_DIR}/lib/options/parsing_validation.c
+    ${CMAKE_SOURCE_DIR}/lib/options/parsing_actions.c
     # options/manpage/
-    ${LIB_DIR}/options/manpage/embedded.c
-    ${LIB_DIR}/options/manpage/resources.c
-    ${LIB_DIR}/options/manpage/parser.c
-    ${LIB_DIR}/options/manpage/formatter.c
-    ${LIB_DIR}/options/manpage/merger.c
-    ${LIB_DIR}/options/manpage/content/options.c
-    ${LIB_DIR}/options/manpage/content/environment.c
-    ${LIB_DIR}/options/manpage/content/usage.c
-    ${LIB_DIR}/options/manpage/content/examples.c
-    ${LIB_DIR}/options/manpage/content/positional.c
-    # options/completions/
-    ${LIB_DIR}/options/completions/completions.c
-    ${LIB_DIR}/options/completions/bash.c
-    ${LIB_DIR}/options/completions/fish.c
-    ${LIB_DIR}/options/completions/zsh.c
-    ${LIB_DIR}/options/completions/powershell.c
     # version
     ${LIB_DIR}/version.c
     # discovery/ (library)
@@ -205,7 +180,7 @@ endif()
 list(APPEND CORE_SRCS
     ${LIB_DIR}/debug/stats.c
     ${LIB_DIR}/debug/errno.c
-    ${LIB_DIR}/options/registry/debug.c
+        ${CMAKE_SOURCE_DIR}/lib/options/registry_debug.c
 )
 
 # Additional debug sources only in non-Release builds
@@ -374,7 +349,7 @@ endmacro()
 # -----------------------------------------------------------------------------
 list(FILTER UTIL_SRCS EXCLUDE REGEX "/utf8proc/utf8proc[.]c$")
 create_ascii_chat_module(ascii-chat-util "${UTIL_SRCS}")
-target_link_libraries(ascii-chat-util PRIVATE ${UTF8PROC_LIBRARIES} asciichat-icu)
+target_link_libraries(ascii-chat-util PRIVATE ${UTF8PROC_LIBRARIES} asciichat-icu libflags::flags)
 
 # PCRE2: Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
 # CRITICAL: Must be defined before including pcre2.h in any source file
@@ -748,7 +723,9 @@ endif()
 target_link_libraries(ascii-chat-core PRIVATE
     ${SQLITE3_LIBRARIES}
     ${UTF8PROC_LIBRARIES}
+    libflags::flags
 )
+target_include_directories(ascii-chat-core PRIVATE "${libflags_SOURCE_DIR}/include")
 
 # PCRE2: Configure for core module (for session string format validation)
 # Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
@@ -759,7 +736,7 @@ target_include_directories(ascii-chat-core PRIVATE ${PCRE2_INCLUDE_DIRS})
 
 # Add session headers directory (refactored from lib/session to src/common/session)
 # Using src/common allows #include "session/display.h" style includes
-target_include_directories(ascii-chat-core PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
+target_include_directories(ascii-chat-core PRIVATE ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_SOURCE_DIR}/lib)
 
 # Session server headers include the public WebSocket server API, which in turn
 # includes libwebsockets.h. Core needs its include path even though the
@@ -857,7 +834,15 @@ if(WIN32)
     # declarations from system/vcpkg headers when compiling the HTTP/2 object.
     target_compile_definitions(ascii-chat-network PRIVATE NGHTTP2_STATICLIB)
 endif()
-if(USE_MUSL)
+if(TARGET nghttp2_static)
+    set(ASCIICHAT_NGHTTP2_TARGET nghttp2_static)
+    get_target_property(_asciichat_nghttp2_includes nghttp2_static INTERFACE_INCLUDE_DIRECTORIES)
+    if(_asciichat_nghttp2_includes)
+        target_include_directories(ascii-chat-network PRIVATE ${_asciichat_nghttp2_includes})
+    endif()
+elseif(TARGET nghttp2)
+    set(ASCIICHAT_NGHTTP2_TARGET nghttp2)
+elseif(USE_MUSL)
     # gotel builds this target for the active toolchain; a host installation
     # can otherwise introduce glibc headers and libraries into a musl build.
     if(NOT TARGET nghttp2_static)
@@ -916,6 +901,11 @@ endif()
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-network PRIVATE asciichat-quic)
 endif()
+# The HTTP/2 implementation is compiled into this module, so its discovered
+# nghttp2 target must be part of the module's link interface.  In particular,
+# this keeps system nghttp2 available when gotel is configured without its
+# optional HTTP/2 transport.
+target_link_libraries(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_TARGET})
 # clang-cl disables C++ exceptions by default, but this adapter catches
 # exceptions from the libdatachannel C++ API.
 if(WIN32)
@@ -1034,7 +1024,7 @@ add_library(ascii-chat-shared SHARED
     if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
     endif()
-    target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES})
+    target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES} libflags::flags)
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
     endif()
@@ -1306,25 +1296,12 @@ add_library(ascii-chat-shared SHARED
     )
     unset(_asciichat_nghttp2_shared_link)
 
-    # Coverage builds: link Clang profile runtime into shared library
+    # Coverage instrumentation is propagated through the shared target's
+    # compile and link options. Do not link the compiler's profile runtime
+    # archive into the shared library: LLVM's runtime symbols must be owned by
+    # the final executable, and lld rejects a DSO that references those
+    # non-exported symbols when coverage and sanitizers are combined.
     if(ASCIICHAT_ENABLE_COVERAGE)
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64|ARM64")
-            set(_profile_names "libclang_rt.profile_osx.a" "libclang_rt.profile-arm64.a")
-        else()
-            set(_profile_names "libclang_rt.profile-x86_64.a" "libclang_rt.profile_osx.a")
-        endif()
-        foreach(_name ${_profile_names})
-            execute_process(
-                COMMAND ${CMAKE_C_COMPILER} --print-file-name=${_name}
-                OUTPUT_VARIABLE _SHARED_CLANG_PROFILE_LIB
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-            )
-            if(EXISTS "${_SHARED_CLANG_PROFILE_LIB}")
-                target_link_libraries(ascii-chat-shared PRIVATE "${_SHARED_CLANG_PROFILE_LIB}")
-                message(STATUS "Linked Clang profile runtime into shared library: ${_SHARED_CLANG_PROFILE_LIB}")
-                break()
-            endif()
-        endforeach()
         target_link_options(ascii-chat-shared PRIVATE --coverage)
     endif()
 
@@ -2011,14 +1988,20 @@ target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_LIBRARIES})
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_FLOAT_LIBRARY})
 target_link_libraries(ascii-chat-core PRIVATE ${FFTW_FLOAT_LIBRARY})
 
-target_link_libraries(ascii-chat-core PRIVATE gotel::gotel)
-if(TARGET ascii-chat-shared)
-    target_link_libraries(ascii-chat-shared PRIVATE gotel::gotel)
-    # ascii-chat-shared is assembled from object libraries. gotel's OTLP
-    # implementation is therefore not guaranteed to reach its final link
-    # through gotel's transitive interface; make that dependency explicit.
-    if(TARGET otlp-c::otlp_c)
-        target_link_libraries(ascii-chat-shared PRIVATE otlp-c::otlp_c)
+if(NOT EMSCRIPTEN)
+    if(NOT TARGET gotel::gotel)
+        message(FATAL_ERROR "gotel dependency was configured without a usable target")
     endif()
+    set(ASCIICHAT_GOTEL_TARGET gotel::gotel)
+    target_link_libraries(ascii-chat-core PRIVATE ${ASCIICHAT_GOTEL_TARGET})
+    if(TARGET ascii-chat-shared)
+        target_link_libraries(ascii-chat-shared PRIVATE ${ASCIICHAT_GOTEL_TARGET})
+        # ascii-chat-shared is assembled from object libraries, so keep gotel's
+        # OTLP implementation explicit at the final shared-library link.
+        if(TARGET otlp-c::otlp_c)
+            target_link_libraries(ascii-chat-shared PRIVATE otlp-c::otlp_c)
+        endif()
+    endif()
+    target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${ASCIICHAT_GOTEL_TARGET})
 endif()
-target_link_libraries(ascii-chat-static-lib-deps INTERFACE gotel::gotel)
+target_link_libraries(ascii-chat-static-lib-deps INTERFACE libflags::flags)

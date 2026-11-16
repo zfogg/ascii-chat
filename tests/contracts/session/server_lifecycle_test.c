@@ -1,12 +1,10 @@
 #include <criterion/criterion.h>
 #include "../../../src/common/session/server_like.h"
-#include <ascii-chat/options/rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/util/time.h>
 static unsigned network_token, mdns_token;
-static unsigned fail_stage, created, started, ran, stopped, destroyed, initialized, cleaned, interrupted, mapped,
-    unmapped, renewed, joined, advertised, status_draws;
-static bool cancel_initialization, fail_worker, mapping_matches = true, mapping_active = true, fail_mapping,
-                                                fail_advertisement, fail_mdns;
+static unsigned fail_stage, created, started, ran, stopped, destroyed, initialized, cleaned, interrupted, mapped, unmapped, renewed, joined, advertised, status_draws;
+static bool cancel_initialization, fail_worker, mapping_matches = true, mapping_active = true, fail_mapping, fail_advertisement, fail_mdns;
 static network_server_config_t observed_network;
 static nat_upnp_context_t mapping_storage[2];
 static asciichat_error_t owner_create(const network_server_config_t *config, network_server_t **out) {
@@ -169,8 +167,7 @@ static void mode_interrupt(int sig) {
   cr_assert_eq(sig, SIGINT);
   ++interrupted;
 }
-static asciichat_error_t mode_packet(network_connection_t *connection, packet_type_t type, const void *payload,
-                                     size_t length, void *data) {
+static asciichat_error_t mode_packet(network_connection_t *connection, packet_type_t type, const void *payload, size_t length, void *data) {
   (void)connection;
   (void)type;
   (void)payload;
@@ -184,12 +181,8 @@ static void mode_status(void *data, ui_status_t *status) {
   atomic_store_bool(&g_status_should_exit, true);
 }
 static session_server_like_config_t config(void) {
-  return (session_server_like_config_t){.init_fn = mode_init,
-                                        .init_user_data = &initialized,
-                                        .cleanup_fn = mode_cleanup,
-                                        .cleanup_user_data = &cleaned,
-                                        .interrupt_fn = mode_interrupt,
-                                        .connections = {.packet = mode_packet}};
+  return (session_server_like_config_t){
+      .init_fn = mode_init, .init_user_data = &initialized, .cleanup_fn = mode_cleanup, .cleanup_user_data = &cleaned, .interrupt_fn = mode_interrupt, .connections = {.packet = mode_packet}};
 }
 static void setup(void) {
   log_init(NULL, LOG_DEV, false, false);
@@ -356,7 +349,6 @@ Test(server_lifecycle, status_worker_lifetime_tracks_start_success_and_failure) 
   options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
   *v = *options_get();
   v->status_screen = true;
-  v->status_screen_explicitly_set = true;
   cr_assert_eq(options_state_set(v), ASCIICHAT_OK);
   SAFE_FREE(v);
   cr_assert_eq(session_server_like_run(&c), ASCIICHAT_OK);

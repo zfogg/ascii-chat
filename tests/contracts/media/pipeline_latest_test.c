@@ -2,8 +2,8 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/video/ascii/ascii.h>
-#include <ascii-chat/options/colorscheme.h>
-#include <ascii-chat/options/rcu.h>
+#include <options/colorscheme.h>
+#include <options/rcu.h>
 #include <libplatform/wakeup.h>
 
 #define g_snapshot_first_frame_rendered test_pipeline_snapshot_first_frame_rendered

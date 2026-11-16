@@ -38,9 +38,8 @@ static const uint8_t OLD_FORMAT_PUBKEY_PACKET[] = {0x98, 0x33,             // Ol
                                                    // OID for Ed25519 (variable length)
                                                    0x09, 0x2B, 0x06, 0x01, 0x04, 0x01, 0xDA, 0x47, 0x0F, 0x01,
                                                    // Ed25519 key: 0x40 prefix + 32 bytes
-                                                   0x40, 0x39, 0xAC, 0xA4, 0x20, 0xCC, 0x9A, 0x42, 0x2F, 0x02, 0x05,
-                                                   0x33, 0x62, 0x17, 0xDA, 0x3F, 0x35, 0xB9, 0xBA, 0x2F, 0x90, 0xF0,
-                                                   0x47, 0xD8, 0x75, 0x99, 0xA4, 0xB7, 0xCA, 0xA1, 0xB9, 0x3C, 0x53};
+                                                   0x40, 0x39, 0xAC, 0xA4, 0x20, 0xCC, 0x9A, 0x42, 0x2F, 0x02, 0x05, 0x33, 0x62, 0x17, 0xDA, 0x3F, 0x35, 0xB9, 0xBA, 0x2F, 0x90, 0xF0, 0x47, 0xD8, 0x75,
+                                                   0x99, 0xA4, 0xB7, 0xCA, 0xA1, 0xB9, 0x3C, 0x53};
 
 /**
  * New format Public Key Packet (tag 6) with Ed25519 key
@@ -57,23 +56,20 @@ static const uint8_t NEW_FORMAT_PUBKEY_PACKET[] = {0xC6, 0x33,             // Ne
                                                    // OID for Ed25519
                                                    0x09, 0x2B, 0x06, 0x01, 0x04, 0x01, 0xDA, 0x47, 0x0F, 0x01,
                                                    // Ed25519 key: 0x40 prefix + 32 bytes
-                                                   0x40, 0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55,
-                                                   0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x01,
-                                                   0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0xFE, 0xDC, 0xBA, 0x98};
+                                                   0x40, 0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x01, 0x23, 0x45, 0x67,
+                                                   0x89, 0xAB, 0xCD, 0xEF, 0xFE, 0xDC, 0xBA, 0x98};
 
 /**
  * Expected Ed25519 public key from OLD_FORMAT_PUBKEY_PACKET
  */
-static const uint8_t EXPECTED_OLD_FORMAT_KEY[32] = {0x39, 0xAC, 0xA4, 0x20, 0xCC, 0x9A, 0x42, 0x2F, 0x02, 0x05, 0x33,
-                                                    0x62, 0x17, 0xDA, 0x3F, 0x35, 0xB9, 0xBA, 0x2F, 0x90, 0xF0, 0x47,
-                                                    0xD8, 0x75, 0x99, 0xA4, 0xB7, 0xCA, 0xA1, 0xB9, 0x3C, 0x53};
+static const uint8_t EXPECTED_OLD_FORMAT_KEY[32] = {0x39, 0xAC, 0xA4, 0x20, 0xCC, 0x9A, 0x42, 0x2F, 0x02, 0x05, 0x33, 0x62, 0x17, 0xDA, 0x3F, 0x35,
+                                                    0xB9, 0xBA, 0x2F, 0x90, 0xF0, 0x47, 0xD8, 0x75, 0x99, 0xA4, 0xB7, 0xCA, 0xA1, 0xB9, 0x3C, 0x53};
 
 /**
  * Expected Ed25519 public key from NEW_FORMAT_PUBKEY_PACKET
  */
-static const uint8_t EXPECTED_NEW_FORMAT_KEY[32] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
-                                                    0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x01, 0x23,
-                                                    0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0xFE, 0xDC, 0xBA, 0x98};
+static const uint8_t EXPECTED_NEW_FORMAT_KEY[32] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB,
+                                                    0xCC, 0xDD, 0xEE, 0xFF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0xFE, 0xDC, 0xBA, 0x98};
 
 // =============================================================================
 // Packet Header Parsing Tests
@@ -83,8 +79,7 @@ TestSuite(openpgp);
 
 Test(openpgp, parse_old_format_packet_header) {
   openpgp_packet_header_t header;
-  asciichat_error_t result =
-      openpgp_parse_packet_header(OLD_FORMAT_PUBKEY_PACKET, sizeof(OLD_FORMAT_PUBKEY_PACKET), &header);
+  asciichat_error_t result = openpgp_parse_packet_header(OLD_FORMAT_PUBKEY_PACKET, sizeof(OLD_FORMAT_PUBKEY_PACKET), &header);
 
   cr_assert_eq(result, ASCIICHAT_OK, "Failed to parse old format packet header");
   cr_assert_eq(header.new_format, false, "Should detect old format");
@@ -95,8 +90,7 @@ Test(openpgp, parse_old_format_packet_header) {
 
 Test(openpgp, parse_new_format_packet_header) {
   openpgp_packet_header_t header;
-  asciichat_error_t result =
-      openpgp_parse_packet_header(NEW_FORMAT_PUBKEY_PACKET, sizeof(NEW_FORMAT_PUBKEY_PACKET), &header);
+  asciichat_error_t result = openpgp_parse_packet_header(NEW_FORMAT_PUBKEY_PACKET, sizeof(NEW_FORMAT_PUBKEY_PACKET), &header);
 
   cr_assert_eq(result, ASCIICHAT_OK, "Failed to parse new format packet header");
   cr_assert_eq(header.new_format, true, "Should detect new format");
@@ -245,8 +239,7 @@ Test(openpgp, decode_base64_with_newlines) {
 
   uint8_t *binary_out;
   size_t binary_len;
-  asciichat_error_t result =
-      openpgp_base64_decode(base64_with_newlines, strlen(base64_with_newlines), &binary_out, &binary_len);
+  asciichat_error_t result = openpgp_base64_decode(base64_with_newlines, strlen(base64_with_newlines), &binary_out, &binary_len);
 
   cr_assert_eq(result, ASCIICHAT_OK, "Failed to decode base64 with newlines");
   cr_assert_neq(binary_out, NULL, "Should allocate output buffer");
@@ -293,8 +286,7 @@ Test(openpgp, parse_full_armored_key_old_format) {
   asciichat_error_t result = openpgp_parse_armored_pubkey(armored_key, ed25519_pk);
 
   cr_assert_eq(result, ASCIICHAT_OK, "Failed to parse full armored key");
-  cr_assert(memcmp(ed25519_pk, EXPECTED_OLD_FORMAT_KEY, 32) == 0,
-            "Should extract correct Ed25519 public key from armored block");
+  cr_assert(memcmp(ed25519_pk, EXPECTED_OLD_FORMAT_KEY, 32) == 0, "Should extract correct Ed25519 public key from armored block");
 }
 
 Test(openpgp, reject_missing_begin_marker) {

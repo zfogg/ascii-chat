@@ -10,9 +10,9 @@
 #define MCP_REQUEST_RESERVED_ARGS 6
 
 #include "mcp.h"
-#include <ascii-chat/options/json.h>
-#include <ascii-chat/options/registry.h>
-#include <ascii-chat/options/registry/core.h>
+#include <options/json.h>
+#include <options/registry.h>
+#include <options/registry_core.h>
 #include <libplatform/filesystem.h>
 #include <sodium.h>
 #include <libavcodec/avcodec.h>

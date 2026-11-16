@@ -214,12 +214,12 @@ typedef struct {
   uint8_t max_participants;                          ///< Maximum participants (1-128)
   bool has_password;                                 ///< Password protection enabled
   char password[ACIP_PASSWORD_SIZE];                 ///< Optional password (if has_password)
-  bool acds_expose_ip;                    ///< Explicitly allow public IP disclosure (--acds-expose-ip opt-in)
-  uint8_t session_type;                   ///< acds_session_type_t: 0=DIRECT_TCP (default), 1=WEBRTC
-  const char *reserved_string;            ///< Optional reserved string (NULL = auto-generate)
-  char server_address[ACIP_ADDRESS_SIZE]; ///< Server address where clients should
-                                          ///< connect
-  uint16_t server_port;                   ///< Server port where clients should connect
+  bool acds_expose_ip;                               ///< Explicitly allow public IP disclosure (--acds-expose-ip opt-in)
+  uint8_t session_type;                              ///< acds_session_type_t: 0=DIRECT_TCP (default), 1=WEBRTC
+  const char *reserved_string;                       ///< Optional reserved string (NULL = auto-generate)
+  char server_address[ACIP_ADDRESS_SIZE];            ///< Server address where clients should
+                                                     ///< connect
+  uint16_t server_port;                              ///< Server port where clients should connect
   uint16_t quic_port;
   char webtransport_url[512];
 } acds_session_create_params_t;
@@ -243,8 +243,7 @@ typedef struct {
  * @param result Session creation result (output)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_create_params_t *params,
-                                      acds_session_create_result_t *result);
+asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_create_params_t *params, acds_session_create_result_t *result);
 
 /**
  * @brief Session lookup result
@@ -276,8 +275,7 @@ typedef struct {
  * @param result Lookup result (output)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acds_session_lookup(acds_client_t *client, const char *session_string,
-                                      acds_session_lookup_result_t *result);
+asciichat_error_t acds_session_lookup(acds_client_t *client, const char *session_string, acds_session_lookup_result_t *result);
 
 /**
  * @brief Session join parameters
@@ -317,8 +315,7 @@ typedef struct {
  * @param result Join result (output)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_join_params_t *params,
-                                    acds_session_join_result_t *result);
+asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_join_params_t *params, acds_session_join_result_t *result);
 
 // ============================================================================
 // Cryptographic Signature Helpers
@@ -336,8 +333,7 @@ asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_jo
  * @param signature_out Output buffer for signature (64 bytes)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acds_sign_session_create(const uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE], uint64_t timestamp,
-                                           uint8_t capabilities, uint8_t max_participants,
+asciichat_error_t acds_sign_session_create(const uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE], uint64_t timestamp, uint8_t capabilities, uint8_t max_participants,
                                            uint8_t signature_out[ED25519_SIGNATURE_SIZE]);
 
 /**
@@ -352,8 +348,7 @@ asciichat_error_t acds_sign_session_create(const uint8_t identity_seckey[ED25519
  * @param signature Signature to verify (64 bytes)
  * @return ASCIICHAT_OK if valid, ERROR_CRYPTO_VERIFY_FAILED if invalid
  */
-asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE], uint64_t timestamp,
-                                             uint8_t capabilities, uint8_t max_participants,
+asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE], uint64_t timestamp, uint8_t capabilities, uint8_t max_participants,
                                              const uint8_t signature[ED25519_SIGNATURE_SIZE]);
 
 /**
@@ -367,8 +362,7 @@ asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[ED255
  * @param signature_out Output buffer for signature (64 bytes)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE], uint64_t timestamp,
-                                         const char *session_string, uint8_t signature_out[ED25519_SIGNATURE_SIZE]);
+asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[ED25519_PRIVATE_KEY_SIZE], uint64_t timestamp, const char *session_string, uint8_t signature_out[ED25519_SIGNATURE_SIZE]);
 
 /**
  * @brief Verify SESSION_JOIN signature
@@ -381,8 +375,7 @@ asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[ED25519_P
  * @param signature Signature to verify (64 bytes)
  * @return ASCIICHAT_OK if valid, ERROR_CRYPTO_VERIFY_FAILED if invalid
  */
-asciichat_error_t acds_verify_session_join(const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE], uint64_t timestamp,
-                                           const char *session_string, const uint8_t signature[ED25519_SIGNATURE_SIZE]);
+asciichat_error_t acds_verify_session_join(const uint8_t identity_pubkey[ED25519_PUBLIC_KEY_SIZE], uint64_t timestamp, const char *session_string, const uint8_t signature[ED25519_SIGNATURE_SIZE]);
 
 /**
  * @brief Check if timestamp is within acceptable window
@@ -413,7 +406,5 @@ void acds_client_config_init_defaults(acds_client_config_t *config);
 
 #define ACDS_TRANSPORT_METADATA_MAX 521
 /* ACQT v1 is optional. An absent extension decodes to no advertised endpoints. */
-asciichat_error_t acds_transport_metadata_encode(uint16_t quic_port, const char *url, void *output, size_t capacity,
-                                                 size_t *length);
-asciichat_error_t acds_transport_metadata_decode(const void *bytes, size_t length, uint16_t *quic_port, char *url,
-                                                 size_t capacity);
+asciichat_error_t acds_transport_metadata_encode(uint16_t quic_port, const char *url, void *output, size_t capacity, size_t *length);
+asciichat_error_t acds_transport_metadata_decode(const void *bytes, size_t length, uint16_t *quic_port, char *url, size_t capacity);

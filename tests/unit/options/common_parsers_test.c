@@ -1,7 +1,6 @@
 #include <criterion/criterion.h>
-#include <ascii-chat/options/common.h>
-#include <ascii-chat/options/builder.h>
-#include <ascii-chat/options/levenshtein.h>
+#include <options/common.h>
+#include <libflags/levenshtein.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
@@ -9,17 +8,12 @@
 TestSuite(common_parsers);
 
 Test(common_parsers, levenshtein_handles_utf8_and_invalid_inputs) {
-  cr_assert_eq(levenshtein("kitten", "sitting"), 3);
-  cr_assert_eq(levenshtein("café", "cafe"), 1);
-  cr_assert_eq(levenshtein("界é", "界"), 1);
-  cr_assert_eq(levenshtein("", "abc"), 3);
-  cr_assert_eq(levenshtein(NULL, "abc"), SIZE_MAX);
-  cr_assert_eq(levenshtein("\xff", "abc"), SIZE_MAX);
-}
-
-Test(common_parsers, levenshtein_find_similar_uses_best_candidate) {
-  const char *candidates[] = {"server", "serve", "client", NULL};
-  cr_assert_str_eq(levenshtein_find_similar("serer", candidates), "server");
+  cr_assert_eq(flags_levenshtein("kitten", "sitting"), 3);
+  cr_assert_eq(flags_levenshtein("café", "cafe"), 1);
+  cr_assert_eq(flags_levenshtein("界é", "界"), 1);
+  cr_assert_eq(flags_levenshtein("", "abc"), 3);
+  cr_assert_eq(flags_levenshtein(NULL, "abc"), SIZE_MAX);
+  cr_assert_eq(flags_levenshtein("\xff", "abc"), SIZE_MAX);
 }
 
 Test(common_parsers, display_aliases_and_rejected_values_preserve_previous_settings) {
@@ -83,30 +77,10 @@ Test(common_parsers, numeric_options_enforce_ranges_and_do_not_commit_rejected_v
   cr_assert_float_eq(options->snapshot_delay, 1.25, 0.0001);
   cr_assert_eq(parse_log_level_option("debug", options), ASCIICHAT_OK);
   cr_assert_eq(parse_log_level_option("unknown", options), ERROR_INVALID_PARAM);
-  uint16_t port = 17;
-  cr_assert(validate_port_opt("65535", &port));
-  cr_assert_eq(port, 65535);
-  cr_assert_not(validate_port_opt("65536", &port));
-  cr_assert_eq(port, 65535);
-  int fps = 10;
-  cr_assert(validate_fps_opt("30", &fps));
-  cr_assert(validate_fps_opt("0", &fps));
-  cr_assert_eq(fps, 0);
-  cr_assert_not(validate_fps_opt("-1", &fps));
-  cr_assert_eq(fps, 0);
   SAFE_FREE(options);
 }
 
-Test(common_parsers, suggestions_explain_mode_restrictions_and_reject_unrelated_names) {
-  option_descriptor_t descriptors[] = {{.long_name = "width", .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_MIRROR}, {.long_name = "max-clients", .mode_bitmask = OPTION_MODE_SERVER}};
-  options_config_t config = {.descriptors = descriptors, .num_descriptors = 2};
-  const char *suggestion = find_similar_option_with_mode("--widht", &config, OPTION_MODE_CLIENT);
-  cr_assert_not_null(suggestion);
-  cr_assert_not_null(strstr(suggestion, "--width"));
-  suggestion = find_similar_option_with_mode("--max-client", &config, OPTION_MODE_CLIENT);
-  cr_assert_not_null(strstr(suggestion, "server"));
-  cr_assert_null(find_similar_option_with_mode("not-an-option", &config, OPTION_MODE_CLIENT));
-  cr_assert_null(find_similar_option_with_mode("--unrelated-unknown-flag", &config, OPTION_MODE_CLIENT));
+Test(common_parsers, mode_restrictions_are_formatted) {
   cr_assert_str_eq(format_available_modes(OPTION_MODE_BINARY), "global options");
   cr_assert_str_eq(format_available_modes(0), "unknown mode");
   const char *all = format_available_modes(OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC);

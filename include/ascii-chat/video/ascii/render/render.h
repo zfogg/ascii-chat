@@ -5,6 +5,8 @@
 #include <ascii-chat/video/ascii/simd/cells.h>
 #include <ascii-chat/video/ascii/render/types.h>
 
+typedef struct image image_t;
+
 /** Shared terminal-cell contract for every ISA and scalar fallback.
  * Palettes use complete UTF-8 glyphs from cache64. Runs never cross rows.
  * Background mode sets a contrasting foreground. Colored rows finish with

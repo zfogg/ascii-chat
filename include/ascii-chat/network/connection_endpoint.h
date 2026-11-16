@@ -46,8 +46,7 @@ typedef struct {
  * Bare hostnames are treated as TCP endpoints and use default_port when the
  * input does not specify a port.
  */
-asciichat_error_t connection_endpoint_resolve(const char *input, uint16_t default_port,
-                                              connection_endpoint_t *endpoint_out);
+asciichat_error_t connection_endpoint_resolve(const char *input, uint16_t default_port, connection_endpoint_t *endpoint_out);
 
 /** Build an equivalent endpoint URL with an explicitly overridden port. */
 asciichat_error_t connection_endpoint_override_port(const char *input, uint16_t port, char *output, size_t output_size);

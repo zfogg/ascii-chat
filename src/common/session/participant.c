@@ -19,7 +19,7 @@
 #include "session/connection.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/common/buffer_sizes.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/app_callbacks.h>
 #include <libplatform/thread.h>

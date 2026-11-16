@@ -29,6 +29,13 @@ include(${CMAKE_SOURCE_DIR}/cmake/test/LeakSanitizer.cmake)
 #   - Future defer tests (prepared for in this infrastructure)
 # =============================================================================
 
+# CI explicitly requests Criterion tests even for configurations whose preset
+# normally disables the test graph. Preserve that contract before any target
+# guards below evaluate BUILD_TESTS.
+if(ASCIICHAT_FORCE_CRITERION_TESTS)
+    set(BUILD_TESTS ON CACHE BOOL "Build test executables" FORCE)
+endif()
+
 # Enable CTest if any tests are being built (Criterion or lib runtime)
 if(BUILD_TESTS)
     enable_testing()
@@ -111,6 +118,13 @@ if(BUILD_TESTS)
             set_property(TEST quic-dependencies PROPERTY ENVIRONMENT_MODIFICATION
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin"
                 "PATH=path_list_prepend:${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
+            foreach(_quic_runtime_target asciichat-ngtcp2 asciichat-ngtcp2-crypto asciichat-nghttp3)
+                if(TARGET ${_quic_runtime_target})
+                    set_property(TEST quic-dependencies APPEND PROPERTY
+                        ENVIRONMENT_MODIFICATION
+                        "PATH=path_list_prepend:$<TARGET_FILE_DIR:${_quic_runtime_target}>")
+                endif()
+            endforeach()
         endif()
     endif()
     # Standalone Python probes compile production headers directly.  Keep the
@@ -191,7 +205,7 @@ function(asciichat_configure_contract target)
         add_dependencies(${target} tests-timer-start)
     endif()
     set_property(TARGET ${target} PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)
-    target_link_libraries(${target} PRIVATE ${CRITERION_LIBRARIES})
+    target_link_libraries(${target} PRIVATE ${CRITERION_LIBRARIES} libflags::flags)
     target_link_directories(${target} PRIVATE ${CRITERION_LIBRARY_DIRS} ${FFMPEG_LIBRARY_DIRS})
     target_include_directories(${target} PRIVATE ${CRITERION_INCLUDE_DIRS})
     set_target_properties(${target} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF
@@ -468,6 +482,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             ${CRITERION_INCLUDE_DIRS}
             ${_ascii_tests_mimalloc_include}
             ${LIBWEBSOCKETS_INCLUDE_DIRS}
+            ${CMAKE_SOURCE_DIR}/lib
         )
 
         # Define CRITERION_TEST for test environment detection
@@ -491,6 +506,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # Link against shared library which contains all code
         target_link_libraries(${test_exe_name}
             ${_ascii_tests_library}
+            libflags::flags
             ${TEST_LDFLAGS}
         )
 

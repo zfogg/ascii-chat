@@ -1,5 +1,11 @@
 # Installed packages retain their own static/shared dependency configuration.
-if((WIN32 OR ASCIICHAT_SHARED_DEPS) AND NOT ASCIICHAT_BUILD_DEPS_FROM_SOURCE AND NOT PLATFORM_IOS AND NOT USE_MUSL)
+option(ASCIICHAT_USE_SYSTEM_LIBWEBSOCKETS
+    "Use system libwebsockets when the package is available"
+    ON)
+if((WIN32 OR ASCIICHAT_SHARED_DEPS OR ASCIICHAT_USE_SYSTEM_LIBWEBSOCKETS)
+   AND NOT ASCIICHAT_BUILD_DEPS_FROM_SOURCE
+   AND NOT PLATFORM_IOS
+   AND NOT USE_MUSL)
     # Try CMake config first, then fall back to pkg-config
     find_package(libwebsockets QUIET CONFIG)
     if(NOT libwebsockets_FOUND)

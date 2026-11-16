@@ -10,8 +10,7 @@ extern "C" {
 
 class AsciiRendererBinding {
 public:
-  AsciiRendererBinding(int cols, int rows, double font_size, bool matrix, int selection)
-      : output_(emscripten::val::undefined()) {
+  AsciiRendererBinding(int cols, int rows, double font_size, bool matrix, int selection) : output_(emscripten::val::undefined()) {
     term_renderer_config_t config{};
     config.cols = cols;
     config.rows = rows;
@@ -65,8 +64,7 @@ public:
       render_error_ = SET_ERRNO(ERROR_INVALID_STATE, "Cannot feed ANSI text to renderer");
       return emscripten::val::null();
     }
-    const int w = term_renderer_width_px(renderer_), h = term_renderer_height_px(renderer_),
-              pitch = term_renderer_pitch(renderer_);
+    const int w = term_renderer_width_px(renderer_), h = term_renderer_height_px(renderer_), pitch = term_renderer_pitch(renderer_);
     const uint8_t *pixels = term_renderer_pixels(renderer_);
     if (!pixels || w <= 0 || h <= 0 || pitch <= 0 || static_cast<uint64_t>(pitch) < static_cast<uint64_t>(w) * 4) {
       render_error_ = SET_ERRNO(ERROR_INVALID_STATE, "Terminal renderer has invalid pixel storage");
@@ -79,9 +77,7 @@ public:
       output_.call<void>("set", emscripten::val(emscripten::typed_memory_view(row_bytes * h, pixels)));
     } else {
       for (int row = 0; row < h; ++row) {
-        output_.call<void>(
-            "set", emscripten::val(emscripten::typed_memory_view(row_bytes, pixels + static_cast<size_t>(row) * pitch)),
-            row * row_bytes);
+        output_.call<void>("set", emscripten::val(emscripten::typed_memory_view(row_bytes, pixels + static_cast<size_t>(row) * pitch)), row * row_bytes);
       }
     }
     render_error_ = 0;
