@@ -201,13 +201,14 @@ endif()
 # Keep vcpkg's installed packages beside the other persistent dependency
 # artifacts. The installed tree contains both Debug and Release libraries for
 # the selected triplet, so the triplet remains the next path component.
-if(WIN32 AND USE_VCPKG AND NOT DEFINED VCPKG_INSTALLED_DIR)
+if(WIN32 AND USE_VCPKG)
     set(VCPKG_INSTALLED_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/vcpkg" CACHE PATH
         "Persistent vcpkg installed dependency tree" FORCE)
 endif()
 
-# A completed generation already has an installed dependency tree. Avoid taking
-# vcpkg's global install lock on every subsequent CMake regeneration.
+# vcpkg manifest mode is intentionally left enabled. It is idempotent when the
+# manifest is already satisfied, and must remain enabled so a cleared or
+# incomplete cache is repopulated during a normal preset configure.
 option(ASCIICHAT_VCPKG_REFRESH "Install or update vcpkg dependencies during configuration" OFF)
 if(EXISTS "${CMAKE_BINARY_DIR}/CMakeCache.txt" AND EXISTS "${CMAKE_BINARY_DIR}/cmake_install.cmake" AND NOT ASCIICHAT_VCPKG_REFRESH)
     set(VCPKG_MANIFEST_INSTALL OFF)
