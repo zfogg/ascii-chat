@@ -117,6 +117,10 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libplatform.cmake)
 # ascii-chat build never creates duplicate private copies of those libraries.
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Libflags.cmake)
 
+# gotel consumes the already-selected SQLite, PCRE2, OpenSSL, and platform
+# targets; configure it after those providers and before project libraries.
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Gotel.cmake)
+
 # x264 - H.264/AVC encoder (needed by FFmpeg for libx264 support)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/X264.cmake)
 
