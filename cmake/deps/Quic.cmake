@@ -205,6 +205,7 @@ function(asciichat_configure_quic)
             ${_quic_generator_args} ${_quic_common_args}
             -DENABLE_OPENSSL:BOOL=ON
             -DOPENSSL_INCLUDE_DIR:PATH=${OPENSSL_INCLUDE_DIR}
+            -DOPENSSL_INCLUDE_DIRS:PATH=${OPENSSL_INCLUDE_DIR}
             -DOPENSSL_SSL_LIBRARY:FILEPATH=${_quic_ssl_file}
             -DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}
             ${_quic_openssl_cache_args}
@@ -233,6 +234,7 @@ function(asciichat_configure_quic)
         DOWNLOAD_COMMAND "" UPDATE_COMMAND "" CONFIGURE_COMMAND "${CMAKE_COMMAND}" -E true INSTALL_COMMAND ""
         CMAKE_ARGS ${_quic_common_args} "-DENABLE_OPENSSL:BOOL=ON"
             "-DOPENSSL_INCLUDE_DIR:PATH=${OPENSSL_INCLUDE_DIR}"
+            "-DOPENSSL_INCLUDE_DIRS:PATH=${OPENSSL_INCLUDE_DIR}"
             "-DOPENSSL_SSL_LIBRARY:FILEPATH=${_quic_ssl_file}"
             "-DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}"
             ${_quic_openssl_cache_args}
