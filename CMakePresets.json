@@ -146,7 +146,12 @@
       "displayName": "Release (MSVC)",
       "description": "Release build using MSVC",
       "inherits": ["release", "base-vcpkg"],
-      "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl",
+        "ASCIICHAT_SHARED_DEPS": "ON",
+        "ASCIICHAT_ENFORCE_STATIC_RELEASE": "OFF"
+      },
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
