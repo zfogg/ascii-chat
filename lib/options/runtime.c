@@ -515,6 +515,10 @@ const options_t *options_get(void) {
   return current;
 }
 
+void options_warn_uninitialized(void) {
+  log_warn("GET_OPTION called but options not initialized");
+}
+
 const terminal_options_t *options_terminal_settings_ptr(void) {
   static terminal_options_t settings;
   const options_t *options = options_get();

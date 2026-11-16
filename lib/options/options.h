@@ -1281,10 +1281,12 @@ const terminal_options_t *options_terminal_settings_ptr(void);
  *
  * @ingroup options
  */
+void options_warn_uninitialized(void);
+
 static inline const options_t *options_get_or_default(void) {
   const options_t *opts = options_get();
   if (!opts)
-    log_warn("GET_OPTION called but options not initialized");
+    options_warn_uninitialized();
   static const options_t default_options = {0};
   return opts ? opts : &default_options;
 }
