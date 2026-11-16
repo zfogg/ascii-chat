@@ -162,6 +162,12 @@ function(asciichat_configure_quic)
         set(_quic_ssl_file "${OPENSSL_SSL_LIBRARY}")
         set(_quic_crypto_file "${OPENSSL_CRYPTO_LIBRARY}")
     endif()
+    if(DEFINED OPENSSL_LIBRARIES AND NOT "${OPENSSL_LIBRARIES}" STREQUAL "")
+        string(REPLACE ";" "\\;" _quic_openssl_libraries "${OPENSSL_LIBRARIES}")
+        set(_quic_openssl_args "-DOPENSSL_LIBRARIES:STRING=${_quic_openssl_libraries}")
+    else()
+        set(_quic_openssl_args)
+    endif()
 
     set(_ngtcp2_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/ngtcp2")
     set(_nghttp3_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/nghttp3")
@@ -215,6 +221,7 @@ function(asciichat_configure_quic)
             -DOPENSSL_INCLUDE_DIR:PATH=${OPENSSL_INCLUDE_DIR}
             -DOPENSSL_SSL_LIBRARY:FILEPATH=${_quic_ssl_file}
             -DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}
+            ${_quic_openssl_args}
             -DVCPKG_MANIFEST_INSTALL:BOOL=OFF
         RESULT_VARIABLE _ngtcp2_configure_result
         OUTPUT_VARIABLE _ngtcp2_configure_stdout
@@ -244,6 +251,7 @@ function(asciichat_configure_quic)
             "-DOPENSSL_INCLUDE_DIR:PATH=${OPENSSL_INCLUDE_DIR}"
             "-DOPENSSL_SSL_LIBRARY:FILEPATH=${_quic_ssl_file}"
             "-DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}"
+            ${_quic_openssl_args}
             "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ${_quic_ngtcp2_crypto_target} -- --quiet
         BUILD_BYPRODUCTS ${_ngtcp2_byproducts}
