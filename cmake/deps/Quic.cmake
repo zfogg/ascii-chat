@@ -163,7 +163,17 @@ function(asciichat_configure_quic)
         set(_quic_crypto_file "${OPENSSL_CRYPTO_LIBRARY}")
     endif()
     if(DEFINED OPENSSL_LIBRARIES AND NOT "${OPENSSL_LIBRARIES}" STREQUAL "")
-        string(REPLACE ";" "\\;" _quic_openssl_libraries "${OPENSSL_LIBRARIES}")
+        if(USE_MUSL AND NOT WIN32)
+            # The parent project may use target names (for example
+            # asciichat-zlib) in OPENSSL_LIBRARIES. The isolated ngtcp2
+            # configure cannot resolve parent targets, so pass concrete
+            # OpenSSL archives and the system libraries needed by the probe.
+            set(_quic_openssl_libraries
+                "${_quic_ssl_file};${_quic_crypto_file};dl;pthread")
+        else()
+            set(_quic_openssl_libraries "${OPENSSL_LIBRARIES}")
+        endif()
+        string(REPLACE ";" "\\;" _quic_openssl_libraries "${_quic_openssl_libraries}")
         set(_quic_openssl_args "-DOPENSSL_LIBRARIES:STRING=${_quic_openssl_libraries}")
     else()
         set(_quic_openssl_args)
