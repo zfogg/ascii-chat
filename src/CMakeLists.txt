@@ -77,6 +77,17 @@ target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LIBUV_TARGET} ${YYJSON_LIBR
 target_link_libraries(ascii-chat PRIVATE libflags::flags)
 target_include_directories(ascii-chat PRIVATE ${YYJSON_INCLUDE_DIRS})
 
+# Clang with compiler-rt does not always add the system unwinder when linking
+# static C++ dependencies such as WebRTC audio processing.
+if(UNIX AND NOT APPLE)
+    if(ASCIICHAT_LLVM_LIBUNWIND)
+        target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LLVM_LIBUNWIND})
+    endif()
+    # Arch ships the GCC unwinder as libgcc_s.so.1 without an unversioned
+    # development symlink, so find_library cannot discover it by filename.
+    target_link_libraries(ascii-chat PRIVATE gcc_s)
+endif()
+
 # The executable's mode sources call FFmpeg directly. pkg-config can return
 # bare library names, so carry its search directories to every link branch.
 if(FFMPEG_LIBRARY_DIRS)

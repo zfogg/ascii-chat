@@ -874,6 +874,11 @@ endif()
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-network PRIVATE asciichat-quic)
 endif()
+# The HTTP/2 implementation is compiled into this module, so its discovered
+# nghttp2 target must be part of the module's link interface.  In particular,
+# this keeps system nghttp2 available when gotel is configured without its
+# optional HTTP/2 transport.
+target_link_libraries(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_TARGET})
 # clang-cl disables C++ exceptions by default, but this adapter catches
 # exceptions from the libdatachannel C++ API.
 if(WIN32)
