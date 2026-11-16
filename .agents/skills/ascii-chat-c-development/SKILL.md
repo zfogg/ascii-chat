@@ -49,13 +49,13 @@ Keep reusable, platform-independent helpers in the appropriate `lib/` module, es
   for both transformation and compilation. Objective-C cleanup runs on
   exception unwinding, including in methods and block literals. Clang rejects
   jumps into the generated protected region.
-- `DEFER(action);` registers cleanup when execution reaches it. Actions run in
+- `defer(action);` registers cleanup when execution reaches it. Actions run in
   reverse registration order at block exit, including return, break, continue,
   and supported goto exits; their expressions use values at cleanup time. Return
   expressions are evaluated before cleanup. `longjmp`, process termination, and
   panic do not run the actions.
 - Place each defer directly in a compound block; brace conditional and loop
-  bodies. Use `DEFER_NAMED(handle, action)` and `DEFER_CANCEL(handle)` for
+  bodies. Use `defer_named(handle, action)` and `defer_cancel(handle)` for
   explicit ownership transfer. For tracked allocations, include `common.h` and
   use `SAFE_MALLOC_DEFER_FREE(name, size, pointer_type)` or
   `SAFE_CALLOC_DEFER_FREE(name, count, size, pointer_type)`; set the local
