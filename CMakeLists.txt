@@ -383,6 +383,10 @@ foreach(_package_manager HOMEBREW SCOOP AUR)
     endif()
 endforeach()
 
+# Recast only needs to inspect application sources for wrapper macros. Keep
+# dependency caches and vendored trees out of its configure-time scan.
+set(RECAST_SOURCE_DIRS "include;lib;src;tests" CACHE STRING
+    "Project source roots scanned by Recast" FORCE)
 include("${CMAKE_SOURCE_DIR}/deps/recast/Recast.cmake")
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Query.cmake)
