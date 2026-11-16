@@ -75,7 +75,7 @@ jobs:
         id: cache-build
         uses: ./.github/actions/cache-build
         with:
-          cache-version: v7 # Bumped to force WebRTC rebuild with correct SIMD support
+          cache-version: v8 # Bumped to discard dependency trees from before the Recast migration merge
 
       - name: Clean cached build outputs
         run: |

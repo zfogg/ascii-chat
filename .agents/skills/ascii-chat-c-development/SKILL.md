@@ -29,11 +29,11 @@ Keep reusable, platform-independent helpers in the appropriate `lib/` module, es
 
 ### Block-scoped cleanup with defer
 
-- Include `<defer.h>` where defer is used. CMake transforms C and Objective-C
+- Include `<recast/defer.h>` where defer is used. CMake transforms C and Objective-C
   sources and supported header function bodies before compilation; generated files under
-  `build/defer_transformed/` are build artifacts and must not be edited.
-- The standalone [defer tool](https://github.com/zfogg/defer) is maintained
-  separately and is included as the `deps/defer` submodule. CMake downloads a
+  `build/recast_transformed/` are build artifacts and must not be edited.
+- The standalone [Recast tool](https://github.com/zfogg/recast) is maintained
+  separately and is included as the `deps/recast` submodule. CMake downloads a
   host release by default; `DEFER_NATIVE_BINARY` selects an existing executable.
   For tool behavior and diagnostics, consult the standalone
   [documentation](https://zfogg.github.io/defer/) and this repository's defer
@@ -49,13 +49,13 @@ Keep reusable, platform-independent helpers in the appropriate `lib/` module, es
   for both transformation and compilation. Objective-C cleanup runs on
   exception unwinding, including in methods and block literals. Clang rejects
   jumps into the generated protected region.
-- `defer(action);` registers cleanup when execution reaches it. Actions run in
+- `DEFER(action);` registers cleanup when execution reaches it. Actions run in
   reverse registration order at block exit, including return, break, continue,
   and supported goto exits; their expressions use values at cleanup time. Return
   expressions are evaluated before cleanup. `longjmp`, process termination, and
   panic do not run the actions.
 - Place each defer directly in a compound block; brace conditional and loop
-  bodies. Use `defer_named(handle, action)` and `defer_cancel(handle)` for
+  bodies. Use `DEFER_NAMED(handle, action)` and `DEFER_CANCEL(handle)` for
   explicit ownership transfer. For tracked allocations, include `common.h` and
   use `SAFE_MALLOC_DEFER_FREE(name, size, pointer_type)` or
   `SAFE_CALLOC_DEFER_FREE(name, count, size, pointer_type)`; set the local

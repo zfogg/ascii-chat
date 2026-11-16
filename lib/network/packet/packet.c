@@ -9,7 +9,7 @@
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/common.h>
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <libplatform/socket.h>
@@ -421,7 +421,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
 
   // Allocate buffer for payload
   void *payload = NULL;
-  defer_named(release_payload, buffer_release(payload));
+  DEFER_NAMED(release_payload, buffer_release(payload));
   if (pkt_len > 0) {
     payload = buffer_alloc(packet_is_handshake_type(pkt_type) || pkt_type == PACKET_TYPE_ERROR_MESSAGE ? buffer_control_domain() : NULL, pkt_len);
     if (!payload)
@@ -447,7 +447,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
   // Return results
   *type = (packet_type_t)pkt_type;
   *data = payload;
-  defer_cancel(release_payload);
+  DEFER_CANCEL(release_payload);
   *len = pkt_len;
 
   return ASCIICHAT_OK;

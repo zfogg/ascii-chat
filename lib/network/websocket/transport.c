@@ -6,7 +6,7 @@
 #define NETWORK_WEBSOCKET_TRANSPORT_SEND_NAME_BUFFER_SIZE 64
 
 #include <ascii-chat/util/time.h>
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/network/acip/backpressure.h>
 /**
@@ -1400,7 +1400,7 @@ static acip_transport_t *websocket_allocate_client_transport(const char *name) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket transport");
     return NULL;
   }
-  defer_named(release_transport, SAFE_FREE(transport));
+  DEFER_NAMED(release_transport, SAFE_FREE(transport));
 
   // Allocate WebSocket-specific data
   websocket_transport_data_t *ws_data = SAFE_CALLOC(1, sizeof(websocket_transport_data_t), websocket_transport_data_t *);
@@ -1408,7 +1408,7 @@ static acip_transport_t *websocket_allocate_client_transport(const char *name) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket transport data");
     return NULL;
   }
-  defer_named(release_data, SAFE_FREE(ws_data));
+  DEFER_NAMED(release_data, SAFE_FREE(ws_data));
 
   // Initialize destruction state flag (CALLOC zero-initializes, but explicit for clarity)
   atomic_store_bool(&ws_data->is_destroying, false);
@@ -1419,7 +1419,7 @@ static acip_transport_t *websocket_allocate_client_transport(const char *name) {
     SET_ERRNO(ERROR_MEMORY, "Failed to create receive queue");
     return NULL;
   }
-  defer_named(release_recv_queue, ringbuffer_destroy(ws_data->recv_queue));
+  DEFER_NAMED(release_recv_queue, ringbuffer_destroy(ws_data->recv_queue));
 
   // Create send queue for client transport to buffer outgoing messages
   ws_data->send_queue = ringbuffer_create(sizeof(websocket_msg_t), WEBSOCKET_SEND_QUEUE_SIZE);
@@ -1427,7 +1427,7 @@ static acip_transport_t *websocket_allocate_client_transport(const char *name) {
     SET_ERRNO(ERROR_MEMORY, "Failed to create send queue");
     return NULL;
   }
-  defer_named(release_send_queue, ringbuffer_destroy(ws_data->send_queue));
+  DEFER_NAMED(release_send_queue, ringbuffer_destroy(ws_data->send_queue));
 
   // Initialize synchronization primitives with transport-aware names
   char recv_name[NETWORK_WEBSOCKET_TRANSPORT_RECV_NAME_BUFFER_SIZE], state_name[NETWORK_WEBSOCKET_TRANSPORT_STATE_NAME_BUFFER_SIZE];
@@ -1438,35 +1438,35 @@ static acip_transport_t *websocket_allocate_client_transport(const char *name) {
     SET_ERRNO(ERROR_INTERNAL, "Failed to initialize recv mutex");
     return NULL;
   }
-  defer_named(release_recv_mutex, mutex_destroy(&ws_data->recv_mutex));
+  DEFER_NAMED(release_recv_mutex, mutex_destroy(&ws_data->recv_mutex));
 
   if (cond_init(&ws_data->recv_cond, recv_name) != 0) {
     SET_ERRNO(ERROR_INTERNAL, "Failed to initialize recv condition variable");
     return NULL;
   }
-  defer_named(release_recv_cond, cond_destroy(&ws_data->recv_cond));
+  DEFER_NAMED(release_recv_cond, cond_destroy(&ws_data->recv_cond));
 
   if (mutex_init(&ws_data->state_mutex, state_name) != 0) {
     SET_ERRNO(ERROR_INTERNAL, "Failed to initialize state mutex");
     return NULL;
   }
-  defer_named(release_state_mutex, mutex_destroy(&ws_data->state_mutex));
+  DEFER_NAMED(release_state_mutex, mutex_destroy(&ws_data->state_mutex));
 
   if (cond_init(&ws_data->state_cond, state_name) != 0) {
     SET_ERRNO(ERROR_INTERNAL, "Failed to initialize state condition variable");
     return NULL;
   }
-  defer_named(release_state_cond, cond_destroy(&ws_data->state_cond));
+  DEFER_NAMED(release_state_cond, cond_destroy(&ws_data->state_cond));
 
   transport->impl_data = ws_data;
-  defer_cancel(release_state_cond);
-  defer_cancel(release_state_mutex);
-  defer_cancel(release_recv_cond);
-  defer_cancel(release_recv_mutex);
-  defer_cancel(release_send_queue);
-  defer_cancel(release_recv_queue);
-  defer_cancel(release_data);
-  defer_cancel(release_transport);
+  DEFER_CANCEL(release_state_cond);
+  DEFER_CANCEL(release_state_mutex);
+  DEFER_CANCEL(release_recv_cond);
+  DEFER_CANCEL(release_recv_mutex);
+  DEFER_CANCEL(release_send_queue);
+  DEFER_CANCEL(release_recv_queue);
+  DEFER_CANCEL(release_data);
+  DEFER_CANCEL(release_transport);
   if (transport->methods && acip_outbound_create(transport) != ASCIICHAT_OK) {
     acip_transport_destroy(transport);
     return NULL;
@@ -1623,7 +1623,7 @@ static acip_transport_t *websocket_allocate_server_transport(const char *name) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket transport");
     return NULL;
   }
-  defer_named(release_transport, SAFE_FREE(transport));
+  DEFER_NAMED(release_transport, SAFE_FREE(transport));
 
   // Allocate transport-specific data
   websocket_transport_data_t *ws_data = SAFE_CALLOC(1, sizeof(websocket_transport_data_t), websocket_transport_data_t *);
@@ -1631,7 +1631,7 @@ static acip_transport_t *websocket_allocate_server_transport(const char *name) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate WebSocket transport data");
     return NULL;
   }
-  defer_named(release_data, SAFE_FREE(ws_data));
+  DEFER_NAMED(release_data, SAFE_FREE(ws_data));
 
   // Initialize receive queue
   ws_data->recv_queue = ringbuffer_create(sizeof(websocket_recv_msg_t), WEBSOCKET_RECV_QUEUE_SIZE);
@@ -1639,7 +1639,7 @@ static acip_transport_t *websocket_allocate_server_transport(const char *name) {
     SET_ERRNO(ERROR_MEMORY, "Failed to create receive queue");
     return NULL;
   }
-  defer_named(release_recv_queue, ringbuffer_destroy(ws_data->recv_queue));
+  DEFER_NAMED(release_recv_queue, ringbuffer_destroy(ws_data->recv_queue));
 
   // Initialize send queue (for server-side transports)
   ws_data->send_queue = ringbuffer_create(sizeof(websocket_recv_msg_t), WEBSOCKET_SEND_QUEUE_SIZE);
@@ -1647,7 +1647,7 @@ static acip_transport_t *websocket_allocate_server_transport(const char *name) {
     SET_ERRNO(ERROR_MEMORY, "Failed to create send queue");
     return NULL;
   }
-  defer_named(release_send_queue, ringbuffer_destroy(ws_data->send_queue));
+  DEFER_NAMED(release_send_queue, ringbuffer_destroy(ws_data->send_queue));
 
   // Initialize synchronization primitives with transport-aware names
   char recv_name[NETWORK_WEBSOCKET_TRANSPORT_RECV_NAME_BUFFER_SIZE], send_name[NETWORK_WEBSOCKET_TRANSPORT_SEND_NAME_BUFFER_SIZE], state_name[NETWORK_WEBSOCKET_TRANSPORT_STATE_NAME_BUFFER_SIZE];
@@ -1659,42 +1659,42 @@ static acip_transport_t *websocket_allocate_server_transport(const char *name) {
     SET_ERRNO(ERROR_NETWORK, "Failed to initialize recv mutex");
     return NULL;
   }
-  defer_named(release_recv_mutex, mutex_destroy(&ws_data->recv_mutex));
+  DEFER_NAMED(release_recv_mutex, mutex_destroy(&ws_data->recv_mutex));
 
   if (cond_init(&ws_data->recv_cond, recv_name) != 0) {
     SET_ERRNO(ERROR_NETWORK, "Failed to initialize recv condition variable");
     return NULL;
   }
-  defer_named(release_recv_cond, cond_destroy(&ws_data->recv_cond));
+  DEFER_NAMED(release_recv_cond, cond_destroy(&ws_data->recv_cond));
 
   if (mutex_init(&ws_data->send_mutex, send_name) != 0) {
     SET_ERRNO(ERROR_NETWORK, "Failed to initialize send mutex");
     return NULL;
   }
-  defer_named(release_send_mutex, mutex_destroy(&ws_data->send_mutex));
+  DEFER_NAMED(release_send_mutex, mutex_destroy(&ws_data->send_mutex));
 
   if (mutex_init(&ws_data->state_mutex, state_name) != 0) {
     SET_ERRNO(ERROR_NETWORK, "Failed to initialize state mutex");
     return NULL;
   }
-  defer_named(release_state_mutex, mutex_destroy(&ws_data->state_mutex));
+  DEFER_NAMED(release_state_mutex, mutex_destroy(&ws_data->state_mutex));
 
   if (cond_init(&ws_data->state_cond, state_name) != 0) {
     SET_ERRNO(ERROR_NETWORK, "Failed to initialize state condition variable");
     return NULL;
   }
-  defer_named(release_state_cond, cond_destroy(&ws_data->state_cond));
+  DEFER_NAMED(release_state_cond, cond_destroy(&ws_data->state_cond));
 
   transport->impl_data = ws_data;
-  defer_cancel(release_state_cond);
-  defer_cancel(release_state_mutex);
-  defer_cancel(release_send_mutex);
-  defer_cancel(release_recv_cond);
-  defer_cancel(release_recv_mutex);
-  defer_cancel(release_send_queue);
-  defer_cancel(release_recv_queue);
-  defer_cancel(release_data);
-  defer_cancel(release_transport);
+  DEFER_CANCEL(release_state_cond);
+  DEFER_CANCEL(release_state_mutex);
+  DEFER_CANCEL(release_send_mutex);
+  DEFER_CANCEL(release_recv_cond);
+  DEFER_CANCEL(release_recv_mutex);
+  DEFER_CANCEL(release_send_queue);
+  DEFER_CANCEL(release_recv_queue);
+  DEFER_CANCEL(release_data);
+  DEFER_CANCEL(release_transport);
   if (transport->methods && acip_outbound_create(transport) != ASCIICHAT_OK) {
     acip_transport_destroy(transport);
     return NULL;

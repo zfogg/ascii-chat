@@ -1,4 +1,4 @@
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/stats/runtime.h>
 /**
@@ -43,7 +43,7 @@ h265_decoder_t *h265_decoder_create(void) {
     return NULL;
   }
 
-  defer_named(cleanup, h265_decoder_destroy(dec));
+  DEFER_NAMED(cleanup, h265_decoder_destroy(dec));
 
   // Find HEVC decoder
   const AVCodec *codec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
@@ -82,7 +82,7 @@ h265_decoder_t *h265_decoder_create(void) {
   // Register decoder for debugging
   NAMED_REGISTER_H265_DECODER(dec, "h265_decoder", NULL);
 
-  defer_cancel(cleanup);
+  DEFER_CANCEL(cleanup);
   return dec;
 }
 

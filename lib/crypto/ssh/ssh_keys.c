@@ -14,7 +14,7 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define SSH_BCRYPT_SALT_SIZE 16
 
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/tui/notice.h>
 
@@ -82,7 +82,7 @@ static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_bl
   if (!derived) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for key derivation");
   }
-  defer(sodium_memzero(derived, derived_size));
+  DEFER(sodium_memzero(derived, derived_size));
 
   // Use libsodium-bcrypt-pbkdf (OpenBSD implementation)
   if (sodium_bcrypt_pbkdf(passphrase, strlen(passphrase), salt, salt_len, derived, derived_size, rounds) != 0) {
@@ -173,8 +173,8 @@ asciichat_error_t parse_ssh_ed25519_line(const char *line, uint8_t ed25519_pk[ED
     return SET_ERRNO(ERROR_CRYPTO_KEY, "SSH key line does not match expected format");
   }
 
-  defer(SAFE_FREE(base64_key));
-  defer(SAFE_FREE(comment));
+  DEFER(SAFE_FREE(base64_key));
+  DEFER(SAFE_FREE(comment));
 
   // Base64 decode
   uint8_t *blob;
@@ -183,7 +183,7 @@ asciichat_error_t parse_ssh_ed25519_line(const char *line, uint8_t ed25519_pk[ED
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to decode SSH key base64 data");
   }
 
-  defer(SAFE_FREE(blob));
+  DEFER(SAFE_FREE(blob));
 
   // Parse SSH key blob structure:
   // [4 bytes: length of "ssh-ed25519"]
@@ -254,7 +254,7 @@ static bool ssh_private_key_from_agent(const char *key_path, private_key_t *key_
 
   FILE *pub_f = platform_fopen("file_stream", pub_key_path, "r");
   if (pub_f) {
-    defer(SAFE_FCLOSE(pub_f));
+    DEFER(SAFE_FCLOSE(pub_f));
     char pub_line[BUFFER_SIZE_LARGE];
     if (fgets(pub_line, sizeof(pub_line), pub_f)) {
       public_key_t pub_key = {0};
@@ -296,7 +296,7 @@ static asciichat_error_t ssh_private_key_read_file(ssh_private_key_parse_t *stat
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Cannot read private key file: %s", key_path);
   }
 
-  defer(SAFE_FCLOSE(f));
+  DEFER(SAFE_FCLOSE(f));
 
   // Read the entire file
   state->file_content = NULL;
@@ -1010,7 +1010,7 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
   }
 
   char *normalized_path = NULL;
-  defer(SAFE_FREE(normalized_path));
+  DEFER(SAFE_FREE(normalized_path));
 #ifdef EMSCRIPTEN_BUILD
   // Browser callers stage imported key text at this private virtual-FS path;
   // native path expansion and whitelist checks do not apply to that sandbox.
