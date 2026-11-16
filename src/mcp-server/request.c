@@ -12,7 +12,7 @@
 #include "mcp.h"
 #include <options/json.h>
 #include <options/registry.h>
-#include <options/registry_core.h>
+#include <ascii-chat/options/registry/core.h>
 #include <libplatform/filesystem.h>
 #include <sodium.h>
 #include <libavcodec/avcodec.h>

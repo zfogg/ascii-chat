@@ -46,7 +46,7 @@
 #include "mirror/main.h"
 #include "mcp-server/mcp.h"
 #include "api-server/main.h"
-#include <options/registry_core.h>
+#include <ascii-chat/options/registry/core.h>
 #include "discovery-service/main.h"
 #include "discovery/main.h"
 #include <ascii-chat/discovery/session.h>
