@@ -54,6 +54,64 @@ set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared})
 set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared} CACHE BOOL
     "Build gotel and its public dependencies as shared libraries" FORCE)
 
+# Gotel's gRPC adapter accepts an existing nghttp2 target. Prefer the target
+# supplied by vcpkg so its embedded FetchContent project does not define a
+# second target with the same name.
+if(GOTEL_NGHTTP2_TARGET AND NOT TARGET "${GOTEL_NGHTTP2_TARGET}")
+    unset(GOTEL_NGHTTP2_TARGET CACHE)
+endif()
+if(TARGET nghttp2::nghttp2)
+    set(GOTEL_NGHTTP2_TARGET nghttp2::nghttp2 CACHE STRING
+        "Use the vcpkg nghttp2 target for gotel gRPC" FORCE)
+elseif(TARGET nghttp2)
+    set(GOTEL_NGHTTP2_TARGET nghttp2 CACHE STRING
+        "Use the vcpkg nghttp2 target for gotel gRPC" FORCE)
+elseif(TARGET nghttp2_static)
+    set(GOTEL_NGHTTP2_TARGET nghttp2_static CACHE STRING
+        "Use the existing nghttp2 target for gotel gRPC" FORCE)
+endif()
+
+if(NOT GOTEL_NGHTTP2_TARGET)
+    set(_asciichat_nghttp2_vcpkg_root
+        "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}")
+    if(NOT EXISTS "${_asciichat_nghttp2_vcpkg_root}")
+        set(_asciichat_nghttp2_vcpkg_root
+            "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
+    endif()
+    unset(_asciichat_nghttp2_include_dir CACHE)
+    unset(_asciichat_nghttp2_release_library CACHE)
+    unset(_asciichat_nghttp2_debug_library CACHE)
+    find_path(_asciichat_nghttp2_include_dir
+        NAMES nghttp2/nghttp2.h
+        PATHS "${_asciichat_nghttp2_vcpkg_root}/include"
+        NO_DEFAULT_PATH)
+    find_library(_asciichat_nghttp2_release_library
+        NAMES nghttp2
+        PATHS "${_asciichat_nghttp2_vcpkg_root}/lib"
+        NO_DEFAULT_PATH)
+    find_library(_asciichat_nghttp2_debug_library
+        NAMES nghttp2 nghttp2d
+        PATHS "${_asciichat_nghttp2_vcpkg_root}/debug/lib"
+        NO_DEFAULT_PATH)
+
+    if(_asciichat_nghttp2_include_dir AND
+       _asciichat_nghttp2_release_library AND
+       _asciichat_nghttp2_debug_library)
+        add_library(asciichat-vcpkg-nghttp2 UNKNOWN IMPORTED GLOBAL)
+        set_target_properties(asciichat-vcpkg-nghttp2 PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_nghttp2_include_dir}"
+            IMPORTED_CONFIGURATIONS "DEBUG;RELEASE"
+            MAP_IMPORTED_CONFIG_DEV DEBUG
+            MAP_IMPORTED_CONFIG_RELWITHDEBINFO RELEASE
+            IMPORTED_LOCATION_DEBUG "${_asciichat_nghttp2_debug_library}"
+            IMPORTED_LOCATION_RELEASE "${_asciichat_nghttp2_release_library}"
+            IMPORTED_IMPLIB_DEBUG "${_asciichat_nghttp2_debug_library}"
+            IMPORTED_IMPLIB_RELEASE "${_asciichat_nghttp2_release_library}")
+        set(GOTEL_NGHTTP2_TARGET asciichat-vcpkg-nghttp2 CACHE STRING
+            "Use the vcpkg nghttp2 target for gotel gRPC" FORCE)
+    endif()
+endif()
+
 # These dependency revisions are pinned in the vendored Gotel checkout.  Keep
 # FetchContent from running its git update step on every configure: updating a
 # populated git checkout refreshes all source mtimes, which makes Ninja treat
