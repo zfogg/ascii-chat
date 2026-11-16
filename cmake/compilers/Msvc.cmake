@@ -15,9 +15,9 @@ function(configure_msvc_pre_project)
     if(NOT _msvc_python OR NOT _msvc_libclang)
         message(FATAL_ERROR "MSVC builds require Python and LLVM libclang.dll for defer source transformation")
     endif()
-    set(DEFER_BACKEND PYTHON CACHE STRING "defer transformer backend" FORCE)
-    set(DEFER_TOOL_ROOT "${CMAKE_SOURCE_DIR}/deps/defer" CACHE PATH "defer source tree" FORCE)
-    set(DEFER_PYTHON_COMMAND "${_msvc_python}" CACHE FILEPATH "defer Python interpreter" FORCE)
+    set(RECAST_BACKEND PYTHON CACHE STRING "Recast transformer backend" FORCE)
+    set(RECAST_TOOL_ROOT "${CMAKE_SOURCE_DIR}/deps/recast" CACHE PATH "Recast source tree" FORCE)
+    set(RECAST_PYTHON_COMMAND "${_msvc_python}" CACHE FILEPATH "Recast Python interpreter" FORCE)
     set(DEFER_LIBCLANG_PATH "${_msvc_libclang}" CACHE FILEPATH "libclang shared library" FORCE)
     # Native cl.exe rejects the generated PCH path form used by the project's
     # cross-compiler PCH helper. MSVC builds remain fully supported without it.

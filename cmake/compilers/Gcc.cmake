@@ -36,9 +36,9 @@ function(configure_gcc_pre_project)
     endif()
     find_file(_gcc_libclang NAMES libclang.so libclang.so.1
         PATHS "${_gcc_llvm_libdir}" NO_DEFAULT_PATH REQUIRED)
-    set(DEFER_BACKEND PYTHON CACHE STRING "defer transformer backend" FORCE)
-    set(DEFER_TOOL_ROOT "${CMAKE_SOURCE_DIR}/deps/defer" CACHE PATH "defer source tree" FORCE)
-    set(DEFER_PYTHON_COMMAND "${Python3_EXECUTABLE}" CACHE FILEPATH "defer Python interpreter" FORCE)
+    set(RECAST_BACKEND PYTHON CACHE STRING "Recast transformer backend" FORCE)
+    set(RECAST_TOOL_ROOT "${CMAKE_SOURCE_DIR}/deps/recast" CACHE PATH "Recast source tree" FORCE)
+    set(RECAST_PYTHON_COMMAND "${Python3_EXECUTABLE}" CACHE FILEPATH "Recast Python interpreter" FORCE)
     set(DEFER_LIBCLANG_PATH "${_gcc_libclang}" CACHE FILEPATH "libclang shared library" FORCE)
     # GCC 11, still shipped by supported Ubuntu LTS releases, does not accept
     # C++26. Select the supported C++23 dialect before project() performs
