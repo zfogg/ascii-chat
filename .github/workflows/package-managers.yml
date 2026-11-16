@@ -62,7 +62,7 @@ jobs:
       - name: Submit package-manager update
         if: steps.selection.outputs.run == 'true'
         env:
-          PACKAGE_MANAGER_GITHUB_TOKEN: ${{ secrets.PACKAGE_MANAGER_GITHUB_TOKEN || secrets.WINGET_GITHUB_TOKEN }}
+          PACKAGE_MANAGER_GITHUB_TOKEN: ${{ secrets.PACKAGE_MANAGER_GITHUB_TOKEN }}
           WINGET_FORK_REPOSITORY: zfogg/winget-pkgs
           SCOOP_REPOSITORY: zfogg/ascii-chat-scoop
           CHOCOLATEY_FORK_REPOSITORY: zfogg/chocolatey-packages

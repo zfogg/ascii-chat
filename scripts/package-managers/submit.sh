@@ -7,15 +7,15 @@ set -euo pipefail
 TARGET="${1:?usage: $0 <scoop|chocolatey|npackd> <version> [repository]}"
 VERSION="${2:?usage: $0 <scoop|chocolatey|npackd> <version> [repository]}"
 REPOSITORY="${3:-zfogg/ascii-chat}"
-TOKEN="${PACKAGE_MANAGER_GITHUB_TOKEN:-${WINGET_GITHUB_TOKEN:-}}"
+TOKEN="${PACKAGE_MANAGER_GITHUB_TOKEN:-}"
 SCOOP_REPOSITORY="${SCOOP_REPOSITORY:-zfogg/ascii-chat-scoop}"
 WINGET_FORK_REPOSITORY="${WINGET_FORK_REPOSITORY:-zfogg/winget-pkgs}"
 CHOCOLATEY_FORK="${CHOCOLATEY_FORK_REPOSITORY:-zfogg/chocolatey-packages}"
 N_PACKD_REPOSITORY="${NPACKD_REPOSITORY:-zfogg/npackd-repository}"
 
 if [[ -z "$TOKEN" ]]; then
-  echo "No package-manager GitHub token configured; skipping $TARGET submission."
-  exit 0
+  echo "PACKAGE_MANAGER_GITHUB_TOKEN is required for $TARGET submission." >&2
+  exit 1
 fi
 export GH_TOKEN="$TOKEN"
 
