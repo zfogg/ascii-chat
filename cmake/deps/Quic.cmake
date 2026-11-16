@@ -186,7 +186,7 @@ function(asciichat_configure_quic)
     # build directories use the same DLLs without reaching into a build tree.
     set(_ngtcp2_build "${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2")
     set(_nghttp3_build "${ASCIICHAT_DEPS_CACHE_DIR}/quic-nghttp3")
-    set(_quic_config_stamp "${ASCIICHAT_DEPS_CACHE_DIR}/quic-config-v2.stamp")
+    set(_quic_config_stamp "${ASCIICHAT_DEPS_CACHE_DIR}/quic-config-v3.stamp")
     if(NOT EXISTS "${_quic_config_stamp}")
         file(REMOVE_RECURSE "${_ngtcp2_build}" "${_nghttp3_build}")
     endif()
