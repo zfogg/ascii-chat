@@ -427,7 +427,7 @@ void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif
-    (void)posix_write(STDERR_FILENO, buffer, pos);
+    (void)posix_write(STDERR_FILENO, buffer, (unsigned int)pos);
 #if defined(_WIN32) && defined(__clang__)
 #pragma clang diagnostic pop
 #endif

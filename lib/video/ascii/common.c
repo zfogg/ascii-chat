@@ -306,7 +306,7 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
     // Cache hit: Update access tracking (atomics are thread-safe under rdlock)
     uint64_t current_time = time_get_ns();
     atomic_store_u64(&cache->last_access_time, current_time);
-    uint32_t new_access_count = atomic_fetch_add_u64(&cache->access_count, 1) + 1;
+    uint32_t new_access_count = (uint32_t)(atomic_fetch_add_u64(&cache->access_count, 1) + 1);
 
     // Every 10th access: Update heap position (requires write lock)
     if (new_access_count % 10 == 0) {
@@ -324,7 +324,7 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
       if (cache_relookup) {
         // Cache entry still exists - safe to update heap position
         uint64_t last_access = atomic_load_u64(&cache_relookup->last_access_time);
-        uint32_t access_count = atomic_load_u64(&cache_relookup->access_count);
+        uint32_t access_count = (uint32_t)atomic_load_u64(&cache_relookup->access_count);
         double new_score = calculate_cache_eviction_score(last_access, access_count, cache_relookup->creation_time, current_time);
         utf8_heap_update_score(cache_relookup, new_score);
       }
@@ -435,7 +435,7 @@ void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256])
     if (char_idx >= char_count)
       char_idx = char_count - 1;
 
-    cache[i].byte_len = char_infos[char_idx].byte_len;
+    cache[i].byte_len = (uint8_t)char_infos[char_idx].byte_len;
     memcpy(cache[i].utf8_bytes, char_infos[char_idx].start, char_infos[char_idx].byte_len);
     if (cache[i].byte_len < 4) {
       cache[i].utf8_bytes[cache[i].byte_len] = '\0';
@@ -495,7 +495,7 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
     char_index_ramp[i] = (uint8_t)char_idx;
 
     // Cache UTF-8 character
-    cache64[i].byte_len = char_infos[char_idx].byte_len;
+    cache64[i].byte_len = (uint8_t)char_infos[char_idx].byte_len;
     memcpy(cache64[i].utf8_bytes, char_infos[char_idx].start, char_infos[char_idx].byte_len);
     if (cache64[i].byte_len < 4) {
       cache64[i].utf8_bytes[cache64[i].byte_len] = '\0';
@@ -571,16 +571,16 @@ void init_dec3(void) {
 
     if (d2) {
       g_dec3_cache.dec3_table[v].len = 3;
-      g_dec3_cache.dec3_table[v].s[0] = '0' + d2;
-      g_dec3_cache.dec3_table[v].s[1] = '0' + d1;
-      g_dec3_cache.dec3_table[v].s[2] = '0' + d0;
+      g_dec3_cache.dec3_table[v].s[0] = (char)('0' + d2);
+      g_dec3_cache.dec3_table[v].s[1] = (char)('0' + d1);
+      g_dec3_cache.dec3_table[v].s[2] = (char)('0' + d0);
     } else if (d1) {
       g_dec3_cache.dec3_table[v].len = 2;
-      g_dec3_cache.dec3_table[v].s[0] = '0' + d1;
-      g_dec3_cache.dec3_table[v].s[1] = '0' + d0;
+      g_dec3_cache.dec3_table[v].s[0] = (char)('0' + d1);
+      g_dec3_cache.dec3_table[v].s[1] = (char)('0' + d0);
     } else {
       g_dec3_cache.dec3_table[v].len = 1;
-      g_dec3_cache.dec3_table[v].s[0] = '0' + d0;
+      g_dec3_cache.dec3_table[v].s[0] = (char)('0' + d0);
     }
   }
   g_dec3_cache.dec3_initialized = true;
