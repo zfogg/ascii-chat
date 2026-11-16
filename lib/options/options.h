@@ -216,17 +216,11 @@
 #include <stdio.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
-<<<<<<< HEAD:include/ascii-chat/options/options.h
-#include <ascii-chat/video/ascii/render/types.h>
-#include "../discovery/strings.h"
-#include "explicit.h"
-=======
 #include <ascii-chat/video/ascii/render/render.h>
 #include <ascii-chat/log/types.h>
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/discovery/strings.h>
 #include <libflags/flags.h>
->>>>>>> origin/master:lib/options/options.h
 
 /** @brief Backward compatibility aliases for color mode enum values */
 #define COLOR_MODE_AUTO TERM_COLOR_AUTO           ///< Auto-detect color support
@@ -1287,21 +1281,6 @@ const terminal_options_t *options_terminal_settings_ptr(void);
  *
  * @ingroup options
  */
-<<<<<<< HEAD:include/ascii-chat/options/options.h
-#if defined(_MSC_VER)
-/* MSVC C has no GNU statement expressions or typeof; options are initialized
- * before public option access in the native application. */
-#define GET_OPTION(field) (options_get()->field)
-#else
-#define GET_OPTION(field)                                                                                                                                                                              \
-  ({                                                                                                                                                                                                   \
-    const options_t *_opts = options_get();                                                                                                                                                            \
-    if (!_opts) {                                                                                                                                                                                      \
-      log_warn("GET_OPTION(" #field ") called but options not initialized");                                                                                                                           \
-    }                                                                                                                                                                                                  \
-    static typeof(((options_t *)0)->field) _default = {0};                                                                                                                                             \
-    (_opts ? (_opts->field) : _default);                                                                                                                                                               \
-=======
 #define GET_OPTION(field)                                                    \
   ({                                                                         \
     const options_t *_opts = options_get();                                  \
@@ -1310,9 +1289,7 @@ const terminal_options_t *options_terminal_settings_ptr(void);
     }                                                                        \
     static typeof(((options_t *)0)->field) _default = {0};                   \
     (_opts ? (_opts->field) : _default);                                     \
->>>>>>> origin/master:lib/options/options.h
   })
-#endif
 
 /**
  * @brief Set a single option field (thread-safe, RCU-based)

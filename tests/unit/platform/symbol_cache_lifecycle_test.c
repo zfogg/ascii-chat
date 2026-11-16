@@ -6,7 +6,6 @@
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/util/pcre2.h>
-#include <ascii-chat/util/symbols.h>
 #include <stdlib.h>
 
 TestSuite(symbol_cache_lifecycle);
@@ -124,25 +123,6 @@ Test(symbol_cache_lifecycle, cached_names_are_copied_and_updates_do_not_invalida
   cr_assert_null(symbol_cache_lookup(&key));
 }
 
-<<<<<<< HEAD
-Test(symbol_cache_lifecycle, source_paths_classify_project_external_and_truncation_without_partial_writes) {
-  const char *project[] = {"ascii-chat", "C:\\tools\\ASCII-CHAT.EXE", "libasciichat.so.0.1.0"};
-  for (size_t i = 0; i < 3; ++i)
-    cr_assert(asciichat_symbol_module_is_project(project[i]));
-  cr_assert_not(asciichat_symbol_module_is_project("libc.so.6"));
-  cr_assert_not(asciichat_symbol_module_is_project(NULL));
-  char output[256];
-  bool external;
-  cr_assert_eq(symbol_format_source_path("libasciichat.so", "lib/audio/audio.c", output, sizeof(output), &external, NULL), ASCIICHAT_OK);
-  cr_assert_not(external);
-  cr_assert_str_eq(output, "lib/audio/audio.c");
-  cr_assert_eq(symbol_format_source_path("libc.so", "/a/b/c/d/e/f/source.c", output, sizeof(output), &external, NULL), ASCIICHAT_OK);
-  cr_assert(external);
-  cr_assert_not_null(strstr(output, "c/d/e/f/source.c"));
-  strcpy(output, "unchanged");
-  cr_assert_eq(symbol_format_source_path("libc.so", "/a/b/source.c", output, 2, &external, NULL), ERROR_BUFFER_OVERFLOW);
-  cr_assert_str_eq(output, "unchanged");
-=======
 Test(symbol_cache_lifecycle, project_module_detection_handles_paths_and_external_modules) {
   const char *const libraries[] = {"libasciichat", NULL};
   cr_assert(symbol_module_is_project("ascii-chat", "ascii-chat", NULL));
@@ -150,5 +130,4 @@ Test(symbol_cache_lifecycle, project_module_detection_handles_paths_and_external
   cr_assert(symbol_module_is_project("libasciichat.so", NULL, libraries));
   cr_assert_not(symbol_module_is_project("libc.so.6", "ascii-chat", libraries));
   cr_assert_not(symbol_module_is_project(NULL, "ascii-chat", libraries));
->>>>>>> origin/master
 }
