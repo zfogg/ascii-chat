@@ -170,9 +170,9 @@ yyjson_mut_val *mcp_tools_schema(yyjson_mut_doc *d, const mcp_policy_t *p) {
                "Defaults to png for a single frame or mp4 for a timed or continuous render. GIF renders media to EOF "
                "unless snapshot or snapshot-delay is specified.");
       yyjson_mut_val *available = yyjson_mut_arr(d);
-      for (size_t i = 0; mcp_output_formats[i]; ++i)
-        if (output_format_available(mcp_output_formats[i]))
-          yyjson_mut_arr_add_str(d, available, mcp_output_formats[i]);
+      for (size_t format_index = 0; mcp_output_formats[format_index]; ++format_index)
+        if (output_format_available(mcp_output_formats[format_index]))
+          yyjson_mut_arr_add_str(d, available, mcp_output_formats[format_index]);
       yyjson_mut_obj_add_val(d, yyjson_mut_obj_get(props, "output_format"), "enum", available);
     }
     if (!p->restricted)

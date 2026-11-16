@@ -688,7 +688,7 @@ void *client_audio_render_thread(void *arg) {
       // Encode accumulated Opus frame (OPUS_FRAME_SAMPLES samples = 20ms @ 48kHz)
       uint8_t opus_buffer[AUDIO_OPUS_SERVER_PACKET_CAPACITY]; // Max Opus frame size
 
-      int opus_size = opus_codec_encode(opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES * AUDIO_CHANNELS, opus_buffer, sizeof(opus_buffer));
+      int opus_size = (int)opus_codec_encode(opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES * AUDIO_CHANNELS, opus_buffer, sizeof(opus_buffer));
 
       // DEBUG: Log mix buffer and encoding results to see audio levels being sent
       {

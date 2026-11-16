@@ -670,7 +670,7 @@ role_dispatch:
       uint64_t advertised_revision = UINT64_MAX;
       terminal_size_t advertised = {.cols = GET_OPTION(width) > 0 ? GET_OPTION(width) : 80, .rows = GET_OPTION(height) > 0 ? GET_OPTION(height) : 24};
       terminal_capabilities_packet_t packet;
-      session_protocol_build_capabilities(advertised.cols, advertised.rows, &packet);
+      session_protocol_build_capabilities((uint16_t)advertised.cols, (uint16_t)advertised.rows, &packet);
       result = acip_send_capabilities(transport, &packet, sizeof(packet));
       if (result != ASCIICHAT_OK)
         return result;
