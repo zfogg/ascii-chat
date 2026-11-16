@@ -133,7 +133,15 @@ bool ui_help_menu_render(frame_buffer_t *out, terminal_size_t size, const ui_hel
         ui_help_keys(styled, sizeof(styled), binding);
         char values[UI_HELP_MENU_VALUES_BUFFER_SIZE];
         ui_text_values_style(values, sizeof(values), end + 1, LOG_COLOR_FATAL);
-        snprintf(rhs, sizeof(rhs), "%.*s%.*s", (int)(sizeof(rhs) / 2 - 2), styled, (int)(sizeof(rhs) / 2 - 2), values);
+        size_t rhs_pos = 0;
+        size_t styled_len = strlen(styled);
+        size_t styled_copy = styled_len < sizeof(rhs) - 1 ? styled_len : sizeof(rhs) - 1;
+        memcpy(rhs, styled, styled_copy);
+        rhs_pos += styled_copy;
+        size_t values_len = strlen(values);
+        size_t values_copy = values_len < sizeof(rhs) - 1 - rhs_pos ? values_len : sizeof(rhs) - 1 - rhs_pos;
+        memcpy(rhs + rhs_pos, values, values_copy);
+        rhs[rhs_pos + values_copy] = '\0';
       } else
         ui_text_values_style(rhs, sizeof(rhs), setting, LOG_COLOR_FATAL);
     }
