@@ -15,7 +15,7 @@
       "name": "base-vcpkg",
       "hidden": true,
       "description": "Base configuration for vcpkg-enabled builds",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/Vcpkg.cmake",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "USE_VCPKG": "ON"
       },
