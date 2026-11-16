@@ -1,5 +1,13 @@
 # The isolated ngtcp2 project can discover OpenSSL before it discovers zlib.
 message(STATUS "Configuring isolated QUIC dependency prerequisites")
+if(USE_MUSL)
+    # musl provides pthreads in libc; avoid FindThreads probing glibc-style
+    # -lpthread/-lpthreads archives inside this isolated static configure.
+    set(CMAKE_HAVE_LIBC_PTHREAD 1 CACHE INTERNAL "musl provides pthreads" FORCE)
+    set(CMAKE_USE_PTHREADS_INIT 1 CACHE INTERNAL "musl provides pthreads" FORCE)
+    set(CMAKE_THREAD_LIBS_INIT "-pthread" CACHE STRING "musl pthread flags" FORCE)
+    set(THREADS_PREFER_PTHREAD_FLAG ON CACHE BOOL "Use compiler pthread flags" FORCE)
+endif()
 # Recent FindOpenSSL modules expose ZLIB::ZLIB in OpenSSL's interface when
 # compression support is enabled, so establish that imported target first.
 if(NOT TARGET ZLIB::ZLIB)
