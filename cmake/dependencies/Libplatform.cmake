@@ -99,6 +99,15 @@ if(EMSCRIPTEN)
     foreach(_libplatform_target IN ITEMS libplatform libplatform-objects)
         if(TARGET ${_libplatform_target})
             target_compile_options(${_libplatform_target} PRIVATE -pthread -matomics -mbulk-memory)
+            # The current libplatform WASM compatibility layer still uses a
+            # small set of ascii-chat error and utility declarations. Keep
+            # those headers private to this transitional WASM build boundary;
+            # native libplatform targets remain independent of ascii-chat.
+            target_include_directories(${_libplatform_target} PRIVATE
+                "${_ascii_chat_repo_root}/include"
+                "${_ascii_chat_repo_root}/deps"
+                "${_ascii_chat_repo_root}/deps/ascii-chat-deps/yyjson/src"
+                "${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc")
         endif()
     endforeach()
 endif()
