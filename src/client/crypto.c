@@ -4,6 +4,7 @@
 #include "server.h"
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/network/acip/acds_client.h>
+#include <ascii-chat/network/connection_endpoint.h>
 #include <ascii-chat/crypto/discovery_keys.h>
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/tui/notice.h>
@@ -24,21 +25,33 @@ asciichat_error_t client_crypto_init(client_connection_t *connection, const char
   if (GET_OPTION(require_client_verify) && strlen(GET_OPTION(session_string)) > 0) {
     log_debug("--require-client-verify enabled: performing ACDS session lookup for '%s'", GET_OPTION(session_string));
 
-    // Connect to ACDS server (configurable via --acds-server and --acds-port options)
+    // Connect to the discovery service URL; an explicit URL port overrides the default.
     acds_client_config_t acds_config;
     acds_client_config_init_defaults(&acds_config);
-    SAFE_STRNCPY(acds_config.server_address, GET_OPTION(discovery_server), sizeof(acds_config.server_address));
-    acds_config.server_port = GET_OPTION(discovery_port);
+    char discovery_url[URL_BUFFER_SIZE];
+    const char *discovery_service = GET_OPTION(discovery_server);
+    if (GET_OPTION(discovery_port) != ACIP_DISCOVERY_DEFAULT_PORT) {
+      asciichat_error_t override_result = connection_endpoint_override_port(discovery_service, (uint16_t)GET_OPTION(discovery_port), discovery_url, sizeof(discovery_url));
+      if (override_result != ASCIICHAT_OK)
+        return SET_ERRNO(ERROR_USAGE, "Invalid --discovery-service URL for --discovery-service-port override");
+      discovery_service = discovery_url;
+    }
+    SAFE_STRNCPY(acds_config.server_address, discovery_service, sizeof(acds_config.server_address));
+    acds_config.server_port = ACIP_DISCOVERY_DEFAULT_PORT;
     acds_config.timeout_ms = 5 * MS_PER_SEC_INT;
     acds_config.identity_key = GET_OPTION(encrypt_key);
 
     // ACDS key verification (optional in debug builds, only if --discovery-service-key is provided)
     if (strlen(GET_OPTION(discovery_service_key)) > 0) {
-      log_debug("Verifying ACDS server key for %s...", acds_config.server_address);
+      connection_endpoint_t endpoint = {0};
+      asciichat_error_t endpoint_result = connection_endpoint_resolve(acds_config.server_address, acds_config.server_port, &endpoint);
+      if (endpoint_result != ASCIICHAT_OK)
+        return SET_ERRNO(ERROR_USAGE, "Invalid --discovery-service URL");
+      log_debug("Verifying ACDS server key for %s...", endpoint.host);
       uint8_t acds_pubkey[ED25519_PUBLIC_KEY_SIZE];
-      asciichat_error_t verify_result = discovery_keys_verify(acds_config.server_address, GET_OPTION(discovery_service_key), acds_pubkey);
+      asciichat_error_t verify_result = discovery_keys_verify(endpoint.host, GET_OPTION(discovery_service_key), acds_pubkey);
       if (verify_result != ASCIICHAT_OK) {
-        NOTICE(DANGER, "ACDS VERIFICATION FAILED", "ACDS key verification failed for %s", acds_config.server_address);
+        NOTICE(DANGER, "ACDS VERIFICATION FAILED", "ACDS key verification failed for %s", endpoint.host);
         return SET_ERRNO(ERROR_CRYPTO_AUTH, "Cannot verify discovery host identity");
       }
       log_debug("ACDS server key verified successfully");
@@ -52,7 +65,7 @@ asciichat_error_t client_crypto_init(client_connection_t *connection, const char
     acds_client_t acds_client;
     asciichat_error_t acds_result = acds_client_connect(&acds_client, &acds_config);
     if (acds_result != ASCIICHAT_OK) {
-      log_error("Failed to connect to ACDS server at %s:%d", acds_config.server_address, acds_config.server_port);
+      log_error("Failed to connect to ACDS server at %s", acds_config.server_address);
       return SET_ERRNO(ERROR_CRYPTO_AUTH, "Cannot verify discovery host identity");
     }
 

@@ -50,7 +50,7 @@ def main():
     utf8proc = root / "deps/ascii-chat-deps/utf8proc/utf8proc.c"
     run([clang, *flags, "-c", utf8proc, "-o", "utf8proc.o"], output)
     criterion = shlex.split(run(["pkg-config", "--cflags", "criterion"], root))
-    for source in (root / "lib/platform/keyboard.c", root / "tests/unit/platform/keyboard_text_test.c"):
+    for source in (root / "deps/ascii-chat-deps/libplatform/lib/keyboard.c", root / "tests/unit/platform/keyboard_text_test.c"):
         run([clang, *flags, *criterion, "--coverage", "-c", source, "-o", source.stem + ".o"], output)
     libraries = shlex.split(run(["pkg-config", "--libs", "criterion"], root))
     link_gc = "-Wl,-dead_strip" if sys.platform == "darwin" else "-Wl,--gc-sections"
@@ -59,7 +59,7 @@ def main():
     tests = run([output / "keyboard-text-test", "--jobs", "1"], output)
     print(tests, end="")
     report = run([llvm_cov, "gcov", "-b", "-c", "-o", "keyboard.gcno",
-                  root / "lib/platform/keyboard.c"], output)
+                  root / "deps/ascii-chat-deps/libplatform/lib/keyboard.c"], output)
     print(report, end="")
     functions = {"keyboard_text_decode", "keyboard_text_encode", "keyboard_text_utf16"}
     listing = (output / "keyboard.c.gcov").read_text(encoding="utf-8")
@@ -90,7 +90,7 @@ def main():
     if not counters or not branches:
         raise RuntimeError("Missing execution counters")
     covered = sum(value.rstrip("*").isdigit() and int(value.rstrip("*")) > 0 for value in counters)
-    summary = {"source": "lib/platform/keyboard.c", "functions": sorted(functions),
+    summary = {"source": "deps/ascii-chat-deps/libplatform/lib/keyboard.c", "functions": sorted(functions),
                "line_percent": 100 * covered / len(counters),
                "branch_percent": 100 * sum(value > 0 for value in branches) / len(branches),
                "lines": len(counters), "branches": len(branches)}

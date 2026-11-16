@@ -27,7 +27,9 @@ SUPPORT = r"""
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 typedef int asciichat_error_t;
 #define ASCIICHAT_OK 0
 #define ERROR_INVALID_PARAM 1
@@ -49,12 +51,12 @@ static inline void *test_alloc(size_t count, size_t size) {
 #define SAFE_FREE(p) do { if (p) { free(p); --allocations; (p) = NULL; } } while (0)
 asciichat_error_t platform_process_title_init(int argc, char ***argv);
 asciichat_error_t platform_process_title_set(const char *title);
-asciichat_error_t platform_process_title_set_args(const char *mode, int argc, char **argv, int mode_arg_index);
+asciichat_error_t platform_process_title_set_args(const char *prefix, const char *mode, int argc, char **argv, int mode_arg_index);
 void platform_process_title_destroy(void);
 """
 
 HARNESS = r"""
-#include <ascii-chat/platform/process.h>
+#include <libplatform/process.h>
 #ifdef __linux__
 #include <sys/prctl.h>
 #elif defined(__APPLE__)
@@ -99,9 +101,9 @@ int main(int argc, char **argv) {
   assert(large_argument);
   memset(large_argument, 'x', 65535);
   char *large_argv[] = {argv[0], "--password", "do-not-display", large_argument};
-  assert(platform_process_title_set_args(mode, 4, large_argv, -1) == ASCIICHAT_OK);
+  assert(platform_process_title_set_args("ascii-chat: ", mode, 4, large_argv, -1) == ASCIICHAT_OK);
   free(large_argument);
-  assert(platform_process_title_set_args(mode, argc, argv, 1) == ASCIICHAT_OK);
+  assert(platform_process_title_set_args("ascii-chat: ", mode, argc, argv, 1) == ASCIICHAT_OK);
   assert(strcmp(argv[6], "split-secret") == 0);
   puts("ready");
   fflush(stdout);
@@ -133,21 +135,20 @@ int main(int argc, char **argv) {
 def main():
     with tempfile.TemporaryDirectory(prefix="ascii-chat-title-") as temporary:
         work = Path(temporary)
-        headers = work / "ascii-chat" / "platform"
+        headers = work / "libplatform"
         headers.mkdir(parents=True)
         (work / "support.h").write_text(SUPPORT)
-        for name in ("platform/process.h", "platform/terminal.h", "common.h", "asciichat_errno.h"):
-            (work / "ascii-chat" / name).write_text('#include "support.h"\n')
+        (headers / "process.h").write_text('#include "../support.h"\n')
         wasm = "--wasm" in sys.argv
         noop_harness = r'''
-#include <ascii-chat/platform/process.h>
+#include <libplatform/process.h>
 int allocations;
 int main(int argc, char **argv) {
   char **original = argv;
   assert(platform_process_title_init(argc, &argv) == ASCIICHAT_OK);
   assert(argv == original);
   assert(platform_process_title_set("ascii-chat: mirror mode") == ASCIICHAT_OK);
-  assert(platform_process_title_set_args("mirror", argc, argv, -1) == ASCIICHAT_OK);
+  assert(platform_process_title_set_args("ascii-chat: ", "mirror", argc, argv, -1) == ASCIICHAT_OK);
   assert(platform_process_title_set(NULL) == ERROR_INVALID_PARAM);
   platform_process_title_destroy();
   puts("PASS: WASM no-op backend");
@@ -158,15 +159,15 @@ int main(int argc, char **argv) {
         executable = work / ("title-test.js" if wasm else "title-test")
         native_sources = []
         if not wasm:
-            native_os = "macos" if sys.platform == "darwin" else "linux"
-            native_sources = [str(ROOT / f"lib/platform/{native_os}/process_title.c")]
+            native_sources = []
             if sys.platform == "darwin":
                 native_sources += ["-framework", "CoreFoundation"]
         subprocess.run(
             shlex.split(os.environ.get("CC", "clang"))
             + ["-std=gnu11", "-Wall", "-Wextra", "-Werror"]
             + shlex.split(os.environ.get("CFLAGS", ""))
-            + ["-I", str(work), str(ROOT / "lib/platform/process_title.c"),
+            + ["-I", str(work), "-I", str(ROOT / "deps/ascii-chat-deps/libplatform/include"),
+               str(ROOT / "deps/ascii-chat-deps/libplatform/lib/process.c"),
                str(work / "main.c"), "-o", str(executable)] + native_sources,
             check=True,
         )

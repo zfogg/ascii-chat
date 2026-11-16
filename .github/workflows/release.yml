@@ -1042,7 +1042,7 @@ jobs:
 
   notify:
     name: Send release notification
-    if: always() && needs.create-release.result != 'skipped'
+    if: ${{ !cancelled() && needs.create-release.result != 'skipped' }}
     needs:
       [
         create-release,

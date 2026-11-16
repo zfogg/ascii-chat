@@ -54,7 +54,7 @@
  * ============================================================================
  */
 
-// These globals are used by lib/platform/terminal.c to detect --color flag
+// These globals are used by libplatform's terminal implementation to detect --color flag
 // during early execution phases (e.g., when --help is processed before
 // options are fully parsed and published to RCU)
 // ASCIICHAT_API is required for proper DLL export on Windows

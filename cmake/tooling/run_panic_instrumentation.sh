@@ -330,13 +330,6 @@ SOURCE_PATHS=("${deduped_paths[@]}")
 filtered_paths=()
 for path in "${SOURCE_PATHS[@]}"; do
   case "$path" in
-  lib/platform/system.c | \
-    lib/platform/posix/system.c | \
-    lib/platform/posix/mutex.c | \
-    lib/platform/posix/thread.c | \
-    lib/platform/windows/system.c | \
-    lib/platform/windows/mutex.c | \
-    lib/platform/windows/thread.c | \
     lib/image2ascii/simd/ascii_simd.c | \
     lib/image2ascii/simd/ascii_simd_color.c | \
     lib/image2ascii/simd/common.c | \
@@ -454,14 +447,7 @@ done
 echo "Headers copied to instrumented tree"
 
 extra_source_files=(
-  "lib/platform/system.c"
   "deps/ascii-chat-deps/libplatform/lib/debug_memory.c"
-  "lib/platform/posix/system.c"
-  "lib/platform/posix/mutex.c"
-  "lib/platform/posix/thread.c"
-  "lib/platform/windows/system.c"
-  "lib/platform/windows/mutex.c"
-  "lib/platform/windows/thread.c"
   # SIMD files use intrinsics that confuse the panic instrumentation tool
   "lib/image2ascii/simd/ascii_simd.c"
   "lib/image2ascii/simd/ascii_simd_color.c"

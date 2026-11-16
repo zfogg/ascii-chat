@@ -146,7 +146,7 @@
  *   Backtrace from lock acquisition:
  *     #0: debug_mutex_lock at lib/debug/lock.c:1043
  *     #1: render_video_thread at src/server/render.c:123
- *     #2: thread_wrapper at lib/platform/posix/thread.c:45
+ *     #2: thread_wrapper at libplatform's POSIX thread backend
  * ```
  *
  * @subsection lock_debug_interactive Interactive Debug Thread
@@ -370,8 +370,8 @@
  * **Source Files**:
  * - Implementation: lib/debug/lock.c (1394 lines)
  * - Header: lib/debug/lock.h
- * - Platform abstraction: lib/platform/abstraction.h
- * - Backtrace support: lib/platform/system.h (platform_backtrace, platform_backtrace_symbols)
+ * - Platform abstraction: libplatform
+ * - Backtrace support: libplatform system/symbol APIs
  * - Hash tables: deps/ascii-chat-deps/uthash/src/uthash.h (included via platform/abstraction.h)
  *
  * **Key Functions**:

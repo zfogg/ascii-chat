@@ -129,7 +129,6 @@ static const options_t g_default_options = (options_t){
     .discovery_server = OPT_STRING_EMPTY_DEFAULT,
     .discovery_service_key = OPT_STRING_EMPTY_DEFAULT,
     .discovery_database_path = OPT_STRING_EMPTY_DEFAULT,
-    .webrtc = OPT_WEBRTC_DEFAULT,
 
     // ========================================================================
     // LAN Discovery & WebRTC Options
@@ -148,7 +147,6 @@ static const options_t g_default_options = (options_t){
     .webrtc_disable_turn = OPT_WEBRTC_DISABLE_TURN_DEFAULT,
     .webrtc_skip_host = OPT_WEBRTC_SKIP_HOST_DEFAULT,
     .webrtc_ice_timeout_ms = OPT_WEBRTC_ICE_TIMEOUT_MS_DEFAULT,
-    .webrtc_reconnect_attempts = OPT_WEBRTC_RECONNECT_ATTEMPTS_DEFAULT,
 
     // ========================================================================
     // WebRTC Connectivity Options (ACDS mode)
@@ -602,7 +600,6 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(discovery, OPTIONS_VALUE_BOOL, "discovery"),
     FIELD(discovery_expose_ip, OPTIONS_VALUE_BOOL, "discovery-expose-ip"),
     FIELD(discovery_insecure, OPTIONS_VALUE_BOOL, "discovery-insecure"),
-    FIELD(webrtc, OPTIONS_VALUE_BOOL, "webrtc"),
     FIELD(lan_discovery, OPTIONS_VALUE_BOOL, "lan-discovery"),
     FIELD(no_mdns_advertise, OPTIONS_VALUE_BOOL, "no-mdns-advertise"),
     FIELD(prefer_webrtc, OPTIONS_VALUE_BOOL, "prefer-webrtc"),

@@ -1,5 +1,5 @@
 /**
- * @file platform/wasm_console.h
+ * @file log/wasm.h
  * @brief WASM browser console logging API
  * @ingroup platform
  */

@@ -36,22 +36,6 @@ if(NOT TARGET libplatform)
         EXCLUDE_FROM_ALL)
 endif()
 
-# Older libplatform revisions list the standalone POSIX signal module beside
-# system.c, but both define platform_install_crash_handler with incompatible
-# APIs. ascii-chat uses the system implementation; remove the duplicate when
-# that source is present in the checked-out dependency.
-if(TARGET libplatform-objects)
-    get_target_property(_ascii_chat_libplatform_sources libplatform-objects SOURCES)
-    list(FILTER _ascii_chat_libplatform_sources EXCLUDE REGEX "(^|/)posix/(signal|backtrace)\\.c$")
-    set_property(TARGET libplatform-objects PROPERTY SOURCES
-        "${_ascii_chat_libplatform_sources}")
-    set_property(SOURCE
-        "${_ascii_chat_libplatform_source}/lib/posix/filesystem.c"
-        TARGET_DIRECTORY libplatform-objects
-        APPEND PROPERTY COMPILE_DEFINITIONS
-        platform_get_data_dir_candidates=libplatform_filesystem_get_data_dir_candidates)
-endif()
-
 if(TARGET asciichat-project-includes)
     target_include_directories(asciichat-project-includes INTERFACE
         "${_ascii_chat_libplatform_source}/lib")
@@ -66,49 +50,6 @@ else()
 endif()
 target_compile_definitions(libplatform PRIVATE
     LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
-target_include_directories(libplatform PRIVATE
-    ${_ascii_chat_repo_root}/include
-    ${_ascii_chat_repo_root}/deps
-    ${_ascii_chat_repo_root}/deps/ascii-chat-deps/yyjson/src
-    ${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc)
-
-# libplatform is built from the project's coverage-instrumented object target
-# in coverage CI.  Shared libraries must carry their own profile runtime;
-# otherwise executables that link libplatform fail with unresolved/non-exported
-# llvm_gcda_* symbols under lld.
-if(ASCIICHAT_ENABLE_COVERAGE)
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64|ARM64")
-        set(_ascii_chat_profile_names "libclang_rt.profile_osx.a" "libclang_rt.profile-arm64.a")
-    else()
-        set(_ascii_chat_profile_names "libclang_rt.profile-x86_64.a" "libclang_rt.profile_osx.a")
-    endif()
-    foreach(_ascii_chat_profile_name ${_ascii_chat_profile_names})
-        execute_process(
-            COMMAND ${CMAKE_C_COMPILER} --print-file-name=${_ascii_chat_profile_name}
-            OUTPUT_VARIABLE _ascii_chat_profile_library
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-        if(EXISTS "${_ascii_chat_profile_library}")
-            target_link_libraries(libplatform PRIVATE "${_ascii_chat_profile_library}")
-            target_link_options(libplatform PRIVATE --coverage)
-            break()
-        endif()
-    endforeach()
-    unset(_ascii_chat_profile_library)
-    unset(_ascii_chat_profile_name)
-    unset(_ascii_chat_profile_names)
-endif()
-if(TARGET libplatform-objects)
-    target_include_directories(libplatform-objects PRIVATE
-        ${_ascii_chat_repo_root}/include
-        ${_ascii_chat_repo_root}/deps)
-    if(DEFINED KERNEL_HEADERS_DIR AND EXISTS "${KERNEL_HEADERS_DIR}")
-        target_include_directories(libplatform-objects PRIVATE "${KERNEL_HEADERS_DIR}")
-    endif()
-    if(LIBSODIUM_INCLUDE_DIRS)
-        target_include_directories(libplatform-objects PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
-    endif()
-endif()
 if(LIBSODIUM_INCLUDE_DIRS)
     target_include_directories(libplatform PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
 endif()
@@ -121,11 +62,6 @@ endif()
 # from strict C mode unless the feature-test macros are enabled on the target.
 if(UNIX AND NOT APPLE)
     target_compile_definitions(libplatform PRIVATE _GNU_SOURCE)
-    # libplatform builds its sources through this object target; keep the
-    # feature-test macro on that compile path as well as on the final library.
-    if(TARGET libplatform-objects)
-        target_compile_definitions(libplatform-objects PRIVATE _GNU_SOURCE)
-    endif()
     if(DEFINED KERNEL_HEADERS_DIR AND EXISTS "${KERNEL_HEADERS_DIR}")
         target_include_directories(libplatform PRIVATE "${KERNEL_HEADERS_DIR}")
     endif()

@@ -116,15 +116,9 @@ runs:
         # Keep the cache key tied to cmake/deps/*.cmake, matching the files
         # that select and configure the dependency sources.
         if command -v sha256sum &>/dev/null; then
-          deps_hash=$( {
-            sha256sum cmake/deps/*.cmake 2>/dev/null
-            git submodule status --recursive 2>/dev/null
-          } | sort | sha256sum | cut -c1-16)
+          deps_hash=$(sha256sum cmake/deps/*.cmake 2>/dev/null | sort | sha256sum | cut -c1-16)
         else
-          deps_hash=$( {
-            shasum -a 256 cmake/deps/*.cmake 2>/dev/null
-            git submodule status --recursive 2>/dev/null
-          } | sort | shasum -a 256 | cut -c1-16)
+          deps_hash=$(shasum -a 256 cmake/deps/*.cmake 2>/dev/null | sort | shasum -a 256 | cut -c1-16)
         fi
 
         # Get runner info
@@ -135,14 +129,14 @@ runs:
         # Output cache keys
         # Versioned keys invalidate incompatible dependency caches.
         # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
-        echo "cmake-cache-key=${os}-${arch}-cmake-deps-v20-${deps_hash}-${install_hash}" >> $GITHUB_OUTPUT
+        echo "cmake-cache-key=${os}-${arch}-cmake-deps-v19-${deps_hash}-${install_hash}" >> $GITHUB_OUTPUT
         echo "ccache-key=${os}-${arch}-ccache-v2" >> $GITHUB_OUTPUT
-        echo "build-cache-key=${os}-${arch}-build-v12" >> $GITHUB_OUTPUT
+        echo "build-cache-key=${os}-${arch}-build-v10" >> $GITHUB_OUTPUT
 
         echo "Computed cache keys:"
-        echo "  cmake: ${os}-${arch}-cmake-deps-v20-${deps_hash}-${install_hash}"
+        echo "  cmake: ${os}-${arch}-cmake-deps-v19-${deps_hash}-${install_hash}"
         echo "  ccache: ${os}-${arch}-ccache-v2"
-        echo "  build: ${os}-${arch}-build-v12"
+        echo "  build: ${os}-${arch}-build-v10"
 
     - name: Compute cache keys (Windows)
       if: inputs.os == 'windows'
@@ -155,8 +149,7 @@ runs:
           $hash = Get-FileHash -Path $_.FullName -Algorithm SHA256
           "$($hash.Hash) $($_.FullName)"
         }
-        $submodules = @(git submodule status --recursive 2>$null)
-        $combinedHash = (($hashes + $submodules) -join "`n" | Out-String)
+        $combinedHash = ($hashes -join "`n" | Out-String)
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($combinedHash)
         $sha256 = [System.Security.Cryptography.SHA256]::Create()
         $hashBytes = $sha256.ComputeHash($bytes)
@@ -170,14 +163,14 @@ runs:
         # Output cache keys
         # Versioned keys invalidate incompatible dependency caches.
         # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "cmake-cache-key=${os}-${arch}-cmake-deps-v20-${depsHash}-${installHash}"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "cmake-cache-key=${os}-${arch}-cmake-deps-v19-${depsHash}-${installHash}"
         Add-Content -Path $env:GITHUB_OUTPUT -Value "ccache-key=${os}-${arch}-ccache-v2"
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v12"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v10"
 
         Write-Host "Computed cache keys:"
-        Write-Host "  cmake: ${os}-${arch}-cmake-deps-v20-${depsHash}-${installHash}"
+        Write-Host "  cmake: ${os}-${arch}-cmake-deps-v18-${depsHash}-${installHash}"
         Write-Host "  ccache: ${os}-${arch}-ccache-v2"
-        Write-Host "  build: ${os}-${arch}-build-v12"
+        Write-Host "  build: ${os}-${arch}-build-v10"
 
     - name: Restore CMake dependency cache (All platforms)
       id: cmake-cache

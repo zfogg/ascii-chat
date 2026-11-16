@@ -8,7 +8,6 @@ import os
 import subprocess
 import time
 from pathlib import Path
-from typing import cast
 
 import pygetwindow as gw
 import pymonctl as pm
@@ -20,7 +19,7 @@ import win32gui
 import win32process
 import pywintypes
 from PIL import Image, ImageChops, ImageStat
-from ascii_chat_tests.terminal_cadence import cadence_metrics, probe_box, require_cadence
+from ascii_chat_tests.terminal_cadence import cadence_metrics, motion_point, probe_box, require_cadence
 
 ROOT = Path(__file__).resolve().parents[1]
 ALACRITTY = Path(r"C:\Program Files\Alacritty\alacritty.exe")
@@ -240,7 +239,7 @@ def main() -> None:
             time.sleep(0.1)
         if previous is None:
             raise AssertionError("Alacritty window never produced visible content")
-        previous.save(frame_a)
+        frame_a_image = previous
         samples = []
         if args.no_fps_check:
             for index in range(args.samples):
@@ -264,23 +263,10 @@ def main() -> None:
                 client_right, client_bottom = win32gui.ClientToScreen(hwnd, (client_width, client_height))
                 box = (client_left, client_top, client_right, client_bottom)
             probe_frame = capture_image(box)
-            changed_box = ImageChops.difference(previous, probe_frame).getbbox()
-            if changed_box:
-                changed_left, changed_top, changed_right, changed_bottom = changed_box
-                diff_pixels = ImageChops.difference(previous, probe_frame).load()
-                if diff_pixels is None:
-                    raise RuntimeError("Could not inspect captured frame pixels")
-                strongest = (0, changed_left, changed_top)
-                for y in range(changed_top, changed_bottom, 4):
-                    for x in range(changed_left, changed_right, 4):
-                        pixel = cast(tuple[int, int, int], diff_pixels[x, y])
-                        strength = max(pixel)
-                        if strength > strongest[0]:
-                            strongest = (strength, x, y)
-                points = [(strongest[1], strongest[2])]
-            else:
-                points = [((client_right - client_left) // 2, (client_bottom - client_top) // 2)]
-            region = probe_box(box, points[0])
+            # Both artifacts must bracket the measured period. An earlier
+            # startup frame can differ even when all measured frames freeze.
+            frame_a_image = probe_frame
+            region = probe_box(box, motion_point(previous, probe_frame))
             probe_previous = client_signature(region)
             interval = 1.0 / args.fps
             start_time = time.monotonic()
@@ -303,7 +289,9 @@ def main() -> None:
                 index = max(index + 1, int(observed_at / interval))
             metrics = cadence_metrics(observations, time.monotonic() - start_time)
             print("cadence=" + json.dumps(metrics, sort_keys=True))
+            print(f"probe_region={region} client={box}")
             current = capture_image(box)
+        frame_a_image.save(frame_a)
         current.save(frame_b)
         print(f"monitor_index={args.monitor_index} monitor={target_rect}")
         print(f"window={actual} hwnd={hwnd} pid={process.pid} title={win32gui.GetWindowText(hwnd)!r}")

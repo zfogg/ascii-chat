@@ -36,6 +36,7 @@
 #include <libplatform/terminal.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
+#include <libplatform/thread.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/video/ascii/palette.h>
@@ -918,6 +919,7 @@ void session_display_release_ascii(session_display_ctx_t *ctx, char *ascii) {
 
 void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *ascii, bool fresh) {
   ASCII_OTEL_SCOPE(SESSION_DISPLAY_WRITE_ASCII_FRAME);
+  uint64_t write_entered_ns = time_get_ns();
   if (!ctx || !ctx->initialized) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Display context is NULL or uninitialized");
     return;
@@ -960,10 +962,12 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
     return;
   }
 
-  /* Inspect the payload before any terminal presentation.  This is bounded
-   * diagnostics: it records shape/control-byte anomalies and a short tail,
-   * never the full webcam frame. */
-  {
+  /* Sample payload inspection, not just its final log message. Scanning a
+   * truecolor frame on every presentation adds work even with logging off. */
+  static _Thread_local uint64_t last_frame_inspection_ns;
+  uint64_t inspection_ns = time_get_ns();
+  if (inspection_ns - last_frame_inspection_ns >= NS_PER_SEC_INT) {
+    last_frame_inspection_ns = inspection_ns;
     size_t lines = 0, current = 0, min_line = SIZE_MAX, max_line = 0, last_line = 0;
     unsigned control_bytes = 0, escape_bytes = 0;
     for (size_t i = 0; i < frame_len; ++i) {
@@ -1016,11 +1020,12 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
       else
         row_used += (size_t)safe_snprintf(last_row + row_used, sizeof(last_row) - row_used, "\\x%02X", byte);
     }
-    log_debug_every(US_PER_SEC_INT, "FRAME_DATA: bytes=%zu lines=%zu line_bytes=%zu..%zu last=%zu controls=%u escapes=%u last_row=\"%s\" tail=%s", frame_len, lines,
-                    min_line == SIZE_MAX ? 0 : min_line, max_line, last_line, control_bytes, escape_bytes, last_row, tail);
+    log_debug("FRAME_DATA: bytes=%zu lines=%zu line_bytes=%zu..%zu last=%zu controls=%u escapes=%u last_row=\"%s\" tail=%s", frame_len, lines, min_line == SIZE_MAX ? 0 : min_line, max_line, last_line,
+              control_bytes, escape_bytes, last_row, tail);
   }
 
   // Apply digital rain effect if enabled
+  uint64_t inspection_done_ns = time_get_ns();
   char *display_frame = (char *)ascii;
   char *rain_result = NULL;
   if (ctx->digital_rain && !visualization_enabled) {
@@ -1135,8 +1140,23 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
       frame_rows += display_frame[i] == '\n';
     int output_fd = ctx->tty_info.fd >= 0 ? ctx->tty_info.fd : STDOUT_FILENO;
     terminal_size_t terminal = {0};
-    if (terminal_get_size_fd(output_fd, &terminal) == ASCIICHAT_OK && frame_rows >= (size_t)terminal.rows)
+    static _Thread_local int trace_terminal_size;
+    if (!trace_terminal_size) {
+      const char *value = SAFE_GETENV("ASCII_CHAT_TRACE_TERMINAL_WRITES");
+      trace_terminal_size = value && strcmp(value, "1") == 0 ? 1 : -1;
+    }
+    bool trace_size = trace_terminal_size > 0;
+    if (trace_size)
+      log_file_msg("TERMINAL_CALL_BEGIN: thread=%llu caller=display call=terminal_get_size_fd fd=%d at_ns=%llu", (unsigned long long)thread_current_id(), output_fd, (unsigned long long)time_get_ns());
+    uint64_t size_started_ns = trace_size ? time_get_ns() : 0;
+    int size_result = terminal_get_size_fd(output_fd, &terminal);
+    uint64_t size_returned_ns = trace_size ? time_get_ns() : 0;
+    if (trace_size)
+      log_file_msg("TERMINAL_CALL_END: thread=%llu caller=display call=terminal_get_size_fd fd=%d result=%d cols=%d rows=%d elapsed_ms=%.3f at_ns=%llu", (unsigned long long)thread_current_id(),
+                   output_fd, size_result, terminal.cols, terminal.rows, (double)(size_returned_ns - size_started_ns) / NS_PER_MS_INT, (unsigned long long)size_returned_ns);
+    if (size_result == ASCIICHAT_OK && frame_rows >= (size_t)terminal.rows)
       erase_below_len = 0;
+    uint64_t framing_done_ns = time_get_ns();
     // The frame is shorter than the terminal in some configurations.  Erase
     // from the final frame cursor to the bottom of the screen in the same
     // submission so stale rows cannot survive a resize or a shorter frame.
@@ -1170,6 +1190,22 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
         presented = (fresh ? ui_controller_present : ui_controller_present_retained)(UI_SCREEN_MEDIA, output_fd, (terminal_size_t){.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS}, frame_buffer,
                                                                                      total_size);
         uint64_t present_elapsed_ns = time_get_ns() - present_started_ns;
+        static _Thread_local uint64_t stage_last_ns, stage_count, stage_totals[5];
+        stage_totals[0] += inspection_done_ns - write_entered_ns;
+        stage_totals[1] += frame_write_started_ns - inspection_done_ns;
+        stage_totals[2] += framing_done_ns - frame_write_started_ns;
+        stage_totals[3] += present_started_ns - framing_done_ns;
+        stage_totals[4] += present_elapsed_ns;
+        ++stage_count;
+        uint64_t stage_now_ns = time_get_ns();
+        if (stage_now_ns - stage_last_ns >= NS_PER_SEC_INT) {
+          double divisor = (double)stage_count * NS_PER_MS_INT;
+          log_debug("DISPLAY_PUBLISH_STAGE: frames=%llu inspection_ms=%.2f effects_ms=%.2f framing_ms=%.2f copy_ms=%.2f submit_ms=%.2f", (unsigned long long)stage_count, stage_totals[0] / divisor,
+                    stage_totals[1] / divisor, stage_totals[2] / divisor, stage_totals[3] / divisor, stage_totals[4] / divisor);
+          memset(stage_totals, 0, sizeof(stage_totals));
+          stage_count = 0;
+          stage_last_ns = stage_now_ns;
+        }
         if (present_elapsed_ns >= 50 * NS_PER_MS_INT)
           log_debug("MEDIA_PRESENT_RETURN: fd=%d bytes=%zu elapsed_ms=%.2f result=%d", output_fd, total_size, (double)present_elapsed_ns / NS_PER_MS_INT, presented);
       }
