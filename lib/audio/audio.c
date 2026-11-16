@@ -316,11 +316,11 @@ static void *audio_worker_thread(void *arg) {
       char avg_capture_str[TIME_DURATION_BUFFER_SIZE], max_capture_str[TIME_DURATION_BUFFER_SIZE];
       char avg_playback_str[TIME_DURATION_BUFFER_SIZE], max_playback_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty((uint64_t)(total_wait_ns / loop_count), -1, avg_wait_str, sizeof(avg_wait_str));
-      time_pretty(max_wait_ns, -1, max_wait_str, sizeof(max_wait_str));
+      time_pretty((uint64_t)max_wait_ns, -1, max_wait_str, sizeof(max_wait_str));
       time_pretty((uint64_t)(total_capture_ns / (process_count > 0 ? process_count : 1)), -1, avg_capture_str, sizeof(avg_capture_str));
-      time_pretty(max_capture_ns, -1, max_capture_str, sizeof(max_capture_str));
+      time_pretty((uint64_t)max_capture_ns, -1, max_capture_str, sizeof(max_capture_str));
       time_pretty((uint64_t)(total_playback_ns / (process_count > 0 ? process_count : 1)), -1, avg_playback_str, sizeof(avg_playback_str));
-      time_pretty(max_playback_ns, -1, max_playback_str, sizeof(max_playback_str));
+      time_pretty((uint64_t)max_playback_ns, -1, max_playback_str, sizeof(max_playback_str));
 
       log_debug("Worker stats: loops=%lu, signals=%lu, timeouts=%lu, processed=%lu", loop_count, signal_count, timeout_count, process_count);
       log_debug("Worker timing: wait avg=%s max=%s, capture avg=%s max=%s, playback avg=%s max=%s", avg_wait_str, max_wait_str, avg_capture_str, max_capture_str, avg_playback_str, max_playback_str);
@@ -528,7 +528,7 @@ static void *audio_worker_thread(void *arg) {
     if (loop_count % 100 == 0) {
       char avg_loop_str[TIME_DURATION_BUFFER_SIZE], max_loop_str[TIME_DURATION_BUFFER_SIZE];
       time_pretty((uint64_t)(total_loop_ns / loop_count), -1, avg_loop_str, sizeof(avg_loop_str));
-      time_pretty(max_loop_ns, -1, max_loop_str, sizeof(max_loop_str));
+      time_pretty((uint64_t)max_loop_ns, -1, max_loop_str, sizeof(max_loop_str));
       log_debug("Worker loop timing: avg=%s max=%s", avg_loop_str, max_loop_str);
     }
   }
@@ -953,7 +953,7 @@ void audio_ring_buffer_discard_pending(audio_ring_buffer_t *rb) {
     // Capture the current producer position before the caller writes its new
     // samples. The consumer can drop everything through this point while
     // preserving samples appended afterward.
-    unsigned int write_idx = atomic_load_u64(&rb->write_index);
+    uint64_t write_idx = atomic_load_u64(&rb->write_index);
     atomic_store_u64(&rb->discard_to_index, write_idx);
     atomic_store_bool(&rb->discard_pending, true);
   }
@@ -973,8 +973,8 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
   // LOCK-FREE: Load indices with proper memory ordering
   // - Load our own write_index with relaxed (no sync needed with ourselves)
   // - Load reader's read_index with acquire (see reader's updates to free space)
-  unsigned int write_idx = atomic_load_u64(&rb->write_index);
-  unsigned int read_idx = atomic_load_u64(&rb->read_index);
+  uint64_t write_idx = atomic_load_u64(&rb->write_index);
+  uint64_t read_idx = atomic_load_u64(&rb->read_index);
 
   // Calculate current buffer level (how many samples are buffered)
   int buffer_level;
@@ -1065,9 +1065,9 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   }
   // Keep read_index consumer-owned while letting a producer request a flush.
   if (atomic_exchange_bool(&rb->discard_pending, false)) {
-    unsigned int read_idx = atomic_load_u64(&rb->read_index);
-    unsigned int discard_to = atomic_load_u64(&rb->discard_to_index);
-    unsigned int advance = (discard_to + AUDIO_RING_BUFFER_SIZE - read_idx) % AUDIO_RING_BUFFER_SIZE;
+    uint64_t read_idx = atomic_load_u64(&rb->read_index);
+    uint64_t discard_to = atomic_load_u64(&rb->discard_to_index);
+    uint64_t advance = (discard_to + AUDIO_RING_BUFFER_SIZE - read_idx) % AUDIO_RING_BUFFER_SIZE;
     // A concurrent callback may already have consumed beyond the requested
     // boundary. In that case the target is behind us and must not rewind the
     // single-consumer index.
@@ -1081,8 +1081,8 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   // LOCK-FREE: Load indices with proper memory ordering
   // - Load writer's write_index with acquire (see writer's data updates)
   // - Load our own read_index with relaxed (no sync needed with ourselves)
-  unsigned int write_idx = atomic_load_u64(&rb->write_index);
-  unsigned int read_idx = atomic_load_u64(&rb->read_index);
+  uint64_t write_idx = atomic_load_u64(&rb->write_index);
+  uint64_t read_idx = atomic_load_u64(&rb->read_index);
 
   // Calculate available samples
   size_t available;
@@ -1094,7 +1094,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
 
   // LOCK-FREE: Load jitter buffer state with acquire ordering
   bool jitter_filled = atomic_load_u64(&rb->jitter_buffer_filled);
-  int crossfade_remaining = atomic_load_u64(&rb->crossfade_samples_remaining);
+  uint64_t crossfade_remaining = atomic_load_u64(&rb->crossfade_samples_remaining);
   bool fade_in = atomic_load_u64(&rb->crossfade_fade_in);
 
   // Jitter buffer: don't read until initial fill threshold is reached
@@ -1118,7 +1118,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   }
 
   // Periodic buffer health logging (every 5 seconds when healthy)
-  unsigned int underruns = atomic_load_u64(&rb->underrun_count);
+  uint64_t underruns = atomic_load_u64(&rb->underrun_count);
   log_dev_every(5 * US_PER_SEC_INT, "Buffer health: %zu/%d samples (%.1f%%), underruns=%u", available, AUDIO_RING_BUFFER_SIZE, (100.0f * available) / AUDIO_RING_BUFFER_SIZE, underruns);
 
   audio_metric(ASCII_OTEL_METRIC_AUDIO_FILL, (double)available);
@@ -1245,8 +1245,8 @@ size_t audio_ring_buffer_peek(audio_ring_buffer_t *rb, float *data, size_t sampl
   }
 
   // LOCK-FREE: Load indices with proper memory ordering
-  unsigned int write_idx = atomic_load_u64(&rb->write_index);
-  unsigned int read_idx = atomic_load_u64(&rb->read_index);
+  uint64_t write_idx = atomic_load_u64(&rb->write_index);
+  uint64_t read_idx = atomic_load_u64(&rb->read_index);
 
   // Calculate available samples
   size_t available;
@@ -1283,8 +1283,8 @@ size_t audio_ring_buffer_available_read(audio_ring_buffer_t *rb) {
   // LOCK-FREE: Load indices with proper memory ordering
   // Use acquire for write_index to see writer's updates
   // Use relaxed for read_index (our own index)
-  unsigned int write_idx = atomic_load_u64(&rb->write_index);
-  unsigned int read_idx = atomic_load_u64(&rb->read_index);
+  uint64_t write_idx = atomic_load_u64(&rb->write_index);
+  uint64_t read_idx = atomic_load_u64(&rb->read_index);
 
   if (write_idx >= read_idx) {
     return write_idx - read_idx;
@@ -2055,7 +2055,7 @@ asciichat_error_t audio_read_samples(audio_context_t *ctx, float *buffer, int nu
   }
 
   // audio_ring_buffer_read now returns number of samples read, not error code
-  int samples_read = audio_ring_buffer_read(ctx->capture_buffer, buffer, num_samples);
+  size_t samples_read = audio_ring_buffer_read(ctx->capture_buffer, buffer, (size_t)num_samples);
   return (samples_read >= 0) ? ASCIICHAT_OK : ERROR_AUDIO;
 }
 
