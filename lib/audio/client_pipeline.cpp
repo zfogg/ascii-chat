@@ -189,7 +189,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
     return NULL;
   }
   p->flags = p->config.flags;
-  p->frame_size = p->config.sample_rate * p->config.frame_duration_ms / 1000 * p->config.channels;
+  p->frame_size = static_cast<int>(p->config.sample_rate * p->config.frame_duration_ms / 1000 * p->config.channels);
 
   // No mutex needed - full-duplex means single callback thread handles all AEC3
 

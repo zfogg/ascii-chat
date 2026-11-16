@@ -506,7 +506,7 @@ const audio_analysis_stats_t *audio_analysis_get_sent_stats(void) {
 
 const audio_analysis_stats_t *audio_analysis_get_received_stats(void) {
   g_received_stats.dc_offset = g_received_stats.total_samples ? (float)(g_received_mean / g_received_stats.total_samples) : 0.0f;
-  g_received_stats.rms_level = g_received_rms_sample_count ? sqrtf(g_received_rms_accumulator / g_received_rms_sample_count) : 0.0f;
+  g_received_stats.rms_level = g_received_rms_sample_count ? sqrtf(g_received_rms_accumulator / (float)g_received_rms_sample_count) : 0.0f;
   return &g_received_stats;
 }
 
