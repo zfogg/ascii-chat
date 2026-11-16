@@ -1068,7 +1068,7 @@ asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required,
     } else {                                                 \
       snprintf((buffer), (size), "0x%tx", (ptrdiff_t)(key)); \
     }                                                        \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * @brief Get name of an integer ID or format as hex fallback
@@ -1095,7 +1095,7 @@ asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required,
     } else {                                                    \
       snprintf((buffer), (size), "0x%lx", (unsigned long)(id)); \
     }                                                           \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * @brief Copy a string to buffer, with bounds checking
@@ -1117,7 +1117,7 @@ asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required,
     } else {                                \
       (buffer)[0] = '\0';                   \
     }                                       \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /** Print a synchronized hash-table summary without logging under its lock. */
 void named_print_hash_stats(void);

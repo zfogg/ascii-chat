@@ -100,7 +100,7 @@
       log_error("%s", (error_msg));                                    \
       return;                                                          \
     }                                                                  \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * Join a thread and wait for it to complete.

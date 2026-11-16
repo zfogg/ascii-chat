@@ -51,7 +51,7 @@
 #define FNV1A_32_HASH(hash, byte)                                            \
   do {                                                                       \
     (hash) = (((hash) ^ (uint64_t)(byte)) * FNV1A_32_PRIME) & FNV1A_32_MASK; \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /* ============================================================================
  * FNV-1a Hash Functions

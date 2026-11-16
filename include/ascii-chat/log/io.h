@@ -99,7 +99,7 @@ void log_io_stop(log_io_t capture, const char *prefix);
     block;                                  \
     if (_log_io_enabled)                    \
       log_io_stop(_log_io, (prefix));       \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 #define LOG_IO(prefix, block) LOG_IO_IF(true, prefix, block)
 
