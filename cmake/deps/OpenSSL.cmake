@@ -179,14 +179,21 @@ if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
     if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
         unset(ASCIICHAT_SYSTEM_OPENSSL_SSL_LIBRARY CACHE)
         unset(ASCIICHAT_SYSTEM_OPENSSL_CRYPTO_LIBRARY CACHE)
-        find_file(ASCIICHAT_SYSTEM_OPENSSL_SSL_LIBRARY
-            NAMES libssl.so libssl.dylib libssl.dll.a
-            HINTS ${ASCIICHAT_SYSTEM_OPENSSL_LIBRARY_DIRS}
-            REQUIRED)
-        find_file(ASCIICHAT_SYSTEM_OPENSSL_CRYPTO_LIBRARY
-            NAMES libcrypto.so libcrypto.dylib libcrypto.dll.a
-            HINTS ${ASCIICHAT_SYSTEM_OPENSSL_LIBRARY_DIRS}
-            REQUIRED)
+        if(EXISTS "${ASCIICHAT_SYSTEM_OPENSSL_LIBDIR}/libssl.so")
+            set(ASCIICHAT_SYSTEM_OPENSSL_SSL_LIBRARY
+                "${ASCIICHAT_SYSTEM_OPENSSL_LIBDIR}/libssl.so")
+            set(ASCIICHAT_SYSTEM_OPENSSL_CRYPTO_LIBRARY
+                "${ASCIICHAT_SYSTEM_OPENSSL_LIBDIR}/libcrypto.so")
+        else()
+            find_file(ASCIICHAT_SYSTEM_OPENSSL_SSL_LIBRARY
+                NAMES libssl.so libssl.dylib libssl.dll.a
+                HINTS ${ASCIICHAT_SYSTEM_OPENSSL_LIBRARY_DIRS}
+                REQUIRED)
+            find_file(ASCIICHAT_SYSTEM_OPENSSL_CRYPTO_LIBRARY
+                NAMES libcrypto.so libcrypto.dylib libcrypto.dll.a
+                HINTS ${ASCIICHAT_SYSTEM_OPENSSL_LIBRARY_DIRS}
+                REQUIRED)
+        endif()
         set(OPENSSL_INCLUDE_DIR "${ASCIICHAT_SYSTEM_OPENSSL_INCLUDE_DIRS}")
         set(OPENSSL_SSL_LIBRARY "${ASCIICHAT_SYSTEM_OPENSSL_SSL_LIBRARY}")
         set(OPENSSL_CRYPTO_LIBRARY "${ASCIICHAT_SYSTEM_OPENSSL_CRYPTO_LIBRARY}")
