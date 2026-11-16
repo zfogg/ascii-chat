@@ -534,7 +534,11 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     # Dead Code Elimination (all platforms)
     # =============================================================================
     # Requires -ffunction-sections -fdata-sections to separate each function/data into sections
-    target_compile_options(asciichat-project-options INTERFACE -ffunction-sections -fdata-sections)
+    if(MSVC)
+        target_compile_options(asciichat-project-options INTERFACE /Gy /Gw)
+    else()
+        target_compile_options(asciichat-project-options INTERFACE -ffunction-sections -fdata-sections)
+    endif()
 
     if(PLATFORM_LINUX)
         # GNU ld: Use --gc-sections to remove unused sections
