@@ -25,17 +25,17 @@ set(LIBPLATFORM_BUILD_SHARED "${_ascii_chat_libplatform_shared}" CACHE BOOL
 set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
     "Disable standalone libplatform tests in ascii-chat" FORCE)
 
-if(NOT TARGET ascii-chat-utf8proc)
-    add_library(ascii-chat-utf8proc STATIC
+if(NOT TARGET utf8proc)
+    add_library(utf8proc STATIC
         "${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc/utf8proc.c")
-    target_include_directories(ascii-chat-utf8proc PUBLIC
+    target_include_directories(utf8proc PUBLIC
         "${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc")
-    target_compile_definitions(ascii-chat-utf8proc PUBLIC UTF8PROC_STATIC=1)
-    set_target_properties(ascii-chat-utf8proc PROPERTIES
+    target_compile_definitions(utf8proc PUBLIC UTF8PROC_STATIC=1)
+    set_target_properties(utf8proc PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
         POSITION_INDEPENDENT_CODE ON)
 endif()
-set(LIBPLATFORM_UTF8PROC_TARGET ascii-chat-utf8proc CACHE STRING
+set(LIBPLATFORM_UTF8PROC_TARGET utf8proc CACHE STRING
     "utf8proc target shared with ascii-chat" FORCE)
 
 # Use the checked-out submodule directly.  Reusing a cached source tree can

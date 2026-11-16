@@ -18,15 +18,15 @@ set(LIBFLAGS_TOMLC17_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc1
     "tomlc17 source shared with ascii-chat" FORCE)
 # libplatform is configured before ascii-chat's library targets are created;
 # provide the eventual shared utf8proc target name up front.
-set(LIBPLATFORM_UTF8PROC_TARGET ascii-chat-utf8proc CACHE STRING
+set(LIBPLATFORM_UTF8PROC_TARGET utf8proc CACHE STRING
     "utf8proc target supplied by ascii-chat" FORCE)
-if(NOT TARGET ascii-chat-utf8proc)
-    add_library(ascii-chat-utf8proc STATIC
+if(NOT TARGET utf8proc)
+    add_library(utf8proc STATIC
         "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/utf8proc/utf8proc.c")
-    target_include_directories(ascii-chat-utf8proc PUBLIC
+    target_include_directories(utf8proc PUBLIC
         "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/utf8proc")
-    target_compile_definitions(ascii-chat-utf8proc PUBLIC UTF8PROC_STATIC=1)
-    set_target_properties(ascii-chat-utf8proc PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_compile_definitions(utf8proc PUBLIC UTF8PROC_STATIC=1)
+    set_target_properties(utf8proc PROPERTIES POSITION_INDEPENDENT_CODE ON)
 endif()
 set(_ascii_chat_libflags_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src")
 FetchContent_Declare(libflags

@@ -6,4 +6,4 @@ function(asciichat_build_utf8proc)
     # vendored target when both dependency graphs are configured.
 endfunction()
 asciichat_build_utf8proc()
-set(UTF8PROC_LIBRARIES ascii-chat-utf8proc)
+set(UTF8PROC_LIBRARIES utf8proc)
