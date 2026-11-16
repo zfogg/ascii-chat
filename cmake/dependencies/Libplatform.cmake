@@ -57,14 +57,21 @@ endif()
 # libplatform's current POSIX implementation uses the application's public
 # error and utility contracts. Keep that mapping private to libplatform so its
 # headers and symbols are never propagated to consumers.
-target_include_directories(libplatform-objects PRIVATE
-    "${_ascii_chat_repo_root}/include"
-    "${_ascii_chat_repo_root}/deps"
-    "${_ascii_chat_repo_root}/deps/ascii-chat-deps/yyjson/src"
-    "${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc"
-    "${_ascii_chat_repo_root}/deps/ascii-chat-deps/gotel/c/include"
-    "${CMAKE_BINARY_DIR}/_deps/gotel/otlp_c-src/include"
-    ${SQLITE3_INCLUDE_DIRS})
+foreach(_libplatform_target IN ITEMS libplatform libplatform-objects)
+    if(TARGET ${_libplatform_target})
+        target_include_directories(${_libplatform_target} PRIVATE
+            "${_ascii_chat_libplatform_source}/lib"
+            "${_ascii_chat_repo_root}/include"
+            "${_ascii_chat_repo_root}/deps"
+            "${_ascii_chat_repo_root}/deps/ascii-chat-deps/yyjson/src"
+            "${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc"
+            "${_ascii_chat_repo_root}/deps/ascii-chat-deps/gotel/c/include"
+            "${CMAKE_BINARY_DIR}/_deps/gotel/otlp_c-src/include"
+            "${CMAKE_BINARY_DIR}/_deps/gotel/sequel-src/include"
+            ${SQLITE3_INCLUDE_DIRS})
+        target_compile_definitions(${_libplatform_target} PRIVATE GOTEL_WITH_SQLITE=1)
+    endif()
+endforeach()
 
 # libplatform owns the shared path/logging helpers, so give it the checkout
 # root that CMake already knows instead of letting it fall back to ".".
