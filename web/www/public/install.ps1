@@ -39,8 +39,9 @@
         if ($ncl) {
             $npackdPackage = if ($arch -eq 'arm64') { 'ascii-chat-arm64' } else { 'ascii-chat' }
             & ncl add-repo --url https://raw.githubusercontent.com/zfogg/npackd-repository/main/repository.xml 2>$null
-            & ncl path --package $npackdPackage *> $null
-            $npackdInstalled = $LASTEXITCODE -eq 0
+            $installedPackages = & ncl search --query $npackdPackage --status installed --bare-format 2>$null
+            $packagePattern = '^' + [regex]::Escape($npackdPackage) + '\s'
+            $npackdInstalled = $LASTEXITCODE -eq 0 -and ($installedPackages | Where-Object { $_ -match $packagePattern })
             if ($npackdInstalled) {
                 & ncl update --package $npackdPackage
                 $npackdAction = 'Updated'
