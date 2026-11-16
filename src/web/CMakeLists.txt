@@ -770,15 +770,29 @@ target_link_libraries(mirror-web PRIVATE libplatform::libplatform)
 target_link_libraries(renderer-web PRIVATE libplatform::libplatform)
 
 # This file is configured as a separate CMake project for Emscripten, so the
-# parent project's defer finalization cannot see these targets. Reuse the same
-# repository-level defer module once, after all browser targets are declared.
+# native project cannot finalize these targets in its own directory scope.
+# Reuse the repository's Recast integration with the host executable that the
+# native configure already built. The transformer must run on the host; it
+# must never be compiled as an Emscripten target.
 if(EMSCRIPTEN AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    if(NOT DEFER_SOURCE_ROOT OR NOT DEFER_NATIVE_BINARY OR NOT EXISTS "${DEFER_CONFIG_FILE}")
+    if(NOT RECAST_SOURCE_ROOT OR NOT RECAST_NATIVE_BINARY OR
+       NOT EXISTS "${RECAST_NATIVE_BINARY}")
         message(FATAL_ERROR
-            "The parent CMake project must provide DEFER_SOURCE_ROOT, DEFER_NATIVE_BINARY, and DEFER_CONFIG_FILE")
+            "The native project must provide an existing RECAST_SOURCE_ROOT and RECAST_NATIVE_BINARY")
     endif()
-    set(DEFER_SOURCE_DIRS "include;lib;src;tests" CACHE STRING "Source directories to transform")
-    include("${DEFER_CONFIG_FILE}")
+
+    set(RECAST_SOURCE_DIRS "include;lib;src;tests" CACHE STRING
+        "Source directories relative to RECAST_SOURCE_ROOT")
+    set(RECAST_TOOL_ROOT "${RECAST_SOURCE_ROOT}/deps/recast" CACHE PATH
+        "Root of the repository Recast integration")
+
+    if(NOT TARGET recast)
+        add_executable(recast IMPORTED GLOBAL)
+        set_target_properties(recast PROPERTIES
+            IMPORTED_LOCATION "${RECAST_NATIVE_BINARY}")
+    endif()
+    include("${RECAST_TOOL_ROOT}/Recast.cmake")
+
     set(_ascii_wasm_defer_targets wasm-common mirror-web client-web renderer-web)
     recast_targets(${_ascii_wasm_defer_targets})
     # Defer parses headers before compiling, so libsodium's generated headers
