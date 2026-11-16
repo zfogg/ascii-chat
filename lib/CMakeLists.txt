@@ -9,17 +9,6 @@ endif()
 # Store lib directory since this file may be included() from parent scope
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 
-if(NOT TARGET utf8proc)
-    add_library(utf8proc STATIC
-        ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/utf8proc/utf8proc.c)
-    target_include_directories(utf8proc PUBLIC
-        ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/utf8proc)
-    target_compile_definitions(utf8proc PUBLIC UTF8PROC_STATIC=1)
-    set_target_properties(utf8proc PROPERTIES POSITION_INDEPENDENT_CODE ON)
-endif()
-set(LIBPLATFORM_UTF8PROC_TARGET utf8proc CACHE STRING
-    "utf8proc target supplied by ascii-chat" FORCE)
-
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libplatform.cmake)
 target_include_directories(asciichat-project-includes INTERFACE
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include)
