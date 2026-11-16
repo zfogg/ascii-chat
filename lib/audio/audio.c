@@ -1189,15 +1189,15 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
 
   // Apply fade-in if recovering from underrun
   if (fade_in && crossfade_remaining > 0) {
-    int fade_start = (AUDIO_CROSSFADE_SAMPLES * (int)rb->channels) - crossfade_remaining;
+    uint64_t fade_start = (uint64_t)(AUDIO_CROSSFADE_SAMPLES * (int)rb->channels) - crossfade_remaining;
     size_t fade_samples = (to_read < (size_t)crossfade_remaining) ? to_read : (size_t)crossfade_remaining;
 
     for (size_t i = 0; i < fade_samples; i++) {
-      float fade_factor = (float)((fade_start + (int)i) / (int)rb->channels + 1) / (float)AUDIO_CROSSFADE_SAMPLES;
+      float fade_factor = (float)((fade_start + i) / (size_t)rb->channels + 1) / (float)AUDIO_CROSSFADE_SAMPLES;
       data[i] *= fade_factor;
     }
 
-    int new_crossfade_remaining = crossfade_remaining - (int)fade_samples;
+    uint64_t new_crossfade_remaining = crossfade_remaining - fade_samples;
     atomic_store_u64(&rb->crossfade_samples_remaining, new_crossfade_remaining);
     if (new_crossfade_remaining <= 0) {
       atomic_store_u64(&rb->crossfade_fade_in, false);
