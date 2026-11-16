@@ -4,7 +4,7 @@
 #define NETWORK_PACKET_PARSING_HEX_BUFFER_SIZE 256
 
 #include <ascii-chat/stats/runtime.h>
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/util/time.h>
 /**
  * @file network/packet_parsing.c
