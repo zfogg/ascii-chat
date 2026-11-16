@@ -616,7 +616,9 @@ static asciichat_error_t capture_load_playlist(session_capture_ctx_t *ctx, const
   const char *path = list->paths[index];
   if (!ctx || !ctx->media_locks_ready || !path || strlen(path) >= sizeof(ctx->load_path))
     return SET_ERRNO(ERROR_INVALID_STATE, "Local capture is unavailable");
-  size_t limit = strstr(path, "://") ? sizeof(((options_t *)0)->media_url) : sizeof(((options_t *)0)->media_file);
+  size_t limit = sizeof(((options_t *)0)->media_file);
+  if (strstr(path, "://"))
+    limit = sizeof(((options_t *)0)->media_url);
   if (strlen(path) >= limit)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Media path or URL exceeds the configured source limit");
   mutex_lock(&ctx->load_mutex);

@@ -571,7 +571,7 @@ static asciichat_error_t send_key_auth_response(crypto_handshake_context_t *ctx,
 asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context_t *ctx, acip_transport_t *transport, packet_type_t packet_type, const uint8_t *payload, size_t payload_len) {
   ASCII_OTEL_SCOPE(CRYPTO_HANDSHAKE_CLIENT_AUTH_RESPONSE);
   if (!ctx || ctx->state != CRYPTO_HANDSHAKE_KEY_EXCHANGE) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", ctx, ctx ? ctx->state : -1);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", ctx, ctx ? (int)ctx->state : -1);
   }
   if (!transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "transport is NULL");
@@ -728,7 +728,7 @@ asciichat_error_t crypto_handshake_client_complete(crypto_handshake_context_t *c
   // Accept both KEY_EXCHANGE and AUTHENTICATING states for simple mode compatibility
   // In simple mode, server skips AUTH_CHALLENGE and sends HANDSHAKE_COMPLETE directly
   if (!ctx || (ctx->state != CRYPTO_HANDSHAKE_KEY_EXCHANGE && ctx->state != CRYPTO_HANDSHAKE_AUTHENTICATING)) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", ctx, ctx ? ctx->state : -1);
+    SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", ctx, ctx ? (int)ctx->state : -1);
     return ERROR_INVALID_STATE;
   }
   if (!transport) {

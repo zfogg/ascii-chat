@@ -35,7 +35,11 @@
  * @return 1 if should retry, 0 if fatal error
  */
 static int network_handle_send_error(int error) {
-  if (error == EAGAIN || error == EWOULDBLOCK) {
+  if (error == EAGAIN
+#if EWOULDBLOCK != EAGAIN
+      || error == EWOULDBLOCK
+#endif
+  ) {
     return 1; // Retry
   }
   if (error == EPIPE) {
