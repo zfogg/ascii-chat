@@ -714,7 +714,7 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
  */
 
 // Forward declaration for ACIP server callbacks (defined later in file)
-static const acip_server_callbacks_t g_acip_server_callbacks;
+static acip_server_callbacks_t g_acip_server_callbacks;
 
 asciichat_error_t server_dispatch_packet(client_info_t *client, packet_type_t type, const void *data, size_t length) {
   if (type == PACKET_TYPE_ACIP_SETTINGS_SYNC)
@@ -883,7 +883,7 @@ static void acip_server_on_remote_log(const remote_log_packet_t *header, const c
  * Handles all ACIP packet types from clients including crypto handshake and rekey protocols.
  * Callback wrappers delegate to existing handler functions in protocol.c
  */
-static const acip_server_callbacks_t g_acip_server_callbacks = {
+static acip_server_callbacks_t g_acip_server_callbacks = {
     .on_protocol_version = acip_server_on_protocol_version,
     .on_image_frame = acip_server_on_image_frame,
     .on_image_frame_h265 = acip_server_on_image_frame_h265,

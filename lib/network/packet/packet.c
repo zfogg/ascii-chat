@@ -529,7 +529,7 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
   packet_header_t header;
   asciichat_error_t result = packet_header_build(&header, type, &payload, 1, 0);
   socket_buffer_t slices[] = {{&header, sizeof(header)}, payload};
-  acip_packet_plan_t plan;
+  acip_packet_plan_t plan = {0};
   if (result == ASCIICHAT_OK)
     result = acip_packet_plan(crypto_ctx, slices, 2, &plan);
   uint8_t *ciphertext = NULL;
