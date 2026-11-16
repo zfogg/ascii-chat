@@ -248,13 +248,6 @@ endif()
 install(FILES "${CMAKE_BINARY_DIR}/generated/ascii-chat/version.h"
     DESTINATION include/ascii-chat COMPONENT Development)
 
-# Recast is part of the public source-level contract: consumers may use
-# defer/closure macros in inline or static functions in installed headers.
-# Install its macro headers alongside the ascii-chat SDK headers.
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/deps/recast/include/recast/"
-    DESTINATION include/recast
-    COMPONENT Development
-    FILES_MATCHING PATTERN "*.h")
 
 # ascii-chat public headers include <libplatform/...>. libplatform is embedded
 # through FetchContent, so its own PROJECT_IS_TOP_LEVEL install block is not
