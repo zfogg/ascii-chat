@@ -384,7 +384,8 @@ foreach(_package_manager HOMEBREW SCOOP AUR)
 endforeach()
 
 include("${CMAKE_SOURCE_DIR}/deps/recast/Recast.cmake")
-if(RECAST_BACKEND STREQUAL "NATIVE" AND NOT RECAST_NATIVE_BINARY)
+if(RECAST_BACKEND STREQUAL "NATIVE" AND
+   (NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}"))
   set(BUILD_TESTING OFF CACHE BOOL "Disable Recast tests in ascii-chat" FORCE)
   add_subdirectory(
     "${CMAKE_SOURCE_DIR}/deps/recast"
