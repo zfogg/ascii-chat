@@ -67,6 +67,7 @@ function(asciichat_configure_quic)
         "-DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"
         "-DCMAKE_PROJECT_INCLUDE:FILEPATH=${CMAKE_SOURCE_DIR}/cmake/deps/QuicExternalSetup.cmake"
         "-DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}"
+        "-DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}"
         "-DCMAKE_MAKE_PROGRAM:FILEPATH=${CMAKE_MAKE_PROGRAM}"
         "-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON"
         "-DENABLE_LIB_ONLY:BOOL=ON"
@@ -101,6 +102,8 @@ function(asciichat_configure_quic)
         endif()
     endforeach()
     if(USE_MUSL)
+        list(APPEND _quic_common_args
+            "-DCMAKE_TRY_COMPILE_TARGET_TYPE:STRING=STATIC_LIBRARY")
         foreach(_variable ASCIICHAT_DEPS_CACHE_DIR ASCIICHAT_MUSL_SYSROOT MUSL_TARGET MUSL_INCLUDE_DIR MUSL_LIBDIR
                           KERNEL_HEADERS_DIR)
             if(DEFINED ${_variable} AND NOT "${${_variable}}" STREQUAL "")

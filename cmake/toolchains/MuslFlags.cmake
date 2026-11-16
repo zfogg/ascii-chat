@@ -2,7 +2,12 @@ include_guard(GLOBAL)
 
 # Used by the toolchain and source dependencies after runtime/header staging.
 function(asciichat_musl_compile_flags c_flags cxx_flags)
-    set(_c "-fno-lto -ftls-model=global-dynamic -fPIC -nostdlibinc -isystem ${MUSL_INCLUDE_DIR}")
+    set(_c "-fno-lto -ftls-model=global-dynamic -fPIC")
+    if(CMAKE_C_COMPILER MATCHES "musl-gcc|(^|/)(gcc|g(cc)?-[0-9]+)$")
+        string(APPEND _c " -nostdinc -isystem ${MUSL_INCLUDE_DIR}")
+    else()
+        string(APPEND _c " -nostdlibinc -isystem ${MUSL_INCLUDE_DIR}")
+    endif()
     if(KERNEL_HEADERS_DIR)
         string(APPEND _c " -isystem ${KERNEL_HEADERS_DIR}")
     endif()
@@ -13,11 +18,15 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
     # non-libc++ standard library; Clang then reports -stdlib as unused.
     # Keep libc++ selected for the project, but avoid noisy diagnostics from
     # those dependency compile commands.
-    string(APPEND _cxx " -stdlib=libc++ -nostdinc++ -Wno-unused-command-line-argument")
+    if(NOT CMAKE_C_COMPILER MATCHES "musl-gcc|(^|/)(gcc|g(cc)?-[0-9]+)$")
+        string(APPEND _cxx " -stdlib=libc++ -nostdinc++ -Wno-unused-command-line-argument")
+    endif()
     # Clang diagnoses precedence and duplicate-platform-macro patterns in the
     # external musl headers; keep these diagnostics out of project output.
-    string(APPEND _c " -Wno-bitwise-op-parentheses -Wno-shift-op-parentheses -Wno-macro-redefined")
-    string(APPEND _cxx " -Wno-bitwise-op-parentheses -Wno-shift-op-parentheses -Wno-macro-redefined")
+    if(NOT CMAKE_C_COMPILER MATCHES "musl-gcc|(^|/)(gcc|g(cc)?-[0-9]+)$")
+        string(APPEND _c " -Wno-bitwise-op-parentheses -Wno-shift-op-parentheses -Wno-macro-redefined")
+        string(APPEND _cxx " -Wno-bitwise-op-parentheses -Wno-shift-op-parentheses -Wno-macro-redefined")
+    endif()
     if(ALPINE_LIBCXX_INCLUDE_DIR)
         string(APPEND _cxx " -isystem ${ALPINE_LIBCXX_INCLUDE_DIR}")
     endif()
