@@ -102,6 +102,7 @@ include_directories(
     ${LIB_ROOT}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common  # For session/*.h relative includes
     ${CMAKE_CURRENT_SOURCE_DIR}/../../lib         # For ascii-chat option headers
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/recast/include  # Recast defer headers
     ${DEPS_ROOT}
     ${DEPS_ROOT}/ascii-chat-deps/tomlc17/src
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc
