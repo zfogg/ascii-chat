@@ -48,6 +48,7 @@ LIB_X64_SHA1="$(sha1sum "$WORK_DIR/libasciichat-x64.zip" | awk '{print tolower($
 LIB_ARM64_SHA1="$(sha1sum "$WORK_DIR/libasciichat-arm64.zip" | awk '{print tolower($1)}')"
 
 description='ascii-chat turns your terminal into a tiny enchanted video-chat room: webcams, microphones, multi-person rooms, local and online media, colorful ASCII/glyph/braille rendering, encrypted communication, snapshots, discovery, and modern network transports.'
+display_title='ascii-chat - Video chat in your terminal'
 
 submit_pr() {
   local fork="$1" upstream="$2" branch="$3" title="$4" directory="$5"
@@ -101,7 +102,7 @@ PackageLocale: en-US
 Publisher: Zachary Fogg
 PublisherUrl: https://github.com/zfogg
 PublisherSupportUrl: https://github.com/zfogg/ascii-chat/issues
-PackageName: ascii-chat
+PackageName: $display_title
 PackageUrl: https://ascii-chat.com
 License: MIT
 LicenseUrl: https://github.com/zfogg/ascii-chat/blob/master/LICENSE.txt
@@ -193,7 +194,7 @@ EOF
     cat > "$WORK_DIR/generated/automatic/ascii-chat/ascii-chat.nuspec" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
-  <metadata><id>ascii-chat</id><version>$VERSION</version><title>ascii-chat</title><authors>Zachary Fogg</authors><owners>Zachary Fogg</owners><license type="expression">MIT</license><projectUrl>https://ascii-chat.com</projectUrl><requireLicenseAcceptance>false</requireLicenseAcceptance><description>$description</description><tags>video chat terminal ascii webcam microphone</tags></metadata>
+  <metadata><id>ascii-chat</id><version>$VERSION</version><title>$display_title</title><authors>Zachary Fogg</authors><owners>Zachary Fogg</owners><license type="expression">MIT</license><projectUrl>https://ascii-chat.com</projectUrl><requireLicenseAcceptance>false</requireLicenseAcceptance><description>$description</description><tags>video chat terminal ascii webcam microphone</tags></metadata>
 </package>
 EOF
 cat > "$WORK_DIR/generated/automatic/ascii-chat/tools/chocolateyInstall.ps1" <<EOF
@@ -223,8 +224,8 @@ EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <root>
   <spec-version>3.5</spec-version>
-  <package name="ascii-chat"><title>ascii-chat</title><url>https://ascii-chat.com</url><description>$description</description></package>
-  <package name="ascii-chat-arm64"><title>ascii-chat (ARM64)</title><url>https://ascii-chat.com</url><description>$description</description></package>
+  <package name="ascii-chat"><title>$display_title</title><url>https://ascii-chat.com</url><description>$description</description></package>
+  <package name="ascii-chat-arm64"><title>$display_title (ARM64)</title><url>https://ascii-chat.com</url><description>$description</description></package>
   <package name="libasciichat"><title>libasciichat</title><url>https://ascii-chat.com</url><description>Development headers, libraries, and CMake integration files for libasciichat.</description></package>
   <package name="libasciichat-arm64"><title>libasciichat (ARM64)</title><url>https://ascii-chat.com</url><description>Development headers, libraries, and CMake integration files for libasciichat.</description></package>
   <version name="$VERSION" package="ascii-chat" type="zip"><url>$RUNTIME_X64_URL</url><hash-sum type="SHA-256">$RUNTIME_X64_SHA256</hash-sum></version>
