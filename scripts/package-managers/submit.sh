@@ -122,14 +122,18 @@ class AsciiChat < Formula
 
   def install
     bin.install "bin/ascii-chat"
-    man1.install "share/man/man1/ascii-chat.1" \
-      if File.exist?("share/man/man1/ascii-chat.1")
-    bash_completion.install "share/bash-completion/completions/ascii-chat" \
-      if File.exist?("share/bash-completion/completions/ascii-chat")
-    zsh_completion.install "share/zsh/site-functions/_ascii-chat" \
-      if File.exist?("share/zsh/site-functions/_ascii-chat")
-    fish_completion.install "share/fish/vendor_completions.d/ascii-chat.fish" \
-      if File.exist?("share/fish/vendor_completions.d/ascii-chat.fish")
+    if File.exist?("share/man/man1/ascii-chat.1")
+      man1.install "share/man/man1/ascii-chat.1"
+    end
+    if File.exist?("share/bash-completion/completions/ascii-chat")
+      bash_completion.install "share/bash-completion/completions/ascii-chat"
+    end
+    if File.exist?("share/zsh/site-functions/_ascii-chat")
+      zsh_completion.install "share/zsh/site-functions/_ascii-chat"
+    end
+    if File.exist?("share/fish/vendor_completions.d/ascii-chat.fish")
+      fish_completion.install "share/fish/vendor_completions.d/ascii-chat.fish"
+    end
   end
 
   test do
@@ -156,9 +160,9 @@ class Libasciichat < Formula
   depends_on "fftw"
   depends_on "fontconfig"
   depends_on "freetype"
-  depends_on "libsodium"
   depends_on "libde265"
   depends_on "libpng"
+  depends_on "libsodium"
   depends_on "libwebsockets"
   depends_on "mimalloc"
   depends_on "miniupnpc"
