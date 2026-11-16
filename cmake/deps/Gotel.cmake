@@ -39,40 +39,9 @@ set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
 # Keep the vendored C++ facade aligned with ascii-chat's C++26 toolchain.
 set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
 
-# Prefer the package-manager nghttp2 target when it is already available.
-# Otherwise gotel's GRPC module fetches and builds a private nghttp2 copy,
-# which conflicts with vcpkg's `nghttp2` target and needlessly recompiles the
-# HTTP/2 sources during normal ascii-chat development.
-if(NOT GOTEL_NGHTTP2_TARGET)
-    if(TARGET nghttp2)
-        set(GOTEL_NGHTTP2_TARGET nghttp2 CACHE STRING
-            "Use the existing nghttp2 target for gotel" FORCE)
-    elseif(TARGET nghttp2::nghttp2)
-        set(GOTEL_NGHTTP2_TARGET nghttp2::nghttp2 CACHE STRING
-            "Use the existing nghttp2 target for gotel" FORCE)
-    endif()
-endif()
-
-# FindDependency.cmake may expose nghttp2 as raw include/library variables
-# rather than a CMake target. Wrap that installed package in a local
-# interface target so gotel does not FetchContent-build a duplicate copy.
-if(NOT GOTEL_NGHTTP2_TARGET AND ASCIICHAT_NGHTTP2_LIBRARY)
-    if(NOT TARGET asciichat-vcpkg-nghttp2)
-        add_library(asciichat-vcpkg-nghttp2 INTERFACE)
-        if(ASCIICHAT_NGHTTP2_INCLUDE_DIR)
-            target_include_directories(asciichat-vcpkg-nghttp2 INTERFACE
-                "${ASCIICHAT_NGHTTP2_INCLUDE_DIR}")
-        endif()
-        target_link_libraries(asciichat-vcpkg-nghttp2 INTERFACE
-            "${ASCIICHAT_NGHTTP2_LIBRARY}")
-    endif()
-    set(GOTEL_NGHTTP2_TARGET asciichat-vcpkg-nghttp2 CACHE STRING
-        "Use the installed nghttp2 library for gotel" FORCE)
-endif()
-
 # Keep Gotel and its fetched otlp-c/Sequel build trees in the persistent
 # dependency cache. This is separate from the main build directory.
-set(_asciichat_gotel_cache_dir "${ASCIICHAT_DEPS_CACHE_DIR}/gotel")
+set(_asciichat_gotel_cache_dir "${CMAKE_BINARY_DIR}/_deps/gotel")
 file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 
 set(_asciichat_parent_shared_libs ${BUILD_SHARED_LIBS})
@@ -174,12 +143,6 @@ set(UTF8PROC_LIBRARIES utf8proc CACHE STRING "utf8proc target supplied by gotel"
 if(TARGET gotel)
     target_include_directories(gotel PRIVATE
         "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/src")
-    # A persistent Gotel build may have been produced with its optional gRPC
-    # adapter enabled. Keep the application link deterministic when that
-    # cached archive is reused by supplying its nghttp2 dependency explicitly.
-    if(WIN32 AND ASCIICHAT_NGHTTP2_LIBRARY)
-        target_link_libraries(gotel PRIVATE "${ASCIICHAT_NGHTTP2_LIBRARY}")
-    endif()
 endif()
 
 if(USE_MUSL AND TARGET gotel_cxx AND ALPINE_LIBCXX_INCLUDE_DIR)
