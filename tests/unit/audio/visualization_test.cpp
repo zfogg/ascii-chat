@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/audio/visualization.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/video/anim/waveform.h>
 #include <ascii-chat/video/anim/fft.h>
 #include <ascii-chat/options/rcu.h>

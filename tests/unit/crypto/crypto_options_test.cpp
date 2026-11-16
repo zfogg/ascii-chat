@@ -21,7 +21,7 @@
 #include <unistd.h>
 #endif
 
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/tests/logging.h>
 

@@ -15,7 +15,7 @@
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/log/colorize.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/options/rcu.h>
 
 /* ============================================================================

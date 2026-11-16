@@ -8,7 +8,7 @@
 
 #include <libplatform/terminal.h>
 #include <libplatform/system.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/tests/logging.h>
 
 #define setenv(name, value, overwrite) platform_setenv((name), (value))

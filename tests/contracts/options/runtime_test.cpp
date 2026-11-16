@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include "../worker_assert.h"
 #include <catch2/catch_all.hpp>
-#include <ascii-chat/options/runtime.h>
+#include <options/runtime.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/network/acip/settings.h>
 #include <libplatform/thread.h>

@@ -7,7 +7,7 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/options/parsers.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <libplatform/system.h>
 
 #define setenv(name, value, overwrite) platform_setenv((name), (value))

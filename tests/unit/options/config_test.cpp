@@ -25,7 +25,7 @@
 #include <errno.h>
 
 #include <ascii-chat/options/config.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/presets.h>
 #include <ascii-chat/options/schema.h>
