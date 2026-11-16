@@ -17,7 +17,13 @@ if(NOT TARGET utf8proc)
     target_compile_definitions(utf8proc PUBLIC UTF8PROC_STATIC=1)
     set_target_properties(utf8proc PROPERTIES POSITION_INDEPENDENT_CODE ON)
 endif()
-set(LIBPLATFORM_UTF8PROC_TARGET utf8proc CACHE STRING
+add_library(ascii-chat-libplatform-utf8proc STATIC
+    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/utf8proc/utf8proc.c)
+target_include_directories(ascii-chat-libplatform-utf8proc PUBLIC
+    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/utf8proc)
+target_compile_definitions(ascii-chat-libplatform-utf8proc PUBLIC UTF8PROC_STATIC=1)
+set_target_properties(ascii-chat-libplatform-utf8proc PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set(LIBPLATFORM_UTF8PROC_TARGET ascii-chat-libplatform-utf8proc CACHE STRING
     "utf8proc target supplied by ascii-chat" FORCE)
 
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libplatform.cmake)
