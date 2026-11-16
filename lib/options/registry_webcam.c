@@ -26,7 +26,7 @@ static bool parse_test_pattern(const char *arg, void *dest, char **error_msg) {
   return true;
 }
 
-static const char *const pattern_values[] = {"0", "1", NULL};
+static const char *pattern_values[] = {"0", "1", NULL};
 
 // ============================================================================
 // WEBCAM CATEGORY - Webcam capture options

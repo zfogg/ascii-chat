@@ -538,7 +538,7 @@ int api_server_main(void) {
     if (err == ASCIICHAT_OK) {
       quic_config_t quic_config = {.alpn = "h3", .certificate_file = tls_cert, .private_key_file = tls_key, .enable_http3 = true, .http_server = server};
       err = quic_endpoint_open((const struct sockaddr *)&bind_address, bind_length, true, &quic_config, &http3_endpoint);
-      if (err == ASCIICHAT_OK && GET_OPTION(address6) && *GET_OPTION(address6)) {
+      if (err == ASCIICHAT_OK && *GET_OPTION(address6)) {
         struct sockaddr_storage bind_address6;
         socklen_t bind_length6 = 0;
         err = parse_numeric_socket_address(GET_OPTION(address6), (uint16_t)GET_OPTION(port), &bind_address6, &bind_length6);

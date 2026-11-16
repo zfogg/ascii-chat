@@ -100,7 +100,7 @@ keyboard_key_t tui_input_events_read(tui_input_events_t *s, keyboard_key_t (*rea
       s->ready = true;
       return KEY_PASTE;
     }
-    char text[ASCII_CHAT_UTF8_BUFFER_SIZE];
+    char text[8];
     size_t bytes = keyboard_text_encode(key, text);
     if (s->pasting) {
       // Paste payloads remain raw UTF-8 bytes until whole-paste validation.

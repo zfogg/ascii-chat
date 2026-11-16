@@ -1543,7 +1543,8 @@ static asciichat_error_t build_mode_argv(int argc, char **argv, int mode_index, 
     // Copy: [program_name, args_before_mode (excluding binary opts)..., args_after_mode...]
     if (mode_index == 0) {
       // Mode is at argv[0], use "ascii-chat" as program name
-      new_mode_argv[0] = "ascii-chat";
+      static char program_name[] = "ascii-chat";
+      new_mode_argv[0] = program_name;
     } else {
       new_mode_argv[0] = argv[0];
     }

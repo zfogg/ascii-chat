@@ -95,7 +95,7 @@ asciichat_error_t debug_errno_start_thread(void) {
     return result;
   atomic_store_bool_impl(&g_debug_errno_exiting, false);
   atomic_store_bool_impl(&g_debug_errno_cleaning, false);
-  options_t *opts = options_get();
+  const options_t *opts = options_get();
   if (opts) {
     if (opts->debug_errno_stacks_time > 0.0)
       debug_errno_print_delayed((uint64_t)(opts->debug_errno_stacks_time * NS_PER_SEC_INT));

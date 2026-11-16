@@ -430,7 +430,8 @@ static asciichat_error_t update_check_background(update_check_result_t *result, 
   int rc = uv_loop_init(&loop);
   if (rc != 0)
     return SET_ERRNO(ERROR_PROCESS_FAILED, "Cannot initialize update process: %s", uv_strerror(rc));
-  char *args[] = {executable, "--check-update", NULL};
+  static char check_update_arg[] = "--check-update";
+  char *args[] = {executable, check_update_arg, NULL};
   uv_stdio_container_t streams[3] = {0};
   for (size_t i = 0; i < 3; ++i)
     streams[i].flags = UV_IGNORE;

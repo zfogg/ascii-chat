@@ -741,7 +741,7 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
     }
   }
 
-  const image_t *ascii_input_image = filtered_image ? filtered_image : display_image;
+  image_t *ascii_input_image = filtered_image ? filtered_image : display_image;
   uint64_t t_filter_end = time_get_ns();
 
   uint64_t t_convert_start = time_get_ns();
