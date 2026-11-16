@@ -8,6 +8,13 @@ option(ASCIICHAT_FORCE_TESTS
 set(ASCIICHAT_TEST_FRAMEWORKS "catch2" CACHE STRING
     "Semicolon-separated native test frameworks to enable")
 
+# The force switch is used by CI and release-like configurations.  Make it
+# authoritative even when another configuration layer defaulted BUILD_TESTS
+# back to OFF before this dependency module was reached.
+if(ASCIICHAT_FORCE_TESTS)
+    set(BUILD_TESTS ON CACHE BOOL "Build test executables" FORCE)
+endif()
+
 if(NOT BUILD_TESTS)
     set(BUILD_CATCH2_TESTS OFF)
     return()
