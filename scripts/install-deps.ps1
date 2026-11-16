@@ -363,8 +363,6 @@ if ($AllInstalled -and $IsWindows) {
 if ($AllInstalled) {
     Write-Host "All dependencies installed successfully!" -ForegroundColor Green
     Write-Host ""
-    Write-Host "You can now run:" -ForegroundColor Cyan
-    Write-Host "  ./build.ps1 -Config $Config" -ForegroundColor White
 
     if ($Triplet -like "*-static") {
         Write-Host ""

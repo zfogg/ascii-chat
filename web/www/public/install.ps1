@@ -13,6 +13,49 @@
         'ARM64' { 'arm64' }
         default { throw "Unsupported Windows architecture: $nativeArch" }
     }
+    # Prefer native package-manager installs when available. A pinned version
+    # intentionally uses the direct release path below because package-manager
+    # catalogs may not have that exact version yet.
+    if (-not $env:ASCII_CHAT_VERSION) {
+        $scoop = Get-Command scoop -ErrorAction SilentlyContinue
+        if ($scoop) {
+            & scoop bucket add ascii-chat https://github.com/zfogg/ascii-chat-scoop 2>$null
+            & scoop list ascii-chat *> $null
+            $scoopInstalled = $LASTEXITCODE -eq 0
+            if ($scoopInstalled) {
+                & scoop update ascii-chat
+                $scoopAction = 'Updated'
+            } else {
+                & scoop install ascii-chat
+                $scoopAction = 'Installed'
+            }
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "$scoopAction ascii-chat with Scoop."
+                return
+            }
+            Write-Warning 'Scoop is installed but could not install ascii-chat; trying Npackd.'
+        }
+        $ncl = Get-Command ncl -ErrorAction SilentlyContinue
+        if ($ncl) {
+            $npackdPackage = if ($arch -eq 'arm64') { 'ascii-chat-arm64' } else { 'ascii-chat' }
+            & ncl add-repo --url https://raw.githubusercontent.com/zfogg/npackd-repository/main/repository.xml 2>$null
+            $installedPackages = & ncl search --query $npackdPackage --status installed --bare-format 2>$null
+            $packagePattern = '^' + [regex]::Escape($npackdPackage) + '\s'
+            $npackdInstalled = $LASTEXITCODE -eq 0 -and ($installedPackages | Where-Object { $_ -match $packagePattern })
+            if ($npackdInstalled) {
+                & ncl update --package $npackdPackage
+                $npackdAction = 'Updated'
+            } else {
+                & ncl add $npackdPackage
+                $npackdAction = 'Installed'
+            }
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "$npackdAction $npackdPackage with Npackd."
+                return
+            }
+            Write-Warning 'Npackd is installed but could not install ascii-chat; using the direct release.'
+        }
+    }
     $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     $scope = if ($admin) { 'Machine' } else { 'User' }
     $base = if ($admin) { $env:ProgramFiles } else { Join-Path $env:LOCALAPPDATA 'Programs' }
@@ -106,17 +149,28 @@
         }
         $release = Invoke-RestMethod $releaseApi -TimeoutSec 60
         $tag = $release.tag_name
-        $name = "ascii-chat-$($tag -replace '^v', '')-Windows-$arch.zip"
+        $releaseVersion = $tag -replace '^v', ''
+        $name = if ($arch -eq 'amd64') {
+            "ascii-chat-$releaseVersion-Windows-amd64.msi"
+        } else {
+            "ascii-chat-$releaseVersion-Windows-arm64.zip"
+        }
         $asset = @($release.assets | Where-Object name -eq $name)
         if ($asset.Count -ne 1) { throw "Release does not contain $name" }
         Show-GumPanel @("Downloading $name", 'Please wait while the release is verified.')
-        $zip = Join-Path $work 'release.zip'
-        Save-Download $asset[0].browser_download_url $zip "Downloading $name"
+        $installer = Join-Path $work $name
+        Save-Download $asset[0].browser_download_url $installer "Downloading $name"
         if ($asset[0].digest -match '^sha256:(.+)$') {
-            if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne $Matches[1]) { throw 'Release checksum mismatch.' }
+            if ((Get-FileHash $installer -Algorithm SHA256).Hash -ne $Matches[1]) { throw 'Release checksum mismatch.' }
+        }
+        if ($arch -eq 'amd64') {
+            $msi = Start-Process msiexec.exe -ArgumentList @('/i', $installer, '/qn', '/norestart') -Wait -PassThru
+            if ($msi.ExitCode -notin @(0, 3010)) { throw "MSI installer failed: $($msi.ExitCode)" }
+            Write-Host "Installed $tag with the Windows MSI."
+            return
         }
         $payload = Join-Path $work 'new'
-        Expand-Archive -LiteralPath $zip -DestinationPath $payload
+        Expand-Archive -LiteralPath $installer -DestinationPath $payload
         $binary = Join-Path $payload 'bin\ascii-chat.exe'
         if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) { throw 'Release is missing bin/ascii-chat.exe.' }
         & $binary --version

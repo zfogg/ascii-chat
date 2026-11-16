@@ -25,6 +25,29 @@
  * must be initialized for native builds that use vendored dependencies. The
  * docs-only CMake project needs only Doxygen and the documentation theme.
  *
+ * Native dependency source and build trees live under
+ * `.deps-cache/<BuildType>/`, including FetchContent's `-src`, `-build`, and
+ * temporary directories. FetchContent creates both source and binary trees;
+ * its base directory is therefore isolated by build configuration. An older
+ * `ASCIICHAT_DEPS_CACHE_DIR` equal to the cache root is normalized to this
+ * layout on reconfiguration. Explicit separate cache directories remain valid.
+ * Docker uses `.deps-cache/docker/<DOCKER_OS>/<BuildType>/`, with `DOCKER_OS`
+ * distinguishing architectures such as `amd64` and `arm64`. A container without
+ * that variable uses `.deps-cache/docker/<BuildType>/` with a configure warning.
+ * WSL uses `.deps-cache/wsl/<WSL_DISTRO_NAME>/<BuildType>/`; Arch and Ubuntu
+ * retain separate caches. The distro name is sanitized for use in a path, with
+ * the distribution ID from `/etc/os-release` as a fallback.
+ * The test Compose configuration and PowerShell Docker driver bind the host's
+ * `.deps-cache/docker` to `/app/.deps-cache/docker`, preserving these same
+ * architecture partitions across runs. Native Windows, Docker, WSL, and musl
+ * dependency outputs must not be combined. Musl adds `musl/` beneath the selected
+ * configuration cache.
+ * Shared tools and vcpkg installations remain directly under the selected
+ * platform/distro cache root. Dependency patch markers live under
+ * `patches/<dependency>/` in that same root, preserving platform isolation.
+ * Existing generated build trees must be reconfigured before removing their
+ * old cache directories; CMake and Ninja files contain absolute paths.
+ *
  * @section dependencies_platform Platform differences
  *
  * Windows uses the repository's Clang/Ninja path and native console/audio

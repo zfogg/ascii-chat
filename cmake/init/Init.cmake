@@ -173,9 +173,8 @@ endif()
 # Use centralized dependency cache variables from CMakeLists.txt
 # ASCIICHAT_DEPS_CACHE_ROOT, ASCIICHAT_DEPS_CACHE_DIR, and ASCIICHAT_DEPS_CACHE_MUSL are set in CMakeLists.txt
 
-# FetchContent deps (mimalloc, bearssl, etc.) use the build-type-specific cache
-# Note: Use FORCE since this is computed from ASCIICHAT_DEPS_CACHE_DIR which may change
-set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}" CACHE PATH "FetchContent cache directory" FORCE)
+# DependencyCache.cmake already sets FetchContent's source/build directory.
+# Do not override its layout a second time during initialization.
 
 # Note: MUSL_DEPS_DIR_STATIC is set in Musl.cmake's configure_musl_post_project()
 # after USE_MUSL is defined (can't be set here since this runs before project())

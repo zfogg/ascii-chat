@@ -4,22 +4,19 @@
 # builds use the static library unless the caller explicitly requests shared
 # dependencies. musl is always static because its release toolchain is static.
 
-include(FetchContent)
+# This file is included by both the top-level native project and the
+# standalone src/web WASM project. CMAKE_SOURCE_DIR is src/web in the latter,
+# so resolve paths from this file instead of assuming the caller is the repo
+# root.
+get_filename_component(_ascii_chat_repo_root "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 
-if(USE_MUSL)
+if(USE_MUSL OR ASCIICHAT_STATIC_DEPS)
     set(_ascii_chat_libplatform_shared OFF)
 elseif(ASCIICHAT_SHARED_DEPS)
     set(_ascii_chat_libplatform_shared ON)
 elseif(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
     set(_ascii_chat_libplatform_shared ON)
 else()
-    set(_ascii_chat_libplatform_shared OFF)
-endif()
-
-# Coverage instrumentation is linked into the instrumented executable.  Keep
-# libplatform in that link rather than placing instrumented objects in a shared
-# library: lld rejects the resulting unresolved gcov references from the DSO.
-if(ASCIICHAT_ENABLE_COVERAGE AND CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
     set(_ascii_chat_libplatform_shared OFF)
 endif()
 
@@ -30,96 +27,59 @@ set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
 
 # Use the checked-out submodule directly.  Reusing a cached source tree can
 # mix headers and implementations from different libplatform revisions.
-set(_ascii_chat_libplatform_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform")
+set(_ascii_chat_libplatform_source "${_ascii_chat_repo_root}/deps/ascii-chat-deps/libplatform")
 set(_ascii_chat_libplatform_build "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
-FetchContent_Declare(libplatform
-    SOURCE_DIR "${_ascii_chat_libplatform_source}"
-    BINARY_DIR "${_ascii_chat_libplatform_build}")
-FetchContent_MakeAvailable(libplatform)
-
-# libplatform's platform implementations are compiled as a separate object
-# target, so they do not inherit ascii-chat's aggregate include target.  Map
-# the parent public/generated/dependency roots explicitly for headers such as
-# <ascii-chat/common.h> used by the platform boundary.
-if(TARGET libplatform-objects)
-    target_include_directories(libplatform-objects PRIVATE
-        "${CMAKE_BINARY_DIR}/generated"
-        "${CMAKE_SOURCE_DIR}/include"
-        "${CMAKE_SOURCE_DIR}/deps")
+if(NOT TARGET libplatform)
+    add_subdirectory(
+        "${_ascii_chat_libplatform_source}"
+        "${_ascii_chat_libplatform_build}"
+        EXCLUDE_FROM_ALL)
 endif()
 
-# libplatform is a separate CMake project and does not inherit the parent's
-# MSVC C11 atomics option through its target properties.  Apply the native
-# compiler requirement directly to its object target.
-if(MSVC AND TARGET libplatform-objects)
-    target_compile_options(libplatform-objects PRIVATE /experimental:c11atomics)
+if(TARGET asciichat-project-includes)
+    target_include_directories(asciichat-project-includes INTERFACE
+        "${_ascii_chat_libplatform_source}/lib")
 endif()
 
-# libplatform is linked as a native shared library. Keep its dependency-only
-# objects in the platform's normal object format: the application may enable
-# ThinLTO for release builds, but embedding LLVM bitcode in this archive makes
-# it unusable by the system linker used for the shared library.
-foreach(_ascii_chat_no_lto_target IN ITEMS libplatform libplatform-objects ascii-chat-utf8proc utf8proc libplatform-utf8proc)
-    if(TARGET ${_ascii_chat_no_lto_target})
-        set_property(TARGET ${_ascii_chat_no_lto_target} PROPERTY INTERPROCEDURAL_OPTIMIZATION OFF)
-    endif()
-endforeach()
-
-# libplatform is an independently built shared library. Do not propagate the
-# application's gcov instrumentation into its objects: Clang's profile runtime
-# is linked into each instrumented executable, while lld rejects a shared
-# library that leaves those gcov entry points unresolved. The application and
-# its tests remain fully instrumented for coverage.
-if(ASCIICHAT_ENABLE_COVERAGE AND CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
-    # Coverage flags are added to the parent project's interface target after
-    # dependencies are configured. Defer the exclusion until the directory
-    # finishes configuring so it is the final target-local option ordering.
-    function(_ascii_chat_disable_libplatform_coverage)
-        if(TARGET libplatform-objects)
-            target_compile_options(libplatform-objects PRIVATE
-                -fno-profile-arcs
-                -fno-test-coverage)
-        endif()
-        foreach(_ascii_chat_utf8proc_target IN ITEMS ascii-chat-utf8proc utf8proc libplatform-utf8proc)
-            if(TARGET ${_ascii_chat_utf8proc_target})
-                target_compile_options(${_ascii_chat_utf8proc_target} PRIVATE
-                    -fno-profile-arcs
-                    -fno-test-coverage)
-            endif()
-        endforeach()
-    endfunction()
-    cmake_language(DEFER CALL _ascii_chat_disable_libplatform_coverage)
-
-    # libplatform's private utf8proc archive is also a dependency-only target.
-    # Keep it out of coverage instrumentation for the same reason: its objects
-    # must not leave profile-runtime references in the archive consumed by the
-    # platform library.
+# libplatform owns the shared path/logging helpers, so give it the checkout
+# root that CMake already knows instead of letting it fall back to ".".
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_ENABLE_COVERAGE)
+    set(_ascii_chat_source_root ".")
+else()
+    string(REPLACE "\\" "/" _ascii_chat_source_root "${CMAKE_SOURCE_DIR}")
 endif()
-
-target_include_directories(asciichat-project-includes INTERFACE
-    "${_ascii_chat_libplatform_source}/include"
-    "${_ascii_chat_libplatform_source}/lib")
-
-if(FONTCONFIG_LINK_LIBRARIES)
-    target_link_libraries(libplatform PRIVATE ${FONTCONFIG_LINK_LIBRARIES})
+target_compile_definitions(libplatform PRIVATE
+    LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
+if(LIBSODIUM_INCLUDE_DIRS)
+    target_include_directories(libplatform PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
+endif()
+if(EMSCRIPTEN)
+    target_compile_options(libplatform PRIVATE -pthread -matomics -mbulk-memory)
 endif()
 
 
 # libplatform's POSIX helpers use interfaces such as fileno() that musl hides
 # from strict C mode unless the feature-test macros are enabled on the target.
 if(UNIX AND NOT APPLE)
-    target_compile_definitions(libplatform-objects PRIVATE _GNU_SOURCE)
+    target_compile_definitions(libplatform PRIVATE _GNU_SOURCE)
     if(DEFINED KERNEL_HEADERS_DIR AND EXISTS "${KERNEL_HEADERS_DIR}")
-        target_include_directories(libplatform-objects PRIVATE "${KERNEL_HEADERS_DIR}")
+        target_include_directories(libplatform PRIVATE "${KERNEL_HEADERS_DIR}")
     endif()
     if(DEFINED FONTCONFIG_INCLUDE_DIRS)
-        target_include_directories(libplatform-objects PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
+        target_include_directories(libplatform PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
     endif()
     if(DEFINED LIBEXECINFO_INCLUDE_DIRS)
-        target_include_directories(libplatform-objects PRIVATE ${LIBEXECINFO_INCLUDE_DIRS})
+        target_include_directories(libplatform PRIVATE ${LIBEXECINFO_INCLUDE_DIRS})
     endif()
+endif()
+
+if(FONTCONFIG_LINK_LIBRARIES)
+    target_include_directories(libplatform PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
+    target_link_libraries(libplatform PUBLIC ${FONTCONFIG_LINK_LIBRARIES})
 endif()
 
 unset(_ascii_chat_libplatform_shared)
 unset(_ascii_chat_libplatform_source)
 unset(_ascii_chat_libplatform_build)
+unset(_ascii_chat_repo_root)
+unset(_ascii_chat_source_root)
