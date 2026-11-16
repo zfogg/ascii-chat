@@ -59,6 +59,10 @@ submit_pr() {
   git -C "$WORK_DIR/repo" config user.name "github-actions[bot]"
   git -C "$WORK_DIR/repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
   git -C "$WORK_DIR/repo" add "$directory"
+  if git -C "$WORK_DIR/repo" diff --cached --quiet; then
+    echo "No $TARGET changes for $VERSION."
+    return 0
+  fi
   git -C "$WORK_DIR/repo" commit -m "$title"
   git -C "$WORK_DIR/repo" push --force origin "$branch"
   local head="$(cut -d/ -f1 <<< "$fork"):$branch"
@@ -221,7 +225,8 @@ EOF
     git -C "$WORK_DIR/repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
     git -C "$WORK_DIR/repo" add repository.xml
     git -C "$WORK_DIR/repo" commit -m "Update ascii-chat packages to $VERSION"
-    default_branch="$(git -C "$WORK_DIR/repo" symbolic-ref --short refs/remotes/origin/HEAD | sed 's#^origin/##')"
+    default_branch="$(git -C "$WORK_DIR/repo" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')"
+    default_branch="${default_branch:-$(git -C "$WORK_DIR/repo" branch --show-current)}"
     git -C "$WORK_DIR/repo" push origin "$default_branch"
     ;;
   *) echo "Unknown target: $TARGET" >&2; exit 2 ;;
