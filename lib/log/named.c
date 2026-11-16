@@ -33,6 +33,16 @@
 #include "ascii-chat/util/string.h"
 #include "ascii-chat/log/log.h"
 
+static int named_format_int(char *buffer, size_t capacity, const char *format, int value) {
+  int (*writer)(char *, size_t, const char *, ...) = snprintf;
+  return writer(buffer, capacity, format, value);
+}
+
+static int named_format_ptrdiff(char *buffer, size_t capacity, const char *format, ptrdiff_t value) {
+  int (*writer)(char *, size_t, const char *, ...) = snprintf;
+  return writer(buffer, capacity, format, value);
+}
+
 /* Use a thread-local buffer to avoid allocations in the hot path */
 #define NAMED_FORMAT_BUFFER_SIZE (4096)
 
@@ -330,7 +340,7 @@ static bool write_formatted_packet_type(int pkt_value, const char *name, char *o
   const char *fmt_spec = named_packet_metadata_copy(pkt_value, &metadata) ? metadata.format : "%d";
 
   char id_buffer[LOG_NAMED_ID_BUFFER_SIZE];
-  int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, pkt_value);
+  int id_written = named_format_int(id_buffer, sizeof(id_buffer), fmt_spec, pkt_value);
   if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
     return false;
   }
@@ -355,7 +365,7 @@ static bool write_formatted_fd(int fd_value, const char *name, char *output, siz
   const char *fmt_spec = named_fd_metadata_copy(fd_value, &metadata) ? metadata.format : "%d";
 
   char id_buffer[LOG_NAMED_ID_BUFFER_SIZE];
-  int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, fd_value);
+  int id_written = named_format_int(id_buffer, sizeof(id_buffer), fmt_spec, fd_value);
   if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
     return false;
   }
@@ -407,7 +417,7 @@ static bool write_formatted_type_equals(int pkt_value, const char *name, char *o
   const char *fmt_spec = named_packet_metadata_copy(pkt_value, &metadata) ? metadata.format : "%d";
 
   char id_buffer[LOG_NAMED_ID_BUFFER_SIZE];
-  int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, pkt_value);
+  int id_written = named_format_int(id_buffer, sizeof(id_buffer), fmt_spec, pkt_value);
   if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
     return false;
   }
@@ -484,7 +494,7 @@ static bool try_format_hex_address(const char *message, const char *hex_start, c
     const char *fmt_spec = metadata.format;
 
     char id_buffer[LOG_NAMED_ID_EXTENDED_BUFFER_SIZE];
-    int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, (ptrdiff_t)address);
+    int id_written = named_format_ptrdiff(id_buffer, sizeof(id_buffer), fmt_spec, (ptrdiff_t)address);
     if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
       return false;
     }

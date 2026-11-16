@@ -744,7 +744,8 @@ int time_format_now(const char *format_str, char *buf, size_t buf_size) {
   platform_localtime(&seconds, &tm_info);
 
   /* Format using strftime */
-  size_t len = strftime(buf, buf_size, format_str, &tm_info);
+  size_t (*formatter)(char *, size_t, const char *, const struct tm *) = strftime;
+  size_t len = formatter(buf, buf_size, format_str, &tm_info);
 
   /* Check for strftime errors or buffer overflow */
   if (len == 0) {
