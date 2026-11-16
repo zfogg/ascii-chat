@@ -138,11 +138,8 @@ asciichat_error_t errno_set_with_wsa_error(asciichat_error_t code, const char *f
 
 // Arguments evaluate once. Capture errno before evaluating message arguments.
 #define SET_ERRNO(code, ...) errno_set_with_message((code), __FILE__, __LINE__, __func__, __VA_ARGS__)
-#define SET_ERRNO_SYS(code, ...)                                                                                        \
-  ({                                                                                                                    \
-    int _asciichat_saved_errno = platform_get_last_error();                                                             \
-    errno_set_with_system_error_and_message((code), __FILE__, __LINE__, __func__, _asciichat_saved_errno, __VA_ARGS__); \
-  })
+#define SET_ERRNO_SYS(code, ...) \
+  errno_set_with_system_error_and_message((code), __FILE__, __LINE__, __func__, platform_get_last_error(), __VA_ARGS__)
 
 bool errno_has(asciichat_error_context_t *context);
 bool errno_has_thread_error(uint64_t thread_id, asciichat_error_context_t *context);

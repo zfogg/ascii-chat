@@ -129,7 +129,7 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
       .processor = audio_processor_default_config(AUDIO_SAMPLE_RATE),
       .jitter_margin_ms = 60,
 
-      .flags = CLIENT_AUDIO_PIPELINE_FLAGS_ALL,
+      .flags = {true, true, true, true, true, true, true, true, true},
   };
 }
 
@@ -325,7 +325,11 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   p->config.processor.channels = p->config.channels;
   p->config.processor.sample_rate = p->config.sample_rate;
   p->config.processor.spectral.sample_rate = p->config.sample_rate;
-  p->config.processor.flags = {p->flags.agc, p->flags.compressor, p->flags.noise_gate, p->flags.highpass, p->flags.lowpass};
+  p->config.processor.flags.agc = p->flags.agc;
+  p->config.processor.flags.compressor = p->flags.compressor;
+  p->config.processor.flags.noise_gate = p->flags.noise_gate;
+  p->config.processor.flags.highpass = p->flags.highpass;
+  p->config.processor.flags.lowpass = p->flags.lowpass;
   if (audio_processor_create(&p->config.processor, &p->processor) != ASCIICHAT_OK)
     goto error;
   p->initialized = true;
@@ -404,12 +408,20 @@ void client_audio_pipeline_set_flags(client_audio_pipeline_t *pipeline, client_a
     return;
   // No mutex needed - flags are only read by capture thread
   pipeline->flags = flags;
-  audio_processor_set_flags(pipeline->processor, {flags.agc, flags.compressor, flags.noise_gate, flags.highpass, flags.lowpass});
+  audio_processor_flags_t processor_flags;
+  processor_flags.agc = flags.agc;
+  processor_flags.compressor = flags.compressor;
+  processor_flags.noise_gate = flags.noise_gate;
+  processor_flags.highpass = flags.highpass;
+  processor_flags.lowpass = flags.lowpass;
+  audio_processor_set_flags(pipeline->processor, processor_flags);
 }
 
 client_audio_pipeline_flags_t client_audio_pipeline_get_flags(client_audio_pipeline_t *pipeline) {
-  if (!pipeline)
-    return CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL;
+  if (!pipeline) {
+    client_audio_pipeline_flags_t minimal = {false, false, false, false, false, false, false, false, false};
+    return minimal;
+  }
   // No mutex needed - flags are only written from main thread during setup
   return pipeline->flags;
 }

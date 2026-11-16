@@ -557,11 +557,11 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
  *
  * @ingroup logging
  */
-#define log_only(bitmask, level, ...) \
-  ({                                  \
-    if ((bitmask) & LOG_BIT(level))   \
-      log_as(level, __VA_ARGS__);     \
-  })
+#define log_only(bitmask, level, ...)       \
+  do {                                     \
+    if ((bitmask) & LOG_BIT(level))        \
+      log_as(level, __VA_ARGS__);          \
+  } while (0)
 
 /**
  * @brief Log a DEV message (most verbose, development only)

@@ -31,8 +31,6 @@ set(APP_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/downloads.c
     # Public image-to-ASCII HTTP API
     ${CMAKE_CURRENT_SOURCE_DIR}/api-server/main.c
-    # Shared render-over-HTTP request/result ownership
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/http_renderer.c
     # Mirror mode
     ${CMAKE_CURRENT_SOURCE_DIR}/mirror/main.c
     # Discovery-service mode
@@ -110,7 +108,7 @@ endif()
 # - USE_MUSL: always static (musl requires static linking)
 # - Linux Release (non-musl): static FFmpeg .a can't link into shared lib (PIC issues on arm64)
 set(_use_shared_lib FALSE)
-if(NOT USE_MUSL)
+if(NOT USE_MUSL AND NOT (WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "MSVC"))
     if(ASCIICHAT_SHARED_DEPS OR CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
         set(_use_shared_lib TRUE)
     else()
@@ -143,7 +141,6 @@ elseif(NOT _use_shared_lib AND NOT USE_MUSL)
         ascii-chat-network
         ascii-chat-core
         ascii-chat-panic
-        ascii-chat-platform
         # Keep the mapped libplatform target explicit for static/object-library
         # link branches; its symbols are not carried by the object targets.
         libplatform

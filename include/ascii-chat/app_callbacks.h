@@ -66,21 +66,21 @@ const app_callbacks_t *app_callbacks_get(void);
  * Call a void(void) callback and return bool
  * Usage: bool result = APP_CALLBACK_BOOL(should_exit)
  */
-#define APP_CALLBACK_BOOL(callback_name)                           \
-  ({                                                               \
-    const app_callbacks_t *__cb = app_callbacks_get();             \
-    (__cb && __cb->callback_name) ? __cb->callback_name() : false; \
-  })
+static inline bool app_callback_should_exit(void) {
+  const app_callbacks_t *cb = app_callbacks_get();
+  return cb && cb->should_exit ? cb->should_exit() : false;
+}
+#define APP_CALLBACK_BOOL(callback_name) app_callback_##callback_name()
 
 /**
  * Call a uint64_t(void) callback
  * Usage: uint64_t now = APP_CALLBACK_UINT64(platform_get_monotonic_time_us)
  */
-#define APP_CALLBACK_UINT64(callback_name)                        \
-  ({                                                              \
-    const app_callbacks_t *__cb = app_callbacks_get();            \
-    (__cb && __cb->callback_name) ? __cb->callback_name() : 0ULL; \
-  })
+static inline uint64_t app_callback_platform_get_monotonic_time_us(void) {
+  const app_callbacks_t *cb = app_callbacks_get();
+  return cb && cb->platform_get_monotonic_time_us ? cb->platform_get_monotonic_time_us() : 0ULL;
+}
+#define APP_CALLBACK_UINT64(callback_name) app_callback_##callback_name()
 
 /**
  * Call a void(unsigned int) callback
