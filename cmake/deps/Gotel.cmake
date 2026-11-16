@@ -73,11 +73,7 @@ endif()
 
 if(NOT GOTEL_NGHTTP2_TARGET)
     set(_asciichat_nghttp2_vcpkg_root
-        "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}")
-    if(NOT EXISTS "${_asciichat_nghttp2_vcpkg_root}")
-        set(_asciichat_nghttp2_vcpkg_root
-            "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
-    endif()
+        "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
     unset(_asciichat_nghttp2_include_dir CACHE)
     unset(_asciichat_nghttp2_release_library CACHE)
     unset(_asciichat_nghttp2_debug_library CACHE)
