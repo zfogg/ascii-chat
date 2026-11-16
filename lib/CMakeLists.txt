@@ -2014,5 +2014,11 @@ target_link_libraries(ascii-chat-core PRIVATE ${FFTW_FLOAT_LIBRARY})
 target_link_libraries(ascii-chat-core PRIVATE gotel::gotel)
 if(TARGET ascii-chat-shared)
     target_link_libraries(ascii-chat-shared PRIVATE gotel::gotel)
+    # ascii-chat-shared is assembled from object libraries. gotel's OTLP
+    # implementation is therefore not guaranteed to reach its final link
+    # through gotel's transitive interface; make that dependency explicit.
+    if(TARGET otlp-c::otlp_c)
+        target_link_libraries(ascii-chat-shared PRIVATE otlp-c::otlp_c)
+    endif()
 endif()
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE gotel::gotel)

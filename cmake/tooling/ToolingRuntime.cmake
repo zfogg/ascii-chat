@@ -79,6 +79,12 @@ function(ascii_build_tooling_runtime)
 
         # Always use shared library (built from OBJECT libraries for all build types)
         target_link_libraries(ascii-panic-report PRIVATE ascii-chat-shared)
+        # ascii-chat-shared is object-based and gotel/OTLP symbols are not
+        # guaranteed to be resolved transitively when this utility is linked
+        # against the shared artifact on GNU linkers.
+        if(TARGET otlp-c::otlp_c)
+            target_link_libraries(ascii-panic-report PRIVATE otlp-c::otlp_c)
+        endif()
         # The report tool calls platform/debug helpers directly.  libplatform is
         # a private dependency of the shared object, so link it explicitly here
         # instead of relying on transitive shared-library lookup.
