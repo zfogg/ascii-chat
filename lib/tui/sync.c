@@ -666,7 +666,7 @@ void ui_sync_render(terminal_size_t size) {
       char full_name[TUI_SYNC_FULL_NAME_BUFFER_SIZE], colored_name[TUI_SYNC_COLORED_NAME_BUFFER_SIZE];
       sync_row_label(r, full_name, sizeof(full_name));
       sync_color_numbers(full_name, colored_name, sizeof(colored_name));
-      snprintf(line, sizeof(line), "%s%s%s:%s | %s", sync_color(LOG_COLOR_DEV), r->file, sync_color(LOG_COLOR_RESET), numbers, colored_name);
+      snprintf(line, sizeof(line), "%s%.*s%s:%s | %s", sync_color(LOG_COLOR_DEV), (int)(sizeof(line) - 1), r->file, sync_color(LOG_COLOR_RESET), numbers, colored_name);
       sync_write_line(line, size.cols, true, measure);
       snprintf(line, sizeof(line), "owner=0x%" PRIxPTR " waiter=0x%" PRIxPTR " | value=%" PRIu64 " | last operation %.2fs ago%s%s", r->owner, r->waiter, r->value,
                r->last_ns ? (double)(now - r->last_ns) / NS_PER_SEC_INT : 0.0, r->cycle ? " " : "", r->cycle ? deadlock : "");

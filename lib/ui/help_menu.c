@@ -121,7 +121,7 @@ bool ui_help_menu_render(frame_buffer_t *out, terminal_size_t size, const ui_hel
         ui_help_keys(styled_keys, sizeof(styled_keys), entry->keys);
         ui_text_cell(key, sizeof(key), styled_keys, keys, UI_ALIGN_LEFT);
         ui_text_values_style(description, sizeof(description), entry->description, LOG_COLOR_FATAL);
-        snprintf(lhs, sizeof(lhs), "%s  %s", key, description);
+        snprintf(lhs, sizeof(lhs), "%.*s  %.*s", (int)(sizeof(lhs) / 2), key, (int)(sizeof(lhs) / 2), description);
       }
     }
     if (i < m->settings_count) {
@@ -133,7 +133,7 @@ bool ui_help_menu_render(frame_buffer_t *out, terminal_size_t size, const ui_hel
         ui_help_keys(styled, sizeof(styled), binding);
         char values[UI_HELP_MENU_VALUES_BUFFER_SIZE];
         ui_text_values_style(values, sizeof(values), end + 1, LOG_COLOR_FATAL);
-        snprintf(rhs, sizeof(rhs), "%s%s", styled, values);
+        snprintf(rhs, sizeof(rhs), "%.*s%.*s", (int)(sizeof(rhs) / 2), styled, (int)(sizeof(rhs) / 2), values);
       } else
         ui_text_values_style(rhs, sizeof(rhs), setting, LOG_COLOR_FATAL);
     }

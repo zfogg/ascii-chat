@@ -117,7 +117,7 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
 
     /* Register ACDS client with named registry */
     char acds_name[NETWORK_ACIP_ACDS_CLIENT_IO_ACDS_NAME_BUFFER_SIZE];
-    snprintf(acds_name, sizeof(acds_name), "acds_client:%s:%d", config->server_address, config->server_port);
+    snprintf(acds_name, sizeof(acds_name), "acds_client:%.*s:%d", (int)(sizeof(acds_name) - 32), config->server_address, config->server_port);
     NAMED_REGISTER(client, acds_name, "acds_client_t", "0x%tx", NULL);
 
     log_info("Connected to ACDS server at %s:%d", config->server_address, config->server_port);

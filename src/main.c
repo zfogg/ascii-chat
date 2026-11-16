@@ -964,7 +964,7 @@ int main(int argc, char *argv[]) {
         }
       } else {
         // File doesn't end with .log - just append .json
-        snprintf(json_filename_buf, sizeof(json_filename_buf), "%s.json", final_log_file);
+        snprintf(json_filename_buf, sizeof(json_filename_buf), "%.*s.json", (int)(sizeof(json_filename_buf) - sizeof(".json")), final_log_file);
       }
     }
     final_log_file = json_filename_buf;

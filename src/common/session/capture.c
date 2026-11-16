@@ -588,7 +588,7 @@ static void *load_media_worker(void *data) {
   asciichat_error_context_t failure;
   char error[SESSION_CAPTURE_ERROR_BUFFER_SIZE] = "Could not open media";
   if (!source && errno_peek_since(scope, &failure))
-    snprintf(error, sizeof(error), "%s", failure.context_message);
+    snprintf(error, sizeof(error), "%.*s", (int)(sizeof(error) - 1), failure.context_message);
   errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
   mutex_lock(&ctx->load_mutex);
   ctx->loaded_source = source;
