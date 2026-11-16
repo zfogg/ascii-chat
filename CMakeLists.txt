@@ -379,6 +379,7 @@ foreach(_package_manager HOMEBREW SCOOP AUR)
 endforeach()
 
 include("${CMAKE_SOURCE_DIR}/deps/recast/Recast.cmake")
+add_subdirectory("${CMAKE_SOURCE_DIR}/deps/recast" "${CMAKE_BINARY_DIR}/recast-build" EXCLUDE_FROM_ALL)
 file(COPY "${CMAKE_SOURCE_DIR}/include/ascii-chat"
      DESTINATION "${CMAKE_BINARY_DIR}/recast_headers/include")
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
