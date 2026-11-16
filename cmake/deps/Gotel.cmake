@@ -15,7 +15,10 @@ set(GOTEL_WITH_SQLITE ON CACHE BOOL "Build SQLite telemetry adapter" FORCE)
 # pinned gotel/otlp-c sources expose overlapping HTTP request symbols when
 # combined with the application's HTTP exporter on Windows; telemetry uses
 # OTLP/HTTP here and nghttp2 remains available to the native HTTP server.
-set(GOTEL_WITH_GRPC OFF CACHE BOOL "Build native OTLP/gRPC telemetry transport" FORCE)
+# Keep Gotel's optional gRPC telemetry transport disabled.  Its pinned adapter
+# rewrites the HTTP source staging path and is not needed by ascii-chat's HTTP
+#/2 server.
+set(GOTEL_WITH_GRPC ON CACHE BOOL "Build native OTLP/gRPC telemetry transport" FORCE)
 set(GOTEL_UTF8PROC_TARGET utf8proc CACHE STRING
     "Use ascii-chat's utf8proc target" FORCE)
 
@@ -29,13 +32,6 @@ add_library(asciichat-gotel-sqlite INTERFACE)
 if(SQLITE3_INCLUDE_DIRS)
     target_include_directories(asciichat-gotel-sqlite INTERFACE ${SQLITE3_INCLUDE_DIRS})
 endif()
-if(WIN32 AND VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
-    # FindSQLite3 may expose only the Windows library filename (for example
-    # `sqlite3.lib`). Gotel is built in its dependency-cache directory, so the
-    # consuming link command must also receive the vcpkg library directory.
-    target_link_directories(asciichat-gotel-sqlite INTERFACE
-        "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/$<CONFIG>/lib")
-endif()
 target_link_libraries(asciichat-gotel-sqlite INTERFACE ${SQLITE3_LIBRARIES})
 set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
     "Use ascii-chat's SQLite3 dependency" FORCE)
@@ -43,40 +39,9 @@ set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
 # Keep the vendored C++ facade aligned with ascii-chat's C++26 toolchain.
 set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
 
-# Prefer the package-manager nghttp2 target when it is already available.
-# Otherwise gotel's GRPC module fetches and builds a private nghttp2 copy,
-# which conflicts with vcpkg's `nghttp2` target and needlessly recompiles the
-# HTTP/2 sources during normal ascii-chat development.
-if(NOT GOTEL_NGHTTP2_TARGET)
-    if(TARGET nghttp2)
-        set(GOTEL_NGHTTP2_TARGET nghttp2 CACHE STRING
-            "Use the existing nghttp2 target for gotel" FORCE)
-    elseif(TARGET nghttp2::nghttp2)
-        set(GOTEL_NGHTTP2_TARGET nghttp2::nghttp2 CACHE STRING
-            "Use the existing nghttp2 target for gotel" FORCE)
-    endif()
-endif()
-
-# FindDependency.cmake may expose nghttp2 as raw include/library variables
-# rather than a CMake target. Wrap that installed package in a local
-# interface target so gotel does not FetchContent-build a duplicate copy.
-if(NOT GOTEL_NGHTTP2_TARGET AND ASCIICHAT_NGHTTP2_LIBRARY)
-    if(NOT TARGET asciichat-vcpkg-nghttp2)
-        add_library(asciichat-vcpkg-nghttp2 INTERFACE)
-        if(ASCIICHAT_NGHTTP2_INCLUDE_DIR)
-            target_include_directories(asciichat-vcpkg-nghttp2 INTERFACE
-                "${ASCIICHAT_NGHTTP2_INCLUDE_DIR}")
-        endif()
-        target_link_libraries(asciichat-vcpkg-nghttp2 INTERFACE
-            "${ASCIICHAT_NGHTTP2_LIBRARY}")
-    endif()
-    set(GOTEL_NGHTTP2_TARGET asciichat-vcpkg-nghttp2 CACHE STRING
-        "Use the installed nghttp2 library for gotel" FORCE)
-endif()
-
 # Keep Gotel and its fetched otlp-c/Sequel build trees in the persistent
 # dependency cache. This is separate from the main build directory.
-set(_asciichat_gotel_cache_dir "${ASCIICHAT_DEPS_CACHE_DIR}/gotel")
+set(_asciichat_gotel_cache_dir "${CMAKE_BINARY_DIR}/_deps/gotel")
 file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 
 set(_asciichat_parent_shared_libs ${BUILD_SHARED_LIBS})
@@ -89,34 +54,73 @@ set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared})
 set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared} CACHE BOOL
     "Build gotel and its public dependencies as shared libraries" FORCE)
 
+# Gotel's gRPC adapter accepts an existing nghttp2 target. Prefer the target
+# supplied by vcpkg so its embedded FetchContent project does not define a
+# second target with the same name.
+if(GOTEL_NGHTTP2_TARGET AND NOT TARGET "${GOTEL_NGHTTP2_TARGET}")
+    unset(GOTEL_NGHTTP2_TARGET CACHE)
+endif()
+if(TARGET nghttp2::nghttp2)
+    set(GOTEL_NGHTTP2_TARGET nghttp2::nghttp2 CACHE STRING
+        "Use the vcpkg nghttp2 target for gotel gRPC" FORCE)
+elseif(TARGET nghttp2)
+    set(GOTEL_NGHTTP2_TARGET nghttp2 CACHE STRING
+        "Use the vcpkg nghttp2 target for gotel gRPC" FORCE)
+elseif(TARGET nghttp2_static)
+    set(GOTEL_NGHTTP2_TARGET nghttp2_static CACHE STRING
+        "Use the existing nghttp2 target for gotel gRPC" FORCE)
+endif()
+
+if(NOT GOTEL_NGHTTP2_TARGET)
+    set(_asciichat_nghttp2_vcpkg_root
+        "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
+    unset(_asciichat_nghttp2_include_dir CACHE)
+    unset(_asciichat_nghttp2_release_library CACHE)
+    unset(_asciichat_nghttp2_debug_library CACHE)
+    find_path(_asciichat_nghttp2_include_dir
+        NAMES nghttp2/nghttp2.h
+        PATHS "${_asciichat_nghttp2_vcpkg_root}/include"
+        NO_DEFAULT_PATH)
+    find_library(_asciichat_nghttp2_release_library
+        NAMES nghttp2
+        PATHS "${_asciichat_nghttp2_vcpkg_root}/lib"
+        NO_DEFAULT_PATH)
+    find_library(_asciichat_nghttp2_debug_library
+        NAMES nghttp2 nghttp2d
+        PATHS "${_asciichat_nghttp2_vcpkg_root}/debug/lib"
+        NO_DEFAULT_PATH)
+
+    if(_asciichat_nghttp2_include_dir AND
+       _asciichat_nghttp2_release_library AND
+       _asciichat_nghttp2_debug_library)
+        add_library(asciichat-vcpkg-nghttp2 UNKNOWN IMPORTED GLOBAL)
+        set_target_properties(asciichat-vcpkg-nghttp2 PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_nghttp2_include_dir}"
+            IMPORTED_CONFIGURATIONS "DEBUG;RELEASE"
+            MAP_IMPORTED_CONFIG_DEV DEBUG
+            MAP_IMPORTED_CONFIG_RELWITHDEBINFO RELEASE
+            IMPORTED_LOCATION_DEBUG "${_asciichat_nghttp2_debug_library}"
+            IMPORTED_LOCATION_RELEASE "${_asciichat_nghttp2_release_library}"
+            IMPORTED_IMPLIB_DEBUG "${_asciichat_nghttp2_debug_library}"
+            IMPORTED_IMPLIB_RELEASE "${_asciichat_nghttp2_release_library}")
+        set(GOTEL_NGHTTP2_TARGET asciichat-vcpkg-nghttp2 CACHE STRING
+            "Use the vcpkg nghttp2 target for gotel gRPC" FORCE)
+    endif()
+endif()
+
 # These dependency revisions are pinned in the vendored Gotel checkout.  Keep
 # FetchContent from running its git update step on every configure: updating a
 # populated git checkout refreshes all source mtimes, which makes Ninja treat
 # the entire gotel/nghttp2/otlp-c dependency tree as stale on the next build.
-# A restored CI cache may contain the build directory without the source
-# directories, however; in that case FetchContent must be allowed to populate
-# the missing sources during this configure.
+# First-time population still occurs when a source directory is absent.  Do
+# not force FETCHCONTENT_FULLY_DISCONNECTED here: a cold CI dependency cache
+# must be allowed to download the pinned sources.
 set(_asciichat_parent_fetchcontent_updates_disconnected
     ${FETCHCONTENT_UPDATES_DISCONNECTED})
 set(_asciichat_parent_fetchcontent_fully_disconnected
     ${FETCHCONTENT_FULLY_DISCONNECTED})
-set(_asciichat_gotel_sources_ready TRUE)
-foreach(_asciichat_gotel_source
-        "${_asciichat_gotel_cache_dir}/otlp_c-src/src/http_client.h"
-        "${_asciichat_gotel_cache_dir}/sequel-src/CMakeLists.txt"
-        "${_asciichat_gotel_cache_dir}/gotel_nghttp2-src/CMakeLists.txt"
-        "${_asciichat_gotel_cache_dir}/gotel_pcre2-src/CMakeLists.txt")
-    if(NOT EXISTS "${_asciichat_gotel_source}")
-        set(_asciichat_gotel_sources_ready FALSE)
-    endif()
-endforeach()
-if(_asciichat_gotel_sources_ready)
-    set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
-    set(FETCHCONTENT_FULLY_DISCONNECTED ON)
-else()
-    set(FETCHCONTENT_UPDATES_DISCONNECTED OFF)
-    set(FETCHCONTENT_FULLY_DISCONNECTED OFF)
-endif()
+set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
+set(FETCHCONTENT_FULLY_DISCONNECTED OFF)
 set(_asciichat_fetchcontent_base_dir_was_defined FALSE)
 if(DEFINED FETCHCONTENT_BASE_DIR)
     set(_asciichat_fetchcontent_base_dir_was_defined TRUE)
@@ -125,9 +129,40 @@ endif()
 set(FETCHCONTENT_BASE_DIR "${_asciichat_gotel_cache_dir}" CACHE PATH
     "Persistent Gotel dependency source/build cache" FORCE)
 
+if(USE_MUSL AND NOT TARGET nghttp2_static)
+    # The musl application links its native HTTP/2 server against a static
+    # nghttp2 target. Build that target directly instead of enabling Gotel's
+    # unrelated gRPC adapter just to make it appear.
+    set(ENABLE_LIB_ONLY ON CACHE BOOL "Build nghttp2 library only" FORCE)
+    set(BUILD_STATIC_LIBS ON CACHE BOOL "Build nghttp2 static libraries" FORCE)
+    set(ENABLE_HTTP3 OFF CACHE BOOL "Disable nghttp2 HTTP/3 integration" FORCE)
+    set(ENABLE_APP OFF CACHE BOOL "Disable nghttp2 applications" FORCE)
+    set(ENABLE_HPACK_TOOLS OFF CACHE BOOL "Disable nghttp2 HPACK tools" FORCE)
+    set(ENABLE_EXAMPLES OFF CACHE BOOL "Disable nghttp2 examples" FORCE)
+    set(ENABLE_DOC OFF CACHE BOOL "Disable nghttp2 documentation" FORCE)
+    set(BUILD_TESTING OFF CACHE BOOL "Disable nghttp2 tests" FORCE)
+    FetchContent_Declare(asciichat_nghttp2
+        GIT_REPOSITORY https://github.com/nghttp2/nghttp2.git
+        GIT_TAG 43b29f991403b5419dd0bea2840581078ead9bf8)
+    FetchContent_MakeAvailable(asciichat_nghttp2)
+    if(TARGET nghttp2_static)
+        set_target_properties(nghttp2_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    endif()
+endif()
+
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                  "${_asciichat_gotel_cache_dir}/build"
                  EXCLUDE_FROM_ALL)
+
+# The vendored Gotel shared target calls its TLS selection helper directly,
+# while some Apple linkers do not export that helper from the separately built
+# otlp-c dylib.  Keep the helper implementation in Gotel as well so the
+# application does not depend on dylib export behavior for this internal API.
+if(APPLE AND TARGET gotel)
+    target_sources(gotel PRIVATE
+        "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/src/tls.c")
+    target_link_libraries(gotel PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+endif()
 
 # gotel's gRPC adapter uses one private URL bit to distinguish its HTTP/2
 # transport. Keep that integration detail in the generated bridge header; do
@@ -224,8 +259,6 @@ unset(_asciichat_parent_fetchcontent_base_dir)
 unset(_asciichat_fetchcontent_base_dir_was_defined)
 unset(_asciichat_parent_fetchcontent_updates_disconnected)
 unset(_asciichat_parent_fetchcontent_fully_disconnected)
-unset(_asciichat_gotel_sources_ready)
-unset(_asciichat_gotel_source)
 add_compile_definitions(GOTEL_WITH_SQLITE=1)
 include_directories($<TARGET_PROPERTY:gotel,INTERFACE_INCLUDE_DIRECTORIES>
                     $<TARGET_PROPERTY:otlp_c,INTERFACE_INCLUDE_DIRECTORIES>)
