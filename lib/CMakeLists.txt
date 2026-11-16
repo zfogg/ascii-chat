@@ -952,6 +952,36 @@ else()
 endif()
 
 # =============================================================================
+# Shared production object graph used by the CLI and native tests.
+# =============================================================================
+# Keep the test executables on the same object-library graph as the production
+# targets so the implementation objects are compiled once per configuration.
+add_library(ascii-chat-runtime-deps INTERFACE)
+target_link_libraries(ascii-chat-runtime-deps INTERFACE
+    ascii-chat-util
+    ascii-chat-data-structures
+    ascii-chat-crypto
+    ascii-chat-simd
+    ascii-chat-video
+    ascii-chat-audio
+    ascii-chat-network
+    ascii-chat-core
+    ascii-chat-panic
+    libplatform::libplatform)
+
+add_library(ascii-chat-runtime STATIC EXCLUDE_FROM_ALL
+    $<TARGET_OBJECTS:ascii-chat-util>
+    $<TARGET_OBJECTS:ascii-chat-data-structures>
+    $<TARGET_OBJECTS:ascii-chat-crypto>
+    $<TARGET_OBJECTS:ascii-chat-simd>
+    $<TARGET_OBJECTS:ascii-chat-video>
+    $<TARGET_OBJECTS:ascii-chat-audio>
+    $<TARGET_OBJECTS:ascii-chat-network>
+    $<TARGET_OBJECTS:ascii-chat-core>
+    $<TARGET_OBJECTS:ascii-chat-panic>)
+target_link_libraries(ascii-chat-runtime PUBLIC ascii-chat-runtime-deps)
+
+# =============================================================================
 # Unified Library Targets (OPTIONAL - not built by default)
 # =============================================================================
 # These combine all modules into a single library for external projects.
