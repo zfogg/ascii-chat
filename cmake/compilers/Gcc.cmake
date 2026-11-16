@@ -37,6 +37,7 @@ function(configure_gcc_pre_project)
     find_file(_gcc_libclang NAMES libclang.so libclang.so.1
         PATHS "${_gcc_llvm_libdir}" NO_DEFAULT_PATH REQUIRED)
     set(RECAST_BACKEND PYTHON CACHE STRING "Recast transformer backend" FORCE)
+    set(RECAST_TRANSFORMS defer CACHE STRING "Recast transforms" FORCE)
     set(RECAST_TOOL_ROOT "${CMAKE_SOURCE_DIR}/deps/recast" CACHE PATH "Recast source tree" FORCE)
     set(RECAST_PYTHON_COMMAND "${Python3_EXECUTABLE}" CACHE FILEPATH "Recast Python interpreter" FORCE)
     set(RECAST_LIBCLANG_PATH "${_gcc_libclang}" CACHE FILEPATH "libclang shared library" FORCE)
