@@ -33,6 +33,25 @@
  * - Codecov for tracking how much of our code is tested
  * - GitHub Actions to automatically run tests when code changes
  *
+ * @subsection testing_windows_terminal_cadence Windows terminal cadence
+ *
+ * Run `uv run --frozen --group test python scripts/capture_alacritty_monitor.py`
+ * to test a maximized Alacritty window. Select a display with `--monitor-index`,
+ * an application with `--binary`, and an Alacritty build with `--alacritty`.
+ * Arguments following `--ascii-args` are passed to ascii-chat. The defaults use
+ * webcam zero and truecolor; use `--ascii-args mirror --test-pattern --color-mode
+ * truecolor` for a generated source without webcam frame-rate limits.
+ *
+ * The test force-terminates existing Alacritty processes, verifies the selected
+ * monitor and maximized window, and closes its test window afterward. Following
+ * a one-second warmup, it measures two seconds at 60 captures per second. The
+ * probe selects a region by average RGB change across image tiles, avoiding an
+ * isolated bright cursor or startup pixel. The two full-client PNG artifacts
+ * bracket measurement. At the default cadence, passing requires at least
+ * 50 visible changes per second and no unchanged interval over 0.1 seconds.
+ * Insufficient capture cadence fails separately; it does not establish that
+ * the terminal froze. Duplicate captures never count as displayed changes.
+ *
  * @section testing_framework Criterion Test Framework
  *
  * We chose Criterion because it's modern, feature-rich, and makes writing tests pleasant.

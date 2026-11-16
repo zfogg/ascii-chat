@@ -157,9 +157,17 @@
  * Fine scoring reuses the source cell's 8x8 luminance samples across shortlisted
  * glyphs. Candidates are visited by tone distance with exact brightness bounds;
  * original palette order breaks score ties.
- * A bounded cache reuses fits within a frame for identical patches with the
- * same prior glyph. Lookups check every source pixel, including fine detail;
- * color and temporal-history updates remain independent per cell.
+ * A bounded cache reuses fits within a frame when the coarse luminance,
+ * fine luminance, contributing chroma vectors, and prior glyph match. These
+ * scoring inputs can agree at different RGB hues; foreground color and
+ * temporal-history updates remain independent per cell. Full comparisons
+ * reject hash collisions and preserve fine spatial detail.
+ * Upscaled cells often repeat the same pixel across an entire sample row.
+ * After checking every pixel, the matcher samples those rows once and uses
+ * precomputed mask row sums for fine scoring. This is algebraically identical
+ * to scoring all 64 samples; textured rows retain the general path.
+ * Debug builds optimize the rendering and temporal-stabilization translation
+ * units while retaining debug information and the configured sanitizers.
 
  * @code{.c}
  * // Brightness-only rendering: stable and broadly compatible.

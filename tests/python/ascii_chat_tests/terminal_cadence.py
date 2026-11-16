@@ -1,5 +1,25 @@
 """Window bounds and elapsed-time checks for visible terminal animation."""
 
+from PIL import Image, ImageChops
+
+
+def motion_point(before: Image.Image, after: Image.Image) -> tuple[int, int]:
+    """Choose a changed image area rather than one bright startup/cursor pixel."""
+    if before.size != after.size:
+        raise ValueError("Terminal client dimensions changed before cadence measurement")
+    red, green, blue = ImageChops.difference(before.convert("RGB"), after.convert("RGB")).split()
+    intensity = ImageChops.lighter(ImageChops.lighter(red, green), blue)
+    columns, rows = max(1, after.width // 320), max(1, after.height // 200)
+    # Floating-point box averages preserve small changes over a large tile.
+    density = intensity.convert("F").resize((columns, rows), Image.Resampling.BOX)
+    strongest = max(((density.getpixel((x, y)), x, y) for y in range(rows) for x in range(columns)))
+    if strongest[0] == 0:
+        return after.width // 2, after.height // 2
+    return (
+        (2 * strongest[1] + 1) * after.width // (2 * columns),
+        (2 * strongest[2] + 1) * after.height // (2 * rows),
+    )
+
 
 def probe_box(
     client: tuple[int, int, int, int], point: tuple[int, int]

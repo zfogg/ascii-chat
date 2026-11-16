@@ -8,7 +8,6 @@ import os
 import subprocess
 import time
 from pathlib import Path
-from typing import cast
 
 import pygetwindow as gw
 import pymonctl as pm
@@ -20,7 +19,7 @@ import win32gui
 import win32process
 import pywintypes
 from PIL import Image, ImageChops, ImageStat
-from ascii_chat_tests.terminal_cadence import cadence_metrics, probe_box, require_cadence
+from ascii_chat_tests.terminal_cadence import cadence_metrics, motion_point, probe_box, require_cadence
 
 ROOT = Path(__file__).resolve().parents[1]
 ALACRITTY = Path(r"C:\Program Files\Alacritty\alacritty.exe")
@@ -267,23 +266,7 @@ def main() -> None:
             # Both artifacts must bracket the measured period. An earlier
             # startup frame can differ even when all measured frames freeze.
             frame_a_image = probe_frame
-            changed_box = ImageChops.difference(previous, probe_frame).getbbox()
-            if changed_box:
-                changed_left, changed_top, changed_right, changed_bottom = changed_box
-                diff_pixels = ImageChops.difference(previous, probe_frame).load()
-                if diff_pixels is None:
-                    raise RuntimeError("Could not inspect captured frame pixels")
-                strongest = (0, changed_left, changed_top)
-                for y in range(changed_top, changed_bottom, 4):
-                    for x in range(changed_left, changed_right, 4):
-                        pixel = cast(tuple[int, int, int], diff_pixels[x, y])
-                        strength = max(pixel)
-                        if strength > strongest[0]:
-                            strongest = (strength, x, y)
-                points = [(strongest[1], strongest[2])]
-            else:
-                points = [((client_right - client_left) // 2, (client_bottom - client_top) // 2)]
-            region = probe_box(box, points[0])
+            region = probe_box(box, motion_point(previous, probe_frame))
             probe_previous = client_signature(region)
             interval = 1.0 / args.fps
             start_time = time.monotonic()
