@@ -279,6 +279,10 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
     if (!tmp_ptr) FATAL(ERROR_MEMORY, "Memory reallocation failed: %zu bytes", (size_t)(size)); \
     return (cast)(tmp_ptr); \
   }())
+#elif defined(_MSC_VER)
+#define SAFE_MALLOC(size, cast) ((cast)ALLOC_MALLOC(size))
+#define SAFE_CALLOC(count, size, cast) ((cast)ALLOC_CALLOC((count), (size)))
+#define SAFE_REALLOC(ptr, size, cast) ((cast)ALLOC_REALLOC((ptr), (size)))
 #else
 #define SAFE_MALLOC(size, cast)                                                                                                                                                                        \
   ({                                                                                                                                                                                                   \
