@@ -152,7 +152,7 @@ const char *levenshtein_find_similar(const char *unknown, const char *const *can
   });
 
   for (int i = 0; candidates[i] != NULL; i++) {
-    recast_call(consider_candidate, candidates[i]);
+    consider_candidate(candidates[i]);
   }
 
   // Only suggest if the distance is within our threshold
