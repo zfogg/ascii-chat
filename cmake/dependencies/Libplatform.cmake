@@ -61,6 +61,28 @@ else()
 endif()
 target_compile_definitions(libplatform PRIVATE
     LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
+
+# Coverage is an application-level instrumentation option.  Do not propagate
+# its profile runtime into the shared libplatform DSO: executables own the
+# coverage runtime and export its symbols, while DSOs must remain
+# uninstrumented or lld rejects their unresolved gcov references.
+if(ASCIICHAT_ENABLE_COVERAGE)
+    foreach(_libplatform_coverage_target IN ITEMS libplatform libplatform-objects)
+        if(TARGET ${_libplatform_coverage_target})
+            target_compile_options(${_libplatform_coverage_target} PRIVATE
+                -fno-profile-instr-generate
+                -fno-profile-arcs
+                -fno-test-coverage)
+        endif()
+    endforeach()
+    if(TARGET libplatform)
+        target_link_options(libplatform PRIVATE
+            -fno-profile-instr-generate
+            -fno-profile-arcs
+            -fno-test-coverage)
+    endif()
+endif()
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
     target_compile_definitions(libplatform PRIVATE DEBUG_MEMORY)
 endif()
