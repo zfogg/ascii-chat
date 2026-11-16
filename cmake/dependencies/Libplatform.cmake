@@ -66,7 +66,7 @@ target_compile_definitions(libplatform PRIVATE
 if(UNIX AND NOT APPLE)
     foreach(_libplatform_target IN ITEMS libplatform libplatform-objects)
         if(TARGET ${_libplatform_target})
-            target_compile_definitions(${_libplatform_target} PRIVATE _XOPEN_SOURCE=700)
+            target_compile_definitions(${_libplatform_target} PRIVATE _GNU_SOURCE _XOPEN_SOURCE=700)
         endif()
     endforeach()
 endif()
