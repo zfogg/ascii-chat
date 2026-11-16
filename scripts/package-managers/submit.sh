@@ -105,14 +105,15 @@ case "$TARGET" in
 class AsciiChat < Formula
   desc "Video chat in your terminal"
   homepage "https://ascii-chat.com"
-  url "$RUNTIME_MAC_X64_URL"
-  sha256 "$RUNTIME_MAC_X64_SHA256"
   version "$VERSION"
   license "MIT"
 
-  on_arm do
+  if Hardware::CPU.arm?
     url "$RUNTIME_MAC_ARM64_URL"
     sha256 "$RUNTIME_MAC_ARM64_SHA256"
+  else
+    url "$RUNTIME_MAC_X64_URL"
+    sha256 "$RUNTIME_MAC_X64_SHA256"
   end
 
   depends_on "gnupg"
@@ -121,10 +122,14 @@ class AsciiChat < Formula
 
   def install
     bin.install "bin/ascii-chat"
-    man1.install "share/man/man1/ascii-chat.1" if File.exist?("share/man/man1/ascii-chat.1")
-    bash_completion.install "share/bash-completion/completions/ascii-chat" if File.exist?("share/bash-completion/completions/ascii-chat")
-    zsh_completion.install "share/zsh/site-functions/_ascii-chat" if File.exist?("share/zsh/site-functions/_ascii-chat")
-    fish_completion.install "share/fish/vendor_completions.d/ascii-chat.fish" if File.exist?("share/fish/vendor_completions.d/ascii-chat.fish")
+    man1.install "share/man/man1/ascii-chat.1" \
+      if File.exist?("share/man/man1/ascii-chat.1")
+    bash_completion.install "share/bash-completion/completions/ascii-chat" \
+      if File.exist?("share/bash-completion/completions/ascii-chat")
+    zsh_completion.install "share/zsh/site-functions/_ascii-chat" \
+      if File.exist?("share/zsh/site-functions/_ascii-chat")
+    fish_completion.install "share/fish/vendor_completions.d/ascii-chat.fish" \
+      if File.exist?("share/fish/vendor_completions.d/ascii-chat.fish")
   end
 
   test do
@@ -136,24 +141,25 @@ EOF
 class Libasciichat < Formula
   desc "Reusable C library for ascii-chat applications"
   homepage "https://ascii-chat.com"
-  url "$LIB_MAC_X64_URL"
-  sha256 "$LIB_MAC_X64_SHA256"
   version "$VERSION"
   license "MIT"
 
-  on_arm do
+  if Hardware::CPU.arm?
     url "$LIB_MAC_ARM64_URL"
     sha256 "$LIB_MAC_ARM64_SHA256"
+  else
+    url "$LIB_MAC_X64_URL"
+    sha256 "$LIB_MAC_X64_SHA256"
   end
 
   depends_on "ffmpeg"
   depends_on "fftw"
   depends_on "fontconfig"
   depends_on "freetype"
+  depends_on "libsodium"
   depends_on "libde265"
   depends_on "libpng"
   depends_on "libwebsockets"
-  depends_on "libsodium"
   depends_on "mimalloc"
   depends_on "miniupnpc"
   depends_on "nghttp2"
