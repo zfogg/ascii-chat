@@ -644,7 +644,7 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, con
 int client_audio_pipeline_jitter_margin(client_audio_pipeline_t *pipeline) {
   if (!pipeline)
     return 0;
-  return pipeline->config.jitter_margin_ms;
+  return pipeline->config.jitter_margin_ms > static_cast<uint64_t>(INT_MAX) ? INT_MAX : static_cast<int>(pipeline->config.jitter_margin_ms);
 }
 
 /**

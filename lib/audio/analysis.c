@@ -87,7 +87,7 @@ static uint64_t g_echo_correlation_sample_count = 0; // Samples checked for echo
 // Echo detection metrics at different delays (in milliseconds)
 #define ECHO_DELAY_COUNT 5
 static uint32_t g_echo_delays_ms[ECHO_DELAY_COUNT] = {50, 100, 150, 200, 250};
-static uint64_t g_echo_correlation_strength[ECHO_DELAY_COUNT] = {0, 0, 0, 0, 0};
+static float g_echo_correlation_strength[ECHO_DELAY_COUNT] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 static uint64_t g_echo_match_count[ECHO_DELAY_COUNT] = {0, 0, 0, 0, 0};
 static uint32_t g_detected_echo_delay_ms = 0; // If echo detected, at what delay
 
@@ -515,7 +515,7 @@ void audio_analysis_set_aec3_metrics(double echo_return_loss, double echo_return
   // These come from WebRTC EchoControl::GetMetrics() call
   g_aec3_echo_return_loss = echo_return_loss;
   g_aec3_echo_return_loss_enhancement = echo_return_loss_enhancement;
-  g_aec3_delay_ns = delay_ns;
+  g_aec3_delay_ns = delay_ns > INT_MAX ? INT_MAX : (int)delay_ns;
   g_aec3_metrics_available = true;
 }
 
