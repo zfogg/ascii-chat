@@ -102,7 +102,7 @@ PackageLocale: en-US
 Publisher: Zachary Fogg
 PublisherUrl: https://github.com/zfogg
 PublisherSupportUrl: https://github.com/zfogg/ascii-chat/issues
-PackageName: $display_title
+PackageName: ascii-chat
 PackageUrl: https://ascii-chat.com
 License: MIT
 LicenseUrl: https://github.com/zfogg/ascii-chat/blob/master/LICENSE.txt
