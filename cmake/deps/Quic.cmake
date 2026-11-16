@@ -81,9 +81,10 @@ function(asciichat_configure_quic)
             "-DZLIB_LIBRARIES:STRING=${ZLIB_LIBRARIES}")
     endif()
     if(DEFINED ZLIB_INCLUDE_DIRS AND NOT "${ZLIB_INCLUDE_DIRS}" STREQUAL "")
+        string(REPLACE ";" "\\;" _quic_zlib_include_dirs "${ZLIB_INCLUDE_DIRS}")
         list(APPEND _quic_common_args
-            "-DZLIB_INCLUDE_DIR:PATH=${ZLIB_INCLUDE_DIRS}"
-            "-DZLIB_INCLUDE_DIRS:PATH=${ZLIB_INCLUDE_DIRS}")
+            "-DZLIB_INCLUDE_DIR:PATH=${_quic_zlib_include_dirs}"
+            "-DZLIB_INCLUDE_DIRS:PATH=${_quic_zlib_include_dirs}")
     elseif(DEFINED ZLIB_INCLUDE_DIR AND NOT "${ZLIB_INCLUDE_DIR}" STREQUAL "")
         list(APPEND _quic_common_args
             "-DZLIB_INCLUDE_DIR:PATH=${ZLIB_INCLUDE_DIR}"
@@ -169,6 +170,13 @@ function(asciichat_configure_quic)
     # build directories use the same DLLs without reaching into a build tree.
     set(_ngtcp2_build "${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2")
     set(_nghttp3_build "${ASCIICHAT_DEPS_CACHE_DIR}/quic-nghttp3")
+    if(EXISTS "${_ngtcp2_build}/CMakeCache.txt")
+        file(READ "${_ngtcp2_build}/CMakeCache.txt" _ngtcp2_cache)
+        string(FIND "${_ngtcp2_cache}" "CMAKE_HOME_DIRECTORY:INTERNAL=${_ngtcp2_source}" _ngtcp2_source_match)
+        if(_ngtcp2_source_match EQUAL -1)
+            file(REMOVE_RECURSE "${_ngtcp2_build}")
+        endif()
+    endif()
     set(_ngtcp2_library "${_ngtcp2_build}/lib/${_quic_library_prefix}ngtcp2${_quic_library_suffix}")
     set(_ngtcp2_crypto_library "${_ngtcp2_build}/crypto/ossl/${_quic_library_prefix}ngtcp2_crypto_ossl${_quic_library_suffix}")
     set(_nghttp3_library "${_nghttp3_build}/lib/${_quic_library_prefix}nghttp3${_quic_library_suffix}")
