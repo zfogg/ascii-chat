@@ -451,17 +451,17 @@ char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_ce
             prior_coarse_error = error;
             previous_index = c;
           }
-          size_t position = 0;
-          while (position < shortlist_count && (shortlist_error[position] < error || (shortlist_error[position] == error && shortlist[position] < c)))
-            ++position;
-          if (position < GLYPH_SHORTLIST) {
+          size_t shortlist_position = 0;
+          while (shortlist_position < shortlist_count && (shortlist_error[shortlist_position] < error || (shortlist_error[shortlist_position] == error && shortlist[shortlist_position] < c)))
+            ++shortlist_position;
+          if (shortlist_position < GLYPH_SHORTLIST) {
             size_t end = shortlist_count < GLYPH_SHORTLIST ? shortlist_count++ : GLYPH_SHORTLIST - 1;
-            for (size_t j = end; j > position; --j) {
+            for (size_t j = end; j > shortlist_position; --j) {
               shortlist[j] = shortlist[j - 1];
               shortlist_error[j] = shortlist_error[j - 1];
             }
-            shortlist[position] = c;
-            shortlist_error[position] = error;
+            shortlist[shortlist_position] = c;
+            shortlist_error[shortlist_position] = error;
           }
         }
         // The second pass resolves near-ties with the original 8x8 samples.
