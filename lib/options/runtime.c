@@ -803,11 +803,13 @@ asciichat_error_t options_prepare_patch(const options_t *current, const options_
   if (animation_changed && !stabilize_changed)
     candidate->stabilize = !(candidate->waveform || candidate->fft);
   bool orientation_changed = false;
+  bool flip_x_set_in_patch = false;
   for (size_t i = 0; i < patch->count; ++i) {
     const char *name = patch->edits[i].name;
     orientation_changed |= !strcmp(name, "media_input") || !strcmp(name, "waveform") || !strcmp(name, "fft");
+    flip_x_set_in_patch |= !strcmp(name, "flip_x");
   }
-  if (orientation_changed && !flags_explicit_state_was_set("flip-x"))
+  if (orientation_changed && !flip_x_set_in_patch && !flags_explicit_state_was_set("flip-x"))
     candidate->flip_x = !candidate->media_input && !candidate->waveform && !candidate->fft;
   for (size_t i = 0; i < patch->count; ++i) {
     asciichat_error_t error = validate_field(find_field(patch->edits[i].name), candidate);
