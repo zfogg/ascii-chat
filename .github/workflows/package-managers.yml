@@ -63,7 +63,7 @@ jobs:
         if: steps.selection.outputs.run == 'true'
         run: |
           curl --fail --location --retry 3 \
-            https://github.com/hairyhenderson/gomplate/releases/download/v4.3.0/gomplate_linux-amd64-slim \
+            https://github.com/hairyhenderson/gomplate/releases/download/v4.3.0/gomplate_linux-amd64 \
             --output "$RUNNER_TEMP/gomplate"
           chmod +x "$RUNNER_TEMP/gomplate"
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
