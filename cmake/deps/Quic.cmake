@@ -80,6 +80,16 @@ function(asciichat_configure_quic)
     else()
         list(APPEND _quic_common_args "-DOPENSSL_USE_STATIC_LIBS:BOOL=ON")
     endif()
+    if(WIN32)
+        # The isolated ngtcp2 project links its OpenSSL-backed DLL directly;
+        # unlike the parent target it does not inherit the Windows system
+        # libraries from asciichat-quic's interface link requirements.
+        list(APPEND _quic_common_args
+            "-DCMAKE_SHARED_LINKER_FLAGS_RELEASE:STRING=/DEFAULTLIB:ws2_32.lib /DEFAULTLIB:crypt32.lib"
+            "-DCMAKE_SHARED_LINKER_FLAGS_DEBUG:STRING=/DEFAULTLIB:ws2_32.lib /DEFAULTLIB:crypt32.lib"
+            "-DCMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO:STRING=/DEFAULTLIB:ws2_32.lib /DEFAULTLIB:crypt32.lib"
+            "-DCMAKE_SHARED_LINKER_FLAGS_MINSIZEREL:STRING=/DEFAULTLIB:ws2_32.lib /DEFAULTLIB:crypt32.lib")
+    endif()
     foreach(_variable CMAKE_TOOLCHAIN_FILE CMAKE_SYSROOT CMAKE_OSX_SYSROOT CMAKE_OSX_ARCHITECTURES
                       CMAKE_OSX_DEPLOYMENT_TARGET CMAKE_C_COMPILER_TARGET CMAKE_MSVC_RUNTIME_LIBRARY
                       CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE CMAKE_C_FLAGS_RELWITHDEBINFO
@@ -120,6 +130,18 @@ function(asciichat_configure_quic)
     else()
         set(_quic_ssl_file "${OPENSSL_SSL_LIBRARY}")
         set(_quic_crypto_file "${OPENSSL_CRYPTO_LIBRARY}")
+    endif()
+    if(WIN32 AND _quic_shared)
+        # FindOpenSSL also caches legacy release/debug variables. Override
+        # both configurations so a prior static configure cannot leak into
+        # this shared external project.
+        set(_quic_openssl_cache_args
+            "-DSSL_EAY_RELEASE:FILEPATH=${_quic_ssl_file}"
+            "-DLIB_EAY_RELEASE:FILEPATH=${_quic_crypto_file}"
+            "-DSSL_EAY_DEBUG:FILEPATH=${_quic_ssl_file}"
+            "-DLIB_EAY_DEBUG:FILEPATH=${_quic_crypto_file}")
+    else()
+        set(_quic_openssl_cache_args)
     endif()
 
     set(_ngtcp2_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/ngtcp2")
@@ -164,6 +186,7 @@ function(asciichat_configure_quic)
             -DOPENSSL_INCLUDE_DIR:PATH=${OPENSSL_INCLUDE_DIR}
             -DOPENSSL_SSL_LIBRARY:FILEPATH=${_quic_ssl_file}
             -DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}
+            ${_quic_openssl_cache_args}
             -DVCPKG_MANIFEST_INSTALL:BOOL=OFF
         RESULT_VARIABLE _ngtcp2_configure_result
         OUTPUT_VARIABLE _ngtcp2_configure_stdout
@@ -191,6 +214,7 @@ function(asciichat_configure_quic)
             "-DOPENSSL_INCLUDE_DIR:PATH=${OPENSSL_INCLUDE_DIR}"
             "-DOPENSSL_SSL_LIBRARY:FILEPATH=${_quic_ssl_file}"
             "-DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}"
+            ${_quic_openssl_cache_args}
             "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ${_quic_ngtcp2_crypto_target} -- --quiet
         BUILD_BYPRODUCTS ${_ngtcp2_byproducts}
