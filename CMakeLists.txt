@@ -390,7 +390,11 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND NOT RECAST_NATIVE_BINARY)
     "${CMAKE_SOURCE_DIR}/deps/recast"
     "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build"
     EXCLUDE_FROM_ALL)
-  add_executable(recast-native ALIAS recast)
+endif()
+if(RECAST_BACKEND STREQUAL "NATIVE" AND TARGET recast)
+  if(NOT TARGET recast-native)
+    add_executable(recast-native ALIAS recast)
+  endif()
   set(RECAST_NATIVE_BINARY "$<TARGET_FILE:recast-native>" CACHE FILEPATH
       "Recast host executable" FORCE)
 endif()
