@@ -71,7 +71,7 @@
       "name": "default-clang",
       "displayName": "Default (Clang)",
       "description": "Debug build using the Clang toolchain",
-      "inherits": "default",
+      "inherits": ["default", "base-vcpkg"],
       "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" },
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
@@ -97,7 +97,7 @@
       "name": "dev-clang",
       "displayName": "Dev (Clang)",
       "description": "Fast developer build using Clang",
-      "inherits": "dev",
+      "inherits": ["dev", "base-vcpkg"],
       "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" },
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
@@ -123,7 +123,7 @@
       "name": "release-clang",
       "displayName": "Release (Clang)",
       "description": "Release build using Clang",
-      "inherits": "release",
+      "inherits": ["release", "base-vcpkg"],
       "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" },
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
