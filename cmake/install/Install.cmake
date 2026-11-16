@@ -571,7 +571,7 @@ elseif(BUILD_EXECUTABLES)
 endif()
 
 if(BUILD_EXECUTABLES)
-    if(ASCIICHAT_SKIP_RUNTIME_GENERATED_DOCS)
+    if(ASCIICHAT_SKIP_RUNTIME_GENERATED_DOCS OR WIN32)
         add_custom_target(completions
             DEPENDS
                 "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"

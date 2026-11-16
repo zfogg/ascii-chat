@@ -71,7 +71,7 @@ if(BUILD_EXECUTABLES)
 
     # Build man pages as part of the default build unless a target platform
     # cannot execute its freshly built binary during packaging.
-    if(ASCIICHAT_SKIP_RUNTIME_GENERATED_DOCS)
+    if(ASCIICHAT_SKIP_RUNTIME_GENERATED_DOCS OR WIN32)
         add_custom_target(man1
             DEPENDS "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
             COMMENT "Man pages build complete"
