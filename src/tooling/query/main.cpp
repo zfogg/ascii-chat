@@ -46,7 +46,8 @@ int collectAsciiChatProcess(const platform_process_info_t *process, void *contex
 
 std::vector<ProcessEntry> listAsciiChatProcesses() {
   std::vector<ProcessEntry> result;
-  if (platform_process_list("ascii-chat", collectAsciiChatProcess, &result) != 0) return {};
+  if (platform_process_list("ascii-chat", collectAsciiChatProcess, &result) != 0)
+    return {};
   return result;
 }
 
