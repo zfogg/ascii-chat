@@ -72,6 +72,14 @@ function(asciichat_configure_quic)
         "-DENABLE_STATIC_LIB:BOOL=${_quic_enable_static}"
         "-DENABLE_SHARED_LIB:BOOL=${_quic_enable_shared}"
         "-DBUILD_TESTING:BOOL=OFF")
+    # Keep the isolated ngtcp2 configure aligned with the parent dependency
+    # configuration.  In particular, debug/shared builds must not reuse a
+    # stale static OpenSSL selection from an earlier configure.
+    if(_quic_shared)
+        list(APPEND _quic_common_args "-DOPENSSL_USE_STATIC_LIBS:BOOL=OFF")
+    else()
+        list(APPEND _quic_common_args "-DOPENSSL_USE_STATIC_LIBS:BOOL=ON")
+    endif()
     foreach(_variable CMAKE_TOOLCHAIN_FILE CMAKE_SYSROOT CMAKE_OSX_SYSROOT CMAKE_OSX_ARCHITECTURES
                       CMAKE_OSX_DEPLOYMENT_TARGET CMAKE_C_COMPILER_TARGET CMAKE_MSVC_RUNTIME_LIBRARY
                       CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE CMAKE_C_FLAGS_RELWITHDEBINFO
@@ -98,8 +106,21 @@ function(asciichat_configure_quic)
     # such as $<TARGET_FILE:OpenSSL::SSL> are only valid in the parent build's
     # generated buildsystem and are rejected by CMake 4.5 while ngtcp2 runs
     # try_compile checks. Pass the already-resolved FindOpenSSL paths instead.
-    set(_quic_ssl_file "${OPENSSL_SSL_LIBRARY}")
-    set(_quic_crypto_file "${OPENSSL_CRYPTO_LIBRARY}")
+    # Prefer the selected parent targets over the legacy FindOpenSSL cache
+    # variables.  vcpkg can leave x64-windows-static paths in those variables
+    # after a previous configure even though the parent selected shared
+    # x64-windows libraries.
+    if(_quic_shared AND WIN32)
+        # vcpkg's debug import libraries are the authoritative shared Windows
+        # paths; imported-target properties can retain a stale static path.
+        set(_quic_vcpkg_debug_libdir
+            "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/lib")
+        set(_quic_ssl_file "${_quic_vcpkg_debug_libdir}/libssl.lib")
+        set(_quic_crypto_file "${_quic_vcpkg_debug_libdir}/libcrypto.lib")
+    else()
+        set(_quic_ssl_file "${OPENSSL_SSL_LIBRARY}")
+        set(_quic_crypto_file "${OPENSSL_CRYPTO_LIBRARY}")
+    endif()
 
     set(_ngtcp2_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/ngtcp2")
     set(_nghttp3_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/nghttp3")
