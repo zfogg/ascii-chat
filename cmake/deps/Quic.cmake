@@ -72,6 +72,14 @@ function(asciichat_configure_quic)
         "-DENABLE_STATIC_LIB:BOOL=${_quic_enable_static}"
         "-DENABLE_SHARED_LIB:BOOL=${_quic_enable_shared}"
         "-DBUILD_TESTING:BOOL=OFF")
+    # The isolated ngtcp2 configure runs FindZLIB independently.  On Linux
+    # CI the parent project may have only the plural/pkg-config result, while
+    # ngtcp2's try_compile sees the singular cache entry as NOTFOUND.
+    if(DEFINED ZLIB_LIBRARIES AND NOT "${ZLIB_LIBRARIES}" STREQUAL "")
+        list(APPEND _quic_common_args
+            "-DZLIB_LIBRARY:STRING=${ZLIB_LIBRARIES}"
+            "-DZLIB_LIBRARIES:STRING=${ZLIB_LIBRARIES}")
+    endif()
     # Keep the isolated ngtcp2 configure aligned with the parent dependency
     # configuration.  In particular, debug/shared builds must not reuse a
     # stale static OpenSSL selection from an earlier configure.
