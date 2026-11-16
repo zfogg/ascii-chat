@@ -4,7 +4,7 @@
 #include "session/client_like.h"
 #include <ascii-chat/audio/client_pipeline.h>
 #include <ascii-chat/audio/audio.h>
-#include <ascii-chat/options/rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/tui/controller.h>
 #include "session/audio.h"
 #include "session/capture.h"
@@ -30,8 +30,7 @@ static asciichat_error_t media_audio_start(session_audio_ctx_t *audio) {
   cr_assert_not_null(audio);
   return audio_failure == 2 ? ERROR_AUDIO : ASCIICHAT_OK;
 }
-static asciichat_error_t media_thread_create(platform_thread_t *thread, const char *name, void *(*fn)(void *),
-                                             void *arg) {
+static asciichat_error_t media_thread_create(platform_thread_t *thread, const char *name, void *(*fn)(void *), void *arg) {
   (void)thread;
   (void)name;
   (void)fn;
@@ -221,8 +220,7 @@ Test(discovery_media, opus_decode_rejects_invalid_frames_and_preserves_the_disab
   receiver.audio_pipeline = client_audio_pipeline_create(NULL);
   cr_assert_not_null(receiver.audio_pipeline);
   uint8_t invalid[3] = {0xff, 0xff, 0xff};
-  cr_assert_eq(discovery_decode_opus(invalid, sizeof(invalid), samples, OPUS_FRAME_SAMPLES, &decoded, &receiver),
-               ERROR_AUDIO);
+  cr_assert_eq(discovery_decode_opus(invalid, sizeof(invalid), samples, OPUS_FRAME_SAMPLES, &decoded, &receiver), ERROR_AUDIO);
   cr_assert_eq(decoded, 0);
   client_audio_pipeline_destroy(receiver.audio_pipeline);
 }

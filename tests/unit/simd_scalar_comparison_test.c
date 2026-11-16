@@ -7,6 +7,7 @@
 #include <criterion/new/assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdio.h>
 
 #include <ascii-chat/video/rgba/video_frame.h>
 

@@ -28,15 +28,12 @@ void packet_queue_stop(packet_queue_t *queue);
 void packet_queue_clear(packet_queue_t *queue);
 
 /** Copy a borrowed view into queue-owned storage. */
-asciichat_error_t packet_queue_push_copy(packet_queue_t *queue, packet_type_t type, const void *data, size_t length,
-                                         uint32_t client_id);
+asciichat_error_t packet_queue_push_copy(packet_queue_t *queue, packet_type_t type, const void *data, size_t length, uint32_t client_id);
 /** On success, transfers the owning buffer pointer and clears *data.
  * On any error, the caller retains ownership and *data is unchanged. */
-asciichat_error_t packet_queue_push_take(packet_queue_t *queue, packet_type_t type, void **data, size_t length,
-                                         uint32_t client_id);
+asciichat_error_t packet_queue_push_take(packet_queue_t *queue, packet_type_t type, void **data, size_t length, uint32_t client_id);
 /** Queue a shared immutable buffer, retaining an independent reference. */
-asciichat_error_t packet_queue_push_shared(packet_queue_t *queue, packet_type_t type, const void *data, size_t length,
-                                           uint32_t client_id);
+asciichat_error_t packet_queue_push_shared(packet_queue_t *queue, packet_type_t type, const void *data, size_t length, uint32_t client_id);
 queued_packet_t *packet_queue_dequeue(packet_queue_t *queue);
 queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue);
 void packet_queue_free_packet(queued_packet_t *packet);

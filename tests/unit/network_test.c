@@ -101,8 +101,7 @@ static invalid_socket_test_case_t invalid_socket_cases[] = {
 };
 
 ParameterizedTestParameters(network, invalid_socket_operations) {
-  return cr_make_param_array(invalid_socket_test_case_t, invalid_socket_cases,
-                             sizeof(invalid_socket_cases) / sizeof(invalid_socket_cases[0]));
+  return cr_make_param_array(invalid_socket_test_case_t, invalid_socket_cases, sizeof(invalid_socket_cases) / sizeof(invalid_socket_cases[0]));
 }
 
 ParameterizedTest(invalid_socket_test_case_t *tc, network, invalid_socket_operations) {
@@ -245,15 +244,13 @@ typedef struct {
 } parse_size_message_test_case_t;
 
 static parse_size_message_test_case_t parse_size_message_cases[] = {
-    {"SIZE:80,24\n", false, 0, 80, 24, "Valid message"},  {"SIZE:160,48\n", false, 0, 160, 48, "Valid large size"},
-    {"SIZE:1,1\n", false, 0, 1, 1, "Valid minimal size"}, {"INVALID:80,24\n", false, -1, 0, 0, "Invalid format"},
-    {"SIZE:80\n", false, -1, 0, 0, "Missing dimension"},  {"80,24\n", false, -1, 0, 0, "Missing SIZE prefix"},
+    {"SIZE:80,24\n", false, 0, 80, 24, "Valid message"},    {"SIZE:160,48\n", false, 0, 160, 48, "Valid large size"}, {"SIZE:1,1\n", false, 0, 1, 1, "Valid minimal size"},
+    {"INVALID:80,24\n", false, -1, 0, 0, "Invalid format"}, {"SIZE:80\n", false, -1, 0, 0, "Missing dimension"},      {"80,24\n", false, -1, 0, 0, "Missing SIZE prefix"},
     {"SIZE:80,24\n", true, -1, 0, 0, "NULL pointers"},
 };
 
 ParameterizedTestParameters(network, parse_size_message_variations) {
-  return cr_make_param_array(parse_size_message_test_case_t, parse_size_message_cases,
-                             sizeof(parse_size_message_cases) / sizeof(parse_size_message_cases[0]));
+  return cr_make_param_array(parse_size_message_test_case_t, parse_size_message_cases, sizeof(parse_size_message_cases) / sizeof(parse_size_message_cases[0]));
 }
 
 ParameterizedTest(parse_size_message_test_case_t *tc, network, parse_size_message_variations) {
@@ -266,14 +263,11 @@ ParameterizedTest(parse_size_message_test_case_t *tc, network, parse_size_messag
     result = parse_size_message(tc->message, &width, &height);
   }
 
-  cr_assert_eq(result, tc->expected_result, "%s: expected result %d, got %d", tc->description, tc->expected_result,
-               result);
+  cr_assert_eq(result, tc->expected_result, "%s: expected result %d, got %d", tc->description, tc->expected_result, result);
 
   if (tc->expected_result == 0 && !tc->use_null_pointers) {
-    cr_assert_eq(width, tc->expected_width, "%s: expected width %d, got %d", tc->description, tc->expected_width,
-                 width);
-    cr_assert_eq(height, tc->expected_height, "%s: expected height %d, got %d", tc->description, tc->expected_height,
-                 height);
+    cr_assert_eq(width, tc->expected_width, "%s: expected width %d, got %d", tc->description, tc->expected_width, width);
+    cr_assert_eq(height, tc->expected_height, "%s: expected height %d, got %d", tc->description, tc->expected_height, height);
   }
 }
 

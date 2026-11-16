@@ -587,8 +587,7 @@ static inline bool packet_is_handshake_type(packet_type_t type) {
 
 /** Initial negotiation stays plaintext; rotation is authenticated session traffic. */
 static inline bool packet_is_initial_handshake_type(packet_type_t type) {
-  return packet_is_handshake_type(type) &&
-         !(type >= PACKET_TYPE_CRYPTO_REKEY_REQUEST && type <= PACKET_TYPE_CRYPTO_REKEY_COMPLETE);
+  return packet_is_handshake_type(type) && !(type >= PACKET_TYPE_CRYPTO_REKEY_REQUEST && type <= PACKET_TYPE_CRYPTO_REKEY_COMPLETE);
 }
 
 /**
@@ -650,10 +649,8 @@ typedef struct {
 PACKED_ATTR /** @endcond */ packet_header_t;
 
 /** Shared ACIP wire codec. Headers are returned in network byte order. */
-asciichat_error_t packet_header_build(packet_header_t *header, packet_type_t type, const socket_buffer_t *payload,
-                                      size_t count, uint32_t client_id);
-asciichat_error_t packet_encode(packet_type_t type, const void *payload, size_t length, uint32_t client_id,
-                                void *output, size_t capacity, size_t *written);
+asciichat_error_t packet_header_build(packet_header_t *header, packet_type_t type, const socket_buffer_t *payload, size_t count, uint32_t client_id);
+asciichat_error_t packet_encode(packet_type_t type, const void *payload, size_t length, uint32_t client_id, void *output, size_t capacity, size_t *written);
 /** Validate exactly one complete packet, including the empty-payload checksum.
  * A zero limit uses MAX_PACKET_SIZE. The optional header output is a copy. */
 asciichat_error_t packet_validate(const void *packet, size_t length, size_t limit, packet_header_t *header);
@@ -1316,8 +1313,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
  *
  * @ingroup network
  */
-asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, size_t len,
-                                     crypto_context_t *crypto_ctx);
+asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, size_t len, crypto_context_t *crypto_ctx);
 
 /**
  * @brief Receive a packet with decryption and decompression support
@@ -1343,10 +1339,8 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
  *
  * @ingroup network
  */
-packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bool enforce_encryption,
-                                           packet_envelope_t *envelope);
-packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *crypto_ctx, bool enforce_encryption,
-                                                        packet_envelope_t *envelope, uint64_t timeout_ns);
+packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bool enforce_encryption, packet_envelope_t *envelope);
+packet_recv_result_t receive_packet_secure_with_timeout(socket_t sockfd, void *crypto_ctx, bool enforce_encryption, packet_envelope_t *envelope, uint64_t timeout_ns);
 
 /**
  * @brief Decrypt a PACKET_TYPE_ENCRYPTED envelope and extract inner packet
@@ -1478,8 +1472,7 @@ int send_pong_packet(socket_t sockfd);
  * During the handshake (or when encryption is disabled), the packet is sent
  * in plaintext so protocol errors can be delivered before encryption is active.
  */
-asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *crypto_ctx, asciichat_error_t error_code,
-                                    const char *message);
+asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *crypto_ctx, asciichat_error_t error_code, const char *message);
 
 /**
  * @brief Format the current thread's error stack for transport to a peer
@@ -1499,9 +1492,7 @@ size_t packet_format_error_stack(char *buffer, size_t size);
  * @param out_message_length Optional output for message length reported by sender
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t packet_parse_error_message(const void *data, size_t len, asciichat_error_t *out_error_code,
-                                             char *message_buffer, size_t message_buffer_size,
-                                             size_t *out_message_length);
+asciichat_error_t packet_parse_error_message(const void *data, size_t len, asciichat_error_t *out_error_code, char *message_buffer, size_t message_buffer_size, size_t *out_message_length);
 
 /**
  * @brief Send a remote log packet with optional encryption context
@@ -1513,8 +1504,7 @@ asciichat_error_t packet_parse_error_message(const void *data, size_t len, ascii
  * @param message Log message text
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t packet_send_remote_log(socket_t sockfd, const crypto_context_t *crypto_ctx, log_level_t level,
-                                         remote_log_direction_t direction, uint16_t flags, const char *message);
+asciichat_error_t packet_send_remote_log(socket_t sockfd, const crypto_context_t *crypto_ctx, log_level_t level, remote_log_direction_t direction, uint16_t flags, const char *message);
 
 /**
  * @brief Parse a remote log packet payload into components
@@ -1528,9 +1518,8 @@ asciichat_error_t packet_send_remote_log(socket_t sockfd, const crypto_context_t
  * @param out_message_length Optional output for message length reported by sender
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t packet_parse_remote_log(const void *data, size_t len, log_level_t *out_level,
-                                          remote_log_direction_t *out_direction, uint16_t *out_flags,
-                                          char *message_buffer, size_t message_buffer_size, size_t *out_message_length);
+asciichat_error_t packet_parse_remote_log(const void *data, size_t len, log_level_t *out_level, remote_log_direction_t *out_direction, uint16_t *out_flags, char *message_buffer,
+                                          size_t message_buffer_size, size_t *out_message_length);
 
 /**
  * @brief Send protocol version negotiation packet
@@ -1597,9 +1586,8 @@ int send_crypto_parameters_packet(socket_t sockfd, const crypto_parameters_packe
  *
  * @ingroup network
  */
-asciichat_error_t av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t opus_size,
-                                           const uint16_t *frame_sizes, int sample_rate, int frame_duration,
-                                           int frame_count, crypto_context_t *crypto_ctx);
+asciichat_error_t av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t opus_size, const uint16_t *frame_sizes, int sample_rate, int frame_duration, int frame_count,
+                                           crypto_context_t *crypto_ctx);
 
 /**
  * @brief Send image frame packet
@@ -1618,8 +1606,7 @@ asciichat_error_t av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_
  *
  * @ingroup network
  */
-asciichat_error_t send_image_frame_packet(socket_t sockfd, const void *image_data, uint16_t width, uint16_t height,
-                                          uint8_t format);
+asciichat_error_t send_image_frame_packet(socket_t sockfd, const void *image_data, uint16_t width, uint16_t height, uint8_t format);
 
 /** @} */
 

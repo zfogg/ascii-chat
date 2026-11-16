@@ -17,7 +17,7 @@ G('native','Native lifecycle','Architecture','CLI','What happens after I run asc
  'Separate option validation, capture creation, connection setup, and the first displayed frame when startup stalls.',[
  C('dispatch','Choose a mode','One executable dispatches to one mode; it does not run every mode loop.',
  P('src/main.c',None,'Dispatch through the mode table','The binary registers server, client, mirror, discovery-service, and implicit discovery entry points. The selected entry point determines the rest of the lifecycle.'),
- P(L+'options/options.c','options_detect_mode','Resolve the invocation','Mode detection determines how positional arguments are interpreted. Configuration, environment values, and explicit flags are resolved before the mode consumes settings.'),
+ P(L+'options/core.c','options_detect_mode','Resolve the invocation','Mode detection determines how positional arguments are interpreted. Configuration, environment values, explicit flags, and validation are resolved before the mode consumes settings.'),
  P('src/mirror/main.c','mirror_main','Install a mode callback','Mirror delegates to the client-like lifecycle. Compare client_main and discovery_main: shared setup is retained while connection and run callbacks change.','src/client/main.c','src/discovery/main.c')),
  C('setup','Own the session','Shared contexts establish media and output ownership before the mode runs.',
  P(S+'client_like.c','session_client_like_run','Coordinate setup','The lifecycle coordinates capture, display, splash, audio, and session attempts. Mode-specific preparation and run callbacks supply the differences.'),

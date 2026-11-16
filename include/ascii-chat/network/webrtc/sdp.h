@@ -167,8 +167,7 @@ typedef struct {
  *
  * @note Caller must free offer_out using sdp_session_destroy()
  */
-asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, size_t capability_count,
-                                     const opus_config_t *audio_config, const terminal_format_params_t *format,
+asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, size_t capability_count, const opus_config_t *audio_config, const terminal_format_params_t *format,
                                      uint32_t video_codec_caps, uint32_t audio_codec_caps, sdp_session_t *offer_out);
 
 /**
@@ -190,10 +189,8 @@ asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, 
  *
  * @note Caller must free answer_out using sdp_session_destroy()
  */
-asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal_capability_t *server_capabilities,
-                                      size_t server_capability_count, const opus_config_t *audio_config,
-                                      const terminal_format_params_t *server_format, uint32_t server_video_codec_caps,
-                                      uint32_t server_audio_codec_caps, sdp_session_t *answer_out);
+asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal_capability_t *server_capabilities, size_t server_capability_count, const opus_config_t *audio_config,
+                                      const terminal_format_params_t *server_format, uint32_t server_video_codec_caps, uint32_t server_audio_codec_caps, sdp_session_t *answer_out);
 
 /* ============================================================================
  * SDP Parsing (Offer/Answer)
@@ -220,8 +217,7 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session);
  * @param selected_format Format parameters (output)
  * @return ASCIICHAT_OK if valid selection found, error otherwise
  */
-asciichat_error_t sdp_get_selected_video_codec(const sdp_session_t *answer, acip_codec_t *selected_codec,
-                                               terminal_format_params_t *selected_format);
+asciichat_error_t sdp_get_selected_video_codec(const sdp_session_t *answer, acip_codec_t *selected_codec, terminal_format_params_t *selected_format);
 
 /* ============================================================================
  * Capability Detection
@@ -242,8 +238,7 @@ asciichat_error_t sdp_get_selected_video_codec(const sdp_session_t *answer, acip
  * @param detected_count Actual number detected (output)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t sdp_detect_terminal_capabilities(terminal_capability_t *capabilities, size_t capability_count,
-                                                   size_t *detected_count);
+asciichat_error_t sdp_detect_terminal_capabilities(terminal_capability_t *capabilities, size_t capability_count, size_t *detected_count);
 
 /* ============================================================================
  * Utility Functions

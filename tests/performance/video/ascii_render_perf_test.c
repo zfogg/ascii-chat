@@ -32,8 +32,7 @@ static void fill_gradient_image(image_t *image, const int width, const int heigh
   }
 }
 
-static void run_ascii_conversion_batch(image_t *image, const ssize_t width, const ssize_t height,
-                                       const bool color_mode) {
+static void run_ascii_conversion_batch(image_t *image, const ssize_t width, const ssize_t height, const bool color_mode) {
   const char *palette = "@%#*+=-:. ";
   char luminance_palette[257];
   build_luminance_palette(luminance_palette, palette);

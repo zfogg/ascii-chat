@@ -44,13 +44,11 @@ namespace ascii_query {
 std::string HttpRequest::header(const std::string &name, const std::string &default_value) const {
   // Case-insensitive header lookup
   std::string lower_name = name;
-  std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(),
-                 [](unsigned char c) { return std::tolower(c); });
+  std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), [](unsigned char c) { return std::tolower(c); });
 
   for (const auto &[key, value] : headers) {
     std::string lower_key = key;
-    std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
+    std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(), [](unsigned char c) { return std::tolower(c); });
     if (lower_key == lower_name) {
       return value;
     }
@@ -75,8 +73,7 @@ std::string HttpResponse::serialize() const {
   for (const auto &[key, value] : headers) {
     oss << key << ": " << value << "\r\n";
     std::string lower_key = key;
-    std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
+    std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(), [](unsigned char c) { return std::tolower(c); });
     if (lower_key == "content-length")
       has_content_length = true;
     if (lower_key == "connection")

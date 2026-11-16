@@ -40,6 +40,5 @@ asciichat_error_t consensus_election_choose_hosts(const participant_metrics_t *m
  * Independent verification that leader's decision is correct.
  * Used by all clients to validate election before accepting.
  */
-asciichat_error_t consensus_election_verify(const participant_metrics_t *metrics, int num_metrics,
-                                            const uint8_t announced_host_id[SESSION_ID_SIZE],
-                                            const uint8_t announced_backup_id[SESSION_ID_SIZE], bool *out_valid);
+asciichat_error_t consensus_election_verify(const participant_metrics_t *metrics, int num_metrics, const uint8_t announced_host_id[SESSION_ID_SIZE], const uint8_t announced_backup_id[SESSION_ID_SIZE],
+                                            bool *out_valid);

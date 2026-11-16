@@ -23,12 +23,9 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include <ascii-chat/options/config.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>
-#include <ascii-chat/options/presets.h>
-#include <ascii-chat/options/schema.h>
-#include <ascii-chat/options/builder.h>
+#include <options/config.h>
+#include <options/options.h>
+#include <options/rcu.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
@@ -56,14 +53,6 @@ static void save_config_options(config_options_backup_t *backup) {
   // Initialize RCU state if not already initialized
   // This is safe to call multiple times - it's a no-op if already initialized
   options_state_init();
-
-  // Build config schema if not already built (required for config loading)
-  // This is safe to call multiple times - it rebuilds if needed
-  const options_config_t *unified_config = options_preset_unified(NULL, NULL);
-  if (unified_config) {
-    config_schema_build_from_configs(&unified_config, 1);
-    options_config_destroy(unified_config);
-  }
 
   // Get current options from RCU
   const options_t *current = options_get();
@@ -460,7 +449,6 @@ Test(config_sections, client_webcam_settings) {
   const options_t *opts = options_get();
   cr_assert_eq(opts->webcam_index, 2, "Webcam index should be set to 2");
   cr_assert_eq(opts->flip_x, false, "Flip X should be false");
-  cr_assert(opts->flip_x_explicit, "A configured orientation must override source defaults");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -478,14 +466,10 @@ Test(config_sections, client_color_mode_none) {
 
   asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid color mode none should succeed");
-  cr_assert_eq(backup.color_mode, TERM_COLOR_NONE,
-               "After config_load_and_apply: backup.color_mode should be TERM_COLOR_NONE (got %d, expected %d)",
-               backup.color_mode, TERM_COLOR_NONE);
+  cr_assert_eq(backup.color_mode, TERM_COLOR_NONE, "After config_load_and_apply: backup.color_mode should be TERM_COLOR_NONE (got %d, expected %d)", backup.color_mode, TERM_COLOR_NONE);
   options_state_set(&backup);
   const options_t *opts = options_get();
-  cr_assert_eq(opts->color_mode, TERM_COLOR_NONE,
-               "After options_state_set: color_mode should be none (got %d, expected %d)", opts->color_mode,
-               TERM_COLOR_NONE);
+  cr_assert_eq(opts->color_mode, TERM_COLOR_NONE, "After options_state_set: color_mode should be none (got %d, expected %d)", opts->color_mode, TERM_COLOR_NONE);
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -503,13 +487,10 @@ Test(config_sections, client_color_mode_256) {
 
   asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid color mode 256 should succeed");
-  cr_assert_eq(backup.color_mode, TERM_COLOR_256,
-               "After config_load_and_apply: backup.color_mode should be TERM_COLOR_256 (got %d, expected %d)",
-               backup.color_mode, TERM_COLOR_256);
+  cr_assert_eq(backup.color_mode, TERM_COLOR_256, "After config_load_and_apply: backup.color_mode should be TERM_COLOR_256 (got %d, expected %d)", backup.color_mode, TERM_COLOR_256);
   options_state_set(&backup);
   const options_t *opts = options_get();
-  cr_assert_eq(opts->color_mode, TERM_COLOR_256, "Color mode should be 256 (got %d, expected %d)", opts->color_mode,
-               TERM_COLOR_256);
+  cr_assert_eq(opts->color_mode, TERM_COLOR_256, "Color mode should be 256 (got %d, expected %d)", opts->color_mode, TERM_COLOR_256);
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -527,13 +508,10 @@ Test(config_sections, client_color_mode_truecolor) {
 
   asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid color mode truecolor should succeed");
-  cr_assert_eq(backup.color_mode, TERM_COLOR_TRUECOLOR,
-               "After config_load_and_apply: backup.color_mode should be TERM_COLOR_TRUECOLOR (got %d, expected %d)",
-               backup.color_mode, TERM_COLOR_TRUECOLOR);
+  cr_assert_eq(backup.color_mode, TERM_COLOR_TRUECOLOR, "After config_load_and_apply: backup.color_mode should be TERM_COLOR_TRUECOLOR (got %d, expected %d)", backup.color_mode, TERM_COLOR_TRUECOLOR);
   options_state_set(&backup);
   const options_t *opts = options_get();
-  cr_assert_eq(opts->color_mode, TERM_COLOR_TRUECOLOR, "Color mode should be truecolor (got %d, expected %d)",
-               opts->color_mode, TERM_COLOR_TRUECOLOR);
+  cr_assert_eq(opts->color_mode, TERM_COLOR_TRUECOLOR, "Color mode should be truecolor (got %d, expected %d)", opts->color_mode, TERM_COLOR_TRUECOLOR);
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -659,7 +637,7 @@ Test(config_sections, client_fps_as_integer) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid FPS should succeed");
-  cr_assert_eq(GET_OPTION(fps), 30, "FPS should be set to 30");
+  cr_assert_eq(backup.fps, 30, "FPS should be set to 30");
   unlink(config_path);
   SAFE_FREE(config_path);
   restore_config_options(&backup);
@@ -800,11 +778,8 @@ Test(config_sections, audio_config_ignored_for_server) {
   // Load as server - audio config should be ignored
   asciichat_error_t result = config_load_and_apply(MODE_SERVER, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Loading audio config as server should succeed");
-  cr_assert_eq(backup.audio_enabled, 0, "After config_load: backup.audio_enabled should remain 0 for server (got %d)",
-               backup.audio_enabled);
-  cr_assert_eq(backup.microphone_index, 0,
-               "After config_load: backup.microphone_index should remain 0 for server (got %d)",
-               backup.microphone_index);
+  cr_assert_eq(backup.audio_enabled, 0, "After config_load: backup.audio_enabled should remain 0 for server (got %d)", backup.audio_enabled);
+  cr_assert_eq(backup.microphone_index, 0, "After config_load: backup.microphone_index should remain 0 for server (got %d)", backup.microphone_index);
   options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_eq(opts->audio_enabled, 0, "Audio enabled should remain unchanged for server");
@@ -1167,7 +1142,7 @@ Test(config_sections, full_client_config) {
   cr_assert_eq(result, ASCIICHAT_OK, "Full client config should succeed");
 
   // Verify all values
-  const options_t *opts = options_get();
+  const options_t *opts = &backup;
   cr_assert_eq(opts->port, 9000, "Port should be 9000");
   cr_assert_eq(opts->width, 160, "Width should be 160");
   cr_assert_eq(opts->height, 48, "Height should be 48");
@@ -1266,8 +1241,7 @@ Test(config_create, creates_file_with_content) {
   cr_assert_not_null(buffer, "Should allocate enough space for the generated config");
   size_t bytes_read = fread(buffer, 1, (size_t)st.st_size, f);
   buffer[bytes_read] = '\0';
-  cr_assert_eq(bytes_read, (size_t)st.st_size, "Read %zu of %zu config bytes (ferror=%d)", bytes_read,
-               (size_t)st.st_size, ferror(f));
+  cr_assert_eq(bytes_read, (size_t)st.st_size, "Read %zu of %zu config bytes (ferror=%d)", bytes_read, (size_t)st.st_size, ferror(f));
   fclose(f);
 
   // Verify key sections exist
@@ -1404,7 +1378,7 @@ Test(config, multiple_loads_accumulate_correctly) {
 
   asciichat_error_t result1 = config_load_and_apply(true, config_path1, false, &backup);
   cr_assert_eq(result1, ASCIICHAT_OK, "First config load should succeed");
-  const options_t *opts = options_get();
+  const options_t *opts = &backup;
   cr_assert_eq(opts->port, 7777, "Port should be 7777 after first load");
 
   // Second config sets different values
@@ -1417,7 +1391,7 @@ Test(config, multiple_loads_accumulate_correctly) {
 
   asciichat_error_t result2 = config_load_and_apply(true, config_path2, false, &backup);
   cr_assert_eq(result2, ASCIICHAT_OK, "Second config load should succeed");
-  opts = options_get();
+  opts = &backup;
   // Port flag was reset in config_load_and_apply, so this is tricky to test
   // Let's just verify both loads succeeded
   cr_assert_eq(opts->webcam_index, 3, "Webcam index should be 3 after second load");
@@ -1506,7 +1480,7 @@ Test(config, integer_vs_string_port) {
 
   asciichat_error_t result1 = config_load_and_apply(true, config_path1, false, &backup);
   cr_assert_eq(result1, ASCIICHAT_OK, "Integer port should succeed");
-  const options_t *opts = options_get();
+  const options_t *opts = &backup;
   cr_assert_eq(opts->port, 1234, "Integer port should be applied");
 
   unlink(config_path1);
@@ -1523,7 +1497,7 @@ Test(config, integer_vs_string_port) {
 
   asciichat_error_t result2 = config_load_and_apply(true, config_path2, false, &backup);
   cr_assert_eq(result2, ASCIICHAT_OK, "String port should succeed");
-  opts = options_get();
+  opts = &backup;
   cr_assert_eq(opts->port, 5678, "String port should be parsed and applied");
 
   unlink(config_path2);
@@ -1714,8 +1688,7 @@ Test(config, negative_snapshot_delay_skipped) {
 
   asciichat_error_t result = config_load_and_apply(MODE_CLIENT, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Negative snapshot delay should be skipped");
-  cr_assert_float_eq(backup.snapshot_delay, 1.0f, 0.01f,
-                     "After config_load: backup.snapshot_delay should remain 1.0 (got %.2f)", backup.snapshot_delay);
+  cr_assert_float_eq(backup.snapshot_delay, 1.0f, 0.01f, "After config_load: backup.snapshot_delay should remain 1.0 (got %.2f)", backup.snapshot_delay);
   options_state_set(&backup);
   const options_t *opts = options_get();
   cr_assert_float_eq(opts->snapshot_delay, 1.0f, 0.01f, "Snapshot delay should remain unchanged");

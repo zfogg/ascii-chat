@@ -67,9 +67,7 @@ void h265_decoder_destroy(h265_decoder_t *decoder);
  *   h265_decode(decoder, packet, packet_size, &width, &height,
  *               ascii_grid, &decoded_size);
  */
-asciichat_error_t h265_decode(h265_decoder_t *decoder, const uint8_t *encoded_packet, size_t packet_size,
-                              uint16_t *output_width, uint16_t *output_height, uint8_t *output_buf,
-                              size_t *output_size);
+asciichat_error_t h265_decode(h265_decoder_t *decoder, const uint8_t *encoded_packet, size_t packet_size, uint16_t *output_width, uint16_t *output_height, uint8_t *output_buf, size_t *output_size);
 
 /**
  * Get decoder statistics
@@ -80,5 +78,4 @@ asciichat_error_t h265_decode(h265_decoder_t *decoder, const uint8_t *encoded_pa
  * @param last_width Output: width of last decoded frame
  * @param last_height Output: height of last decoded frame
  */
-void h265_decoder_get_stats(h265_decoder_t *decoder, uint64_t *total_frames, uint64_t *keyframes, uint16_t *last_width,
-                            uint16_t *last_height);
+void h265_decoder_get_stats(h265_decoder_t *decoder, uint64_t *total_frames, uint64_t *keyframes, uint16_t *last_width, uint16_t *last_height);

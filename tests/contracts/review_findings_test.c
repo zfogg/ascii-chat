@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/options/rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/network/consensus/handoff.h>
 #include <ascii-chat/video/face_follow.h>
 #include <ascii-chat/audio/mixer.h>
@@ -46,9 +46,7 @@ static void test_handoff_unmeasured_host(void) {
   memcpy(message.participant, peer, 16);
   cr_assert_eq(consensus_handoff_receive(&state, &message, CONSENSUS_HANDOFF_HEADER, 100), ASCIICHAT_OK);
   message.kind = HANDOFF_SAMPLE_DATA;
-  cr_assert_eq(
-      consensus_handoff_receive(&state, &message, CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES, 110),
-      ASCIICHAT_OK);
+  cr_assert_eq(consensus_handoff_receive(&state, &message, CONSENSUS_HANDOFF_HEADER + CONSENSUS_HANDOFF_PROBE_BYTES, 110), ASCIICHAT_OK);
   cr_assert(consensus_handoff_tick(&state, 111, &message));
   message.kind = HANDOFF_READY;
   cr_assert_eq(consensus_handoff_receive(&state, &message, CONSENSUS_HANDOFF_HEADER, 112), ASCIICHAT_OK);

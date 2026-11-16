@@ -10,7 +10,7 @@
 #include <libplatform/filesystem.h>
 #include <ascii-chat/audio/client_pipeline.h>
 #include "../../../src/common/session/audio.h"
-#include <ascii-chat/options/rcu.h>
+#include <options/rcu.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/util/fnv1a.h>
 #include <math.h>

@@ -3,7 +3,7 @@
 #define SESSION_ESTABLISH_TARGET_BUFFER_SIZE 320
 
 #include "session/connection.h"
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/tui/input.h>
 #include <ascii-chat/util/password.h>
 #include <ascii-chat/log/log.h>

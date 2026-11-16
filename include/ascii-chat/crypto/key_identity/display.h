@@ -8,8 +8,7 @@
 /** Format public identity with full fingerprint and optional Keymask v2.
  * cols is the available content width; insufficient width suppresses the art.
  */
-asciichat_error_t key_identity_format(const public_key_t *key, bool art, bool unicode, int cols, char *out,
-                                      size_t size);
+asciichat_error_t key_identity_format(const public_key_t *key, bool art, bool unicode, int cols, char *out, size_t size);
 
 /** Format using the current terminal capabilities and snapshot policy. */
 asciichat_error_t key_identity_format_terminal(const public_key_t *key, char *out, size_t size);

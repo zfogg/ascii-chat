@@ -228,8 +228,7 @@ typedef enum {
 #define SSH_KEY_TYPE_STRING_SIZE 11      // "ssh-ed25519" string length
 #define SSH_KEY_PUBLIC_KEY_LENGTH_SIZE 4 // Length of public key (4 bytes)
 #define SSH_KEY_PUBLIC_KEY_SIZE 32       // Ed25519 public key size
-#define SSH_KEY_HEADER_SIZE                                                                                            \
-  (SSH_KEY_TYPE_LENGTH_SIZE + SSH_KEY_TYPE_STRING_SIZE + SSH_KEY_PUBLIC_KEY_LENGTH_SIZE + SSH_KEY_PUBLIC_KEY_SIZE)
+#define SSH_KEY_HEADER_SIZE (SSH_KEY_TYPE_LENGTH_SIZE + SSH_KEY_TYPE_STRING_SIZE + SSH_KEY_PUBLIC_KEY_LENGTH_SIZE + SSH_KEY_PUBLIC_KEY_SIZE)
 
 // =============================================================================
 // Cryptographic Key Size Constants
@@ -503,8 +502,7 @@ bool crypto_verify_password(const crypto_context_t *ctx, const char *password);
  *
  * @ingroup crypto
  */
-crypto_result_t crypto_derive_password_encryption_key(const char *password,
-                                                      uint8_t encryption_key[CRYPTO_ENCRYPTION_KEY_SIZE]);
+crypto_result_t crypto_derive_password_encryption_key(const char *password, uint8_t encryption_key[CRYPTO_ENCRYPTION_KEY_SIZE]);
 
 /**
  * @name Encryption/Decryption Operations
@@ -548,8 +546,7 @@ crypto_result_t crypto_derive_password_encryption_key(const char *password,
  *
  * @ingroup crypto
  */
-crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, size_t plaintext_len,
-                               uint8_t *ciphertext_out, size_t ciphertext_out_size, size_t *ciphertext_len_out);
+crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext_out, size_t ciphertext_out_size, size_t *ciphertext_len_out);
 
 /**
  * @brief Decrypt data using XSalsa20-Poly1305
@@ -579,8 +576,7 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
  *
  * @ingroup crypto
  */
-crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext, size_t ciphertext_len,
-                               uint8_t *plaintext_out, size_t plaintext_out_size, size_t *plaintext_len_out);
+crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext_out, size_t plaintext_out_size, size_t *plaintext_len_out);
 
 /** @} */
 
@@ -696,8 +692,7 @@ crypto_result_t crypto_generate_nonce(uint8_t nonce[AUTH_CHALLENGE_SIZE]);
  *
  * @ingroup crypto
  */
-crypto_result_t crypto_compute_hmac(crypto_context_t *ctx, const uint8_t key[HMAC_SHA256_KEY_SIZE],
-                                    const uint8_t data[AUTH_CHALLENGE_SIZE], uint8_t hmac[HMAC_SHA256_SIZE]);
+crypto_result_t crypto_compute_hmac(crypto_context_t *ctx, const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t data[AUTH_CHALLENGE_SIZE], uint8_t hmac[HMAC_SHA256_SIZE]);
 
 /**
  * @brief Compute HMAC-SHA256 for variable-length data
@@ -715,8 +710,7 @@ crypto_result_t crypto_compute_hmac(crypto_context_t *ctx, const uint8_t key[HMA
  *
  * @ingroup crypto
  */
-crypto_result_t crypto_compute_hmac_ex(const crypto_context_t *ctx, const uint8_t key[HMAC_SHA256_KEY_SIZE],
-                                       const uint8_t *data, size_t data_len, uint8_t hmac[HMAC_SHA256_SIZE]);
+crypto_result_t crypto_compute_hmac_ex(const crypto_context_t *ctx, const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t *data, size_t data_len, uint8_t hmac[HMAC_SHA256_SIZE]);
 
 /**
  * @brief Verify HMAC-SHA256 for fixed 32-byte data
@@ -732,8 +726,7 @@ crypto_result_t crypto_compute_hmac_ex(const crypto_context_t *ctx, const uint8_
  *
  * @ingroup crypto
  */
-bool crypto_verify_hmac(const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t data[AUTH_CHALLENGE_SIZE],
-                        const uint8_t expected_hmac[HMAC_SHA256_SIZE]);
+bool crypto_verify_hmac(const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t data[AUTH_CHALLENGE_SIZE], const uint8_t expected_hmac[HMAC_SHA256_SIZE]);
 
 /**
  * @brief Verify HMAC-SHA256 for variable-length data
@@ -750,8 +743,7 @@ bool crypto_verify_hmac(const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t d
  *
  * @ingroup crypto
  */
-bool crypto_verify_hmac_ex(const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t *data, size_t data_len,
-                           const uint8_t expected_hmac[HMAC_SHA256_SIZE]);
+bool crypto_verify_hmac_ex(const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_t *data, size_t data_len, const uint8_t expected_hmac[HMAC_SHA256_SIZE]);
 
 /** @} */
 
@@ -790,8 +782,7 @@ bool crypto_verify_hmac_ex(const uint8_t key[HMAC_SHA256_KEY_SIZE], const uint8_
  *
  * @ingroup crypto
  */
-crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const uint8_t nonce[AUTH_CHALLENGE_SIZE],
-                                             uint8_t hmac_out[HMAC_SHA256_SIZE]);
+crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const uint8_t nonce[AUTH_CHALLENGE_SIZE], uint8_t hmac_out[HMAC_SHA256_SIZE]);
 
 /**
  * @brief Verify authentication response HMAC bound to DH shared_secret
@@ -812,8 +803,7 @@ crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const 
  *
  * @ingroup crypto
  */
-bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonce[AUTH_CHALLENGE_SIZE],
-                                 const uint8_t expected_hmac[HMAC_SHA256_SIZE]);
+bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonce[AUTH_CHALLENGE_SIZE], const uint8_t expected_hmac[HMAC_SHA256_SIZE]);
 
 /**
  * @brief Create authentication challenge packet
@@ -834,8 +824,7 @@ bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonc
  *
  * @ingroup crypto
  */
-crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size,
-                                             size_t *packet_len_out);
+crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size, size_t *packet_len_out);
 
 /**
  * @brief Process authentication challenge packet
@@ -905,8 +894,7 @@ crypto_result_t crypto_process_auth_response(crypto_context_t *ctx, const uint8_
  *
  * @ingroup crypto
  */
-crypto_result_t crypto_create_public_key_packet(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size,
-                                                size_t *packet_len_out);
+crypto_result_t crypto_create_public_key_packet(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size, size_t *packet_len_out);
 
 /**
  * @brief Process received public key packet from peer
@@ -952,8 +940,7 @@ crypto_result_t crypto_process_public_key_packet(crypto_context_t *ctx, const ui
  *
  * @ingroup crypto
  */
-crypto_result_t crypto_create_encrypted_packet(crypto_context_t *ctx, const uint8_t *data, size_t data_len,
-                                               uint8_t *packet_out, size_t packet_size, size_t *packet_len_out);
+crypto_result_t crypto_create_encrypted_packet(crypto_context_t *ctx, const uint8_t *data, size_t data_len, uint8_t *packet_out, size_t packet_size, size_t *packet_len_out);
 
 /**
  * @brief Process received encrypted packet from peer
@@ -978,8 +965,7 @@ crypto_result_t crypto_create_encrypted_packet(crypto_context_t *ctx, const uint
  *
  * @ingroup crypto
  */
-crypto_result_t crypto_process_encrypted_packet(crypto_context_t *ctx, const uint8_t *packet, size_t packet_len,
-                                                uint8_t *data_out, size_t data_size, size_t *data_len_out);
+crypto_result_t crypto_process_encrypted_packet(crypto_context_t *ctx, const uint8_t *packet, size_t packet_len, uint8_t *data_out, size_t data_size, size_t *data_len_out);
 
 /** @} */
 
@@ -1009,8 +995,7 @@ crypto_result_t crypto_process_encrypted_packet(crypto_context_t *ctx, const uin
  *
  * @ingroup crypto
  */
-asciichat_error_t crypto_compute_password_hmac(crypto_context_t *ctx, const uint8_t *password_key, const uint8_t *nonce,
-                                               const uint8_t *shared_secret, uint8_t *hmac_out);
+asciichat_error_t crypto_compute_password_hmac(crypto_context_t *ctx, const uint8_t *password_key, const uint8_t *nonce, const uint8_t *shared_secret, uint8_t *hmac_out);
 
 /**
  * @brief Verify peer's signature on ephemeral key
@@ -1030,8 +1015,7 @@ asciichat_error_t crypto_compute_password_hmac(crypto_context_t *ctx, const uint
  *
  * @ingroup crypto
  */
-asciichat_error_t crypto_verify_peer_signature(const uint8_t *peer_public_key, const uint8_t *ephemeral_key,
-                                               size_t ephemeral_key_size, const uint8_t *signature);
+asciichat_error_t crypto_verify_peer_signature(const uint8_t *peer_public_key, const uint8_t *ephemeral_key, size_t ephemeral_key_size, const uint8_t *signature);
 
 /**
  * @brief Sign ephemeral key with private key
@@ -1051,8 +1035,7 @@ asciichat_error_t crypto_verify_peer_signature(const uint8_t *peer_public_key, c
  *
  * @ingroup crypto
  */
-asciichat_error_t crypto_sign_ephemeral_key(const private_key_t *private_key, const uint8_t *ephemeral_key,
-                                            size_t ephemeral_key_size, uint8_t *signature_out);
+asciichat_error_t crypto_sign_ephemeral_key(const private_key_t *private_key, const uint8_t *ephemeral_key, size_t ephemeral_key_size, uint8_t *signature_out);
 
 /**
  * @brief Combine HMAC and challenge nonce for transmission

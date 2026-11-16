@@ -21,8 +21,7 @@
  * @param secret_key Output buffer for 64-byte secret key
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t acds_identity_generate(uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
-                                         uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]);
+asciichat_error_t acds_identity_generate(uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]);
 
 /**
  * @brief Load identity from file
@@ -31,8 +30,7 @@ asciichat_error_t acds_identity_generate(uint8_t public_key[ED25519_PUBLIC_KEY_S
  * @param secret_key Output buffer for 64-byte secret key
  * @return ASCIICHAT_OK on success, ERROR_CONFIG if file doesn't exist
  */
-asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
-                                     uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]);
+asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]);
 
 /**
  * @brief Save identity to file
@@ -41,8 +39,7 @@ asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[ED2551
  * @param secret_key 64-byte secret key
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t acds_identity_save(const char *path, const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE],
-                                     const uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]);
+asciichat_error_t acds_identity_save(const char *path, const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE], const uint8_t secret_key[ED25519_PRIVATE_KEY_SIZE]);
 
 /**
  * @brief Compute SHA256 fingerprint of public key

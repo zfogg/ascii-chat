@@ -65,8 +65,7 @@ Test(negotiate, elected_endpoint_uses_public_address_mapping_and_connection_type
       cr_assert_eq(context.we_are_host, host_is_local != 0);
       cr_assert_str_eq(context.host_address, "203.0.113.7");
       cr_assert_eq(context.host_port, kind == 1 ? 34567 : ACIP_HOST_DEFAULT_PORT);
-      const uint8_t expected[] = {ACIP_CONNECTION_TYPE_DIRECT_PUBLIC, ACIP_CONNECTION_TYPE_UPNP,
-                                  ACIP_CONNECTION_TYPE_STUN};
+      const uint8_t expected[] = {ACIP_CONNECTION_TYPE_DIRECT_PUBLIC, ACIP_CONNECTION_TYPE_UPNP, ACIP_CONNECTION_TYPE_STUN};
       cr_assert_eq(context.connection_type, expected[kind]);
     }
   }

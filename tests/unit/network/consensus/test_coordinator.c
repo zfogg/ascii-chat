@@ -59,9 +59,7 @@ static asciichat_error_t observed_metrics(void *context, const uint8_t id[16], p
   memcpy(out->participant_id, id, 16);
   return ASCIICHAT_OK;
 }
-static asciichat_error_t create_test_coordinator(const uint8_t id[16], const consensus_topology_t *topology,
-                                                 consensus_election_func_t election, void *context,
-                                                 consensus_coordinator_t **out) {
+static asciichat_error_t create_test_coordinator(const uint8_t id[16], const consensus_topology_t *topology, consensus_election_func_t election, void *context, consensus_coordinator_t **out) {
   asciichat_error_t result = consensus_coordinator_create(id, topology, election, context, out);
   if (result == ASCIICHAT_OK)
     consensus_coordinator_set_metrics_provider(*out, observed_metrics, NULL);
@@ -177,8 +175,7 @@ Test(coordinator, leader_initiates_collection) {
 
   /* Simulate 5+ minute wait */
   /* We can't actually wait 5 minutes in a test, so we'll test collection_start manually */
-  asciichat_error_t err =
-      consensus_coordinator_on_collection_start(coordinator, 1, time_get_realtime_ns() + 30000000000ULL);
+  asciichat_error_t err = consensus_coordinator_on_collection_start(coordinator, 1, time_get_realtime_ns() + 30000000000ULL);
   cr_assert_eq(err, ASCIICHAT_OK);
 
   /* State should transition to COLLECTING */
@@ -404,8 +401,7 @@ Test(coordinator, on_ring_members_resets_state_during_collection) {
   cr_assert_eq(create_test_coordinator(my_id, topo1, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
   /* Start collection */
-  asciichat_error_t err =
-      consensus_coordinator_on_collection_start(coordinator, 1, time_get_realtime_ns() + 30000000000ULL);
+  asciichat_error_t err = consensus_coordinator_on_collection_start(coordinator, 1, time_get_realtime_ns() + 30000000000ULL);
   cr_assert_eq(err, ASCIICHAT_OK);
 
   consensus_state_machine_t state = consensus_coordinator_get_state(coordinator);
@@ -512,8 +508,7 @@ Test(coordinator, metrics_count_increases_with_updates) {
   cr_assert_eq(create_test_coordinator(my_id, topo, mock_election_func, NULL, &coordinator), ASCIICHAT_OK);
 
   /* Start collection */
-  asciichat_error_t err =
-      consensus_coordinator_on_collection_start(coordinator, 1, time_get_realtime_ns() + 30000000000ULL);
+  asciichat_error_t err = consensus_coordinator_on_collection_start(coordinator, 1, time_get_realtime_ns() + 30000000000ULL);
   cr_assert_eq(err, ASCIICHAT_OK);
 
   int count_after_start = consensus_coordinator_get_metrics_count(coordinator);

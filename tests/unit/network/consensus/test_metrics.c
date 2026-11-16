@@ -38,8 +38,7 @@ Test(consensus_metrics, measure_basic) {
   cr_assert(metrics.nat_tier >= 0 && metrics.nat_tier <= 4, "NAT tier should be 0-4 range");
   cr_assert_eq(metrics.upload_kbps, 0, "Unknown upload must not become an observation");
   cr_assert_eq(metrics.measurement_window_ns, 0, "Missing observations have no measurement window");
-  cr_assert(metrics.stun_probe_success_pct >= 0 && metrics.stun_probe_success_pct <= 100,
-            "Success rate should be 0-100 range");
+  cr_assert(metrics.stun_probe_success_pct >= 0 && metrics.stun_probe_success_pct <= 100, "Success rate should be 0-100 range");
 }
 
 /**
@@ -217,8 +216,7 @@ Test(consensus_metrics, stun_probe_success) {
   consensus_metrics_measure(my_id, &metrics);
 
   // Verify success rate is valid
-  cr_assert(metrics.stun_probe_success_pct >= 0 && metrics.stun_probe_success_pct <= 100,
-            "Success rate should be 0-100 percent");
+  cr_assert(metrics.stun_probe_success_pct >= 0 && metrics.stun_probe_success_pct <= 100, "Success rate should be 0-100 percent");
 
   // In current implementation, should be exactly 90
   cr_assert_eq(metrics.stun_probe_success_pct, 0, "No probes means no observed successes");

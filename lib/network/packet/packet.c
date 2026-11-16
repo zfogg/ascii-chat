@@ -23,8 +23,8 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/source_root.h>
 #include <ascii-chat/audio/audio.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <options/options.h>
+#include <options/rcu.h> // For RCU-based options access
 #include <stdint.h>
 #include <errno.h>
 #include <stdbool.h>

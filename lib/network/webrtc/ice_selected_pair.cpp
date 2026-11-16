@@ -59,8 +59,7 @@ extern "C" {
  * This function uses libdatachannel's C++ API to retrieve the selected
  * candidate pair, which is not available in the C API.
  */
-asciichat_error_t ice_get_selected_pair_impl(webrtc_peer_connection_t *pc, ice_candidate_t *local_candidate,
-                                             ice_candidate_t *remote_candidate) {
+asciichat_error_t ice_get_selected_pair_impl(webrtc_peer_connection_t *pc, ice_candidate_t *local_candidate, ice_candidate_t *remote_candidate) {
   if (!pc) {
     return ERROR_INVALID_PARAM;
   }

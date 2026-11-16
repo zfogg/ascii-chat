@@ -36,49 +36,37 @@
  */
 typedef struct {
   /** @brief Called when client requests session creation */
-  void (*on_session_create)(const acip_session_create_t *req, acip_transport_t *transport, const char *client_ip,
-                            const uint8_t *extension, size_t extension_length, void *app_ctx);
+  void (*on_session_create)(const acip_session_create_t *req, acip_transport_t *transport, const char *client_ip, const uint8_t *extension, size_t extension_length, void *app_ctx);
 
   /** @brief Called when client looks up session info */
-  void (*on_session_lookup)(const acip_session_lookup_t *req, acip_transport_t *transport, const char *client_ip,
-                            void *app_ctx);
+  void (*on_session_lookup)(const acip_session_lookup_t *req, acip_transport_t *transport, const char *client_ip, void *app_ctx);
 
   /** @brief Called when client joins a session */
-  void (*on_session_join)(const acip_session_join_t *req, acip_transport_t *transport, const char *client_ip,
-                          void *app_ctx);
+  void (*on_session_join)(const acip_session_join_t *req, acip_transport_t *transport, const char *client_ip, void *app_ctx);
 
   /** @brief Called when client leaves a session */
-  void (*on_session_leave)(const acip_session_leave_t *req, acip_transport_t *transport, const char *client_ip,
-                           void *app_ctx);
+  void (*on_session_leave)(const acip_session_leave_t *req, acip_transport_t *transport, const char *client_ip, void *app_ctx);
 
   /** @brief Called when client sends WebRTC SDP offer/answer */
-  void (*on_webrtc_sdp)(const acip_webrtc_sdp_t *sdp, size_t payload_len, acip_transport_t *transport,
-                        const char *client_ip, void *app_ctx);
+  void (*on_webrtc_sdp)(const acip_webrtc_sdp_t *sdp, size_t payload_len, acip_transport_t *transport, const char *client_ip, void *app_ctx);
 
   /** @brief Called when client sends WebRTC ICE candidate */
-  void (*on_webrtc_ice)(const acip_webrtc_ice_t *ice, size_t payload_len, acip_transport_t *transport,
-                        const char *client_ip, void *app_ctx);
+  void (*on_webrtc_ice)(const acip_webrtc_ice_t *ice, size_t payload_len, acip_transport_t *transport, const char *client_ip, void *app_ctx);
 
   /** @brief Called when client sends discovery ping */
-  void (*on_discovery_ping)(const void *payload, size_t payload_len, acip_transport_t *transport, const char *client_ip,
-                            void *app_ctx);
+  void (*on_discovery_ping)(const void *payload, size_t payload_len, acip_transport_t *transport, const char *client_ip, void *app_ctx);
 
   /** @brief Called when client announces they are hosting (discovery mode) */
-  void (*on_host_announcement)(const acip_host_announcement_t *announcement, acip_transport_t *transport,
-                               const char *client_ip, void *app_ctx);
+  void (*on_host_announcement)(const acip_host_announcement_t *announcement, acip_transport_t *transport, const char *client_ip, void *app_ctx);
 
   /** Optional host announcement including validated ACQT transport metadata. */
-  void (*on_host_announcement_ex)(const acip_host_announcement_t *announcement, const void *metadata,
-                                  size_t metadata_length, acip_transport_t *transport, const char *client_ip,
-                                  void *app_ctx);
+  void (*on_host_announcement_ex)(const acip_host_announcement_t *announcement, const void *metadata, size_t metadata_length, acip_transport_t *transport, const char *client_ip, void *app_ctx);
 
   /** @brief Called when participant reports host has disconnected (discovery mode) */
-  void (*on_host_lost)(const acip_host_lost_t *host_lost, acip_transport_t *transport, const char *client_ip,
-                       void *app_ctx);
+  void (*on_host_lost)(const acip_host_lost_t *host_lost, acip_transport_t *transport, const char *client_ip, void *app_ctx);
 
   /** @brief Called when client sends NAT network quality for negotiation (discovery mode) */
-  void (*on_network_quality)(const void *payload, size_t payload_len, acip_transport_t *transport,
-                             const char *client_ip, void *app_ctx);
+  void (*on_network_quality)(const void *payload, size_t payload_len, acip_transport_t *transport, const char *client_ip, void *app_ctx);
 
   asciichat_error_t (*on_handoff)(const void *, size_t, acip_transport_t *, void *);
 
@@ -101,6 +89,4 @@ typedef struct {
  * @param callbacks Application callbacks
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acip_handle_acds_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
-                                          size_t payload_len, const char *client_ip,
-                                          const acip_acds_callbacks_t *callbacks);
+asciichat_error_t acip_handle_acds_packet(acip_transport_t *transport, packet_type_t type, const void *payload, size_t payload_len, const char *client_ip, const acip_acds_callbacks_t *callbacks);

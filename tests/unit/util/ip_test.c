@@ -41,10 +41,8 @@ Test(ip_utils, mapped_addresses_round_trip_and_ipv6_formatting_rejects_invalid_i
 }
 
 Test(ip_utils, discovery_rejects_special_use_addresses_as_public_endpoints) {
-  const char *non_public_v4[] = {
-      "10.0.0.1",   "172.31.255.255", "192.168.1.1",  "127.0.0.2",       "169.254.1.2", "255.255.255.255",
-      "224.0.0.1",  "0.1.2.3",        "100.64.0.1",   "100.127.255.255", "192.0.0.1",   "192.0.2.1",
-      "198.18.0.1", "198.19.255.255", "198.51.100.1", "203.0.113.1",     "240.0.0.1",   "invalid"};
+  const char *non_public_v4[] = {"10.0.0.1",        "172.31.255.255", "192.168.1.1", "127.0.0.2",  "169.254.1.2",    "255.255.255.255", "224.0.0.1",   "0.1.2.3",   "100.64.0.1",
+                                 "100.127.255.255", "192.0.0.1",      "192.0.2.1",   "198.18.0.1", "198.19.255.255", "198.51.100.1",    "203.0.113.1", "240.0.0.1", "invalid"};
   for (size_t i = 0; i < sizeof(non_public_v4) / sizeof(non_public_v4[0]); ++i) {
     cr_assert_not(is_internet_ipv4(non_public_v4[i]), "%s", non_public_v4[i]);
   }
@@ -52,9 +50,7 @@ Test(ip_utils, discovery_rejects_special_use_addresses_as_public_endpoints) {
   for (size_t i = 0; i < sizeof(public_v4) / sizeof(public_v4[0]); ++i) {
     cr_assert(is_internet_ipv4(public_v4[i]), "%s", public_v4[i]);
   }
-  const char *non_public_v6[] = {
-      "::1",       "[::1]",       "fe80::1",           "fc00::1", "fdff::1", "ff02::1", "::", "::ffff:8.8.8.8",
-      "::8.8.8.8", "2001:db8::1", "2002:0808:0808::1", "[bad",    "invalid", NULL};
+  const char *non_public_v6[] = {"::1", "[::1]", "fe80::1", "fc00::1", "fdff::1", "ff02::1", "::", "::ffff:8.8.8.8", "::8.8.8.8", "2001:db8::1", "2002:0808:0808::1", "[bad", "invalid", NULL};
   for (size_t i = 0; i < sizeof(non_public_v6) / sizeof(non_public_v6[0]); ++i) {
     cr_assert_not(is_internet_ipv6(non_public_v6[i]));
   }
@@ -133,8 +129,7 @@ ParameterizedTestParameters(ip_utils, ipv4_validation) {
 
 ParameterizedTest(ipv4_test_case_t *tc, ip_utils, ipv4_validation) {
   int result = is_valid_ipv4(tc->ip);
-  cr_assert_eq(result, tc->expected_result, "is_valid_ipv4(\"%s\") = %d, expected %d (%s)", tc->ip, result,
-               tc->expected_result, tc->description);
+  cr_assert_eq(result, tc->expected_result, "is_valid_ipv4(\"%s\") = %d, expected %d (%s)", tc->ip, result, tc->expected_result, tc->description);
 }
 
 // =============================================================================
@@ -185,8 +180,7 @@ ParameterizedTestParameters(ip_utils, ipv6_validation) {
 
 ParameterizedTest(ipv6_test_case_t *tc, ip_utils, ipv6_validation) {
   int result = is_valid_ipv6(tc->ip);
-  cr_assert_eq(result, tc->expected_result, "is_valid_ipv6(\"%s\") = %d, expected %d (%s)", tc->ip, result,
-               tc->expected_result, tc->description);
+  cr_assert_eq(result, tc->expected_result, "is_valid_ipv6(\"%s\") = %d, expected %d (%s)", tc->ip, result, tc->expected_result, tc->description);
 }
 
 // =============================================================================
@@ -219,8 +213,7 @@ static ipv6_parse_test_case_t ipv6_parse_cases[] = {
 };
 
 ParameterizedTestParameters(ip_utils, ipv6_parsing) {
-  return cr_make_param_array(ipv6_parse_test_case_t, ipv6_parse_cases,
-                             sizeof(ipv6_parse_cases) / sizeof(ipv6_parse_cases[0]));
+  return cr_make_param_array(ipv6_parse_test_case_t, ipv6_parse_cases, sizeof(ipv6_parse_cases) / sizeof(ipv6_parse_cases[0]));
 }
 
 ParameterizedTest(ipv6_parse_test_case_t *tc, ip_utils, ipv6_parsing) {
@@ -229,12 +222,10 @@ ParameterizedTest(ipv6_parse_test_case_t *tc, ip_utils, ipv6_parsing) {
 
   int result = parse_ipv6_address(tc->input, output, sizeof(output));
 
-  cr_assert_eq(result, tc->expected_result, "parse_ipv6_address(\"%s\") returned %d, expected %d (%s)", tc->input,
-               result, tc->expected_result, tc->description);
+  cr_assert_eq(result, tc->expected_result, "parse_ipv6_address(\"%s\") returned %d, expected %d (%s)", tc->input, result, tc->expected_result, tc->description);
 
   if (tc->expected_result == 0) {
-    cr_assert_str_eq(output, tc->expected_output, "parse_ipv6_address(\"%s\") output mismatch (%s)", tc->input,
-                     tc->description);
+    cr_assert_str_eq(output, tc->expected_output, "parse_ipv6_address(\"%s\") output mismatch (%s)", tc->input, tc->description);
   }
 }
 
@@ -287,12 +278,10 @@ ParameterizedTest(format_ip_port_test_case_t *tc, ip_utils, format_ip_with_port)
 
   int result = format_ip_with_port(tc->ip, tc->port, output, sizeof(output));
 
-  cr_assert_eq(result, tc->expected_result, "format_ip_with_port(\"%s\", %u) returned %d, expected %d (%s)", tc->ip,
-               tc->port, result, tc->expected_result, tc->description);
+  cr_assert_eq(result, tc->expected_result, "format_ip_with_port(\"%s\", %u) returned %d, expected %d (%s)", tc->ip, tc->port, result, tc->expected_result, tc->description);
 
   if (tc->expected_result == 0) {
-    cr_assert_str_eq(output, tc->expected_output, "format_ip_with_port(\"%s\", %u) output mismatch (%s)", tc->ip,
-                     tc->port, tc->description);
+    cr_assert_str_eq(output, tc->expected_output, "format_ip_with_port(\"%s\", %u) output mismatch (%s)", tc->ip, tc->port, tc->description);
   }
 }
 
@@ -365,14 +354,11 @@ ParameterizedTest(parse_ip_port_test_case_t *tc, ip_utils, parse_ip_with_port) {
 
   int result = parse_ip_with_port(tc->input, ip_output, sizeof(ip_output), &port_output);
 
-  cr_assert_eq(result, tc->expected_result, "parse_ip_with_port(\"%s\") returned %d, expected %d (%s)", tc->input,
-               result, tc->expected_result, tc->description);
+  cr_assert_eq(result, tc->expected_result, "parse_ip_with_port(\"%s\") returned %d, expected %d (%s)", tc->input, result, tc->expected_result, tc->description);
 
   if (tc->expected_result == 0) {
-    cr_assert_str_eq(ip_output, tc->expected_ip, "parse_ip_with_port(\"%s\") IP mismatch (%s)", tc->input,
-                     tc->description);
-    cr_assert_eq(port_output, tc->expected_port, "parse_ip_with_port(\"%s\") port mismatch: got %u, expected %u (%s)",
-                 tc->input, port_output, tc->expected_port, tc->description);
+    cr_assert_str_eq(ip_output, tc->expected_ip, "parse_ip_with_port(\"%s\") IP mismatch (%s)", tc->input, tc->description);
+    cr_assert_eq(port_output, tc->expected_port, "parse_ip_with_port(\"%s\") port mismatch: got %u, expected %u (%s)", tc->input, port_output, tc->expected_port, tc->description);
   }
 }
 
@@ -406,18 +392,12 @@ typedef struct {
 } roundtrip_test_case_t;
 
 static roundtrip_test_case_t roundtrip_cases[] = {
-    {"127.0.0.1", 8080, "IPv4 localhost"},
-    {"192.168.1.1", 27224, "IPv4 private"},
-    {"::1", 8080, "IPv6 loopback"},
-    {"::", 27224, "IPv6 all zeros"},
-    {"2001:db8::1", 443, "IPv6 documentation"},
-    {"fe80::1", 8080, "IPv6 link-local"},
-    {"::ffff:192.0.2.1", 8080, "IPv6 IPv4-mapped"},
+    {"127.0.0.1", 8080, "IPv4 localhost"}, {"192.168.1.1", 27224, "IPv4 private"},         {"::1", 8080, "IPv6 loopback"}, {"::", 27224, "IPv6 all zeros"}, {"2001:db8::1", 443, "IPv6 documentation"},
+    {"fe80::1", 8080, "IPv6 link-local"},  {"::ffff:192.0.2.1", 8080, "IPv6 IPv4-mapped"},
 };
 
 ParameterizedTestParameters(ip_utils, format_parse_roundtrip) {
-  return cr_make_param_array(roundtrip_test_case_t, roundtrip_cases,
-                             sizeof(roundtrip_cases) / sizeof(roundtrip_cases[0]));
+  return cr_make_param_array(roundtrip_test_case_t, roundtrip_cases, sizeof(roundtrip_cases) / sizeof(roundtrip_cases[0]));
 }
 
 ParameterizedTest(roundtrip_test_case_t *tc, ip_utils, format_parse_roundtrip) {
@@ -427,8 +407,7 @@ ParameterizedTest(roundtrip_test_case_t *tc, ip_utils, format_parse_roundtrip) {
 
   // Format
   int format_result = format_ip_with_port(tc->ip, tc->port, formatted, sizeof(formatted));
-  cr_assert_eq(format_result, 0, "format_ip_with_port(\"%s\", %u) should succeed (%s)", tc->ip, tc->port,
-               tc->description);
+  cr_assert_eq(format_result, 0, "format_ip_with_port(\"%s\", %u) should succeed (%s)", tc->ip, tc->port, tc->description);
 
   // Parse
   int parse_result = parse_ip_with_port(formatted, parsed_ip, sizeof(parsed_ip), &parsed_port);

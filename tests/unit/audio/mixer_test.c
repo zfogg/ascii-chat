@@ -148,16 +148,11 @@ typedef struct {
 } mixer_invalid_params_test_case_t;
 
 static mixer_invalid_params_test_case_t mixer_invalid_params_cases[] = {
-    {0, 44100, "Zero max_sources"},
-    {4, 0, "Zero sample_rate"},
-    {-1, 44100, "Negative max_sources"},
-    {4, -1, "Negative sample_rate"},
-    {MIXER_MAX_SOURCES + 1, 44100, "Exceeds MIXER_MAX_SOURCES"},
+    {0, 44100, "Zero max_sources"}, {4, 0, "Zero sample_rate"}, {-1, 44100, "Negative max_sources"}, {4, -1, "Negative sample_rate"}, {MIXER_MAX_SOURCES + 1, 44100, "Exceeds MIXER_MAX_SOURCES"},
 };
 
 ParameterizedTestParameters(mixer, create_with_invalid_params) {
-  return cr_make_param_array(mixer_invalid_params_test_case_t, mixer_invalid_params_cases,
-                             sizeof(mixer_invalid_params_cases) / sizeof(mixer_invalid_params_cases[0]));
+  return cr_make_param_array(mixer_invalid_params_test_case_t, mixer_invalid_params_cases, sizeof(mixer_invalid_params_cases) / sizeof(mixer_invalid_params_cases[0]));
 }
 
 ParameterizedTest(mixer_invalid_params_test_case_t *tc, mixer, create_with_invalid_params) {
@@ -371,10 +366,9 @@ typedef struct {
   char description[64];
 } db_to_linear_test_case_t;
 
-static db_to_linear_test_case_t db_to_linear_cases[] = {
-    {0.0f, 1.0f, 1e-6f, "0 dB equals unity gain"},       {-6.0f, 0.5f, 0.01f, "-6 dB equals half gain"},
-    {-20.0f, 0.1f, 1e-3f, "-20 dB equals 0.1 gain"},     {-40.0f, 0.01f, 1e-4f, "-40 dB equals 0.01 gain"},
-    {-60.0f, 0.001f, 1e-4f, "-60 dB equals 0.001 gain"}, {6.0f, 2.0f, 0.01f, "+6 dB equals double gain"}};
+static db_to_linear_test_case_t db_to_linear_cases[] = {{0.0f, 1.0f, 1e-6f, "0 dB equals unity gain"},       {-6.0f, 0.5f, 0.01f, "-6 dB equals half gain"},
+                                                        {-20.0f, 0.1f, 1e-3f, "-20 dB equals 0.1 gain"},     {-40.0f, 0.01f, 1e-4f, "-40 dB equals 0.01 gain"},
+                                                        {-60.0f, 0.001f, 1e-4f, "-60 dB equals 0.001 gain"}, {6.0f, 2.0f, 0.01f, "+6 dB equals double gain"}};
 
 ParameterizedTestParameters(mixer_utils, db_to_linear_conversion_param) {
   size_t nb_cases = sizeof(db_to_linear_cases) / sizeof(db_to_linear_cases[0]);
@@ -394,10 +388,9 @@ typedef struct {
   char description[64];
 } linear_to_db_test_case_t;
 
-static linear_to_db_test_case_t linear_to_db_cases[] = {
-    {1.0f, 0.0f, 1e-6f, "Unity gain equals 0 dB"},       {0.5f, -6.0f, 0.1f, "Half gain equals -6 dB"},
-    {0.1f, -20.0f, 1e-3f, "0.1 gain equals -20 dB"},     {0.01f, -40.0f, 1e-3f, "0.01 gain equals -40 dB"},
-    {0.001f, -60.0f, 1e-3f, "0.001 gain equals -60 dB"}, {2.0f, 6.0f, 0.1f, "Double gain equals +6 dB"}};
+static linear_to_db_test_case_t linear_to_db_cases[] = {{1.0f, 0.0f, 1e-6f, "Unity gain equals 0 dB"},       {0.5f, -6.0f, 0.1f, "Half gain equals -6 dB"},
+                                                        {0.1f, -20.0f, 1e-3f, "0.1 gain equals -20 dB"},     {0.01f, -40.0f, 1e-3f, "0.01 gain equals -40 dB"},
+                                                        {0.001f, -60.0f, 1e-3f, "0.001 gain equals -60 dB"}, {2.0f, 6.0f, 0.1f, "Double gain equals +6 dB"}};
 
 ParameterizedTestParameters(mixer_utils, linear_to_db_conversion_param) {
   size_t nb_cases = sizeof(linear_to_db_cases) / sizeof(linear_to_db_cases[0]);
@@ -418,11 +411,10 @@ typedef struct {
   char description[64];
 } clamp_float_test_case_t;
 
-static clamp_float_test_case_t clamp_float_cases[] = {
-    {0.5f, 0.0f, 1.0f, 0.5f, "Value within range"},       {-0.5f, 0.0f, 1.0f, 0.0f, "Value below min"},
-    {1.5f, 0.0f, 1.0f, 1.0f, "Value above max"},          {0.0f, -1.0f, 1.0f, 0.0f, "Zero in symmetric range"},
-    {-2.0f, -1.0f, 1.0f, -1.0f, "Clamp to negative min"}, {2.0f, -1.0f, 1.0f, 1.0f, "Clamp to positive max"},
-    {0.0f, 0.0f, 0.0f, 0.0f, "Degenerate range"}};
+static clamp_float_test_case_t clamp_float_cases[] = {{0.5f, 0.0f, 1.0f, 0.5f, "Value within range"},       {-0.5f, 0.0f, 1.0f, 0.0f, "Value below min"},
+                                                      {1.5f, 0.0f, 1.0f, 1.0f, "Value above max"},          {0.0f, -1.0f, 1.0f, 0.0f, "Zero in symmetric range"},
+                                                      {-2.0f, -1.0f, 1.0f, -1.0f, "Clamp to negative min"}, {2.0f, -1.0f, 1.0f, 1.0f, "Clamp to positive max"},
+                                                      {0.0f, 0.0f, 0.0f, 0.0f, "Degenerate range"}};
 
 ParameterizedTestParameters(mixer_utils, clamp_float_param) {
   size_t nb_cases = sizeof(clamp_float_cases) / sizeof(clamp_float_cases[0]);
@@ -826,10 +818,8 @@ Theory((size_t num_sources, float amplitude), mixer_integration, audio_bounds_pr
 
   // Verify property: ALL output samples must be in [-1.0, 1.0] range
   for (int i = 0; i < 256; i++) {
-    cr_assert_geq(output[i], -1.0f, "Output sample %d must be >= -1.0 (sources=%zu, amplitude=%.2f, got %.4f)", i,
-                  num_sources, amplitude, output[i]);
-    cr_assert_leq(output[i], 1.0f, "Output sample %d must be <= 1.0 (sources=%zu, amplitude=%.2f, got %.4f)", i,
-                  num_sources, amplitude, output[i]);
+    cr_assert_geq(output[i], -1.0f, "Output sample %d must be >= -1.0 (sources=%zu, amplitude=%.2f, got %.4f)", i, num_sources, amplitude, output[i]);
+    cr_assert_leq(output[i], 1.0f, "Output sample %d must be <= 1.0 (sources=%zu, amplitude=%.2f, got %.4f)", i, num_sources, amplitude, output[i]);
   }
 
   // Clean up

@@ -82,6 +82,10 @@ include(${_cmake_dir}/dependencies/Libplatform.cmake)
 set(LIB_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../lib)
 set(INCLUDE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 set(DEPS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../deps)
+set(LIBFLAGS_ROOT "${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src")
+if(NOT EXISTS "${LIBFLAGS_ROOT}/include/libflags/flags.h")
+    set(LIBFLAGS_ROOT "${ASCIICHAT_DEPS_CACHE_ROOT}/../libflags-src")
+endif()
 
 include(${_cmake_dir}/utils/SourceRoot.cmake)
 get_filename_component(_source_root "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
@@ -97,10 +101,13 @@ include_directories(
     ${DEPS_ROOT}/defer/cpp/include
     ${LIB_ROOT}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/common  # For session/*.h relative includes
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../lib         # For ascii-chat option headers
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../deps/recast/include  # Recast defer headers
     ${DEPS_ROOT}
     ${DEPS_ROOT}/ascii-chat-deps/tomlc17/src
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc
     ${DEPS_ROOT}/ascii-chat-deps/yyjson/src
+    ${LIBFLAGS_ROOT}/include
     # Dependency includes from cmake/deps/*.cmake output variables
     ${VTERM_INCLUDE_DIRS}  # libvterm
     ${LIBSODIUM_INCLUDE_DIRS}  # libsodium
@@ -128,7 +135,23 @@ set(WEB_SRC_MIRROR
 )
 
 # Platform implementations are supplied by the shared libplatform target.
-set(PLATFORM_SRC)
+set(PLATFORM_SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/filesystem.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/init.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/string.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/system.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/terminal.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/actions.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/audio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/backtrace.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/crypto.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/ffmpeg_decoder.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/log.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/misc.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/network.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/stats.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/util.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/video.c)
 
 # WASM rendering components (libvterm + FreeType)
 # Uses the cross-platform terminal renderer instead of WASM-specific implementation
@@ -157,6 +180,21 @@ else()
     message(STATUS "WASM: Using computed parent build directory: ${PARENT_BUILD_DIR}")
 endif()
 
+# Emscripten uses the WASM build directory as its working directory when it
+# emits TypeScript declarations. Make the workspace's installed TypeScript
+# toolchain discoverable there without requiring callers to modify PATH.
+set(WEB_NODE_MODULES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../web/web/node_modules")
+if(EXISTS "${WEB_NODE_MODULES_DIR}" AND NOT EXISTS "${CMAKE_BINARY_DIR}/node_modules")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E create_symlink
+            "${WEB_NODE_MODULES_DIR}"
+            "${CMAKE_BINARY_DIR}/node_modules"
+        RESULT_VARIABLE _web_node_modules_link_result)
+    if(NOT _web_node_modules_link_result EQUAL 0)
+        message(WARNING "Could not link web node_modules into the WASM build directory")
+    endif()
+endif()
+
 set(GENERATED_FONT_FILE "${PARENT_BUILD_DIR}/generated/data/fonts/default.c")
 set(GENERATED_FONT_MATRIX_FILE "${PARENT_BUILD_DIR}/generated/data/fonts/matrix_resurrected.c")
 
@@ -177,55 +215,51 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/video/ascii/rle.c
 
     # Options system
-    ${LIB_ROOT}/options/rcu.c
     ${LIB_ROOT}/../deps/ascii-chat-deps/yyjson/src/yyjson.c
-    ${LIB_ROOT}/options/options.c
+    ${LIBFLAGS_ROOT}/lib/builder/builder.c
+    ${LIBFLAGS_ROOT}/lib/commands.c
+    ${LIBFLAGS_ROOT}/lib/completions/completions.c
+    ${LIBFLAGS_ROOT}/lib/config/config.c
+    ${LIBFLAGS_ROOT}/lib/config/keys.c
+    ${LIBFLAGS_ROOT}/lib/format.c
+    ${LIBFLAGS_ROOT}/lib/explicit.c
+    ${LIBFLAGS_ROOT}/lib/help.c
+    ${LIBFLAGS_ROOT}/lib/json.c
+    ${LIBFLAGS_ROOT}/lib/levenshtein.c
+    ${LIBFLAGS_ROOT}/lib/log.c
+    ${LIBFLAGS_ROOT}/lib/manpage/formatter.c
+    ${LIBFLAGS_ROOT}/lib/manpage/manpage.c
+    ${LIBFLAGS_ROOT}/lib/manpage/parser.c
+    ${LIBFLAGS_ROOT}/lib/options.c
+    ${LIBFLAGS_ROOT}/lib/parsing/parsers.c
+    ${LIBFLAGS_ROOT}/lib/storage.c
+    ${LIB_ROOT}/options/colorscheme.c
+    ${LIB_ROOT}/options/core.c
     ${LIB_ROOT}/options/common.c
     ${LIB_ROOT}/options/enums.c
     ${LIB_ROOT}/options/strings.c
-    ${LIB_ROOT}/options/parsing/parsers.c
-    ${LIB_ROOT}/options/parsing/validation.c
-    ${LIB_ROOT}/options/colorscheme.c
-    ${LIB_ROOT}/options/manpage.c
-    ${LIB_ROOT}/options/layout.c
-    ${LIB_ROOT}/options/levenshtein.c
-    ${LIB_ROOT}/options/help_api.c
-    ${LIB_ROOT}/options/completions/completions.c
-    ${LIB_ROOT}/options/completions/bash.c
-    ${LIB_ROOT}/options/completions/fish.c
-    ${LIB_ROOT}/options/completions/zsh.c
-    ${LIB_ROOT}/options/completions/powershell.c
-    ${LIB_ROOT}/options/builder/builder.c
-    ${LIB_ROOT}/options/builder/handlers.c
-    ${LIB_ROOT}/options/builder/help.c
-    ${LIB_ROOT}/options/manpage/formatter.c
-    ${LIB_ROOT}/options/manpage/merger.c
-    ${LIB_ROOT}/options/manpage/parser.c
-    ${LIB_ROOT}/options/manpage/resources.c
-    ${LIB_ROOT}/options/manpage/content/environment.c
-    ${LIB_ROOT}/options/manpage/content/examples.c
-    ${LIB_ROOT}/options/manpage/content/options.c
-    ${LIB_ROOT}/options/manpage/content/positional.c
-    ${LIB_ROOT}/options/manpage/content/usage.c
-    ${LIB_ROOT}/options/config/config.c
-    ${LIB_ROOT}/options/config/presets.c
-    ${LIB_ROOT}/options/config/schema.c
-    ${LIB_ROOT}/options/registry/audio.c
-    ${LIB_ROOT}/options/registry/configuration.c
-    ${LIB_ROOT}/options/registry/core.c
-    ${LIB_ROOT}/options/registry/database.c
-    ${LIB_ROOT}/options/registry/display.c
-    ${LIB_ROOT}/options/registry/general.c
-    ${LIB_ROOT}/options/registry/logging.c
-    ${LIB_ROOT}/options/registry/media.c
-    ${LIB_ROOT}/options/registry/metadata.c
-    ${LIB_ROOT}/options/registry/network.c
-    ${LIB_ROOT}/options/registry/public_api.c
-    ${LIB_ROOT}/options/registry/registry.c
-    ${LIB_ROOT}/options/registry/security.c
-    ${LIB_ROOT}/options/registry/terminal.c
-    ${LIB_ROOT}/options/registry/webcam.c
-    ${LIB_ROOT}/options/registry/debug.c
+    ${LIB_ROOT}/options/runtime.c
+    ${LIB_ROOT}/options/help.c
+    ${LIB_ROOT}/options/config.c
+    ${LIB_ROOT}/options/parsing_parsers.c
+    ${LIB_ROOT}/options/parsing_validation.c
+    ${LIB_ROOT}/options/registry_audio.c
+    ${LIB_ROOT}/options/registry_configuration.c
+    ${LIB_ROOT}/options/registry_core.c
+    ${LIB_ROOT}/options/registry_database.c
+    ${LIB_ROOT}/options/registry_debug.c
+    ${LIB_ROOT}/options/registry_display.c
+    ${LIB_ROOT}/options/registry_general.c
+    ${LIB_ROOT}/options/registry_logging.c
+    ${LIB_ROOT}/options/registry_media.c
+    ${LIB_ROOT}/options/registry_metadata.c
+    ${LIB_ROOT}/options/registry_mode_defaults.c
+    ${LIB_ROOT}/options/registry_network.c
+    ${LIB_ROOT}/options/registry_public_api.c
+    ${LIB_ROOT}/options/registry_registry.c
+    ${LIB_ROOT}/options/registry_security.c
+    ${LIB_ROOT}/options/registry_terminal.c
+    ${LIB_ROOT}/options/registry_webcam.c
 
     # Crypto (needed for logging headers)
     ${LIB_ROOT}/crypto/crypto.c
@@ -457,6 +491,7 @@ include(${_cmake_dir}/deps/FaceDetection.cmake)
 # Create WASM mirror module
 add_executable(mirror-web
     ${WEB_SRC_MIRROR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/platform/stubs/comprehensive.c
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/session_ui.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/mirror_session.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/bindings/terminal_renderer.cpp
@@ -551,6 +586,15 @@ target_compile_options(client-web PRIVATE -pthread -sUSE_FREETYPE=1)
 target_link_options(client-web PRIVATE
     -pthread -sUSE_PTHREADS=1 "-sPTHREAD_POOL_SIZE=Module['pthreadPoolSize']??4" -Wno-error=pthreads-mem-growth -sUSE_FREETYPE=1
 )
+
+if(EMSCRIPTEN AND EXISTS "${WEB_NODE_MODULES_DIR}/.bin/tsc")
+    foreach(_web_wasm_target IN ITEMS mirror-web client-web)
+        set_property(
+            TARGET ${_web_wasm_target}
+            PROPERTY RULE_LAUNCH_LINK
+            "${CMAKE_COMMAND} -E env PATH=${WEB_NODE_MODULES_DIR}/.bin:$ENV{PATH}")
+    endforeach()
+endif()
 
 # Add library search paths if needed
 
@@ -727,22 +771,36 @@ target_link_libraries(mirror-web PRIVATE libplatform::libplatform)
 target_link_libraries(renderer-web PRIVATE libplatform::libplatform)
 
 # This file is configured as a separate CMake project for Emscripten, so the
-# parent project's defer finalization cannot see these targets. Reuse the same
-# repository-level defer module once, after all browser targets are declared.
+# native project cannot finalize these targets in its own directory scope.
+# Reuse the repository's Recast integration with the host executable that the
+# native configure already built. The transformer must run on the host; it
+# must never be compiled as an Emscripten target.
 if(EMSCRIPTEN AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    if(NOT DEFER_SOURCE_ROOT OR NOT DEFER_NATIVE_BINARY OR NOT EXISTS "${DEFER_CONFIG_FILE}")
+    if(NOT RECAST_SOURCE_ROOT OR NOT RECAST_NATIVE_BINARY OR
+       NOT EXISTS "${RECAST_NATIVE_BINARY}")
         message(FATAL_ERROR
-            "The parent CMake project must provide DEFER_SOURCE_ROOT, DEFER_NATIVE_BINARY, and DEFER_CONFIG_FILE")
+            "The native project must provide an existing RECAST_SOURCE_ROOT and RECAST_NATIVE_BINARY")
     endif()
-    set(DEFER_SOURCE_DIRS "include;lib;src;tests" CACHE STRING "Source directories to transform")
-    include("${DEFER_CONFIG_FILE}")
+
+    set(RECAST_SOURCE_DIRS "include;lib;src;tests" CACHE STRING
+        "Source directories relative to RECAST_SOURCE_ROOT")
+    set(RECAST_TOOL_ROOT "${RECAST_SOURCE_ROOT}/deps/recast" CACHE PATH
+        "Root of the repository Recast integration")
+
+    if(NOT TARGET recast)
+        add_executable(recast IMPORTED GLOBAL)
+        set_target_properties(recast PROPERTIES
+            IMPORTED_LOCATION "${RECAST_NATIVE_BINARY}")
+    endif()
+    include("${RECAST_TOOL_ROOT}/Recast.cmake")
+
     set(_ascii_wasm_defer_targets wasm-common mirror-web client-web renderer-web)
     recast_targets(${_ascii_wasm_defer_targets})
     # Defer parses headers before compiling, so libsodium's generated headers
     # must exist before any scan or transformation can run on a clean build.
     get_property(_wasm_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
     foreach(_wasm_target IN LISTS _wasm_targets)
-        if(_wasm_target MATCHES "^defer-")
+        if(_wasm_target MATCHES "^(defer-|recast-)")
             add_dependencies(${_wasm_target} libsodium-wasm)
         endif()
     endforeach()

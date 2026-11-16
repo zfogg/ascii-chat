@@ -66,8 +66,7 @@ typedef struct render_file_ctx_s render_file_ctx_t;
 
 // Create: allocates renderer + FFmpeg encoder.
 // cols/rows from terminal size; fps/theme from GET_OPTION().
-asciichat_error_t render_file_create(const char *output_path, int cols, int rows, int fps, int theme,
-                                     render_file_ctx_t **out);
+asciichat_error_t render_file_create(const char *output_path, int cols, int rows, int fps, int theme, render_file_ctx_t **out);
 
 // Feed one ANSI frame string — renders pixels then writes to encoder, synced with audio.
 // captured_ns is the wall-clock timestamp (in nanoseconds) when the frame was captured

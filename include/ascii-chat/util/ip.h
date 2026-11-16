@@ -220,8 +220,7 @@ int parse_ip_with_port(const char *input, char *ip_output, size_t ip_output_size
  *
  * @ingroup util
  */
-int parse_address_with_optional_port(const char *input, char *address_output, size_t address_output_size,
-                                     uint16_t *port_output, uint16_t default_port);
+int parse_address_with_optional_port(const char *input, char *address_output, size_t address_output_size, uint16_t *port_output, uint16_t default_port);
 
 /** @} */
 
@@ -265,8 +264,7 @@ int parse_address_with_optional_port(const char *input, char *address_output, si
 asciichat_error_t format_ip_address(int family, const struct sockaddr *addr, char *output, size_t output_size);
 
 /** Convert an unbracketed numeric IPv4 or IPv6 address and port to a socket address. */
-asciichat_error_t parse_numeric_socket_address(const char *host, uint16_t port, struct sockaddr_storage *address,
-                                               socklen_t *length);
+asciichat_error_t parse_numeric_socket_address(const char *host, uint16_t port, struct sockaddr_storage *address, socklen_t *length);
 
 /**
  * @brief Format IP address with port number

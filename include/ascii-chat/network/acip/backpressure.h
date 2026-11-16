@@ -16,12 +16,7 @@ typedef struct acip_outbound acip_outbound_t;
 #define ACIP_OUTBOUND_SCTP_RESERVE (64U * 1024U)
 #define ACIP_OUTBOUND_VIDEO_AGE_NS (100ULL * 1000000ULL)
 
-typedef enum {
-  ACIP_ADMISSION_ACCEPTED,
-  ACIP_ADMISSION_CONGESTED,
-  ACIP_ADMISSION_DROPPED_STALE,
-  ACIP_ADMISSION_NEEDS_KEYFRAME
-} acip_admission_t;
+typedef enum { ACIP_ADMISSION_ACCEPTED, ACIP_ADMISSION_CONGESTED, ACIP_ADMISSION_DROPPED_STALE, ACIP_ADMISSION_NEEDS_KEYFRAME } acip_admission_t;
 
 /**
  * @brief This is the handoff point for acip outbound stats. Callers fill `application_bytes`, `backend_bytes`,
@@ -45,9 +40,7 @@ void acip_outbound_destroy(acip_transport_t *transport);
  * A terminal backend failure retains its status and errno context for waiting
  * and subsequent producers. Congestion remains a nonfatal admission outcome.
  */
-asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
-                                        acip_admission_t *admission);
-asciichat_error_t acip_outbound_submitv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count,
-                                           const acip_send_options_t *options, acip_admission_t *admission);
+asciichat_error_t acip_outbound_submitv(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count, acip_admission_t *admission);
+asciichat_error_t acip_outbound_submitv_ex(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count, const acip_send_options_t *options, acip_admission_t *admission);
 asciichat_error_t acip_outbound_snapshot(acip_transport_t *transport, acip_outbound_stats_t *stats);
 bool acip_outbound_needs_keyframe(acip_transport_t *transport, uint16_t packet_type, uint32_t stream_id);

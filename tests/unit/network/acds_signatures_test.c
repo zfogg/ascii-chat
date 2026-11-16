@@ -39,13 +39,11 @@ Test(acds_signatures, session_create_sign_and_verify) {
 
   // Sign the message
   uint8_t signature[64];
-  asciichat_error_t sign_result =
-      acds_sign_session_create(seckey, timestamp, capabilities, max_participants, signature);
+  asciichat_error_t sign_result = acds_sign_session_create(seckey, timestamp, capabilities, max_participants, signature);
   cr_assert_eq(sign_result, ASCIICHAT_OK, "Signing should succeed");
 
   // Verify the signature
-  asciichat_error_t verify_result =
-      acds_verify_session_create(pubkey, timestamp, capabilities, max_participants, signature);
+  asciichat_error_t verify_result = acds_verify_session_create(pubkey, timestamp, capabilities, max_participants, signature);
   cr_assert_eq(verify_result, ASCIICHAT_OK, "Signature verification should succeed");
 }
 
@@ -65,8 +63,7 @@ Test(acds_signatures, session_create_wrong_pubkey) {
   acds_sign_session_create(seckey1, timestamp, capabilities, max_participants, signature);
 
   // Verify with wrong pubkey (pubkey2)
-  asciichat_error_t verify_result =
-      acds_verify_session_create(pubkey2, timestamp, capabilities, max_participants, signature);
+  asciichat_error_t verify_result = acds_verify_session_create(pubkey2, timestamp, capabilities, max_participants, signature);
   cr_assert_neq(verify_result, ASCIICHAT_OK, "Verification should fail with wrong public key");
 }
 
@@ -84,8 +81,7 @@ Test(acds_signatures, session_create_tampered_timestamp) {
 
   // Verify with tampered timestamp
   uint64_t tampered_timestamp = timestamp + 1;
-  asciichat_error_t verify_result =
-      acds_verify_session_create(pubkey, tampered_timestamp, capabilities, max_participants, signature);
+  asciichat_error_t verify_result = acds_verify_session_create(pubkey, tampered_timestamp, capabilities, max_participants, signature);
   cr_assert_neq(verify_result, ASCIICHAT_OK, "Verification should fail with tampered timestamp");
 }
 
@@ -103,8 +99,7 @@ Test(acds_signatures, session_create_tampered_capabilities) {
 
   // Verify with tampered capabilities
   uint8_t tampered_capabilities = 0x01; // Changed from 0x03 to 0x01
-  asciichat_error_t verify_result =
-      acds_verify_session_create(pubkey, timestamp, tampered_capabilities, max_participants, signature);
+  asciichat_error_t verify_result = acds_verify_session_create(pubkey, timestamp, tampered_capabilities, max_participants, signature);
   cr_assert_neq(verify_result, ASCIICHAT_OK, "Verification should fail with tampered capabilities");
 }
 
@@ -122,8 +117,7 @@ Test(acds_signatures, session_create_tampered_max_participants) {
 
   // Verify with tampered max_participants
   uint8_t tampered_max = 8;
-  asciichat_error_t verify_result =
-      acds_verify_session_create(pubkey, timestamp, capabilities, tampered_max, signature);
+  asciichat_error_t verify_result = acds_verify_session_create(pubkey, timestamp, capabilities, tampered_max, signature);
   cr_assert_neq(verify_result, ASCIICHAT_OK, "Verification should fail with tampered max_participants");
 }
 

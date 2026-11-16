@@ -111,8 +111,7 @@ asciichat_error_t consensus_metrics_to_wire(const participant_metrics_t *metrics
  *
  * @note out_metrics must point to valid participant_metrics_t allocated by caller
  */
-asciichat_error_t consensus_metrics_from_wire(const participant_metrics_t *wire_metrics,
-                                              participant_metrics_t *out_metrics);
+asciichat_error_t consensus_metrics_from_wire(const participant_metrics_t *wire_metrics, participant_metrics_t *out_metrics);
 
 /**
  * @brief Create empty metrics collection
@@ -137,8 +136,7 @@ asciichat_error_t consensus_metrics_collection_create(consensus_metrics_collecti
  * @param metrics Metrics to add
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t consensus_metrics_collection_add(consensus_metrics_collection_t *collection,
-                                                   const participant_metrics_t *metrics);
+asciichat_error_t consensus_metrics_collection_add(consensus_metrics_collection_t *collection, const participant_metrics_t *metrics);
 
 /**
  * @brief Get all accumulated metrics
@@ -153,8 +151,7 @@ asciichat_error_t consensus_metrics_collection_add(consensus_metrics_collection_
  * @note out_metrics points to internal collection storage - do not modify or free
  * @note Valid only until collection is destroyed
  */
-asciichat_error_t consensus_metrics_collection_get(const consensus_metrics_collection_t *collection,
-                                                   const participant_metrics_t **out_metrics, int *out_count);
+asciichat_error_t consensus_metrics_collection_get(const consensus_metrics_collection_t *collection, const participant_metrics_t **out_metrics, int *out_count);
 
 /**
  * @brief Destroy metrics collection

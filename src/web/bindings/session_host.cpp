@@ -76,8 +76,7 @@ private:
       session_host_render_audio(host_);
   }
   void send(uint32_t id, const void *data, size_t length) {
-    packets_.push_back(
-        {id, std::vector<uint8_t>(static_cast<const uint8_t *>(data), static_cast<const uint8_t *>(data) + length)});
+    packets_.push_back({id, std::vector<uint8_t>(static_cast<const uint8_t *>(data), static_cast<const uint8_t *>(data) + length)});
   }
   static asciichat_error_t sendPacket(acip_transport_t *transport, const void *data, size_t length);
   static bool connected(acip_transport_t *transport);
@@ -104,10 +103,8 @@ socket_t BrowserHostBinding::noSocket(acip_transport_t *) {
 acip_transport_type_t BrowserHostBinding::type(acip_transport_t *) {
   return ACIP_TRANSPORT_WEBRTC;
 }
-const acip_transport_methods_t BrowserHostBinding::methods = {.send = &BrowserHostBinding::sendPacket,
-                                                              .get_type = &BrowserHostBinding::type,
-                                                              .get_socket = &BrowserHostBinding::noSocket,
-                                                              .is_connected = &BrowserHostBinding::connected};
+const acip_transport_methods_t BrowserHostBinding::methods = {
+    .send = &BrowserHostBinding::sendPacket, .get_type = &BrowserHostBinding::type, .get_socket = &BrowserHostBinding::noSocket, .is_connected = &BrowserHostBinding::connected};
 
 uint32_t BrowserHostBinding::addClient() {
   if (!host_)
@@ -155,8 +152,7 @@ int BrowserHostBinding::receive(uint32_t id, uint32_t typeValue, ProtocolBytes p
   std::vector<uint8_t> input(length ? length : 1);
   if (length)
     emscripten::val(emscripten::typed_memory_view(length, input.data())).call<void>("set", packet);
-  return static_cast<int>(
-      session_host_receive_packet(host_, id, static_cast<packet_type_t>(typeValue), input.data(), length));
+  return static_cast<int>(session_host_receive_packet(host_, id, static_cast<packet_type_t>(typeValue), input.data(), length));
 }
 emscripten::val BrowserHostBinding::drainPackets() {
   emscripten::val result = emscripten::val::array();

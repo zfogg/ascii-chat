@@ -182,8 +182,7 @@ static int validate_ascii_frame(const char *output) {
   }
   const char *clean_output = stripped;
   size_t stripped_len = strlen(stripped);
-  log_debug("Stripped ANSI codes: %zu -> %zu bytes (removed %zu bytes)", orig_len, stripped_len,
-            orig_len - stripped_len);
+  log_debug("Stripped ANSI codes: %zu -> %zu bytes (removed %zu bytes)", orig_len, stripped_len, orig_len - stripped_len);
 
   // Debug: Save stripped output to file for inspection
   FILE *debug_file = fopen("/tmp/client_snapshot_stripped.txt", "w");
@@ -246,8 +245,7 @@ static int validate_ascii_frame(const char *output) {
 
   int density_percent = total_chars > 0 ? (palette_chars * 100 / total_chars) : 0;
 
-  log_debug("ASCII frame validation: %d lines, %d palette chars / %d total (%d%%), max consecutive art lines: %d",
-            line_count, palette_chars, total_chars, density_percent, max_consecutive_art_lines);
+  log_debug("ASCII frame validation: %d lines, %d palette chars / %d total (%d%%), max consecutive art lines: %d", line_count, palette_chars, total_chars, density_percent, max_consecutive_art_lines);
 
   // Require:
   // - At least 20 consecutive lines of ASCII art (indicates full frame)
@@ -307,8 +305,7 @@ Test(webrtc_discovery, frame_capture_via_webrtc, .init = setup_test, .fini = cle
     (void)setpgid(0, 0);
     freopen(ACDS_LOG_PATH, "w", stdout);
     dup2(STDOUT_FILENO, STDERR_FILENO);
-    execlp("timeout", "timeout", "45", binary_path, "--no-check-update", "discovery-service", "127.0.0.1",
-           "::", "--port", "27325", "--database", ACDS_DB_PATH, "--status-screen=false", NULL);
+    execlp("timeout", "timeout", "45", binary_path, "--no-check-update", "discovery-service", "127.0.0.1", "::", "--port", "27325", "--database", ACDS_DB_PATH, "--status-screen=false", NULL);
     exit(1); // Should not reach here
   }
 
@@ -334,9 +331,8 @@ Test(webrtc_discovery, frame_capture_via_webrtc, .init = setup_test, .fini = cle
     (void)setpgid(0, 0);
     freopen(SERVER_LOG_PATH, "w", stdout);
     dup2(STDOUT_FILENO, STDERR_FILENO);
-    execlp("timeout", "timeout", "45", binary_path, "--no-check-update", "--log-level", "debug", "server", "0.0.0.0",
-           "::", "--port", "27224", "--discovery", "--discovery-expose-ip", "--discovery-service", "127.0.0.1",
-           "--discovery-service-port", "27325", "--status-screen=false", NULL);
+    execlp("timeout", "timeout", "45", binary_path, "--no-check-update", "--log-level", "debug", "server", "0.0.0.0", "::", "--port", "27224", "--discovery", "--discovery-expose-ip",
+           "--discovery-service", "127.0.0.1", "--discovery-service-port", "27325", "--status-screen=false", NULL);
     exit(1); // Should not reach here
   }
 

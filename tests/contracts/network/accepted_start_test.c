@@ -6,8 +6,7 @@ static platform_event_close_fn failed_close;
 static void *failed_arg;
 static unsigned close_requests, destroyed;
 
-static asciichat_error_t fail_stream_start(platform_event_stream_t *stream, platform_event_read_fn read,
-                                           platform_event_close_fn close, void *arg) {
+static asciichat_error_t fail_stream_start(platform_event_stream_t *stream, platform_event_read_fn read, platform_event_close_fn close, void *arg) {
   (void)stream;
   (void)read;
   failed_close = close;

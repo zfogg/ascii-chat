@@ -1,7 +1,7 @@
 #include "../worker_assert.h"
 #include <criterion/criterion.h>
-#include <ascii-chat/options/runtime.h>
-#include <ascii-chat/options/rcu.h>
+#include <options/runtime.h>
+#include <options/rcu.h>
 #include <ascii-chat/network/acip/settings.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/common.h>
@@ -22,10 +22,10 @@ static void *writer(void *argument) {
 }
 
 static void test_flip_defaults(void) {
-  cr_assert(GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit));
+  cr_assert(GET_OPTION(flip_x));
   for (int i = 0; i < 3; ++i) {
     cr_assert_eq(options_set_bool("media_input", true), ASCIICHAT_OK);
-    cr_assert(!GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit));
+    cr_assert(!GET_OPTION(flip_x));
     cr_assert_eq(options_set_bool("media_input", false), ASCIICHAT_OK);
     cr_assert(GET_OPTION(flip_x));
     cr_assert_eq(options_set_bool("waveform", true), ASCIICHAT_OK);
@@ -39,10 +39,8 @@ static void test_flip_defaults(void) {
   options_patch_t patch = {.edits = invalid, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
   cr_assert_neq(options_apply_patch(&patch, NULL), ASCIICHAT_OK);
   CLEAR_ERRNO();
-  cr_assert(GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit));
-  // An explicit assignment of the current value still selects an orientation.
+  cr_assert(GET_OPTION(flip_x));
   cr_assert_eq(options_set_bool("flip_x", true), ASCIICHAT_OK);
-  cr_assert(GET_OPTION(flip_x_explicit));
   cr_assert_eq(options_set_bool("media_input", true), ASCIICHAT_OK);
   cr_assert_eq(options_set_bool("waveform", true), ASCIICHAT_OK);
   cr_assert(GET_OPTION(flip_x));
@@ -50,15 +48,12 @@ static void test_flip_defaults(void) {
   cr_assert_eq(options_set_bool("media_input", false), ASCIICHAT_OK);
   cr_assert_eq(options_set_bool("waveform", false), ASCIICHAT_OK);
   cr_assert(!GET_OPTION(flip_x));
-  cr_assert_neq(options_set_bool("flip_x_explicit", false), ASCIICHAT_OK);
-  CLEAR_ERRNO();
-  cr_assert(GET_OPTION(flip_x_explicit));
   options_t defaults = options_t_new();
   cr_assert_eq(options_state_set(&defaults), ASCIICHAT_OK);
-  cr_assert(!GET_OPTION(flip_x) && GET_OPTION(flip_x_explicit));
+  cr_assert(!GET_OPTION(flip_x));
   options_state_destroy();
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
-  cr_assert(GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit));
+  cr_assert(GET_OPTION(flip_x));
 }
 
 static void test_transactions(void) {
@@ -168,17 +163,10 @@ static void test_remote(void) {
   cr_assert_eq(request(&clients[1], "{\"renderer\":1,\"palette_explicit\":false}", UINT32_MAX).status, 0);
   cr_assert_eq(clients[1].caps.text_renderer, ASCII_RENDERER_GLYPH);
   cr_assert_eq(clients[1].palette_length, 95);
-  cr_assert_eq(request(&clients[1],
-                       "{\"renderer\":1,\"palette_explicit\":false,\"palette_custom\":\" .+#\",\"palette_type\":1}",
-                       UINT32_MAX)
-                   .status,
-               0);
+  cr_assert_eq(request(&clients[1], "{\"renderer\":1,\"palette_explicit\":false,\"palette_custom\":\" .+#\",\"palette_type\":1}", UINT32_MAX).status, 0);
   cr_assert_not(clients[1].caps.palette_explicit);
   cr_assert_eq(clients[1].palette_length, 95);
-  cr_assert_eq(
-      request(&clients[1], "{\"palette_type\":1,\"palette_custom\":\" .+#\",\"palette_explicit\":false}", UINT32_MAX)
-          .status,
-      0);
+  cr_assert_eq(request(&clients[1], "{\"palette_type\":1,\"palette_custom\":\" .+#\",\"palette_explicit\":false}", UINT32_MAX).status, 0);
   cr_assert_not(clients[1].caps.palette_explicit);
   cr_assert_eq(clients[1].palette_length, 95);
   cr_assert_eq(clients[0].caps.text_renderer, ASCII_RENDERER_LUMINANCE);

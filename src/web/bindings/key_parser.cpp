@@ -20,8 +20,7 @@ static emscripten::val frame_value(const asciichat_error_context_t &frame) {
   emscripten::val result = emscripten::val::object();
   result.set("code", static_cast<int>(frame.code));
   result.set("message", std::string(frame.context_message));
-  result.set("file",
-             std::string(frame.file ? extract_project_relative_path(frame.file, ASCIICHAT_OWNED_SOURCE_DIRS) : ""));
+  result.set("file", std::string(frame.file ? extract_project_relative_path(frame.file, ASCIICHAT_OWNED_SOURCE_DIRS) : ""));
 #ifdef NDEBUG
   result.set("fullFile", std::string());
 #else
@@ -52,12 +51,10 @@ public:
       code = browser_client_parse_ssh_public_key(reinterpret_cast<const char *>(bytes.data()), output);
       break;
     case 2:
-      code = binary ? browser_client_parse_gpg_private_key_binary(bytes.data(), length, output)
-                    : browser_client_parse_gpg_private_key(reinterpret_cast<const char *>(bytes.data()), output);
+      code = binary ? browser_client_parse_gpg_private_key_binary(bytes.data(), length, output) : browser_client_parse_gpg_private_key(reinterpret_cast<const char *>(bytes.data()), output);
       break;
     case 3:
-      code = binary ? browser_client_parse_gpg_public_key_binary(bytes.data(), length, output)
-                    : browser_client_parse_gpg_public_key(reinterpret_cast<const char *>(bytes.data()), output);
+      code = binary ? browser_client_parse_gpg_public_key_binary(bytes.data(), length, output) : browser_client_parse_gpg_public_key(reinterpret_cast<const char *>(bytes.data()), output);
       break;
     default:
       code = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid key parser kind: %d", kind);
@@ -80,8 +77,7 @@ public:
     emscripten::val frames = emscripten::val::array();
     if (code != 0) {
       asciichat_error_context_t contexts[ASCIICHAT_ERRNO_MAX_DEPTH];
-      const asciichat_errno_snapshot_t snapshot =
-          errno_snapshot(checkpoint.thread_id, contexts, ASCIICHAT_ERRNO_MAX_DEPTH);
+      const asciichat_errno_snapshot_t snapshot = errno_snapshot(checkpoint.thread_id, contexts, ASCIICHAT_ERRNO_MAX_DEPTH);
       unsigned index = 0;
       for (size_t i = 0; i < snapshot.copied; ++i) {
         if (contexts[i].generation == checkpoint.generation && contexts[i].error_id > checkpoint.after_id)
@@ -123,16 +119,8 @@ public:
 
 EMSCRIPTEN_BINDINGS(ascii_chat_key_parser) {
   emscripten::register_type<KeyInput>("KeyInput", "Uint8Array");
-  emscripten::register_type<KeyParseResult>("KeyParseResult",
-                                            "{ code: number; bytes: Uint8Array; frames: ErrorFrameResult[] }");
-  emscripten::register_type<ErrorFrameResult>(
-      "ErrorFrameResult",
-      "{ code: number; message: string; file: string; fullFile: string; function: string; line: number }");
-  emscripten::class_<KeyParserBinding>("KeyParserBinding")
-      .class_function("parse", &KeyParserBinding::parse)
-      .class_function("error", &KeyParserBinding::error);
-  emscripten::class_<ErrorBinding>("ErrorBinding")
-      .class_function("dismiss", &ErrorBinding::dismiss)
-      .class_function("snapshot", &ErrorBinding::snapshot)
-      .class_function("frame", &ErrorBinding::frame);
+  emscripten::register_type<KeyParseResult>("KeyParseResult", "{ code: number; bytes: Uint8Array; frames: ErrorFrameResult[] }");
+  emscripten::register_type<ErrorFrameResult>("ErrorFrameResult", "{ code: number; message: string; file: string; fullFile: string; function: string; line: number }");
+  emscripten::class_<KeyParserBinding>("KeyParserBinding").class_function("parse", &KeyParserBinding::parse).class_function("error", &KeyParserBinding::error);
+  emscripten::class_<ErrorBinding>("ErrorBinding").class_function("dismiss", &ErrorBinding::dismiss).class_function("snapshot", &ErrorBinding::snapshot).class_function("frame", &ErrorBinding::frame);
 }

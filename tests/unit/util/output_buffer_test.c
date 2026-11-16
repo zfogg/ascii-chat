@@ -160,8 +160,7 @@ ParameterizedTest(ob_u8_test_case_t *tc, output_buffer, ob_u8_values) {
 
   ob_u8(&ob, tc->value);
   ob_term(&ob);
-  cr_assert_str_eq(ob.buf, tc->expected_output, "%s: Expected '%s', got '%s'", tc->description, tc->expected_output,
-                   ob.buf);
+  cr_assert_str_eq(ob.buf, tc->expected_output, "%s: Expected '%s', got '%s'", tc->description, tc->expected_output, ob.buf);
 
   SAFE_FREE(ob.buf);
 }
@@ -196,8 +195,7 @@ ParameterizedTest(ob_u32_test_case_t *tc, output_buffer, ob_u32_values) {
 
   ob_u32(&ob, tc->value);
   ob_term(&ob);
-  cr_assert_str_eq(ob.buf, tc->expected_output, "%s: Expected '%s', got '%s'", tc->description, tc->expected_output,
-                   ob.buf);
+  cr_assert_str_eq(ob.buf, tc->expected_output, "%s: Expected '%s', got '%s'", tc->description, tc->expected_output, ob.buf);
 
   SAFE_FREE(ob.buf);
 }

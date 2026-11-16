@@ -70,13 +70,10 @@ typedef struct {
   char description[64];
 } truecolor_fg_test_case_t;
 
-static truecolor_fg_test_case_t truecolor_fg_edge_cases[] = {{0, 0, 0, "\033[38;2;0;0;0m", "Black color"},
-                                                             {1, 1, 1, "\033[38;2;1;1;1m", "Minimal color"},
-                                                             {255, 255, 255, "\033[38;2;255;255;255m", "White color"},
-                                                             {255, 0, 0, "\033[38;2;255;0;0m", "Pure red"},
-                                                             {0, 255, 0, "\033[38;2;0;255;0m", "Pure green"},
-                                                             {0, 0, 255, "\033[38;2;0;0;255m", "Pure blue"},
-                                                             {128, 128, 128, "\033[38;2;128;128;128m", "Mid gray"}};
+static truecolor_fg_test_case_t truecolor_fg_edge_cases[] = {
+    {0, 0, 0, "\033[38;2;0;0;0m", "Black color"},         {1, 1, 1, "\033[38;2;1;1;1m", "Minimal color"},  {255, 255, 255, "\033[38;2;255;255;255m", "White color"},
+    {255, 0, 0, "\033[38;2;255;0;0m", "Pure red"},        {0, 255, 0, "\033[38;2;0;255;0m", "Pure green"}, {0, 0, 255, "\033[38;2;0;0;255m", "Pure blue"},
+    {128, 128, 128, "\033[38;2;128;128;128m", "Mid gray"}};
 
 ParameterizedTestParameters(ansi_fast, truecolor_fg_edge_cases_param) {
   size_t nb_cases = sizeof(truecolor_fg_edge_cases) / sizeof(truecolor_fg_edge_cases[0]);
@@ -111,14 +108,13 @@ typedef struct {
   char description[64];
 } truecolor_bg_test_case_t;
 
-static truecolor_bg_test_case_t truecolor_bg_edge_cases[] = {
-    {0, 0, 0, "\033[48;2;0;0;0m", "Black background"},
-    {1, 1, 1, "\033[48;2;1;1;1m", "Minimal background"},
-    {255, 255, 255, "\033[48;2;255;255;255m", "White background"},
-    {255, 0, 0, "\033[48;2;255;0;0m", "Pure red background"},
-    {0, 255, 0, "\033[48;2;0;255;0m", "Pure green background"},
-    {0, 0, 255, "\033[48;2;0;0;255m", "Pure blue background"},
-    {128, 128, 128, "\033[48;2;128;128;128m", "Mid gray background"}};
+static truecolor_bg_test_case_t truecolor_bg_edge_cases[] = {{0, 0, 0, "\033[48;2;0;0;0m", "Black background"},
+                                                             {1, 1, 1, "\033[48;2;1;1;1m", "Minimal background"},
+                                                             {255, 255, 255, "\033[48;2;255;255;255m", "White background"},
+                                                             {255, 0, 0, "\033[48;2;255;0;0m", "Pure red background"},
+                                                             {0, 255, 0, "\033[48;2;0;255;0m", "Pure green background"},
+                                                             {0, 0, 255, "\033[48;2;0;0;255m", "Pure blue background"},
+                                                             {128, 128, 128, "\033[48;2;128;128;128m", "Mid gray background"}};
 
 ParameterizedTestParameters(ansi_fast, truecolor_bg_edge_cases_param) {
   size_t nb_cases = sizeof(truecolor_bg_edge_cases) / sizeof(truecolor_bg_edge_cases[0]);

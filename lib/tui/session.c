@@ -16,7 +16,7 @@
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/string.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <libplatform/terminal.h>
 #include <string.h>
 #include <stdio.h>

@@ -3,8 +3,8 @@
 #include <ascii-chat/audio/client_pipeline.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>
+#include <options/options.h>
+#include <options/rcu.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <math.h>

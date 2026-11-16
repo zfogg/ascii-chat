@@ -71,8 +71,7 @@ Test(crypto_ssh_agent_sign, zero_message_length) {
 
   // Should either succeed (if agent is available) or fail gracefully
   if (result != ASCIICHAT_OK) {
-    cr_assert(result == ERROR_CRYPTO || result == ERROR_NETWORK,
-              "Should return appropriate error for zero-length message");
+    cr_assert(result == ERROR_CRYPTO || result == ERROR_NETWORK, "Should return appropriate error for zero-length message");
   }
 }
 

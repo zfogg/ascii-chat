@@ -120,8 +120,7 @@
  * @see packet_decode_frame_data_buffer() For fixed-size buffer variant
  * @ingroup packet_parsing
  */
-char *packet_decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed,
-                                      uint32_t original_size, uint32_t compressed_size);
+char *packet_decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed, uint32_t original_size, uint32_t compressed_size);
 
 /**
  * @brief Decode frame data (fixed buffer version for server handlers)
@@ -144,12 +143,10 @@ char *packet_decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
  * @see packet_decode_frame_data_malloc() For malloc version
  * @ingroup packet_parsing
  */
-asciichat_error_t packet_decode_frame_data_buffer(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed,
-                                                  void *output_buffer, size_t output_size, uint32_t original_size,
+asciichat_error_t packet_decode_frame_data_buffer(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed, void *output_buffer, size_t output_size, uint32_t original_size,
                                                   uint32_t compressed_size);
 /** Decode into caller-owned reusable storage, including a trailing NUL. */
-asciichat_error_t packet_decode_frame_data_workspace(buffer_workspace_t *workspace, const void *data, size_t length,
-                                                     bool compressed, uint32_t original_size, uint32_t compressed_size);
+asciichat_error_t packet_decode_frame_data_workspace(buffer_workspace_t *workspace, const void *data, size_t length, bool compressed, uint32_t original_size, uint32_t compressed_size);
 
 /** @} */
 
@@ -206,8 +203,7 @@ asciichat_error_t packet_validate_frame_dimensions(uint32_t width, uint32_t heig
  *
  * @ingroup packet_parsing
  */
-static inline asciichat_error_t packet_parse_audio_batch_header(const void *data, size_t len,
-                                                                audio_batch_info_t *out_batch) {
+static inline asciichat_error_t packet_parse_audio_batch_header(const void *data, size_t len, audio_batch_info_t *out_batch) {
   // Delegate to the canonical implementation in audio/audio.h
   return audio_parse_batch_header(data, len, out_batch);
 }
@@ -298,8 +294,7 @@ static inline void packet_read_u16_net(const void *src, uint16_t *out_value) {
  *
  * @ingroup packet_parsing
  */
-asciichat_error_t packet_parse_opus_batch(const void *packet_data, size_t packet_len, const uint8_t **out_opus_data,
-                                          size_t *out_opus_size, const uint16_t **out_frame_sizes, int *out_sample_rate,
+asciichat_error_t packet_parse_opus_batch(const void *packet_data, size_t packet_len, const uint8_t **out_opus_data, size_t *out_opus_size, const uint16_t **out_frame_sizes, int *out_sample_rate,
                                           int *out_frame_duration, int *out_frame_count);
 
 /** @} */

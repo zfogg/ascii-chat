@@ -95,8 +95,7 @@
  *
  * @ingroup crypto
  */
-int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
-                                const uint8_t signature[ED25519_SIGNATURE_SIZE]);
+int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len, const uint8_t signature[ED25519_SIGNATURE_SIZE]);
 
 /**
  * @brief Verify Ed25519 signature using libgcrypt (no GPG binary required)
@@ -160,8 +159,7 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
  *
  * @ingroup crypto
  */
-int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size_t message_len,
-                         const uint8_t *signature);
+int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size_t message_len, const uint8_t *signature);
 
 /**
  * @brief Verify OpenPGP signature using GPG binary
@@ -237,8 +235,7 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
  *
  * @ingroup crypto
  */
-int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_len, const uint8_t *message,
-                                     size_t message_len, const char *expected_key_id);
+int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_len, const uint8_t *message, size_t message_len, const char *expected_key_id);
 
 /** @} */
 

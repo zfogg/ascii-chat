@@ -28,7 +28,6 @@
 #include <sys/stat.h>
 
 /* Generic path primitives are provided by libplatform. */
-#if 0
 /** Retained for callers that used to release thread-local path resources. */
 void path_cleanup_thread_locals(void) {}
 
@@ -151,17 +150,25 @@ const char *extract_project_relative_path(const char *file, const char *const *o
         unsigned char source_char = (unsigned char)candidate[i];
         unsigned char file_char = (unsigned char)file[i];
         if (source_char == '/' || source_char == '\\') {
-          if (file_char != '/' && file_char != '\\') { matches = false; break; }
+          if (file_char != '/' && file_char != '\\') {
+            matches = false;
+            break;
+          }
         } else {
 #ifdef _WIN32
-          if (tolower(source_char) != tolower(file_char)) { matches = false; break; }
+          if (tolower(source_char) != tolower(file_char)) {
+            matches = false;
+            break;
+          }
 #else
-          if (source_char != file_char) { matches = false; break; }
+          if (source_char != file_char) {
+            matches = false;
+            break;
+          }
 #endif
         }
       }
-      if (matches && (file[candidate_length] == '/' || file[candidate_length] == '\\') &&
-          candidate_length > root_length) {
+      if (matches && (file[candidate_length] == '/' || file[candidate_length] == '\\') && candidate_length > root_length) {
         root = candidate;
         root_length = candidate_length;
       }
@@ -211,8 +218,7 @@ const char *extract_project_relative_path(const char *file, const char *const *o
     for (size_t root_index = 0; root_index < sizeof(project_roots) / sizeof(project_roots[0]); root_index++) {
       const char *project_root = project_roots[root_index];
       size_t root_length = strlen(project_root);
-      if (_strnicmp(relative, project_root, root_length) == 0 &&
-          (relative[root_length] == '/' || relative[root_length] == '\\')) {
+      if (_strnicmp(relative, project_root, root_length) == 0 && (relative[root_length] == '/' || relative[root_length] == '\\')) {
         return relative;
       }
     }
@@ -247,7 +253,6 @@ const char *path_last_components(const char *path, size_t component_count) {
 
   return path;
 }
-#endif
 
 char *expand_path(const char *path) {
   if (path[0] == PATH_TILDE) {
@@ -394,7 +399,6 @@ char *get_discovery_database_dir(void) {
   return NULL;
 }
 
-#if 0
 bool path_normalize_copy(const char *path, char *out, size_t out_len) {
   if (!path || !out || out_len == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "null path or out or out_len is 0");
@@ -487,9 +491,7 @@ bool path_is_within_any_base(const char *path, const char *const *bases, size_t 
 
   return false;
 }
-#endif
 
-#if 0 /* libplatform provides this generic predicate. */
 bool path_looks_like_path(const char *value) {
   if (!value || *value == '\0') {
     return false;
@@ -511,7 +513,6 @@ bool path_looks_like_path(const char *value) {
 
   return false;
 }
-#endif
 
 static asciichat_error_t map_role_to_error(path_role_t role) {
   switch (role) {

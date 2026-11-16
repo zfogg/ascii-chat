@@ -111,8 +111,7 @@ Test(face_follow, breathing_and_seated_shifts_do_not_move_the_view) {
   settle_seated(&state);
   face_follow_rect_t crop = state.crop;
   for (double t = 3; t < 15; t += 0.1) {
-    face_follow_detection_t face =
-        seated(0.065f * sinf((float)t * 3), 0.05f * cosf((float)t * 2), 1 + 0.08f * sinf((float)t * 4));
+    face_follow_detection_t face = seated(0.065f * sinf((float)t * 3), 0.05f * cosf((float)t * 2), 1 + 0.08f * sinf((float)t * 4));
     face_follow_observe(&state, &face, 1, t);
     face_follow_tick(&state, t, true);
     cr_assert_float_eq(state.crop.x, crop.x, 0.0002);

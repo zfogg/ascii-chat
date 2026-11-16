@@ -46,7 +46,8 @@ int collectAsciiChatProcess(const platform_process_info_t *process, void *contex
 
 std::vector<ProcessEntry> listAsciiChatProcesses() {
   std::vector<ProcessEntry> result;
-  if (platform_process_list("ascii-chat", collectAsciiChatProcess, &result) != 0) return {};
+  if (platform_process_list("ascii-chat", collectAsciiChatProcess, &result) != 0)
+    return {};
   return result;
 }
 
@@ -501,8 +502,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  fprintf(stderr, "[ascii-query-server] Attached to %s (PID %llu)\n", controller.targetName().c_str(),
-          static_cast<unsigned long long>(controller.targetPid()));
+  fprintf(stderr, "[ascii-query-server] Attached to %s (PID %llu)\n", controller.targetName().c_str(), static_cast<unsigned long long>(controller.targetPid()));
 
   // Resume the target (it's stopped after attach)
   if (controller.state() == ascii_query::ProcessState::Stopped) {
@@ -535,8 +535,7 @@ int main(int argc, char *argv[]) {
 #endif
     ascii_query::ProcessState state = controller.state();
     if (state == ascii_query::ProcessState::Exited || state == ascii_query::ProcessState::Crashed) {
-      fprintf(stderr, "[ascii-query-server] Target %s, shutting down\n",
-              state == ascii_query::ProcessState::Exited ? "exited" : "crashed");
+      fprintf(stderr, "[ascii-query-server] Target %s, shutting down\n", state == ascii_query::ProcessState::Exited ? "exited" : "crashed");
       break;
     }
   }

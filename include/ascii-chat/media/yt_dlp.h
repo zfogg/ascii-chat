@@ -27,11 +27,8 @@ typedef struct {
 extern "C" {
 #endif
 
-asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dlp_options, char *output_url,
-                                              size_t output_size, char *audio_url, size_t audio_size,
-                                              yt_dlp_request_options_t *video_options,
-                                              yt_dlp_request_options_t *audio_options, bool (*cancel)(void *),
-                                              void *data);
+asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dlp_options, char *output_url, size_t output_size, char *audio_url, size_t audio_size,
+                                              yt_dlp_request_options_t *video_options, yt_dlp_request_options_t *audio_options, bool (*cancel)(void *), void *data);
 
 /**
  * @brief For yt dlp request options, this is the live record that ties `proxy_specified` together. The owning code
@@ -59,15 +56,12 @@ asciichat_error_t yt_dlp_extract_with_options(const char *url, const char *yt_dl
  *
  * @ingroup media
  */
-asciichat_error_t yt_dlp_extract_stream_urls(const char *url, const char *yt_dlp_options, char *output_url,
-                                             size_t output_size, char *audio_url, size_t audio_size);
-asciichat_error_t yt_dlp_extract_stream_urls_interruptible(const char *url, const char *yt_dlp_options,
-                                                           char *output_url, size_t output_size, char *audio_url,
-                                                           size_t audio_size, bool (*cancel)(void *), void *data);
+asciichat_error_t yt_dlp_extract_stream_urls(const char *url, const char *yt_dlp_options, char *output_url, size_t output_size, char *audio_url, size_t audio_size);
+asciichat_error_t yt_dlp_extract_stream_urls_interruptible(const char *url, const char *yt_dlp_options, char *output_url, size_t output_size, char *audio_url, size_t audio_size,
+                                                           bool (*cancel)(void *), void *data);
 
 /** Extract the first playable stream URL. Prefer the two-output API for audio. */
-asciichat_error_t yt_dlp_extract_stream_url(const char *url, const char *yt_dlp_options, char *output_url,
-                                            size_t output_size);
+asciichat_error_t yt_dlp_extract_stream_url(const char *url, const char *yt_dlp_options, char *output_url, size_t output_size);
 
 /**
  * @brief Check if yt-dlp is installed and accessible

@@ -48,26 +48,21 @@ typedef struct {
 } ascii_stabilizer_t;
 
 /** Prepare history for a viewport and rendering contract, resetting it on change. */
-asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height,
-                                           uint64_t configuration);
+asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height, uint64_t configuration);
 void ascii_stabilizer_reset(ascii_stabilizer_t *state);
 /** Select history for the current thread until the previous target is restored. */
 ascii_stabilizer_t *ascii_stabilizer_set_target(ascii_stabilizer_t *state);
 /** Choose a glyph using current and previous candidate errors and patch motion. */
-uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate,
-                                 uint64_t candidate_error, uint64_t previous_error, uint32_t color, uint64_t elapsed_ns,
+uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate, uint64_t candidate_error, uint64_t previous_error, uint32_t color, uint64_t elapsed_ns,
                                  uint32_t *stabilized_color);
-char *ascii_render(const image_t *image, const char *palette, ascii_color_t color, bool background, bool dither,
-                   const simd_cells_t *ops);
+char *ascii_render(const image_t *image, const char *palette, ascii_color_t color, bool background, bool dither, const simd_cells_t *ops);
 
 bool ascii_glyph_palette_supported(const char *palette);
 char *ascii_render_glyph_match(const image_t *image, ascii_color_t color, const simd_cells_t *ops, const char *palette);
-char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t color, const simd_cells_t *ops,
-                                    const char *palette, bool background);
+char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t color, const simd_cells_t *ops, const char *palette, bool background);
 
 /** Two source rows per terminal row; the supplied backend processes both rows. */
-char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int stride_bytes, ascii_color_t color,
-                              const simd_cells_t *ops);
+char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int stride_bytes, ascii_color_t color, const simd_cells_t *ops);
 
 /** Prepared row storage shared by ISA-owned processing loops. No pixel work occurs here. */
 /**
@@ -91,8 +86,7 @@ typedef struct {
   _Alignas(64) uint32_t inline_scratch[ASCII_INLINE_SCRATCH_COLUMNS * ASCII_SCRATCH_PLANES];
 } ascii_frame_t;
 asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, const char *palette);
-void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows,
-                          const simd_cells_t *ops);
+void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows, const simd_cells_t *ops);
 char *ascii_frame_finish(ascii_frame_t *frame);
 #define DECLARE_ASCII_PROCESSOR(isa) char *render_ascii_cells_##isa(const image_t *, const char *, ascii_color_t, bool)
 DECLARE_ASCII_PROCESSOR(sse2);
@@ -102,8 +96,7 @@ DECLARE_ASCII_PROCESSOR(neon);
 DECLARE_ASCII_PROCESSOR(sve);
 #undef DECLARE_ASCII_PROCESSOR
 
-asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb, int width, int height, int *stride,
-                                        ascii_color_t mode);
+asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb, int width, int height, int *stride, ascii_color_t mode);
 void ascii_frame_emit_halfrow(ascii_frame_t *frame, ascii_color_t mode, bool more_rows, const simd_cells_t *ops);
 #define DECLARE_HALF_PROCESSOR(isa) char *render_halfblocks_##isa(const uint8_t *, int, int, int, ascii_color_t)
 DECLARE_HALF_PROCESSOR(sse2);

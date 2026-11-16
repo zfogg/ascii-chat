@@ -38,8 +38,7 @@ Test(regex_match, no_match_retains_native_error) {
 }
 
 Test(regex_match, partial_mode_falls_back_when_not_jit_compiled) {
-  cr_assert_eq(asciichat_pcre2_match(pattern, (PCRE2_SPTR) "to", 2, 0, PCRE2_PARTIAL_HARD, matches, NULL),
-               PCRE2_ERROR_PARTIAL);
+  cr_assert_eq(asciichat_pcre2_match(pattern, (PCRE2_SPTR) "to", 2, 0, PCRE2_PARTIAL_HARD, matches, NULL), PCRE2_ERROR_PARTIAL);
 }
 
 Test(regex_match, nonzero_start_offset_is_forwarded) {
