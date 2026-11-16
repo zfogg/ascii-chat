@@ -55,7 +55,8 @@
         "ASCIICHAT_ENABLE_CTEST_DASHBOARD": "OFF",
         "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
         "ASCIICHAT_BUILD_WITH_PANIC": "OFF",
-        "ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS": "OFF"
+        "ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS": "OFF",
+        "ASCIICHAT_ENFORCE_STATIC_RELEASE": "ON"
       }
     },
     {
@@ -128,7 +129,7 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
-        "USE_MUSL": "OFF"
+        "USE_MUSL": "ON"
       },
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
@@ -140,7 +141,7 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++",
-        "USE_MUSL": "OFF"
+        "USE_MUSL": "ON"
       },
       "binaryDir": "${sourceDir}/build/${presetName}",
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
@@ -153,8 +154,9 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "cl",
         "CMAKE_CXX_COMPILER": "cl",
-        "ASCIICHAT_SHARED_DEPS": "ON",
-        "ASCIICHAT_ENFORCE_STATIC_RELEASE": "OFF"
+        "ASCIICHAT_SHARED_DEPS": "OFF",
+        "ASCIICHAT_ENFORCE_STATIC_RELEASE": "ON",
+        "USE_MUSL": "OFF"
       },
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
       "binaryDir": "${sourceDir}/build/${presetName}"

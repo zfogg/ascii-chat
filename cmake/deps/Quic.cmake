@@ -66,8 +66,6 @@ function(asciichat_configure_quic)
     set(_quic_common_args
         "-DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"
         "-DCMAKE_PROJECT_INCLUDE:FILEPATH=${CMAKE_SOURCE_DIR}/cmake/deps/QuicExternalSetup.cmake"
-        "-DCMAKE_PROJECT_INCLUDE_BEFORE:FILEPATH=${CMAKE_SOURCE_DIR}/cmake/deps/QuicExternalSetup.cmake"
-        "-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES:FILEPATH=${CMAKE_SOURCE_DIR}/cmake/deps/QuicExternalSetup.cmake"
         "-DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}"
         "-DCMAKE_MAKE_PROGRAM:FILEPATH=${CMAKE_MAKE_PROGRAM}"
         "-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON"
@@ -123,13 +121,23 @@ function(asciichat_configure_quic)
     # variables.  vcpkg can leave x64-windows-static paths in those variables
     # after a previous configure even though the parent selected shared
     # x64-windows libraries.
-    if(_quic_shared AND WIN32)
+    if(WIN32)
         # vcpkg's debug import libraries are the authoritative shared Windows
-        # paths; imported-target properties can retain a stale static path.
+        # paths; imported-target properties can retain a stale path.  For the
+        # static triplet, pass the release import libraries explicitly too;
+        # OPENSSL_SSL_LIBRARY may otherwise be a CMake optimized/debug list,
+        # which cannot be represented by a child FILEPATH cache entry.
         set(_quic_vcpkg_debug_libdir
             "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/lib")
-        set(_quic_ssl_file "${_quic_vcpkg_debug_libdir}/libssl.lib")
-        set(_quic_crypto_file "${_quic_vcpkg_debug_libdir}/libcrypto.lib")
+        if(_quic_shared)
+            set(_quic_ssl_file "${_quic_vcpkg_debug_libdir}/libssl.lib")
+            set(_quic_crypto_file "${_quic_vcpkg_debug_libdir}/libcrypto.lib")
+        else()
+            set(_quic_vcpkg_libdir
+                "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib")
+            set(_quic_ssl_file "${_quic_vcpkg_libdir}/libssl.lib")
+            set(_quic_crypto_file "${_quic_vcpkg_libdir}/libcrypto.lib")
+        endif()
     else()
         set(_quic_ssl_file "${OPENSSL_SSL_LIBRARY}")
         set(_quic_crypto_file "${OPENSSL_CRYPTO_LIBRARY}")
