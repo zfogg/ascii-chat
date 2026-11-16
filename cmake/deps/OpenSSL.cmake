@@ -170,19 +170,28 @@ if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
         pkg_check_modules(ASCIICHAT_SYSTEM_OPENSSL QUIET openssl>=3.0)
     endif()
 
-    # A reused build directory may retain paths from a previous machine or a
-    # removed source build, so clear only invalid cached entries first.
-    if((DEFINED OPENSSL_INCLUDE_DIR AND NOT EXISTS "${OPENSSL_INCLUDE_DIR}/openssl/ssl.h") OR
-       (DEFINED OPENSSL_CRYPTO_LIBRARY AND NOT EXISTS "${OPENSSL_CRYPTO_LIBRARY}") OR
-       (DEFINED OPENSSL_SSL_LIBRARY AND NOT EXISTS "${OPENSSL_SSL_LIBRARY}"))
-        unset(OPENSSL_ROOT_DIR CACHE)
-        unset(OPENSSL_INCLUDE_DIR CACHE)
-        unset(OPENSSL_CRYPTO_LIBRARY CACHE)
-        unset(OPENSSL_SSL_LIBRARY CACHE)
+    # System mode must not inherit paths to a previous source-built OpenSSL
+    # from a reused build directory.
+    unset(OPENSSL_ROOT_DIR CACHE)
+    unset(OPENSSL_INCLUDE_DIR CACHE)
+    unset(OPENSSL_CRYPTO_LIBRARY CACHE)
+    unset(OPENSSL_SSL_LIBRARY CACHE)
+    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
+        find_library(ASCIICHAT_SYSTEM_OPENSSL_SSL_LIBRARY
+            NAMES ssl
+            HINTS ${ASCIICHAT_SYSTEM_OPENSSL_LIBRARY_DIRS}
+            REQUIRED)
+        find_library(ASCIICHAT_SYSTEM_OPENSSL_CRYPTO_LIBRARY
+            NAMES crypto
+            HINTS ${ASCIICHAT_SYSTEM_OPENSSL_LIBRARY_DIRS}
+            REQUIRED)
+        set(OPENSSL_INCLUDE_DIR "${ASCIICHAT_SYSTEM_OPENSSL_INCLUDE_DIRS}")
+        set(OPENSSL_SSL_LIBRARY "${ASCIICHAT_SYSTEM_OPENSSL_SSL_LIBRARY}")
+        set(OPENSSL_CRYPTO_LIBRARY "${ASCIICHAT_SYSTEM_OPENSSL_CRYPTO_LIBRARY}")
     endif()
     if(ASCIICHAT_SYSTEM_OPENSSL_FOUND AND ASCIICHAT_SYSTEM_OPENSSL_PREFIX)
         find_package(OpenSSL 3.0 QUIET COMPONENTS SSL Crypto
-            HINTS "${ASCIICHAT_SYSTEM_OPENSSL_PREFIX}")
+            HINTS "${ASCIICHAT_SYSTEM_OPENSSL_PREFIX}" /usr)
     else()
         find_package(OpenSSL 3.0 QUIET COMPONENTS SSL Crypto)
     endif()
