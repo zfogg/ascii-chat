@@ -1287,7 +1287,11 @@ static inline const options_t *options_get_or_default(void) {
   const options_t *opts = options_get();
   if (!opts)
     options_warn_uninitialized();
+#ifdef __cplusplus
+  static const options_t default_options = {};
+#else
   static const options_t default_options = {0};
+#endif
   return opts ? opts : &default_options;
 }
 
