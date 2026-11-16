@@ -384,6 +384,15 @@ foreach(_package_manager HOMEBREW SCOOP AUR)
 endforeach()
 
 include("${CMAKE_SOURCE_DIR}/deps/recast/Recast.cmake")
+if(RECAST_BACKEND STREQUAL "NATIVE" AND NOT RECAST_NATIVE_BINARY)
+  set(BUILD_TESTING OFF CACHE BOOL "Disable Recast tests in ascii-chat" FORCE)
+  add_subdirectory(
+    "${CMAKE_SOURCE_DIR}/deps/recast"
+    "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build"
+    EXCLUDE_FROM_ALL)
+  set(RECAST_NATIVE_BINARY "$<TARGET_FILE:recast>" CACHE FILEPATH
+      "Recast host executable" FORCE)
+endif()
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Query.cmake)
 ascii_panic_prepare()
