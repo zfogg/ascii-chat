@@ -378,7 +378,7 @@ foreach(_package_manager HOMEBREW SCOOP AUR)
     endif()
 endforeach()
 
-include("${CMAKE_SOURCE_DIR}/deps/recast/Recast.cmake")
+include("${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/recast/Recast.cmake")
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Query.cmake)
 ascii_panic_prepare()
