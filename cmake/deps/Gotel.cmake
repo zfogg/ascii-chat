@@ -143,6 +143,7 @@ if(USE_MUSL AND NOT TARGET nghttp2_static)
     set(ENABLE_APP OFF CACHE BOOL "Disable nghttp2 applications" FORCE)
     set(ENABLE_HPACK_TOOLS OFF CACHE BOOL "Disable nghttp2 HPACK tools" FORCE)
     set(ENABLE_EXAMPLES OFF CACHE BOOL "Disable nghttp2 examples" FORCE)
+    set(ENABLE_DOC OFF CACHE BOOL "Disable nghttp2 documentation" FORCE)
     set(BUILD_TESTING OFF CACHE BOOL "Disable nghttp2 tests" FORCE)
     FetchContent_Declare(asciichat_nghttp2
         GIT_REPOSITORY https://github.com/nghttp2/nghttp2.git

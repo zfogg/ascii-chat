@@ -247,7 +247,8 @@ if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
         # We handle DLL copying ourselves using cmd /c in PostBuild.cmake
         set(VCPKG_APPLOCAL_DEPS OFF CACHE BOOL "Disable vcpkg automatic DLL copying" FORCE)
 
-        set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+        set(CMAKE_TOOLCHAIN_FILE
+            "${CMAKE_SOURCE_DIR}/cmake/toolchains/Vcpkg.cmake" CACHE STRING "")
         message(STATUS "Using ${BoldGreen}vcpkg${ColorReset} toolchain from environment: ${BoldBlue}$ENV{VCPKG_ROOT}${ColorReset}")
         message(STATUS "Disabled vcpkg applocal.ps1 - using ${BoldCyan}cmd /c xcopy${ColorReset} for DLL copying")
     endif()
