@@ -65,7 +65,7 @@ display_title='ascii-chat - Video chat in your terminal'
 
 submit_pr() {
   local fork="$1" upstream="$2" branch="$3" title="$4" directory="$5"
-  git clone --depth 1 "https://x-access-token:$TOKEN@github.com/$fork.git" "$WORK_DIR/repo"
+  git -c credential.helper= clone --depth 1 "https://x-access-token:$TOKEN@github.com/$fork.git" "$WORK_DIR/repo"
   git -C "$WORK_DIR/repo" checkout -B "$branch"
   if [[ "$TARGET" == "chocolatey" ]]; then
     rm -rf "$WORK_DIR/repo/automatic/ascii-chat" "$WORK_DIR/repo/automatic/libasciichat"
@@ -82,7 +82,7 @@ submit_pr() {
     return 0
   fi
   git -C "$WORK_DIR/repo" commit -m "$title"
-  git -C "$WORK_DIR/repo" push --force origin "$branch"
+  git -C "$WORK_DIR/repo" -c credential.helper= push --force origin "$branch"
   local head="$(cut -d/ -f1 <<< "$fork"):$branch"
   local pr="$(gh pr list --repo "$upstream" --head "$head" --state open --json number --jq '.[0].number // empty')"
   if [[ -n "$pr" ]]; then
@@ -185,7 +185,7 @@ class Libasciichat < Formula
   end
 end
 EOF
-    git clone --depth 1 "https://x-access-token:$TOKEN@github.com/$HOMEBREW_REPOSITORY.git" "$WORK_DIR/repo"
+    git -c credential.helper= clone --depth 1 "https://x-access-token:$TOKEN@github.com/$HOMEBREW_REPOSITORY.git" "$WORK_DIR/repo"
     rm -rf "$WORK_DIR/repo/Formula/ascii-chat.rb" "$WORK_DIR/repo/Formula/libasciichat.rb"
     cp "$WORK_DIR/generated/Formula/ascii-chat.rb" "$WORK_DIR/repo/Formula/ascii-chat.rb"
     cp "$WORK_DIR/generated/Formula/libasciichat.rb" "$WORK_DIR/repo/Formula/libasciichat.rb"
@@ -197,7 +197,7 @@ EOF
       exit 0
     fi
     git -C "$WORK_DIR/repo" commit -m "Update ascii-chat packages to $VERSION"
-    git -C "$WORK_DIR/repo" push origin HEAD:main
+    git -C "$WORK_DIR/repo" -c credential.helper= push origin HEAD:main
     ;;
   winget)
     mkdir -p "$WORK_DIR/generated/manifests/a/ascii-chat/$VERSION"
@@ -241,7 +241,7 @@ Installers:
 ManifestType: installer
 ManifestVersion: 1.10.0
 EOF
-    git clone --depth 1 "https://x-access-token:$TOKEN@github.com/$WINGET_FORK_REPOSITORY.git" "$WORK_DIR/repo"
+    git -c credential.helper= clone --depth 1 "https://x-access-token:$TOKEN@github.com/$WINGET_FORK_REPOSITORY.git" "$WORK_DIR/repo"
     git -C "$WORK_DIR/repo" checkout -B "ascii-chat-$VERSION"
     rm -rf "$WORK_DIR/repo/manifests/a/ascii-chat/$VERSION"
     mkdir -p "$WORK_DIR/repo/manifests/a/ascii-chat"
@@ -250,7 +250,7 @@ EOF
     git -C "$WORK_DIR/repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
     git -C "$WORK_DIR/repo" add "manifests/a/ascii-chat/$VERSION"
     git -C "$WORK_DIR/repo" commit -m "New version: ascii-chat version $VERSION"
-    git -C "$WORK_DIR/repo" push --force origin "ascii-chat-$VERSION"
+    git -C "$WORK_DIR/repo" -c credential.helper= push --force origin "ascii-chat-$VERSION"
     head="$(cut -d/ -f1 <<< "$WINGET_FORK_REPOSITORY"):ascii-chat-$VERSION"
     pr="$(gh pr list --repo microsoft/winget-pkgs --head "$head" --state open --json number --jq '.[0].number // empty')"
     title="New version: ascii-chat version $VERSION"
@@ -347,13 +347,13 @@ EOF
   <version name="$VERSION" package="libasciichat-arm64" type="zip"><url>$LIB_ARM64_URL</url><hash-sum type="SHA-256">$LIB_ARM64_SHA256</hash-sum></version>
 </root>
 EOF
-    git clone --depth 1 "https://x-access-token:$TOKEN@github.com/$N_PACKD_REPOSITORY.git" "$WORK_DIR/repo"
+    git -c credential.helper= clone --depth 1 "https://x-access-token:$TOKEN@github.com/$N_PACKD_REPOSITORY.git" "$WORK_DIR/repo"
     cp "$WORK_DIR/generated/repository.xml" "$WORK_DIR/repo/repository.xml"
     git -C "$WORK_DIR/repo" config user.name "github-actions[bot]"
     git -C "$WORK_DIR/repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
     git -C "$WORK_DIR/repo" add repository.xml
     git -C "$WORK_DIR/repo" commit -m "Update ascii-chat packages to $VERSION"
-    git -C "$WORK_DIR/repo" push origin HEAD:main
+    git -C "$WORK_DIR/repo" -c credential.helper= push origin HEAD:main
     ;;
   *) echo "Unknown target: $TARGET" >&2; exit 2 ;;
 esac
