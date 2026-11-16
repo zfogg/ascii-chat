@@ -105,7 +105,6 @@ case "$TARGET" in
 class AsciiChat < Formula
   desc "Video chat in your terminal"
   homepage "https://ascii-chat.com"
-  version "$VERSION"
   license "MIT"
 
   if Hardware::CPU.arm?
@@ -145,7 +144,6 @@ EOF
 class Libasciichat < Formula
   desc "Reusable C library for ascii-chat applications"
   homepage "https://ascii-chat.com"
-  version "$VERSION"
   license "MIT"
 
   if Hardware::CPU.arm?
@@ -167,8 +165,6 @@ class Libasciichat < Formula
   depends_on "mimalloc"
   depends_on "miniupnpc"
   depends_on "nghttp2"
-  depends_on "nghttp3"
-  depends_on "ngtcp2"
   depends_on "openssl@3"
   depends_on "opus"
   depends_on "pcre2"
