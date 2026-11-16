@@ -747,7 +747,6 @@ void audio_analysis_print_report(void) {
 
   // Stuttering/periodic gap detection using packet inter-arrival times
   if (g_received_packet_times_count >= 5) {
-    uint32_t inter_arrival_times_ms[MAX_PACKET_SAMPLES - 1];
     uint32_t inter_arrival_count = 0;
     uint32_t min_interval_ms = 0xFFFFFFFF;
     uint32_t max_interval_ms = 0;
@@ -762,7 +761,8 @@ void audio_analysis_print_report(void) {
       uint64_t gap_ns = time_elapsed_ns(prev_ns, curr_ns);
       uint32_t gap_ms = (uint32_t)time_ns_to_ms(gap_ns);
 
-      inter_arrival_times_ms[inter_arrival_count++] = gap_ms;
+      (void)gap_ms;
+      inter_arrival_count++;
       if (gap_ms < min_interval_ms)
         min_interval_ms = gap_ms;
       if (gap_ms > max_interval_ms)

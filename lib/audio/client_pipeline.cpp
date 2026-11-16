@@ -28,9 +28,11 @@
 
 // Suppress WebRTC/Abseil warnings about deprecated builtins and unused parameters
 // These are third-party code issues, not our code
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-builtins"
 #pragma clang diagnostic ignored "-Wunused-parameter"
+#endif
 
 // WebRTC AEC3 extracted repository has different include paths
 // than full WebRTC (no api/audio/ subdirectory)
@@ -39,7 +41,9 @@
 // Note: extracted AEC3 doesn't have environment API - using direct classes
 #include "audio_processing/audio_buffer.h"
 
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#endif
 
 // WebRTC defines FATAL() with no parameters, but ascii-chat defines
 // FATAL(code, ...) with parameters. Undefine the WebRTC version before
