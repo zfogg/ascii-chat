@@ -72,6 +72,10 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/WebRTC.cmake)
 
 # OpenSSL - SSL/TLS library (required by libdatachannel, libwebsockets, and TURN credentials)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/OpenSSL.cmake)
+# Zlib - Compression library (required by ngtcp2 and libwebsockets)
+# Configure it before QUIC so the isolated ngtcp2 project receives the same
+# include and library selections as the parent build.
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Zlib.cmake)
 if(NOT EMSCRIPTEN)
     include(${CMAKE_SOURCE_DIR}/cmake/deps/Quic.cmake)
     asciichat_configure_quic()
@@ -82,9 +86,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/BearSSL.cmake)
 
 # libdatachannel - WebRTC DataChannels for P2P ACIP transport
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Libdatachannel.cmake)
-
-# Zlib - Compression library (required by libwebsockets, especially for musl builds)
-include(${CMAKE_SOURCE_DIR}/cmake/deps/Zlib.cmake)
 
 # libwebsockets - WebSocket transport for browser clients (uses zlib for compression and mbedTLS for WSS)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Libwebsockets.cmake)
