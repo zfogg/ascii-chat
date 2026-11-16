@@ -5,6 +5,13 @@
 include_guard(GLOBAL)
 
 if(EMSCRIPTEN)
+    # The web targets do not include native telemetry sources, but the shared
+    # library graph still links the common gotel interface. Provide the same
+    # target name without pulling native OpenTelemetry dependencies into WASM.
+    if(NOT TARGET gotel)
+        add_library(gotel INTERFACE)
+        add_library(gotel::gotel ALIAS gotel)
+    endif()
     return()
 endif()
 
