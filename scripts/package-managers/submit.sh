@@ -182,11 +182,11 @@ EOF
   <metadata><id>ascii-chat</id><version>$VERSION</version><title>ascii-chat</title><authors>Zachary Fogg</authors><owners>Zachary Fogg</owners><license type="expression">MIT</license><projectUrl>https://ascii-chat.com</projectUrl><requireLicenseAcceptance>false</requireLicenseAcceptance><description>$description</description><tags>video chat terminal ascii webcam microphone</tags></metadata>
 </package>
 EOF
-    cat > "$WORK_DIR/generated/automatic/ascii-chat/tools/chocolateyInstall.ps1" <<EOF
-$arm64 = $env:PROCESSOR_ARCHITEW6432 -eq 'ARM64'
-$url = if ($arm64) { '$RUNTIME_ARM64_URL' } else { '$RUNTIME_X64_URL' }
-$hash = if ($arm64) { '$RUNTIME_ARM64_SHA256' } else { '$RUNTIME_X64_SHA256' }
-Install-ChocolateyZipPackage -PackageName 'ascii-chat' -Url $url -UnzipLocation (Join-Path (Get-ToolsLocation) 'ascii-chat') -Checksum $hash -ChecksumType 'sha256'
+cat > "$WORK_DIR/generated/automatic/ascii-chat/tools/chocolateyInstall.ps1" <<EOF
+\$arm64 = \$env:PROCESSOR_ARCHITEW6432 -eq 'ARM64'
+\$url = if (\$arm64) { '$RUNTIME_ARM64_URL' } else { '$RUNTIME_X64_URL' }
+\$hash = if (\$arm64) { '$RUNTIME_ARM64_SHA256' } else { '$RUNTIME_X64_SHA256' }
+Install-ChocolateyZipPackage -PackageName 'ascii-chat' -Url \$url -UnzipLocation (Join-Path (Get-ToolsLocation) 'ascii-chat') -Checksum \$hash -ChecksumType 'sha256'
 Install-BinFile -Name 'ascii-chat' -Path (Join-Path (Get-ToolsLocation) 'ascii-chat\ascii-chat.exe')
 EOF
     cat > "$WORK_DIR/generated/automatic/libasciichat/libasciichat.nuspec" <<EOF
@@ -195,11 +195,11 @@ EOF
   <metadata><id>libasciichat</id><version>$VERSION</version><title>libasciichat</title><authors>Zachary Fogg</authors><owners>Zachary Fogg</owners><license type="expression">MIT</license><projectUrl>https://ascii-chat.com</projectUrl><requireLicenseAcceptance>false</requireLicenseAcceptance><description>Development headers, libraries, and CMake integration files for libasciichat.</description><tags>c library ascii chat development</tags></metadata>
 </package>
 EOF
-    cat > "$WORK_DIR/generated/automatic/libasciichat/tools/chocolateyInstall.ps1" <<EOF
-$arm64 = $env:PROCESSOR_ARCHITEW6432 -eq 'ARM64'
-$url = if ($arm64) { '$LIB_ARM64_URL' } else { '$LIB_X64_URL' }
-$hash = if ($arm64) { '$LIB_ARM64_SHA256' } else { '$LIB_X64_SHA256' }
-Install-ChocolateyZipPackage -PackageName 'libasciichat' -Url $url -UnzipLocation (Join-Path (Get-ToolsLocation) 'libasciichat') -Checksum $hash -ChecksumType 'sha256'
+cat > "$WORK_DIR/generated/automatic/libasciichat/tools/chocolateyInstall.ps1" <<EOF
+\$arm64 = \$env:PROCESSOR_ARCHITEW6432 -eq 'ARM64'
+\$url = if (\$arm64) { '$LIB_ARM64_URL' } else { '$LIB_X64_URL' }
+\$hash = if (\$arm64) { '$LIB_ARM64_SHA256' } else { '$LIB_X64_SHA256' }
+Install-ChocolateyZipPackage -PackageName 'libasciichat' -Url \$url -UnzipLocation (Join-Path (Get-ToolsLocation) 'libasciichat') -Checksum \$hash -ChecksumType 'sha256'
 EOF
     submit_pr "$CHOCOLATEY_FORK" "chocolatey-community/chocolatey-packages" "ascii-chat-$VERSION" "Update ascii-chat packages to $VERSION" "automatic"
     ;;
