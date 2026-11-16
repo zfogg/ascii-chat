@@ -107,7 +107,7 @@ h265_encoder_t *video_encoder_create(video_codec_t codec_type, uint16_t initial_
     return NULL;
   }
 
-  DEFER_NAMED(cleanup, h265_encoder_destroy(enc));
+  defer_named(cleanup, h265_encoder_destroy(enc));
 
   const AVCodec *codec = video_encoder_find_codec(codec_type);
   if (!codec) {
@@ -171,7 +171,7 @@ h265_encoder_t *video_encoder_create(video_codec_t codec_type, uint16_t initial_
   // Register encoder for debugging
   NAMED_REGISTER_H265_ENCODER(enc, "h265_encoder", NULL);
 
-  DEFER_CANCEL(cleanup);
+  defer_cancel(cleanup);
   return enc;
 }
 

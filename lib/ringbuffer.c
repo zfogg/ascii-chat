@@ -167,7 +167,7 @@ framebuffer_t *framebuffer_create(size_t capacity) {
     return NULL;
   }
 
-  DEFER_NAMED(framebuffer_mutex, mutex_destroy(&fb->mutex));
+  defer_named(framebuffer_mutex, mutex_destroy(&fb->mutex));
 
   // Create ringbuffer to store frame_t structs
   fb->rb = ringbuffer_create(sizeof(frame_t), capacity);
@@ -176,7 +176,7 @@ framebuffer_t *framebuffer_create(size_t capacity) {
     return NULL;
   }
 
-  DEFER_CANCEL(framebuffer_mutex);
+  defer_cancel(framebuffer_mutex);
   framebuffer_t *result = fb;
   fb = NULL;
   return result;
@@ -196,7 +196,7 @@ framebuffer_t *framebuffer_create_multi(size_t capacity) {
     return NULL;
   }
 
-  DEFER_NAMED(framebuffer_mutex, mutex_destroy(&fb->mutex));
+  defer_named(framebuffer_mutex, mutex_destroy(&fb->mutex));
 
   // Create ringbuffer to store multi_source_frame_t structs
   fb->rb = ringbuffer_create(sizeof(multi_source_frame_t), capacity);
@@ -205,7 +205,7 @@ framebuffer_t *framebuffer_create_multi(size_t capacity) {
     return NULL;
   }
 
-  DEFER_CANCEL(framebuffer_mutex);
+  defer_cancel(framebuffer_mutex);
   framebuffer_t *result = fb;
   fb = NULL;
   return result;

@@ -203,7 +203,7 @@ char *https_get(const char *hostname, const char *path) {
 
   // Parse PEM certificates into BearSSL trust anchors
   anchor_list anchors = ANCHOR_LIST_INIT;
-  DEFER(free_http_anchors(&anchors));
+  defer(free_http_anchors(&anchors));
   size_t num_anchors = read_trust_anchors_from_memory(&anchors, (unsigned char *)pem_data, pem_size);
   /* libplatform allocates the certificate bundle with the regular C
    * allocator; it must not cross into ascii-chat's optional mimalloc path. */
@@ -237,7 +237,7 @@ char *https_get(const char *hostname, const char *path) {
     return NULL;
   }
 
-  DEFER(if (result) freeaddrinfo(result));
+  defer(if (result) freeaddrinfo(result));
 
   // Create TCP socket
   socket_t sock = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
@@ -246,7 +246,7 @@ char *https_get(const char *hostname, const char *path) {
     return NULL;
   }
 
-  DEFER(if (sock != INVALID_SOCKET_VALUE) socket_close(sock));
+  defer(if (sock != INVALID_SOCKET_VALUE) socket_close(sock));
 
   // Set socket timeouts to avoid blocking indefinitely on stalled connections.
   // Windows expects a DWORD timeout in milliseconds, while POSIX expects a
