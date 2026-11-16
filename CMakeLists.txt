@@ -388,14 +388,6 @@ endforeach()
 set(RECAST_SOURCE_DIRS "include;lib;src;tests" CACHE STRING
     "Project source roots scanned by Recast" FORCE)
 include("${CMAKE_SOURCE_DIR}/deps/recast/Recast.cmake")
-# Multi-config generators require an imported executable location for every
-# configuration used by generated custom commands.
-if(TARGET recast-native)
-  foreach(_recast_config DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
-    set_property(TARGET recast-native PROPERTY
-      "IMPORTED_LOCATION_${_recast_config}" "${RECAST_NATIVE_BINARY}")
-  endforeach()
-endif()
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Query.cmake)
 ascii_panic_prepare()
