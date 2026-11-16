@@ -134,7 +134,12 @@ EOF
     if [[ -n "$pr" ]]; then
       gh pr edit "$pr" --repo microsoft/winget-pkgs --title "$title" --body "Automated update for ascii-chat $VERSION."
     else
-      gh pr create --repo microsoft/winget-pkgs --head "$head" --base master --title "$title" --body "Automated update for ascii-chat $VERSION."
+      if ! output="$(gh pr create --repo microsoft/winget-pkgs --head "$head" --base master --title "$title" --body "Automated update for ascii-chat $VERSION" 2>&1)"; then
+        if [[ "$output" != *"already exists"* ]]; then
+          echo "$output" >&2
+          exit 1
+        fi
+      fi
     fi
     ;;
   scoop)
@@ -225,9 +230,7 @@ EOF
     git -C "$WORK_DIR/repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
     git -C "$WORK_DIR/repo" add repository.xml
     git -C "$WORK_DIR/repo" commit -m "Update ascii-chat packages to $VERSION"
-    default_branch="$(git -C "$WORK_DIR/repo" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')"
-    default_branch="${default_branch:-$(git -C "$WORK_DIR/repo" branch --show-current)}"
-    git -C "$WORK_DIR/repo" push origin "$default_branch"
+    git -C "$WORK_DIR/repo" push origin HEAD:main
     ;;
   *) echo "Unknown target: $TARGET" >&2; exit 2 ;;
 esac
