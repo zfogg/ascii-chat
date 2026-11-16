@@ -722,7 +722,7 @@ int log_named_format_message(const char *message, char *output, size_t output_si
               memcpy(kw_buf, prefix_start, kw_len);
               kw_buf[kw_len] = '\0';
             } else {
-              snprintf(kw_buf, sizeof(kw_buf), "%s", reg_type);
+              snprintf(kw_buf, sizeof(kw_buf), "%.*s", (int)(sizeof(kw_buf) - 1), reg_type);
             }
 
             char temp[LOG_NAMED_TEMP_BUFFER_SIZE];
