@@ -161,26 +161,37 @@ endif()
 # it is new enough.  Release packages continue to use the pinned source build
 # unless this option is explicitly enabled.
 if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
+    # Prefer pkg-config when the distribution provides an OpenSSL module. Some
+    # distributions, including Arch installations without the development
+    # metadata package, provide usable headers/libraries without openssl.pc;
+    # fall back to CMake's finder in that case.
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
         pkg_check_modules(ASCIICHAT_SYSTEM_OPENSSL QUIET openssl>=3.0)
     endif()
-    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
-        # A reused build directory may retain paths from a previous machine or
-        # a removed source build.  Clear only invalid OpenSSL cache entries so
-        # FindOpenSSL can rediscover the installed system libraries.
-        if((DEFINED OPENSSL_INCLUDE_DIR AND NOT EXISTS "${OPENSSL_INCLUDE_DIR}/openssl/ssl.h") OR
-           (DEFINED OPENSSL_CRYPTO_LIBRARY AND NOT EXISTS "${OPENSSL_CRYPTO_LIBRARY}") OR
-           (DEFINED OPENSSL_SSL_LIBRARY AND NOT EXISTS "${OPENSSL_SSL_LIBRARY}"))
-            unset(OPENSSL_ROOT_DIR CACHE)
-            unset(OPENSSL_INCLUDE_DIR CACHE)
-            unset(OPENSSL_CRYPTO_LIBRARY CACHE)
-            unset(OPENSSL_SSL_LIBRARY CACHE)
-        endif()
+
+    # A reused build directory may retain paths from a previous machine or a
+    # removed source build, so clear only invalid cached entries first.
+    if((DEFINED OPENSSL_INCLUDE_DIR AND NOT EXISTS "${OPENSSL_INCLUDE_DIR}/openssl/ssl.h") OR
+       (DEFINED OPENSSL_CRYPTO_LIBRARY AND NOT EXISTS "${OPENSSL_CRYPTO_LIBRARY}") OR
+       (DEFINED OPENSSL_SSL_LIBRARY AND NOT EXISTS "${OPENSSL_SSL_LIBRARY}"))
+        unset(OPENSSL_ROOT_DIR CACHE)
+        unset(OPENSSL_INCLUDE_DIR CACHE)
+        unset(OPENSSL_CRYPTO_LIBRARY CACHE)
+        unset(OPENSSL_SSL_LIBRARY CACHE)
+    endif()
+    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND AND ASCIICHAT_SYSTEM_OPENSSL_PREFIX)
+        find_package(OpenSSL 3.0 QUIET COMPONENTS SSL Crypto
+            HINTS "${ASCIICHAT_SYSTEM_OPENSSL_PREFIX}")
+    else()
         find_package(OpenSSL 3.0 QUIET COMPONENTS SSL Crypto)
     endif()
-    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND AND OpenSSL_FOUND)
-        message(STATUS "Using system OpenSSL ${OPENSSL_VERSION}")
+    if(OpenSSL_FOUND)
+        if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
+            message(STATUS "Using system OpenSSL ${ASCIICHAT_SYSTEM_OPENSSL_VERSION} (pkg-config)")
+        else()
+            message(STATUS "Using system OpenSSL ${OPENSSL_VERSION} (CMake discovery)")
+        endif()
         return()
     endif()
     message(STATUS "System OpenSSL is missing or too old; using pinned source build")
