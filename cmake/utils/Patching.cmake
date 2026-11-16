@@ -14,7 +14,7 @@
 #   )
 #
 # The function uses a marker file system to avoid re-applying patches.
-# Marker files are stored in ${ASCIICHAT_DEPS_CACHE_ROOT}/<dep_name>.patch_<num>
+# Marker files are stored in ${ASCIICHAT_DEPS_CACHE_ROOT}/patches/<dep_name>/patch_<num>
 # =============================================================================
 
 # Apply a single patch to a dependency
@@ -68,7 +68,9 @@ function(apply_patch)
     get_filename_component(DEP_NAME "${PATCH_TARGET_DIR}" NAME)
 
     # Create marker file path
-    set(PATCH_MARKER "${ASCIICHAT_DEPS_CACHE_ROOT}/${DEP_NAME}.patch_${PATCH_PATCH_NUM}")
+    set(PATCH_MARKER_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/patches/${DEP_NAME}")
+    file(MAKE_DIRECTORY "${PATCH_MARKER_DIR}")
+    set(PATCH_MARKER "${PATCH_MARKER_DIR}/patch_${PATCH_PATCH_NUM}")
 
     # Result variable name
     set(RESULT_VAR "${DEP_NAME}_PATCH_${PATCH_PATCH_NUM}_APPLIED")
