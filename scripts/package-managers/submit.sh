@@ -53,7 +53,11 @@ submit_pr() {
   local fork="$1" upstream="$2" branch="$3" title="$4" directory="$5"
   git clone --depth 1 "https://x-access-token:$TOKEN@github.com/$fork.git" "$WORK_DIR/repo"
   git -C "$WORK_DIR/repo" checkout -B "$branch"
-  rm -rf "$WORK_DIR/repo/$directory"
+  if [[ "$TARGET" == "chocolatey" ]]; then
+    rm -rf "$WORK_DIR/repo/automatic/ascii-chat" "$WORK_DIR/repo/automatic/libasciichat"
+  else
+    rm -rf "$WORK_DIR/repo/$directory"
+  fi
   mkdir -p "$(dirname "$WORK_DIR/repo/$directory")"
   cp -R "$WORK_DIR/generated/$directory" "$WORK_DIR/repo/$(dirname "$directory")/"
   git -C "$WORK_DIR/repo" config user.name "github-actions[bot]"
@@ -70,7 +74,12 @@ submit_pr() {
   if [[ -n "$pr" ]]; then
     gh pr edit "$pr" --repo "$upstream" --title "$title" --body "Automated update for ascii-chat $VERSION."
   else
-    gh pr create --repo "$upstream" --head "$head" --base master --title "$title" --body "Automated update for ascii-chat $VERSION."
+    if ! output="$(gh pr create --repo "$upstream" --head "$head" --base master --title "$title" --body "Automated update for ascii-chat $VERSION" 2>&1)"; then
+      if [[ "$output" != *"already exists"* ]]; then
+        echo "$output" >&2
+        exit 1
+      fi
+    fi
   fi
 }
 
