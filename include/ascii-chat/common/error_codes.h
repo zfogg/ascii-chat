@@ -434,6 +434,6 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
 
 /** @} */
 
-#ifdef __cplusplus
+#if defined(_WIN32) && defined(__cplusplus)
 }
 #endif
