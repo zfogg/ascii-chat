@@ -174,6 +174,12 @@ set(UTF8PROC_LIBRARIES utf8proc CACHE STRING "utf8proc target supplied by gotel"
 if(TARGET gotel)
     target_include_directories(gotel PRIVATE
         "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/src")
+    # A persistent Gotel build may have been produced with its optional gRPC
+    # adapter enabled. Keep the application link deterministic when that
+    # cached archive is reused by supplying its nghttp2 dependency explicitly.
+    if(WIN32 AND ASCIICHAT_NGHTTP2_LIBRARY)
+        target_link_libraries(gotel PRIVATE "${ASCIICHAT_NGHTTP2_LIBRARY}")
+    endif()
 endif()
 
 if(USE_MUSL AND TARGET gotel_cxx AND ALPINE_LIBCXX_INCLUDE_DIR)
