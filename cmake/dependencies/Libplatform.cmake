@@ -63,6 +63,13 @@ else()
 endif()
 target_compile_definitions(libplatform PRIVATE
     LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
+if(UNIX AND NOT APPLE)
+    foreach(_libplatform_target IN ITEMS libplatform libplatform-objects)
+        if(TARGET ${_libplatform_target})
+            target_compile_definitions(${_libplatform_target} PRIVATE _XOPEN_SOURCE=700)
+        endif()
+    endforeach()
+endif()
 
 # Coverage is an application-level instrumentation option.  Do not propagate
 # its profile runtime into the shared libplatform DSO: executables own the
