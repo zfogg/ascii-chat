@@ -22,6 +22,8 @@
  */
 
 #pragma once
+#ifndef ASCII_CHAT_LOG_LOG_H
+#define ASCII_CHAT_LOG_LOG_H
 
 #include <ascii-chat/asciichat_errno.h>
 
@@ -1073,3 +1075,5 @@ void *log_get_template(void);
 #endif
 
 /** @} */ /* logging */
+
+#endif /* ASCII_CHAT_LOG_LOG_H */
