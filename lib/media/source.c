@@ -553,7 +553,7 @@ asciichat_error_t media_source_start_video(media_source_t *source) {
   if ((!source->audio_only && source->type != MEDIA_SOURCE_WEBCAM) || source->webcam_ctx || GET_OPTION(test_pattern))
     return ASCIICHAT_OK;
   if (source->type != MEDIA_SOURCE_WEBCAM)
-    source->webcam_index = GET_OPTION(webcam_index);
+    source->webcam_index = (unsigned short)GET_OPTION(webcam_index);
   asciichat_error_t err = webcam_init_context(&source->webcam_ctx, source->webcam_index);
   if (err != ASCIICHAT_OK)
     return SET_ERRNO(err, "Audio-only media requires webcam %u", source->webcam_index);

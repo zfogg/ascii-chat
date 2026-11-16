@@ -554,7 +554,7 @@ static void *audio_capture_thread_func(void *arg) {
     }
 
     // Check how many samples are available in the ring buffer
-    int available = audio_ring_buffer_available_read(connection->audio_context->capture_buffer);
+    size_t available = audio_ring_buffer_available_read(connection->audio_context->capture_buffer);
     if (available <= 0) {
       // Flush partial batch before sleeping (prevent starvation during idle periods)
       if (batch_has_data && batch_frame_count > 0) {
@@ -582,7 +582,7 @@ static void *audio_capture_thread_func(void *arg) {
     ASCII_OTEL_SCOPE(CLIENT_AUDIO_CAPTURE);
     // Read as many samples as possible (up to CAPTURE_READ_SIZE) to drain faster
     // This prevents buffer overflow when processing is slower than capture
-    int to_read = (available < CAPTURE_READ_SIZE) ? available : CAPTURE_READ_SIZE;
+    int to_read = (int)((available < CAPTURE_READ_SIZE) ? available : CAPTURE_READ_SIZE);
 
     uint64_t audio_read_samples_start_ns = time_get_ns();
     asciichat_error_t read_result = audio_read_samples(connection->audio_context, audio_buffer, to_read);
