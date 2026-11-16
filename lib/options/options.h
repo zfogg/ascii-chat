@@ -1281,15 +1281,15 @@ const terminal_options_t *options_terminal_settings_ptr(void);
  *
  * @ingroup options
  */
-#define GET_OPTION(field)                                                    \
-  ({                                                                         \
-    const options_t *_opts = options_get();                                  \
-    if (!_opts) {                                                            \
-      log_warn("GET_OPTION(" #field ") called but options not initialized"); \
-    }                                                                        \
-    static typeof(((options_t *)0)->field) _default = {0};                   \
-    (_opts ? (_opts->field) : _default);                                     \
-  })
+static inline const options_t *options_get_or_default(void) {
+  const options_t *opts = options_get();
+  if (!opts)
+    log_warn("GET_OPTION called but options not initialized");
+  static const options_t default_options = {0};
+  return opts ? opts : &default_options;
+}
+
+#define GET_OPTION(field) (options_get_or_default()->field)
 
 /**
  * @brief Set a single option field (thread-safe, RCU-based)
