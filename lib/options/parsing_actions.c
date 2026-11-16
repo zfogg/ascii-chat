@@ -32,6 +32,7 @@
 #include <options/registry.h>
 #include <libflags/completions/completions.h>
 #include <libplatform/terminal.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/question.h>
 #include <sys/stat.h>
 #include <ascii-chat/version.h>
@@ -478,8 +479,12 @@ void action_create_manpage(const char *output_path) {
   if (!builder)
     action_exit(ERROR_FILE_OPERATION);
   FILE *output = stdout;
-  if (output_path && *output_path && strcmp(output_path, "-") != 0)
-    output = fopen(output_path, "w");
+  if (output_path && *output_path && strcmp(output_path, "-") != 0) {
+    output = NULL;
+    const int fd = platform_open("manpage_output", output_path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC, FILE_PERM_PRIVATE);
+    if (fd >= 0)
+      output = platform_fdopen("manpage_output_stream", fd, "w");
+  }
   if (!output) {
     flags_schema_builder_destroy(builder);
     action_exit(ERROR_FILE_OPERATION);

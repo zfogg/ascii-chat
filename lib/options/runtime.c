@@ -518,6 +518,8 @@ const options_t *options_get(void) {
 const terminal_options_t *options_terminal_settings_ptr(void) {
   static terminal_options_t settings;
   const options_t *options = options_get();
+  if (!options)
+    return NULL;
   settings = (terminal_options_t){
       .color = (terminal_color_setting_t)options->color,
       .color_mode = options->color_mode,

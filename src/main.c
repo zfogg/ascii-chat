@@ -362,7 +362,7 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
     NAMED_REGISTER_ATOMIC(&ctrl_c_count, "ctrl_c_interrupt_count", NULL);
     ctrl_c_count_registered = true;
   }
-  if (atomic_fetch_add_int(&ctrl_c_count, 1) + 1 > 1) {
+  if (atomic_fetch_add_int(&ctrl_c_count, 1) > 0) {
     platform_force_exit(1);
   }
 

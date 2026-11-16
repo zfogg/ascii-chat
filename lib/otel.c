@@ -532,6 +532,8 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   if (is_test_environment())
     return ASCIICHAT_OK;
   const options_t *o = options_get();
+  if (!o)
+    return ASCIICHAT_OK;
   const char *endpoint = o->otel_endpoint;
   if (!endpoint || endpoint[0] == '\0')
     return ASCIICHAT_OK;
