@@ -26,6 +26,10 @@ endif()
 if(OPENSSL_INCLUDE_DIR)
     set(OPENSSL_INCLUDE_DIRS "${OPENSSL_INCLUDE_DIR}" CACHE PATH
         "Selected OpenSSL include directory" FORCE)
+    set(_OPENSSL_INCLUDE_DIRS "${OPENSSL_INCLUDE_DIR}" CACHE INTERNAL
+        "Selected OpenSSL include directory" FORCE)
+    set(_OPENSSL_INCLUDEDIR "${OPENSSL_INCLUDE_DIR}" CACHE INTERNAL
+        "Selected OpenSSL include directory" FORCE)
 endif()
 if(NOT TARGET OpenSSL::Crypto AND OPENSSL_CRYPTO_LIBRARY)
     add_library(OpenSSL::Crypto UNKNOWN IMPORTED GLOBAL)
