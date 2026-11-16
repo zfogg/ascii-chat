@@ -70,6 +70,12 @@ foreach(_libplatform_target IN ITEMS libplatform libplatform-objects)
             "${CMAKE_BINARY_DIR}/_deps/gotel/sequel-src/include"
             ${SQLITE3_INCLUDE_DIRS})
         target_compile_definitions(${_libplatform_target} PRIVATE GOTEL_WITH_SQLITE=1)
+        if(TARGET libsodium-musl)
+            add_dependencies(${_libplatform_target} libsodium-musl)
+        endif()
+        if(TARGET asciichat-fontconfig)
+            add_dependencies(${_libplatform_target} asciichat-fontconfig)
+        endif()
     endif()
 endforeach()
 
