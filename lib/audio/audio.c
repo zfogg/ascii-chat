@@ -1625,7 +1625,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   }
 
   // Setup output parameters
-  PaStreamParameters outputParams;
+  PaStreamParameters outputParams = {0};
   const PaDeviceInfo *outputInfo = NULL;
   bool has_output = false;
 
