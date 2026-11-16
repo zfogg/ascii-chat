@@ -15,6 +15,7 @@ class Libasciichat < Formula
   depends_on "fftw"
   depends_on "fontconfig"
   depends_on "freetype"
+  depends_on "icu4c"
   depends_on "libde265"
   depends_on "libpng"
   depends_on "libsodium"
