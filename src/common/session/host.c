@@ -34,7 +34,7 @@
 #include "session/display.h"
 #include <ascii-chat/tui/splash.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/app_callbacks.h>
 #include <libplatform/mutex.h>

@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include "session/render.h"
-#include <ascii-chat/options/rcu.h>
-#include <ascii-chat/options/runtime.h>
+#include <options/rcu.h>
+#include <options/runtime.h>
 #include <libplatform/system.h>
 #include <libplatform/filesystem.h>
 #include <ascii-chat/video/ascii/common.h>

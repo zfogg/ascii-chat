@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include "server/stream.h"
-#include <ascii-chat/options/rcu.h>
+#include <options/rcu.h>
 #include "session/frame_validation.h"
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/video/rgba/video_frame.h>

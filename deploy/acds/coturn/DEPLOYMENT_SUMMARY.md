@@ -71,7 +71,7 @@ The ascii-chat codebase now includes these servers by default:
 
 - `turn:turn.ascii-chat.com:3478`
 
-**Code Location**: `lib/options/presets.c:540-554`
+**Code Location**: `src/common/options/registry_network.c`
 
 **Environment Variables** (optional overrides):
 
@@ -261,7 +261,7 @@ docker stats ascii-chat-coturn
 └── coturn.service              # Systemd service unit
 
 Repository changes:
-├── lib/options/presets.c       # Updated STUN/TURN defaults
+├── src/common/options/registry_network.c     # Updated STUN/TURN defaults
 └── deploy/acds/coturn/         # All deployment files
 ```
 

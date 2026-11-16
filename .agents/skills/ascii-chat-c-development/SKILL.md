@@ -29,11 +29,11 @@ Keep reusable, platform-independent helpers in the appropriate `lib/` module, es
 
 ### Block-scoped cleanup with defer
 
-- Include `<defer.h>` where defer is used. CMake transforms C and Objective-C
+- Include `<recast/defer.h>` where defer is used. CMake transforms C and Objective-C
   sources and supported header function bodies before compilation; generated files under
-  `build/defer_transformed/` are build artifacts and must not be edited.
-- The standalone [defer tool](https://github.com/zfogg/defer) is maintained
-  separately and is included as the `deps/defer` submodule. CMake downloads a
+  `build/recast_transformed/` are build artifacts and must not be edited.
+- The standalone [Recast tool](https://github.com/zfogg/recast) is maintained
+  separately and is included as the `deps/recast` submodule. CMake downloads a
   host release by default; `DEFER_NATIVE_BINARY` selects an existing executable.
   For tool behavior and diagnostics, consult the standalone
   [documentation](https://zfogg.github.io/defer/) and this repository's defer

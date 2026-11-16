@@ -47,12 +47,10 @@ asciichat_error_t acip_client_receive_packet(acip_transport_t *transport, packet
  * @param callbacks Callback structure for handling received packets
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
-                                                   const acip_client_callbacks_t *callbacks);
+asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport, const acip_client_callbacks_t *callbacks);
 
 /** Dispatch one already-decoded client packet through the shared ACIP client path. */
-asciichat_error_t acip_client_dispatch_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
-                                              size_t length, const acip_client_callbacks_t *callbacks);
+asciichat_error_t acip_client_dispatch_packet(acip_transport_t *transport, packet_type_t type, const void *payload, size_t length, const acip_client_callbacks_t *callbacks);
 
 /** Shared client-session coordinator. The transport and callback context are borrowed. */
 typedef struct {
@@ -60,11 +58,9 @@ typedef struct {
   acip_client_callbacks_t callbacks;
 } acip_client_session_t;
 
-void acip_client_session_init(acip_client_session_t *session, acip_transport_t *transport,
-                              const acip_client_callbacks_t *callbacks);
+void acip_client_session_init(acip_client_session_t *session, acip_transport_t *transport, const acip_client_callbacks_t *callbacks);
 asciichat_error_t acip_client_session_receive(acip_client_session_t *session);
-asciichat_error_t acip_client_session_dispatch(acip_client_session_t *session, packet_type_t type, const void *payload,
-                                               size_t length);
+asciichat_error_t acip_client_session_dispatch(acip_client_session_t *session, packet_type_t type, const void *payload, size_t length);
 asciichat_error_t acip_client_session_process_wire(acip_client_session_t *session, const void *wire, size_t length);
 
 // =============================================================================
@@ -83,8 +79,7 @@ asciichat_error_t acip_client_session_process_wire(acip_client_session_t *sessio
  * @param pixel_format Pixel format (e.g., RGB24)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void *pixel_data, uint32_t width,
-                                        uint32_t height, uint32_t pixel_format);
+asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void *pixel_data, uint32_t width, uint32_t height, uint32_t pixel_format);
 
 /**
  * @brief Send H.265-encoded video frame to server (client → server)
@@ -109,8 +104,7 @@ asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void 
  * @note Encoder is responsible for RGB → YUV420 conversion internally
  * @note Encoder handles frame dimension changes transparently (reconfigures on size change)
  */
-asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_encoder_t *encoder,
-                                             const void *pixel_data, uint32_t width, uint32_t height);
+asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_encoder_t *encoder, const void *pixel_data, uint32_t width, uint32_t height);
 
 /**
  * @brief Request to start media streaming (client → server)

@@ -1,0 +1,17 @@
+{
+  "version": "{{ .Env.VERSION }}",
+  "description": "{{ .Env.DESCRIPTION }}",
+  "homepage": "https://ascii-chat.com",
+  "license": "MIT",
+  "architecture": {
+    "64bit": { "url": "{{ .Env.RUNTIME_X64_URL }}", "hash": "{{ .Env.RUNTIME_X64_SHA256 }}" },
+    "arm64": { "url": "{{ .Env.RUNTIME_ARM64_URL }}", "hash": "{{ .Env.RUNTIME_ARM64_SHA256 }}" }
+  },
+  "extract_dir": "ascii-chat",
+  "bin": "ascii-chat.exe",
+  "checkver": { "github": "https://github.com/{{ .Env.REPOSITORY }}" },
+  "autoupdate": {
+    "url": "https://github.com/{{ .Env.REPOSITORY }}/releases/download/v$version/ascii-chat-$version-Windows-amd64.zip",
+    "hash": { "url": "https://github.com/{{ .Env.REPOSITORY }}/releases/download/v$version/SHA256SUMS" }
+  }
+}

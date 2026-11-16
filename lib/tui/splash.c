@@ -45,7 +45,8 @@
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/terminal/ansi.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
+#include <libflags/explicit.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 
@@ -244,7 +245,7 @@ bool splash_should_display(bool is_intro) {
     // Allow splash in snapshot mode if loading from URL/file (has loading time)
     // Skip splash only for quick webcam snapshots (unless explicitly enabled)
     bool splash_screen_opt = GET_OPTION(splash_screen);
-    bool splash_explicitly_set = GET_OPTION(splash_screen_explicitly_set);
+    bool splash_explicitly_set = flags_explicit_state_was_set("splash-screen");
     bool is_snapshot = GET_OPTION(snapshot_mode);
     bool has_media = (GET_OPTION(media_url) && strlen(GET_OPTION(media_url)) > 0) || (GET_OPTION(media_file) && strlen(GET_OPTION(media_file)) > 0);
 
@@ -331,7 +332,7 @@ static void *splash_monitor_thread(void *arg) {
     SAFE_STRNCPY(view.update_notification, g_update_notification, sizeof(view.update_notification));
     mutex_unlock(&g_update_notification_mutex);
     build_connection_target(view.connection_target, sizeof(view.connection_target));
-    bool should_render = terminal_is_interactive() || GET_OPTION(splash_screen_explicitly_set);
+    bool should_render = terminal_is_interactive() || flags_explicit_state_was_set("splash-screen");
     // Only publish model changes. The presentation runtime owns the animation
     // clock while this monitor handles startup and input.
     if (should_render && (!published || memcmp(&view, &previous, sizeof(view)))) {

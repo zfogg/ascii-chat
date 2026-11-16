@@ -7,6 +7,7 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
+#include <stdio.h>
 
 #include <ascii-chat/video/rgba/video_frame.h>
 // =============================================================================

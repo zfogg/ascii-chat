@@ -7,7 +7,7 @@
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define CRYPTO_HANDSHAKE_SERVER_HEX_IDENTITY_BUFFER_SIZE 65
 
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/tui/notice.h>

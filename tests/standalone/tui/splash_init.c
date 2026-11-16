@@ -88,8 +88,8 @@ static bool competing_initializers(bool discovery) {
   if (contender)
     joined &= thread_join(&second, NULL) == ASCIICHAT_OK;
   if (!started || !contender || !serialized || !joined) {
-    log_error("Splash first-call race: discovery=%d started=%d contender=%d waited=%d premature_lock=%d joined=%d",
-              discovery, started, contender, atomic_load(&waited), atomic_load(&premature_lock), joined);
+    log_error("Splash first-call race: discovery=%d started=%d contender=%d waited=%d premature_lock=%d joined=%d", discovery, started, contender, atomic_load(&waited), atomic_load(&premature_lock),
+              joined);
     return false;
   }
   return true;

@@ -31,7 +31,7 @@ def test_panic_and_defer_build_and_rebuild(tmp_path: Path) -> None:
         shutil.copy2(ROOT / "src" / "tooling" / "panic" / name, panic_source)
     source = source_dir / "main.c"
     source.write_text(
-        '#include <defer.h>\n'
+        '#include <recast/defer.h>\n'
         '#include <ascii-chat/tooling/panic/instrument_log.h>\n'
         'static int cleanup_count, log_count;\n'
         'ASCII_INSTR_SOURCE_PRINT_SIGNAL_HANDLER\n'
@@ -43,16 +43,16 @@ def test_panic_and_defer_build_and_rebuild(tmp_path: Path) -> None:
     )
     (source_dir / "other.c").write_text("int other(void) { return 3; }\n", encoding="utf-8")
     (source_dir / "CMakeLists.txt").write_text(
-        f'add_executable(ascii-chat main.c other.c)\ntarget_include_directories(ascii-chat PRIVATE "{(ROOT / "include").as_posix()}" "{(ROOT / "deps" / "defer" / "cpp" / "include").as_posix()}")\n',
+        f'add_executable(ascii-chat main.c other.c)\ntarget_include_directories(ascii-chat PRIVATE "{(ROOT / "include").as_posix()}" "{(ROOT / "deps" / "recast" / "cpp" / "include").as_posix()}")\n',
         encoding="utf-8",
     )
     (project / "CMakeLists.txt").write_text(
         'cmake_minimum_required(VERSION 3.30)\nproject(panic_defer C CXX)\n'
         'set(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n'
         f'include("{(ROOT / "cmake" / "tooling" / "Panic.cmake").as_posix()}")\n'
-        f'include("{(ROOT / "deps" / "defer" / "Defer.cmake").as_posix()}")\n'
+        f'include("{(ROOT / "deps" / "recast" / "Recast.cmake").as_posix()}")\n'
         'ascii_panic_prepare()\nadd_subdirectory(src)\nset(DEFER_SOURCE_HOOK ascii_panic_defer_source)\n'
-        'defer_targets(ascii-chat)\nascii_panic_finalize()\n',
+        'recast_targets(ascii-chat)\nascii_panic_finalize()\n',
         encoding="utf-8",
     )
     build = project / "build"

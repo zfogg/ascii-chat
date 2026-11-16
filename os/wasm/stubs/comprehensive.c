@@ -13,7 +13,7 @@
 #include <ascii-chat/util/fps.h>
 #include <libplatform/question.h>
 #include <ascii-chat/network/mdns/discovery.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <libplatform/lifecycle.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

@@ -56,7 +56,7 @@ jobs:
         with:
           persist-credentials: false
           # The checked-in WASM manifest describes the PR head, as in preflight.
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
       - uses: astral-sh/setup-uv@v6
 
@@ -103,7 +103,7 @@ jobs:
         with:
           persist-credentials: false
           # The checked-in WASM manifest describes the PR head, as in preflight.
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
       - uses: astral-sh/setup-uv@v6
 

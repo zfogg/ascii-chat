@@ -89,7 +89,7 @@ if(WIN32)
     if(NOT LLVM_INCLUDE_DIRS OR NOT LLVM_LIBRARY_DIRS)
         message(FATAL_ERROR "Could not find LLVM installation with development libraries on Windows.\n"
             "\n"
-            "The defer() instrumentation tool requires clang tooling libraries\n"
+            "The Recast instrumentation tool requires clang tooling libraries\n"
             "(clangTooling.lib, clangFrontend.lib, etc.) which are NOT included in:\n"
             "  - Official LLVM Windows installer (releases.llvm.org)\n"
             "  - scoop install llvm\n"

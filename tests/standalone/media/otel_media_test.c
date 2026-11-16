@@ -7,15 +7,15 @@
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/util/time.h>
 #include <libplatform/system.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>
+#include <options/options.h>
+#include <options/rcu.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
 #include <libavcodec/avcodec.h>
-#define CHECK(value)                                                                                                   \
-  do {                                                                                                                 \
-    if (!(value))                                                                                                      \
-      FATAL(ERROR_ASSERTION_FAILED, "%s", #value);                                                                     \
+#define CHECK(value)                               \
+  do {                                             \
+    if (!(value))                                  \
+      FATAL(ERROR_ASSERTION_FAILED, "%s", #value); \
   } while (0)
 static void emit_severity(int level, const char *format, ...) {
   va_list args;

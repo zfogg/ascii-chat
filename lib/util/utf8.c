@@ -10,7 +10,7 @@
 #include "ascii-chat/asciichat_errno.h"
 #include "ascii-chat/common/error_codes.h"
 #include <ascii-chat/util/utf8.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat-deps/utf8proc/utf8proc.h>
 #include <ascii-chat/video/terminal/ansi.h>

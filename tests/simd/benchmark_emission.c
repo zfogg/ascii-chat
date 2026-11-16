@@ -102,8 +102,8 @@ int main(int argc, char **argv) {
           SAFE_FREE(out);
         }
         uint64_t elapsed = time_get_ns() - start;
-        printf("%s,%s,%s,%llu,%.2f,%zu\n", variants[b].name, pattern ? "noise" : "runs", indexed ? "256" : "truecolor",
-               (unsigned long long)(elapsed / FRAMES), (double)allocations / FRAMES, bytes / FRAMES);
+        printf("%s,%s,%s,%llu,%.2f,%zu\n", variants[b].name, pattern ? "noise" : "runs", indexed ? "256" : "truecolor", (unsigned long long)(elapsed / FRAMES), (double)allocations / FRAMES,
+               bytes / FRAMES);
       }
     }
   }

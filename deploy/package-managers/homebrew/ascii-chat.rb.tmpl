@@ -1,0 +1,29 @@
+class AsciiChat < Formula
+  desc "Video chat in your terminal"
+  homepage "https://ascii-chat.com"
+  license "MIT"
+
+  if Hardware::CPU.arm?
+    url "{{ .Env.RUNTIME_MAC_ARM64_URL }}"
+    sha256 "{{ .Env.RUNTIME_MAC_ARM64_SHA256 }}"
+  else
+    url "{{ .Env.RUNTIME_MAC_X64_URL }}"
+    sha256 "{{ .Env.RUNTIME_MAC_X64_SHA256 }}"
+  end
+
+  depends_on "gnupg"
+  depends_on "openssh"
+  depends_on "yt-dlp"
+
+  def install
+    bin.install "bin/ascii-chat"
+    man1.install "share/man/man1/ascii-chat.1" if File.exist?("share/man/man1/ascii-chat.1")
+    bash_completion.install "share/bash-completion/completions/ascii-chat" if File.exist?("share/bash-completion/completions/ascii-chat")
+    zsh_completion.install "share/zsh/site-functions/_ascii-chat" if File.exist?("share/zsh/site-functions/_ascii-chat")
+    fish_completion.install "share/fish/vendor_completions.d/ascii-chat.fish" if File.exist?("share/fish/vendor_completions.d/ascii-chat.fish")
+  end
+
+  test do
+    assert_match "ascii-chat", shell_output("#{bin}/ascii-chat --help 2>&1")
+  end
+end

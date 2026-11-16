@@ -14,11 +14,11 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define MODE_NAME_CAPACITY 32
 
-#include <ascii-chat/options/options.h> // For asciichat_mode_t and MODE_ enums
-#include <ascii-chat/options/strings.h>
-#include <ascii-chat/options/levenshtein.h>
-#include <ascii-chat/options/enums.h>
-#include <ascii-chat/options/registry.h>
+#include <options/options.h> // For asciichat_mode_t and MODE_ enums
+#include <options/strings.h>
+#include <libflags/levenshtein.h>
+#include <options/enums.h>
+#include <options/registry.h>
 #include <libplatform/terminal.h>           // For terminal color modes
 #include <ascii-chat/video/ascii/palette.h> // For palette_type_t
 #include <ascii-chat/common.h>
@@ -30,7 +30,6 @@
 // ============================================================================
 
 /**
- * @brief Mode name mapping for string conversion
  * @brief Mode name mapping for string conversion
  */
 typedef struct {
@@ -90,6 +89,10 @@ size_t asciichat_get_all_mode_strings(const char ***out_names) {
   size_t count = 0;
 
   for (size_t i = 0; mode_registry[i].name != NULL && count < MODE_NAME_CAPACITY; i++) {
+    // The HTTP API entry point is selected by its dedicated launcher and is
+    // not a user-facing mode for generic mode completion/help lists.
+    if (mode_registry[i].mode == MODE_API_SERVER || strcmp(mode_registry[i].name, "acds") == 0)
+      continue;
     // Skip duplicates (like "acds" alias)
     bool duplicate = false;
     for (size_t j = 0; j < count; j++) {
@@ -117,14 +120,14 @@ const char *asciichat_suggest_mode(const char *input) {
   const char **names = NULL;
   size_t count = asciichat_get_all_mode_strings(&names);
 
-  // Create NULL-terminated array for levenshtein_find_similar
+  // Create a NULL-terminated array for libflags suggestion matching.
   static const char *null_terminated[MODE_NAME_CAPACITY + 1]; // Max 32 modes + NULL
   for (size_t i = 0; i < count && i < MODE_NAME_CAPACITY; i++) {
     null_terminated[i] = names[i];
   }
   null_terminated[count] = NULL;
 
-  return levenshtein_find_similar(input, null_terminated);
+  return flags_levenshtein_find_similar(input, null_terminated);
 }
 
 // ============================================================================
@@ -198,6 +201,6 @@ const char *asciichat_suggest_enum_value(const char *option_name, const char *in
   }
 
   size_t value_count = 0;
-  const char **values = options_registry_get_enum_values(option_name, NULL, &value_count);
-  return values ? levenshtein_find_similar(input, values) : NULL;
+  const char **values = registry_get_enum_values(option_name, NULL, &value_count);
+  return values ? flags_levenshtein_find_similar(input, values) : NULL;
 }

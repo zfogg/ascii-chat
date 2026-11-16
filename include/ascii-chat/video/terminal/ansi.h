@@ -18,7 +18,7 @@
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/util/math.h>
 #include <ascii-chat/common/sync.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -161,8 +161,7 @@ char *append_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b);
  * @param bg_b Background blue component
  * @return Pointer to end of written data
  */
-char *append_truecolor_fg_bg(char *dst, uint8_t fg_r, uint8_t fg_g, uint8_t fg_b, uint8_t bg_r, uint8_t bg_g,
-                             uint8_t bg_b);
+char *append_truecolor_fg_bg(char *dst, uint8_t fg_r, uint8_t fg_g, uint8_t fg_b, uint8_t bg_r, uint8_t bg_g, uint8_t bg_b);
 
 /* ===== Run-Length Encoding Functions ===== */
 

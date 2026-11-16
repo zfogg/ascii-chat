@@ -1,10 +1,10 @@
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
+#include <criterion/criterion.h>
+#include <criterion/new/assert.h>
+#include <criterion/parameterized.h>
+#include <criterion/theories.h>
 #include <string.h>
 
+#include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/crypto/crypto.h>
 
@@ -24,119 +24,122 @@ void teardown_crypto_context(void) {
   // Restore normal log level
   log_set_level(LOG_DEBUG);
 }
+
+TestSuite(crypto, .init = setup_crypto_context, .fini = teardown_crypto_context);
+
 // =============================================================================
 // Basic Initialization Tests
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("crypto/init_basic", "[crypto]") {
+Test(crypto, init_basic) {
   crypto_result_t result = crypto_init(&ctx1);
-  REQUIRE((result) == (CRYPTO_OK));
-  REQUIRE(ctx1.initialized);
-  REQUIRE(ctx1.has_password == false);
-  REQUIRE(ctx1.key_exchange_complete == false);
-  REQUIRE(crypto_is_ready(&ctx1) == false);
+  cr_assert_eq(result, CRYPTO_OK, "Basic crypto initialization should succeed");
+  cr_assert(ctx1.initialized, "Context should be marked as initialized");
+  cr_assert(ctx1.has_password == false, "Should not have password initially");
+  cr_assert(ctx1.key_exchange_complete == false, "Key exchange should not be complete initially");
+  cr_assert(crypto_is_ready(&ctx1) == false, "Should not be ready without key exchange or password");
 }
 
-TEST_CASE("crypto/init_with_password", "[crypto]") {
+Test(crypto, init_with_password) {
   const char *password = "test-password-123";
   crypto_result_t result = crypto_init_with_password(&ctx1, password);
 
-  REQUIRE((result) == (CRYPTO_OK));
-  REQUIRE(ctx1.initialized);
-  REQUIRE(ctx1.has_password);
-  REQUIRE(crypto_is_ready(&ctx1));
+  cr_assert_eq(result, CRYPTO_OK, "Password-based initialization should succeed");
+  cr_assert(ctx1.initialized, "Context should be initialized");
+  cr_assert(ctx1.has_password, "Should have password set");
+  cr_assert(crypto_is_ready(&ctx1), "Should be ready with password");
 }
 
-TEST_CASE("crypto/init_invalid_params", "[crypto]") {
+Test(crypto, init_invalid_params) {
   crypto_result_t result = crypto_init(NULL);
-  REQUIRE((result) == (CRYPTO_ERROR_INVALID_PARAMS));
+  cr_assert_eq(result, CRYPTO_ERROR_INVALID_PARAMS, "NULL context should fail");
 
   result = crypto_init_with_password(NULL, "password");
-  REQUIRE((result) == (CRYPTO_ERROR_INVALID_PARAMS));
+  cr_assert_eq(result, CRYPTO_ERROR_INVALID_PARAMS, "NULL context with password should fail");
 
   result = crypto_init_with_password(&ctx1, NULL);
-  REQUIRE((result) == (CRYPTO_ERROR_INVALID_PARAMS));
+  cr_assert_eq(result, CRYPTO_ERROR_INVALID_PARAMS, "NULL password should fail");
 
   result = crypto_init_with_password(&ctx1, "");
-  REQUIRE((result) == (CRYPTO_ERROR_INVALID_PARAMS));
+  cr_assert_eq(result, CRYPTO_ERROR_INVALID_PARAMS, "Empty password should fail");
 }
 
 // =============================================================================
 // Key Exchange Tests
 // =============================================================================
 
-TEST_CASE("crypto/key_exchange_flow", "[crypto]") {
+Test(crypto, key_exchange_flow) {
   // Initialize both contexts
   crypto_result_t result = crypto_init(&ctx1);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "First context init should succeed");
 
   result = crypto_init(&ctx2);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Second context init should succeed");
 
   // Get public keys
   uint8_t pub_key1[CRYPTO_PUBLIC_KEY_SIZE];
   uint8_t pub_key2[CRYPTO_PUBLIC_KEY_SIZE];
 
   result = crypto_get_public_key(&ctx1, pub_key1);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Getting public key 1 should succeed");
 
   result = crypto_get_public_key(&ctx2, pub_key2);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Getting public key 2 should succeed");
 
   // Keys should be different
-  REQUIRE((memcmp(pub_key1, pub_key2, CRYPTO_PUBLIC_KEY_SIZE)) != (0));
+  cr_assert_neq(memcmp(pub_key1, pub_key2, CRYPTO_PUBLIC_KEY_SIZE), 0, "Public keys should be different");
 
   // Exchange keys
   result = crypto_set_peer_public_key(&ctx1, pub_key2);
-  REQUIRE((result) == (CRYPTO_OK));
-  REQUIRE(ctx1.key_exchange_complete);
-  REQUIRE(crypto_is_ready(&ctx1));
+  cr_assert_eq(result, CRYPTO_OK, "Setting peer key 1 should succeed");
+  cr_assert(ctx1.key_exchange_complete, "Key exchange should be complete for ctx1");
+  cr_assert(crypto_is_ready(&ctx1), "ctx1 should be ready after key exchange");
 
   result = crypto_set_peer_public_key(&ctx2, pub_key1);
-  REQUIRE((result) == (CRYPTO_OK));
-  REQUIRE(ctx2.key_exchange_complete);
-  REQUIRE(crypto_is_ready(&ctx2));
+  cr_assert_eq(result, CRYPTO_OK, "Setting peer key 2 should succeed");
+  cr_assert(ctx2.key_exchange_complete, "Key exchange should be complete for ctx2");
+  cr_assert(crypto_is_ready(&ctx2), "ctx2 should be ready after key exchange");
 }
 
-TEST_CASE("crypto/public_key_invalid_params", "[crypto]") {
+Test(crypto, public_key_invalid_params) {
   uint8_t pub_key[CRYPTO_PUBLIC_KEY_SIZE];
 
   crypto_result_t result = crypto_get_public_key(NULL, pub_key);
-  REQUIRE((result) == (CRYPTO_ERROR_INVALID_PARAMS));
+  cr_assert_eq(result, CRYPTO_ERROR_INVALID_PARAMS, "NULL context should fail");
 
   result = crypto_get_public_key(&ctx1, NULL);
-  REQUIRE((result) == (CRYPTO_ERROR_INVALID_PARAMS));
+  cr_assert_eq(result, CRYPTO_ERROR_INVALID_PARAMS, "NULL output buffer should fail");
 
   result = crypto_set_peer_public_key(NULL, pub_key);
-  REQUIRE((result) == (CRYPTO_ERROR_INVALID_PARAMS));
+  cr_assert_eq(result, CRYPTO_ERROR_INVALID_PARAMS, "NULL context should fail");
 
   result = crypto_set_peer_public_key(&ctx1, NULL);
-  REQUIRE((result) == (CRYPTO_ERROR_INVALID_PARAMS));
+  cr_assert_eq(result, CRYPTO_ERROR_INVALID_PARAMS, "NULL peer key should fail");
 }
 
 // =============================================================================
 // Password Verification Tests
 // =============================================================================
 
-TEST_CASE("crypto/password_verification", "[crypto]") {
+Test(crypto, password_verification) {
   const char *correct_password = "my-secure-password-123";
   const char *wrong_password = "wrong-password-456";
 
   crypto_result_t result = crypto_init_with_password(&ctx1, correct_password);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Init with password should succeed");
 
   // Test correct password
   bool verified = crypto_verify_password(&ctx1, correct_password);
-  REQUIRE(verified);
+  cr_assert(verified, "Correct password should verify");
 
   // Test wrong password
   verified = crypto_verify_password(&ctx1, wrong_password);
-  REQUIRE(verified == false);
+  cr_assert(verified == false, "Wrong password should not verify");
 
   // Test empty password
   verified = crypto_verify_password(&ctx1, "");
-  REQUIRE(verified == false);
+  cr_assert(verified == false, "Empty password should not verify");
 }
 
 // =============================================================================
@@ -145,15 +148,17 @@ TEST_CASE("crypto/password_verification", "[crypto]") {
 
 // Theory: Encryption roundtrip property - decrypt(encrypt(data)) == data
 // Replaces: encrypt_decrypt_password_based and encrypt_decrypt_key_exchange
-TEST_CASE("crypto/encryption_roundtrip_property", "[crypto]") {
-  size_t data_size = GENERATE(1u, 16u, 64u, 256u, 512u, 1024u, 2048u);
-  if (!(data_size > 0 && data_size <= 2048))
-    SKIP("assumption not satisfied");
+TheoryDataPoints(crypto, encryption_roundtrip_property) = {
+    DataPoints(size_t, 1, 16, 64, 256, 512, 1024, 2048),
+};
+
+Theory((size_t data_size), crypto, encryption_roundtrip_property) {
+  cr_assume(data_size > 0 && data_size <= 2048);
 
   crypto_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
   crypto_result_t result = crypto_init_with_password(&ctx, "test-password-for-theory");
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Context init should succeed for size %zu", data_size);
 
   uint8_t *plaintext = SAFE_MALLOC(data_size, uint8_t *);
   for (size_t i = 0; i < data_size; i++) {
@@ -163,26 +168,28 @@ TEST_CASE("crypto/encryption_roundtrip_property", "[crypto]") {
   uint8_t ciphertext[4096];
   size_t ciphertext_len;
   result = crypto_encrypt(&ctx, plaintext, data_size, ciphertext, sizeof(ciphertext), &ciphertext_len);
-  REQUIRE((result) == (CRYPTO_OK));
-  REQUIRE((ciphertext_len) > (data_size));
+  cr_assert_eq(result, CRYPTO_OK, "Encryption should succeed for size %zu", data_size);
+  cr_assert_gt(ciphertext_len, data_size, "Ciphertext should be larger than plaintext for size %zu", data_size);
 
   uint8_t decrypted[4096];
   size_t decrypted_len;
   result = crypto_decrypt(&ctx, ciphertext, ciphertext_len, decrypted, sizeof(decrypted), &decrypted_len);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Decryption should succeed for size %zu", data_size);
 
-  REQUIRE((decrypted_len) == (data_size));
-  REQUIRE((memcmp(decrypted, plaintext, data_size)) == (0));
+  cr_assert_eq(decrypted_len, data_size, "Decrypted length must match plaintext length for size %zu", data_size);
+  cr_assert_eq(memcmp(decrypted, plaintext, data_size), 0, "Decrypted data must match plaintext for size %zu (roundtrip property)", data_size);
 
   SAFE_FREE(plaintext);
   crypto_destroy(&ctx);
 }
 
 // Theory: Key exchange encryption roundtrip
-TEST_CASE("crypto/key_exchange_roundtrip_property", "[crypto]") {
-  size_t data_size = GENERATE(1u, 32u, 128u, 512u, 1024u);
-  if (!(data_size > 0 && data_size <= 1024))
-    SKIP("assumption not satisfied");
+TheoryDataPoints(crypto, key_exchange_roundtrip_property) = {
+    DataPoints(size_t, 1, 32, 128, 512, 1024),
+};
+
+Theory((size_t data_size), crypto, key_exchange_roundtrip_property) {
+  cr_assume(data_size > 0 && data_size <= 1024);
 
   crypto_context_t ctx1, ctx2;
   memset(&ctx1, 0, sizeof(ctx1));
@@ -207,35 +214,35 @@ TEST_CASE("crypto/key_exchange_roundtrip_property", "[crypto]") {
   uint8_t ciphertext[2048];
   size_t ciphertext_len;
   crypto_result_t result = crypto_encrypt(&ctx1, plaintext, data_size, ciphertext, sizeof(ciphertext), &ciphertext_len);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Encryption should succeed for key exchange size %zu", data_size);
 
   uint8_t decrypted[2048];
   size_t decrypted_len;
   result = crypto_decrypt(&ctx2, ciphertext, ciphertext_len, decrypted, sizeof(decrypted), &decrypted_len);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Decryption should succeed for key exchange size %zu", data_size);
 
-  REQUIRE((decrypted_len) == (data_size));
-  REQUIRE((memcmp(decrypted, plaintext, data_size)) == (0));
+  cr_assert_eq(decrypted_len, data_size, "Decrypted length must match for key exchange size %zu", data_size);
+  cr_assert_eq(memcmp(decrypted, plaintext, data_size), 0, "Key exchange roundtrip must preserve data for size %zu", data_size);
 
   SAFE_FREE(plaintext);
   crypto_destroy(&ctx1);
   crypto_destroy(&ctx2);
 }
 
-TEST_CASE("crypto/encrypt_not_ready", "[crypto]") {
+Test(crypto, encrypt_not_ready) {
   const char *plaintext = "test";
   uint8_t ciphertext[1024];
   size_t ciphertext_len;
 
   crypto_result_t result = crypto_init(&ctx1);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Init should succeed");
 
   // Try to encrypt before key exchange or password
   result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, strlen(plaintext), ciphertext, sizeof(ciphertext), &ciphertext_len);
-  REQUIRE((result) == (CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE));
+  cr_assert_eq(result, CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE, "Encryption should fail when not ready");
 }
 
-TEST_CASE("crypto/encrypt_invalid_params", "[crypto]") {
+Test(crypto, encrypt_invalid_params) {
   crypto_init_with_password(&ctx1, "password");
 
   const char *plaintext = "test";
@@ -244,22 +251,22 @@ TEST_CASE("crypto/encrypt_invalid_params", "[crypto]") {
 
   // Test NULL parameters
   crypto_result_t result = crypto_encrypt(NULL, (const uint8_t *)plaintext, strlen(plaintext), ciphertext, sizeof(ciphertext), &ciphertext_len);
-  REQUIRE((result) == (CRYPTO_ERROR_INVALID_PARAMS));
+  cr_assert_eq(result, CRYPTO_ERROR_INVALID_PARAMS, "NULL context should fail");
 
   result = crypto_encrypt(&ctx1, NULL, strlen(plaintext), ciphertext, sizeof(ciphertext), &ciphertext_len);
-  REQUIRE((result) == (CRYPTO_ERROR_INVALID_PARAMS));
+  cr_assert_eq(result, CRYPTO_ERROR_INVALID_PARAMS, "NULL plaintext should fail");
 
   result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, 0, ciphertext, sizeof(ciphertext), &ciphertext_len);
-  REQUIRE((result) == (CRYPTO_ERROR_INVALID_PARAMS));
+  cr_assert_eq(result, CRYPTO_ERROR_INVALID_PARAMS, "Zero length should fail");
 
   result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, strlen(plaintext), NULL, sizeof(ciphertext), &ciphertext_len);
-  REQUIRE((result) == (CRYPTO_ERROR_INVALID_PARAMS));
+  cr_assert_eq(result, CRYPTO_ERROR_INVALID_PARAMS, "NULL ciphertext should fail");
 
   result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, strlen(plaintext), ciphertext, sizeof(ciphertext), NULL);
-  REQUIRE((result) == (CRYPTO_ERROR_INVALID_PARAMS));
+  cr_assert_eq(result, CRYPTO_ERROR_INVALID_PARAMS, "NULL length out should fail");
 }
 
-TEST_CASE("crypto/decrypt_invalid_data", "[crypto]") {
+Test(crypto, decrypt_invalid_data) {
   crypto_init_with_password(&ctx1, "password");
 
   uint8_t invalid_ciphertext[] = {0x01, 0x02, 0x03}; // Too small
@@ -267,14 +274,14 @@ TEST_CASE("crypto/decrypt_invalid_data", "[crypto]") {
   size_t plaintext_len;
 
   crypto_result_t result = crypto_decrypt(&ctx1, invalid_ciphertext, sizeof(invalid_ciphertext), plaintext, sizeof(plaintext), &plaintext_len);
-  REQUIRE((result) == (CRYPTO_ERROR_INVALID_PARAMS));
+  cr_assert_eq(result, CRYPTO_ERROR_INVALID_PARAMS, "Too small ciphertext should fail");
 }
 
 // =============================================================================
 // Network Packet Tests
 // =============================================================================
 
-TEST_CASE("crypto/public_key_packet", "[crypto]") {
+Test(crypto, public_key_packet) {
   crypto_init(&ctx1);
 
   uint8_t packet[1024];
@@ -282,18 +289,18 @@ TEST_CASE("crypto/public_key_packet", "[crypto]") {
 
   // Create packet
   crypto_result_t result = crypto_create_public_key_packet(&ctx1, packet, sizeof(packet), &packet_len);
-  REQUIRE((result) == (CRYPTO_OK));
-  REQUIRE((packet_len) == (sizeof(uint32_t) + CRYPTO_PUBLIC_KEY_SIZE));
+  cr_assert_eq(result, CRYPTO_OK, "Creating public key packet should succeed");
+  cr_assert_eq(packet_len, sizeof(uint32_t) + CRYPTO_PUBLIC_KEY_SIZE, "Packet size should be correct");
 
   // Process packet
   crypto_init(&ctx2);
   result = crypto_process_public_key_packet(&ctx2, packet, packet_len);
-  REQUIRE((result) == (CRYPTO_OK));
-  REQUIRE(ctx2.peer_key_received);
-  REQUIRE(ctx2.key_exchange_complete);
+  cr_assert_eq(result, CRYPTO_OK, "Processing public key packet should succeed");
+  cr_assert(ctx2.peer_key_received, "Peer key should be received");
+  cr_assert(ctx2.key_exchange_complete, "Key exchange should be complete");
 }
 
-TEST_CASE("crypto/encrypted_data_packet", "[crypto]") {
+Test(crypto, encrypted_data_packet) {
   // Set up key exchange
   crypto_init(&ctx1);
   crypto_init(&ctx2);
@@ -314,70 +321,70 @@ TEST_CASE("crypto/encrypted_data_packet", "[crypto]") {
   uint8_t packet[1024];
   size_t packet_len;
   crypto_result_t result = crypto_create_encrypted_packet(&ctx1, (const uint8_t *)test_data, test_data_len, packet, sizeof(packet), &packet_len);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Creating encrypted packet should succeed");
 
   // Process encrypted packet
   uint8_t decrypted_data[1024];
   size_t decrypted_len;
   result = crypto_process_encrypted_packet(&ctx2, packet, packet_len, decrypted_data, sizeof(decrypted_data), &decrypted_len);
-  REQUIRE((result) == (CRYPTO_OK));
-  REQUIRE((decrypted_len) == (test_data_len));
-  REQUIRE((memcmp(decrypted_data, test_data, test_data_len)) == (0));
+  cr_assert_eq(result, CRYPTO_OK, "Processing encrypted packet should succeed");
+  cr_assert_eq(decrypted_len, test_data_len, "Decrypted length should match");
+  cr_assert_eq(memcmp(decrypted_data, test_data, test_data_len), 0, "Decrypted data should match");
 }
 
 // =============================================================================
 // Utility Function Tests
 // =============================================================================
 
-TEST_CASE("crypto/random_bytes", "[crypto]") {
+Test(crypto, random_bytes) {
   uint8_t random1[32];
   uint8_t random2[32];
 
   crypto_result_t result1 = crypto_random_bytes(random1, sizeof(random1));
   crypto_result_t result2 = crypto_random_bytes(random2, sizeof(random2));
 
-  REQUIRE((result1) == (CRYPTO_OK));
-  REQUIRE((result2) == (CRYPTO_OK));
+  cr_assert_eq(result1, CRYPTO_OK, "First random bytes should succeed");
+  cr_assert_eq(result2, CRYPTO_OK, "Second random bytes should succeed");
 
   // Very unlikely to be the same (cryptographically secure random)
-  REQUIRE((memcmp(random1, random2, sizeof(random1))) != (0));
+  cr_assert_neq(memcmp(random1, random2, sizeof(random1)), 0, "Random bytes should be different");
 }
 
-TEST_CASE("crypto/secure_compare", "[crypto]") {
+Test(crypto, secure_compare) {
   uint8_t data1[] = {0x01, 0x02, 0x03, 0x04};
   uint8_t data2[] = {0x01, 0x02, 0x03, 0x04};
   uint8_t data3[] = {0x01, 0x02, 0x03, 0x05};
 
-  REQUIRE(crypto_secure_compare(data1, data2, sizeof(data1)));
-  REQUIRE(crypto_secure_compare(data1, data3, sizeof(data1)) == false);
-  REQUIRE(crypto_secure_compare(NULL, data2, sizeof(data1)) == false);
-  REQUIRE(crypto_secure_compare(data1, NULL, sizeof(data1)) == false);
+  cr_assert(crypto_secure_compare(data1, data2, sizeof(data1)), "Identical data should match");
+  cr_assert(crypto_secure_compare(data1, data3, sizeof(data1)) == false, "Different data should not match");
+  cr_assert(crypto_secure_compare(NULL, data2, sizeof(data1)) == false, "NULL data should not match");
+  cr_assert(crypto_secure_compare(data1, NULL, sizeof(data1)) == false, "NULL data should not match");
 }
 
-TEST_CASE("crypto/result_to_string", "[crypto]") {
+Test(crypto, result_to_string) {
   const char *ok_str = crypto_result_to_string(CRYPTO_OK);
-  REQUIRE(std::strcmp((ok_str), ("Success")) == 0);
+  cr_assert_str_eq(ok_str, "Success", "CRYPTO_OK should return 'Success'");
 
   const char *invalid_str = crypto_result_to_string(CRYPTO_ERROR_INVALID_PARAMS);
-  REQUIRE(std::strcmp((invalid_str), ("Invalid parameters")) == 0);
+  cr_assert_str_eq(invalid_str, "Invalid parameters", "Should return correct error message");
 
   const char *unknown_str = crypto_result_to_string((crypto_result_t)999);
-  REQUIRE(std::strcmp((unknown_str), ("Unknown error")) == 0);
+  cr_assert_str_eq(unknown_str, "Unknown error", "Unknown code should return 'Unknown error'");
 }
 
-TEST_CASE("crypto/get_status", "[crypto]") {
+Test(crypto, get_status) {
   char status[512];
 
   // Uninitialized context
   crypto_get_status(&ctx1, status, sizeof(status));
-  REQUIRE(std::strcmp((status), ("Not initialized")) == 0);
+  cr_assert_str_eq(status, "Not initialized", "Uninitialized context should report not initialized");
 
   // Initialized context with password
   crypto_init_with_password(&ctx1, "test-password");
   crypto_get_status(&ctx1, status, sizeof(status));
-  REQUIRE(std::strcmp((status), ("Not initialized")) != 0);
-  REQUIRE(strstr(status, "Password: yes") != NULL);
-  REQUIRE(strstr(status, "Ready: yes") != NULL);
+  cr_assert_str_neq(status, "Not initialized", "Initialized context should not say not initialized");
+  cr_assert(strstr(status, "Password: yes") != NULL, "Should show password is set");
+  cr_assert(strstr(status, "Ready: yes") != NULL, "Should show ready status");
 }
 
 // =============================================================================
@@ -385,10 +392,12 @@ TEST_CASE("crypto/get_status", "[crypto]") {
 // =============================================================================
 
 // Theory: Nonce uniqueness property - same plaintext encrypted twice produces different ciphertext
-TEST_CASE("crypto/nonce_uniqueness_property", "[crypto]") {
-  size_t data_size = GENERATE(8u, 64u, 256u);
-  if (!(data_size > 0 && data_size <= 256))
-    SKIP("assumption not satisfied");
+TheoryDataPoints(crypto, nonce_uniqueness_property) = {
+    DataPoints(size_t, 8, 64, 256),
+};
+
+Theory((size_t data_size), crypto, nonce_uniqueness_property) {
+  cr_assume(data_size > 0 && data_size <= 256);
 
   crypto_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
@@ -406,13 +415,13 @@ TEST_CASE("crypto/nonce_uniqueness_property", "[crypto]") {
   crypto_encrypt(&ctx, plaintext, data_size, ciphertext2, sizeof(ciphertext2), &ciphertext2_len);
 
   size_t min_len = ciphertext1_len < ciphertext2_len ? ciphertext1_len : ciphertext2_len;
-  REQUIRE((memcmp(ciphertext1, ciphertext2, min_len)) != (0));
+  cr_assert_neq(memcmp(ciphertext1, ciphertext2, min_len), 0, "Nonce uniqueness property: same plaintext size %zu must produce different ciphertext", data_size);
 
   SAFE_FREE(plaintext);
   crypto_destroy(&ctx);
 }
 
-TEST_CASE("crypto/buffer_size_checks", "[crypto]") {
+Test(crypto, buffer_size_checks) {
   crypto_init_with_password(&ctx1, "password");
 
   const char *plaintext = "test message for buffer size testing";
@@ -422,27 +431,27 @@ TEST_CASE("crypto/buffer_size_checks", "[crypto]") {
   size_t output_len;
 
   crypto_result_t result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, small_buffer, sizeof(small_buffer), &output_len);
-  REQUIRE((result) == (CRYPTO_ERROR_BUFFER_TOO_SMALL));
+  cr_assert_eq(result, CRYPTO_ERROR_BUFFER_TOO_SMALL, "Small buffer should fail");
 }
 
-TEST_CASE("crypto/cleanup_security", "[crypto]") {
+Test(crypto, cleanup_security) {
   const char *password = "secret-password-123";
 
   crypto_init_with_password(&ctx1, password);
 
   // Verify context has data
-  REQUIRE(ctx1.initialized);
-  REQUIRE(ctx1.has_password);
+  cr_assert(ctx1.initialized, "Context should be initialized");
+  cr_assert(ctx1.has_password, "Context should have password");
 
   // Cleanup
   crypto_destroy(&ctx1);
 
   // Verify context is cleared (basic check - real implementation uses sodium_memzero)
-  REQUIRE(ctx1.initialized == false);
-  REQUIRE(ctx1.has_password == false);
+  cr_assert(ctx1.initialized == false, "Context should not be initialized after cleanup");
+  cr_assert(ctx1.has_password == false, "Context should not have password after cleanup");
 }
 
-TEST_CASE("crypto/nonce_counter_exhaustion", "[crypto]") {
+Test(crypto, nonce_counter_exhaustion) {
   crypto_init_with_password(&ctx1, "test-password");
 
   const char *plaintext = "test message for nonce exhaustion";
@@ -452,31 +461,31 @@ TEST_CASE("crypto/nonce_counter_exhaustion", "[crypto]") {
 
   // Test 1: Normal operation - counter starts at 1 after init
   crypto_result_t result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
-  REQUIRE((result) == (CRYPTO_OK));
-  REQUIRE((ctx1.nonce_counter) == (2));
+  cr_assert_eq(result, CRYPTO_OK, "Normal encryption should succeed");
+  cr_assert_eq(ctx1.nonce_counter, 2, "Counter should increment from 1 to 2");
 
   // Test 2: Manually set counter to 0 to simulate exhaustion
   ctx1.nonce_counter = 0;
 
   // This encryption should fail because counter is 0 (exhausted)
   result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
-  REQUIRE((result) == (CRYPTO_ERROR_NONCE_EXHAUSTED));
-  REQUIRE((ctx1.nonce_counter) == (0));
+  cr_assert_eq(result, CRYPTO_ERROR_NONCE_EXHAUSTED, "Encryption should fail when nonce counter is 0 (exhausted)");
+  cr_assert_eq(ctx1.nonce_counter, 0, "Counter should remain 0 after failed encryption");
 
   // Test 3: Verify that counter stays at 0 and continues to fail
   result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
-  REQUIRE((result) == (CRYPTO_ERROR_NONCE_EXHAUSTED));
-  REQUIRE((ctx1.nonce_counter) == (0));
+  cr_assert_eq(result, CRYPTO_ERROR_NONCE_EXHAUSTED, "Subsequent encryptions should continue to fail with exhausted counter");
+  cr_assert_eq(ctx1.nonce_counter, 0, "Counter should remain at 0 (exhausted state)");
 
   // Test 4: Verify edge case - UINT64_MAX counter should fail (prevent overflow)
   ctx1.nonce_counter = UINT64_MAX;
   result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
-  REQUIRE((result) == (CRYPTO_ERROR_NONCE_EXHAUSTED));
-  REQUIRE((ctx1.nonce_counter) == (UINT64_MAX));
+  cr_assert_eq(result, CRYPTO_ERROR_NONCE_EXHAUSTED, "Encryption at UINT64_MAX should fail to prevent overflow");
+  cr_assert_eq(ctx1.nonce_counter, UINT64_MAX, "Counter should remain at UINT64_MAX (exhausted state)");
 
   // Verify that counter stays at UINT64_MAX and continues to fail
   result = crypto_encrypt(&ctx1, (const uint8_t *)plaintext, plaintext_len, ciphertext, sizeof(ciphertext), &ciphertext_len);
-  REQUIRE((result) == (CRYPTO_ERROR_NONCE_EXHAUSTED));
+  cr_assert_eq(result, CRYPTO_ERROR_NONCE_EXHAUSTED, "Subsequent encryptions should continue to fail at UINT64_MAX");
 }
 
 // =============================================================================
@@ -500,9 +509,12 @@ static crypto_error_test_case_t crypto_error_cases[] = {{"NULL context", CRYPTO_
                                                         {"NULL ciphertext", CRYPTO_ERROR_INVALID_PARAMS, false, false, false, true, false},
                                                         {"NULL length out", CRYPTO_ERROR_INVALID_PARAMS, false, false, false, false, true}};
 
-TEST_CASE("crypto/error_conditions", "[crypto]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(crypto_error_cases));
-  auto *tc = &generated_case;
+ParameterizedTestParameters(crypto, error_conditions) {
+  size_t nb_cases = sizeof(crypto_error_cases) / sizeof(crypto_error_cases[0]);
+  return cr_make_param_array(crypto_error_test_case_t, crypto_error_cases, nb_cases);
+}
+
+ParameterizedTest(crypto_error_test_case_t *tc, crypto, error_conditions) {
   crypto_context_t ctx;
   crypto_init_with_password(&ctx, "password");
 
@@ -524,7 +536,7 @@ TEST_CASE("crypto/error_conditions", "[crypto]") {
     result = crypto_encrypt(&ctx, (const uint8_t *)plaintext, strlen(plaintext), ciphertext, sizeof(ciphertext), NULL);
   }
 
-  REQUIRE((result) == (tc->expected_result));
+  cr_assert_eq(result, tc->expected_result, "Test case: %s", tc->description);
 
   crypto_destroy(&ctx);
 }
@@ -542,20 +554,23 @@ static crypto_init_test_case_t crypto_init_cases[] = {{"Valid password", "test-p
                                                       {"Long password", "very-long-password-that-is-still-valid", true, CRYPTO_OK},
                                                       {"Special chars password", "p@ssw0rd!@#$%", true, CRYPTO_OK}};
 
-TEST_CASE("crypto/init_conditions", "[crypto]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(crypto_init_cases));
-  auto *tc = &generated_case;
+ParameterizedTestParameters(crypto, init_conditions) {
+  size_t nb_cases = sizeof(crypto_init_cases) / sizeof(crypto_init_cases[0]);
+  return cr_make_param_array(crypto_init_test_case_t, crypto_init_cases, nb_cases);
+}
+
+ParameterizedTest(crypto_init_test_case_t *tc, crypto, init_conditions) {
   crypto_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
   crypto_result_t result = crypto_init_with_password(&ctx, tc->password);
 
-  REQUIRE((result) == (tc->expected_result));
+  cr_assert_eq(result, tc->expected_result, "Init result should match for %s", tc->description);
 
   if (tc->should_succeed) {
-    REQUIRE(ctx.initialized);
-    REQUIRE(ctx.has_password);
-    REQUIRE(crypto_is_ready(&ctx));
+    cr_assert(ctx.initialized, "Context should be initialized for %s", tc->description);
+    cr_assert(ctx.has_password, "Context should have password for %s", tc->description);
+    cr_assert(crypto_is_ready(&ctx), "Context should be ready for %s", tc->description);
   }
 
   crypto_destroy(&ctx);
@@ -575,19 +590,22 @@ static crypto_verify_test_case_t crypto_verify_cases[] = {{true, "my-password", 
                                                           {false, "MyPassword", "mypassword", "Case sensitive"},
                                                           {false, "password", " password ", "Extra spaces"}};
 
-TEST_CASE("crypto/password_verification_comprehensive", "[crypto]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(crypto_verify_cases));
-  auto *tc = &generated_case;
+ParameterizedTestParameters(crypto, password_verification_comprehensive) {
+  size_t nb_cases = sizeof(crypto_verify_cases) / sizeof(crypto_verify_cases[0]);
+  return cr_make_param_array(crypto_verify_test_case_t, crypto_verify_cases, nb_cases);
+}
+
+ParameterizedTest(crypto_verify_test_case_t *tc, crypto, password_verification_comprehensive) {
   crypto_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
   // Initialize with correct password
   crypto_result_t init_result = crypto_init_with_password(&ctx, tc->correct_password);
-  REQUIRE((init_result) == (CRYPTO_OK));
+  cr_assert_eq(init_result, CRYPTO_OK, "Init should succeed for %s", tc->description);
 
   // Test password verification
   bool verified = crypto_verify_password(&ctx, tc->test_password);
-  REQUIRE((verified) == (tc->should_verify));
+  cr_assert_eq(verified, tc->should_verify, "Password verification should match for %s", tc->description);
 
   crypto_destroy(&ctx);
 }
@@ -606,18 +624,21 @@ static crypto_result_string_test_case_t crypto_result_string_cases[] = {{CRYPTO_
                                                                         {CRYPTO_ERROR_NONCE_EXHAUSTED, "Nonce counter exhausted", "Nonce exhausted result"},
                                                                         {(crypto_result_t)999, "Unknown error", "Unknown result"}};
 
-TEST_CASE("crypto/result_strings", "[crypto]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(crypto_result_string_cases));
-  auto *tc = &generated_case;
+ParameterizedTestParameters(crypto, result_strings) {
+  size_t nb_cases = sizeof(crypto_result_string_cases) / sizeof(crypto_result_string_cases[0]);
+  return cr_make_param_array(crypto_result_string_test_case_t, crypto_result_string_cases, nb_cases);
+}
+
+ParameterizedTest(crypto_result_string_test_case_t *tc, crypto, result_strings) {
   const char *result_str = crypto_result_to_string(tc->result);
-  REQUIRE(std::strcmp((result_str), (tc->expected_string)) == 0);
+  cr_assert_str_eq(result_str, tc->expected_string, "Result string should match for %s", tc->description);
 }
 
 // =============================================================================
 // Session Rekeying Tests
 // =============================================================================
 
-TEST_CASE("crypto/rekey_initialization", "[crypto]") {
+Test(crypto, rekey_initialization) {
   // Initialize context with key exchange
   crypto_init(&ctx1);
   crypto_init(&ctx2);
@@ -631,24 +652,24 @@ TEST_CASE("crypto/rekey_initialization", "[crypto]") {
   crypto_set_peer_public_key(&ctx1, pub_key2);
   crypto_set_peer_public_key(&ctx2, pub_key1);
 
-  REQUIRE(crypto_is_ready(&ctx1));
-  REQUIRE(crypto_is_ready(&ctx2));
+  cr_assert(crypto_is_ready(&ctx1), "ctx1 should be ready");
+  cr_assert(crypto_is_ready(&ctx2), "ctx2 should be ready");
 
   // Check initial rekey state
-  REQUIRE((ctx1.rekey_packet_count) == (0));
-  REQUIRE((ctx1.rekey_count) == (0));
-  REQUIRE((ctx1.rekey_in_progress) == (false));
-  REQUIRE((ctx1.has_temp_key) == (false));
-  REQUIRE((ctx1.rekey_failure_count) == (0));
+  cr_assert_eq(ctx1.rekey_packet_count, 0, "Initial packet count should be 0");
+  cr_assert_eq(ctx1.rekey_count, 0, "Initial rekey count should be 0");
+  cr_assert_eq(ctx1.rekey_in_progress, false, "No rekey should be in progress");
+  cr_assert_eq(ctx1.has_temp_key, false, "Should not have temp key");
+  cr_assert_eq(ctx1.rekey_failure_count, 0, "Initial failure count should be 0");
 
   // Check default thresholds
-  // Note: crypto_init() uses test thresholds when TESTING is set
+  // Note: crypto_init() uses test thresholds when CRITERION_TEST or TESTING env vars are set
   // The test environment sets these, so we expect test thresholds, not default thresholds
-  REQUIRE((ctx1.rekey_packet_threshold) == (REKEY_TEST_PACKET_THRESHOLD));
-  REQUIRE((ctx1.rekey_time_threshold) == (REKEY_TEST_TIME_THRESHOLD));
+  cr_assert_eq(ctx1.rekey_packet_threshold, REKEY_TEST_PACKET_THRESHOLD, "Test packet threshold should be 1000");
+  cr_assert_eq(ctx1.rekey_time_threshold, REKEY_TEST_TIME_THRESHOLD, "Test time threshold should be 30s");
 }
 
-TEST_CASE("crypto/rekey_should_trigger_on_packet_count", "[crypto]") {
+Test(crypto, rekey_should_trigger_on_packet_count) {
   // Initialize with test thresholds
   crypto_init(&ctx1);
   ctx1.rekey_packet_threshold = 100; // Low threshold for testing
@@ -657,20 +678,20 @@ TEST_CASE("crypto/rekey_should_trigger_on_packet_count", "[crypto]") {
   ctx1.handshake_complete = true;
 
   // Should not trigger initially
-  REQUIRE((crypto_should_rekey(&ctx1)) == (false));
+  cr_assert_eq(crypto_should_rekey(&ctx1), false, "Should not rekey initially");
 
   // Simulate packet encryption
   ctx1.rekey_packet_count = 99;
-  REQUIRE((crypto_should_rekey(&ctx1)) == (false));
+  cr_assert_eq(crypto_should_rekey(&ctx1), false, "Should not rekey before threshold");
 
   ctx1.rekey_packet_count = 100;
-  REQUIRE((crypto_should_rekey(&ctx1)) == (true));
+  cr_assert_eq(crypto_should_rekey(&ctx1), true, "Should rekey at threshold");
 
   ctx1.rekey_packet_count = 101;
-  REQUIRE((crypto_should_rekey(&ctx1)) == (true));
+  cr_assert_eq(crypto_should_rekey(&ctx1), true, "Should rekey after threshold");
 }
 
-TEST_CASE("crypto/rekey_should_trigger_on_time", "[crypto]") {
+Test(crypto, rekey_should_trigger_on_time) {
   // Initialize with test thresholds
   crypto_init(&ctx1);
   ctx1.rekey_packet_threshold = 1000000;
@@ -680,16 +701,16 @@ TEST_CASE("crypto/rekey_should_trigger_on_time", "[crypto]") {
 
   time_t now = time(NULL);
   ctx1.rekey_last_time = now - 5; // 5 seconds ago
-  REQUIRE((crypto_should_rekey(&ctx1)) == (false));
+  cr_assert_eq(crypto_should_rekey(&ctx1), false, "Should not rekey before time threshold");
 
   ctx1.rekey_last_time = now - 10; // 10 seconds ago
-  REQUIRE((crypto_should_rekey(&ctx1)) == (true));
+  cr_assert_eq(crypto_should_rekey(&ctx1), true, "Should rekey at time threshold");
 
   ctx1.rekey_last_time = now - 15; // 15 seconds ago
-  REQUIRE((crypto_should_rekey(&ctx1)) == (true));
+  cr_assert_eq(crypto_should_rekey(&ctx1), true, "Should rekey after time threshold");
 }
 
-TEST_CASE("crypto/rekey_should_not_trigger_during_rekey", "[crypto]") {
+Test(crypto, rekey_should_not_trigger_during_rekey) {
   crypto_init(&ctx1);
   ctx1.rekey_packet_threshold = 100;
   ctx1.rekey_time_threshold = 3600;
@@ -698,14 +719,14 @@ TEST_CASE("crypto/rekey_should_not_trigger_during_rekey", "[crypto]") {
   ctx1.rekey_packet_count = 200; // Above threshold
 
   // Should trigger normally
-  REQUIRE((crypto_should_rekey(&ctx1)) == (true));
+  cr_assert_eq(crypto_should_rekey(&ctx1), true, "Should trigger with high packet count");
 
   // But not when rekey is in progress
   ctx1.rekey_in_progress = true;
-  REQUIRE((crypto_should_rekey(&ctx1)) == (false));
+  cr_assert_eq(crypto_should_rekey(&ctx1), false, "Should not trigger during rekey");
 }
 
-TEST_CASE("crypto/rekey_init_basic", "[crypto]") {
+Test(crypto, rekey_init_basic) {
   // Set up context
   crypto_init(&ctx1);
   ctx1.key_exchange_complete = true;
@@ -713,17 +734,17 @@ TEST_CASE("crypto/rekey_init_basic", "[crypto]") {
   ctx1.rekey_last_time = time(NULL) - 100; // 100 seconds ago (past min interval)
 
   crypto_result_t result = crypto_rekey_init(&ctx1);
-  REQUIRE((result) == (CRYPTO_OK));
-  REQUIRE((ctx1.rekey_in_progress) == (true));
-  REQUIRE((ctx1.has_temp_key) == (true));
+  cr_assert_eq(result, CRYPTO_OK, "Rekey init should succeed");
+  cr_assert_eq(ctx1.rekey_in_progress, true, "Rekey should be in progress");
+  cr_assert_eq(ctx1.has_temp_key, true, "Should have temp key");
 
   // Check that temp keys are non-zero
   uint8_t zero_key[CRYPTO_PUBLIC_KEY_SIZE] = {0};
-  REQUIRE((memcmp(ctx1.temp_public_key, zero_key, CRYPTO_PUBLIC_KEY_SIZE)) != (0));
-  REQUIRE((memcmp(ctx1.temp_private_key, zero_key, CRYPTO_PRIVATE_KEY_SIZE)) != (0));
+  cr_assert_neq(memcmp(ctx1.temp_public_key, zero_key, CRYPTO_PUBLIC_KEY_SIZE), 0, "Temp public key should be set");
+  cr_assert_neq(memcmp(ctx1.temp_private_key, zero_key, CRYPTO_PRIVATE_KEY_SIZE), 0, "Temp private key should be set");
 }
 
-TEST_CASE("crypto/rekey_init_rate_limiting", "[crypto]") {
+Test(crypto, rekey_init_rate_limiting) {
   crypto_init(&ctx1);
   ctx1.key_exchange_complete = true;
   ctx1.handshake_complete = true;
@@ -732,12 +753,12 @@ TEST_CASE("crypto/rekey_init_rate_limiting", "[crypto]") {
   ctx1.rekey_last_time = time(NULL) - 1;
 
   crypto_result_t result = crypto_rekey_init(&ctx1);
-  REQUIRE((result) == (CRYPTO_ERROR_REKEY_RATE_LIMITED));
-  REQUIRE((ctx1.rekey_in_progress) == (false));
-  REQUIRE((ctx1.has_temp_key) == (false));
+  cr_assert_eq(result, CRYPTO_ERROR_REKEY_RATE_LIMITED, "Should be rate limited");
+  cr_assert_eq(ctx1.rekey_in_progress, false, "Rekey should not start");
+  cr_assert_eq(ctx1.has_temp_key, false, "Should not have temp key");
 }
 
-TEST_CASE("crypto/rekey_init_failure_limit", "[crypto]") {
+Test(crypto, rekey_init_failure_limit) {
   crypto_init(&ctx1);
   ctx1.key_exchange_complete = true;
   ctx1.handshake_complete = true;
@@ -747,11 +768,11 @@ TEST_CASE("crypto/rekey_init_failure_limit", "[crypto]") {
   ctx1.rekey_failure_count = REKEY_MAX_FAILURE_COUNT;
 
   crypto_result_t result = crypto_rekey_init(&ctx1);
-  REQUIRE((result) == (CRYPTO_ERROR_REKEY_FAILED));
-  REQUIRE((ctx1.rekey_in_progress) == (false));
+  cr_assert_eq(result, CRYPTO_ERROR_REKEY_FAILED, "Should fail after max failures");
+  cr_assert_eq(ctx1.rekey_in_progress, false, "Rekey should not start");
 }
 
-TEST_CASE("crypto/rekey_process_request", "[crypto]") {
+Test(crypto, rekey_process_request) {
   // Initialize both contexts
   crypto_init(&ctx1);
   crypto_init(&ctx2);
@@ -767,23 +788,23 @@ TEST_CASE("crypto/rekey_process_request", "[crypto]") {
   // Initiator (ctx1) starts rekey
   ctx1.rekey_last_time = time(NULL) - 100;
   crypto_result_t result = crypto_rekey_init(&ctx1);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Initiator rekey init should succeed");
 
   // Responder (ctx2) processes request
   ctx2.rekey_last_time = time(NULL) - 100;
   result = crypto_rekey_init(&ctx2);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Responder rekey init should succeed");
 
   result = crypto_rekey_process_request(&ctx2, ctx1.temp_public_key);
-  REQUIRE((result) == (CRYPTO_OK));
-  REQUIRE((ctx2.has_temp_key) == (true));
+  cr_assert_eq(result, CRYPTO_OK, "Process request should succeed");
+  cr_assert_eq(ctx2.has_temp_key, true, "Responder should have temp shared key");
 
   // Check that temp shared key is non-zero
   uint8_t zero_key[CRYPTO_SHARED_KEY_SIZE] = {0};
-  REQUIRE((memcmp(ctx2.temp_shared_key, zero_key, CRYPTO_SHARED_KEY_SIZE)) != (0));
+  cr_assert_neq(memcmp(ctx2.temp_shared_key, zero_key, CRYPTO_SHARED_KEY_SIZE), 0, "Temp shared key should be set");
 }
 
-TEST_CASE("crypto/rekey_process_response", "[crypto]") {
+Test(crypto, rekey_process_response) {
   // Initialize both contexts with key exchange
   crypto_init(&ctx1);
   crypto_init(&ctx2);
@@ -806,13 +827,13 @@ TEST_CASE("crypto/rekey_process_response", "[crypto]") {
 
   // Initiator processes response
   crypto_result_t result = crypto_rekey_process_response(&ctx1, ctx2.temp_public_key);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Process response should succeed");
 
   // Both should have computed the same shared secret
-  REQUIRE((memcmp(ctx1.temp_shared_key, ctx2.temp_shared_key, CRYPTO_SHARED_KEY_SIZE)) == (0));
+  cr_assert_eq(memcmp(ctx1.temp_shared_key, ctx2.temp_shared_key, CRYPTO_SHARED_KEY_SIZE), 0, "Both sides should compute same shared secret");
 }
 
-TEST_CASE("crypto/rekey_commit", "[crypto]") {
+Test(crypto, rekey_commit) {
   // Set up context with temp keys
   crypto_init(&ctx1);
   ctx1.key_exchange_complete = true;
@@ -835,26 +856,26 @@ TEST_CASE("crypto/rekey_commit", "[crypto]") {
 
   // Commit
   crypto_result_t result = crypto_rekey_commit(&ctx1);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Commit should succeed");
 
   // Check state after commit
-  REQUIRE((ctx1.rekey_in_progress) == (false));
-  REQUIRE((ctx1.has_temp_key) == (false));
-  REQUIRE((ctx1.rekey_packet_count) == (0));
-  REQUIRE((ctx1.rekey_count) == (old_rekey_count + 1));
-  REQUIRE((ctx1.nonce_counter) == (1));
-  REQUIRE((ctx1.rekey_failure_count) == (0));
+  cr_assert_eq(ctx1.rekey_in_progress, false, "Rekey should no longer be in progress");
+  cr_assert_eq(ctx1.has_temp_key, false, "Should not have temp key after commit");
+  cr_assert_eq(ctx1.rekey_packet_count, 0, "Packet count should reset");
+  cr_assert_eq(ctx1.rekey_count, old_rekey_count + 1, "Rekey count should increment");
+  cr_assert_eq(ctx1.nonce_counter, 1, "Nonce counter should reset to 1");
+  cr_assert_eq(ctx1.rekey_failure_count, 0, "Failure count should reset");
 
   // Check that shared key was updated
-  REQUIRE((memcmp(ctx1.shared_key, temp_shared_key_copy, CRYPTO_SHARED_KEY_SIZE)) == (0));
-  REQUIRE((memcmp(ctx1.shared_key, old_shared_key, CRYPTO_SHARED_KEY_SIZE)) != (0));
+  cr_assert_eq(memcmp(ctx1.shared_key, temp_shared_key_copy, CRYPTO_SHARED_KEY_SIZE), 0, "Shared key should be updated to temp key");
+  cr_assert_neq(memcmp(ctx1.shared_key, old_shared_key, CRYPTO_SHARED_KEY_SIZE), 0, "Shared key should differ from old key");
 
   // Check that temp keys are wiped
   uint8_t zero_key[CRYPTO_SHARED_KEY_SIZE] = {0};
-  REQUIRE((memcmp(ctx1.temp_shared_key, zero_key, CRYPTO_SHARED_KEY_SIZE)) == (0));
+  cr_assert_eq(memcmp(ctx1.temp_shared_key, zero_key, CRYPTO_SHARED_KEY_SIZE), 0, "Temp shared key should be wiped");
 }
 
-TEST_CASE("crypto/rekey_abort", "[crypto]") {
+Test(crypto, rekey_abort) {
   // Set up context with rekey in progress
   crypto_init(&ctx1);
   ctx1.key_exchange_complete = true;
@@ -869,25 +890,25 @@ TEST_CASE("crypto/rekey_abort", "[crypto]") {
 
   // Initialize rekey
   crypto_rekey_init(&ctx1);
-  REQUIRE((ctx1.rekey_in_progress) == (true));
+  cr_assert_eq(ctx1.rekey_in_progress, true, "Rekey should be in progress");
 
   // Abort
   crypto_rekey_abort(&ctx1);
 
   // Check state after abort
-  REQUIRE((ctx1.rekey_in_progress) == (false));
-  REQUIRE((ctx1.has_temp_key) == (false));
-  REQUIRE((ctx1.rekey_failure_count) == (old_failure_count + 1));
+  cr_assert_eq(ctx1.rekey_in_progress, false, "Rekey should no longer be in progress");
+  cr_assert_eq(ctx1.has_temp_key, false, "Should not have temp key");
+  cr_assert_eq(ctx1.rekey_failure_count, old_failure_count + 1, "Failure count should increment");
 
   // Check that shared key is unchanged
-  REQUIRE((memcmp(ctx1.shared_key, old_shared_key, CRYPTO_SHARED_KEY_SIZE)) == (0));
+  cr_assert_eq(memcmp(ctx1.shared_key, old_shared_key, CRYPTO_SHARED_KEY_SIZE), 0, "Shared key should be unchanged");
 
   // Check that temp keys are wiped
   uint8_t zero_key[CRYPTO_SHARED_KEY_SIZE] = {0};
-  REQUIRE((memcmp(ctx1.temp_shared_key, zero_key, CRYPTO_SHARED_KEY_SIZE)) == (0));
+  cr_assert_eq(memcmp(ctx1.temp_shared_key, zero_key, CRYPTO_SHARED_KEY_SIZE), 0, "Temp shared key should be wiped");
 }
 
-TEST_CASE("crypto/rekey_full_exchange", "[crypto]") {
+Test(crypto, rekey_full_exchange) {
   // Initialize both contexts
   crypto_init(&ctx1);
   crypto_init(&ctx2);
@@ -909,7 +930,7 @@ TEST_CASE("crypto/rekey_full_exchange", "[crypto]") {
   uint8_t decrypted_before[256];
   size_t decrypted_before_len;
   crypto_decrypt(&ctx2, ciphertext_before, ciphertext_before_len, decrypted_before, sizeof(decrypted_before), &decrypted_before_len);
-  REQUIRE((memcmp(decrypted_before, test_data, strlen(test_data))) == (0));
+  cr_assert_eq(memcmp(decrypted_before, test_data, strlen(test_data)), 0, "Original encryption should work");
 
   // Save original shared keys
   uint8_t old_shared_key1[CRYPTO_SHARED_KEY_SIZE];
@@ -923,61 +944,61 @@ TEST_CASE("crypto/rekey_full_exchange", "[crypto]") {
 
   // Step 1: Initiator (ctx1) sends REKEY_REQUEST
   crypto_result_t result = crypto_rekey_init(&ctx1);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Initiator init should succeed");
 
   // Step 2: Responder (ctx2) processes request and generates response
   result = crypto_rekey_init(&ctx2);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Responder init should succeed");
   result = crypto_rekey_process_request(&ctx2, ctx1.temp_public_key);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Process request should succeed");
 
   // Step 3: Initiator processes response
   result = crypto_rekey_process_response(&ctx1, ctx2.temp_public_key);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Process response should succeed");
 
   // Both should have same temp shared key
-  REQUIRE((memcmp(ctx1.temp_shared_key, ctx2.temp_shared_key, CRYPTO_SHARED_KEY_SIZE)) == (0));
+  cr_assert_eq(memcmp(ctx1.temp_shared_key, ctx2.temp_shared_key, CRYPTO_SHARED_KEY_SIZE), 0, "Temp shared keys should match");
 
   // Step 4: Both commit to new key
   result = crypto_rekey_commit(&ctx1);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Initiator commit should succeed");
   result = crypto_rekey_commit(&ctx2);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Responder commit should succeed");
 
   // Check that shared keys changed
-  REQUIRE((memcmp(ctx1.shared_key, old_shared_key1, CRYPTO_SHARED_KEY_SIZE)) != (0));
-  REQUIRE((memcmp(ctx2.shared_key, old_shared_key2, CRYPTO_SHARED_KEY_SIZE)) != (0));
+  cr_assert_neq(memcmp(ctx1.shared_key, old_shared_key1, CRYPTO_SHARED_KEY_SIZE), 0, "ctx1 shared key should change");
+  cr_assert_neq(memcmp(ctx2.shared_key, old_shared_key2, CRYPTO_SHARED_KEY_SIZE), 0, "ctx2 shared key should change");
 
   // Check that both have the same new key
-  REQUIRE((memcmp(ctx1.shared_key, ctx2.shared_key, CRYPTO_SHARED_KEY_SIZE)) == (0));
+  cr_assert_eq(memcmp(ctx1.shared_key, ctx2.shared_key, CRYPTO_SHARED_KEY_SIZE), 0, "New shared keys should match");
 
   // Test encryption with new key
   const char *test_data_after = "Hello after rekey";
   uint8_t ciphertext_after[256];
   size_t ciphertext_after_len;
   result = crypto_encrypt(&ctx1, (const uint8_t *)test_data_after, strlen(test_data_after), ciphertext_after, sizeof(ciphertext_after), &ciphertext_after_len);
-  REQUIRE((result) == (CRYPTO_OK));
+  cr_assert_eq(result, CRYPTO_OK, "Encryption with new key should work");
 
   uint8_t decrypted_after[256];
   size_t decrypted_after_len;
   result = crypto_decrypt(&ctx2, ciphertext_after, ciphertext_after_len, decrypted_after, sizeof(decrypted_after), &decrypted_after_len);
-  REQUIRE((result) == (CRYPTO_OK));
-  REQUIRE((memcmp(decrypted_after, test_data_after, strlen(test_data_after))) == (0));
+  cr_assert_eq(result, CRYPTO_OK, "Decryption with new key should work");
+  cr_assert_eq(memcmp(decrypted_after, test_data_after, strlen(test_data_after)), 0, "Decrypted data should match with new key");
 
   // Verify old ciphertext cannot be decrypted with new key
   uint8_t decrypted_old_with_new[256];
   size_t decrypted_old_with_new_len;
   result = crypto_decrypt(&ctx2, ciphertext_before, ciphertext_before_len, decrypted_old_with_new, sizeof(decrypted_old_with_new), &decrypted_old_with_new_len);
-  REQUIRE((result) != (CRYPTO_OK));
+  cr_assert_neq(result, CRYPTO_OK, "Old ciphertext should not decrypt with new key");
 }
 
-TEST_CASE("crypto/rekey_packet_counter_increments", "[crypto]") {
+Test(crypto, rekey_packet_counter_increments) {
   // Initialize context
   crypto_init(&ctx1);
   ctx1.key_exchange_complete = true;
   ctx1.handshake_complete = true;
 
-  REQUIRE((ctx1.rekey_packet_count) == (0));
+  cr_assert_eq(ctx1.rekey_packet_count, 0, "Initial packet count should be 0");
 
   // Encrypt some data
   const char *data = "test data";
@@ -988,5 +1009,5 @@ TEST_CASE("crypto/rekey_packet_counter_increments", "[crypto]") {
     crypto_encrypt(&ctx1, (const uint8_t *)data, strlen(data), ciphertext, sizeof(ciphertext), &ciphertext_len);
   }
 
-  REQUIRE((ctx1.rekey_packet_count) == (10));
+  cr_assert_eq(ctx1.rekey_packet_count, 10, "Packet count should increment on each encryption");
 }

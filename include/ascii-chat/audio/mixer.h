@@ -677,8 +677,7 @@ void compressor_init(compressor_t *comp, float sample_rate);
  *
  * @ingroup audio
  */
-void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, uint64_t attack_ns, uint64_t release_ns,
-                           float makeup_dB);
+void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, uint64_t attack_ns, uint64_t release_ns, float makeup_dB);
 
 /**
  * @brief Process a single sample through compressor
@@ -744,8 +743,7 @@ void ducking_destroy(ducking_t *duck);
  *
  * @ingroup audio
  */
-void ducking_set_params(ducking_t *duck, float threshold_dB, float leader_margin_dB, float atten_dB, uint64_t attack_ns,
-                        uint64_t release_ns);
+void ducking_set_params(ducking_t *duck, float threshold_dB, float leader_margin_dB, float atten_dB, uint64_t attack_ns, uint64_t release_ns);
 
 /**
  * @brief Process a frame of audio through ducking system
@@ -797,8 +795,7 @@ void noise_gate_init(noise_gate_t *gate, float sample_rate);
  *
  * @ingroup audio
  */
-void noise_gate_set_params(noise_gate_t *gate, float threshold, uint64_t attack_ns, uint64_t release_ns,
-                           float hysteresis);
+void noise_gate_set_params(noise_gate_t *gate, float threshold, uint64_t attack_ns, uint64_t release_ns, float hysteresis);
 
 /**
  * @brief Process a single sample through noise gate

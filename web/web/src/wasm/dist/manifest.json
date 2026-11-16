@@ -1,5 +1,5 @@
 {
-  "sourceHash": "a9ac6afd5d07408c15375ca3b8e15648e0dc7b69ffceabeb751a8aa583538ef3",
+  "sourceHash": "579b676ebc85e889d90e7aef32aa3e8ded28d795b4de16d68992799df299a97e",
   "capabilities": {
     "mirror": {
       "module": "mirror",
@@ -48,13 +48,13 @@
     }
   },
   "files": {
-    "mirror.js": "84c7b47febd086dc7436f40e92bc59058fff251f58a52450b83e39b47ac83f36",
-    "mirror.wasm": "4b89b79b310038426eea92adfc3d2f7b3f27495955db1a6f76112a2f42fcce8f",
-    "client.js": "7f5cb708e033444f684618ef3d638a681897e1aea18c826f490ad7c759fc1dfc",
-    "client.wasm": "0d8afb86cd315806859fc8d1525eabf8a3251e7939e2fb5ddebe9ebb0ed88175"
+    "mirror.js": "3af0c3b91764217821290a93b4ff4234a2ac5539079b8ef3ee6035710678f519",
+    "mirror.wasm": "09479dbffacdf8f5a119306e359d717f28ef0cc8a8824d3bbeaee7cbf7d27482",
+    "client.js": "d99edba5b1b3396f87c37e1cf3bf8ea46df1e6bc6255d6793b6ce76e52796abd",
+    "client.wasm": "3bb14eb60df1fa5c2470f4660ea0056ac2e486bd77ab0d134b6d71aafcdcb021"
   },
   "types": {
-    "mirror-bindings.d.ts": "d096c3e2c9aa444d06dfd2a3672f0430356d3106794eb2e9678df442af421671",
-    "client-bindings.d.ts": "301c749633cc0e62a435d72541ad3cc06eca64c2f7293cfbc1c75497e63cc9a7"
+    "mirror-bindings.d.ts": "c508fcb9795ffa2b77b4af28df80bcd90fe8e0f58528302d21f7814c9af8d115",
+    "client-bindings.d.ts": "0f934fbdaa930cde61140e8297d8b26d9df1712f28bd828c696d7744b370800d"
   }
 }

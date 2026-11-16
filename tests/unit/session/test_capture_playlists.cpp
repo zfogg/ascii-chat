@@ -2,7 +2,7 @@
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
 #include "common/session/capture.h"
-#include <ascii-chat/options/rcu.h>
+#include <options/rcu.h>
 #include <libplatform/filesystem.h>
 #include <ascii-chat/util/time.h>
 #include <string.h>

@@ -10,8 +10,8 @@
 #include <catch2/catch_all.hpp>
 #include <math.h>
 
-#include <ascii-chat/options/rcu.h>
-#include <ascii-chat/options/options.h>
+#include <options/rcu.h>
+#include <options/options.h>
 #include <ascii-chat/tui/session.h>
 #include <ascii-chat/asciichat_errno.h>
 

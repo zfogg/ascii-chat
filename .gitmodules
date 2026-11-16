@@ -45,9 +45,9 @@
 [submodule "deps/ascii-chat-deps/mmmbed"]
 	path = deps/ascii-chat-deps/mmmbed
 	url = https://github.com/zfogg/mmmbed.git
-[submodule "deps/defer"]
-	path = deps/defer
-	url = https://github.com/zfogg/defer.git
+[submodule "deps/recast"]
+	path = deps/recast
+	url = https://github.com/zfogg/recast.git
 [submodule "deps/ascii-chat-deps/libplatform"]
 	path = deps/ascii-chat-deps/libplatform
 	url = https://github.com/zfogg/libplatform.git

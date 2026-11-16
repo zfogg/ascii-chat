@@ -4,6 +4,7 @@ BasedOnStyle: LLVM
 IndentWidth: 2
 UseTab: Never
 ColumnLimit: 200
+AlignEscapedNewlines: Left
 
 SortIncludes: Never
 

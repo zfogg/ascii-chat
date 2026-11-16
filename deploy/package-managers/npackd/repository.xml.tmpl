@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+  <spec-version>3.5</spec-version>
+  <package name="ascii-chat"><title>{{ .Env.DISPLAY_TITLE }}</title><url>https://ascii-chat.com</url><description>{{ .Env.DESCRIPTION }}</description></package>
+  <package name="ascii-chat-arm64"><title>{{ .Env.DISPLAY_TITLE }} (ARM64)</title><url>https://ascii-chat.com</url><description>{{ .Env.DESCRIPTION }}</description></package>
+  <package name="libasciichat"><title>libasciichat</title><url>https://ascii-chat.com</url><description>Development headers, libraries, and CMake integration files for libasciichat.</description></package>
+  <package name="libasciichat-arm64"><title>libasciichat (ARM64)</title><url>https://ascii-chat.com</url><description>Development headers, libraries, and CMake integration files for libasciichat.</description></package>
+  <version name="{{ .Env.VERSION }}" package="ascii-chat" type="zip"><url>{{ .Env.RUNTIME_X64_URL }}</url><hash-sum type="SHA-256">{{ .Env.RUNTIME_X64_SHA256 }}</hash-sum></version>
+  <version name="{{ .Env.VERSION }}" package="ascii-chat-arm64" type="zip"><url>{{ .Env.RUNTIME_ARM64_URL }}</url><hash-sum type="SHA-256">{{ .Env.RUNTIME_ARM64_SHA256 }}</hash-sum></version>
+  <version name="{{ .Env.VERSION }}" package="libasciichat" type="zip"><url>{{ .Env.LIB_X64_URL }}</url><hash-sum type="SHA-256">{{ .Env.LIB_X64_SHA256 }}</hash-sum></version>
+  <version name="{{ .Env.VERSION }}" package="libasciichat-arm64" type="zip"><url>{{ .Env.LIB_ARM64_URL }}</url><hash-sum type="SHA-256">{{ .Env.LIB_ARM64_SHA256 }}</hash-sum></version>
+</root>

@@ -277,7 +277,7 @@ an assertion.
 
 ### C cleanup with defer
 
-Include `<defer.h>` and use `defer(action);` for
+Include `<recast/defer.h>` and use `defer(action);` for
 block-scoped cleanup. CMake transforms C and Objective-C sources and supported header functions;
 C++ uses scope guards. Use the C development skill and `docs/topics/defer.dox`
 for scope, header discovery, restrictions, diagnostics, and build requirements.
@@ -731,7 +731,7 @@ Stream URLs extracted by yt-dlp are cached for 30 seconds to avoid repeated subp
 
 - **lib/media/yt_dlp.c/h** - yt-dlp subprocess integration with caching
 - **lib/media/source.c** - Smart routing logic and media source creation
-- **include/ascii-chat/options/options.h** - `yt_dlp_options` STRING option
+- **src/common/options/options.h** - `yt_dlp_options` STRING option
 
 ## Cryptographic Protocol
 

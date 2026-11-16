@@ -1,4 +1,3 @@
-#include <catch2/catch_test_macros.hpp>
 /**
  * @file crypto_ssh_agent_sign_test.c
  * @brief Comprehensive edge case tests for SSH agent signing
@@ -13,51 +12,54 @@
  * - Network errors
  */
 
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
+#include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include <ascii-chat/crypto/ssh/ssh_agent.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/common.h>
 #include <sodium.h>
 #include <string.h>
+
+TestSuite(crypto_ssh_agent_sign, .description = "SSH agent signing edge cases");
+
 // =============================================================================
 // Parameter Validation Tests
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("crypto_ssh_agent_sign/null_public_key", "[crypto_ssh_agent_sign]") {
+Test(crypto_ssh_agent_sign, null_public_key) {
   uint8_t message[32] = {0};
   uint8_t signature[64] = {0};
 
   asciichat_error_t result = ssh_agent_sign(NULL, message, 32, signature);
-  REQUIRE((result) != (ASCIICHAT_OK));
-  REQUIRE((result) == (ERROR_INVALID_PARAM));
+  cr_assert_neq(result, ASCIICHAT_OK, "Should fail with NULL public key");
+  cr_assert_eq(result, ERROR_INVALID_PARAM, "Should return ERROR_INVALID_PARAM");
 }
 
-TEST_CASE("crypto_ssh_agent_sign/null_message", "[crypto_ssh_agent_sign]") {
+Test(crypto_ssh_agent_sign, null_message) {
   public_key_t pub_key;
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = KEY_TYPE_ED25519;
   uint8_t signature[64] = {0};
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, NULL, 32, signature);
-  REQUIRE((result) != (ASCIICHAT_OK));
-  REQUIRE((result) == (ERROR_INVALID_PARAM));
+  cr_assert_neq(result, ASCIICHAT_OK, "Should fail with NULL message");
+  cr_assert_eq(result, ERROR_INVALID_PARAM, "Should return ERROR_INVALID_PARAM");
 }
 
-TEST_CASE("crypto_ssh_agent_sign/null_signature", "[crypto_ssh_agent_sign]") {
+Test(crypto_ssh_agent_sign, null_signature) {
   public_key_t pub_key;
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = KEY_TYPE_ED25519;
   uint8_t message[32] = {0};
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, NULL);
-  REQUIRE((result) != (ASCIICHAT_OK));
-  REQUIRE((result) == (ERROR_INVALID_PARAM));
+  cr_assert_neq(result, ASCIICHAT_OK, "Should fail with NULL signature");
+  cr_assert_eq(result, ERROR_INVALID_PARAM, "Should return ERROR_INVALID_PARAM");
 }
 
-TEST_CASE("crypto_ssh_agent_sign/zero_message_length", "[crypto_ssh_agent_sign]") {
+Test(crypto_ssh_agent_sign, zero_message_length) {
   public_key_t pub_key;
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = KEY_TYPE_ED25519;
@@ -69,11 +71,11 @@ TEST_CASE("crypto_ssh_agent_sign/zero_message_length", "[crypto_ssh_agent_sign]"
 
   // Should either succeed (if agent is available) or fail gracefully
   if (result != ASCIICHAT_OK) {
-    REQUIRE((result == ERROR_CRYPTO || result == ERROR_NETWORK));
+    cr_assert(result == ERROR_CRYPTO || result == ERROR_NETWORK, "Should return appropriate error for zero-length message");
   }
 }
 
-TEST_CASE("crypto_ssh_agent_sign/very_large_message", "[crypto_ssh_agent_sign]") {
+Test(crypto_ssh_agent_sign, very_large_message) {
   public_key_t pub_key;
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = KEY_TYPE_ED25519;
@@ -81,7 +83,7 @@ TEST_CASE("crypto_ssh_agent_sign/very_large_message", "[crypto_ssh_agent_sign]")
   // Test with a very large message (10MB - exceeds 1MB agent limit)
   size_t large_size = 10 * 1024 * 1024;
   uint8_t *large_message = SAFE_MALLOC(large_size, uint8_t *);
-  REQUIRE((large_message) != nullptr);
+  cr_assert_not_null(large_message, "Failed to allocate large message");
 
   memset(large_message, 0xAA, large_size);
   uint8_t signature[64] = {0};
@@ -89,8 +91,8 @@ TEST_CASE("crypto_ssh_agent_sign/very_large_message", "[crypto_ssh_agent_sign]")
   asciichat_error_t result = ssh_agent_sign(&pub_key, large_message, large_size, signature);
 
   // Should fail gracefully (message too large for agent protocol - max 1MB)
-  REQUIRE(result != ASCIICHAT_OK);
-  REQUIRE(result == ERROR_CRYPTO);
+  cr_assert(result != ASCIICHAT_OK, "Should reject messages larger than 1MB");
+  cr_assert(result == ERROR_CRYPTO, "Should return ERROR_CRYPTO for oversized messages");
 
   SAFE_FREE(large_message);
 }
@@ -99,7 +101,7 @@ TEST_CASE("crypto_ssh_agent_sign/very_large_message", "[crypto_ssh_agent_sign]")
 // Invalid Key Type Tests
 // =============================================================================
 
-TEST_CASE("crypto_ssh_agent_sign/wrong_key_type_x25519", "[crypto_ssh_agent_sign]") {
+Test(crypto_ssh_agent_sign, wrong_key_type_x25519) {
   public_key_t pub_key;
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = KEY_TYPE_X25519; // Wrong type
@@ -107,11 +109,11 @@ TEST_CASE("crypto_ssh_agent_sign/wrong_key_type_x25519", "[crypto_ssh_agent_sign
   uint8_t signature[64] = {0};
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
-  REQUIRE((result) != (ASCIICHAT_OK));
-  REQUIRE((result) == (ERROR_CRYPTO_KEY));
+  cr_assert_neq(result, ASCIICHAT_OK, "Should fail with X25519 key");
+  cr_assert_eq(result, ERROR_CRYPTO_KEY, "Should return ERROR_CRYPTO_KEY");
 }
 
-TEST_CASE("crypto_ssh_agent_sign/wrong_key_type_gpg", "[crypto_ssh_agent_sign]") {
+Test(crypto_ssh_agent_sign, wrong_key_type_gpg) {
   public_key_t pub_key;
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = KEY_TYPE_GPG; // Wrong type
@@ -119,11 +121,11 @@ TEST_CASE("crypto_ssh_agent_sign/wrong_key_type_gpg", "[crypto_ssh_agent_sign]")
   uint8_t signature[64] = {0};
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
-  REQUIRE((result) != (ASCIICHAT_OK));
-  REQUIRE((result) == (ERROR_CRYPTO_KEY));
+  cr_assert_neq(result, ASCIICHAT_OK, "Should fail with GPG key");
+  cr_assert_eq(result, ERROR_CRYPTO_KEY, "Should return ERROR_CRYPTO_KEY");
 }
 
-TEST_CASE("crypto_ssh_agent_sign/uninitialized_key_type", "[crypto_ssh_agent_sign]") {
+Test(crypto_ssh_agent_sign, uninitialized_key_type) {
   public_key_t pub_key;
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = (key_type_t)999; // Invalid type
@@ -131,15 +133,15 @@ TEST_CASE("crypto_ssh_agent_sign/uninitialized_key_type", "[crypto_ssh_agent_sig
   uint8_t signature[64] = {0};
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
-  REQUIRE((result) != (ASCIICHAT_OK));
-  REQUIRE((result) == (ERROR_CRYPTO_KEY));
+  cr_assert_neq(result, ASCIICHAT_OK, "Should fail with invalid key type");
+  cr_assert_eq(result, ERROR_CRYPTO_KEY, "Should return ERROR_CRYPTO_KEY");
 }
 
 // =============================================================================
 // SSH Agent Availability Tests
 // =============================================================================
 
-TEST_CASE("crypto_ssh_agent_sign/agent_not_available", "[crypto_ssh_agent_sign]") {
+Test(crypto_ssh_agent_sign, agent_not_available) {
   // Temporarily unset SSH_AUTH_SOCK
   const char *original = SAFE_GETENV("SSH_AUTH_SOCK");
   char saved_value[1024] = {0};
@@ -160,8 +162,8 @@ TEST_CASE("crypto_ssh_agent_sign/agent_not_available", "[crypto_ssh_agent_sign]"
   uint8_t signature[64] = {0};
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
-  REQUIRE((result) != (ASCIICHAT_OK));
-  REQUIRE((result) == (ERROR_CRYPTO));
+  cr_assert_neq(result, ASCIICHAT_OK, "Should fail when agent not available");
+  cr_assert_eq(result, ERROR_CRYPTO, "Should return ERROR_CRYPTO");
 
   // Restore environment
   if (strlen(saved_value) > 0) {
@@ -175,7 +177,7 @@ TEST_CASE("crypto_ssh_agent_sign/agent_not_available", "[crypto_ssh_agent_sign]"
   }
 }
 
-TEST_CASE("crypto_ssh_agent_sign/invalid_agent_socket_path", "[crypto_ssh_agent_sign]") {
+Test(crypto_ssh_agent_sign, invalid_agent_socket_path) {
   // Set SSH_AUTH_SOCK to invalid path
   const char *original = SAFE_GETENV("SSH_AUTH_SOCK");
   char saved_value[1024] = {0};
@@ -199,7 +201,7 @@ TEST_CASE("crypto_ssh_agent_sign/invalid_agent_socket_path", "[crypto_ssh_agent_
   uint8_t signature[64] = {0};
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
-  REQUIRE((result) != (ASCIICHAT_OK));
+  cr_assert_neq(result, ASCIICHAT_OK, "Should fail with invalid socket path");
 
   // Restore environment
   if (strlen(saved_value) > 0) {
@@ -222,10 +224,10 @@ TEST_CASE("crypto_ssh_agent_sign/invalid_agent_socket_path", "[crypto_ssh_agent_
 // Key Not in Agent Tests
 // =============================================================================
 
-TEST_CASE("crypto_ssh_agent_sign/key_not_in_agent", "[crypto_ssh_agent_sign]") {
+Test(crypto_ssh_agent_sign, key_not_in_agent) {
   // Skip if agent not available
   if (!ssh_agent_is_available()) {
-    SKIP("test skipped");
+    cr_skip_test("SSH agent not available");
     return;
   }
 
@@ -245,17 +247,17 @@ TEST_CASE("crypto_ssh_agent_sign/key_not_in_agent", "[crypto_ssh_agent_sign]") {
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
 
   // Should fail because this key is not in the agent
-  REQUIRE((result) != (ASCIICHAT_OK));
+  cr_assert_neq(result, ASCIICHAT_OK, "Should fail when key not in agent");
 }
 
 // =============================================================================
 // Message Validity Tests
 // =============================================================================
 
-TEST_CASE("crypto_ssh_agent_sign/all_zero_message", "[crypto_ssh_agent_sign]") {
+Test(crypto_ssh_agent_sign, all_zero_message) {
   // Skip if agent not available
   if (!ssh_agent_is_available()) {
-    SKIP("test skipped");
+    cr_skip_test("SSH agent not available");
     return;
   }
 
@@ -269,13 +271,13 @@ TEST_CASE("crypto_ssh_agent_sign/all_zero_message", "[crypto_ssh_agent_sign]") {
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
 
   // Should handle all-zero message gracefully (either succeed or fail gracefully)
-  REQUIRE((result == ASCIICHAT_OK || result != ASCIICHAT_OK));
+  cr_assert(result == ASCIICHAT_OK || result != ASCIICHAT_OK, "Should handle all-zero message without crashing");
 }
 
-TEST_CASE("crypto_ssh_agent_sign/all_ff_message", "[crypto_ssh_agent_sign]") {
+Test(crypto_ssh_agent_sign, all_ff_message) {
   // Skip if agent not available
   if (!ssh_agent_is_available()) {
-    SKIP("test skipped");
+    cr_skip_test("SSH agent not available");
     return;
   }
 
@@ -290,14 +292,14 @@ TEST_CASE("crypto_ssh_agent_sign/all_ff_message", "[crypto_ssh_agent_sign]") {
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
 
   // Should handle all-0xFF message gracefully
-  REQUIRE((result == ASCIICHAT_OK || result != ASCIICHAT_OK));
+  cr_assert(result == ASCIICHAT_OK || result != ASCIICHAT_OK, "Should handle all-0xFF message without crashing");
 }
 
 // =============================================================================
 // Signature Buffer Tests
 // =============================================================================
 
-TEST_CASE("crypto_ssh_agent_sign/signature_buffer_unchanged_on_error", "[crypto_ssh_agent_sign]") {
+Test(crypto_ssh_agent_sign, signature_buffer_unchanged_on_error) {
   public_key_t pub_key;
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = KEY_TYPE_X25519; // Wrong type - will fail
@@ -308,7 +310,7 @@ TEST_CASE("crypto_ssh_agent_sign/signature_buffer_unchanged_on_error", "[crypto_
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
 
-  REQUIRE((result) != (ASCIICHAT_OK));
+  cr_assert_neq(result, ASCIICHAT_OK, "Should fail with wrong key type");
 
   // Signature buffer should not be modified on error
   // (implementation may or may not preserve buffer on error - this documents behavior)
@@ -318,17 +320,17 @@ TEST_CASE("crypto_ssh_agent_sign/signature_buffer_unchanged_on_error", "[crypto_
 // Integration Test (if agent available with test key)
 // =============================================================================
 
-TEST_CASE("crypto_ssh_agent_sign/successful_signing_if_key_available", "[crypto_ssh_agent_sign]") {
+Test(crypto_ssh_agent_sign, successful_signing_if_key_available, .disabled = false) {
   // Skip if agent not available
   if (!ssh_agent_is_available()) {
-    SKIP("test skipped");
+    cr_skip_test("SSH agent not available");
     return;
   }
 
   // Try to load user's actual SSH key for integration test
   const char *home = SAFE_GETENV("HOME");
   if (!home) {
-    SKIP("test skipped");
+    cr_skip_test("HOME not set");
     return;
   }
 
@@ -341,17 +343,17 @@ TEST_CASE("crypto_ssh_agent_sign/successful_signing_if_key_available", "[crypto_
   // Try to load the key
   asciichat_error_t load_result = parse_private_key(key_path, &priv_key);
   if (load_result != ASCIICHAT_OK) {
-    SKIP("test skipped");
+    cr_skip_test("Could not load %s (may not exist or may be passphrase protected)", key_path);
     return;
   }
 
   // Check if key is in agent
-  public_key_t pub_key{};
+  public_key_t pub_key = {0};
   pub_key.type = KEY_TYPE_ED25519;
   memcpy(pub_key.key, priv_key.public_key, 32);
 
   if (!ssh_agent_has_key(&pub_key)) {
-    SKIP("test skipped");
+    cr_skip_test("Test key not found in ssh-agent");
     return;
   }
 
@@ -360,7 +362,7 @@ TEST_CASE("crypto_ssh_agent_sign/successful_signing_if_key_available", "[crypto_
   uint8_t signature[64] = {0};
 
   asciichat_error_t result = ssh_agent_sign(&pub_key, test_message, 32, signature);
-  REQUIRE((result) == (ASCIICHAT_OK));
+  cr_assert_eq(result, ASCIICHAT_OK, "Should successfully sign with key in agent");
 
   // Verify signature is not all zeros
   bool all_zero = true;
@@ -370,11 +372,11 @@ TEST_CASE("crypto_ssh_agent_sign/successful_signing_if_key_available", "[crypto_
       break;
     }
   }
-  REQUIRE((all_zero) == (false));
+  cr_assert_eq(all_zero, false, "Signature should not be all zeros");
 
   // Verify signature using libsodium
   int verify_result = crypto_sign_verify_detached(signature, test_message, 32, pub_key.key);
-  REQUIRE((verify_result) == (0));
+  cr_assert_eq(verify_result, 0, "Signature should verify with libsodium");
 
   log_info("Successfully signed and verified message with SSH agent");
 }

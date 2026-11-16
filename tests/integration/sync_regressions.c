@@ -15,8 +15,8 @@
 #include <libplatform/rwlock.h>
 #include <libplatform/thread.h>
 #include <libplatform/debug/sync.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/colorscheme.h>
+#include <options/options.h>
+#include <options/colorscheme.h>
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/tui/sync.h>
 #include <ascii-chat/util/time.h>
@@ -43,12 +43,12 @@ static void inspect_atomic(uintptr_t key, void *value) {
 }
 #endif
 
-#define CHECK(expr)                                                                                                                                                                                    \
-  do {                                                                                                                                                                                                 \
-    if (!(expr)) {                                                                                                                                                                                     \
-      log_error("Regression failed at line %d: %s", __LINE__, #expr);                                                                                                                                  \
-      return 1;                                                                                                                                                                                        \
-    }                                                                                                                                                                                                  \
+#define CHECK(expr)                                                   \
+  do {                                                                \
+    if (!(expr)) {                                                    \
+      log_error("Regression failed at line %d: %s", __LINE__, #expr); \
+      return 1;                                                       \
+    }                                                                 \
   } while (0)
 
 static platform_wakeup_t *test_wakeup;

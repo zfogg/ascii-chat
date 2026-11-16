@@ -1,12 +1,11 @@
-#include <catch2/catch_test_macros.hpp>
 /**
  * @file crypto_pem_test.c
  * @brief Unit tests for PEM utility functions (trust anchor parsing)
  */
 
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
+#include <criterion/criterion.h>
+#include <criterion/new/assert.h>
+#include <criterion/redirect.h>
 #include <ascii-chat/crypto/pem.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
@@ -61,33 +60,36 @@ static const unsigned char test_ca_der[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+TestSuite(crypto_pem, .description = "PEM utility functions");
+
 // =============================================================================
 // Basic PEM Parsing Tests
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("crypto_pem/parse_pem_certificate", "[crypto_pem]") {
+Test(crypto_pem, parse_pem_certificate) {
   anchor_list anchors = ANCHOR_LIST_INIT;
 
   size_t num = read_trust_anchors_from_memory(&anchors, (const unsigned char *)test_ca_pem, strlen(test_ca_pem));
 
-  REQUIRE((num) > (0));
-  REQUIRE((num) == (1));
-  REQUIRE((anchors.buf) != nullptr);
-  REQUIRE((anchors.ptr) == (1));
+  cr_assert_gt(num, 0, "Should parse at least one trust anchor");
+  cr_assert_eq(num, 1, "Should parse exactly one certificate from PEM");
+  cr_assert_not_null(anchors.buf, "Anchor buffer should be allocated");
+  cr_assert_eq(anchors.ptr, 1, "Anchor count should be 1");
 
   // Verify trust anchor has expected fields
   br_x509_trust_anchor *ta = &anchors.buf[0];
-  REQUIRE((ta->dn.data) != nullptr);
-  REQUIRE((ta->dn.len) > (0));
+  cr_assert_not_null(ta->dn.data, "Distinguished name should be present");
+  cr_assert_gt(ta->dn.len, 0, "Distinguished name should not be empty");
 
   // Verify CA flag is set
-  REQUIRE(ta->flags & BR_X509_TA_CA);
+  cr_assert(ta->flags & BR_X509_TA_CA, "CA flag should be set for root certificate");
 
   // Verify public key type (should be RSA for this test certificate)
-  REQUIRE((ta->pkey.key_type) == (BR_KEYTYPE_RSA));
-  REQUIRE((ta->pkey.key.rsa.n) != nullptr);
-  REQUIRE((ta->pkey.key.rsa.nlen) > (0));
+  cr_assert_eq(ta->pkey.key_type, BR_KEYTYPE_RSA, "Public key should be RSA");
+  cr_assert_not_null(ta->pkey.key.rsa.n, "RSA modulus should be present");
+  cr_assert_gt(ta->pkey.key.rsa.nlen, 0, "RSA modulus length should be non-zero");
 
   // Cleanup
   for (size_t i = 0; i < anchors.ptr; i++) {
@@ -100,14 +102,14 @@ TEST_CASE("crypto_pem/parse_pem_certificate", "[crypto_pem]") {
 // BearSSL correctly rejects certificates with invalid signatures during X.509 validation
 // in certificate_to_trust_anchor_inner(). To re-enable, replace test_ca_der with a valid
 // DER-encoded certificate (e.g., convert ISRG Root X1 PEM to DER format).
-TEST_CASE("crypto_pem/parse_der_certificate", "[crypto_pem]") {
+Test(crypto_pem, parse_der_certificate, .disabled = true) {
   anchor_list anchors = ANCHOR_LIST_INIT;
 
   size_t num = read_trust_anchors_from_memory(&anchors, test_ca_der, sizeof(test_ca_der));
 
-  REQUIRE((num) > (0));
-  REQUIRE((num) == (1));
-  REQUIRE((anchors.buf) != nullptr);
+  cr_assert_gt(num, 0, "Should parse at least one trust anchor from DER");
+  cr_assert_eq(num, 1, "Should parse exactly one certificate from DER");
+  cr_assert_not_null(anchors.buf, "Anchor buffer should be allocated");
 
   // Cleanup
   for (size_t i = 0; i < anchors.ptr; i++) {
@@ -116,27 +118,27 @@ TEST_CASE("crypto_pem/parse_der_certificate", "[crypto_pem]") {
   SAFE_FREE(anchors.buf);
 }
 
-TEST_CASE("crypto_pem/parse_invalid_pem", "[crypto_pem]") {
+Test(crypto_pem, parse_invalid_pem) {
   anchor_list anchors = ANCHOR_LIST_INIT;
   const char *invalid_pem = "This is not a valid PEM certificate\n";
 
   size_t num = read_trust_anchors_from_memory(&anchors, (const unsigned char *)invalid_pem, strlen(invalid_pem));
 
-  REQUIRE((num) == (0));
-  REQUIRE((anchors.buf) == nullptr);
+  cr_assert_eq(num, 0, "Should return 0 for invalid PEM data");
+  cr_assert_null(anchors.buf, "Anchor buffer should remain NULL on error");
 }
 
-TEST_CASE("crypto_pem/parse_empty_data", "[crypto_pem]") {
+Test(crypto_pem, parse_empty_data) {
   anchor_list anchors = ANCHOR_LIST_INIT;
   const char *empty_data = "";
 
   size_t num = read_trust_anchors_from_memory(&anchors, (const unsigned char *)empty_data, 0);
 
-  REQUIRE((num) == (0));
-  REQUIRE((anchors.buf) == nullptr);
+  cr_assert_eq(num, 0, "Should return 0 for empty data");
+  cr_assert_null(anchors.buf, "Anchor buffer should remain NULL for empty input");
 }
 
-TEST_CASE("crypto_pem/parse_pem_without_trailing_newline", "[crypto_pem]") {
+Test(crypto_pem, parse_pem_without_trailing_newline) {
   // Test PEM data without trailing newline (should still parse correctly)
   // Use valid ISRG Root X1 certificate without trailing newline
   const char *pem_no_newline = "-----BEGIN CERTIFICATE-----\n"
@@ -174,7 +176,7 @@ TEST_CASE("crypto_pem/parse_pem_without_trailing_newline", "[crypto_pem]") {
   anchor_list anchors = ANCHOR_LIST_INIT;
   size_t num = read_trust_anchors_from_memory(&anchors, (const unsigned char *)pem_no_newline, strlen(pem_no_newline));
 
-  REQUIRE((num) > (0));
+  cr_assert_gt(num, 0, "Should parse certificate even without trailing newline");
 
   // Cleanup
   for (size_t i = 0; i < anchors.ptr; i++) {
@@ -187,7 +189,7 @@ TEST_CASE("crypto_pem/parse_pem_without_trailing_newline", "[crypto_pem]") {
 // Multiple Certificates Tests
 // =============================================================================
 
-TEST_CASE("crypto_pem/parse_multiple_certificates", "[crypto_pem]") {
+Test(crypto_pem, parse_multiple_certificates) {
   // Two certificates concatenated
   char multi_pem[4096];
   safe_snprintf(multi_pem, sizeof(multi_pem), "%s%s", test_ca_pem, test_ca_pem);
@@ -195,9 +197,9 @@ TEST_CASE("crypto_pem/parse_multiple_certificates", "[crypto_pem]") {
   anchor_list anchors = ANCHOR_LIST_INIT;
   size_t num = read_trust_anchors_from_memory(&anchors, (const unsigned char *)multi_pem, strlen(multi_pem));
 
-  REQUIRE((num) == (2));
-  REQUIRE((anchors.buf) != nullptr);
-  REQUIRE((anchors.ptr) == (2));
+  cr_assert_eq(num, 2, "Should parse two certificates");
+  cr_assert_not_null(anchors.buf, "Anchor buffer should be allocated");
+  cr_assert_eq(anchors.ptr, 2, "Should have 2 trust anchors");
 
   // Cleanup
   for (size_t i = 0; i < anchors.ptr; i++) {
@@ -210,7 +212,7 @@ TEST_CASE("crypto_pem/parse_multiple_certificates", "[crypto_pem]") {
 // Memory Management Tests
 // =============================================================================
 
-TEST_CASE("crypto_pem/memory_cleanup", "[crypto_pem]") {
+Test(crypto_pem, memory_cleanup) {
   anchor_list anchors = ANCHOR_LIST_INIT;
 
   read_trust_anchors_from_memory(&anchors, (const unsigned char *)test_ca_pem, strlen(test_ca_pem));
@@ -222,22 +224,22 @@ TEST_CASE("crypto_pem/memory_cleanup", "[crypto_pem]") {
   SAFE_FREE(anchors.buf);
 
   // Verify cleanup
-  REQUIRE((anchors.buf) == nullptr);
+  cr_assert_null(anchors.buf, "Buffer should be NULL after free");
 }
 
-TEST_CASE("crypto_pem/free_ta_contents_null", "[crypto_pem]") {
+Test(crypto_pem, free_ta_contents_null) {
   // Should handle NULL pointer gracefully
   free_ta_contents(NULL);
 
   // Test passes if we don't crash
-  REQUIRE(true);
+  cr_assert(true, "Should handle NULL pointer");
 }
 
 // =============================================================================
 // Edge Case Tests
 // =============================================================================
 
-TEST_CASE("crypto_pem/pem_with_comments", "[crypto_pem]") {
+Test(crypto_pem, pem_with_comments) {
   // Use valid ISRG Root X1 certificate with comments
   const char *pem_with_comments = "# This is a comment\n"
                                   "-----BEGIN CERTIFICATE-----\n"
@@ -276,7 +278,7 @@ TEST_CASE("crypto_pem/pem_with_comments", "[crypto_pem]") {
   size_t num = read_trust_anchors_from_memory(&anchors, (const unsigned char *)pem_with_comments, strlen(pem_with_comments));
 
   // BearSSL PEM decoder should handle comments
-  REQUIRE((num) > (0));
+  cr_assert_gt(num, 0, "Should parse certificate with comments");
 
   // Cleanup
   for (size_t i = 0; i < anchors.ptr; i++) {
@@ -285,7 +287,7 @@ TEST_CASE("crypto_pem/pem_with_comments", "[crypto_pem]") {
   SAFE_FREE(anchors.buf);
 }
 
-TEST_CASE("crypto_pem/x509_certificate_name_variant", "[crypto_pem]") {
+Test(crypto_pem, x509_certificate_name_variant) {
   // Test Windows CryptBinaryToStringA format which adds "-----" suffix
   // Use valid ISRG Root X1 certificate
   const char *pem_with_dashes = "-----BEGIN X509 CERTIFICATE-----\n"
@@ -323,7 +325,7 @@ TEST_CASE("crypto_pem/x509_certificate_name_variant", "[crypto_pem]") {
   anchor_list anchors = ANCHOR_LIST_INIT;
   size_t num = read_trust_anchors_from_memory(&anchors, (const unsigned char *)pem_with_dashes, strlen(pem_with_dashes));
 
-  REQUIRE((num) > (0));
+  cr_assert_gt(num, 0, "Should parse X509 CERTIFICATE format");
 
   // Cleanup
   for (size_t i = 0; i < anchors.ptr; i++) {

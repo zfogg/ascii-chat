@@ -3,7 +3,7 @@
 #include <ascii-chat/common.h>
 #include "../../../src/common/session/capture.h"
 #include <ascii-chat/audio/audio.h>
-#include <ascii-chat/options/rcu.h>
+#include <options/rcu.h>
 #include <libplatform/filesystem.h>
 #include <ascii-chat/util/time.h>
 

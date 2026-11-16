@@ -46,7 +46,7 @@
 #include "mirror/main.h"
 #include "mcp-server/mcp.h"
 #include "api-server/main.h"
-#include <ascii-chat/options/registry/core.h>
+#include <options/registry_core.h>
 #include "discovery-service/main.h"
 #include "discovery/main.h"
 #include <ascii-chat/discovery/session.h>
@@ -72,15 +72,14 @@
 #include <libplatform/systemd.h>
 #include <ascii-chat/debug/coverage.h>
 #include <ascii-chat/version.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <libplatform/system.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/options/common.h>
-#include <ascii-chat/options/rcu.h>
-#include <ascii-chat/options/builder.h>
-#include <ascii-chat/options/actions.h>
-#include <ascii-chat/options/colorscheme.h>
+#include <options/common.h>
+#include <options/rcu.h>
+#include <options/actions.h>
+#include <options/colorscheme.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/log/grep.h>
@@ -89,7 +88,7 @@
 #include <libplatform/process.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/pcre2.h>
-#include <ascii-chat/options/colorscheme.h>
+#include <options/colorscheme.h>
 #include <ascii-chat/network/update_checker.h>
 #include <ascii-chat/tui/update_banner.h>
 #include <ascii-chat/tui/splash.h>
@@ -225,17 +224,17 @@ atomic_t g_should_exit ATOMIC_INIT_AUTO(g_should_exit);
 
 // Register with descriptive name for debug output
 #ifndef NDEBUG
-#define REGISTER_GLOBAL_ATOMICS()                                                                                                                                                                      \
-  do {                                                                                                                                                                                                 \
-    static bool _global_atomics_registered = false;                                                                                                                                                    \
-    if (!_global_atomics_registered) {                                                                                                                                                                 \
-      NAMED_REGISTER_ATOMIC(&g_should_exit, "application_exit_flag", NULL);                                                                                                                            \
-      _global_atomics_registered = true;                                                                                                                                                               \
-    }                                                                                                                                                                                                  \
+#define REGISTER_GLOBAL_ATOMICS()                                           \
+  do {                                                                      \
+    static bool _global_atomics_registered = false;                         \
+    if (!_global_atomics_registered) {                                      \
+      NAMED_REGISTER_ATOMIC(&g_should_exit, "application_exit_flag", NULL); \
+      _global_atomics_registered = true;                                    \
+    }                                                                       \
   } while (0)
 #else
-#define REGISTER_GLOBAL_ATOMICS()                                                                                                                                                                      \
-  do {                                                                                                                                                                                                 \
+#define REGISTER_GLOBAL_ATOMICS() \
+  do {                            \
   } while (0)
 #endif
 
@@ -363,7 +362,7 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
     NAMED_REGISTER_ATOMIC(&ctrl_c_count, "ctrl_c_interrupt_count", NULL);
     ctrl_c_count_registered = true;
   }
-  if (atomic_fetch_add_int(&ctrl_c_count, 1) + 1 > 1) {
+  if (atomic_fetch_add_int(&ctrl_c_count, 1) > 0) {
     platform_force_exit(1);
   }
 
@@ -917,7 +916,6 @@ int main(int argc, char *argv[]) {
 
     // Clean up options state before exiting
     options_state_destroy();
-    options_cleanup_schema();
 
     exit(options_result);
   }
@@ -1049,7 +1047,7 @@ int main(int argc, char *argv[]) {
 #ifndef NDEBUG
   // Handle --debug-state (debug builds only)
   // Sleep for specified time AFTER mode initialization so locks are created
-  if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) && opts->debug_sync_state_time > 0.0) {
+  if (opts->debug_sync_state_time > 0.0) {
     log_info("Will print sync state after %f seconds", opts->debug_sync_state_time);
   }
 #endif
@@ -1145,9 +1143,9 @@ int main(int argc, char *argv[]) {
 #ifndef NDEBUG
   uint64_t sync_state_delay_ns = 0;
   uint64_t debug_backtrace_delay_ns = 0;
-  if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) && opts->debug_sync_state_time > 0.0)
+  if (opts->debug_sync_state_time > 0.0)
     sync_state_delay_ns = (uint64_t)(opts->debug_sync_state_time * 1000000000.0);
-  if (IS_OPTION_EXPLICIT(debug_backtrace_time, opts) && opts->debug_backtrace_time > 0.0)
+  if (opts->debug_backtrace_time > 0.0)
     debug_backtrace_delay_ns = (uint64_t)(opts->debug_backtrace_time * 1000000000.0);
   if (debug_sync_start_thread(sync_state_delay_ns, debug_backtrace_delay_ns) != 0) {
     FATAL(ERROR_THREAD, "Cannot start synchronization worker");

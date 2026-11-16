@@ -22,8 +22,7 @@ int main(int argc, char **argv) {
         .port = (uint16_t)port,
     };
     contexts[i - 1] = asciichat_mdns_init();
-    if (!contexts[i - 1] || port == 0 || port > 65535 ||
-        asciichat_mdns_advertise(contexts[i - 1], &service) != ASCIICHAT_OK) {
+    if (!contexts[i - 1] || port == 0 || port > 65535 || asciichat_mdns_advertise(contexts[i - 1], &service) != ASCIICHAT_OK) {
       result = 1;
       break;
     }

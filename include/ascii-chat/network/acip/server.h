@@ -45,8 +45,7 @@ extern "C" {
  * @param callbacks Callback structure for handling received packets
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, void *client_ctx,
-                                                   const acip_server_callbacks_t *callbacks);
+asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, void *client_ctx, const acip_server_callbacks_t *callbacks);
 
 // =============================================================================
 // Server Send API (server → client)
@@ -74,14 +73,11 @@ typedef struct {
 } acip_frame_workspace_t;
 void acip_frame_workspace_destroy(acip_frame_workspace_t *workspace);
 
-asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, acip_frame_workspace_t *workspace,
-                                        const char *frame_data, size_t frame_size, uint32_t width, uint32_t height,
+asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, acip_frame_workspace_t *workspace, const char *frame_data, size_t frame_size, uint32_t width, uint32_t height,
                                         const char *client_id);
 
-asciichat_error_t acip_send_ascii_frame_contract(acip_transport_t *transport, acip_frame_workspace_t *workspace,
-                                                 const char *text, size_t length, uint32_t width, uint32_t height,
-                                                 const acip_render_settings_t *settings, uint32_t effects,
-                                                 const char *client_id);
+asciichat_error_t acip_send_ascii_frame_contract(acip_transport_t *transport, acip_frame_workspace_t *workspace, const char *text, size_t length, uint32_t width, uint32_t height,
+                                                 const acip_render_settings_t *settings, uint32_t effects, const char *client_id);
 
 /**
  * @brief Send clear console command to client (server → client)

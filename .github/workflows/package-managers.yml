@@ -15,7 +15,7 @@ on:
         required: true
         default: all
         type: choice
-        options: [all, winget, scoop, chocolatey, npackd]
+        options: [all, winget, scoop, chocolatey, npackd, homebrew]
 
 permissions:
   contents: read
@@ -29,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [winget, scoop, chocolatey, npackd]
+        target: [winget, scoop, chocolatey, npackd, homebrew]
     steps:
       - name: Select target and release
         id: selection
@@ -59,6 +59,16 @@ jobs:
         with:
           ref: master
 
+      - name: Install gomplate
+        if: steps.selection.outputs.run == 'true'
+        run: |
+          curl --fail --location --retry 3 \
+            https://github.com/hairyhenderson/gomplate/releases/download/v4.3.0/gomplate_linux-amd64 \
+            --output "$RUNNER_TEMP/gomplate"
+          chmod +x "$RUNNER_TEMP/gomplate"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/gomplate" --version
+
       - name: Submit package-manager update
         if: steps.selection.outputs.run == 'true'
         env:
@@ -67,4 +77,5 @@ jobs:
           SCOOP_REPOSITORY: zfogg/ascii-chat-scoop
           CHOCOLATEY_FORK_REPOSITORY: zfogg/chocolatey-packages
           NPACKD_REPOSITORY: zfogg/npackd-repository
+          HOMEBREW_REPOSITORY: zfogg/homebrew-ascii-chat
         run: bash scripts/package-managers/submit.sh "${{ matrix.target }}" "${{ steps.selection.outputs.version }}" "$GITHUB_REPOSITORY"

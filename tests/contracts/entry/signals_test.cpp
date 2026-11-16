@@ -3,7 +3,7 @@
 #include <ascii-chat/common.h>
 #include <libplatform/system.h>
 #include <libplatform/filesystem.h>
-#include <ascii-chat/options/rcu.h>
+#include <options/rcu.h>
 #include <setjmp.h>
 static bool help_active;
 static unsigned help_toggles, interrupts;

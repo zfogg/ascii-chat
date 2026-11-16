@@ -196,8 +196,7 @@ asciichat_error_t stats_sampler_create(const stats_sampler_config_t *config, sta
  * baseline and return ready=false. Unsupported values are zero/invalid; consult the
  * snapshot capabilities to distinguish unsupported counters from measured zero.
  */
-asciichat_error_t stats_sampler_update(stats_sampler_t *sampler, const stats_snapshot_t *snapshot,
-                                       stats_rates_t *out_rates);
+asciichat_error_t stats_sampler_update(stats_sampler_t *sampler, const stats_snapshot_t *snapshot, stats_rates_t *out_rates);
 void stats_sampler_destroy(stats_sampler_t *sampler);
 
 #ifdef __cplusplus

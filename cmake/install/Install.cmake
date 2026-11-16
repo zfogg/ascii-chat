@@ -205,7 +205,7 @@ endif()
 # These headers are useful for developers who want to build tools/extensions for ascii-chat
 if(WIN32)
     # Windows: Install all headers except POSIX-specific ones
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/include/ascii-chat/"
+    install(DIRECTORY "${CMAKE_BINARY_DIR}/recast_headers/include/ascii-chat/"
         DESTINATION include/ascii-chat
         COMPONENT Development
         FILES_MATCHING
@@ -219,7 +219,7 @@ if(WIN32)
     )
 elseif(APPLE)
     # macOS: Install all headers except Windows and Linux-specific ones
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/include/ascii-chat/"
+    install(DIRECTORY "${CMAKE_BINARY_DIR}/recast_headers/include/ascii-chat/"
         DESTINATION include/ascii-chat
         COMPONENT Development
         FILES_MATCHING
@@ -232,7 +232,7 @@ elseif(APPLE)
     )
 else()
     # Linux: Install all headers except Windows and macOS-specific ones
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/include/ascii-chat/"
+    install(DIRECTORY "${CMAKE_BINARY_DIR}/recast_headers/include/ascii-chat/"
         DESTINATION include/ascii-chat
         COMPONENT Development
         FILES_MATCHING
@@ -247,6 +247,7 @@ endif()
 
 install(FILES "${CMAKE_BINARY_DIR}/generated/ascii-chat/version.h"
     DESTINATION include/ascii-chat COMPONENT Development)
+
 
 # ascii-chat public headers include <libplatform/...>. libplatform is embedded
 # through FetchContent, so its own PROJECT_IS_TOP_LEVEL install block is not
@@ -489,7 +490,7 @@ endif()
 # in sync with the current options and help system.
 #
 # The completions are generated using the unified API:
-#   - options_registry_get_for_display() provides options to all generators
+#   - registry_get_for_display() provides options to all generators
 #   - Both help system and all shell generators use identical filtering logic
 #
 # This replaces the static completion files with auto-generated ones

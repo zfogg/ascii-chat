@@ -71,11 +71,11 @@ int ascii_otel_sqlite_prepare(sqlite3 *db, const char *sql, sqlite3_stmt **state
 #define ASCII_OTEL_ATTR_STRING(key, value) ascii_otel_scope_string(&otel_scope, key, value)
 #define ASCII_OTEL_ATTR_INT(key, value) ascii_otel_scope_int(&otel_scope, key, value)
 #define ASCII_OTEL_PACKET(type, size, action, transport) ascii_otel_packet(&otel_scope, type, size, action, transport)
-#define ASCII_OTEL_SCOPE_PARENT(id, parent)                                                                                                                                                            \
-  ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0};                                                                                                                  \
+#define ASCII_OTEL_SCOPE_PARENT(id, parent)                                           \
+  ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0}; \
   ascii_otel_scope_parent(&otel_scope, ASCII_OTEL_##id, parent)
-#define ASCII_OTEL_SCOPE(id)                                                                                                                                                                           \
-  ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0};                                                                                                                  \
+#define ASCII_OTEL_SCOPE(id)                                                          \
+  ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0}; \
   ascii_otel_scope_begin(&otel_scope, ASCII_OTEL_##id)
 #else
 #define ASCII_OTEL_ATTR_STRING(key, value) ((void)(key), (void)(value))

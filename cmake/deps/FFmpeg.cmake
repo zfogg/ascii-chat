@@ -10,6 +10,9 @@
 
 set(FFMPEG_VERSION "7.1.3")
 set(FFMPEG_HASH "f0bf043299db9e3caacb435a712fc541fbb07df613c4b893e8b77e67baf3adbe")
+option(ASCIICHAT_USE_SYSTEM_FFMPEG
+    "Use system FFmpeg when all required pkg-config modules are available"
+    ON)
 
 # iOS build: Build from source for iOS cross-compilation
 if(PLATFORM_IOS)
@@ -195,7 +198,8 @@ endif()
 # built-in codecs (no external codec dependencies like svt-av1, dav1d, x264, x265, etc.)
 # Musl builds always compile everything from source via MuslDependencies.cmake
 # =============================================================================
-if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS
+   AND NOT ASCIICHAT_USE_SYSTEM_FFMPEG)
     include(ProcessorCount)
     ProcessorCount(NPROC)
     if(NPROC EQUAL 0)

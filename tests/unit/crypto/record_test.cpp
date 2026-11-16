@@ -1,4 +1,4 @@
-#include <catch2/catch_all.hpp>
+#include <criterion/criterion.h>
 #include <ascii-chat/crypto/record.h>
 #include <ascii-chat/crypto/rekey.h>
 #include <ascii-chat/crypto/session.h>
@@ -8,8 +8,7 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
-#undef CHECK
-#define CHECK(condition) REQUIRE(static_cast<bool>(condition))
+#define CHECK(condition) cr_assert((condition), "%s", #condition)
 
 static void setup(void) {
   log_init(NULL, LOG_WARN, false, false);
@@ -19,7 +18,9 @@ static void teardown(void) {
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-TEST_CASE("crypto_records/rejects_raw_secretbox_packets_without_accepting_an_alternate_format", "[crypto_records]") {
+TestSuite(crypto_records, .init = setup, .fini = teardown);
+
+Test(crypto_records, rejects_raw_secretbox_packets_without_accepting_an_alternate_format) {
   crypto_context_t sender, receiver;
   CHECK(crypto_init(&sender) == CRYPTO_OK && crypto_init(&receiver) == CRYPTO_OK);
   CHECK(crypto_set_peer_public_key(&sender, receiver.public_key) == CRYPTO_OK);
@@ -39,7 +40,7 @@ TEST_CASE("crypto_records/rejects_raw_secretbox_packets_without_accepting_an_alt
   uint8_t *wire = NULL;
   size_t wire_length = 0;
   CHECK(acip_security_seal(&sender, ACIP_TRAFFIC_CONTROL, ACIP_DELIVERY_RELIABLE, packet, packet_length, &wire, &wire_length) == ASCIICHAT_OK);
-  CHECK(acip_security_open(&receiver, static_cast<acip_traffic_class_t>(CRYPTO_RECORD_ANY_CHANNEL), ACIP_DELIVERY_RELIABLE, wire, wire_length, &plain, &length, &sequence, &consumed) == ASCIICHAT_OK);
+  CHECK(acip_security_open(&receiver, CRYPTO_RECORD_ANY_CHANNEL, ACIP_DELIVERY_RELIABLE, wire, wire_length, &plain, &length, &sequence, &consumed) == ASCIICHAT_OK);
   CHECK(!consumed && sequence == 1 && length == packet_length && !memcmp(plain, packet, length));
   buffer_release(plain);
   buffer_release(wire);
@@ -49,7 +50,7 @@ TEST_CASE("crypto_records/rejects_raw_secretbox_packets_without_accepting_an_alt
 
 static uint8_t *make_packet(packet_type_t type, size_t payload_length, size_t *length) {
   *length = sizeof(packet_header_t) + payload_length;
-  uint8_t *packet = static_cast<uint8_t *>(buffer_alloc(NULL, *length));
+  uint8_t *packet = buffer_alloc(NULL, *length);
   CHECK(packet);
   for (size_t i = 0; i < payload_length; ++i)
     packet[sizeof(packet_header_t) + i] = (uint8_t)(i * 37U + (unsigned)type);
@@ -61,7 +62,7 @@ static uint8_t *make_packet(packet_type_t type, size_t payload_length, size_t *l
   return packet;
 }
 
-TEST_CASE("crypto_records/authenticates_channels_and_delivery_and_rejects_replays", "[crypto_records]") {
+Test(crypto_records, authenticates_channels_and_delivery_and_rejects_replays) {
   crypto_context_t client_crypto, server_crypto;
   CHECK(crypto_init(&client_crypto) == CRYPTO_OK && crypto_init(&server_crypto) == CRYPTO_OK);
   CHECK(crypto_set_peer_public_key(&client_crypto, server_crypto.public_key) == CRYPTO_OK);
@@ -92,7 +93,7 @@ TEST_CASE("crypto_records/authenticates_channels_and_delivery_and_rejects_replay
   buffer_release(plain);
   plain = NULL;
   CHECK(acip_packet_open(&server, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, wire[1], wire_length[1], &plain, &plain_length) == ERROR_CRYPTO && !plain);
-  uint8_t *tampered = static_cast<uint8_t *>(buffer_alloc(NULL, wire_length[2]));
+  uint8_t *tampered = buffer_alloc(NULL, wire_length[2]);
   CHECK(tampered);
   memcpy(tampered, wire[2], wire_length[2]);
   tampered[wire_length[2] - 1] ^= 1;
@@ -176,13 +177,13 @@ typedef struct {
 } rekey_peer_t;
 
 static asciichat_error_t rekey_enqueue(void *context, unsigned flow, crypto_rekey_message_t message, const void *packet, size_t length) {
-  rekey_peer_t *peer = static_cast<rekey_peer_t *>(context);
+  rekey_peer_t *peer = context;
   if (peer->fail_send || peer->count == 32)
     return SET_ERRNO(ERROR_NETWORK, "Test rekey queue is unavailable");
   unsigned i = peer->count;
   asciichat_error_t result = acip_security_rekey_seal(&peer->security, flow, message, packet, length, &peer->wire[i], &peer->length[i]);
   if (result == ASCIICHAT_OK) {
-    peer->flow[i] = static_cast<acip_traffic_class_t>(flow);
+    peer->flow[i] = flow;
     ++peer->count;
   }
   return result;
@@ -199,7 +200,7 @@ static void rekey_deliver(rekey_peer_t *from, rekey_peer_t *to, uint64_t now) {
   buffer_release(plain);
 }
 
-TEST_CASE("crypto_records/rotates_twice_and_bounds_control_and_key_retirement", "[crypto_records]") {
+Test(crypto_records, rotates_twice_and_bounds_control_and_key_retirement) {
   crypto_context_t client_crypto, server_crypto;
   CHECK(crypto_init(&client_crypto) == CRYPTO_OK && crypto_init(&server_crypto) == CRYPTO_OK);
   CHECK(crypto_set_peer_public_key(&client_crypto, server_crypto.public_key) == CRYPTO_OK);
@@ -294,7 +295,7 @@ TEST_CASE("crypto_records/rotates_twice_and_bounds_control_and_key_retirement", 
   crypto_destroy(&client_crypto);
 }
 
-TEST_CASE("crypto_records/accepts_inflight_epochs_until_authenticated_channel_retirement", "[crypto_records]") {
+Test(crypto_records, accepts_inflight_epochs_until_authenticated_channel_retirement) {
   crypto_context_t client_crypto, server_crypto;
   CHECK(crypto_init(&client_crypto) == CRYPTO_OK && crypto_init(&server_crypto) == CRYPTO_OK);
   CHECK(crypto_set_peer_public_key(&client_crypto, server_crypto.public_key) == CRYPTO_OK);
@@ -323,7 +324,7 @@ TEST_CASE("crypto_records/accepts_inflight_epochs_until_authenticated_channel_re
   CHECK(server.key_epoch == 1 && server.previous_valid);
   CHECK(acip_packet_seal(&server, ACIP_TRAFFIC_AUDIO, ACIP_DELIVERY_DATAGRAM, packet, packet_length, &next, &next_length) == ASCIICHAT_OK);
   // An epoch selector is authenticated; changing it cannot switch keys or replay state.
-  uint8_t *forged = static_cast<uint8_t *>(buffer_alloc(NULL, next_length));
+  uint8_t *forged = buffer_alloc(NULL, next_length);
   CHECK(forged);
   memcpy(forged, next, next_length);
   memset(forged + sizeof(packet_header_t), 0, 8);

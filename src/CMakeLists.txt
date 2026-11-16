@@ -74,7 +74,19 @@ if(WIN32)
     target_link_libraries(ascii-chat PRIVATE shell32)
 endif()
 target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LIBUV_TARGET} ${YYJSON_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+target_link_libraries(ascii-chat PRIVATE libflags::flags)
 target_include_directories(ascii-chat PRIVATE ${YYJSON_INCLUDE_DIRS})
+
+# Clang with compiler-rt does not always add the system unwinder when linking
+# static C++ dependencies such as WebRTC audio processing.
+if(UNIX AND NOT APPLE)
+    if(ASCIICHAT_LLVM_LIBUNWIND)
+        target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LLVM_LIBUNWIND})
+    endif()
+    # Arch ships the GCC unwinder as libgcc_s.so.1 without an unversioned
+    # development symlink, so find_library cannot discover it by filename.
+    target_link_libraries(ascii-chat PRIVATE gcc_s)
+endif()
 
 # The executable's mode sources call FFmpeg directly. pkg-config can return
 # bare library names, so carry its search directories to every link branch.
@@ -192,7 +204,7 @@ elseif(NOT _use_shared_lib AND NOT USE_MUSL)
     set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
 elseif(_use_shared_lib)
     add_dependencies(ascii-chat ascii-chat-shared generate_version)
-    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared libplatform::libplatform)
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared libplatform::libplatform libflags::flags)
 
     # Explicitly add system libraries when using shared library
     # The executable needs to link against the same dependencies as the shared library
@@ -370,7 +382,7 @@ endif()
 target_include_directories(ascii-chat PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>)
 target_include_directories(ascii-chat PRIVATE ${PCRE2_INCLUDE_DIRS} ${LIBWEBSOCKETS_INCLUDE_DIRS})
 # Add src/common for session headers (allows #include "session/display.h" style)
-target_include_directories(ascii-chat PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
+target_include_directories(ascii-chat PRIVATE ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_SOURCE_DIR}/lib)
 
 # Add mimalloc include directory for executable (needed for SAFE_MALLOC macros in src/)
 if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)

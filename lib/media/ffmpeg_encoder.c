@@ -15,7 +15,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/io.h>
 #include <ascii-chat/debug/named.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <string.h>
 #include <ascii-chat/util/stdout_writer.h>
 #include <ascii-chat/util/time.h>
