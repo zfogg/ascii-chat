@@ -799,7 +799,7 @@ if(EMSCRIPTEN AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     # must exist before any scan or transformation can run on a clean build.
     get_property(_wasm_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
     foreach(_wasm_target IN LISTS _wasm_targets)
-        if(_wasm_target MATCHES "^defer-")
+        if(_wasm_target MATCHES "^(defer-|recast-)")
             add_dependencies(${_wasm_target} libsodium-wasm)
         endif()
     endforeach()
