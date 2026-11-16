@@ -20,9 +20,17 @@
         $scoop = Get-Command scoop -ErrorAction SilentlyContinue
         if ($scoop) {
             & scoop bucket add ascii-chat https://github.com/zfogg/ascii-chat-scoop 2>$null
-            & scoop install ascii-chat
+            & scoop list ascii-chat *> $null
+            $scoopInstalled = $LASTEXITCODE -eq 0
+            if ($scoopInstalled) {
+                & scoop update ascii-chat
+                $scoopAction = 'Updated'
+            } else {
+                & scoop install ascii-chat
+                $scoopAction = 'Installed'
+            }
             if ($LASTEXITCODE -eq 0) {
-                Write-Host 'Installed ascii-chat with Scoop.'
+                Write-Host "$scoopAction ascii-chat with Scoop."
                 return
             }
             Write-Warning 'Scoop is installed but could not install ascii-chat; trying Npackd.'
@@ -31,9 +39,17 @@
         if ($ncl) {
             $npackdPackage = if ($arch -eq 'arm64') { 'ascii-chat-arm64' } else { 'ascii-chat' }
             & ncl add-repo https://raw.githubusercontent.com/zfogg/npackd-repository/main/repository.xml 2>$null
-            & ncl add $npackdPackage
+            & ncl path --package $npackdPackage *> $null
+            $npackdInstalled = $LASTEXITCODE -eq 0
+            if ($npackdInstalled) {
+                & ncl update --package $npackdPackage
+                $npackdAction = 'Updated'
+            } else {
+                & ncl add $npackdPackage
+                $npackdAction = 'Installed'
+            }
             if ($LASTEXITCODE -eq 0) {
-                Write-Host "Installed $npackdPackage with Npackd."
+                Write-Host "$npackdAction $npackdPackage with Npackd."
                 return
             }
             Write-Warning 'Npackd is installed but could not install ascii-chat; using the direct release.'
