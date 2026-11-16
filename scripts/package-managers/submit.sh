@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Shared release publisher for Scoop, Chocolatey, and Npackd.
-# Usage: submit.sh <scoop|chocolatey|npackd> <version-without-v> [repository]
+# Shared release publisher for Homebrew, Scoop, Chocolatey, and Npackd.
+# Usage: submit.sh <homebrew|scoop|chocolatey|npackd> <version-without-v> [repository]
 
 TARGET="${1:?usage: $0 <scoop|chocolatey|npackd> <version> [repository]}"
 VERSION="${2:?usage: $0 <scoop|chocolatey|npackd> <version> [repository]}"
@@ -12,6 +12,7 @@ SCOOP_REPOSITORY="${SCOOP_REPOSITORY:-zfogg/ascii-chat-scoop}"
 WINGET_FORK_REPOSITORY="${WINGET_FORK_REPOSITORY:-zfogg/winget-pkgs}"
 CHOCOLATEY_FORK="${CHOCOLATEY_FORK_REPOSITORY:-zfogg/chocolatey-packages}"
 N_PACKD_REPOSITORY="${NPACKD_REPOSITORY:-zfogg/npackd-repository}"
+HOMEBREW_REPOSITORY="${HOMEBREW_REPOSITORY:-zfogg/homebrew-ascii-chat}"
 
 if [[ -z "$TOKEN" ]]; then
   echo "PACKAGE_MANAGER_GITHUB_TOKEN is required for $TARGET submission." >&2
@@ -31,11 +32,19 @@ RUNTIME_X64_URL="https://github.com/$REPOSITORY/releases/download/v$VERSION/asci
 RUNTIME_ARM64_URL="https://github.com/$REPOSITORY/releases/download/v$VERSION/ascii-chat-${VERSION}-Windows-arm64.zip"
 LIB_X64_URL="https://github.com/$REPOSITORY/releases/download/v$VERSION/libasciichat-${VERSION}-Windows-amd64.zip"
 LIB_ARM64_URL="https://github.com/$REPOSITORY/releases/download/v$VERSION/libasciichat-${VERSION}-Windows-arm64.zip"
+RUNTIME_MAC_X64_URL="https://github.com/$REPOSITORY/releases/download/v$VERSION/ascii-chat-${VERSION}-macOS-amd64.tar.gz"
+RUNTIME_MAC_ARM64_URL="https://github.com/$REPOSITORY/releases/download/v$VERSION/ascii-chat-${VERSION}-macOS-arm64.tar.gz"
+LIB_MAC_X64_URL="https://github.com/$REPOSITORY/releases/download/v$VERSION/libasciichat-${VERSION}-macOS-amd64.tar.gz"
+LIB_MAC_ARM64_URL="https://github.com/$REPOSITORY/releases/download/v$VERSION/libasciichat-${VERSION}-macOS-arm64.tar.gz"
 curl --fail --location --retry 3 --output "$WORK_DIR/ascii-chat.msi" "$MSI_URL"
 curl --fail --location --retry 3 --output "$WORK_DIR/ascii-chat-x64.zip" "$RUNTIME_X64_URL"
 curl --fail --location --retry 3 --output "$WORK_DIR/ascii-chat-arm64.zip" "$RUNTIME_ARM64_URL"
 curl --fail --location --retry 3 --output "$WORK_DIR/libasciichat-x64.zip" "$LIB_X64_URL"
 curl --fail --location --retry 3 --output "$WORK_DIR/libasciichat-arm64.zip" "$LIB_ARM64_URL"
+curl --fail --location --retry 3 --output "$WORK_DIR/ascii-chat-macos-x64.tar.gz" "$RUNTIME_MAC_X64_URL"
+curl --fail --location --retry 3 --output "$WORK_DIR/ascii-chat-macos-arm64.tar.gz" "$RUNTIME_MAC_ARM64_URL"
+curl --fail --location --retry 3 --output "$WORK_DIR/libasciichat-macos-x64.tar.gz" "$LIB_MAC_X64_URL"
+curl --fail --location --retry 3 --output "$WORK_DIR/libasciichat-macos-arm64.tar.gz" "$LIB_MAC_ARM64_URL"
 MSI_SHA256="$(sha256sum "$WORK_DIR/ascii-chat.msi" | awk '{print toupper($1)}')"
 RUNTIME_X64_SHA256="$(sha256sum "$WORK_DIR/ascii-chat-x64.zip" | awk '{print toupper($1)}')"
 RUNTIME_ARM64_SHA256="$(sha256sum "$WORK_DIR/ascii-chat-arm64.zip" | awk '{print toupper($1)}')"
@@ -46,6 +55,10 @@ RUNTIME_X64_SHA1="$(sha1sum "$WORK_DIR/ascii-chat-x64.zip" | awk '{print tolower
 RUNTIME_ARM64_SHA1="$(sha1sum "$WORK_DIR/ascii-chat-arm64.zip" | awk '{print tolower($1)}')"
 LIB_X64_SHA1="$(sha1sum "$WORK_DIR/libasciichat-x64.zip" | awk '{print tolower($1)}')"
 LIB_ARM64_SHA1="$(sha1sum "$WORK_DIR/libasciichat-arm64.zip" | awk '{print tolower($1)}')"
+RUNTIME_MAC_X64_SHA256="$(sha256sum "$WORK_DIR/ascii-chat-macos-x64.tar.gz" | awk '{print tolower($1)}')"
+RUNTIME_MAC_ARM64_SHA256="$(sha256sum "$WORK_DIR/ascii-chat-macos-arm64.tar.gz" | awk '{print tolower($1)}')"
+LIB_MAC_X64_SHA256="$(sha256sum "$WORK_DIR/libasciichat-macos-x64.tar.gz" | awk '{print tolower($1)}')"
+LIB_MAC_ARM64_SHA256="$(sha256sum "$WORK_DIR/libasciichat-macos-arm64.tar.gz" | awk '{print tolower($1)}')"
 
 description='ascii-chat turns your terminal into a tiny enchanted video-chat room: webcams, microphones, multi-person rooms, local and online media, colorful ASCII/glyph/braille rendering, encrypted communication, snapshots, discovery, and modern network transports.'
 display_title='ascii-chat - Video chat in your terminal'
@@ -86,6 +99,100 @@ submit_pr() {
 
 mkdir -p "$WORK_DIR/generated"
 case "$TARGET" in
+  homebrew)
+    mkdir -p "$WORK_DIR/generated/Formula"
+    cat > "$WORK_DIR/generated/Formula/ascii-chat.rb" <<EOF
+class AsciiChat < Formula
+  desc "Video chat in your terminal"
+  homepage "https://ascii-chat.com"
+  url "$RUNTIME_MAC_X64_URL"
+  sha256 "$RUNTIME_MAC_X64_SHA256"
+  version "$VERSION"
+  license "MIT"
+
+  on_arm do
+    url "$RUNTIME_MAC_ARM64_URL"
+    sha256 "$RUNTIME_MAC_ARM64_SHA256"
+  end
+
+  depends_on "gnupg"
+  depends_on "openssh"
+  depends_on "yt-dlp"
+
+  def install
+    bin.install "bin/ascii-chat"
+    man1.install "share/man/man1/ascii-chat.1" if File.exist?("share/man/man1/ascii-chat.1")
+    bash_completion.install "share/bash-completion/completions/ascii-chat" if File.exist?("share/bash-completion/completions/ascii-chat")
+    zsh_completion.install "share/zsh/site-functions/_ascii-chat" if File.exist?("share/zsh/site-functions/_ascii-chat")
+    fish_completion.install "share/fish/vendor_completions.d/ascii-chat.fish" if File.exist?("share/fish/vendor_completions.d/ascii-chat.fish")
+  end
+
+  test do
+    assert_match "ascii-chat", shell_output("#{bin}/ascii-chat --help 2>&1")
+  end
+end
+EOF
+    cat > "$WORK_DIR/generated/Formula/libasciichat.rb" <<EOF
+class Libasciichat < Formula
+  desc "Reusable C library for ascii-chat applications"
+  homepage "https://ascii-chat.com"
+  url "$LIB_MAC_X64_URL"
+  sha256 "$LIB_MAC_X64_SHA256"
+  version "$VERSION"
+  license "MIT"
+
+  on_arm do
+    url "$LIB_MAC_ARM64_URL"
+    sha256 "$LIB_MAC_ARM64_SHA256"
+  end
+
+  depends_on "ffmpeg"
+  depends_on "fftw"
+  depends_on "fontconfig"
+  depends_on "freetype"
+  depends_on "libde265"
+  depends_on "libpng"
+  depends_on "libwebsockets"
+  depends_on "libsodium"
+  depends_on "mimalloc"
+  depends_on "miniupnpc"
+  depends_on "nghttp2"
+  depends_on "nghttp3"
+  depends_on "ngtcp2"
+  depends_on "openssl@3"
+  depends_on "opus"
+  depends_on "pcre2"
+  depends_on "portaudio"
+  depends_on "sqlite"
+  depends_on "x265"
+  depends_on "yyjson"
+  depends_on "zstd"
+
+  def install
+    prefix.install Dir["*"]
+  end
+
+  test do
+    assert_path_exists include/"ascii-chat/api.h"
+    assert_path_exists lib/"pkgconfig/libasciichat.pc"
+    assert_path_exists lib/"cmake/ascii-chat/ascii-chat-config.cmake"
+  end
+end
+EOF
+    git clone --depth 1 "https://x-access-token:$TOKEN@github.com/$HOMEBREW_REPOSITORY.git" "$WORK_DIR/repo"
+    rm -rf "$WORK_DIR/repo/Formula/ascii-chat.rb" "$WORK_DIR/repo/Formula/libasciichat.rb"
+    cp "$WORK_DIR/generated/Formula/ascii-chat.rb" "$WORK_DIR/repo/Formula/ascii-chat.rb"
+    cp "$WORK_DIR/generated/Formula/libasciichat.rb" "$WORK_DIR/repo/Formula/libasciichat.rb"
+    git -C "$WORK_DIR/repo" config user.name "github-actions[bot]"
+    git -C "$WORK_DIR/repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+    git -C "$WORK_DIR/repo" add Formula/ascii-chat.rb Formula/libasciichat.rb
+    if git -C "$WORK_DIR/repo" diff --cached --quiet; then
+      echo "No Homebrew changes for $VERSION."
+      exit 0
+    fi
+    git -C "$WORK_DIR/repo" commit -m "Update ascii-chat packages to $VERSION"
+    git -C "$WORK_DIR/repo" push origin HEAD:main
+    ;;
   winget)
     mkdir -p "$WORK_DIR/generated/manifests/a/ascii-chat/$VERSION"
     cat > "$WORK_DIR/generated/manifests/a/ascii-chat/$VERSION/ascii-chat.yaml" <<EOF

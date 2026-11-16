@@ -15,7 +15,7 @@ on:
         required: true
         default: all
         type: choice
-        options: [all, winget, scoop, chocolatey, npackd]
+        options: [all, winget, scoop, chocolatey, npackd, homebrew]
 
 permissions:
   contents: read
@@ -29,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [winget, scoop, chocolatey, npackd]
+        target: [winget, scoop, chocolatey, npackd, homebrew]
     steps:
       - name: Select target and release
         id: selection
@@ -67,4 +67,5 @@ jobs:
           SCOOP_REPOSITORY: zfogg/ascii-chat-scoop
           CHOCOLATEY_FORK_REPOSITORY: zfogg/chocolatey-packages
           NPACKD_REPOSITORY: zfogg/npackd-repository
+          HOMEBREW_REPOSITORY: zfogg/homebrew-ascii-chat
         run: bash scripts/package-managers/submit.sh "${{ matrix.target }}" "${{ steps.selection.outputs.version }}" "$GITHUB_REPOSITORY"
