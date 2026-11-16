@@ -42,7 +42,7 @@ endif()
 # uses the utf8proc classification table (notably the Windows keyboard path).
 if(TARGET libplatform AND TARGET ascii-chat-utf8proc)
     add_dependencies(libplatform ascii-chat-utf8proc)
-    target_link_libraries(libplatform PRIVATE "$<TARGET_FILE:ascii-chat-utf8proc>")
+    target_link_libraries(libplatform PRIVATE ascii-chat-utf8proc)
 endif()
 
 if(TARGET asciichat-project-includes)
