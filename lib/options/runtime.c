@@ -831,6 +831,10 @@ asciichat_error_t options_apply_patch(const options_patch_t *patch, options_patc
     deferred_free_add(current);
     ++g_revision;
     g_origin = patch->origin;
+    for (size_t i = 0; i < patch->count; ++i) {
+      if (!strcmp(patch->edits[i].name, "flip_x"))
+        flags_explicit_state_set("flip-x", true);
+    }
     if (result)
       *result = (options_patch_result_t){.revision = g_revision, .changed = true};
   } else
