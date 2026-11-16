@@ -33,8 +33,12 @@ target_link_libraries(asciichat-gotel-sqlite INTERFACE ${SQLITE3_LIBRARIES})
 set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
     "Use ascii-chat's SQLite3 dependency" FORCE)
 
-# Keep the vendored C++ facade aligned with ascii-chat's C++26 toolchain.
-set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
+# Keep the vendored C++ facade aligned with the selected compiler's C++ mode.
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    set(GOTEL_CXX_STANDARD 23 CACHE STRING "C++ standard for the gotel facade" FORCE)
+else()
+    set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
+endif()
 
 # Prefer the package-manager nghttp2 target when it is already available.
 # Otherwise gotel's GRPC module fetches and builds a private nghttp2 copy,
@@ -82,8 +86,10 @@ endif()
 set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared})
 set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared} CACHE BOOL
     "Build gotel and its public dependencies as shared libraries" FORCE)
-set(GOTEL_WITH_GRPC ON CACHE BOOL
-    "Build gotel's in-tree nghttp2 target for release linking" FORCE)
+# The application uses OTLP/HTTP. Keep gotel from building a second nghttp2
+# target when vcpkg or the system dependency set already provides nghttp2.
+set(GOTEL_WITH_GRPC OFF CACHE BOOL
+    "Build native OTLP/gRPC telemetry transport" FORCE)
 
 # These dependency revisions are pinned in the vendored Gotel checkout.  Keep
 # FetchContent from running its git update step on every configure: updating a

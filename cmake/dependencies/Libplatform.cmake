@@ -36,6 +36,15 @@ if(NOT TARGET libplatform)
         EXCLUDE_FROM_ALL)
 endif()
 
+# libplatform is embedded in the application rather than configured as a
+# top-level project, so its standalone source list omits util/utf8.c. Link
+# the application's shared utf8proc target explicitly for platform code that
+# uses the utf8proc classification table (notably the Windows keyboard path).
+if(TARGET libplatform AND TARGET ascii-chat-utf8proc)
+    add_dependencies(libplatform ascii-chat-utf8proc)
+    target_link_libraries(libplatform PRIVATE "$<TARGET_FILE:ascii-chat-utf8proc>")
+endif()
+
 if(TARGET asciichat-project-includes)
     target_include_directories(asciichat-project-includes INTERFACE
         "${_ascii_chat_libplatform_source}/lib")
