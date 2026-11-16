@@ -1401,8 +1401,6 @@ int query_init(int preferred_port) {
 #endif
 ```
 
-**Test:** Use `build.ps1` and manual testing on Windows
-
 ---
 
 ### Commit 12: Unit Tests

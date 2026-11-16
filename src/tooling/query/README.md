@@ -28,7 +28,7 @@ cmake --build build
 ./build/bin/ascii-chat server &
 
 # Attach query controller
-./.deps-cache/query-tool/ascii-query-server --attach $(pgrep ascii-chat) --port 9999
+./.deps-cache/query-tool/ascii-query-server --attach-ascii-chat --port 9999
 
 # Query variables
 curl 'localhost:9999/query?file=src/server.c&line=100&name=client_count'
@@ -45,7 +45,10 @@ curl -X POST 'localhost:9999/continue'
 Usage: ascii-query-server [OPTIONS]
 
 Options:
-  --attach <pid>    Attach to process by PID (required)
+  --attach <pid>    Attach to process by PID
+  --attach-name <name> Attach to process by name
+  --attach-ascii-chat Attach to the first running process with ascii-chat in its name
+  --list-processes   List running processes with ascii-chat in the name
   --port <port>     HTTP server port (default: 9999)
   --help            Show help
 ```
@@ -85,7 +88,7 @@ Options:
 ./build/bin/ascii-chat server &
 
 # Attach controller
-./.deps-cache/query-tool/ascii-query-server --attach $(pgrep ascii-chat) --port 9999
+./.deps-cache/query-tool/ascii-query-server --attach-ascii-chat --port 9999
 
 # Check process state
 curl localhost:9999/process
