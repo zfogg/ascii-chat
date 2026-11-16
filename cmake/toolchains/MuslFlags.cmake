@@ -11,9 +11,14 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
     if(KERNEL_HEADERS_DIR)
         string(APPEND _c " -isystem ${KERNEL_HEADERS_DIR}")
     endif()
-    # libc++ wraps C headers with include_next; target C headers must follow it,
-    # including during the first toolchain pass before libc++ has been staged.
-    string(REPLACE "-isystem" "-idirafter" _cxx "${_c}")
+    # C++ must retain the compiler's standard-library include directories. For
+    # GCC, -nostdinc would hide libstdc++ headers such as <string>; only the C
+    # compiler needs the strict musl header isolation above. Put musl headers
+    # after the C++ implementation headers instead.
+    set(_cxx "-fno-lto -ftls-model=global-dynamic -fPIC -idirafter ${MUSL_INCLUDE_DIR}")
+    if(KERNEL_HEADERS_DIR)
+        string(APPEND _cxx " -idirafter ${KERNEL_HEADERS_DIR}")
+    endif()
     # Some third-party C++ targets inherit the musl flags while selecting a
     # non-libc++ standard library; Clang then reports -stdlib as unused.
     # Keep libc++ selected for the project, but avoid noisy diagnostics from
