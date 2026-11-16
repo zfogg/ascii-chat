@@ -146,7 +146,21 @@ bool ui_help_menu_render(frame_buffer_t *out, terminal_size_t size, const ui_hel
         ui_text_values_style(rhs, sizeof(rhs), setting, LOG_COLOR_FATAL);
     }
     ui_text_cell(padded, sizeof(padded), lhs, left, UI_ALIGN_LEFT);
-    snprintf(text[i], sizeof(text[i]), "%s%s%s", padded, right ? "   " : "", rhs);
+    size_t text_pos = 0;
+    size_t padded_copy = strlen(padded);
+    if (padded_copy >= sizeof(text[i]))
+      padded_copy = sizeof(text[i]) - 1;
+    memcpy(text[i] + text_pos, padded, padded_copy);
+    text_pos += padded_copy;
+    if (right && text_pos + 3 < sizeof(text[i])) {
+      memcpy(text[i] + text_pos, "   ", 3);
+      text_pos += 3;
+    }
+    size_t rhs_copy = strlen(rhs);
+    if (rhs_copy > sizeof(text[i]) - text_pos - 1)
+      rhs_copy = sizeof(text[i]) - text_pos - 1;
+    memcpy(text[i] + text_pos, rhs, rhs_copy);
+    text[i][text_pos + rhs_copy] = '\0';
     lines[i + 1] = text[i];
   }
   ui_popup_t box = {.title = m->title, .lines = lines, .line_count = rows + 1, .footer = m->footer, .top_margin = m->top_margin};
