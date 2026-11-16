@@ -79,9 +79,9 @@ image_t *face_follow_image_process(face_follow_image_t **context, image_t *sourc
   float fx = (face.x + face.w * 0.5f) * source->w, fy = (face.y + face.h * 0.5f) * source->h;
   float thickness = 2.0f * fmaxf(3.0f, (float)source->w * crop.w / 90.0f);
   for (int y = 0; y < output_height; y++) {
-    int sy = (int)fminf(source->h - 1, (crop.y + (float)y / output_height * crop.h) * source->h);
+    int sy = (int)fminf((float)source->h - 1.0f, (crop.y + (float)y / output_height * crop.h) * (float)source->h);
     for (int x = 0; x < output_width; x++) {
-      int sx = (int)fminf(source->w - 1, (crop.x + (float)x / output_width * crop.w) * source->w);
+      int sx = (int)fminf((float)source->w - 1.0f, (crop.x + (float)x / output_width * crop.w) * (float)source->w);
       rgb_pixel_t p = source->pixels[(size_t)sy * source->w + sx];
       if (debug && ctx->state.detected && now - ctx->state.last_seen < 0.3) {
         float dx = fabsf(sx - fx), dy = fabsf(sy - fy);
