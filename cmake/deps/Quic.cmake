@@ -186,6 +186,10 @@ function(asciichat_configure_quic)
     # build directories use the same DLLs without reaching into a build tree.
     set(_ngtcp2_build "${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2")
     set(_nghttp3_build "${ASCIICHAT_DEPS_CACHE_DIR}/quic-nghttp3")
+    set(_quic_config_stamp "${ASCIICHAT_DEPS_CACHE_DIR}/quic-config-v2.stamp")
+    if(NOT EXISTS "${_quic_config_stamp}")
+        file(REMOVE_RECURSE "${_ngtcp2_build}" "${_nghttp3_build}")
+    endif()
     if(EXISTS "${_ngtcp2_build}/CMakeCache.txt")
         file(READ "${_ngtcp2_build}/CMakeCache.txt" _ngtcp2_cache)
         string(FIND "${_ngtcp2_cache}" "CMAKE_HOME_DIRECTORY:INTERNAL=${_ngtcp2_source}" _ngtcp2_source_match)
@@ -250,6 +254,7 @@ function(asciichat_configure_quic)
     if(NOT _nghttp3_configure_result EQUAL 0)
         message(FATAL_ERROR "Failed to configure nghttp3 (${_nghttp3_configure_result})\n${_nghttp3_configure_stdout}${_nghttp3_configure_stderr}")
     endif()
+    file(WRITE "${_quic_config_stamp}" "quic configuration v2\n")
 
     ExternalProject_Add(asciichat-ngtcp2-build
         SOURCE_DIR "${_ngtcp2_source}"
