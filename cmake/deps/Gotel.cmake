@@ -8,6 +8,11 @@ if(EMSCRIPTEN)
     return()
 endif()
 
+function(asciichat_add_embedded_subdirectory source_dir binary_dir)
+    set(CMAKE_SKIP_INSTALL_RULES ON)
+    add_subdirectory("${source_dir}" "${binary_dir}" EXCLUDE_FROM_ALL)
+endfunction()
+
 set(GOTEL_BUILD_TEST_SUPPORT ${BUILD_TESTS} CACHE BOOL
     "Build reusable telemetry test helpers" FORCE)
 set(GOTEL_WITH_SQLITE ON CACHE BOOL "Build SQLite telemetry adapter" FORCE)
@@ -33,17 +38,27 @@ set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
 # Keep the vendored C++ facade aligned with ascii-chat's C++26 toolchain.
 set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
 
-# Prefer the package-manager nghttp2 target when it is already available.
+# Prefer an installed nghttp2 target when it is already available.
 # Otherwise gotel's GRPC module fetches and builds a private nghttp2 copy,
 # which conflicts with vcpkg's `nghttp2` target and needlessly recompiles the
 # HTTP/2 sources during normal ascii-chat development.
-if(NOT GOTEL_NGHTTP2_TARGET)
+if(NOT GOTEL_NGHTTP2_TARGET OR
+        GOTEL_NGHTTP2_TARGET STREQUAL "asciichat-vcpkg-nghttp2")
     if(TARGET nghttp2)
         set(GOTEL_NGHTTP2_TARGET nghttp2 CACHE STRING
             "Use the existing nghttp2 target for gotel" FORCE)
     elseif(TARGET nghttp2::nghttp2)
         set(GOTEL_NGHTTP2_TARGET nghttp2::nghttp2 CACHE STRING
             "Use the existing nghttp2 target for gotel" FORCE)
+    endif()
+endif()
+
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(ASCIICHAT_NGHTTP2 QUIET IMPORTED_TARGET libnghttp2)
+    if(TARGET PkgConfig::ASCIICHAT_NGHTTP2)
+        set(GOTEL_NGHTTP2_TARGET PkgConfig::ASCIICHAT_NGHTTP2 CACHE STRING
+            "Use the system nghttp2 target for gotel" FORCE)
     endif()
 endif()
 
@@ -155,9 +170,10 @@ if(NOT _asciichat_gotel_sources_ready)
                          EXCLUDE_FROM_ALL)
     endif()
     if(NOT TARGET otlp_c)
-        add_subdirectory("${otlp_c_SOURCE_DIR}"
-                         "${_asciichat_gotel_cache_dir}/otlp_c-build"
-                         EXCLUDE_FROM_ALL)
+        # otlp-c is embedded and is never installed as a standalone package.
+        asciichat_add_embedded_subdirectory(
+            "${otlp_c_SOURCE_DIR}"
+            "${_asciichat_gotel_cache_dir}/otlp_c-build")
     endif()
     set(CMAKE_DISABLE_FIND_PACKAGE_Doxygen ${_asciichat_gotel_disable_doxygen})
     unset(_asciichat_gotel_disable_doxygen)
