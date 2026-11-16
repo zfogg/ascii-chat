@@ -423,12 +423,12 @@ void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const
   if (g_echo_to_stderr && !runtime->stderr_fallback) {
     // Write to stderr in addition to the log file
     // Suppress Windows deprecation warning for POSIX write function
-#ifdef _WIN32
+#if defined(_WIN32) && defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif
     (void)posix_write(STDERR_FILENO, buffer, pos);
-#ifdef _WIN32
+#if defined(_WIN32) && defined(__clang__)
 #pragma clang diagnostic pop
 #endif
   }
