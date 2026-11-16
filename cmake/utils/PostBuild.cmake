@@ -92,11 +92,10 @@ function(copy_windows_dlls TARGET_NAME)
                 )
             endforeach()
 
-            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-                set(VCPKG_PDBS zstd.pdb portaudio.pdb libsodium.pdb mimalloc-debug.dll.pdb)
-            else()
-                set(VCPKG_PDBS zstd.pdb portaudio.pdb libsodium.pdb mimalloc.dll.pdb)
-            endif()
+            file(GLOB VCPKG_PDBS
+                RELATIVE "${DLL_SOURCE_DIR}"
+                "${DLL_SOURCE_DIR}/*.pdb"
+            )
 
             stage_dlls_for_target(
                 TARGET ${TARGET_NAME}
@@ -105,12 +104,14 @@ function(copy_windows_dlls TARGET_NAME)
                 COMMENT "from vcpkg"
             )
 
-            stage_dlls_for_target(
-                TARGET ${TARGET_NAME}
-                NAMES ${VCPKG_PDBS}
-                SOURCE_DIR "${DLL_SOURCE_DIR}"
-                COMMENT "from vcpkg"
-            )
+            if(VCPKG_PDBS)
+                stage_dlls_for_target(
+                    TARGET ${TARGET_NAME}
+                    NAMES ${VCPKG_PDBS}
+                    SOURCE_DIR "${DLL_SOURCE_DIR}"
+                    COMMENT "from vcpkg"
+                )
+            endif()
 
             message(STATUS "DLL/PDB staging: using ${BoldCyan}cmake -E copy${ColorReset} from ${BoldBlue}${DLL_SOURCE_DIR}${ColorReset}")
 
