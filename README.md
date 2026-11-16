@@ -100,6 +100,28 @@ paru -S ascii-chat-git       # Runtime binary from git
 paru -S libasciichat-git     # Development libraries from git
 ```
 
+**Windows (Scoop):**
+
+```powershell
+scoop bucket add ascii-chat https://github.com/zfogg/ascii-chat-scoop
+scoop install ascii-chat/ascii-chat
+```
+
+Scoop selects the matching x64 or ARM64 portable release. The development
+library is also available as `ascii-chat/libasciichat`.
+
+**Windows (Npackd):**
+
+Add the publisher repository once, then install the package:
+
+```powershell
+ncl add-repo https://raw.githubusercontent.com/zfogg/npackd-repository/main/repository.xml
+ncl add ascii-chat
+```
+
+On ARM64, use `ascii-chat-arm64`. Development packages are `libasciichat` and
+`libasciichat-arm64`.
+
 **All Platforms:**
 
 - All downloads: [GitHub Releases](https://github.com/zfogg/ascii-chat/releases)
