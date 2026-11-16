@@ -61,6 +61,10 @@ typedef struct session_log_buffer session_log_buffer_t;
 /* Include log types (must be before network/log.h to avoid circular dependency) */
 #include "types.h"
 
+static inline bool log_only_enabled(unsigned bitmask, log_level_t level) {
+  return (bitmask & LOG_BIT(level)) != 0;
+}
+
 #include "../network/log.h"
 
 #ifndef NDEBUG
@@ -559,7 +563,7 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
  */
 #define log_only(bitmask, level, ...)       \
   do {                                     \
-    if ((bitmask) & LOG_BIT(level))        \
+    if (log_only_enabled((bitmask), (level))) \
       log_as(level, __VA_ARGS__);          \
   } while (asciichat_macro_block_continue())
 
