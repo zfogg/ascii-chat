@@ -1,0 +1,69 @@
+name: Submit package-manager updates
+
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, for example v0.16.34
+        required: true
+        type: string
+      target:
+        description: Package manager to update
+        required: true
+        default: all
+        type: choice
+        options: [all, winget, scoop, chocolatey, npackd]
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    if: >-
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [winget, scoop, chocolatey, npackd]
+    steps:
+      - name: Select target and release
+        id: selection
+        env:
+          MANUAL_TAG: ${{ inputs.tag }}
+          MANUAL_TARGET: ${{ inputs.target }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          if [[ -n "$MANUAL_TAG" ]]; then tag="$MANUAL_TAG"; else
+            git init source
+            git -C source remote add origin "https://github.com/$REPOSITORY.git"
+            git -C source fetch --quiet --depth=1 origin "$RUN_SHA"
+            tag="$(git -C source tag --points-at FETCH_HEAD --list 'v*' | head -n 1)"
+          fi
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid release tag: $tag" >&2; exit 1; }
+          if [[ "$MANUAL_TARGET" == "all" || -z "$MANUAL_TARGET" || "$MANUAL_TARGET" == "${{ matrix.target }}" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout package tooling
+        if: steps.selection.outputs.run == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Submit package-manager update
+        if: steps.selection.outputs.run == 'true'
+        env:
+          PACKAGE_MANAGER_GITHUB_TOKEN: ${{ secrets.PACKAGE_MANAGER_GITHUB_TOKEN || secrets.WINGET_GITHUB_TOKEN }}
+          SCOOP_REPOSITORY: zfogg/ascii-chat-scoop
+          CHOCOLATEY_FORK_REPOSITORY: zfogg/chocolatey-packages
+          NPACKD_REPOSITORY: zfogg/npackd-repository
+        run: bash scripts/package-managers/submit.sh "${{ matrix.target }}" "${{ steps.selection.outputs.version }}" "$GITHUB_REPOSITORY"

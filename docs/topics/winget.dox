@@ -1,28 +1,33 @@
 /**
- * @page topic_winget WinGet package
+ * @page topic_winget Windows package managers
  *
- * @brief Installing ascii-chat with Windows Package Manager.
+ * @brief Installing ascii-chat and libasciichat through Windows package managers.
  *
- * The Windows release publishes an x64 WiX MSI. The release workflow can
- * generate a manifest for the exact MSI, calculate its SHA-256, and open a
- * pull request in the publisher's fork of Microsoft's
- * [winget-pkgs repository](https://github.com/microsoft/winget-pkgs).
+ * The release workflow publishes x64 and ARM64 ZIP archives, plus an x64 WiX
+ * MSI. The package-manager workflow runs after a successful release, or can be
+ * run manually for any release tag, and updates WinGet, Scoop, Chocolatey,
+ * and the publisher-hosted Npackd repository.
  *
- * To enable the automated submission, create a fork named `winget-pkgs` under
- * the publisher account, then add a repository secret named
- * `WINGET_GITHUB_TOKEN`. The token needs permission to push to that fork and
- * open pull requests against `microsoft/winget-pkgs`. Optionally set the
- * `WINGET_FORK_REPOSITORY` repository variable if the fork is under another
- * account.
+ * To enable the automated submissions, add a repository secret named
+ * `PACKAGE_MANAGER_GITHUB_TOKEN`. The token needs permission to push to the
+ * publisher's package repositories and open upstream pull requests. The
+ * default repositories are `zfogg/winget-pkgs`, `zfogg/ascii-chat-scoop`,
+ * `zfogg/chocolatey-packages`, and `zfogg/npackd-repository`.
  *
  * After Microsoft's manifest review merges the initial submission, users can
  * install and update ascii-chat with:
  *
  * @code{.ps1}
  * winget install ascii-chat
- * winget upgrade ascii-chat
+ * scoop bucket add ascii-chat https://github.com/zfogg/ascii-chat-scoop
+ * scoop install ascii-chat/ascii-chat
+ * choco install ascii-chat
+ * ncl add-repo https://raw.githubusercontent.com/zfogg/npackd-repository/master/repository.xml
+ * ncl add ascii-chat
  * @endcode
  *
- * The WinGet package is the runtime application only. The development ZIP and
- * ARM64 portable ZIP remain available from the GitHub release page.
+ * WinGet and Scoop expose ARM64 where supported. Chocolatey selects the x64
+ * or ARM64 ZIP at install time. Npackd represents ARM64 as the explicit
+ * `ascii-chat-arm64` and `libasciichat-arm64` package IDs because its
+ * repository format has no general architecture selector.
  */

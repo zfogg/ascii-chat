@@ -7,10 +7,10 @@ set -euo pipefail
 VERSION="${1:?usage: $0 <version-without-v> [repository]}"
 REPOSITORY="${2:-zfogg/ascii-chat}"
 FORK_REPOSITORY="${WINGET_FORK_REPOSITORY:-zfogg/winget-pkgs}"
-TOKEN="${WINGET_GITHUB_TOKEN:-}"
+TOKEN="${PACKAGE_MANAGER_GITHUB_TOKEN:-${WINGET_GITHUB_TOKEN:-}}"
 
 if [[ -z "$TOKEN" ]]; then
-  echo "WINGET_GITHUB_TOKEN is not configured; skipping WinGet PR submission."
+  echo "PACKAGE_MANAGER_GITHUB_TOKEN is not configured; skipping WinGet PR submission."
   exit 0
 fi
 export GH_TOKEN="$TOKEN"
