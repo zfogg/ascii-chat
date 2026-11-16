@@ -1,7 +1,7 @@
 #include <ascii-chat/common/limits.h>
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/common.h>
-#include <defer.h>
+#include <recast/defer.h>
 /**
  * @file network/consensus/topology.c
  * @brief Ring topology implementation
@@ -47,7 +47,7 @@ asciichat_error_t consensus_topology_create(const uint8_t participant_ids[MAX_SE
   }
 
   consensus_topology_t *topology = SAFE_MALLOC(sizeof(*topology), consensus_topology_t *);
-  defer_named(release_topology, SAFE_FREE(topology));
+  DEFER_NAMED(release_topology, SAFE_FREE(topology));
   memset(topology, 0, sizeof(*topology));
 
   // Copy and sort participant IDs lexicographically
@@ -63,7 +63,7 @@ asciichat_error_t consensus_topology_create(const uint8_t participant_ids[MAX_SE
   }
 
   *out_topology = topology;
-  defer_cancel(release_topology);
+  DEFER_CANCEL(release_topology);
   return ASCIICHAT_OK;
 }
 

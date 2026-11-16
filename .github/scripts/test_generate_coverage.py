@@ -194,6 +194,7 @@ class CoverageReportTests(unittest.TestCase):
             'cmake_minimum_required(VERSION 3.20)\nproject(fixture C)\n'
             'set(ASCIICHAT_SHARED_DEPS ON)\n'
             f'include("{module.as_posix()}")\n'
+            'find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto)\n'
             'add_executable(fixture main.c)\n'
             'target_link_libraries(fixture OpenSSL::SSL OpenSSL::Crypto)\n'
         )

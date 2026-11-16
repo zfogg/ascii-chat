@@ -7,7 +7,7 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define HANDSHAKE_NONCE_PACKET_CAPACITY 256
 
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/otel.h>
 #include <ascii-chat/crypto/key_identity/display.h>
 #include <ascii-chat/tui/notice.h>
@@ -409,7 +409,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     }
 
     SAFE_MALLOC_DEFER_FREE(key_response, response_size, uint8_t *);
-    defer(sodium_memzero(key_response, response_size));
+    DEFER(sodium_memzero(key_response, response_size));
     size_t offset = 0;
 
     // Copy ephemeral key

@@ -15,7 +15,7 @@
 #include <ascii-chat/crypto/gpg/openpgp.h>
 #include <ascii-chat/crypto/https_keys.h>
 #include <ascii-chat/common.h>
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
@@ -167,7 +167,7 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
 
   if (path_looks_like_path(input)) {
     char *normalized_path = NULL;
-    defer(SAFE_FREE(normalized_path));
+    DEFER(SAFE_FREE(normalized_path));
     asciichat_error_t path_result = path_validate_user_path(input, PATH_ROLE_KEY_PUBLIC, &normalized_path);
     if (path_result != ASCIICHAT_OK) {
       return path_result;
@@ -175,7 +175,7 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
 
     FILE *f = platform_fopen("file_stream", normalized_path, "rb");
     if (f) {
-      defer(SAFE_FCLOSE(f));
+      DEFER(SAFE_FCLOSE(f));
       char line[BUFFER_SIZE_LARGE];
       if (fgets(line, sizeof(line), f)) {
         uint8_t first_packet = (uint8_t)line[0];
@@ -273,7 +273,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
 
   // Try to load file and detect format
   char *normalized_path = NULL;
-  defer(SAFE_FREE(normalized_path));
+  DEFER(SAFE_FREE(normalized_path));
   asciichat_error_t path_result = path_validate_user_path(key_path, PATH_ROLE_KEY_PRIVATE, &normalized_path);
   if (path_result != ASCIICHAT_OK) {
     return path_result;
@@ -608,7 +608,7 @@ asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, siz
   }
 
   char *normalized_path = NULL;
-  defer(SAFE_FREE(normalized_path));
+  DEFER(SAFE_FREE(normalized_path));
   asciichat_error_t path_result = path_validate_user_path(path, PATH_ROLE_CLIENT_KEYS, &normalized_path);
   if (path_result != ASCIICHAT_OK) {
     return path_result;
@@ -619,7 +619,7 @@ asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, siz
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open keys file: %s", path);
   }
 
-  defer(SAFE_FCLOSE(f));
+  DEFER(SAFE_FCLOSE(f));
 
   char line[BUFFER_SIZE_LARGE];
   bool has_first_line = fgets(line, sizeof(line), f) != NULL;

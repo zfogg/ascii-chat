@@ -259,32 +259,6 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  * @{
  */
 
-/* MSVC has no GNU statement expressions, so keep the same checked allocation
- * contract through small helper functions. */
-#ifdef _MSC_VER
-static inline void *asciichat_safe_malloc(size_t size) {
-  void *ptr = ALLOC_MALLOC(size);
-  if (!ptr) {
-    FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", size);
-  }
-  return ptr;
-}
-static inline void *asciichat_safe_calloc(size_t count, size_t size) {
-  void *ptr = ALLOC_CALLOC(count, size);
-  if (!ptr) {
-    FATAL(ERROR_MEMORY, "Memory allocation failed: %zu elements x %zu bytes", count, size);
-  }
-  return ptr;
-}
-static inline void *asciichat_safe_realloc(void *old_ptr, size_t size) {
-  void *ptr = ALLOC_REALLOC(old_ptr, size);
-  if (!ptr) {
-    FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", size);
-  }
-  return ptr;
-}
-#endif
-
 /* Safe memory allocation with error checking - returns allocated pointer */
 #define SAFE_MALLOC(size, cast)                                                                                                                                                                        \
   ({                                                                                                                                                                                                   \
@@ -314,15 +288,6 @@ static inline void *asciichat_safe_realloc(void *old_ptr, size_t size) {
     }                                                                                                                                                                                                  \
     (cast)(tmp_ptr);                                                                                                                                                                                   \
   })
-
-#ifdef _MSC_VER
-#undef SAFE_MALLOC
-#undef SAFE_CALLOC
-#undef SAFE_REALLOC
-#define SAFE_MALLOC(size, cast) ((cast)asciichat_safe_malloc((size_t)(size)))
-#define SAFE_CALLOC(count, size, cast) ((cast)asciichat_safe_calloc((size_t)(count), (size_t)(size)))
-#define SAFE_REALLOC(ptr, size, cast) ((cast)asciichat_safe_realloc((ptr), (size_t)(size)))
-#endif
 
 /* Helper macro to track aligned allocations when DEBUG_MEMORY is enabled */
 #if defined(DEBUG_MEMORY) && !defined(MI_MALLOC_OVERRIDE)
@@ -414,13 +379,13 @@ static inline void *asciichat_safe_realloc(void *old_ptr, size_t size) {
 /* These block declarations require the defer header and source transformer. */
 #define SAFE_MALLOC_DEFER_FREE(name, size, cast)                                                                                                                                                       \
   cast name = SAFE_MALLOC(size, cast);                                                                                                                                                                 \
-  defer(SAFE_FREE(name))
+  DEFER(SAFE_FREE(name))
 #define SAFE_CALLOC_DEFER_FREE(name, count, size, cast)                                                                                                                                                \
   cast name = SAFE_CALLOC(count, size, cast);                                                                                                                                                          \
-  defer(SAFE_FREE(name))
+  DEFER(SAFE_FREE(name))
 
-/* Safe fclose that nulls the pointer - for use with defer() */
-/* Usage: defer(SAFE_FCLOSE(fp)); */
+/* Safe fclose that nulls the pointer - for use with DEFER() */
+/* Usage: DEFER(SAFE_FCLOSE(fp)); */
 #define SAFE_FCLOSE(fp)                                                                                                                                                                                \
   do {                                                                                                                                                                                                 \
     if ((fp) != NULL) {                                                                                                                                                                                \

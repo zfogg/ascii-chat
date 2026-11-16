@@ -40,9 +40,9 @@ endif()
 # top-level project, so its standalone source list omits util/utf8.c. Link
 # the application's shared utf8proc target explicitly for platform code that
 # uses the utf8proc classification table (notably the Windows keyboard path).
-if(TARGET libplatform AND TARGET ascii-chat-utf8proc)
-    add_dependencies(libplatform ascii-chat-utf8proc)
-    target_link_libraries(libplatform PRIVATE ascii-chat-utf8proc)
+if(TARGET libplatform AND TARGET utf8proc)
+    add_dependencies(libplatform utf8proc)
+    target_link_libraries(libplatform PRIVATE utf8proc)
 endif()
 
 if(TARGET asciichat-project-includes)

@@ -1,4 +1,4 @@
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/common.h>
 #include <libplatform/mutex.h>
@@ -44,12 +44,12 @@ packet_queue_t *packet_queue_create_config(const packet_queue_config_t *config) 
   if (mutex_init(&queue->mutex, "packet_queue") != 0) {
     return NULL;
   }
-  defer_named(queue_mutex, mutex_destroy(&queue->mutex));
+  DEFER_NAMED(queue_mutex, mutex_destroy(&queue->mutex));
   buffer_domain_config_t memory = {64 * 1024 * 1024, 8 * 1024 * 1024, 5000000000ULL, false};
   if (buffer_domain_create(&memory, &queue->domain) != ASCIICHAT_OK) {
     return NULL;
   }
-  defer_cancel(queue_mutex);
+  DEFER_CANCEL(queue_mutex);
   packet_queue_t *result = queue;
   queue = NULL;
   return result;

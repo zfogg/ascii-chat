@@ -19,7 +19,7 @@
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/crypto/crypto.h>
@@ -155,7 +155,7 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
     log_debug("★ ACIP_SEND_IMAGE_FRAME_H265: Failed to allocate output buffer");
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate H.265 output buffer: %zu bytes", output_buffer_size);
   }
-  defer(buffer_release(output_buffer));
+  DEFER(buffer_release(output_buffer));
 
   // Admission expiry can invalidate a previously accepted reference chain.
 #ifndef __EMSCRIPTEN__
