@@ -812,7 +812,15 @@ endif()
 # search as a fallback for distro/Homebrew installs that do not ship a CMake
 # package file.
 find_package(nghttp2 CONFIG QUIET)
-if(USE_MUSL)
+if(TARGET nghttp2_static)
+    set(ASCIICHAT_NGHTTP2_TARGET nghttp2_static)
+    get_target_property(_asciichat_nghttp2_includes nghttp2_static INTERFACE_INCLUDE_DIRECTORIES)
+    if(_asciichat_nghttp2_includes)
+        target_include_directories(ascii-chat-network PRIVATE ${_asciichat_nghttp2_includes})
+    endif()
+elseif(TARGET nghttp2)
+    set(ASCIICHAT_NGHTTP2_TARGET nghttp2)
+elseif(USE_MUSL)
     # gotel builds this target for the active toolchain; a host installation
     # can otherwise introduce glibc headers and libraries into a musl build.
     if(NOT TARGET nghttp2_static)
