@@ -50,7 +50,8 @@ endif()
 # FindDependency.cmake may expose nghttp2 as raw include/library variables
 # rather than a CMake target. Wrap that installed package in a local
 # interface target so gotel does not FetchContent-build a duplicate copy.
-if(NOT GOTEL_NGHTTP2_TARGET AND ASCIICHAT_NGHTTP2_LIBRARY)
+if((NOT GOTEL_NGHTTP2_TARGET OR GOTEL_NGHTTP2_TARGET STREQUAL "asciichat-vcpkg-nghttp2")
+        AND ASCIICHAT_NGHTTP2_LIBRARY)
     if(NOT TARGET asciichat-vcpkg-nghttp2)
         add_library(asciichat-vcpkg-nghttp2 INTERFACE)
         if(ASCIICHAT_NGHTTP2_INCLUDE_DIR)
