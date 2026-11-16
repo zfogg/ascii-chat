@@ -80,6 +80,15 @@ function(asciichat_configure_quic)
             "-DZLIB_LIBRARY:STRING=${ZLIB_LIBRARIES}"
             "-DZLIB_LIBRARIES:STRING=${ZLIB_LIBRARIES}")
     endif()
+    if(DEFINED ZLIB_INCLUDE_DIRS AND NOT "${ZLIB_INCLUDE_DIRS}" STREQUAL "")
+        list(APPEND _quic_common_args
+            "-DZLIB_INCLUDE_DIR:PATH=${ZLIB_INCLUDE_DIRS}"
+            "-DZLIB_INCLUDE_DIRS:PATH=${ZLIB_INCLUDE_DIRS}")
+    elseif(DEFINED ZLIB_INCLUDE_DIR AND NOT "${ZLIB_INCLUDE_DIR}" STREQUAL "")
+        list(APPEND _quic_common_args
+            "-DZLIB_INCLUDE_DIR:PATH=${ZLIB_INCLUDE_DIR}"
+            "-DZLIB_INCLUDE_DIRS:PATH=${ZLIB_INCLUDE_DIR}")
+    endif()
     # Keep the isolated ngtcp2 configure aligned with the parent dependency
     # configuration.  In particular, debug/shared builds must not reuse a
     # stale static OpenSSL selection from an earlier configure.
