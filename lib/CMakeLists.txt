@@ -905,9 +905,11 @@ else()
     set(ASCIICHAT_NGHTTP2_TARGET ${ASCIICHAT_NGHTTP2_LIBRARY})
     target_include_directories(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_INCLUDE_DIR})
 endif()
-# nghttp2 is already propagated by the gotel transport dependency.  Adding
-# the separately discovered package here creates two incompatible Windows
-# libraries on the final link line.
+# The network module is an object library, so gotel's private nghttp2
+# dependency cannot reach the final executable through normal transitive
+# linking. Link the one selected target here; this is also required when the
+# application is linked statically for release builds.
+target_link_libraries(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_TARGET})
 if(ASCIICHAT_LIBUV_TARGET)
     target_link_libraries(ascii-chat-network PRIVATE ${ASCIICHAT_LIBUV_TARGET})
 endif()
@@ -1061,7 +1063,12 @@ add_library(ascii-chat-shared SHARED
         INSTALL_NAME_DIR "@rpath"
     )
     if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
-        set_property(TARGET ascii-chat-shared PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+        # MSVC /GL produces anonymous LTCG .obj files. CMake's native export
+        # scanner correctly handles ordinary COFF objects, so keep automatic
+        # exports enabled and disable IPO only for this DLL target.
+        set_property(TARGET ascii-chat-shared PROPERTY
+            WINDOWS_EXPORT_ALL_SYMBOLS TRUE
+            INTERPROCEDURAL_OPTIMIZATION FALSE)
     endif()
     if(WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT CMAKE_C_COMPILER MATCHES "clang-cl")
         # The GNU-style Clang driver targets the MSVC ABI here. Match CMake's
