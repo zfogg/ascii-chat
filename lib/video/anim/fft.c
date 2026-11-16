@@ -132,9 +132,9 @@ char *audio_visualization_render_fft(unsigned int width, unsigned int height, au
   if (GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK)
     height *= 2;
   static_mutex_lock(&fft_cache_mutex);
-  uint64_t now = time_get_ns();
   terminal_render_mode_t render_mode = (terminal_render_mode_t)GET_OPTION(render_mode);
 #if FFT_REFRESH_NS > 0
+  uint64_t now = time_get_ns();
   if (fft_cache.valid && fft_cache.width == width && fft_cache.height == height && fft_cache.source == source && fft_cache.color_mode == color_mode && fft_cache.render_mode == render_mode &&
       now >= fft_cache.updated_ns && now - fft_cache.updated_ns < FFT_REFRESH_NS) {
     size_t cached_cells = (size_t)width * height;
