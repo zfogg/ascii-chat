@@ -14,7 +14,6 @@ endif()
 
 if(BUILD_SHARED_LIBS)
     set(_rnnoise_library_type SHARED)
-    set(_rnnoise_configure_flags --disable-static --enable-shared)
     if(WIN32)
         set(_rnnoise_library "${ASCIICHAT_RNNOISE_INSTALL_DIR}/bin/rnnoise-0.dll")
         set(_rnnoise_import_library "${ASCIICHAT_RNNOISE_INSTALL_DIR}/lib/librnnoise.dll.a")
@@ -25,18 +24,19 @@ if(BUILD_SHARED_LIBS)
     endif()
 else()
     set(_rnnoise_library_type STATIC)
-    set(_rnnoise_configure_flags --disable-shared --enable-static)
     set(_rnnoise_library "${ASCIICHAT_RNNOISE_INSTALL_DIR}/lib/librnnoise.a")
 endif()
 
 ExternalProject_Add(ascii-chat-rnnoise-build
     SOURCE_DIR "${ASCIICHAT_RNNOISE_SOURCE_DIR}"
     BINARY_DIR "${ASCIICHAT_RNNOISE_BUILD_DIR}"
-    CONFIGURE_COMMAND
-        "${CMAKE_COMMAND}" -E copy_directory
-        "${ASCIICHAT_RNNOISE_SOURCE_DIR}" "${ASCIICHAT_RNNOISE_BUILD_DIR}"
-        COMMAND "${ASCIICHAT_RNNOISE_SHELL}" -c
-        "./autogen.sh && ./configure --prefix='${ASCIICHAT_RNNOISE_INSTALL_DIR}' --disable-examples --disable-doc ${_rnnoise_configure_flags}"
+    CONFIGURE_COMMAND "${CMAKE_COMMAND}"
+        -DRNNOISE_SOURCE_DIR="${ASCIICHAT_RNNOISE_SOURCE_DIR}"
+        -DRNNOISE_BINARY_DIR="${ASCIICHAT_RNNOISE_BUILD_DIR}"
+        -DRNNOISE_INSTALL_DIR="${ASCIICHAT_RNNOISE_INSTALL_DIR}"
+        -DRNNOISE_SHELL="${ASCIICHAT_RNNOISE_SHELL}"
+        -DRNNOISE_SHARED=${BUILD_SHARED_LIBS}
+        -P "${CMAKE_SOURCE_DIR}/cmake/utils/ConfigureRnnoise.cmake"
     BUILD_COMMAND "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}"
     INSTALL_COMMAND "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}" install
     BUILD_BYPRODUCTS "${_rnnoise_library}"
@@ -57,6 +57,5 @@ endif()
 add_dependencies(ascii-chat-rnnoise ascii-chat-rnnoise-build)
 
 unset(_rnnoise_library_type)
-unset(_rnnoise_configure_flags)
 unset(_rnnoise_library)
 unset(_rnnoise_import_library)
