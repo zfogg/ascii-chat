@@ -25,11 +25,7 @@ set(LIBPLATFORM_UTF8PROC_TARGET utf8proc CACHE STRING
 set(_ascii_chat_libflags_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src")
 FetchContent_Declare(libflags
     GIT_REPOSITORY https://github.com/zfogg/libflags.git
-    GIT_TAG 04f10e4
+    GIT_TAG 7c4335a
     SOURCE_DIR "${_ascii_chat_libflags_source}")
-set(_ascii_chat_saved_build_shared_libs "${BUILD_SHARED_LIBS}")
-set(BUILD_SHARED_LIBS OFF)
 FetchContent_MakeAvailable(libflags)
-set(BUILD_SHARED_LIBS "${_ascii_chat_saved_build_shared_libs}")
-unset(_ascii_chat_saved_build_shared_libs)
 unset(_ascii_chat_libflags_source)
