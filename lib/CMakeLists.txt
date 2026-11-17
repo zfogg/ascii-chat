@@ -650,10 +650,6 @@ endif()
 
 # Now create the module with WebRTC includes in scope
 create_ascii_chat_module(ascii-chat-audio "${AUDIO_SRCS}")
-target_include_directories(ascii-chat-audio PRIVATE
-    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/rnnoise/include
-    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/rnnoise/src
-)
 target_link_libraries(ascii-chat-audio PRIVATE ascii-chat-rnnoise)
 
 # Add library search directories for pkg-config found libraries
