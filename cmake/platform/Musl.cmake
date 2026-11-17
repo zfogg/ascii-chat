@@ -401,6 +401,8 @@ function(configure_musl_post_project)
             OUTPUT_VARIABLE MUSL_LIBGCC_EH_PATH
             OUTPUT_STRIP_TRAILING_WHITESPACE
             COMMAND_ERROR_IS_FATAL ANY)
+        set(MUSL_LIBGCC_EH_PATH "${MUSL_LIBGCC_EH_PATH}" CACHE FILEPATH
+            "GCC exception runtime archive for musl" FORCE)
         if(NOT EXISTS "${MUSL_LIBGCC_EH_PATH}")
             message(FATAL_ERROR "GCC exception runtime archive was not found: ${MUSL_LIBGCC_EH_PATH}")
         endif()
