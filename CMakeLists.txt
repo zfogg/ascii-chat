@@ -426,8 +426,11 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
     "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build"
     EXCLUDE_FROM_ALL)
   if(RECAST_HOST_CXX_INCLUDE_DIRS)
-    target_include_directories(recast-objects BEFORE PRIVATE ${RECAST_HOST_CXX_INCLUDE_DIRS})
-    target_include_directories(recast BEFORE PRIVATE ${RECAST_HOST_CXX_INCLUDE_DIRS})
+    foreach(_recast_target recast-objects recast)
+      get_target_property(_recast_include_dirs "${_recast_target}" INCLUDE_DIRECTORIES)
+      set_property(TARGET "${_recast_target}" PROPERTY INCLUDE_DIRECTORIES
+        "${RECAST_HOST_CXX_INCLUDE_DIRS};${_recast_include_dirs}")
+    endforeach()
     foreach(_recast_llvm_target recast-llvm-support recast-libclang)
       get_target_property(_recast_llvm_includes "${_recast_llvm_target}" INTERFACE_INCLUDE_DIRECTORIES)
       set_property(TARGET "${_recast_llvm_target}" PROPERTY INTERFACE_INCLUDE_DIRECTORIES
