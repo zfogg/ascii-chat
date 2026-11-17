@@ -609,14 +609,14 @@ TEST_CASE("options::invalid_snapshot_delays", "[options]") {
 GENERATE_OPTIONS_TEST(
     valid_encryption_key, ARGV_LIST("client", "--key", "mysecretkey"), true,
     {
-      cr_assert_str_eq(opts->encrypt_key, "mysecretkey");
-      cr_assert_eq(opts->encrypt_enabled, 0);
+      REQUIRE(std::strcmp(opts->encrypt_key, "mysecretkey") == 0);
+      REQUIRE(opts->encrypt_enabled == 0);
     },
-    { cr_assert_eq(exit_code, 0, "Valid encryption key should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_encryption_key, ARGV_LIST("client", "--key", ""), true, { cr_fail("Should not reach this point - empty key should cause exit"); },
-    { cr_assert_eq(exit_code, 1, "Empty key should exit with code 1"); })
+    invalid_encryption_key, ARGV_LIST("client", "--key", ""), true, { FAIL("test failure"); },
+    { REQUIRE(exit_code == 1); })
 
 /* ============================================================================
  * Flag Options Tests
@@ -629,7 +629,7 @@ TEST_CASE("options::flag_options", "[options]") {
   // NOTE: --quiet is now a global option, removed from this test
   char *argv[] = {"program", "client", "--show-capabilities", "--utf8", "--audio", "--stretch", "--snapshot", "--encrypt", NULL};
   int result = test_options_init_with_fork(argv, 8, true);
-  cr_assert_eq(result, 0);
+  REQUIRE(result == 0);
 
   restore_options(&backup);
 }
@@ -642,31 +642,31 @@ GENERATE_OPTIONS_TEST(help_client, ARGV_LIST("client", "--help"), true,
                       {
                           // Help should display and exit cleanly
                       },
-                      { cr_assert_eq(exit_code, 0, "Help should exit with code 0"); })
+                      { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(help_server, ARGV_LIST("server", "--help"), false,
                       {
                           // Help should display and exit cleanly
                       },
-                      { cr_assert_eq(exit_code, 0, "Help should exit with code 0"); })
+                      { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(help_short, ARGV_LIST("client", "-h"), true,
                       {
                           // Help should display and exit cleanly
                       },
-                      { cr_assert_eq(exit_code, 0, "Short help should exit with code 0"); })
+                      { REQUIRE(exit_code == 0); })
 
 /* ============================================================================
  * Error Handling Tests
  * ============================================================================ */
 
 GENERATE_OPTIONS_TEST_IN_SUITE(
-    options_errors, unknown_option, ARGV_LIST("client", "--unknown-option"), true, { cr_fail("Should not reach this point - unknown option should cause exit"); },
-    { cr_assert_eq(exit_code, 1, "Unknown option should exit with code 1"); })
+    options_errors, unknown_option, ARGV_LIST("client", "--unknown-option"), true, { FAIL("test failure"); },
+    { REQUIRE(exit_code == 1); })
 
 GENERATE_OPTIONS_TEST_IN_SUITE(
-    options_errors, missing_argument_port, ARGV_LIST("client", "--port"), true, { cr_fail("Should not reach this point - missing argument should cause exit"); },
-    { cr_assert_eq(exit_code, 1, "Missing argument should exit with code 1"); })
+    options_errors, missing_argument_port, ARGV_LIST("client", "--port"), true, { FAIL("test failure"); },
+    { REQUIRE(exit_code == 1); })
 
 /* ============================================================================
  * Equals Sign Handling Tests
@@ -678,7 +678,7 @@ TEST_CASE("options::equals_sign_handling", "[options]") {
 
   char *argv[] = {"program", "client", "--width=100", "--height=50", "192.168.1.1:8080", NULL};
   int result = test_options_init_with_fork(argv, 5, true);
-  cr_assert_eq(result, 0);
+  REQUIRE(result == 0);
 
   restore_options(&backup);
 }
@@ -699,7 +699,7 @@ TEST_CASE("options::complex_client_combination", "[options]") {
 
   log_set_level(LOG_DEBUG);
   int result = test_options_init_with_fork(argv, argc, true);
-  cr_assert_eq(result, 0);
+  REQUIRE(result == 0);
 
   restore_options(&backup);
 }
