@@ -639,6 +639,14 @@ endif()
 
 # -----------------------------------------------------------------------------
 # Module 6: Audio Processing (depends on: util, platform, data-structures)
+# Static PortAudio already supplies the Windows media GUID definitions that
+# static FFmpeg's discovery module also reports through `strmiids`.  Keep the
+# FFmpeg codecs and system dependencies, but remove that duplicate library
+# before propagating FFmpeg's link set to the application targets.
+if(WIN32 AND NOT BUILD_SHARED_LIBS)
+    list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "(^|/)strmiids(\\.lib)?$")
+endif()
+
 # Add WebRTC AEC3 include directories BEFORE creating the module
 if(TARGET webrtc_audio_processing)
     get_target_property(WEBRTC_INCLUDES webrtc_audio_processing INTERFACE_INCLUDE_DIRECTORIES)

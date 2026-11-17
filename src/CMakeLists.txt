@@ -68,16 +68,6 @@ endif()
 
 if(BUILD_EXECUTABLES)
 add_executable(ascii-chat ${APP_SRCS})
-
-# PortAudio's static Windows backend provides several media GUID definitions
-# that are also present in the Windows SDK's strmiids library pulled in by
-# static FFmpeg.  They are identical COM constants; allow lld to coalesce
-# the duplicate definitions while retaining both libraries' APIs.
-if(WIN32 AND NOT BUILD_SHARED_LIBS)
-    target_link_options(ascii-chat PRIVATE
-        "LINKER:/force:multiple"
-        "LINKER:/ignore:4006")
-endif()
 if(WIN32)
     target_link_libraries(ascii-chat PRIVATE shell32)
 endif()
