@@ -26,7 +26,7 @@ Read [references/build-and-verify.md](references/build-and-verify.md) before bui
 
 ## Finalize release notes and failed attempts
 
-After the final candidate is published and verified, delete only GitHub Release objects belonging to failed attempts from this session. Use `gh release delete TAG --yes` without `--cleanup-tag`; retain every tag and previous successful release. Do not delete releases merely because they precede the new one.
+After the final candidate is published and verified, use the GitHub CLI or GitHub tools as the final cleanup step to remove draft Release objects for failed attempts between the previous successful release and the final successful release. Delete only failed-attempt release objects; retain the previous and final successful releases. Before deleting the corresponding failed tags, tell the user that repository tag protection must be disabled, and ask them to turn it off so the failed tags can be removed. Do not bypass protection or delete protected tags until the user confirms it is disabled. Once confirmed, remove only the failed tags from that interval, verify that the previous and final successful tags remain, and tell the user to re-enable tag protection immediately afterward. Record every removed release object and tag.
 
 List remaining published non-prerelease CLI releases and identify the newest and second-newest successful releases (exclude drafts, failed attempts, and `lib/v*` releases). Use GitHub's release-notes generation endpoint with explicit boundaries:
 
