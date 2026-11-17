@@ -35,6 +35,7 @@ static const bool default_audio_adaptive_eq = false;
 static const int default_audio_fft_size = 1024;
 static const bool default_audio_pitch_correct = false;
 static const bool default_audio_spectral_agc = false;
+static const bool default_reduce_noise = true;
 static const bool default_test_audio = false;
 const registry_entry_t g_audio_entries[] = {
     {"test-audio",
@@ -108,6 +109,24 @@ const registry_entry_t g_audio_entries[] = {
      false,
      false,
      OPTION_MODE_SERVER | OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0},
+     NULL},
+    {"reduce-noise",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, reduce_noise),
+     &default_reduce_noise,
+     sizeof(bool),
+     "Enable neural microphone noise reduction for client-like modes; disable with --reduce-noise=false.",
+     "AUDIO",
+     NULL,
+     false,
+     "ASCII_CHAT_REDUCE_NOISE",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY | OPTION_MODE_MIRROR,
      {0},
      NULL},
     {"audio-spectral-mixer",

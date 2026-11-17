@@ -766,6 +766,7 @@ options_t options_t_new(void) {
   opts.audio_spectral = true;
   opts.audio_spectral_mixer = false;
   opts.audio_spectral_gate = true;
+  opts.reduce_noise = true;
   opts.audio_enabled = OPT_AUDIO_ENABLED_DEFAULT;
   opts.audio_source = OPT_AUDIO_SOURCE_DEFAULT;
   opts.audio_capture_source = OPT_AUDIO_CAPTURE_SOURCE_DEFAULT;

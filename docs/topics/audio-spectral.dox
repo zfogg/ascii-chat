@@ -22,6 +22,9 @@
  * is compiled into the audio library, so the realtime path never loads a model
  * file or performs filesystem/network work. Other sample rates retain the
  * existing spectral path.
+ * Client-like modes expose this independently as `--reduce-noise` (enabled by
+ * default) or `--reduce-noise=false`; `ASCII_CHAT_REDUCE_NOISE` is the matching
+ * environment variable. Test audio continues to bypass microphone enhancement.
  *
  * The native client first runs AEC3 using its actual speaker playback reference,
  * then calls the shared processor. Browser microphone capture requests native

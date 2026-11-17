@@ -135,7 +135,7 @@ client_audio_pipeline_config_t client_audio_pipeline_config_for_source(bool has_
   const options_t *options = options_get();
   if (options) {
     config.processor.spectral_enabled = options->audio_spectral && !options->test_audio;
-    config.processor.rnnoise_enabled = !options->test_audio;
+    config.processor.rnnoise_enabled = options->reduce_noise && !options->test_audio;
     config.processor.spectral.fft_size = options->audio_fft_size;
     config.processor.spectral.noise_gate = options->audio_spectral_gate;
     config.processor.spectral.compressor = options->audio_multiband;
