@@ -54,3 +54,6 @@
 [submodule "deps/ascii-chat-deps/libfacedetection"]
 	path = deps/ascii-chat-deps/libfacedetection
 	url = https://github.com/ShiqiYu/libfacedetection.git
+[submodule "deps/ascii-chat-deps/rnnoise"]
+	path = deps/ascii-chat-deps/rnnoise
+	url = https://github.com/xiph/rnnoise.git
