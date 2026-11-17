@@ -240,7 +240,7 @@ asciichat_error_t openpgp_parse_public_key_packet(const uint8_t *packet_body, si
   bool found_prefix = false;
   size_t key_offset = 0;
 
-  for (size_t i = offset; i < body_len - 32; i++) {
+  for (size_t i = offset; i < body_len && body_len - i > ED25519_PUBLIC_KEY_SIZE; i++) {
     if (packet_body[i] == 0x40) {
       key_offset = i + 1; // Point to first byte after 0x40
       found_prefix = true;
@@ -400,7 +400,7 @@ asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, si
   bool found_prefix = false;
   size_t pubkey_offset = 0;
 
-  for (size_t i = offset; i < body_len - 32; i++) {
+  for (size_t i = offset; i < body_len && body_len - i > ED25519_PUBLIC_KEY_SIZE; i++) {
     if (packet_body[i] == 0x40) {
       pubkey_offset = i + 1;
       found_prefix = true;
@@ -799,6 +799,11 @@ asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t
     asciichat_error_t header_result = openpgp_parse_packet_header(binary_data + offset, binary_len - offset, &header);
     if (header_result != ASCIICHAT_OK) {
       return header_result;
+    }
+
+    if (header.header_len > binary_len - offset || header.length > binary_len - offset - header.header_len) {
+      SAFE_FREE(binary_data);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Truncated OpenPGP packet in armored secret key");
     }
 
     log_debug("Packet at offset %zu: tag=%u, length=%zu", offset, header.tag, header.length);
