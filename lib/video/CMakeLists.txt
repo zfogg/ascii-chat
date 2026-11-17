@@ -24,7 +24,6 @@ set(VIDEO_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/common.c
 
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/ascii/palette.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/output_buffer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/rle.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/zalgo.c

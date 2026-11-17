@@ -402,6 +402,7 @@ target_link_libraries(ascii-chat-data-structures PRIVATE ascii-chat-util)
 set(_core_runtime_regex "[/\\\\]lib[/\\\\](event|common|otel|asciichat_errno|app_callbacks|version)[.]c$|[/\\\\]lib[/\\\\]util[/\\\\]utf8[.]c$|[/\\\\]src[/\\\\]common[/\\\\]http_renderer[.]c$|[/\\\\]lib[/\\\\]stats[/\\\\].*[.]c$|[/\\\\]lib[/\\\\]media[/\\\\](input|playlist)[.]c$|[/\\\\]lib[/\\\\]debug[/\\\\](stats|errno)[.]c$")
 set(_runtime_sources "${CORE_SRCS}")
 list(FILTER _runtime_sources INCLUDE REGEX "${_core_runtime_regex}")
+list(APPEND _runtime_sources ${LIB_DIR}/video/ascii/palette.c)
 create_ascii_chat_module(ascii-chat-runtime "${_runtime_sources}")
 
 target_link_libraries(ascii-chat-runtime INTERFACE libplatform::libplatform)

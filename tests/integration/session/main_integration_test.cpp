@@ -8,6 +8,8 @@
 
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/log/log.h>
 #include <libplatform/compiler.h>
 #include <libplatform/process.h>
 #include <libplatform/system.h>

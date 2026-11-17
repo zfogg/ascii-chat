@@ -3,6 +3,8 @@
 // This verifies the client binary works and shows help correctly
 
 #include <ascii-chat/tests/common.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <libplatform/socket.h>
 #include <ascii-chat/tests/common.h>
 #include <stdlib.h>
 

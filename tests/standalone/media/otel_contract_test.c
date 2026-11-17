@@ -1,11 +1,24 @@
-/** Exercise the real application adapter with an in-process Gotel host.
- * Including the implementation gives this fixture access to its private host;
- * normal TESTING initialization stays disabled and no worker or socket starts. */
-#include "../../../lib/otel.c"
+/** Exercise the real application adapter with an in-process Gotel host. */
+#include <ascii-chat/otel.h>
 #include <gotel/testing.h>
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/network/rate_limit/rate_limit.h>
 #include "../../../lib/discovery/queries.h"
+
+extern void ascii_otel_test_set_host(gotel_host_t *value);
+extern unsigned ascii_otel_test_reader_count(void);
+extern gotel_scope_t *ascii_otel_test_command_scope(void);
+static const gotel_operation_t operations[] = {
+#define ASCII_OTEL_OPERATION(id, name, realtime) {name, realtime},
+#include <ascii-chat/otel_operations.def>
+#undef ASCII_OTEL_OPERATION
+};
+static const double metric_bounds[] = {.0001, .001, .005, .01, .025, .05, .1, .25, .5, 1, 2, 5, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 1000000};
+static const gotel_metric_t metrics[] = {
+#define ASCII_OTEL_METRIC(id, name, type, unit) {name, unit, OTLP_METRIC_##type, metric_bounds, sizeof(metric_bounds) / sizeof(metric_bounds[0])},
+#include <ascii-chat/otel_metrics.def>
+#undef ASCII_OTEL_METRIC
+};
 
 #ifndef CHECK
 #define CHECK(value)                               \
@@ -42,25 +55,25 @@ static gotel_host_t *start(double rate) {
   CHECK(gotel_test_create(&options, &result) == OTLP_OK);
   if (capture)
     CHECK(gotel_test_capture_attach(result, capture) == OTLP_OK);
-  atomic_ptr_store(&host, result);
+  ascii_otel_test_set_host(result);
   return result;
 }
 
 static void finish(gotel_host_t *h) {
-  CHECK(current_scope == NULL);
-  CHECK(atomic_load(&readers) == 0);
+  CHECK(ascii_otel_test_reader_count() == 0);
   CHECK(gotel_drain(h) == OTLP_OK);
-  atomic_ptr_store(&host, NULL);
+  ascii_otel_test_set_host(NULL);
   gotel_destroy(h);
 }
 
 static void bounded_sampling(void) {
   gotel_host_t *h = start(0);
-  gotel_begin(h, &command_scope, ASCII_OTEL_CLI, NULL);
+  gotel_scope_t *command_scope = ascii_otel_test_command_scope();
+  gotel_begin(h, command_scope, ASCII_OTEL_CLI, NULL);
   ascii_otel_scope_t operation = {0}, child = {0};
   ascii_otel_scope_begin(&operation, ASCII_OTEL_HTTP);
   CHECK(operation.scope.context.sampled);
-  CHECK(memcmp(operation.scope.context.trace_id, command_scope.context.trace_id, 16) != 0);
+  CHECK(memcmp(operation.scope.context.trace_id, command_scope->context.trace_id, 16) != 0);
   ascii_otel_scope_begin(&child, ASCII_OTEL_FFMPEG_VIDEO_DECODE);
   CHECK(child.scope.context.sampled);
   CHECK(memcmp(child.scope.context.trace_id, operation.scope.context.trace_id, 16) == 0);
@@ -83,8 +96,8 @@ static void bounded_sampling(void) {
   CHECK(memcmp(child.scope.context.trace_id, transferred.trace_id, 16) == 0);
   CHECK(memcmp(child.scope.parent_span_id, transferred.span_id, 8) == 0);
   ascii_otel_scope_end(&child);
-  CHECK(memcmp(gotel_current_context().span_id, command_scope.context.span_id, 8) == 0);
-  gotel_end(&command_scope);
+  CHECK(memcmp(gotel_current_context().span_id, command_scope->context.span_id, 8) == 0);
+  gotel_end(command_scope);
   finish(h);
 }
 

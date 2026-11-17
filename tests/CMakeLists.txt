@@ -727,6 +727,7 @@ endif()
         # Link against shared library which contains all code
         target_link_libraries(${test_exe_name}
             ${_ascii_tests_library}
+            asciichat-project-includes
             ascii-chat-runtime
             libflags::flags
             ${TEST_LDFLAGS}
@@ -2757,7 +2758,10 @@ if(BUILD_TESTS AND TARGET gotel)
     target_sources(test-otel-contract PRIVATE ${_ascii_gotel_contract_testing_sources})
     # The Debug ascii-chat-static facade selects the shared library. This
     # white-box host must share one link image with the exercised production code.
-    target_link_libraries(test-otel-contract PRIVATE ascii-chat-static-lib ascii-chat-runtime libflags::flags ${_ascii_gotel_contract_testing_target} ${MIMALLOC_LIBRARIES})
+    target_link_libraries(test-otel-contract PRIVATE ascii-chat-static-lib ascii-chat-static ascii-chat-runtime libflags::flags ${_ascii_gotel_contract_testing_target} ${MIMALLOC_LIBRARIES})
+    if(WIN32)
+        target_link_libraries(test-otel-contract PRIVATE nghttp2 winmm)
+    endif()
     target_include_directories(test-otel-contract PRIVATE ${CMAKE_BINARY_DIR}/generated)
     apply_sanitizers_to_target(test-otel-contract)
     set_target_properties(test-otel-contract PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
