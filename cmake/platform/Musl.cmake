@@ -364,11 +364,29 @@ function(configure_musl_post_project)
         set(ALPINE_LIBUNWIND_STATIC "${LIBUNWIND_PATH}" CACHE FILEPATH "Alpine libunwind for static executables" FORCE)
     endif()
 
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        execute_process(
+            COMMAND "${CMAKE_CXX_COMPILER}" -print-file-name=libstdc++.a
+            OUTPUT_VARIABLE MUSL_LIBSTDCPP_PATH
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            COMMAND_ERROR_IS_FATAL ANY)
+        if(NOT EXISTS "${MUSL_LIBSTDCPP_PATH}")
+            message(FATAL_ERROR "GCC libstdc++ archive was not found: ${MUSL_LIBSTDCPP_PATH}")
+        endif()
+    endif()
+
     # Define helper function to link Alpine libc++ to static executables
     # Usage: link_alpine_libcxx(target_name)
     # Always uses PRIVATE keyword signature (modern CMake best practice)
     # Uses LINKER: syntax for proper linker directive handling
     function(link_alpine_libcxx TARGET_NAME)
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            target_link_libraries(${TARGET_NAME} PRIVATE
+                "${MUSL_LIBSTDCPP_PATH}"
+                "${MUSL_LIBGCC_PATH}"
+            )
+            return()
+        endif()
         if(ALPINE_LIBCXX_STATIC AND ALPINE_LIBCXXABI_STATIC)
             # Link libc++ and libc++abi using explicit linker directives
             # The LINKER: prefix ensures CMake processes this as a linker flag
