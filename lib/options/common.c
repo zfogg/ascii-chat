@@ -11,15 +11,18 @@
 #define OPTIONS_COMMON_BUFFER_BUFFER_SIZE 256
 #define OPTIONS_COMMON_SUGGESTION_BUFFER_SIZE 256
 
-#include <ascii-chat/options/enums.h>
-#include <ascii-chat/options/common.h>
+#include <options/enums.h>
+#include <options/common.h>
+#include <options/registry/registry.h>
+#include <libflags/builder.h>
+#include <libflags/help.h>
+#include <libflags/format.h>
+#include <libflags/values.h>
 
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/options/levenshtein.h>
-#include <ascii-chat/options/validation.h>
-#include <ascii-chat/options/builder.h>
+#include <options/validation.h>
 #include <libplatform/terminal.h>
 #include <sys/stat.h>
 #include <ascii-chat/util/parsing.h>
@@ -36,33 +39,6 @@
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-// Find the most similar option name to an unknown option
-// Returns the best matching option name, or NULL if no good match found
-// Note: Uses LEVENSHTEIN_SUGGESTION_THRESHOLD from levenshtein.h
-const char *find_similar_option(const char *unknown_opt, const struct option *options) {
-  if (!unknown_opt || !options) {
-    return NULL;
-  }
-
-  const char *best_match = NULL;
-  size_t best_distance = SIZE_MAX;
-
-  for (int i = 0; options[i].name != NULL; i++) {
-    size_t dist = levenshtein(unknown_opt, options[i].name);
-    if (dist < best_distance) {
-      best_distance = dist;
-      best_match = options[i].name;
-    }
-  }
-
-  // Only suggest if the distance is within our threshold
-  if (best_distance <= LEVENSHTEIN_SUGGESTION_THRESHOLD) {
-    return best_match;
-  }
-
-  return NULL;
-}
 
 // Helper to format all available modes for an option (used in error messages)
 // Returns comma-separated list like "server, client, mirror" or "global options"
@@ -116,76 +92,6 @@ const char *format_available_modes(option_mode_bitmask_t mode_bitmask) {
   return buffer;
 }
 
-// Find similar option across all modes and suggest it with mode information
-// Returns formatted suggestion string with mode info, or NULL if no good match
-const char *find_similar_option_with_mode(const char *unknown_opt, const options_config_t *config, option_mode_bitmask_t current_mode_bitmask) {
-  if (!unknown_opt || !config) {
-    return NULL;
-  }
-
-  // Extract the option name without dashes
-  const char *opt_name = unknown_opt;
-  if (strncmp(opt_name, "--", 2) == 0) {
-    opt_name += 2;
-  } else if (strncmp(opt_name, "-", 1) == 0) {
-    opt_name += 1;
-  } else {
-    return NULL; // Not an option format
-  }
-
-  const option_descriptor_t *best_match = NULL;
-  size_t best_distance = SIZE_MAX;
-
-  // Search through all descriptors
-  for (size_t i = 0; i < config->num_descriptors; i++) {
-    const option_descriptor_t *desc = &config->descriptors[i];
-    if (!desc->long_name)
-      continue;
-
-    // Calculate distance to the long name
-    size_t dist = levenshtein(opt_name, desc->long_name);
-    if (dist < best_distance) {
-      best_distance = dist;
-      best_match = desc;
-    }
-  }
-
-  // Only suggest if the distance is within our threshold
-  if (best_distance > LEVENSHTEIN_SUGGESTION_THRESHOLD || !best_match) {
-    return NULL;
-  }
-
-  // Check if the option is not available in current mode
-  bool available_in_current_mode = (best_match->mode_bitmask & current_mode_bitmask) != 0;
-
-  static char suggestion[OPTIONS_COMMON_SUGGESTION_BUFFER_SIZE];
-  if (available_in_current_mode) {
-    // Option exists but user typed it wrong - just suggest the correct spelling
-    safe_snprintf(suggestion, sizeof(suggestion), "Did you mean '--%s'?", best_match->long_name);
-  } else {
-    // Option exists but in a different mode - show all available modes
-    const char *modes_str = format_available_modes(best_match->mode_bitmask);
-    safe_snprintf(suggestion, sizeof(suggestion), "Did you mean '--%s' (available in modes: %s)?", best_match->long_name, modes_str);
-  }
-
-  return suggestion;
-}
-
-// Safely parse string to integer with validation
-int strtoint_safe(const char *str) {
-  if (!str || *str == '\0') {
-    return INT_MIN; // Error: NULL or empty string
-  }
-
-  int32_t result = 0;
-  // Use safe parsing utility with full int32 range validation
-  if (parse_int32(str, &result, INT_MIN, INT_MAX) != ASCIICHAT_OK) {
-    return INT_MIN; // Error: invalid input or out of range
-  }
-
-  return (int)result;
-}
-
 // Forward declaration for get_required_argument (defined later in file)
 char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name, asciichat_mode_t mode);
 
@@ -196,75 +102,6 @@ char *validate_required_argument(const char *optarg, char *argbuf, size_t argbuf
     (void)option_error_invalid();
   }
   return value;
-}
-
-// Validate a positive integer value (internal option parsing helper)
-bool validate_positive_int_opt(const char *value_str, int *out_value, const char *param_name) {
-  if (!value_str || !out_value) {
-    return false;
-  }
-
-  int val = strtoint_safe(value_str);
-  if (val == INT_MIN || val <= 0) {
-    log_error("Invalid %s value '%s'. %s must be a positive integer.", param_name, value_str, param_name);
-    return false;
-  }
-
-  *out_value = val;
-  return true;
-}
-
-// Validate port number (1-65535) (internal option parsing helper)
-bool validate_port_opt(const char *value_str, uint16_t *out_port) {
-  if (!value_str || !out_port) {
-    return false;
-  }
-
-  // Use safe integer parsing with range validation
-  if (parse_port(value_str, out_port) != ASCIICHAT_OK) {
-    log_error("Invalid port value '%s'. Port must be a number between 1 and 65535.", value_str);
-    return false;
-  }
-
-  return true;
-}
-
-// Validate FPS value (0 for auto, otherwise 1-144).
-bool validate_fps_opt(const char *value_str, int *out_fps) {
-  if (!value_str || !out_fps) {
-    return false;
-  }
-
-  int fps_val = strtoint_safe(value_str);
-  if (fps_val == INT_MIN || fps_val < 0 || fps_val > 144) {
-    log_error("Invalid FPS value '%s'. FPS must be between 0 and 144.", value_str);
-    return false;
-  }
-
-  *out_fps = fps_val;
-  return true;
-}
-
-// Validate webcam index using the common device index validator
-bool validate_webcam_index(const char *value_str, unsigned short int *out_index) {
-  if (!value_str || !out_index) {
-    return false;
-  }
-
-  char error_msg[BUFFER_SIZE_SMALL];
-  int parsed_index = validate_opt_device_index(value_str, error_msg, sizeof(error_msg));
-  if (parsed_index == INT_MIN) {
-    log_error("Invalid webcam index: %s", error_msg);
-    return false;
-  }
-  // Webcam index doesn't support -1 (default), must be >= 0
-  if (parsed_index < 0) {
-    log_error("Invalid webcam index '%s'. Webcam index must be a non-negative integer.", value_str);
-    return false;
-  }
-
-  *out_index = (unsigned short int)parsed_index;
-  return true;
 }
 
 // Detect default SSH key path for the current user
@@ -368,9 +205,6 @@ char *read_password_from_stdin(const char *prompt) {
 
 // These flags are used during parsing, not part of RCU options
 ASCIICHAT_API bool auto_width = true, auto_height = true;
-
-// Track if --port was explicitly set via command-line flag (for mutual exclusion validation)
-bool port_explicitly_set_via_flag = false;
 
 // Default weights; must add up to 1.0
 ASCIICHAT_API const float weight_red = 0.2989f;
@@ -479,8 +313,9 @@ asciichat_error_t parse_width_option(const char *value_str, options_t *opts) {
     return ERROR_INVALID_PARAM;
   }
 
-  int width_val;
-  if (!validate_positive_int_opt(value_str, &width_val, "width")) {
+  int32_t width_val;
+  if (!flags_parse_int32(value_str, &width_val) || width_val <= 0) {
+    log_error("Invalid width value '%s'. Width must be a positive integer.", value_str ? value_str : "(null)");
     return ERROR_INVALID_PARAM;
   }
 
@@ -495,8 +330,9 @@ asciichat_error_t parse_height_option(const char *value_str, options_t *opts) {
     return ERROR_INVALID_PARAM;
   }
 
-  int height_val;
-  if (!validate_positive_int_opt(value_str, &height_val, "height")) {
+  int32_t height_val;
+  if (!flags_parse_int32(value_str, &height_val) || height_val <= 0) {
+    log_error("Invalid height value '%s'. Height must be a positive integer.", value_str ? value_str : "(null)");
     return ERROR_INVALID_PARAM;
   }
 
@@ -511,12 +347,13 @@ asciichat_error_t parse_webcam_index_option(const char *value_str, options_t *op
     return ERROR_INVALID_PARAM;
   }
 
-  unsigned short int index_val;
-  if (!validate_webcam_index(value_str, &index_val)) {
+  int32_t index_val;
+  if (!flags_parse_int32(value_str, &index_val) || index_val < 0 || index_val > USHRT_MAX) {
+    log_error("Invalid webcam index '%s'. Webcam index must be a non-negative integer.", value_str ? value_str : "(null)");
     return ERROR_INVALID_PARAM;
   }
 
-  opts->webcam_index = index_val;
+  opts->webcam_index = (unsigned short int)index_val;
 
   return ASCIICHAT_OK;
 }
@@ -559,50 +396,6 @@ asciichat_error_t parse_log_level_option(const char *value_str, options_t *opts)
 // ============================================================================
 // Option Formatting Utilities
 // ============================================================================
-
-const char *options_get_type_placeholder(option_type_t type) {
-  switch (type) {
-  case OPTION_TYPE_INT:
-    return "INTEGER";
-  case OPTION_TYPE_DOUBLE:
-    return "NUMBER";
-  case OPTION_TYPE_STRING:
-    return "STRING";
-  case OPTION_TYPE_CALLBACK:
-    return "VALUE";
-  case OPTION_TYPE_BOOL:
-    return "BOOLEAN";
-  case OPTION_TYPE_ACTION:
-  default:
-    return "";
-  }
-}
-
-int options_format_default_value(option_type_t type, const void *default_value, char *buf, size_t bufsize) {
-  if (!default_value || !buf || bufsize == 0) {
-    return 0;
-  }
-
-  switch (type) {
-  case OPTION_TYPE_BOOL:
-    return safe_snprintf(buf, bufsize, "%s", *(const bool *)default_value ? OPT_VALUE_TRUE : OPT_VALUE_FALSE);
-  case OPTION_TYPE_INT: {
-    int int_val = 0;
-    memcpy(&int_val, default_value, sizeof(int));
-    return safe_snprintf(buf, bufsize, "%d", int_val);
-  }
-  case OPTION_TYPE_STRING:
-    return safe_snprintf(buf, bufsize, "%s", *(const char *const *)default_value);
-  case OPTION_TYPE_DOUBLE: {
-    double double_val = 0.0;
-    memcpy(&double_val, default_value, sizeof(double));
-    return safe_snprintf(buf, bufsize, "%.2f", double_val);
-  }
-  default:
-    // OPTION_TYPE_CALLBACK and OPTION_TYPE_ACTION don't have defaults to display
-    return 0;
-  }
-}
 
 // ============================================================================
 // Terminal Dimension Utilities
@@ -707,15 +500,16 @@ void usage(FILE *desc, asciichat_mode_t mode) {
     return;
   }
 
-  // Get unified config
-  const options_config_t *config = options_preset_unified(metadata->program_name, metadata->description);
-  if (!config) {
-    (void)fprintf(desc, "Error: Failed to create options config\n");
+  flags_schema_builder_t *builder = flags_schema_builder_create();
+  if (!builder) {
+    (void)fprintf(desc, "Error: Failed to create libflags schema\n");
     return;
   }
-
-  options_print_help_for_mode(config, mode, metadata->program_name, metadata->description, desc);
-  options_config_destroy(config);
+  const option_mode_bitmask_t mode_mask = mode == MODE_DISCOVERY ? OPTION_MODE_ALL : (option_mode_bitmask_t)(OPTION_MODE_BINARY | (1U << mode));
+  if (registry_add_all_to_flags_builder(builder, mode_mask) != ASCIICHAT_OK || !flags_help_write_options(flags_schema_builder_schema(builder), metadata->program_name, metadata->description, desc)) {
+    (void)fprintf(desc, "Error: Failed to render options\n");
+  }
+  flags_schema_builder_destroy(builder);
 }
 
 // ============================================================================
@@ -723,13 +517,10 @@ void usage(FILE *desc, asciichat_mode_t mode) {
 // ============================================================================
 
 asciichat_error_t validate_options_and_report(const void *config, const void *opts) {
-  if (!config || !opts) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Config or options is NULL");
+  if (!opts) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Options are NULL");
   }
 
-  char *error_message = NULL;
-  // Cast opaque config pointer to actual type
-  const options_config_t *config_typed = (const options_config_t *)config;
   const options_t *options = (const options_t *)opts;
   if (options->webrtc_relay_only && options->detected_mode == MODE_CLIENT) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Relay only requires discovery mode; connect using a session name");
@@ -746,14 +537,8 @@ asciichat_error_t validate_options_and_report(const void *config, const void *op
   if (strlen(options->turn_username) > 127 || strlen(options->turn_credential) > 127) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "TURN username and credential must each fit 127 bytes");
   }
-  asciichat_error_t result = options_config_validate(config_typed, opts, &error_message);
-  if (result != ASCIICHAT_OK) {
-    if (error_message) {
-      log_error("%s", error_message);
-      SAFE_FREE(error_message);
-    }
-  }
-  return result;
+  (void)config;
+  return options_validate_libflags((options_t *)options);
 }
 
 // ============================================================================

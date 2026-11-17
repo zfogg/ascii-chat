@@ -11,9 +11,9 @@
  * @date January 2026
  */
 
-#include <ascii-chat/options/registry/common.h>
-#include <ascii-chat/options/registry/core.h>
-#include <ascii-chat/options/registry.h>
+#include <options/registry/common.h>
+#include <options/registry/core.h>
+#include <options/registry/registry.h>
 #include <string.h>
 
 /**
@@ -152,86 +152,4 @@ const registry_entry_t *registry_find_entry_by_short(char short_name) {
     }
   }
   return NULL;
-}
-
-/**
- * @brief Convert registry entry to option descriptor
- */
-option_descriptor_t registry_entry_to_descriptor(const registry_entry_t *entry) {
-  option_descriptor_t desc = {0};
-  if (entry) {
-    desc.long_name = entry->long_name;
-    desc.short_name = entry->short_name;
-    desc.type = entry->type;
-    desc.offset = entry->offset;
-    desc.help_text = entry->help_text;
-    desc.group = entry->group;
-    desc.arg_placeholder = entry->arg_placeholder;
-    desc.hide_from_mode_help = false;
-    // Hide discovery service options from binary-level help (they're for discovery-service mode only)
-    desc.hide_from_binary_help = (entry->mode_bitmask == OPTION_MODE_DISCOVERY_SVC);
-    desc.default_value = entry->default_value;
-    desc.required = entry->required;
-    desc.env_var_name = entry->env_var_name;
-    desc.validate = entry->validate_fn;
-    desc.parse_fn = entry->parse_fn;
-    desc.action_fn = NULL;
-    desc.owns_memory = entry->owns_memory;
-    desc.optional_arg = entry->optional_arg;
-    desc.mode_bitmask = entry->mode_bitmask;
-    desc.metadata = entry->metadata;
-    desc.mode_default_getter = entry->mode_default_getter;
-  }
-  return desc;
-}
-
-/**
- * @brief Check if an option applies to the given mode for display purposes
- *
- * This implements the same filtering logic as the help system's option_applies_to_mode().
- * Used by options_registry_get_for_display() to ensure completions match help output.
- *
- * @param entry Registry entry to check
- * @param mode Mode to check (use MODE_DISCOVERY for binary help)
- * @param for_binary_help If true, show all options for any mode; if false, filter by mode
- * @return true if option should be displayed for this mode
- */
-bool registry_entry_applies_to_mode(const registry_entry_t *entry, asciichat_mode_t mode, bool for_binary_help) {
-  if (!entry) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Entry is NULL");
-    return false;
-  }
-
-  // Hardcoded list of options to hide from binary help (matches builder.c line 752)
-  // These are options that have hide_from_binary_help=true set in builder.c
-  const char *hidden_from_binary[] = {NULL};
-
-  // When for_binary_help is true (i.e., for 'ascii-chat --help'),
-  // we want to show all options that apply to any mode, plus binary-level options.
-  if (for_binary_help) {
-    // Check if this option is explicitly hidden from binary help
-    for (int i = 0; hidden_from_binary[i] != NULL; i++) {
-      if (strcmp(entry->long_name, hidden_from_binary[i]) == 0) {
-        return false; // Hidden from binary help
-      }
-    }
-
-    // An option applies if its mode_bitmask has any bit set for any valid mode.
-    // OPTION_MODE_ALL is a bitmask of all modes (including OPTION_MODE_BINARY).
-    return (entry->mode_bitmask & OPTION_MODE_ALL) != 0;
-  }
-
-  // For mode-specific help, show only options for that mode.
-  // Do not show binary options here unless it also specifically applies to the mode.
-  if (mode < 0 || mode >= MODE_INVALID) {
-    return false;
-  }
-  option_mode_bitmask_t mode_bit = (1 << mode);
-
-  // Check if it's a binary option. If so, only show if it also explicitly applies to this mode.
-  if ((entry->mode_bitmask & OPTION_MODE_BINARY) && !(entry->mode_bitmask & mode_bit)) {
-    return false; // Binary options not shown in mode-specific help unless also mode-specific
-  }
-
-  return (entry->mode_bitmask & mode_bit) != 0;
 }

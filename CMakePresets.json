@@ -38,7 +38,7 @@
         "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
         "ASCIICHAT_BUILD_WITH_PANIC": "OFF",
         "ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS": "ON",
-        "ASCIICHAT_SHARED_DEPS": "ON"
+        "BUILD_SHARED_LIBS": "ON"
       }
     },
     {
@@ -268,7 +268,7 @@
       "inherits": "relwithdebinfo",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "ASCIICHAT_SHARED_DEPS": "ON",
+        "BUILD_SHARED_LIBS": "ON",
         "USE_MUSL": "OFF"
       }
     },
@@ -277,7 +277,7 @@
       "inherits": "release",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "ASCIICHAT_SHARED_DEPS": "OFF"
+        "BUILD_SHARED_LIBS": "OFF"
       }
     }
   ],

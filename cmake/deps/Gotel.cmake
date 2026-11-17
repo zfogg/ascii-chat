@@ -56,17 +56,14 @@ set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE
 
 # Keep Gotel and its fetched otlp-c/Sequel build trees in the persistent
 # dependency cache. This is separate from the main build directory.
-set(_asciichat_gotel_cache_dir "${CMAKE_BINARY_DIR}/_deps/gotel")
+set(_asciichat_gotel_cache_dir "${ASCIICHAT_DEPS_CACHE_DIR}/gotel")
 file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 
 set(_asciichat_parent_shared_libs ${BUILD_SHARED_LIBS})
-if(USE_MUSL OR ASCIICHAT_STATIC_DEPS)
-    set(_asciichat_gotel_shared OFF)
-else()
-    set(_asciichat_gotel_shared ${ASCIICHAT_SHARED_DEPS})
+if(USE_MUSL)
+    set(BUILD_SHARED_LIBS OFF)
 endif()
-set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared})
-set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared} CACHE BOOL
+set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS} CACHE BOOL
     "Build gotel and its public dependencies as shared libraries" FORCE)
 
 # Gotel's gRPC adapter accepts an existing nghttp2 target. Prefer the target
@@ -162,6 +159,8 @@ if(USE_MUSL AND NOT TARGET nghttp2_static)
     FetchContent_MakeAvailable(asciichat_nghttp2)
     if(TARGET nghttp2_static)
         set_target_properties(nghttp2_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+        set(GOTEL_NGHTTP2_TARGET nghttp2_static CACHE STRING
+            "Reuse the application nghttp2 target for gotel gRPC" FORCE)
     endif()
 endif()
 

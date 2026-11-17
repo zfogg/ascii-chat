@@ -132,7 +132,11 @@
  *
  * 1. **Add field to `options_t` struct** in `include/ascii-chat/options/options.h`
  * 2. **Add default constant** in `options.h` (e.g., `OPT_MY_OPTION_DEFAULT`)
+<<<<<<<< HEAD:include/ascii-chat/options/registry.h
  * 3. **Add registry entry** in `lib/options/registry.c` with:
+========
+ * 3. **Add registry entry** in `lib/options/registry/` with:
+>>>>>>>> origin/master:lib/options/registry/registry.h
  *    - Long and short names
  *    - Type and storage offset (via offsetof)
  *    - Default value and validation function

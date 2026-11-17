@@ -9,11 +9,15 @@
 
 #pragma once
 
+<<<<<<<< HEAD:include/ascii-chat/options/registry/categories.h
 #include "common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+========
+#include <options/registry/common.h>
+>>>>>>>> origin/master:lib/options/registry/categories.h
 
 // Category arrays - each file contains options from only ONE help group
 extern const registry_entry_t g_general_entries[];

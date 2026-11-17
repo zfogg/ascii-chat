@@ -10,19 +10,19 @@
  * @date January 2026
  */
 
-#include <ascii-chat/options/registry/common.h>
-#include <ascii-chat/options/registry/metadata.h>
+#include <options/registry/common.h>
+#include <options/registry/metadata.h>
 
 // ============================================================================
 // CONFIGURATION CATEGORY - Configuration file options
 // ============================================================================
-const registry_entry_t g_configuration_entries[] = {// CONFIGURATION GROUP (binary-level)
-                                                    {"config",
+// CONFIGURATION GROUP (binary-level)
+const registry_entry_t g_configuration_entries[] = {{"config",
                                                      '\0',
                                                      OPTION_TYPE_STRING,
                                                      offsetof(options_t, config_file),
                                                      "",
-                                                     0,
+                                                     OPTIONS_BUFF_SIZE,
                                                      "Load configuration from toml FILE.",
                                                      "CONFIGURATION",
                                                      "FILE",

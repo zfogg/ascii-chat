@@ -10,10 +10,10 @@
  * @date January 2026
  */
 
-#include <ascii-chat/options/registry/common.h>
-#include <ascii-chat/options/registry/metadata.h>
+#include <options/registry/common.h>
+#include <options/registry/metadata.h>
 
-#include <ascii-chat/options/parsers.h>
+#include <options/parsers.h>
 #include <limits.h>
 
 // ============================================================================

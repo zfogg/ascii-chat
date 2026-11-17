@@ -6,7 +6,7 @@
  * Debug-only options for development and troubleshooting.
  */
 
-#include <ascii-chat/options/registry/common.h>
+#include <options/registry/common.h>
 
 #ifndef NDEBUG
 static const bool default_face_follow_debug_value = false;

@@ -9,15 +9,15 @@
  * @date January 2026
  */
 
-#include <ascii-chat/options/registry/common.h>
-#include <ascii-chat/options/parsers.h>
+#include <options/registry/common.h>
+#include <options/parsers.h>
 #include <string.h>
 
 // ============================================================================
 // SECURITY CATEGORY - Security and authentication options
 // ============================================================================
-const registry_entry_t g_security_entries[] = {// SECURITY GROUP (client, server, discovery)
-                                               {"encrypt",
+// SECURITY GROUP (client, server, discovery)
+const registry_entry_t g_security_entries[] = {{"encrypt",
                                                 'E',
                                                 OPTION_TYPE_BOOL,
                                                 offsetof(options_t, encrypt_enabled),

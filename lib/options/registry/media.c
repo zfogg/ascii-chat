@@ -11,13 +11,14 @@
  */
 
 #include <math.h>
-#include <ascii-chat/options/registry/common.h>
-#include <ascii-chat/options/registry/metadata.h>
+#include <options/registry/common.h>
+#include <options/registry/metadata.h>
 #include <ascii-chat/util/string.h>
 
-#include <ascii-chat/options/parsers.h>
+#include <options/parsers.h>
 #include <libplatform/memory.h>
 #include <string.h>
+#include <libflags/flags.h>
 
 // ============================================================================
 // Validators
@@ -29,11 +30,14 @@ static const bool default_render_kitty_value = false;
 static bool validate_kitty_output(const void *data) {
   const options_t *opts = data;
   bool kitty = opts->render_kitty || strcmp(opts->render_file, "--kitty") == 0;
+  static const flags_option_spec_t render_file_schema = {.name = "render-file", .type = FLAGS_TYPE_FILE, .dash_behavior = FLAGS_DASH_STDOUT};
+  flags_stream_value_t render_stream = {0};
+  const bool renders_stdout = flags_classify_stream(&render_file_schema, opts->render_file, &render_stream) && render_stream.kind == FLAGS_STREAM_STDOUT;
   if (kitty && !opts->snapshot_mode) {
     SET_ERRNO(ERROR_USAGE, "Kitty graphics output requires --snapshot");
     return false;
   }
-  if (opts->render_kitty && (strcmp(opts->render_file, "-") == 0 || strcmp(opts->render_file, "pipe:") == 0)) {
+  if (opts->render_kitty && (renders_stdout || strcmp(opts->render_file, "pipe:") == 0)) {
     SET_ERRNO(ERROR_USAGE, "Kitty graphics and binary media cannot share stdout");
     return false;
   }
@@ -87,8 +91,8 @@ static bool parse_media_url(const char *arg, void *field, char **error) {
 // ============================================================================
 // MEDIA CATEGORY - Media file and stream options
 // ============================================================================
-const registry_entry_t g_media_entries[] = {// Media File Streaming Options
-                                            {"file",
+// Media File Streaming Options
+const registry_entry_t g_media_entries[] = {{"file",
                                              'f',
                                              OPTION_TYPE_STRING,
                                              offsetof(options_t, media_file),

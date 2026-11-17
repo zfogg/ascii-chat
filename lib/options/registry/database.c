@@ -9,13 +9,13 @@
  * @date January 2026
  */
 
-#include <ascii-chat/options/registry/common.h>
+#include <options/registry/common.h>
 
 // ============================================================================
 // DATABASE CATEGORY - Discovery service database options
 // ============================================================================
-const registry_entry_t g_database_entries[] = {// DATABASE GROUP - ACDS Server Specific Options
-                                               {"database",
+// DATABASE GROUP - ACDS Server Specific Options
+const registry_entry_t g_database_entries[] = {{"database",
                                                 '\0',
                                                 OPTION_TYPE_STRING,
                                                 offsetof(options_t, discovery_database_path),

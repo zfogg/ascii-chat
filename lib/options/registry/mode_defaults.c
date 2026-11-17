@@ -10,9 +10,9 @@
  * @date February 2026
  */
 
-#include <ascii-chat/options/registry/mode_defaults.h>
-#include <ascii-chat/options/registry/common.h>
-#include <ascii-chat/options/options.h>
+#include <options/registry/mode_defaults.h>
+#include <options/registry/common.h>
+#include <options/options.h>
 #include <libplatform/system.h>
 #include <string.h>
 #include <stdio.h>

@@ -5,87 +5,161 @@
  *
  * This file contains all the public-facing functions that external code
  * uses to interact with the options registry. These functions are declared
- * in ascii-chat/options/registry.h.
+ * in registry.h.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026
  */
 
-#include <ascii-chat/options/registry/common.h>
-#include <ascii-chat/options/registry/core.h>
-#include <ascii-chat/options/registry.h>
-#include <ascii-chat/options/actions.h>
+#include <options/registry/common.h>
+#include <options/registry/core.h>
+#include <options/registry/registry.h>
+#include <options/actions.h>
+#include <libflags/config/keys.h>
 #include <string.h>
+#include <stdlib.h>
+#include <errno.h>
 
-asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder) {
-  if (!builder) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Builder is NULL");
+static bool registry_flags_validate(const flags_context_t *context, const char *name, const flags_value_t *value, char *error, size_t error_size, void *user_data) {
+  (void)context;
+  (void)name;
+  (void)error;
+  (void)error_size;
+  const registry_entry_t *entry = user_data;
+  if (!entry || strcmp(entry->long_name, "snapshot-delay") != 0 || !value)
+    return true;
+  return value->number >= 0.0;
+}
+
+static void registry_flags_change(flags_context_t *context, const char *name, const flags_value_t *old_value, const flags_value_t *new_value, void *user_data) {
+  (void)name;
+  (void)old_value;
+  const registry_entry_t *entry = user_data;
+  if (!context || !entry || !new_value)
+    return;
+  if (entry->type == OPTION_TYPE_ACTION) {
+    option_action_fn action = options_action_callback(entry->long_name, false);
+    if (action)
+      action();
+    return;
   }
+  if (!entry->parse_fn)
+    return;
+  void *storage = flags_context_storage(context);
+  if (!storage)
+    return;
+  char *error = NULL;
+  entry->parse_fn(new_value->string, (char *)storage + entry->offset, &error);
+  free(error);
+  if (strcmp(entry->long_name, "palette-chars") == 0) {
+    options_t *options = storage;
+    options->palette_custom_set = true;
+    options->palette_type = PALETTE_CUSTOM;
+  }
+}
 
+static bool registry_flags_parse(flags_context_t *context, const char *text, flags_value_t *value, void *user_data) {
+  const registry_entry_t *entry = user_data;
+  if (!context || !entry || !text || !value || !entry->parse_fn)
+    return false;
+  void *storage = flags_context_storage(context);
+  if (!storage)
+    return false;
+  char *error = NULL;
+  bool parsed = entry->parse_fn(text, (char *)storage + entry->offset, &error);
+  free(error);
+  if (!parsed)
+    return false;
+  if (strcmp(entry->long_name, "palette-chars") == 0) {
+    options_t *options = storage;
+    options->palette_custom_set = true;
+    options->palette_type = PALETTE_CUSTOM;
+  }
+  value->string = text;
+  return true;
+}
+
+asciichat_error_t registry_add_all_to_flags_builder(flags_schema_builder_t *builder, option_mode_bitmask_t mode_mask) {
+  if (!builder)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Flags builder is NULL");
   registry_init_size();
-
-  for (size_t i = 0; i < g_registry_size; i++) {
+  for (size_t i = 0; i < g_registry_size; ++i) {
     const registry_entry_t *entry = &g_options_registry[i];
-    if (!entry->long_name) {
+    if (!entry->long_name || (entry->mode_bitmask != OPTION_MODE_NONE && !(entry->mode_bitmask & mode_mask) && !(entry->mode_bitmask & OPTION_MODE_BINARY)))
       continue;
-    }
-    // Silent - no debug logging needed
-
+    /* These binary commands are handled by ascii-chat's command dispatcher,
+     * not stored as values in options_t. */
+    if (entry->type == OPTION_TYPE_STRING && entry->default_value_size == 0 && entry->offset == 0)
+      continue;
+    flags_value_type_t type;
+    flags_option_behavior_t behavior = FLAGS_BEHAVIOR_VALUE;
     switch (entry->type) {
-    case OPTION_TYPE_STRING:
-      options_builder_add_string(builder, entry->long_name, entry->short_name, entry->offset, entry->default_value ? (const char *)entry->default_value : "", entry->help_text, entry->group,
-                                 entry->required, entry->env_var_name, entry->validate_fn);
+    case OPTION_TYPE_BOOL:
+      type = FLAGS_TYPE_BOOL;
       break;
     case OPTION_TYPE_INT:
-      // Use metadata-aware function if metadata is present
-      if (entry->metadata.numeric_range.max != 0 || (entry->metadata.enum_values && entry->metadata.enum_values[0] != NULL)) {
-        options_builder_add_int_with_metadata(builder, entry->long_name, entry->short_name, entry->offset, entry->default_value ? *(const int *)entry->default_value : 0, entry->help_text,
-                                              entry->group, entry->required, entry->env_var_name, entry->validate_fn, &entry->metadata);
-      } else {
-        options_builder_add_int(builder, entry->long_name, entry->short_name, entry->offset, entry->default_value ? *(const int *)entry->default_value : 0, entry->help_text, entry->group,
-                                entry->required, entry->env_var_name, entry->validate_fn);
-      }
-      break;
-    case OPTION_TYPE_BOOL:
-      options_builder_add_bool(builder, entry->long_name, entry->short_name, entry->offset, entry->default_value ? *(const bool *)entry->default_value : false, entry->help_text, entry->group,
-                               entry->required, entry->env_var_name);
+      type = FLAGS_TYPE_INT64;
       break;
     case OPTION_TYPE_DOUBLE:
-      // Use metadata-aware function if metadata is present (has numeric range)
-      if (entry->metadata.numeric_range.max != 0) {
-        options_builder_add_double_with_metadata(builder, entry->long_name, entry->short_name, entry->offset, entry->default_value ? *(const double *)entry->default_value : 0.0, entry->help_text,
-                                                 entry->group, entry->required, entry->env_var_name, entry->validate_fn, &entry->metadata, entry->optional_arg);
-      } else {
-        options_builder_add_double(builder, entry->long_name, entry->short_name, entry->offset, entry->default_value ? *(const double *)entry->default_value : 0.0, entry->help_text, entry->group,
-                                   entry->required, entry->env_var_name, entry->validate_fn, entry->optional_arg);
-      }
+      type = FLAGS_TYPE_DOUBLE;
+      break;
+    case OPTION_TYPE_STRING:
+      type = FLAGS_TYPE_STRING;
       break;
     case OPTION_TYPE_CALLBACK:
-      // Always use metadata-aware function to preserve enum/metadata information
-      options_builder_add_callback_with_metadata(builder, entry->long_name, entry->short_name, entry->offset, entry->default_value, entry->default_value_size, entry->parse_fn, entry->help_text,
-                                                 entry->group, entry->required, entry->env_var_name, entry->optional_arg, &entry->metadata);
+      type = FLAGS_TYPE_CUSTOM;
+      behavior = FLAGS_BEHAVIOR_CALLBACK;
       break;
     case OPTION_TYPE_ACTION:
-      options_builder_add_action(builder, entry->long_name, entry->short_name, options_action_callback(entry->long_name, false), entry->help_text, entry->group);
+      type = FLAGS_TYPE_CUSTOM;
+      behavior = FLAGS_BEHAVIOR_ACTION;
       break;
+    default:
+      continue;
     }
-
-    if (entry->metadata.enum_values)
-      options_builder_set_enum_values(builder, entry->long_name, entry->metadata.enum_values, entry->metadata.enum_descriptions);
-    options_builder_set_input_type(builder, entry->long_name, entry->metadata.input_type);
-
-    if (entry->type == OPTION_TYPE_STRING && entry->parse_fn)
-      options_builder_set_string_parser(builder, entry->parse_fn);
-
-    // Set mode bitmask on the last added descriptor
-    options_builder_set_mode_bitmask(builder, entry->mode_bitmask);
-
-    // Set custom arg_placeholder if defined
-    if (entry->arg_placeholder) {
-      options_builder_set_arg_placeholder(builder, entry->arg_placeholder);
+    flags_option_spec_t option = {.name = entry->long_name,
+                                  .short_name = entry->short_name,
+                                  .description = entry->help_text,
+                                  .group = entry->group,
+                                  .required = entry->required,
+                                  .metavar = entry->arg_placeholder,
+                                  .environment_name = entry->env_var_name,
+                                  .type = type,
+                                  .behavior = behavior,
+                                  .default_operation = entry->type == OPTION_TYPE_BOOL ? FLAGS_VALUE_TOGGLE : FLAGS_VALUE_ASSIGN,
+                                  .argument_requirement = entry->type == OPTION_TYPE_BOOL || entry->type == OPTION_TYPE_ACTION ? FLAGS_ARGUMENT_NONE
+                                                          : entry->optional_arg                                                ? FLAGS_ARGUMENT_OPTIONAL
+                                                                                                                               : FLAGS_ARGUMENT_REQUIRED,
+                                  .storage_offset = entry->offset,
+                                  .storage_size = entry->type == OPTION_TYPE_STRING
+                                                      ? (entry->owns_memory ? sizeof(char *) : (entry->default_value_size ? entry->default_value_size : OPTIONS_BUFF_SIZE))
+                                                  : entry->type == OPTION_TYPE_DOUBLE ? (entry->default_value_size ? entry->default_value_size : sizeof(double))
+                                                  : entry->type == OPTION_TYPE_BOOL   ? (entry->default_value_size ? entry->default_value_size : sizeof(bool))
+                                                                                      : (entry->default_value_size ? entry->default_value_size : sizeof(int)),
+                                  .default_value = entry->default_value,
+                                  .enum_values = entry->metadata.enum_values,
+                                  .enum_value_count = 0,
+                                  .dynamic_string = entry->owns_memory,
+                                  .parse = entry->type == OPTION_TYPE_CALLBACK ? registry_flags_parse : NULL,
+                                  .validate = entry->type == OPTION_TYPE_DOUBLE ? registry_flags_validate : NULL,
+                                  .validation_regex = entry->metadata.validation_pattern,
+                                  .on_change = entry->type == OPTION_TYPE_ACTION || (entry->type == OPTION_TYPE_STRING && entry->parse_fn) ? registry_flags_change : NULL,
+                                  .user_data = (void *)entry};
+    if (entry->type == OPTION_TYPE_CALLBACK || entry->type == OPTION_TYPE_ACTION)
+      option.storage_size = 0;
+    if (entry->metadata.enum_values) {
+      while (entry->metadata.enum_values[option.enum_value_count])
+        ++option.enum_value_count;
     }
+    char config_key[256];
+    const char *config_field = entry->long_name;
+    if (entry->group && strcmp(entry->group, "OTEL") == 0 && strncmp(config_field, "otel-", 5) == 0)
+      config_field += 5;
+    if (entry->group && flags_config_make_toml_key(entry->group, config_field, config_key, sizeof(config_key)))
+      option.config_key = config_key;
+    if (!flags_schema_builder_add_option(builder, &option))
+      return SET_ERRNO(ERROR_MEMORY, "Failed to add %s to libflags schema", entry->long_name);
   }
-
   return ASCIICHAT_OK;
 }
 
@@ -97,7 +171,7 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
  *
  * @return Pointer to registry array (read-only), or NULL on error
  */
-const registry_entry_t *options_registry_get_raw(void) {
+const registry_entry_t *registry_get_raw(void) {
   registry_init_size();
   return g_options_registry;
 }
@@ -107,207 +181,16 @@ const registry_entry_t *options_registry_get_raw(void) {
  *
  * @return Number of options in registry (not including NULL terminator)
  */
-size_t options_registry_get_count(void) {
+size_t registry_get_count(void) {
   registry_init_size();
   return g_registry_size;
-}
-
-const option_descriptor_t *options_registry_find_by_name(const char *long_name) {
-  if (!long_name) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Long name is NULL");
-    return NULL;
-  }
-
-  registry_init_size();
-
-  const registry_entry_t *entry = registry_find_entry_by_name(long_name);
-  if (!entry) {
-    // Don't log error for binary-level options like "config" that aren't in registry
-    if (strcmp(long_name, "config") != 0) {
-      SET_ERRNO(ERROR_NOT_FOUND, "Option not found: %s", long_name);
-    }
-    return NULL;
-  }
-
-  static option_descriptor_t desc;
-  desc = registry_entry_to_descriptor(entry);
-  return &desc;
-}
-
-const option_descriptor_t *options_registry_find_by_short(char short_name) {
-  if (short_name == '\0') {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Short name is empty");
-    return NULL;
-  }
-
-  registry_init_size();
-
-  const registry_entry_t *entry = registry_find_entry_by_short(short_name);
-  if (!entry) {
-    SET_ERRNO(ERROR_NOT_FOUND, "Option not found: -%c", short_name);
-    return NULL;
-  }
-
-  static option_descriptor_t desc;
-  desc = registry_entry_to_descriptor(entry);
-  return &desc;
-}
-
-const option_descriptor_t *options_registry_get_for_mode(asciichat_mode_t mode, size_t *num_options) {
-  if (!num_options) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Number of options is NULL");
-    return NULL;
-  }
-
-  registry_init_size();
-
-  /* Convert mode to bitmask */
-  option_mode_bitmask_t mode_bitmask = 0;
-  switch (mode) {
-  case MODE_SERVER:
-    mode_bitmask = OPTION_MODE_SERVER;
-    break;
-  case MODE_CLIENT:
-    mode_bitmask = OPTION_MODE_CLIENT;
-    break;
-  case MODE_MIRROR:
-    mode_bitmask = OPTION_MODE_MIRROR;
-    break;
-  case MODE_DISCOVERY_SERVICE:
-    mode_bitmask = OPTION_MODE_DISCOVERY_SVC;
-    break;
-  case MODE_DISCOVERY:
-    mode_bitmask = OPTION_MODE_DISCOVERY;
-    break;
-  case MODE_MCP_SERVER:
-    mode_bitmask = OPTION_MODE_MCP_SERVER;
-    break;
-  default:
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mode: %d", mode);
-    *num_options = 0;
-    return NULL;
-  }
-
-  /* Count matching options */
-  size_t count = 0;
-  for (size_t i = 0; i < g_registry_size; i++) {
-    if (g_options_registry[i].mode_bitmask & mode_bitmask) {
-      count++;
-    }
-  }
-
-  if (count == 0) {
-    *num_options = 0;
-    return NULL;
-  }
-
-  /* Allocate array for matching options */
-  option_descriptor_t *filtered = SAFE_MALLOC(count * sizeof(option_descriptor_t), option_descriptor_t *);
-  if (!filtered) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Failed to allocate filtered options array");
-    *num_options = 0;
-    return NULL;
-  }
-
-  /* Copy matching options */
-  size_t idx = 0;
-  for (size_t i = 0; i < g_registry_size; i++) {
-    if (g_options_registry[i].mode_bitmask & mode_bitmask) {
-      filtered[idx++] = registry_entry_to_descriptor(&g_options_registry[i]);
-    }
-  }
-
-  *num_options = count;
-  return filtered;
-}
-
-const option_descriptor_t *options_registry_get_binary_options(size_t *num_options) {
-  if (!num_options) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Number of options is NULL");
-    return NULL;
-  }
-
-  registry_init_size();
-
-  /* Count binary-level options */
-  size_t count = 0;
-  for (size_t i = 0; i < g_registry_size; i++) {
-    if (g_options_registry[i].mode_bitmask & OPTION_MODE_BINARY) {
-      count++;
-    }
-  }
-
-  if (count == 0) {
-    *num_options = 0;
-    return NULL;
-  }
-
-  /* Allocate array for binary options */
-  option_descriptor_t *binary_opts = SAFE_MALLOC(count * sizeof(option_descriptor_t), option_descriptor_t *);
-  if (!binary_opts) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Failed to allocate binary options array");
-    *num_options = 0;
-    return NULL;
-  }
-
-  /* Copy binary options */
-  size_t idx = 0;
-  for (size_t i = 0; i < g_registry_size; i++) {
-    if (g_options_registry[i].mode_bitmask & OPTION_MODE_BINARY) {
-      binary_opts[idx++] = registry_entry_to_descriptor(&g_options_registry[i]);
-    }
-  }
-
-  *num_options = count;
-  return binary_opts;
-}
-
-const option_descriptor_t *options_registry_get_for_display(asciichat_mode_t mode, bool for_binary_help, size_t *num_options) {
-  if (!num_options) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "num_options is NULL");
-    return NULL;
-  }
-
-  registry_init_size();
-
-  // Count matching options
-  size_t count = 0;
-  for (size_t i = 0; i < g_registry_size; i++) {
-    if (registry_entry_applies_to_mode(&g_options_registry[i], mode, for_binary_help)) {
-      count++;
-    }
-  }
-
-  if (count == 0) {
-    *num_options = 0;
-    return NULL;
-  }
-
-  // Allocate array
-  option_descriptor_t *descriptors = SAFE_MALLOC(count * sizeof(option_descriptor_t), option_descriptor_t *);
-  if (!descriptors) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate descriptors array");
-    *num_options = 0;
-    return NULL;
-  }
-
-  // Copy matching options
-  size_t idx = 0;
-  for (size_t i = 0; i < g_registry_size; i++) {
-    if (registry_entry_applies_to_mode(&g_options_registry[i], mode, for_binary_help)) {
-      descriptors[idx++] = registry_entry_to_descriptor(&g_options_registry[i]);
-    }
-  }
-
-  *num_options = count;
-  return descriptors;
 }
 
 // ============================================================================
 // Completion Metadata Access (Phase 3 Implementation)
 // ============================================================================
 
-const option_metadata_t *options_registry_get_metadata(const char *long_name) {
+const option_metadata_t *registry_get_metadata(const char *long_name) {
   if (!long_name) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Long name is NULL");
     return NULL;
@@ -328,7 +211,7 @@ const option_metadata_t *options_registry_get_metadata(const char *long_name) {
   return &empty_metadata;
 }
 
-const char **options_registry_get_enum_values(const char *option_name, const char ***descriptions, size_t *count) {
+const char **registry_get_enum_values(const char *option_name, const char ***descriptions, size_t *count) {
   if (!option_name || !count) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Option name is NULL or count is NULL");
     if (count)
@@ -336,7 +219,7 @@ const char **options_registry_get_enum_values(const char *option_name, const cha
     return NULL;
   }
 
-  const option_metadata_t *meta = options_registry_get_metadata(option_name);
+  const option_metadata_t *meta = registry_get_metadata(option_name);
   if (!meta || meta->input_type != OPTION_INPUT_ENUM || !meta->enum_values || meta->enum_values[0] == NULL) {
     SET_ERRNO(ERROR_NOT_FOUND, "Option '%s' not found", option_name);
     *count = 0;
@@ -358,13 +241,13 @@ const char **options_registry_get_enum_values(const char *option_name, const cha
   return meta->enum_values;
 }
 
-bool options_registry_get_numeric_range(const char *option_name, int *min_out, int *max_out, int *step_out) {
+bool registry_get_numeric_range(const char *option_name, int *min_out, int *max_out, int *step_out) {
   if (!option_name || !min_out || !max_out || !step_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Option name is NULL or min_out, max_out, or step_out is NULL");
     return false;
   }
 
-  const option_metadata_t *meta = options_registry_get_metadata(option_name);
+  const option_metadata_t *meta = registry_get_metadata(option_name);
   if (!meta || meta->input_type != OPTION_INPUT_NUMERIC) {
     *min_out = 0;
     *max_out = 0;
@@ -378,7 +261,7 @@ bool options_registry_get_numeric_range(const char *option_name, int *min_out, i
   return true;
 }
 
-const char **options_registry_get_examples(const char *option_name, size_t *count) {
+const char **registry_get_examples(const char *option_name, size_t *count) {
   if (!option_name || !count) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Option name is NULL or count is NULL");
     if (count)
@@ -386,7 +269,7 @@ const char **options_registry_get_examples(const char *option_name, size_t *coun
     return NULL;
   }
 
-  const option_metadata_t *meta = options_registry_get_metadata(option_name);
+  const option_metadata_t *meta = registry_get_metadata(option_name);
   if (!meta || !meta->examples || meta->examples[0] == NULL) {
     *count = 0;
     return NULL;
@@ -402,13 +285,13 @@ const char **options_registry_get_examples(const char *option_name, size_t *coun
   return meta->examples;
 }
 
-option_input_type_t options_registry_get_input_type(const char *option_name) {
+option_input_type_t registry_get_input_type(const char *option_name) {
   if (!option_name) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Option name is NULL");
     return OPTION_INPUT_NONE;
   }
 
-  const option_metadata_t *meta = options_registry_get_metadata(option_name);
+  const option_metadata_t *meta = registry_get_metadata(option_name);
   if (!meta) {
     SET_ERRNO(ERROR_NOT_FOUND, "Option '%s' not found", option_name);
     return OPTION_INPUT_NONE;

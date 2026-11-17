@@ -19,7 +19,7 @@
 
 #include <ascii-chat/tui/notice.h>
 
-#include <ascii-chat/options/actions.h>
+#include <options/actions.h>
 #include <string.h>
 #include <stddef.h>
 
@@ -28,12 +28,11 @@
 #include <ascii-chat/debug/coverage.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/update_checker.h>
-#include <ascii-chat/options/manpage.h>
-#include <ascii-chat/options/presets.h>
-#include <ascii-chat/options/config.h>
-#include <ascii-chat/options/completions/completions.h>
-#include <ascii-chat/options/schema.h>
+#include <options/config.h>
+#include <options/registry/registry.h>
+#include <libflags/completions/completions.h>
 #include <libplatform/terminal.h>
+#include <libplatform/filesystem.h>
 #include <libplatform/question.h>
 #include <sys/stat.h>
 #include <ascii-chat/version.h>
@@ -41,6 +40,8 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/path.h>
+#include <libflags/manpage/manpage.h>
+#include <libflags/manpage/formatter.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -474,45 +475,28 @@ void action_help_discovery(void) {
 // ============================================================================
 
 void action_create_manpage(const char *output_path) {
-  // Get binary-level config
-  const options_config_t *config = options_preset_unified(NULL, NULL);
-
-  if (!config) {
-    log_error("Failed to get binary options config");
+  flags_schema_builder_t *builder = options_config_build_flags_schema(OPTION_MODE_ALL);
+  if (!builder)
+    action_exit(ERROR_FILE_OPERATION);
+  FILE *output = stdout;
+  if (output_path && *output_path && strcmp(output_path, "-") != 0) {
+    output = NULL;
+    const int fd = platform_open("manpage_output", output_path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC, FILE_PERM_PRIVATE);
+    if (fd >= 0)
+      output = platform_fdopen("manpage_output_stream", fd, "w");
+  }
+  if (!output) {
+    flags_schema_builder_destroy(builder);
     action_exit(ERROR_FILE_OPERATION);
   }
-
-  // Determine output path: use provided path, or NULL for stdout
-  const char *path_to_use = NULL;
-  if (output_path && strlen(output_path) > 0 && strcmp(output_path, "-") != 0) {
-    // User provided explicit path - use it
-    path_to_use = output_path;
-  } else {
-    // No path or "-" means stdout
-    path_to_use = NULL;
-  }
-
-  // Generate merged man page from embedded or filesystem resources
-  // Resources are loaded automatically based on build type:
-  // - Production (Release): From embedded binary data
-  // - Development (Debug): From filesystem files
-  asciichat_error_t err = options_config_generate_manpage_merged(config, "ascii-chat", NULL, path_to_use, "Video chat in your terminal");
-
-  if (err != ASCIICHAT_OK) {
-    asciichat_error_context_t err_ctx;
-    if (HAS_ERRNO(&err_ctx)) {
-      log_error("%s", err_ctx.context_message);
-    } else {
-      log_error("Failed to generate man page");
-    }
+  const flags_manpage_metadata_t metadata = {.program_name = "ascii-chat", .section = "1", .description = "Video chat in your terminal"};
+  const bool written = flags_manpage_write(flags_schema_builder_schema(builder), &metadata, output) && flags_manpage_write_environment(flags_schema_builder_schema(builder), "ASCII_CHAT_", output);
+  if (output != stdout)
+    fclose(output);
+  flags_schema_builder_destroy(builder);
+  if (!written)
     action_exit(ERROR_FILE_OPERATION);
-  }
-
-  if (path_to_use) {
-    log_info("Man page written to: %s", path_to_use);
-  } else {
-    log_info("Man page written to stdout");
-  }
+  log_info("Man page written to %s", output_path && *output_path ? output_path : "stdout");
 
   action_exit(0);
 }
@@ -522,17 +506,6 @@ void action_create_manpage(const char *output_path) {
 // ============================================================================
 
 void action_create_config(const char *output_path) {
-  // Build the schema first so config_create_default can generate options from it
-  const options_config_t *unified_config = options_preset_unified(NULL, NULL);
-  if (unified_config) {
-    asciichat_error_t schema_build_result = config_schema_build_from_configs(&unified_config, 1);
-    if (schema_build_result != ASCIICHAT_OK) {
-      // Schema build failed, but continue anyway
-      (void)schema_build_result;
-    }
-    // options_config_destroy(unified_config);
-  }
-
   const char *config_path = NULL;
 
   // Determine output path: use provided path, or NULL for stdout
@@ -574,8 +547,8 @@ void action_completions(const char *shell_name, const char *output_path) {
     action_exit(ERROR_USAGE);
   }
 
-  completion_format_t format = completions_parse_shell_name(shell_name);
-  if (format == COMPLETION_FORMAT_UNKNOWN) {
+  flags_completion_shell_t format = flags_completion_shell_parse(shell_name);
+  if (format == FLAGS_COMPLETION_UNKNOWN) {
     log_error("Unknown shell '%s' (supported: bash, fish, zsh, powershell)", shell_name);
     action_exit(ERROR_USAGE);
   }
@@ -612,14 +585,25 @@ void action_completions(const char *shell_name, const char *output_path) {
     should_close = true;
   }
 
-  asciichat_error_t result = completions_generate_for_shell(format, output);
+  flags_schema_builder_t *builder = flags_schema_builder_create();
+  if (!builder || registry_add_all_to_flags_builder(builder, OPTION_MODE_ALL) != ASCIICHAT_OK) {
+    if (builder)
+      flags_schema_builder_destroy(builder);
+    if (should_close)
+      fclose(output);
+    log_error("Failed to build completion schema");
+    action_exit(ERROR_CONFIG);
+  }
+  const bool written = flags_completion_write(flags_schema_builder_schema(builder), "ascii-chat", format, output);
+  flags_schema_builder_destroy(builder);
+  asciichat_error_t result = written ? ASCIICHAT_OK : SET_ERRNO(ERROR_FILE_OPERATION, "Failed to write completion script");
 
   if (should_close) {
     fclose(output);
   }
 
   if (result != ASCIICHAT_OK) {
-    log_error("Failed to generate %s completions", completions_get_shell_name(format));
+    log_error("Failed to generate %s completions", flags_completion_shell_name(format));
     action_exit(ERROR_USAGE);
   }
 

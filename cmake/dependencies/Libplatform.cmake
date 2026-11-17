@@ -10,9 +10,9 @@
 # root.
 get_filename_component(_ascii_chat_repo_root "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 
-if(USE_MUSL OR ASCIICHAT_STATIC_DEPS)
+if(USE_MUSL OR NOT BUILD_SHARED_LIBS)
     set(_ascii_chat_libplatform_shared OFF)
-elseif(ASCIICHAT_SHARED_DEPS)
+elseif(BUILD_SHARED_LIBS)
     set(_ascii_chat_libplatform_shared ON)
 elseif(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
     set(_ascii_chat_libplatform_shared ON)

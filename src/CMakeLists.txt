@@ -31,8 +31,6 @@ set(APP_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/mcp-server/downloads.c
     # Public image-to-ASCII HTTP API
     ${CMAKE_CURRENT_SOURCE_DIR}/api-server/main.c
-    # Shared render-over-HTTP request/result ownership
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/http_renderer.c
     # Mirror mode
     ${CMAKE_CURRENT_SOURCE_DIR}/mirror/main.c
     # Discovery-service mode
@@ -105,13 +103,13 @@ endif()
 # Link against the combined library instead of individual libraries
 # Ensure the combined library is built before linking
 # For Debug/Dev: shared library (DLL on Windows) - except musl which needs static
-# For Release: static library (unless ASCIICHAT_SHARED_DEPS is ON)
+# For Release: static library (unless BUILD_SHARED_LIBS is ON)
 # Determine if we should use shared library linking
 # - USE_MUSL: always static (musl requires static linking)
 # - Linux Release (non-musl): static FFmpeg .a can't link into shared lib (PIC issues on arm64)
 set(_use_shared_lib FALSE)
 if(NOT USE_MUSL)
-    if(ASCIICHAT_SHARED_DEPS OR CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
+    if(BUILD_SHARED_LIBS OR CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
         set(_use_shared_lib TRUE)
     else()
         set(_use_shared_lib FALSE)
@@ -282,7 +280,7 @@ endif()
 # Ensure build directory takes precedence in rpath for Debug/Dev builds
 # This prevents conflicts with installed libraries in system directories
 # Skip for Release builds - they use static linking and shouldn't embed developer paths
-# EXCEPTION: ASCIICHAT_SHARED_DEPS builds need rpath to find Homebrew LLVM's libc++ and libunwind
+# EXCEPTION: BUILD_SHARED_LIBS builds need rpath to find Homebrew LLVM's libc++ and libunwind
 if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
     # Put our build/lib directory FIRST in the RPATH so it's searched before system paths
     # Use $ORIGIN for relative paths to maintain portability
@@ -305,7 +303,7 @@ if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$"
         BUILD_RPATH "${_rpath_list}"
         SKIP_BUILD_RPATH FALSE
     )
-elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND ASCIICHAT_SHARED_DEPS)
+elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND BUILD_SHARED_LIBS)
     # Release builds with shared deps (Homebrew) need rpath for dynamic linking
     # Include:
     #   - @loader_path/../lib for libasciichat.dylib (relative to binary)
@@ -327,12 +325,12 @@ elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
     # Use relative rpath to avoid embedding developer paths in the binary
     # This satisfies the ValidatePaths.cmake security check
     if(APPLE)
-        if(ASCIICHAT_SHARED_DEPS)
+        if(BUILD_SHARED_LIBS)
             set(_release_rpath "@loader_path/../lib;/usr/local/lib;${HOMEBREW_PREFIX}/lib")
         else()
             set(_release_rpath "@loader_path/../lib")
         endif()
-        if(ASCIICHAT_SHARED_DEPS AND EXISTS "${HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.1.dylib")
+        if(BUILD_SHARED_LIBS AND EXISTS "${HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.1.dylib")
             list(APPEND _release_rpath "${HOMEBREW_PREFIX}/opt/llvm/lib/c++")
         endif()
 
@@ -344,7 +342,7 @@ elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
         )
         # Use explicit linker flags to enforce EXACTLY our RPATH paths
         target_link_options(ascii-chat PRIVATE "LINKER:-rpath,@loader_path/../lib")
-        if(ASCIICHAT_SHARED_DEPS AND EXISTS "${HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.1.dylib")
+        if(BUILD_SHARED_LIBS AND EXISTS "${HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.1.dylib")
             target_link_options(ascii-chat PRIVATE "LINKER:-rpath,${HOMEBREW_PREFIX}/opt/llvm/lib/c++")
         endif()
         # Post-build: Remove any build-directory RPATH entries that CMake added automatically

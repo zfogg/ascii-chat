@@ -10,11 +10,11 @@
  * @date January 2026
  */
 
-#include <ascii-chat/options/registry/common.h>
-#include <ascii-chat/options/registry/metadata.h>
+#include <options/registry/common.h>
+#include <options/registry/metadata.h>
 #include <ascii-chat/util/string.h>
 
-#include <ascii-chat/options/parsers.h>
+#include <options/parsers.h>
 #include <ascii-chat/common.h>
 #include <string.h>
 #include <stdlib.h>
@@ -156,7 +156,7 @@ const registry_entry_t g_display_entries[] = {
      OPTION_TYPE_STRING,
      offsetof(options_t, fft_scale),
      &default_fft_scale,
-     0,
+     sizeof(((options_t *)0)->fft_scale),
      "FFT amplitude scale: linear, log, or MIN:MAX dB (default -62:-6).",
      "DISPLAY",
      "SCALE",
