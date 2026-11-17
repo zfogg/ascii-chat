@@ -11,6 +11,7 @@
 #include <options/registry/registry.h>
 #include <options/rcu.h>     // For RCU-based options access
 #include <options/actions.h> // For deferred action tests
+#include <ascii-chat/options/common.h>
 #include <ascii-chat/tests/common.h>
 #include <libplatform/terminal.h>
 #include <libplatform/system.h>
