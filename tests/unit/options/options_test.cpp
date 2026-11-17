@@ -583,17 +583,6 @@ TEST_CASE("options::invalid_snapshot_delays", "[options]") {
  * File Path Tests
  * ============================================================================ */
 
-// NOTE: --log-file is now a global option handled at binary level, not mode-specific
-// GENERATE_OPTIONS_TEST(
-//     valid_log_file, ARGV_LIST("client", "--log-file", "/tmp/test.log"), true,
-//     { cr_assert_str_eq(opts->log_file, "/tmp/test.log"); },
-//     { cr_assert_eq(exit_code, 0, "Valid log file should not cause exit"); })
-//
-// GENERATE_OPTIONS_TEST(
-//     invalid_log_file, ARGV_LIST("client", "--log-file", ""), true,
-//     { cr_fail("Should not reach this point - empty log file should cause exit"); },
-//     { cr_assert_eq(exit_code, 1, "Empty log file should exit with code 1"); })
-
 GENERATE_OPTIONS_TEST(
     valid_encryption_key, ARGV_LIST("client", "--key", "mysecretkey"), true,
     {
@@ -1074,12 +1063,6 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(
     test_render_mode_bg_alias, ARGV_LIST("client", "--render-mode", "bg"), true, { REQUIRE(opts->render_mode == RENDER_MODE_BACKGROUND); },
     { REQUIRE(exit_code == 0); })
-
-// NOTE: --log-file is now a global option handled at binary level, not mode-specific
-// GENERATE_OPTIONS_TEST(
-//     test_log_file_path, ARGV_LIST("client", "--log-file", "/var/log/ascii-chat.log"), true,
-//     { cr_assert_str_eq(opts->log_file, "/var/log/ascii-chat.log"); },
-//     { cr_assert_eq(exit_code, 0, "log file path should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
     test_webcam_index_only, ARGV_LIST("client", "-c", "5"), true,
