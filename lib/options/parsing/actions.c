@@ -20,6 +20,7 @@
 #include <ascii-chat/tui/notice.h>
 
 #include <options/actions.h>
+#include <options/config.h>
 #include <string.h>
 #include <stddef.h>
 
@@ -28,6 +29,7 @@
 #include <ascii-chat/debug/coverage.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/update_checker.h>
+#include <libflags/builder.h>
 #include <options/config.h>
 #include <options/registry/registry.h>
 #include <libflags/completions/completions.h>

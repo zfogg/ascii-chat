@@ -11,7 +11,7 @@
  * @date January 2026
  */
 
-#include <options/registry/common.h>
+#include <ascii-chat/options/registry/common.h>
 #include <options/registry/categories.h>
 #include <options/registry/core.h>
 #include <string.h>

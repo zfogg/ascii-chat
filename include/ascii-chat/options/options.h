@@ -1889,7 +1889,9 @@ extern uint64_t g_snapshot_actual_duration_ms;                    // Actual wall
 /** @} */
 
 /** Resolve source defaults without turning them into a user selection. */
-void options_resolve_flip_x(options_t *opts);
+void options_resolve_flip_x(options_t *opts, bool explicitly_set);
+
+asciichat_error_t options_validate_libflags(options_t *options);
 
 #ifdef __cplusplus
 }

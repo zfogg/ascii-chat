@@ -201,6 +201,6 @@ const char *asciichat_suggest_enum_value(const char *option_name, const char *in
   }
 
   size_t value_count = 0;
-  const char **values = registry_get_enum_values(option_name, NULL, &value_count);
+  const char **values = options_registry_get_enum_values(option_name, NULL, &value_count);
   return values ? levenshtein_find_similar(input, values) : NULL;
 }

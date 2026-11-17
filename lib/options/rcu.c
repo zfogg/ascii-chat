@@ -11,7 +11,7 @@
 #include <yyjson.h>
 #include <limits.h>
 #include <options/registry/core.h>
-#include <options/registry/common.h>
+#include <ascii-chat/options/registry/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>

@@ -132,11 +132,7 @@
  *
  * 1. **Add field to `options_t` struct** in `include/ascii-chat/options/options.h`
  * 2. **Add default constant** in `options.h` (e.g., `OPT_MY_OPTION_DEFAULT`)
-<<<<<<<< HEAD:include/ascii-chat/options/registry.h
- * 3. **Add registry entry** in `lib/options/registry.c` with:
-========
  * 3. **Add registry entry** in `lib/options/registry/` with:
->>>>>>>> origin/master:lib/options/registry/registry.h
  *    - Long and short names
  *    - Type and storage offset (via offsetof)
  *    - Default value and validation function
@@ -211,8 +207,13 @@
 
 #pragma once
 
-#include "../options/options.h"
-#include "../options/builder.h"
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/builder.h>
+#include <ascii-chat/options/registry/common.h>
+
+/* Keep this declaration parseable when source transformation tools do not
+ * expand third-party headers. */
+typedef struct flags_schema_builder flags_schema_builder_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -228,6 +229,10 @@ extern "C" {
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder);
+
+/** Populate a libflags schema builder from the application option registry. */
+asciichat_error_t registry_add_all_to_flags_builder(flags_schema_builder_t *builder,
+                                                    option_mode_bitmask_t mode_mask);
 
 /**
  * @brief Get option descriptor by name
@@ -310,6 +315,8 @@ const option_descriptor_t *options_registry_get_for_display(asciichat_mode_t mod
  *       and should not be modified or freed.
  */
 const option_metadata_t *options_registry_get_metadata(const char *long_name);
+
+const registry_entry_t *registry_get_raw(void);
 
 /**
  * @brief Get enum values for an option

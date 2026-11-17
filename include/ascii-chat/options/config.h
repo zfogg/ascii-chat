@@ -1,5 +1,7 @@
 #pragma once
 
+#include <libflags/builder.h>
+
 /**
  * @defgroup config Config Module
  * @ingroup module_core
@@ -130,6 +132,8 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
  * @ingroup config
  */
 asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bool strict, options_t *opts);
+
+flags_schema_builder_t *options_config_build_flags_schema(option_mode_bitmask_t mode_mask);
 
 /**
  * @brief Create default configuration file with all default values

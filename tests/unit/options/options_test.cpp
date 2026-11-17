@@ -1,15 +1,11 @@
-#include <criterion/criterion.h>
-#include <criterion/new/assert.h>
-#include <criterion/parameterized.h>
-#include <criterion/logging.h>
-#include <string.h>
+#include <catch2/catch_test_macros.hpp>
+#include <cmath>
+#include <cstring>
+#include <vector>
+#include <initializer_list>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
 
 #include <options/options.h>
 #include <options/registry/registry.h>
@@ -20,13 +16,35 @@
 #include <libplatform/system.h>
 #include <ascii-chat/tests/logging.h>
 #include <libflags/values.h>
+#include <ascii-chat/util/parsing.h>
 
-TestSuite(options);
-TestSuite(options_errors);
+#define TestSuite(name)
+#define Test(suite, name) TEST_CASE(#suite "::" #name, "[" #suite "]")
+#define cr_assert(condition, ...) REQUIRE(condition)
+#define cr_assert_not(condition, ...) REQUIRE_FALSE(condition)
+#define cr_assert_eq(left, right, ...) REQUIRE((left) == (right))
+#define cr_assert_gt(left, right, ...) REQUIRE((left) > (right))
+#define cr_assert_str_eq(left, right, ...) REQUIRE(std::strcmp((left), (right)) == 0)
+#define cr_assert_str_empty(value, ...) REQUIRE((value) != nullptr); REQUIRE((value)[0] == '\0')
+#define cr_assert_not_null(value, ...) REQUIRE((value) != nullptr)
+#define cr_assert_null(value, ...) REQUIRE((value) == nullptr)
+#define cr_assert_neq(left, right, ...) REQUIRE((left) != (right))
+#define cr_assert_float_eq(left, right, epsilon, ...) REQUIRE(std::fabs((left) - (right)) <= (epsilon))
+#define cr_fail(...) FAIL("test failure")
 
 // Macro helpers for argv construction without brace-literals at call sites
-#define ARGV_LIST(...) ((char *[]){"program", __VA_ARGS__, NULL})
-#define ARG_WRAP(list) ((char *[])list)
+static std::vector<char *> make_argv(std::initializer_list<const char *> args) {
+  std::vector<char *> result;
+  result.reserve(args.size() + 2);
+  result.push_back(const_cast<char *>("program"));
+  for (const char *arg : args)
+    result.push_back(const_cast<char *>(arg));
+  result.push_back(nullptr);
+  return result;
+}
+
+#define ARGV_LIST(...) make_argv({__VA_ARGS__})
+#define ARG_WRAP(list) list
 
 // Usage:
 // GENERATE_OPTIONS_TEST(name,
@@ -39,8 +57,9 @@ TestSuite(options_errors);
 
 #define GENERATE_OPTIONS_TEST_IN_SUITE(suite_name, test_name, argv_list, is_client_val, option_assertions, exit_assertions) \
   Test(suite_name, test_##test_name) {                                                                                      \
-    char *argv[] = argv_list;                                                                                               \
-    int argc = (int)(sizeof(argv) / sizeof(argv[0])) - 1;                                                                   \
+    auto argv_storage = argv_list;                                                                                          \
+    char **argv = argv_storage.data();                                                                                      \
+    int argc = static_cast<int>(argv_storage.size()) - 1;                                                                   \
     options_backup_t backup;                                                                                                \
     save_options(&backup);                                                                                                  \
                                                                                                                             \
@@ -75,43 +94,11 @@ static void restore_options(const options_backup_t *backup) {
   // will properly clean up when the program exits.
 }
 
-// Run parser cases in a child because some usage paths terminate the process.
+// options_init reports parse failures as error codes; no process isolation is
+// needed and keeping this in-process makes the test portable to Windows.
 static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
   (void)is_client; // Unused parameter
-
-  pid_t pid = fork();
-  if (pid < 0) {
-    return ERROR_THREAD;
-  }
-
-  if (pid == 0) {
-    char **argv_copy = SAFE_CALLOC((size_t)argc + 1, sizeof(char *), char **);
-    if (!argv_copy) {
-      _exit(ERROR_MEMORY);
-    }
-    for (int i = 0; i < argc; i++) {
-      size_t length = strlen(argv[i]) + 1;
-      argv_copy[i] = SAFE_MALLOC(length, char *);
-      if (!argv_copy[i]) {
-        _exit(ERROR_MEMORY);
-      }
-      memcpy(argv_copy[i], argv[i], length);
-    }
-
-    optind = 1;
-    opterr = 1;
-    optopt = 0;
-
-    asciichat_error_t result = options_init(argc, argv_copy);
-    int exit_code = (result == ERROR_USAGE || result == ERROR_INVALID_PARAM) ? 1 : result;
-    _exit(exit_code);
-  }
-
-  int status = 0;
-  if (waitpid(pid, &status, 0) < 0) {
-    return 1;
-  }
-  return WIFEXITED(status) && WEXITSTATUS(status) == 0 ? 0 : 1;
+  return options_init(argc, argv) == ASCIICHAT_OK ? 0 : 1;
 }
 
 /* ============================================================================
@@ -120,7 +107,6 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
 
 Test(options, explicit_flip_values_survive_mode_parsing) {
   char *argv[] = {"program", "mirror", "--test-pattern=0", "--flip-x=false", "--flip-y=true", NULL};
-  optind = 1;
   cr_assert_eq(options_init(5, argv), ASCIICHAT_OK);
   const options_t *opts = options_get();
   cr_assert_eq(opts->flip_x, false);
@@ -129,7 +115,6 @@ Test(options, explicit_flip_values_survive_mode_parsing) {
 
 Test(options, test_pattern_defaults_to_unflipped) {
   char *argv[] = {"program", "mirror", "--test-pattern", NULL};
-  optind = 1;
   cr_assert_eq(options_init(3, argv), ASCIICHAT_OK);
   const options_t *opts = options_get();
   cr_assert(opts->test_pattern);
@@ -138,7 +123,6 @@ Test(options, test_pattern_defaults_to_unflipped) {
 
 Test(options, test_pattern_respects_explicit_flip) {
   char *argv[] = {"program", "mirror", "--test-pattern", "--flip-x=true", NULL};
-  optind = 1;
   cr_assert_eq(options_init(4, argv), ASCIICHAT_OK);
   const options_t *opts = options_get();
   cr_assert(opts->test_pattern);
@@ -152,7 +136,6 @@ Test(options, default_values) {
   // Initialize options with minimal args to get defaults
   char *argv[] = {"program", "client", NULL};
   int argc = 2;
-  optind = 1;
   options_init(argc, argv);
 
   // Get options from RCU for assertions
@@ -268,13 +251,9 @@ static ip_validation_test_case_t ip_validation_cases[] = {
     {"256.1.1.1", false, 1, "Invalid IP - octet too large"}, {"192.168.1", false, 1, "Invalid IP - too few octets"}, {"192.168.1.abc", false, 1, "Invalid IP - non-numeric"},
 };
 
-ParameterizedTestParameters(options, ip_address_validation) {
-  size_t count = sizeof(ip_validation_cases) / sizeof(ip_validation_cases[0]);
-  return cr_make_param_array(ip_validation_test_case_t, ip_validation_cases, count);
-}
-
-ParameterizedTest(ip_validation_test_case_t *tc, options, ip_address_validation) {
-  char *argv[] = {"program", "client", (char *)tc->address, NULL};
+TEST_CASE("options::ip_address_validation", "[options][parameterized]") {
+  for (const auto &tc : ip_validation_cases) {
+  char *argv[] = {"program", "client", (char *)tc.address, NULL};
   int argc = 3;
   options_backup_t backup;
   save_options(&backup);
@@ -283,21 +262,19 @@ ParameterizedTest(ip_validation_test_case_t *tc, options, ip_address_validation)
   int exit_code = test_options_init_with_fork(argv, argc, true);
 
   // Test option values in main process (only if no exit expected)
-  if (tc->should_succeed) {
-    cr_assert_eq(exit_code, 0, "%s should not cause exit", tc->description);
+  if (tc.should_succeed) {
+    cr_assert_eq(exit_code, 0, "%s should not cause exit", tc.description);
     // Reset getopt state before calling options_init again
-    optind = 1;
-    opterr = 1;
-    optopt = 0;
     options_init(argc, argv);
     // Get options from RCU for assertions
     const options_t *opts = options_get();
-    cr_assert_str_eq(opts->address, tc->address, "%s should set address correctly", tc->description);
+    cr_assert_str_eq(opts->address, tc.address, "%s should set address correctly", tc.description);
   } else {
-    cr_assert_eq(exit_code, tc->expected_exit_code, "%s should cause exit with code %d", tc->description, tc->expected_exit_code);
+    cr_assert_eq(exit_code, tc.expected_exit_code, "%s should cause exit with code %d", tc.description, tc.expected_exit_code);
   }
 
-  restore_options(&backup);
+    restore_options(&backup);
+  }
 }
 
 // =============================================================================
@@ -369,12 +346,9 @@ static port_validation_test_case_t port_validation_cases[] = {
     {"", false, 1, "Invalid port - empty string"},
 };
 
-ParameterizedTestParameters(options, port_validation) {
-  return cr_make_param_array(port_validation_test_case_t, port_validation_cases, sizeof(port_validation_cases) / sizeof(port_validation_cases[0]));
-}
-
-ParameterizedTest(port_validation_test_case_t *tc, options, port_validation) {
-  char *argv[] = {"program", "client", "-p", (char *)tc->port, NULL};
+TEST_CASE("options::port_validation", "[options][parameterized]") {
+  for (const auto &tc : port_validation_cases) {
+  char *argv[] = {"program", "client", "-p", (char *)tc.port, NULL};
   int argc = 4;
   options_backup_t backup;
   save_options(&backup);
@@ -383,23 +357,21 @@ ParameterizedTest(port_validation_test_case_t *tc, options, port_validation) {
   int exit_code = test_options_init_with_fork(argv, argc, true);
 
   // Test option values in main process (only if no exit expected)
-  if (tc->should_succeed) {
-    cr_assert_eq(exit_code, 0, "%s should not cause exit", tc->description);
+  if (tc.should_succeed) {
+    cr_assert_eq(exit_code, 0, "%s should not cause exit", tc.description);
     // Reset getopt state before calling options_init again
-    optind = 1;
-    opterr = 1;
-    optopt = 0;
     options_init(argc, argv);
     // Get options from RCU for assertions
     const options_t *opts = options_get();
     int expected_port = 0;
-    cr_assert(flags_parse_int32(tc->port, &expected_port), "%s should contain a valid port", tc->description);
+    cr_assert(parse_int32(tc.port, &expected_port, 0, 65535) == ASCIICHAT_OK, "%s should contain a valid port", tc.description);
     cr_assert_eq(opts->port, expected_port, "%s should set port correctly", tc->description);
   } else {
-    cr_assert_eq(exit_code, tc->expected_exit_code, "%s should cause exit with code %d", tc->description, tc->expected_exit_code);
+    cr_assert_eq(exit_code, tc.expected_exit_code, "%s should cause exit with code %d", tc.description, tc.expected_exit_code);
   }
 
-  restore_options(&backup);
+    restore_options(&backup);
+  }
 }
 
 /* ============================================================================
@@ -487,12 +459,9 @@ static color_mode_test_case_t color_mode_cases[] = {
     {"", false, 1, "Invalid mode: empty string"},
 };
 
-ParameterizedTestParameters(options, color_mode_validation) {
-  return cr_make_param_array(color_mode_test_case_t, color_mode_cases, sizeof(color_mode_cases) / sizeof(color_mode_cases[0]));
-}
-
-ParameterizedTest(color_mode_test_case_t *tc, options, color_mode_validation) {
-  char *argv[] = {"program", "client", "--color-mode", (char *)tc->mode_string, NULL};
+TEST_CASE("options::color_mode_validation", "[options][parameterized]") {
+  for (const auto &tc : color_mode_cases) {
+  char *argv[] = {"program", "client", "--color-mode", (char *)tc.mode_string, NULL};
   int argc = 4;
   options_backup_t backup;
   save_options(&backup);
@@ -500,9 +469,10 @@ ParameterizedTest(color_mode_test_case_t *tc, options, color_mode_validation) {
   // Test exit behavior with fork
   int exit_code = test_options_init_with_fork(argv, argc, true);
 
-  cr_assert_eq(exit_code, tc->expected_exit_code, "%s should %s", tc->description, tc->should_succeed ? "not cause exit" : "cause exit");
+  cr_assert_eq(exit_code, tc.expected_exit_code, "%s should %s", tc.description, tc.should_succeed ? "not cause exit" : "cause exit");
 
-  restore_options(&backup);
+    restore_options(&backup);
+  }
 }
 
 // Original loop-based tests replaced by parameterized version above
@@ -1314,7 +1284,6 @@ Test(options, deferred_action_no_action_by_default) {
 
 Test(options, repeated_media_arguments_share_one_ordered_playlist) {
   char *argv[] = {"program", "mirror", "--file", "first.mp4", "--url", "https://example.com/second.webm", "--file=third.mp4", NULL};
-  optind = 1;
   cr_assert_eq(options_init(7, argv), ASCIICHAT_OK);
   const options_t *opts = options_get();
   cr_assert_eq(opts->media_playlist.count, 3);
@@ -1327,7 +1296,6 @@ Test(options, repeated_media_arguments_share_one_ordered_playlist) {
 
 Test(options, url_first_playlist_does_not_gain_file_priority) {
   char *argv[] = {"program", "mirror", "--url=https://example.com/first.webm", "-f", "second.mp4", NULL};
-  optind = 1;
   cr_assert_eq(options_init(5, argv), ASCIICHAT_OK);
   const options_t *opts = options_get();
   cr_assert_eq(opts->media_playlist.count, 2);
@@ -1340,7 +1308,6 @@ Test(options, rejected_glyph_palette_is_not_published) {
   options_t *before = SAFE_MALLOC(sizeof(*before), options_t *);
   *before = *options_get();
   char *argv[] = {"program", "mirror", "--renderer=glyph", "--palette=digital", NULL};
-  optind = 1;
   cr_assert_neq(options_init(4, argv), ASCIICHAT_OK);
   cr_assert_eq(options_get()->renderer, before->renderer);
   cr_assert_eq(options_get()->palette_type, before->palette_type);

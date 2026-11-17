@@ -424,6 +424,9 @@ if(BUILD_TESTS AND CATCH2_FOUND)
     # CTest remains the only parallel scheduler.
     file(GLOB_RECURSE UNIT_TEST_SRCS CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/unit/*.cpp)
+    if(NOT TARGET ascii-query-runtime)
+        list(REMOVE_ITEM UNIT_TEST_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/unit/tooling/query_test.cpp)
+    endif()
     add_executable(unit_tests ${UNIT_TEST_SRCS}
         ${CMAKE_CURRENT_SOURCE_DIR}/catch2_environment.cpp
         ${CMAKE_SOURCE_DIR}/lib/tests/common.c
@@ -473,10 +476,10 @@ if(BUILD_TESTS AND CATCH2_FOUND)
         libplatform
         ${LIBSODIUM_LIBRARIES} ${ZSTD_LIBRARIES} ${OPUS_LIBRARIES}
         ${SQLITE3_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} libdatachannel
-        OpenSSL::Crypto ${FFMPEG_LIBRARIES} ${PORTAUDIO_LIBRARIES})
-add_dependencies(unit_tests ascii-chat-runtime)
+        OpenSSL::Crypto ${FFMPEG_LIBRARIES} ${PORTAUDIO_LIBRARIES} libflags::flags)
+add_dependencies(unit_tests ${ASCII_CHAT_UNIFIED_BUILD_TARGET})
 target_link_libraries(unit_tests PRIVATE
-    ascii-chat-runtime-deps
+    ascii-chat-static
     $<TARGET_OBJECTS:ascii-chat-util>
     $<TARGET_OBJECTS:ascii-chat-data-structures>
     $<TARGET_OBJECTS:ascii-chat-crypto>
@@ -486,6 +489,9 @@ target_link_libraries(unit_tests PRIVATE
     $<TARGET_OBJECTS:ascii-chat-network>
     $<TARGET_OBJECTS:ascii-chat-core>
     $<TARGET_OBJECTS:ascii-chat-panic>)
+if(WIN32)
+    target_link_libraries(unit_tests PRIVATE winmm)
+endif()
     target_link_directories(unit_tests PRIVATE ${FFMPEG_LIBRARY_DIRS})
     # Catch2's prebuilt Windows library is intentionally not sanitizer-built;
     # Clang emits an MSVC fail-if-mismatch record for sanitized C++ objects.
@@ -553,10 +559,10 @@ target_link_libraries(unit_tests PRIVATE
         ${TEST_LDFLAGS} ${_ascii_gotel_testing_target}
         ${LIBSODIUM_LIBRARIES} ${ZSTD_LIBRARIES} ${OPUS_LIBRARIES}
         ${SQLITE3_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} libdatachannel
-        OpenSSL::Crypto ${FFMPEG_LIBRARIES} ${PORTAUDIO_LIBRARIES})
-add_dependencies(benchmarks ascii-chat-runtime)
+        OpenSSL::Crypto ${FFMPEG_LIBRARIES} ${PORTAUDIO_LIBRARIES} libflags::flags)
+add_dependencies(benchmarks ${ASCII_CHAT_UNIFIED_BUILD_TARGET})
 target_link_libraries(benchmarks PRIVATE
-    ascii-chat-runtime-deps
+    ascii-chat-static
     $<TARGET_OBJECTS:ascii-chat-util>
     $<TARGET_OBJECTS:ascii-chat-data-structures>
     $<TARGET_OBJECTS:ascii-chat-crypto>
@@ -566,6 +572,9 @@ target_link_libraries(benchmarks PRIVATE
     $<TARGET_OBJECTS:ascii-chat-network>
     $<TARGET_OBJECTS:ascii-chat-core>
     $<TARGET_OBJECTS:ascii-chat-panic>)
+if(WIN32)
+    target_link_libraries(benchmarks PRIVATE winmm)
+endif()
     target_link_directories(benchmarks PRIVATE ${FFMPEG_LIBRARY_DIRS})
     if(NOT WIN32 OR ASCIICHAT_CATCH2_FROM_SOURCE)
         apply_sanitizers_to_target(benchmarks)
