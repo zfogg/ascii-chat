@@ -81,9 +81,12 @@ if(UNIX AND NOT APPLE)
     if(ASCIICHAT_LLVM_LIBUNWIND)
         target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LLVM_LIBUNWIND})
     endif()
-    # Arch ships the GCC unwinder as libgcc_s.so.1 without an unversioned
-    # development symlink, so find_library cannot discover it by filename.
-    target_link_libraries(ascii-chat PRIVATE gcc_s)
+    # GCC musl links its static runtime archive explicitly from the musl
+    # toolchain. It has no libgcc_s shared runtime to link. Host Clang builds
+    # still need the platform unwinder when static C++ dependencies require it.
+    if(NOT USE_MUSL)
+        target_link_libraries(ascii-chat PRIVATE gcc_s)
+    endif()
 endif()
 
 # The executable's mode sources call FFmpeg directly. pkg-config can return
