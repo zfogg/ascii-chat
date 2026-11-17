@@ -127,7 +127,7 @@ const char *asciichat_suggest_mode(const char *input) {
   }
   null_terminated[count] = NULL;
 
-  return flags_levenshtein_find_similar(input, null_terminated);
+  return levenshtein_find_similar(input, null_terminated);
 }
 
 // ============================================================================
@@ -202,5 +202,5 @@ const char *asciichat_suggest_enum_value(const char *option_name, const char *in
 
   size_t value_count = 0;
   const char **values = registry_get_enum_values(option_name, NULL, &value_count);
-  return values ? flags_levenshtein_find_similar(input, values) : NULL;
+  return values ? levenshtein_find_similar(input, values) : NULL;
 }
