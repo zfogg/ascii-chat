@@ -79,7 +79,7 @@
  *
  * ## Verification
  *
- * The Criterion fixture `tests/unit/video/ascii_emission_test.c` also runs through
+ * The Catch2 fixture `tests/unit/video/ascii_emission_test.c` also runs through
  * the isolated Linux target. Only process diagnostics and the debug name registry
  * are replaced in that target; rendering, palette construction, quantization,
  * allocation, lifecycle, and locks use production sources.

@@ -49,8 +49,8 @@ static void test_datagrams(void) {
     if (i + 1 < sizeof(order) / sizeof(order[0]))
       CHECK(output == NULL);
   }
-  CHECK(output && output_size == sizeof(packet) && flow == ACIP_TRAFFIC_VISUAL);
-  CHECK(memcmp(output, packet, sizeof(packet)) == 0 && reader.bytes == 0);
+  CHECK((output && output_size == sizeof(packet) && flow == ACIP_TRAFFIC_VISUAL));
+  CHECK((memcmp(output, packet, sizeof(packet)) == 0 && reader.bytes == 0));
   buffer_release(output);
   CHECK(quic_datagram_read(&reader, fragments[0], sizes[0], 20, &flow, &output, &output_size) == ASCIICHAT_OK);
   fragments[0][QUIC_DATAGRAM_HEADER_SIZE] ^= 1;
@@ -85,10 +85,10 @@ int main(void) {
   struct sockaddr_storage address;
   socklen_t address_length = 0;
   CHECK(parse_numeric_socket_address("127.0.0.1", 23456, &address, &address_length) == ASCIICHAT_OK);
-  CHECK(address.ss_family == AF_INET && address_length == sizeof(struct sockaddr_in) && NET_TO_HOST_U16(((struct sockaddr_in *)&address)->sin_port) == 23456);
+  CHECK((address.ss_family == AF_INET && address_length == sizeof(struct sockaddr_in) && NET_TO_HOST_U16(((struct sockaddr_in *)&address)->sin_port) == 23456));
   CHECK(parse_numeric_socket_address("::1", 23456, &address, &address_length) == ASCIICHAT_OK);
-  CHECK(address.ss_family == AF_INET6 && address_length == sizeof(struct sockaddr_in6) && NET_TO_HOST_U16(((struct sockaddr_in6 *)&address)->sin6_port) == 23456);
-  CHECK(parse_numeric_socket_address("localhost", 23456, &address, &address_length) == ERROR_INVALID_PARAM && address_length == 0);
+  CHECK((address.ss_family == AF_INET6 && address_length == sizeof(struct sockaddr_in6) && NET_TO_HOST_U16(((struct sockaddr_in6 *)&address)->sin6_port) == 23456));
+  CHECK((parse_numeric_socket_address("localhost", 23456, &address, &address_length) == ERROR_INVALID_PARAM && address_length == 0));
   test_datagrams();
   const char payload[] = "video";
   packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
@@ -136,7 +136,7 @@ int main(void) {
     capture_t empty_state = {.expected = ACIP_TRAFFIC_CONTROL, .packet = (const uint8_t *)&empty, .size = sizeof(empty)};
     CHECK(quic_stream_read(&reader, control_preamble, sizeof(control_preamble), capture, &empty_state) == ASCIICHAT_OK);
     CHECK(quic_stream_read(&reader, &empty, sizeof(empty), capture, &empty_state) == ASCIICHAT_OK);
-    CHECK(empty_state.count == 1 && quic_stream_finish(&reader) == ASCIICHAT_OK);
+    CHECK((empty_state.count == 1 && quic_stream_finish(&reader) == ASCIICHAT_OK));
     quic_stream_reset(&reader);
   }
   for (int traffic = ACIP_TRAFFIC_CONTROL; traffic <= ACIP_TRAFFIC_VISUAL; ++traffic) {

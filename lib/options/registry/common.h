@@ -9,10 +9,14 @@
 
 #pragma once
 
-#include <options/types.h>
-#include <options/options.h>
+#include <ascii-chat/options/builder.h>
+#include <ascii-chat/options/options.h>
 #include <stdbool.h>
 #include <stddef.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @brief Temporary builder for a help/category index. `name` identifies the category and `entries` points at the
@@ -85,3 +89,7 @@ typedef struct {
    .optional_arg = false,            \
    .mode_bitmask = OPTION_MODE_NONE, \
    .metadata = {0}}
+
+#ifdef __cplusplus
+}
+#endif

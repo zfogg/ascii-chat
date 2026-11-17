@@ -1,6 +1,6 @@
 // Standalone correctness and throughput checks against independent CRC32-C algorithms.
 #include <ascii-chat/network/crc32.h>
-#include <libplatform/cpu.h>
+#include <ascii-chat/os/cpu.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

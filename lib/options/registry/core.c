@@ -11,7 +11,7 @@
  * @date January 2026
  */
 
-#include <options/registry/common.h>
+#include <ascii-chat/options/registry/common.h>
 #include <options/registry/core.h>
 #include <options/registry/registry.h>
 #include <string.h>
@@ -152,4 +152,40 @@ const registry_entry_t *registry_find_entry_by_short(char short_name) {
     }
   }
   return NULL;
+}
+
+option_descriptor_t registry_entry_to_descriptor(const registry_entry_t *entry) {
+  option_descriptor_t descriptor = {0};
+  if (!entry)
+    return descriptor;
+  descriptor.long_name = entry->long_name;
+  descriptor.short_name = entry->short_name;
+  descriptor.type = entry->type;
+  descriptor.offset = entry->offset;
+  descriptor.default_value = entry->default_value;
+  descriptor.help_text = entry->help_text;
+  descriptor.group = entry->group;
+  descriptor.arg_placeholder = entry->arg_placeholder;
+  descriptor.required = entry->required;
+  descriptor.env_var_name = entry->env_var_name;
+  descriptor.validate = entry->validate_fn;
+  descriptor.parse_fn = entry->parse_fn;
+  descriptor.owns_memory = entry->owns_memory;
+  descriptor.optional_arg = entry->optional_arg;
+  descriptor.mode_bitmask = entry->mode_bitmask;
+  descriptor.metadata = entry->metadata;
+  descriptor.mode_default_getter = entry->mode_default_getter;
+  descriptor.hide_from_binary_help = entry->mode_bitmask == OPTION_MODE_DISCOVERY_SVC;
+  return descriptor;
+}
+
+bool registry_entry_applies_to_mode(const registry_entry_t *entry, asciichat_mode_t mode, bool for_binary_help) {
+  if (!entry)
+    return false;
+  if (for_binary_help)
+    return (entry->mode_bitmask & OPTION_MODE_ALL) != 0;
+  if (mode < 0 || mode >= MODE_INVALID)
+    return false;
+  const option_mode_bitmask_t mode_bit = (option_mode_bitmask_t)(1U << mode);
+  return (entry->mode_bitmask & mode_bit) != 0;
 }

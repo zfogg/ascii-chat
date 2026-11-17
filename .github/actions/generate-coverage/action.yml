@@ -2,7 +2,7 @@ name: "Generate Coverage Report"
 description: "Merge Clang execution counters into a validated Cobertura report"
 inputs:
   os-type:
-    description: "Operating system type (macos or ubuntu)"
+    description: "Operating system type (windows, macos, or ubuntu)"
     required: true
 runs:
   using: "composite"

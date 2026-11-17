@@ -33,6 +33,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Opaque FPS counter handle
  *
@@ -102,3 +106,7 @@ size_t fps_counter_format(fps_counter_t *counter, char *buffer, size_t capacity,
 
 /** Count an acquired frame ID once, after its complete write. Zero denotes a UI-only redraw. */
 bool fps_counter_frame_begin_id(fps_counter_t *counter, uint64_t frame_id);
+
+#ifdef __cplusplus
+}
+#endif

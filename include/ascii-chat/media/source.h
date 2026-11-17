@@ -83,6 +83,10 @@
 #include "../common.h"
 #include <ascii-chat/video/rgba/image.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Media Source Types
  * ============================================================================ */
@@ -502,3 +506,7 @@ bool media_source_uses_webcam(media_source_t *source);
 asciichat_error_t media_source_start_video(media_source_t *source);
 
 media_source_t *media_source_create_interruptible(media_source_type_t type, const char *path, bool (*cancel)(void *), void *data);
+
+#ifdef __cplusplus
+}
+#endif

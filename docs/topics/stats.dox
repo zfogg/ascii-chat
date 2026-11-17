@@ -197,11 +197,11 @@
  *
  * ## Validation
  *
- * The Criterion suite is `test_unit_stats_stats` (filter `*stats*`). It covers
+ * The Catch2 suite is `test_unit_stats_stats` (filter `*stats*`). It covers
  * capabilities, independent snapshots and consumers, irregular and idle sampling,
  * ring wraparound, duration means, baseline changes, invalid configuration,
  * descriptors, concurrent recording/snapshot reads, disconnect/restart accounting,
- * label sanitization, and debug-registry teardown. Run it on Linux; Criterion
+ * label sanitization, and debug-registry teardown. Run it on Linux; Catch2
  * is not supported by the native Windows build.
  *
  * `tests/integration/stats_tui.py` runs real processes in Linux tmux terminals:

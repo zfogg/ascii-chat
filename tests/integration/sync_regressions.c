@@ -116,7 +116,7 @@ static int check_duration_recording(void) {
     stats_duration_snapshot_t duration = snapshot.durations[STATS_DURATION_CAPTURE];
     CHECK(duration.total_ns == duration.observations * 7);
     if (duration.observations) {
-      CHECK(duration.min_ns == 7 && duration.max_ns == 7 && duration.last_ns == 7);
+      CHECK((duration.min_ns == 7 && duration.max_ns == 7 && duration.last_ns == 7));
     }
   } while (atomic_load(&duration_workers_done) < 4);
   for (unsigned i = 0; i < 4; ++i)
@@ -429,7 +429,7 @@ int main(int argc, char **argv) {
 #ifndef NDEBUG
     bool completed = false;
     size_t required = 0;
-    CHECK(named_registry_try_snapshot(SIZE_MAX, &required, &completed, find_controller, NULL) == ASCIICHAT_OK && completed);
+    CHECK((named_registry_try_snapshot(SIZE_MAX, &required, &completed, find_controller, NULL) == ASCIICHAT_OK && completed));
     CHECK(controller_mutex);
     uint64_t query_locks = controller_mutex->lock_count;
 #endif
@@ -475,7 +475,7 @@ int main(int argc, char **argv) {
       CHECK(ui_controller_present(UI_SCREEN_MEDIA, STDOUT_FILENO, (terminal_size_t){20, 5}, media, sizeof(media)) == ASCIICHAT_OK);
 #ifndef NDEBUG
     bool found = false;
-    CHECK(named_registry_for_each(count_entry, NULL, &found) == ASCIICHAT_OK && found);
+    CHECK((named_registry_for_each(count_entry, NULL, &found) == ASCIICHAT_OK && found));
     CHECK(memory_mutex);
     uint64_t media_memory_locks = memory_mutex->lock_count;
 #endif
@@ -492,7 +492,7 @@ int main(int argc, char **argv) {
     for (unsigned i = 0; i < 600; ++i)
       CHECK(named_register((uintptr_t)&objects[i], "regression_entry", "test", "%p", __FILE__, __LINE__, __func__, 0) != NULL);
     bool completed = false;
-    CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && completed);
+    CHECK((named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && completed));
     CHECK(seen == 600);
     CHECK(registry_lock != NULL);
 #endif
@@ -501,7 +501,7 @@ int main(int argc, char **argv) {
     colorscheme_palette_t palette;
     colorscheme_current_palette(&palette, TERM_COLOR_TRUECOLOR);
 #ifndef NDEBUG
-    CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && completed);
+    CHECK((named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && completed));
     CHECK(scheme_mutex);
 #endif
 
@@ -542,7 +542,7 @@ int main(int argc, char **argv) {
     CHECK(platform_thread_create(&holder, "registry_holder", hold_registry, NULL) == ASCIICHAT_OK);
     CHECK(await_flag(&entered));
     uint64_t start = time_get_ns();
-    CHECK(named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && !completed);
+    CHECK((named_registry_for_each(count_entry, NULL, &completed) == ASCIICHAT_OK && !completed));
     CHECK(!named_registry_has_type("test", 4));
     uint64_t elapsed = time_get_ns() - start;
     atomic_store(&proceed, true);

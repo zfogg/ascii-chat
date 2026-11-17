@@ -22,6 +22,10 @@
 #include "discovery-service/main.h"
 #include "../network/acip/acds.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 asciichat_error_t database_session_transport_set(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE], const void *metadata, size_t length);
 asciichat_error_t database_session_transport_get(sqlite3 *db, const uint8_t session_id[SESSION_ID_SIZE], void *metadata, size_t capacity, size_t *length);
 
@@ -278,3 +282,7 @@ asciichat_error_t database_stats_snapshot(sqlite3 *db, database_session_stats_t 
 
 asciichat_error_t database_session_update_host_with_transport(sqlite3 *db, const uint8_t session[SESSION_ID_SIZE], const uint8_t host[SESSION_ID_SIZE], const char *address, uint16_t port,
                                                               uint8_t type, const void *metadata, size_t length);
+
+#ifdef __cplusplus
+}
+#endif

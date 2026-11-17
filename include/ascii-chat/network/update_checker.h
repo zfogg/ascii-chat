@@ -31,6 +31,10 @@
 #include <time.h>
 #include "../common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief update check result keeps the values that move through the subsystem: `update_available`, `last_check_time`,
  * `dismissed_until`, `check_succeeded`. Some members are pointers into caller- or subsystem-owned memory, so lifetime
@@ -170,3 +174,7 @@ void update_check_format_notification(const update_check_result_t *result, char 
 asciichat_error_t update_check_startup(update_check_result_t *result);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

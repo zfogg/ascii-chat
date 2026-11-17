@@ -46,6 +46,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * UTF-8 Decoding Functions
  * ========================================================================== */
@@ -403,3 +407,7 @@ const char *utf8_strcasestr(const char *haystack, const char *needle);
  * @ingroup util
  */
 void utf8_write_lowercase(FILE *output, const char *text);
+
+#ifdef __cplusplus
+}
+#endif

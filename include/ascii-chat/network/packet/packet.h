@@ -87,6 +87,10 @@
 #include "../../util/magic.h"
 #include "../../media/codecs.h"
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include <stddef.h>
 #include <stdbool.h>
 #include <errno.h>
@@ -1612,3 +1616,7 @@ asciichat_error_t send_image_frame_packet(socket_t sockfd, const void *image_dat
 
 /** Shared size-adjusted packet I/O budget, in nanoseconds. */
 uint64_t packet_send_timeout_ns(size_t packet_size);
+
+#ifdef __cplusplus
+}
+#endif

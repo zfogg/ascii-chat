@@ -36,6 +36,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name GPG Signature Verification
  * @{
@@ -240,3 +244,7 @@ int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_
 /** @} */
 
 /** @} */ /* crypto */
+
+#ifdef __cplusplus
+}
+#endif

@@ -8,7 +8,7 @@
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_CXX_STANDARD": "23"
+        "CMAKE_CXX_STANDARD": "26"
       }
     },
     {
@@ -184,7 +184,6 @@
         "USE_CPACK": "OFF",
         "CMAKE_C_STANDARD": "23",
         "CMAKE_C_FLAGS": "-std=c2x",
-        "ASCIICHAT_FORCE_CRITERION_TESTS": "ON",
         "ASCIICHAT_ENABLE_COVERAGE": "ON",
         "ASCIICHAT_ENABLE_ANALYZERS": "OFF"
       }
@@ -199,8 +198,7 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_TESTS": "ON",
         "USE_CPACK": "OFF",
-        "ASCIICHAT_FORCE_CRITERION_TESTS": "ON",
-        "CMAKE_CXX_STANDARD": "23"
+        "CMAKE_CXX_STANDARD": "20"
       }
     },
     {
@@ -408,14 +406,14 @@
       }
     },
     {
-      "name": "performance",
-      "displayName": "Performance Tests",
-      "description": "Run performance tests only",
+      "name": "benchmarks",
+      "displayName": "Benchmark Tests",
+      "description": "Run benchmark tests only",
       "configurePreset": "tests",
       "inherits": "base-test",
       "filter": {
         "include": {
-          "label": "^performance$"
+          "label": "^benchmarks$"
         }
       }
     },
@@ -444,14 +442,14 @@
       }
     },
     {
-      "name": "github-performance",
-      "displayName": "Performance Tests (GitHub CI)",
-      "description": "Run performance tests in GitHub CI environment",
+      "name": "github-benchmarks",
+      "displayName": "Benchmark Tests (GitHub CI)",
+      "description": "Run benchmark tests in GitHub CI environment",
       "configurePreset": "github",
       "inherits": "base-test",
       "filter": {
         "include": {
-          "label": "^performance$"
+          "label": "^benchmarks$"
         }
       }
     },

@@ -81,6 +81,10 @@ typedef void PaStream;
 #include "../ringbuffer.h"
 #include <options/options.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Data Structures
  * ============================================================================
@@ -869,5 +873,9 @@ void audio_flush_playback_buffers(audio_context_t *ctx);
  * @ingroup audio
  */
 bool audio_should_enable_microphone(audio_capture_source_t source, bool has_media_audio);
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */

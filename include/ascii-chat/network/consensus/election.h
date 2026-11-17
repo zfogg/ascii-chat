@@ -11,6 +11,10 @@
 #include "metrics.h"
 #include <ascii-chat/common.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Compute deterministic score for a participant
  *
@@ -42,3 +46,7 @@ asciichat_error_t consensus_election_choose_hosts(const participant_metrics_t *m
  */
 asciichat_error_t consensus_election_verify(const participant_metrics_t *metrics, int num_metrics, const uint8_t announced_host_id[SESSION_ID_SIZE], const uint8_t announced_backup_id[SESSION_ID_SIZE],
                                             bool *out_valid);
+
+#ifdef __cplusplus
+}
+#endif

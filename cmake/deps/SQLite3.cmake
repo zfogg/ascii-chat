@@ -210,6 +210,13 @@ find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
     pkg_check_modules(SQLITE3 QUIET sqlite3)
     if(SQLITE3_FOUND)
+        # pkg-config returns a bare `-lsqlite3` on Windows even when it has
+        # resolved the actual vcpkg library.  Preserve the absolute path so
+        # clang/lld does not turn it into the invalid `-lsqlite3.lib`.
+        if(WIN32 AND DEFINED pkgcfg_lib_SQLITE3_sqlite3
+           AND EXISTS "${pkgcfg_lib_SQLITE3_sqlite3}")
+            set(SQLITE3_LIBRARIES "${pkgcfg_lib_SQLITE3_sqlite3}")
+        endif()
         message(STATUS "Found ${BoldGreen}SQLite3${ColorReset} via pkg-config: ${SQLITE3_VERSION}")
         return()
     endif()

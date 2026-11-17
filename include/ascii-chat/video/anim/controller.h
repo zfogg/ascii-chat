@@ -5,6 +5,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
   ANIMATION_SPLASH_RAINBOW,
   ANIMATION_DIGITAL_RAIN,
@@ -97,3 +101,7 @@ typedef struct {
    */
 } animation_target_t;
 asciichat_error_t animation_apply(const animation_sample_t *sample, animation_target_t *target);
+
+#ifdef __cplusplus
+}
+#endif

@@ -9,6 +9,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Route output to browser console based on log level
  *
@@ -31,3 +35,7 @@ void wasm_log_to_console(int fd, const uint8_t *buf, size_t count);
  * @return log_level_t enum value (0-5), or -1 if not found
  */
 int wasm_parse_log_level(const uint8_t *buf, size_t count);
+
+#ifdef __cplusplus
+}
+#endif

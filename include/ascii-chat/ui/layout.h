@@ -1,6 +1,10 @@
 #pragma once
 #include <libplatform/terminal.h>
 #include <ascii-chat/asciichat_errno.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef struct {
   int body_row, body_rows, detail_row, footer_row;
   /**
@@ -11,3 +15,7 @@ typedef struct {
 } ui_layout_t;
 /** Fixed chrome with a bounded, possibly empty body viewport. */
 asciichat_error_t ui_layout_measure(terminal_size_t size, int header_rows, int detail_rows, int footer_rows, ui_layout_t *out);
+
+#ifdef __cplusplus
+}
+#endif

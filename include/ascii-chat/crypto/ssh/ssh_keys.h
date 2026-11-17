@@ -30,6 +30,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name SSH Key Parsing
  * @{
@@ -246,3 +250,7 @@ asciichat_error_t ed25519_verify_signature(const uint8_t public_key[ED25519_PUBL
                                            const char *gpg_key_id);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

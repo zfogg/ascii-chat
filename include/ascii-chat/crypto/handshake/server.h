@@ -10,6 +10,10 @@
 #include "../../crypto/handshake/common.h"
 #include "../../network/acip/transport.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name Server Handshake Protocol
  * @{
@@ -85,3 +89,7 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
 asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *ctx, acip_transport_t *transport, packet_type_t packet_type, const uint8_t *payload, size_t payload_len);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

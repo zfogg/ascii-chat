@@ -126,8 +126,8 @@
  * uv run --frozen python -m pytest tests/python/tests/integration/sync --sync-probe build/bin/test-sync-regressions
  * ```
  *
- * The Criterion `ui_too_small` suite checks exact boundaries and the 1x1/unknown-size
- * formatting cases. Criterion runs on supported POSIX hosts; the PTY suite also runs
+ * The Catch2 `ui_too_small` suite checks exact boundaries and the 1x1/unknown-size
+ * formatting cases. Catch2 runs on supported POSIX hosts; the PTY suite also runs
  * on Windows.
  *
  * `tests/integration/terminal_prompt.py --library build/bin/asciichat.dll` drives
@@ -235,7 +235,7 @@
  *   --artifacts /tmp/render-evidence
  * ```
  *
- * The `halfblock_cover_uses_cell_geometry` Criterion test verifies that half-block
+ * The `halfblock_cover_uses_cell_geometry` Catch2 test verifies that half-block
  * sampling does not double the viewport height used for aspect-ratio cropping.
  * These longer animation and geometry checks supplement the 131-case interaction
  * matrix; that matrix alone does not establish continuous playback across EOF.

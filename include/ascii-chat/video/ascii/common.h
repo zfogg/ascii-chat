@@ -407,6 +407,10 @@ bool get_256_color_fast_path(void);
  *
  * @ingroup video
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void prewarm_sgr256_fg_cache(void);
 
 /**
@@ -448,6 +452,10 @@ char *get_sgr256_bg_string(uint8_t bg, uint8_t *len_out);
  * @ingroup video
  */
 char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out);
+
+#ifdef __cplusplus
+}
+#endif
 
 /**
  * @brief Enhanced REP compression writer
@@ -521,6 +529,10 @@ void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256])
  *
  * @ingroup video
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], uint8_t char_index_ramp[ASCII_LUMINANCE_LEVELS]);
 
 /**
@@ -538,6 +550,10 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars);
  * @ingroup video
  */
 void simd_caches_destroy_all(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 // Include architecture-specific implementations
 #if SIMD_SUPPORT_SSE2

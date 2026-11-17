@@ -1,53 +1,60 @@
-# Standalone test executables
+# Standalone native tests and fixtures
 
-Ordinary regression tests belong in Criterion (`tests/unit`, `tests/integration`,
-or the explicitly linked white-box suites in `tests/contracts`). Do not add a
-custom `main()` merely to run a sequence of assertions. Criterion provides case
-isolation, filtering, timeouts, and XML results. Use
-`tests/contracts/worker_assert.h` for assertions in test-owned worker threads;
-it reports a failure without unwinding to the test thread's jump buffer.
+Native standalone test runners use Catch2 v3 as well. They remain separate
+executables when they need process, console, socket, hardware, dependency, or
+resource isolation; CTest labels them `standalone` and applies the same JUnit
+and coverage rules as the consolidated unit runner.
 
-The remaining entry points have external process or build requirements:
+Programs in this directory that are launched by Python or inspected by a
+parent process are fixtures or probes, not test runners. They intentionally
+retain a small `main()` because their process boundary is the behavior under
+test. Every such exception must be listed here and must not contain a hidden
+second test suite. Anything not listed here is a Catch2 test and must be
+registered with `Catch2::Catch2WithMain` (or discovered from a shared Catch2
+executable).
 
-| Entry point                                                                                       | Reason to keep a standalone process                                                                                                                                                                                                           |
-| ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `errno/errno_test.c`                                                                              | Signal handlers, pending error diagnostics, and intentional assertion termination are observed by an external process. Ordinary stack/scope/history tests are in `contracts/errno`.                                                           |
-| `tui/splash_init.c`                                                                               | Windows first-call race probe; Criterion covers the same initialization races on supported Unix platforms.                                                                                                                                    |
-| `network/client_ping_test.c`                                                                      | Windows ping-sentinel probe; the Criterion client-transport contract covers it on supported Unix platforms.                                                                                                                                   |
-| `network/prepare_test.c`                                                                          | Python supplies a live WebSocket echo URL. Wire-format and TCP contract cases are in `contracts/network/prepare_test.c`.                                                                                                                      |
-| `network/vectored_test.c`                                                                         | CLI peer/server roles and microbenchmark options are used outside the test runner. Correctness cases are in `contracts/network/vectored_test.c`.                                                                                              |
-| `network/backpressure_live.c`                                                                     | Python coordinates real transport/codec producer and consumer processes and inspects their output. Admission and budget contracts use Criterion.                                                                                              |
-| `media/otel_contract_test.c`                                                                      | A separate executable emits captured protobuf bytes for the Python trace inspector and provides Windows coverage. Its in-process adapter assertions are Criterion cases on supported Unix platforms.                                          |
-| `media/capture_open_test.c`                                                                       | Python creates media files and drives camera/open/cancel scenarios in bounded subprocesses.                                                                                                                                                   |
-| `logging/crypto_logging.c`                                                                        | The parent inspects the completed process's real log for secrets and rate-limited diagnostics.                                                                                                                                                |
-| `media/clipboard_windows_test.c`, `media/audio_priority_test.c`, `session/terminal_resize_test.c` | Exercise Windows clipboard, thread priority, and console APIs; Criterion is unsupported on Windows.                                                                                                                                           |
-| `crc32/test.c`, `upnp/test.c`                                                                     | Dependency-isolated compilation matrices exercise hardware-disabled/masked CPUs and different gateway API/availability configurations, including Windows. These verify configurations independent of the native application dependency graph. |
-| `log_io/test.c`                                                                                   | The parent verifies exact stdout/stderr restoration after real descriptor redirection, including an injected second-redirect failure. A test runner would itself own those streams.                                                           |
+The current process-boundary exceptions are:
 
-Other deliberate process fixtures outside this directory:
+* `errno/errno_test.c`, `errno/errno_tui_fixture.c`, and
+  `errno/error_popup_fixture.c`: subprocesses launched by Python for signal,
+  assertion, TUI, and error-popup behavior.
+* `logging/crypto_logging.c`: the crypto-logging subprocess.
+* `network/backpressure_live.c`, `network/client_ping_test.c`,
+  `network/mdns_advertiser_fixture.c`, `network/prepare_test.c`,
+  `network/quic_http3.c`, `network/quic_stream.c`, `network/quic_tls.c`,
+  `network/traffic_metadata.c`, `network/transport_metrics.c`, and
+  `network/vectored_test.c`: live transport,
+  ACIP, QUIC, mDNS, or compatibility processes whose lifetime and wire I/O are
+  inspected by a parent harness.
+* `media/capture_open_test.c`, `media/extractor_audio_probe.c`,
+  `media/fake_yt_dlp.c`, `media/otel_media_test.c`, and
+  `media/otel_contract_test.c`: media, extractor, and telemetry subprocesses
+  whose stdout, exit status, or external lifecycle is part of the contract.
+* `media/clipboard_windows_test.c` and `platform/terminal_pty_test.c`: OS
+  integration probes launched as child processes.
+* `quic_tls_check/dependencies.c`: a dependency/linkage probe.
+* `crc32/test.c`, `log_io/test.c`, and `upnp/test.c`: isolated compiler tests;
+  their Python drivers create temporary source trees and compile each ABI or
+  platform variant independently, which is the behavior under test.
+* `tui/splash_init.c`: the fallback terminal lifecycle probe used only when
+  the Catch2 contract target is unavailable. The normal native test build uses
+  `contracts/tui/splash_init_test.cpp`.
 
-- `tests/integration/ui_native_probe.c`, `sync_regressions.c`, and
-  `client_like_lifecycle.c` are driven by terminal/process harnesses. They include
-  input, signal, retry, and deliberately stuck-lock scenarios.
-- `tests/simd/test_dispatch.c` tests startup dispatch overrides and Linux SVE
-  vector lengths; `ASCII_EMISSION_STANDALONE` runs the same Criterion emission
-  contracts under an isolated renderer/ISA harness. The Emscripten entry point in
-  `digital_rain_test.c` runs those contracts where Criterion cannot run.
-- `tests/benchmarks` and `tests/simd/benchmark_*.c` are measurements, not unit suites.
-- `tests/cmake/*/main.c`, `tests/wasm/dependencies/main.c`, and
-  `cmake/test/test_lib.c` are build/link/install consumer probes. Keeping the
-  consumer free of a test framework is part of what they verify.
+These exceptions must remain thin fixtures/probes. Their actual assertions
+belong in the Python harness or in the maintained Catch2 suites under
+`tests/unit/` and `tests/contracts/`; do not add a second test suite inside a
+fixture.
 
-Run converted contracts through CTest after building their targets:
+Catch2 standalone runners should use semantic tags such as `[standalone]`,
+`[platform]`, `[network]`, `[serial]`, or `[slow]`. Use CTest labels for
+scheduling and process policy, for example:
 
 ```sh
-ctest --test-dir build_docker -L contract --output-on-failure
+ctest --test-dir build -L standalone --no-tests=error --output-on-failure --parallel 8
+ctest --test-dir build -L 'benchmark|serial' --no-tests=error --parallel 1
 ```
 
-The dependency-isolated CRC32, UPnP, and log-I/O matrices are also CTest tests.
-In a native coverage build their Python harnesses retain the separately compiled
-production-source profiles under the build directory, so the final coverage
-report includes the implementation they exercise without counting test sources.
-
-The audio processor regression is now `tests/unit/audio/processor_test.c` and is
-registered with the normal Criterion unit inventory.
+The Catch2 XML reports are written below
+`build/Testing/xml/`; CTest's aggregate report remains
+`build/Testing/ctest-results.xml`. Keep benchmark timing runs separate from
+coverage and sanitizer runs.

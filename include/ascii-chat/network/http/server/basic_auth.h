@@ -3,6 +3,10 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct http_request_info;
 struct http_response;
 
@@ -25,3 +29,7 @@ bool http_basic_auth_matches(const http_basic_credentials_t *provided, const cha
 bool http_basic_auth_authorize(const http_basic_auth_config_t *config, const char *authorization);
 bool http_server_authorize(const http_basic_auth_config_t *config, const struct http_request_info *request, struct http_response *response);
 void http_basic_credentials_clear(http_basic_credentials_t *credentials);
+
+#ifdef __cplusplus
+}
+#endif

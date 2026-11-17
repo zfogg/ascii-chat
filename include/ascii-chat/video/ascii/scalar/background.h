@@ -11,6 +11,10 @@
 #include <ascii-chat/video/rgba/image.h>
 #include <libplatform/terminal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Convert image to colored ASCII art with background colors
  * @param p Image pointer
@@ -18,3 +22,7 @@
  * @return Allocated ASCII string with background color codes (caller must free), or NULL on error
  */
 char *image_print_color_background(const image_t *p, const char *palette);
+
+#ifdef __cplusplus
+}
+#endif

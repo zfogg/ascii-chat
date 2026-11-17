@@ -9,6 +9,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Logging bit conversion
  * @ingroup logging
@@ -41,3 +45,7 @@ typedef enum {
 #define LOG_WARN ASCIICHAT_LOG_WARN
 #define LOG_ERROR ASCIICHAT_LOG_ERROR
 #define LOG_FATAL ASCIICHAT_LOG_FATAL
+
+#ifdef __cplusplus
+}
+#endif

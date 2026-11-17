@@ -50,6 +50,10 @@
 #include <stdbool.h>
 #include "../asciichat_errno.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Convert a UTF-8 DNS hostname to its canonical ASCII form using ICU UTS #46.
  * Underscore hostnames remain accepted for local-service compatibility.
  * Nontransitional processing preserves distinct names such as faß.de and fass.de.
@@ -296,3 +300,7 @@ bool url_looks_like_tcp(const char *url);
 void url_redact_diagnostic(char *text, bool truncated);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

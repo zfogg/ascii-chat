@@ -72,6 +72,24 @@ function(asciichat_configure_quic)
         "-DENABLE_STATIC_LIB:BOOL=${_quic_enable_static}"
         "-DENABLE_SHARED_LIB:BOOL=${_quic_enable_shared}"
         "-DBUILD_TESTING:BOOL=OFF")
+    # The isolated ngtcp2 configure runs FindZLIB independently.  On Linux
+    # CI the parent project may have only the plural/pkg-config result, while
+    # ngtcp2's try_compile sees the singular cache entry as NOTFOUND.
+    if(DEFINED ZLIB_LIBRARIES AND NOT "${ZLIB_LIBRARIES}" STREQUAL "")
+        list(APPEND _quic_common_args
+            "-DZLIB_LIBRARY:STRING=${ZLIB_LIBRARIES}"
+            "-DZLIB_LIBRARIES:STRING=${ZLIB_LIBRARIES}")
+    endif()
+    if(DEFINED ZLIB_INCLUDE_DIRS AND NOT "${ZLIB_INCLUDE_DIRS}" STREQUAL "")
+        string(REPLACE ";" "\\;" _quic_zlib_include_dirs "${ZLIB_INCLUDE_DIRS}")
+        list(APPEND _quic_common_args
+            "-DZLIB_INCLUDE_DIR:PATH=${_quic_zlib_include_dirs}"
+            "-DZLIB_INCLUDE_DIRS:PATH=${_quic_zlib_include_dirs}")
+    elseif(DEFINED ZLIB_INCLUDE_DIR AND NOT "${ZLIB_INCLUDE_DIR}" STREQUAL "")
+        list(APPEND _quic_common_args
+            "-DZLIB_INCLUDE_DIR:PATH=${ZLIB_INCLUDE_DIR}"
+            "-DZLIB_INCLUDE_DIRS:PATH=${ZLIB_INCLUDE_DIR}")
+    endif()
     # Keep the isolated ngtcp2 configure aligned with the parent dependency
     # configuration.  In particular, debug/shared builds must not reuse a
     # stale static OpenSSL selection from an earlier configure.
@@ -88,6 +106,30 @@ function(asciichat_configure_quic)
             list(APPEND _quic_common_args "-D${_variable}:STRING=${${_variable}}")
         endif()
     endforeach()
+    if(WIN32)
+        # The isolated QUIC projects do not inherit the parent target's link
+        # directories. Pass the Windows SDK/MSVC library directories explicitly
+        # so their cache-local DLLs can actually be built with clang.
+        set(_quic_windows_link_flags "")
+        if(DEFINED ASCIICHAT_MSVC_LIB_PATH)
+            string(APPEND _quic_windows_link_flags " -L\"${ASCIICHAT_MSVC_LIB_PATH}\"")
+        endif()
+        if(DEFINED CMAKE_RC_COMPILER)
+            get_filename_component(_quic_sdk_bin "${CMAKE_RC_COMPILER}" DIRECTORY)
+            get_filename_component(_quic_sdk_version "${_quic_sdk_bin}/.." ABSOLUTE)
+            get_filename_component(_quic_sdk_version "${_quic_sdk_version}" NAME)
+            get_filename_component(_quic_sdk_root "${_quic_sdk_bin}/../../.." ABSOLUTE)
+            set(_quic_sdk_lib "${_quic_sdk_root}/Lib/${_quic_sdk_version}")
+            string(APPEND _quic_windows_link_flags
+                " -L\"${_quic_sdk_lib}/ucrt/x64\" -L\"${_quic_sdk_lib}/um/x64\"")
+        endif()
+        if(NOT _quic_windows_link_flags STREQUAL "")
+            list(APPEND _quic_common_args
+                "-DCMAKE_EXE_LINKER_FLAGS:STRING=${_quic_windows_link_flags}"
+                "-DCMAKE_SHARED_LINKER_FLAGS:STRING=${_quic_windows_link_flags}"
+                "-DCMAKE_MODULE_LINKER_FLAGS:STRING=${_quic_windows_link_flags}")
+        endif()
+    endif()
     if(USE_MUSL)
         foreach(_variable ASCIICHAT_DEPS_CACHE_DIR ASCIICHAT_MUSL_SYSROOT MUSL_TARGET MUSL_INCLUDE_DIR MUSL_LIBDIR
                           KERNEL_HEADERS_DIR)
@@ -120,11 +162,41 @@ function(asciichat_configure_quic)
         set(_quic_ssl_file "${OPENSSL_SSL_LIBRARY}")
         set(_quic_crypto_file "${OPENSSL_CRYPTO_LIBRARY}")
     endif()
+    if(DEFINED OPENSSL_LIBRARIES AND NOT "${OPENSSL_LIBRARIES}" STREQUAL "")
+        if(NOT WIN32)
+            # The parent project may use target names (for example
+            # asciichat-zlib) in OPENSSL_LIBRARIES. The isolated ngtcp2
+            # configure cannot resolve parent targets, so pass concrete
+            # OpenSSL archives and the system libraries needed by the probe.
+            set(_quic_openssl_libraries
+                "${_quic_ssl_file};${_quic_crypto_file};dl;pthread")
+        else()
+            set(_quic_openssl_libraries "${OPENSSL_LIBRARIES}")
+        endif()
+        string(REPLACE ";" "\\;" _quic_openssl_libraries "${_quic_openssl_libraries}")
+        set(_quic_openssl_args "-DOPENSSL_LIBRARIES:STRING=${_quic_openssl_libraries}")
+    else()
+        set(_quic_openssl_args)
+    endif()
 
     set(_ngtcp2_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/ngtcp2")
     set(_nghttp3_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/nghttp3")
-    set(_ngtcp2_build "${CMAKE_BINARY_DIR}/_deps/asciichat-ngtcp2")
-    set(_nghttp3_build "${CMAKE_BINARY_DIR}/_deps/asciichat-nghttp3")
+    # Keep the isolated QUIC dependency build products with the rest of the
+    # reusable dependency cache.  This lets tests, the CLI, and subsequent
+    # build directories use the same DLLs without reaching into a build tree.
+    set(_ngtcp2_build "${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2")
+    set(_nghttp3_build "${ASCIICHAT_DEPS_CACHE_DIR}/quic-nghttp3")
+    set(_quic_config_stamp "${ASCIICHAT_DEPS_CACHE_DIR}/quic-config-v3.stamp")
+    if(NOT EXISTS "${_quic_config_stamp}")
+        file(REMOVE_RECURSE "${_ngtcp2_build}" "${_nghttp3_build}")
+    endif()
+    if(EXISTS "${_ngtcp2_build}/CMakeCache.txt")
+        file(READ "${_ngtcp2_build}/CMakeCache.txt" _ngtcp2_cache)
+        string(FIND "${_ngtcp2_cache}" "CMAKE_HOME_DIRECTORY:INTERNAL=${_ngtcp2_source}" _ngtcp2_source_match)
+        if(_ngtcp2_source_match EQUAL -1)
+            file(REMOVE_RECURSE "${_ngtcp2_build}")
+        endif()
+    endif()
     set(_ngtcp2_library "${_ngtcp2_build}/lib/${_quic_library_prefix}ngtcp2${_quic_library_suffix}")
     set(_ngtcp2_crypto_library "${_ngtcp2_build}/crypto/ossl/${_quic_library_prefix}ngtcp2_crypto_ossl${_quic_library_suffix}")
     set(_nghttp3_library "${_nghttp3_build}/lib/${_quic_library_prefix}nghttp3${_quic_library_suffix}")
@@ -163,6 +235,7 @@ function(asciichat_configure_quic)
             -DOPENSSL_INCLUDE_DIR:PATH=${OPENSSL_INCLUDE_DIR}
             -DOPENSSL_SSL_LIBRARY:FILEPATH=${_quic_ssl_file}
             -DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}
+            ${_quic_openssl_args}
             -DVCPKG_MANIFEST_INSTALL:BOOL=OFF
         RESULT_VARIABLE _ngtcp2_configure_result
         OUTPUT_VARIABLE _ngtcp2_configure_stdout
@@ -181,15 +254,19 @@ function(asciichat_configure_quic)
     if(NOT _nghttp3_configure_result EQUAL 0)
         message(FATAL_ERROR "Failed to configure nghttp3 (${_nghttp3_configure_result})\n${_nghttp3_configure_stdout}${_nghttp3_configure_stderr}")
     endif()
+    file(WRITE "${_quic_config_stamp}" "quic configuration v2\n")
 
     ExternalProject_Add(asciichat-ngtcp2-build
         SOURCE_DIR "${_ngtcp2_source}"
         BINARY_DIR "${_ngtcp2_build}"
+        STAMP_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2-stamp"
+        TMP_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/quic-ngtcp2-tmp"
         DOWNLOAD_COMMAND "" UPDATE_COMMAND "" CONFIGURE_COMMAND "${CMAKE_COMMAND}" -E true INSTALL_COMMAND ""
         CMAKE_ARGS ${_quic_common_args} "-DENABLE_OPENSSL:BOOL=ON"
             "-DOPENSSL_INCLUDE_DIR:PATH=${OPENSSL_INCLUDE_DIR}"
             "-DOPENSSL_SSL_LIBRARY:FILEPATH=${_quic_ssl_file}"
             "-DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}"
+            ${_quic_openssl_args}
             "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ${_quic_ngtcp2_crypto_target} -- --quiet
         BUILD_BYPRODUCTS ${_ngtcp2_byproducts}
@@ -198,6 +275,8 @@ function(asciichat_configure_quic)
     ExternalProject_Add(asciichat-nghttp3-build
         SOURCE_DIR "${_nghttp3_source}"
         BINARY_DIR "${_nghttp3_build}"
+        STAMP_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/quic-nghttp3-stamp"
+        TMP_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/quic-nghttp3-tmp"
         DOWNLOAD_COMMAND "" UPDATE_COMMAND "" CONFIGURE_COMMAND "${CMAKE_COMMAND}" -E true INSTALL_COMMAND ""
         CMAKE_ARGS ${_quic_common_args} "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ${_quic_nghttp3_target} -- --quiet

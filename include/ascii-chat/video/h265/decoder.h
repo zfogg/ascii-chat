@@ -20,6 +20,10 @@
 #include <stdbool.h>
 #include <ascii-chat/asciichat_errno.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct h265_decoder h265_decoder_t;
 
 /**
@@ -79,3 +83,7 @@ asciichat_error_t h265_decode(h265_decoder_t *decoder, const uint8_t *encoded_pa
  * @param last_height Output: height of last decoded frame
  */
 void h265_decoder_get_stats(h265_decoder_t *decoder, uint64_t *total_frames, uint64_t *keyframes, uint16_t *last_width, uint16_t *last_height);
+
+#ifdef __cplusplus
+}
+#endif

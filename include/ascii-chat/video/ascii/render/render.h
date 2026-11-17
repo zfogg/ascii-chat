@@ -41,6 +41,10 @@ bool ascii_render_palette_supported(ascii_renderer_t kind, const char *palette);
 
 #include <ascii-chat/video/ascii/stabilize.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 char *ascii_render(const image_t *image, const char *palette, ascii_color_t color, bool background, bool dither, const simd_cells_t *ops);
 
 char *ascii_render_glyph_match(const image_t *image, ascii_color_t color, const simd_cells_t *ops, const char *palette);
@@ -53,3 +57,7 @@ char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int str
  * Returns the prior target so capability conversion can restore its scope.
  */
 outbuf_t *ascii_render_set_output_target(outbuf_t *target);
+
+#ifdef __cplusplus
+}
+#endif

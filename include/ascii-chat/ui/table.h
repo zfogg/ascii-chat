@@ -2,6 +2,10 @@
 #include <ascii-chat/ui/text.h>
 #include <ascii-chat/ui/viewport.h>
 #include <ascii-chat/ui/scrollbar.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef struct {
   const char *heading;
   int width; /* Zero shares the remaining space. */
@@ -32,3 +36,7 @@ typedef struct {
 } ui_table_t;
 /** Rectangular table with a fixed header and independent page/scroll state. */
 void ui_table_render(frame_buffer_t *out, ui_table_t *table, int row, int column, int width, int height);
+
+#ifdef __cplusplus
+}
+#endif

@@ -5,6 +5,10 @@
 #include <ascii-chat/network/acip/prepare.h>
 #include <ascii-chat/network/acip/transport.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Per-peer, event-driven negotiation. The caller owns and configures handshake.
  * @brief acip security is intentionally a small, concrete record. Fields such as `handshake`, `mode`,
  * `forbid_encryption`, `require_encryption` give callers the identity and current value they need. It is normally
@@ -49,3 +53,7 @@ asciichat_error_t acip_security_seal(crypto_context_t *, acip_traffic_class_t, a
 asciichat_error_t acip_security_open(crypto_context_t *, acip_traffic_class_t, acip_delivery_t, const void *, size_t, uint8_t **, size_t *, uint64_t *, bool *);
 
 asciichat_error_t acip_security_next_control(crypto_context_t *, acip_traffic_class_t *, uint8_t **, size_t *);
+
+#ifdef __cplusplus
+}
+#endif

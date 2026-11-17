@@ -16,6 +16,10 @@
 #include <stdbool.h>
 #include <ascii-chat/asciichat_errno.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct terminal_fd_writer_s terminal_fd_writer_t;
 
 /**
@@ -45,3 +49,7 @@ asciichat_error_t terminal_fd_writer_write(terminal_fd_writer_t *writer, const c
  * @param writer Writer context to destroy
  */
 void terminal_fd_writer_destroy(terminal_fd_writer_t *writer);
+
+#ifdef __cplusplus
+}
+#endif

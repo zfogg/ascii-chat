@@ -10,6 +10,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define HTTP_RENDERER_MAX_OUTPUT (8u * 1024u * 1024u)
 
 typedef enum { HTTP_RENDER_SOURCE_UPLOAD, HTTP_RENDER_SOURCE_FILE, HTTP_RENDER_SOURCE_URL, HTTP_RENDER_SOURCE_WEBCAM, HTTP_RENDER_SOURCE_VISUALIZATION } http_render_source_type_t;
@@ -143,3 +147,7 @@ void http_renderer_reap(http_renderer_t *renderer, bool all);
 void http_renderer_stop(http_renderer_t *renderer);
 void http_renderer_destroy(http_renderer_t **renderer);
 void http_renderer_job_wait(http_renderer_job_t *job);
+
+#ifdef __cplusplus
+}
+#endif

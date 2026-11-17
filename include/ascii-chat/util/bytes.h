@@ -36,6 +36,10 @@
 #include <stddef.h>
 #include <limits.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Unaligned Memory Access Helpers
  * ============================================================================
@@ -234,3 +238,7 @@ static inline bool bytes_safe_size_mul(size_t a, size_t b, size_t *result) {
 }
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

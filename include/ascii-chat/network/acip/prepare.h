@@ -7,6 +7,10 @@
 #include <ascii-chat/network/packet/packet.h>
 #include <libplatform/socket.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * A borrowed packet description. Neither the vector array nor its bytes are owned.
  * Keep both alive and immutable through encryption or synchronous delivery. Async
@@ -43,3 +47,7 @@ asciichat_error_t acip_packet_open_sequence(crypto_record_t *, acip_traffic_clas
 asciichat_error_t acip_packet_open(crypto_record_t *, acip_traffic_class_t, acip_delivery_t, const void *, size_t, uint8_t **, size_t *);
 
 asciichat_error_t acip_packet_decrypt_payload(crypto_record_t *, unsigned channel, unsigned delivery, const void *, size_t, uint8_t **, size_t *, uint64_t *);
+
+#ifdef __cplusplus
+}
+#endif

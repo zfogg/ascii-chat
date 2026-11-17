@@ -80,6 +80,10 @@
 #include "../tests/test_env.h"
 #include <sys/types.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name Network Timeout Constants
  * @{
@@ -400,3 +404,7 @@ const char *network_error_string();
 /** @} */ /* Error Reporting Functions */
 
 /** @} */ /* network */
+
+#ifdef __cplusplus
+}
+#endif

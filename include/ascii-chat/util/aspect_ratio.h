@@ -53,6 +53,10 @@
 
 #include <libplatform/system.h> // for ssize_t
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Aspect Ratio Calculation Functions
  * @{
@@ -152,3 +156,7 @@ void aspect_ratio2(const ssize_t img_width, const ssize_t img_height, const ssiz
 void calculate_fit_dimensions_pixel(int img_width, int img_height, int max_width, int max_height, int *out_width, int *out_height);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

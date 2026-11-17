@@ -10,7 +10,7 @@
 #
 # Prerequisites (must be set before including this file):
 #   - WIN32, PLATFORM_DARWIN, PLATFORM_LINUX: Platform detection variables
-#   - CRITERION_FOUND: Whether Criterion test framework was found
+#   - CATCH2_FOUND: Whether Catch2 v3 test framework was found
 #
 # Outputs (variables set by this file):
 #   Windows:
@@ -22,7 +22,7 @@
 #     - COREMEDIA_FRAMEWORK, COREVIDEO_FRAMEWORK
 #   Linux:
 #     - CMAKE_THREAD_LIBS_INIT: Thread library
-#     - Plus Criterion test dependencies (if CRITERION_FOUND)
+#     - Plus Catch2 test dependencies (if CATCH2_FOUND)
 # =============================================================================
 
 if(WIN32)

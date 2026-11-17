@@ -55,12 +55,12 @@ static asciichat_error_t client_like_prepare(void *data) {
   return !strcmp(scenario, "prepare-error") ? ERROR_INVALID_STATE : ASCIICHAT_OK;
 }
 static bool client_like_retry(asciichat_error_t error, int attempt, void *data) {
-  CHECK(error != ASCIICHAT_OK && attempt == calls && data == &retries);
+  CHECK((error != ASCIICHAT_OK && attempt == calls && data == &retries));
   retries++;
   return strcmp(scenario, "veto") != 0;
 }
 static asciichat_error_t client_like_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *data) {
-  CHECK(capture && display && data == &calls);
+  CHECK((capture && display && data == &calls));
   CHECK(session_capture_get_target_fps(capture) == expected_fps);
   calls++;
   saved_exit_adapter = session_client_like_get_render_should_exit();
@@ -84,7 +84,7 @@ static asciichat_error_t client_like_run(session_capture_ctx_t *capture, session
   return !strcmp(scenario, "backoff") ? ERROR_RATE_LIMITED : ERROR_NETWORK;
 }
 int main(int argc, char **argv) {
-  CHECK(argc == 2 || argc == 3);
+  CHECK((argc == 2 || argc == 3));
   scenario = argv[1];
   CHECK(asciichat_shared_init(NULL, false, true) == ASCIICHAT_OK);
   CHECK(options_state_init() == ASCIICHAT_OK);
@@ -129,7 +129,7 @@ int main(int argc, char **argv) {
     config.discovery = &calls;
   }
   asciichat_error_t result = session_client_like_run(&config);
-  CHECK(prepares == 1 && stops == 1);
+  CHECK((prepares == 1 && stops == 1));
   CHECK(!session_client_like_get_render_should_exit());
   if (saved_exit_adapter) {
     int calls_before_cleanup_check = custom_exit_calls;
@@ -138,22 +138,22 @@ int main(int argc, char **argv) {
   }
   CHECK(!session_client_like_get_stdin_reader());
   if (!strcmp(scenario, "prepare-error"))
-    CHECK(result == ERROR_INVALID_STATE && calls == 0);
+    CHECK((result == ERROR_INVALID_STATE && calls == 0));
   else if (!strcmp(scenario, "shutdown"))
-    CHECK(result == ASCIICHAT_OK && calls == 0);
+    CHECK((result == ASCIICHAT_OK && calls == 0));
   else if (!strncmp(scenario, "fps-", 4) || !strcmp(scenario, "success") || !strcmp(scenario, "mirror") || !strcmp(scenario, "discovery-destroy"))
-    CHECK(result == ASCIICHAT_OK && calls == 1);
+    CHECK((result == ASCIICHAT_OK && calls == 1));
   else if (!strcmp(scenario, "retry-success"))
-    CHECK(result == ASCIICHAT_OK && calls == 3 && retries == 2 && slept == 500);
+    CHECK((result == ASCIICHAT_OK && calls == 3 && retries == 2 && slept == 500));
   else if (!strcmp(scenario, "backoff"))
-    CHECK(result == ASCIICHAT_OK && calls == 2 && slept == 2000);
+    CHECK((result == ASCIICHAT_OK && calls == 2 && slept == 2000));
   else if (!strcmp(scenario, "no-retry"))
-    CHECK(result == ERROR_NETWORK && calls == 1 && retries == 0 && slept == 0);
+    CHECK((result == ERROR_NETWORK && calls == 1 && retries == 0 && slept == 0));
   else if (!strcmp(scenario, "veto"))
-    CHECK(result == ERROR_NETWORK && calls == 1 && retries == 1 && slept == 0);
+    CHECK((result == ERROR_NETWORK && calls == 1 && retries == 1 && slept == 0));
   else if (!strcmp(scenario, "interrupt"))
-    CHECK(result == ERROR_NETWORK && slept == 100);
+    CHECK((result == ERROR_NETWORK && slept == 100));
   else
-    CHECK(result == ERROR_NETWORK && calls == 3 && retries == 3 && slept == 500);
+    CHECK((result == ERROR_NETWORK && calls == 3 && retries == 3 && slept == 500));
   return 0;
 }

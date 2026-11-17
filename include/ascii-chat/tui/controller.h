@@ -5,6 +5,10 @@
 #include <stddef.h>
 #include <ascii-chat/video/anim/controller.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Maximum complete frame size accepted by the presenter, including cursor controls. */
 #define UI_CONTROLLER_MAX_FRAME_BYTES (16 * 1024 * 1024)
 
@@ -124,3 +128,7 @@ asciichat_error_t ui_controller_start_terminal(int fd);
 bool ui_controller_screen_live(ui_screen_t screen);
 /** Handle input for a first-use notice, retaining its snapshot while it is used. */
 bool ui_controller_first_use_key(int key);
+
+#ifdef __cplusplus
+}
+#endif

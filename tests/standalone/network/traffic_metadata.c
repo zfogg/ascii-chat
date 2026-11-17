@@ -99,9 +99,9 @@ int main(void) {
   CHECK(acip_transport_sendv_ex(&transport, &buffer, 1, &options) == ERROR_NOT_SUPPORTED);
   CHECK(atomic_load_u64(&capture.count) == sizeof(cases) / sizeof(cases[0]));
   acip_transport_capabilities_t caps;
-  CHECK(acip_transport_get_capabilities(&transport, &caps) == ASCIICHAT_OK && caps.independent_streams && !caps.datagrams && !caps.max_datagram_payload);
+  CHECK((acip_transport_get_capabilities(&transport, &caps) == ASCIICHAT_OK && caps.independent_streams && !caps.datagrams && !caps.max_datagram_payload));
   atomic_store_bool(&capture.datagrams, true);
-  CHECK(acip_transport_get_capabilities(&transport, &caps) == ASCIICHAT_OK && caps.datagrams && caps.max_datagram_payload == 1200);
+  CHECK((acip_transport_get_capabilities(&transport, &caps) == ASCIICHAT_OK && caps.datagrams && caps.max_datagram_payload == 1200));
   header.type = HOST_TO_NET_U16(PACKET_TYPE_AUDIO_BATCH);
   options.delivery = ACIP_DELIVERY_DATAGRAM;
   options.deadline_ns = time_get_ns() + 2 * NS_PER_SEC_INT;
@@ -111,7 +111,7 @@ int main(void) {
     CHECK(time_get_ns() - start < 2 * NS_PER_SEC_INT);
     platform_sleep_ms(1);
   }
-  CHECK(atomic_load_u64(&capture.delivery) == ACIP_DELIVERY_DATAGRAM && atomic_load_u64(&capture.deadline) == options.deadline_ns);
+  CHECK((atomic_load_u64(&capture.delivery) == ACIP_DELIVERY_DATAGRAM && atomic_load_u64(&capture.deadline) == options.deadline_ns));
   options.deadline_ns = 1;
   CHECK(acip_transport_sendv_ex(&transport, &buffer, 1, &options) == ERROR_NETWORK_TIMEOUT);
   options.deadline_ns = 0;

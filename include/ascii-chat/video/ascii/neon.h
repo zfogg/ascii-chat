@@ -22,6 +22,10 @@
 #if SIMD_SUPPORT_NEON
 #include <arm_neon.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Quantize RGB to 256-color palette with dithering (NEON)
  * @param r Red components (16 pixels)
@@ -97,4 +101,8 @@ char *rgb_to_16color_halfblocks_neon(const uint8_t *rgb, int width, int height, 
 
 #if SIMD_SUPPORT_NEON
 char *rgb_to_halfblocks_neon(const uint8_t *rgb, int width, int height, int stride, const char *palette);
+#endif
+
+#ifdef __cplusplus
+}
 #endif

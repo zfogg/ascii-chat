@@ -21,6 +21,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Callback profiling statistics for a single LWS callback reason
  * @brief Callback profiling statistics for a single LWS callback reason
@@ -121,3 +125,7 @@ char *lws_profiler_export_json(void);
  * @return true if profiler is active, false otherwise
  */
 bool lws_profiler_is_initialized(void);
+
+#ifdef __cplusplus
+}
+#endif

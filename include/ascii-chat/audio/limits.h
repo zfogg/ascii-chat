@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Audio rate and channel configuration shared by capture, mixing, and codecs. */
 #define AUDIO_SAMPLE_RATE 48000
 #define AUDIO_CHANNELS 2
@@ -22,3 +26,7 @@
 /** Decoder storage permits packets representing up to 120 ms per channel at the configured rate. */
 #define AUDIO_OPUS_MAX_DECODE_MS 120
 #define AUDIO_OPUS_MAX_DECODE_SAMPLES (AUDIO_SAMPLE_RATE * AUDIO_OPUS_MAX_DECODE_MS / 1000)
+
+#ifdef __cplusplus
+}
+#endif

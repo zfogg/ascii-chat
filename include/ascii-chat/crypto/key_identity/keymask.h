@@ -6,6 +6,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define KEYMASK_DIGEST_SIZE 32
 #define KEYMASK_WIDTH 34
 #define KEYMASK_ROWS 18
@@ -20,3 +24,7 @@ asciichat_error_t key_fingerprint_digest(const uint8_t public_key[ED25519_PUBLIC
  * This is a recognition aid; exact and perceptual collisions are possible.
  */
 asciichat_error_t keymask_render(const uint8_t digest[KEYMASK_DIGEST_SIZE], bool unicode, char *out, size_t size);
+
+#ifdef __cplusplus
+}
+#endif

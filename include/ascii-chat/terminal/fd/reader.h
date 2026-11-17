@@ -17,6 +17,10 @@
 #include <stdbool.h>
 #include <ascii-chat/asciichat_errno.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct terminal_fd_reader_s terminal_fd_reader_t;
 
 /**
@@ -49,3 +53,7 @@ asciichat_error_t terminal_fd_reader_next(terminal_fd_reader_t *reader, char **o
  * @param reader Reader context to destroy
  */
 void terminal_fd_reader_destroy(terminal_fd_reader_t *reader);
+
+#ifdef __cplusplus
+}
+#endif

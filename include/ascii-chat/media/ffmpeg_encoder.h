@@ -159,6 +159,10 @@
 #include <stdint.h>
 #include <ascii-chat/asciichat_errno.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct ffmpeg_encoder_s ffmpeg_encoder_t;
 
 /**
@@ -300,3 +304,7 @@ void ffmpeg_encoder_set_snapshot_actual_duration(ffmpeg_encoder_t *enc, double a
 asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc);
 
 void ffmpeg_encoder_set_live_timing(ffmpeg_encoder_t *enc);
+
+#ifdef __cplusplus
+}
+#endif

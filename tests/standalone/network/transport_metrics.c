@@ -114,7 +114,7 @@ static void negotiate(acip_transport_t *sender, acip_transport_t *receiver, cryp
     buffer_release(owner);
   }
   CHECK(thread_join(&thread, NULL) == ASCIICHAT_OK);
-  CHECK(server.ready && client.result == ASCIICHAT_OK);
+  CHECK((server.ready && client.result == ASCIICHAT_OK));
 }
 static void *receive_loop(void *arg) {
   receiver_t *r = arg;
@@ -141,7 +141,7 @@ static void *receive_loop(void *arg) {
     uint64_t now = time_get_ns();
     CHECK(stamp.captured <= now);
     if (stamp.sequence <= r->last_sequence[flow]) {
-      CHECK(r->datagrams && flow != 0);
+      CHECK((r->datagrams && flow != 0));
       ++r->out_of_order[flow];
     } else
       r->last_sequence[flow] = stamp.sequence;
@@ -171,9 +171,9 @@ static int compare(const void *a, const void *b) {
 }
 
 int main(int argc, char **argv) {
-  CHECK(argc == 4 || argc == 5);
+  CHECK((argc == 4 || argc == 5));
   size_t visual_bytes = argc == 5 ? strtoul(argv[4], NULL, 10) : 32768;
-  CHECK(visual_bytes >= 1024 && visual_bytes <= 262144);
+  CHECK((visual_bytes >= 1024 && visual_bytes <= 262144));
   log_init(NULL, LOG_WARN, false, false);
   errno_suppress(true);
   CHECK(platform_init() == ASCIICHAT_OK);
@@ -223,14 +223,14 @@ int main(int argc, char **argv) {
       uint64_t start = time_get_ns();
       while (!receiver && time_get_ns() - start < 20 * NS_PER_SEC_INT) {
         asciichat_error_t result = quic_accept(endpoints[1], &receiver);
-        CHECK(result == ASCIICHAT_OK || result == ERROR_NETWORK_TIMEOUT);
+        CHECK((result == ASCIICHAT_OK || result == ERROR_NETWORK_TIMEOUT));
         platform_sleep_ms(1);
       }
       CHECK(receiver);
       acip_transport_capabilities_t caps = {0};
       do {
         asciichat_error_t result = acip_transport_get_capabilities(sender, &caps);
-        CHECK(result == ASCIICHAT_OK || result == ERROR_INVALID_STATE);
+        CHECK((result == ASCIICHAT_OK || result == ERROR_INVALID_STATE));
         if (!caps.independent_streams)
           platform_sleep_ms(1);
         CHECK(time_get_ns() - start < 20 * NS_PER_SEC_INT);
@@ -252,16 +252,16 @@ int main(int argc, char **argv) {
       socket_optimize_for_streaming(incoming);
       sender = acip_async_tcp_client_create(&outgoing, NULL);
       receiver = acip_tcp_transport_create_owned("metrics", incoming, NULL);
-      CHECK(sender && receiver);
+      CHECK((sender && receiver));
     }
     negotiate(sender, receiver, handshake);
   }
   acip_transport_type_t expected = endpoints[0] ? ACIP_TRANSPORT_QUIC : peers[0].pc ? ACIP_TRANSPORT_WEBRTC : ACIP_TRANSPORT_TCP;
-  CHECK(acip_transport_get_type(sender) == expected && acip_transport_get_type(receiver) == expected);
+  CHECK((acip_transport_get_type(sender) == expected && acip_transport_get_type(receiver) == expected));
   if (datagrams) {
     acip_transport_capabilities_t caps;
-    CHECK(acip_transport_get_capabilities(sender, &caps) == ASCIICHAT_OK && caps.datagrams && caps.max_datagram_payload);
-    CHECK(sender->prefer_audio_datagrams && sender->prefer_visual_datagrams);
+    CHECK((acip_transport_get_capabilities(sender, &caps) == ASCIICHAT_OK && caps.datagrams && caps.max_datagram_payload));
+    CHECK((sender->prefer_audio_datagrams && sender->prefer_visual_datagrams));
   }
   log_warn("METRICS_SETUP transport=%s ms=%.3f", mode, (double)(time_get_ns() - setup_start) / NS_PER_MS_INT);
   receiver_t *r = SAFE_CALLOC(1, sizeof(receiver_t), receiver_t *);
@@ -287,7 +287,7 @@ int main(int argc, char **argv) {
         stamp_t stamp = {.sequence = ++sequence[flow], .captured = now};
         memcpy(payload, &stamp, sizeof(stamp));
         asciichat_error_t result = packet_send_via_transport(sender, types[flow], payload, sizes[flow], 0);
-        CHECK(result == ASCIICHAT_OK || result == ERROR_BUFFER_FULL);
+        CHECK((result == ASCIICHAT_OK || result == ERROR_BUFFER_FULL));
         if (result == ASCIICHAT_OK)
           ++sent[phase][flow];
         else
@@ -310,7 +310,7 @@ int main(int argc, char **argv) {
   platform_sleep_ms(250);
   atomic_store_bool(&r->running, false);
   acip_transport_interrupt(receiver);
-  CHECK(thread_join(&thread, NULL) == ASCIICHAT_OK && r->result == ASCIICHAT_OK);
+  CHECK((thread_join(&thread, NULL) == ASCIICHAT_OK && r->result == ASCIICHAT_OK));
   for (int phase = 0; phase < 2; ++phase)
     for (int flow = 0; flow < 3; ++flow) {
       samples_t *s = &r->samples[phase][flow];

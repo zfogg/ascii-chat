@@ -28,6 +28,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // =============================================================================
 // ACIP Packet Classification Helpers
 // =============================================================================
@@ -139,3 +143,7 @@ static inline size_t acip_get_min_packet_size(uint16_t type) {
  * @return String name or "UNKNOWN"
  */
 const char *acip_packet_type_name(uint16_t type);
+
+#ifdef __cplusplus
+}
+#endif

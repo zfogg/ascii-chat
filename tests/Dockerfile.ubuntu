@@ -1,5 +1,5 @@
 # Dockerfile for running ascii-chat tests on ARM64 (Apple Silicon, etc.)
-# Uses Ubuntu for ARM64 compatibility with full Criterion support
+# Uses Ubuntu for ARM64 compatibility with the full Catch2 test suite
 
 FROM ubuntu:24.04
 
@@ -48,7 +48,7 @@ RUN apt-get update && apt-get install -y \
   cmake ninja-build ccache \
   musl-tools musl-dev \
   libmimalloc-dev libzstd-dev zlib1g-dev libuv1-dev libsodium-dev libasound2-dev portaudio19-dev libopus-dev libfftw3-dev \
-  libcriterion-dev libffi-dev \
+  libffi-dev \
   libprotobuf-c-dev libprotobuf-c1 \
   libnghttp2-dev libminiupnpc-dev libpcre2-dev libsqlite3-dev libnanomsg-dev libgit2-dev libkrb5-dev \
   libssl-dev libicu-dev libfreetype6-dev libfontconfig1-dev libvterm-dev libsystemd-dev \

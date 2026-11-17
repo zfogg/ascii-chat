@@ -8,6 +8,10 @@
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/packet/packet.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define ACIP_SETTINGS_SCHEMA 1
 #define ACIP_SETTINGS_HEADER_SIZE 20
 #define ACIP_SETTINGS_MAX_SIZE 4116
@@ -48,3 +52,7 @@ asciichat_error_t acip_settings_encode(const acip_settings_header_t *header, con
 /** A rejected request returns current effective values without changing state. */
 asciichat_error_t acip_settings_request(acip_render_settings_t *state, const void *payload, size_t length, uint8_t *reply, size_t capacity, size_t *reply_length);
 asciichat_error_t acip_settings_send(acip_transport_t *transport, const options_t *values, uint32_t request, uint32_t expected_revision);
+
+#ifdef __cplusplus
+}
+#endif

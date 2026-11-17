@@ -24,7 +24,7 @@ asciichat_error_t acip_packet_plan(crypto_context_t *crypto, const socket_buffer
   if (buffers[0].len >= sizeof(packet_header_t)) {
     packet_header_t header;
     memcpy(&header, buffers[0].data, sizeof(header));
-    packet_type_t type = NET_TO_HOST_U16(header.type);
+    packet_type_t type = (packet_type_t)NET_TO_HOST_U16(header.type);
     if (packet_is_handshake_type(type) || type == PACKET_TYPE_ERROR_MESSAGE)
       domain = buffer_control_domain();
     options.traffic_class = type == PACKET_TYPE_CRYPTO_EPOCH_MARKER ? (acip_traffic_class_t)NET_TO_HOST_U32(header.client_id) : acip_packet_traffic_class(type);
@@ -57,10 +57,10 @@ asciichat_error_t acip_packet_encrypt(crypto_context_t *crypto, const acip_packe
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid ACIP encryption arguments");
   if (capacity < plan->ciphertext_capacity)
     return SET_ERRNO(ERROR_NETWORK_SIZE, "ACIP ciphertext storage too small");
-  const uint8_t *plaintext = plan->buffers[0].data;
+  const uint8_t *plaintext = (const uint8_t *)plan->buffers[0].data;
   uint8_t *gathered = NULL;
   if (plan->count > 1) {
-    gathered = buffer_alloc(domain, plan->plaintext_size);
+    gathered = (uint8_t *)buffer_alloc(domain, plan->plaintext_size);
     if (!gathered)
       return SET_ERRNO(ERROR_MEMORY, "Cannot gather ACIP encryption input");
     size_t offset = 0;
@@ -76,7 +76,7 @@ asciichat_error_t acip_packet_encrypt(crypto_context_t *crypto, const acip_packe
   bool shared = !plan->records_locked && crypto && crypto->session && plan->records == &crypto->session->records;
   asciichat_error_t encrypted = shared ? crypto_session_lock(crypto, &session) : ASCIICHAT_OK;
   if (encrypted == ASCIICHAT_OK)
-    encrypted = plan->records ? crypto_record_seal_into_domain(plan->records, plan->options.traffic_class, plan->options.delivery, plaintext, plan->plaintext_size, ciphertext, capacity,
+    encrypted = plan->records ? crypto_record_seal_into_domain(plan->records, plan->options.traffic_class, plan->options.delivery, plaintext, plan->plaintext_size, (uint8_t *)ciphertext, capacity,
                                                                &encrypted_length, domain)
                               : SET_ERRNO(ERROR_INVALID_STATE, "Missing authenticated record context");
   if (session)
@@ -98,7 +98,7 @@ static asciichat_error_t validate_record_packet(void *context, unsigned flow, un
   asciichat_error_t result = packet_validate(packet, length, 0, &header);
   if (result != ASCIICHAT_OK)
     return result;
-  uint16_t type = NET_TO_HOST_U16(header.type);
+  packet_type_t type = (packet_type_t)NET_TO_HOST_U16(header.type);
   if (flow > ACIP_TRAFFIC_VISUAL || delivery > ACIP_DELIVERY_DATAGRAM || (delivery == ACIP_DELIVERY_DATAGRAM && flow == ACIP_TRAFFIC_CONTROL) || type == PACKET_TYPE_ENCRYPTED ||
       packet_is_initial_handshake_type(type) || (type == PACKET_TYPE_CRYPTO_EPOCH_MARKER ? delivery != ACIP_DELIVERY_RELIABLE : acip_packet_traffic_class(type) != (acip_traffic_class_t)flow))
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid authenticated packet channel");
@@ -126,7 +126,7 @@ asciichat_error_t acip_packet_seal(crypto_record_t *records, acip_traffic_class_
                              .records_locked = true,
                              .options = {.traffic_class = flow, .delivery = delivery},
                              .ciphertext_capacity = length + 32 + records->crypto->nonce_size + records->crypto->mac_size};
-  uint8_t *wire = buffer_alloc(plan.domain, sizeof(packet_header_t) + plan.ciphertext_capacity);
+  uint8_t *wire = (uint8_t *)buffer_alloc(plan.domain, sizeof(packet_header_t) + plan.ciphertext_capacity);
   if (!wire)
     return SET_ERRNO(ERROR_MEMORY, "Cannot allocate encrypted packet");
   packet_header_t header;

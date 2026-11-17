@@ -180,7 +180,7 @@ jobs:
         run: |
           # Use windows-release preset which inherits vcpkg toolchain
           # Disable analyzers - GitHub Actions Windows runner has broken cppcheck from Strawberry Perl
-          # Disable tests - Criterion doesn't work well on Windows
+          # Disable tests in the packaging build; the native Catch2 matrix owns test coverage.
           $cmakeArgs = @(
             "--preset", "windows-release",
             "-B", "build_release",

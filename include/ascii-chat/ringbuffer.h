@@ -78,6 +78,10 @@
 #include <libplatform/mutex.h>
 #include "util/magic.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Audio ring buffer for real-time audio streaming
  * @brief Lock-free ring buffer structure
@@ -597,3 +601,7 @@ bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame
 bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

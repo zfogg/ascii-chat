@@ -6,6 +6,10 @@
 #include <stddef.h>
 #include <ascii-chat/log/log.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum { UI_POPUP_TOP, UI_POPUP_SEPARATOR, UI_POPUP_BOTTOM, UI_POPUP_RULE } ui_popup_edge_t;
 /** Shared chrome for streaming notices and nested dialog panels. No newline. */
 asciichat_error_t ui_popup_rule(frame_buffer_t *output, int width, ui_popup_edge_t edge, bool double_border, bool unicode, log_color_t color);
@@ -31,3 +35,7 @@ typedef struct {
 
 /** Draw a centered box without clearing the frame beneath it. */
 bool ui_popup_render(frame_buffer_t *output, terminal_size_t size, const ui_popup_t *box);
+
+#ifdef __cplusplus
+}
+#endif

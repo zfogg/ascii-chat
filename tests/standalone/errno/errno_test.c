@@ -13,5 +13,5 @@ int main(int argc, char **argv) {
   if (argc > 1 && strcmp(argv[1], "--signal-stacks") == 0)
     return pending_signal_probe();
 #endif
-  return 2; // Only explicit assertion/signal probes run outside Criterion.
+  return 2; // Only explicit assertion/signal probes run outside Catch2.
 }

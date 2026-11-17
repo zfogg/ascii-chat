@@ -12,6 +12,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef void (*app_debug_write_fn)(const char *text, void *context);
 
 typedef struct {
@@ -94,4 +98,8 @@ const app_callbacks_t *app_callbacks_get(void);
     }                                                  \
   } while (0)
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif

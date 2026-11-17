@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file crc32.h
  * @brief Hardware-Accelerated CRC32 Checksum Computation
@@ -147,3 +151,7 @@ bool crc32_hw_is_available(void);
 #define asciichat_crc32(data, len) asciichat_crc32_hw((data), (len))
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

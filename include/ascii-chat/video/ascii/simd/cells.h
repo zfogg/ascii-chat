@@ -2,6 +2,10 @@
 #include <ascii-chat/video/ascii/simd/dispatch.h>
 #include <ascii-chat/video/ascii/output_buffer.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** SIMD stages operate on complete rows of host-order packed RGB and UTF-8 keys.
  * @brief The useful part of simd cells is in `luminance`: together they describe what is pending, who owns it, and how
  * much data is valid. Keep the object with its parent operation and use the parent cleanup path. Row callbacks
@@ -48,3 +52,7 @@ extern const simd_cells_t simd_cells_neon;
 extern const simd_cells_t simd_cells_sve;
 
 void simd_emit_mono_neon(outbuf_t *out, const uint32_t *glyph, size_t count);
+
+#ifdef __cplusplus
+}
+#endif

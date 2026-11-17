@@ -35,6 +35,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Forward declarations to avoid circular dependencies */
 typedef struct client_info client_info_t;
 
@@ -216,3 +220,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
  */
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

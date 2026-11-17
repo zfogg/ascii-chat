@@ -13,6 +13,38 @@ endif()
 option(ASCIICHAT_USE_SYSTEM_OPENSSL
     "Use the host OpenSSL when it provides the required QUIC-capable API"
     ON)
+
+include(CheckSymbolExists)
+include(CMakePushCheckState)
+
+function(asciichat_openssl_has_quic_tls_api out_var)
+    cmake_push_check_state(RESET)
+    set(CMAKE_REQUIRED_INCLUDES "${OPENSSL_INCLUDE_DIR}")
+    if(OPENSSL_SSL_LIBRARY)
+        set(CMAKE_REQUIRED_LIBRARIES "${OPENSSL_SSL_LIBRARY};${OPENSSL_CRYPTO_LIBRARY}")
+    endif()
+    unset(ASCIICHAT_SYSTEM_OPENSSL_QUIC_TLS_API CACHE)
+    check_symbol_exists(SSL_set_quic_tls_cbs "openssl/ssl.h" ASCIICHAT_SYSTEM_OPENSSL_QUIC_TLS_API)
+    cmake_pop_check_state()
+    set(${out_var} "${ASCIICHAT_SYSTEM_OPENSSL_QUIC_TLS_API}" PARENT_SCOPE)
+endfunction()
+
+# CMake keeps explicit OpenSSL paths in the cache across reconfiguration.  A
+# stale dependency cache must not make a later configure fail before the
+# system/source discovery below gets a chance to recover.
+foreach(_asciichat_openssl_path_var
+        OPENSSL_ROOT_DIR
+        OPENSSL_INCLUDE_DIR
+        OPENSSL_CRYPTO_LIBRARY
+        OPENSSL_SSL_LIBRARY)
+    if(DEFINED ${_asciichat_openssl_path_var}
+       AND NOT EXISTS "${${_asciichat_openssl_path_var}}")
+        unset(${_asciichat_openssl_path_var} CACHE)
+        unset(${_asciichat_openssl_path_var})
+    endif()
+endforeach()
+unset(_asciichat_openssl_path_var)
+
 # Handle iOS builds - OpenSSL is built from source at configure time
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}OpenSSL${ColorReset} from source (iOS cross-compile)...")
@@ -157,9 +189,8 @@ if(PLATFORM_IOS)
     return()
 endif()
 
-# Docker and distribution development builds can use the system library when
-# it is new enough.  Release packages continue to use the pinned source build
-# unless this option is explicitly enabled.
+# Native non-musl builds use the system OpenSSL. The system must provide the
+# QUIC TLS API required by ngtcp2; do not silently substitute a source build.
 if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
     # Prefer pkg-config when the distribution provides an OpenSSL module. Some
     # distributions, including Arch installations without the development
@@ -216,9 +247,15 @@ if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
                 INTERFACE_LINK_LIBRARIES OpenSSL::Crypto)
         endif()
         set(OPENSSL_VERSION "${ASCIICHAT_SYSTEM_OPENSSL_VERSION}")
-        set(OPENSSL_FOUND TRUE)
-        message(STATUS "Using system OpenSSL ${OPENSSL_VERSION} (pkg-config)")
-        return()
+        asciichat_openssl_has_quic_tls_api(_ASCIICHAT_SYSTEM_OPENSSL_QUIC_OK)
+        if(_ASCIICHAT_SYSTEM_OPENSSL_QUIC_OK)
+            set(OPENSSL_FOUND TRUE)
+            message(STATUS "Using system OpenSSL ${OPENSSL_VERSION} (pkg-config)")
+            return()
+        endif()
+        message(FATAL_ERROR
+            "System OpenSSL ${OPENSSL_VERSION} lacks SSL_set_quic_tls_cbs. "
+            "Upgrade the system OpenSSL to 3.6.0 or newer before configuring ascii-chat.")
     endif()
     if(ASCIICHAT_SYSTEM_OPENSSL_FOUND AND ASCIICHAT_SYSTEM_OPENSSL_PREFIX)
         find_package(OpenSSL 3.0 QUIET COMPONENTS SSL Crypto
@@ -227,14 +264,22 @@ if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
         find_package(OpenSSL 3.0 QUIET COMPONENTS SSL Crypto)
     endif()
     if(OpenSSL_FOUND)
-        if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
-            message(STATUS "Using system OpenSSL ${ASCIICHAT_SYSTEM_OPENSSL_VERSION} (pkg-config)")
-        else()
-            message(STATUS "Using system OpenSSL ${OPENSSL_VERSION} (CMake discovery)")
+        asciichat_openssl_has_quic_tls_api(_ASCIICHAT_SYSTEM_OPENSSL_QUIC_OK)
+        if(_ASCIICHAT_SYSTEM_OPENSSL_QUIC_OK)
+            if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
+                message(STATUS "Using system OpenSSL ${ASCIICHAT_SYSTEM_OPENSSL_VERSION} (pkg-config)")
+            else()
+                message(STATUS "Using system OpenSSL ${OPENSSL_VERSION} (CMake discovery)")
+            endif()
+            return()
         endif()
-        return()
+        message(FATAL_ERROR
+            "System OpenSSL ${OPENSSL_VERSION} lacks SSL_set_quic_tls_cbs. "
+            "Upgrade the system OpenSSL to 3.6.0 or newer before configuring ascii-chat.")
     endif()
-    message(STATUS "System OpenSSL is missing or too old; using pinned source build")
+    message(FATAL_ERROR
+        "A system OpenSSL with SSL_set_quic_tls_cbs is required. "
+        "Install or upgrade to OpenSSL 3.6.0 or newer before configuring ascii-chat.")
 endif()
 
 # Handle musl builds - OpenSSL is built from source at configure time

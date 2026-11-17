@@ -31,6 +31,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name HTTPS Key Fetching
  * @{
@@ -306,5 +310,9 @@ asciichat_error_t build_github_gpg_url(const char *username, char *url_out, size
  * @ingroup keys
  */
 asciichat_error_t build_gitlab_gpg_url(const char *username, char *url_out, size_t url_size);
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */

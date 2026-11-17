@@ -105,7 +105,7 @@ static asciichat_error_t received(const void *data, size_t length, void *arg) {
       const AVCodec *codec = avcodec_find_decoder(f->codec_id);
       CHECK(codec);
       f->codec = avcodec_alloc_context3(codec);
-      CHECK(f->codec && avcodec_open2(f->codec, codec, NULL) >= 0);
+      CHECK((f->codec && avcodec_open2(f->codec, codec, NULL) >= 0));
     }
     CHECK(f->codec);
     CHECK(av_new_packet(f->packet, (int)(length - sizeof(header) - 5)) == 0);
@@ -113,8 +113,8 @@ static asciichat_error_t received(const void *data, size_t length, void *arg) {
     CHECK(avcodec_send_packet(f->codec, f->packet) >= 0);
     av_packet_unref(f->packet);
     CHECK(avcodec_receive_frame(f->codec, f->decoded) == 0);
-    CHECK(f->decoded->decode_error_flags == 0 && !(f->decoded->flags & AV_FRAME_FLAG_CORRUPT));
-    CHECK(f->decoded->width == 160 && f->decoded->height == 90);
+    CHECK((f->decoded->decode_error_flags == 0 && !(f->decoded->flags & AV_FRAME_FLAG_CORRUPT)));
+    CHECK((f->decoded->width == 160 && f->decoded->height == 90));
     av_frame_unref(f->decoded);
   }
   uint64_t age = time_get_ns() - captured;
@@ -239,7 +239,7 @@ static void *relay_loop(void *arg) {
     socklen_t length = sizeof(source);
     ssize_t n = socket_recvfrom(f->relay, buffer, sizeof(buffer), 0, (struct sockaddr *)&source, &length);
     if (n > 0) {
-      CHECK(n <= 2048 && count < 1024);
+      CHECK((n <= 2048 && count < 1024));
       mutex_lock(&f->mutex);
       struct sockaddr_in target = source.sin_port == f->endpoints[0].address.sin_port ? f->endpoints[1].address : f->endpoints[0].address;
       mutex_unlock(&f->mutex);
@@ -449,7 +449,7 @@ static void setup(fixture_t *f, const char *transport, bool slow) {
     uint64_t start = time_get_ns();
     while ((!atomic_load_bool(&f->endpoints[0].opened) || !atomic_load_bool(&f->endpoints[1].opened)) && time_get_ns() - start < 15 * NS_PER_SEC_INT)
       platform_sleep_ms(5);
-    CHECK(atomic_load_bool(&f->endpoints[0].opened) && atomic_load_bool(&f->endpoints[1].opened));
+    CHECK((atomic_load_bool(&f->endpoints[0].opened) && atomic_load_bool(&f->endpoints[1].opened)));
     for (int i = 0; i < 2; ++i) {
       size_t max_message_size = 0;
       CHECK(webrtc_datachannel_get_max_message_size(f->endpoints[i].dc, &max_message_size) == ASCIICHAT_OK);
@@ -515,7 +515,7 @@ int main(int argc, char **argv) {
   f->decoded = av_frame_alloc();
   f->packet = av_packet_alloc();
   h265_encoder_t *encoder = encoded ? video_encoder_create(!strcmp(encoding, "h264") ? VIDEO_CODEC_H264 : VIDEO_CODEC_H265, 160, 90) : NULL;
-  CHECK(!encoded || encoder);
+  CHECK((!encoded || encoder));
   size_t capacity = 160 * 90 * 3 + 65536;
   uint8_t *rgb = SAFE_MALLOC(160 * 90 * 3, uint8_t *), *payload = SAFE_MALLOC(capacity, uint8_t *);
   uint64_t frame_number = 0;
@@ -596,7 +596,7 @@ int main(int argc, char **argv) {
     healthy->meta[healthy->meta_next++ % META_COUNT] = (frame_meta_t){crc, captured};
     mutex_unlock(&healthy->mutex);
     asciichat_error_t healthy_result = packet_send_via_transport(healthy->sender, type, payload, length, 0);
-    CHECK(healthy_result == ASCIICHAT_OK || healthy_result == ERROR_BUFFER_FULL);
+    CHECK((healthy_result == ASCIICHAT_OK || healthy_result == ERROR_BUFFER_FULL));
     if (healthy_result != ASCIICHAT_OK)
       CLEAR_ERRNO();
     asciichat_error_t result = packet_send_via_transport(f->sender, type, payload, length, 0);
@@ -639,12 +639,12 @@ int main(int argc, char **argv) {
   mutex_lock(&f->mutex);
   mutex_lock(&healthy->mutex);
   CHECK(stats.dropped + f->rejected > 0);
-  CHECK(f->delivered[0] > 0 && f->delivered[2] > 0 && f->controls[2] > 0);
-  CHECK(f->steady_frames > 0 && f->last_delivered_age < 250 * NS_PER_MS_INT);
+  CHECK((f->delivered[0] > 0 && f->delivered[2] > 0 && f->controls[2] > 0));
+  CHECK((f->steady_frames > 0 && f->last_delivered_age < 250 * NS_PER_MS_INT));
   CHECK(f->steady_age_sum / f->steady_frames < 250 * NS_PER_MS_INT);
   CHECK(f->controls[1] > 0);
   if (encoded)
-    CHECK(f->keyframes[2] > 0 && stats.recovery_frames > 1 && f->recovery_requests > 0);
+    CHECK((f->keyframes[2] > 0 && stats.recovery_frames > 1 && f->recovery_requests > 0));
   fclose(csv);
   log_error("RESULT transport=%s codec=%s peak_queue=%zu peak_backend=%zu dropped=%llu rejected=%llu baseline_fps=%.2f "
             "recovery_fps=%.2f baseline_age_ms=%.2f recovery_age_ms=%.2f recovery_max_age_ms=%.2f "
@@ -654,7 +654,7 @@ int main(int argc, char **argv) {
             (double)f->age_max[2] / NS_PER_MS_INT, (unsigned long long)f->keyframes[2], (unsigned long long)f->controls[2]);
   log_error("HEALTHY transport=%s codec=%s baseline_fps=%.2f saturation_fps=%.2f recovery_fps=%.2f", transport, encoding, (double)healthy->delivered[0] / 2, (double)healthy->delivered[1] / 3.0,
             (double)healthy->delivered[2] / recovery_seconds);
-  CHECK(healthy->delivered[0] > 0 && healthy->delivered[1] > 0 && healthy->delivered[2] > 0);
+  CHECK((healthy->delivered[0] > 0 && healthy->delivered[1] > 0 && healthy->delivered[2] > 0));
   log_error("SOURCE baseline_fps=%.2f saturation_fps=%.2f recovery_fps=%.2f", (double)f->generated[0] / 2, (double)f->generated[1] / 3, (double)f->generated[2] / recovery_seconds);
   CHECK(healthy->delivered[1] >= f->generated[1] * 0.90);
   if (!strcmp(transport, "webrtc")) {

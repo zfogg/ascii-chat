@@ -1,8 +1,8 @@
 name: "Publish Test Results"
-description: "Validates Criterion XML, publishes test results to GitHub, uploads to Codecov"
+description: "Validates test JUnit XML, publishes test results to GitHub, uploads to Codecov"
 inputs:
   test-type:
-    description: "Type of test (unit, integration, performance)"
+    description: "Type of test (unit, integration, benchmarks)"
     required: true
   os-name:
     description: "Operating system name (ubuntu, macos)"
@@ -11,10 +11,10 @@ inputs:
     description: "Build type (debug, release, or empty for integration/perf tests)"
     required: false
     default: ""
-  criterion-xml-dir:
-    description: "Directory containing Criterion XML files"
+  test-xml-dir:
+    description: "Directory containing test JUnit XML files"
     required: false
-    default: "build/Testing/criterion-xml"
+    default: "build/Testing/xml"
   coverage-files:
     description: "Merged coverage report for Codecov"
     required: false
@@ -52,15 +52,15 @@ runs:
           echo "No codecov.yml found, skipping validation"
         fi
 
-    # Validate Criterion XML files
-    - name: Validate Criterion XML
+    # Validate test JUnit XML files
+    - name: Validate test JUnit XML
       if: always()
       shell: bash
       run: |
-        xml_dir="${{ inputs.criterion-xml-dir }}"
+        xml_dir="${{ inputs.test-xml-dir }}"
         if [ -d "$xml_dir" ]; then
           xml_count=$(find "$xml_dir" -maxdepth 1 -name "*.xml" -type f | wc -l)
-          echo "Found $xml_count Criterion XML files in $xml_dir"
+          echo "Found $xml_count test XML files in $xml_dir"
 
           if [ "$xml_count" -gt 0 ]; then
             echo "XML files:"
@@ -94,7 +94,7 @@ runs:
             echo "No XML files found in $xml_dir"
           fi
         else
-          echo "Criterion XML directory not found: $xml_dir"
+          echo "Test XML directory not found: $xml_dir"
           echo "Looking for XML files:"
           find . -name "*.xml" -type f 2>/dev/null | sed -n '1,10p'
         fi
@@ -105,15 +105,15 @@ runs:
       if: always() && runner.os == 'Linux'
       with:
         files: |
-          ${{ inputs.criterion-xml-dir }}/*.xml
+          ${{ inputs.test-xml-dir }}/*.xml
         check_name: |
           ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Tests ({1})', 'Integration', inputs.os-name) ||
-              format('{0} Tests ({1})', 'Performance', inputs.os-name) }}
+              format('{0} Tests ({1})', 'Benchmarks', inputs.os-name) }}
         comment_title: |
           ${{ inputs.test-type == 'unit' && format('{0} Test Results ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Test Results ({1})', 'Integration', inputs.os-name) ||
-              format('{0} Test Results ({1})', 'Performance', inputs.os-name) }}
+              format('{0} Test Results ({1})', 'Benchmarks', inputs.os-name) }}
         compare_to_earlier_commit: true
         test_changes_limit: 10
         fail_on: "nothing" # Don't fail the workflow based on test results
@@ -124,15 +124,15 @@ runs:
       if: always() && runner.os == 'macOS'
       with:
         files: |
-          ${{ inputs.criterion-xml-dir }}/*.xml
+          ${{ inputs.test-xml-dir }}/*.xml
         check_name: |
           ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Tests ({1})', 'Integration', inputs.os-name) ||
-              format('{0} Tests ({1})', 'Performance', inputs.os-name) }}
+              format('{0} Tests ({1})', 'Benchmarks', inputs.os-name) }}
         comment_title: |
           ${{ inputs.test-type == 'unit' && format('{0} Test Results ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Test Results ({1})', 'Integration', inputs.os-name) ||
-              format('{0} Test Results ({1})', 'Performance', inputs.os-name) }}
+              format('{0} Test Results ({1})', 'Benchmarks', inputs.os-name) }}
         compare_to_earlier_commit: true
         test_changes_limit: 10
         fail_on: "nothing" # Don't fail the workflow based on test results
@@ -143,29 +143,28 @@ runs:
       if: always() && runner.os == 'Windows'
       with:
         files: |
-          ${{ inputs.criterion-xml-dir }}/*.xml
+          ${{ inputs.test-xml-dir }}/*.xml
         check_name: |
           ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Tests ({1})', 'Integration', inputs.os-name) ||
-              format('{0} Tests ({1})', 'Performance', inputs.os-name) }}
+              format('{0} Tests ({1})', 'Benchmarks', inputs.os-name) }}
         comment_title: |
           ${{ inputs.test-type == 'unit' && format('{0} Test Results ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Test Results ({1})', 'Integration', inputs.os-name) ||
-              format('{0} Test Results ({1})', 'Performance', inputs.os-name) }}
+              format('{0} Test Results ({1})', 'Benchmarks', inputs.os-name) }}
         compare_to_earlier_commit: true
         test_changes_limit: 10
         fail_on: "nothing" # Don't fail the workflow based on test results
 
-    # Convert Criterion XML to JUnit XML for Codecov compatibility
-    - name: Convert Criterion XML to JUnit Format
+    # JUnit reporters are Codecov-compatible.
+    - name: Prepare test JUnit files for Codecov
       id: junit
       if: always()
       shell: bash
       run: |
-        xml_dir="${{ inputs.criterion-xml-dir }}"
+        xml_dir="${{ inputs.test-xml-dir }}"
         if [ -d "$xml_dir" ] && [ "$(find "$xml_dir" -maxdepth 1 -name "*.xml" -type f | wc -l)" -gt 0 ]; then
-          echo "Converting Criterion XML to JUnit format..."
-          python3 .github/scripts/criterion-to-junit.py "$xml_dir" "$xml_dir"
+          echo "Using test JUnit XML reports..."
           files=$(find "$xml_dir" -maxdepth 1 -name "*.xml" -type f | sort | paste -sd, -)
           echo "files=$files" >> "$GITHUB_OUTPUT"
           echo "has_reports=true" >> "$GITHUB_OUTPUT"
@@ -197,7 +196,7 @@ runs:
         flags: |-
           ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) ||
-              format('ascii-chat-performance-{0}', inputs.os-name) }}
+              format('ascii-chat-benchmarks-{0}', inputs.os-name) }}
         token: ${{ inputs.codecov-token }}
         fail_ci_if_error: false
 
@@ -228,10 +227,10 @@ runs:
         flags: |-
           ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) ||
-              format('ascii-chat-performance-{0}', inputs.os-name) }}
+              format('ascii-chat-benchmarks-{0}', inputs.os-name) }}
         name: |-
           ${{ inputs.test-type == 'unit' && format('ascii-chat-coverage-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-coverage-{0}', inputs.os-name) ||
-              format('ascii-chat-performance-coverage-{0}', inputs.os-name) }}
+              format('ascii-chat-benchmarks-coverage-{0}', inputs.os-name) }}
         fail_ci_if_error: true
         verbose: true

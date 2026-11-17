@@ -24,6 +24,10 @@
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/audio/audio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief For client info, this is the live record that ties `participant_type`, `network_connection`, `event_ready`,
  * `event_cleanup` together. The owning code creates it, updates it while work is active, and releases its handles and
@@ -136,3 +140,7 @@ typedef struct client_info {
   // uthash handle for hash table operations
   UT_hash_handle hh;
 } client_info_t;
+
+#ifdef __cplusplus
+}
+#endif

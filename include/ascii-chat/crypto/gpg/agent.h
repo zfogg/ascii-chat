@@ -35,6 +35,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name GPG Agent Connection Management
  * @{
@@ -181,3 +185,7 @@ int gpg_agent_sign(int sock, const char *keygrip, const uint8_t *message, size_t
 /** @} */
 
 /** @} */ /* crypto */
+
+#ifdef __cplusplus
+}
+#endif

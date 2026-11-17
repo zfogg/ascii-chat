@@ -33,6 +33,10 @@
 #include "../../crypto/key_types.h"
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name SSH Agent Detection
  * @{
@@ -193,3 +197,7 @@ asciichat_error_t ssh_agent_get_key(const public_key_t *public_key, private_key_
 asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *message, size_t message_len, uint8_t signature[ED25519_SIGNATURE_SIZE]);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
