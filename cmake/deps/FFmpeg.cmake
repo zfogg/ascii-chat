@@ -134,7 +134,12 @@ if(USE_MUSL)
     add_compile_options("-I${FFMPEG_INCLUDE_DIRS}")
     set(_ffmpeg_runtime "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libcxx/usr/lib")
     set(_ffmpeg_libs "-lm ${_ffmpeg_runtime}/libc++.a ${_ffmpeg_runtime}/libc++abi.a ${_ffmpeg_runtime}/libunwind.a")
-    set(_ffmpeg_ldflags "-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib")
+    set(_ffmpeg_ldflags "-L${X264_PREFIX}/lib")
+    set(_ffmpeg_codec_flags --enable-encoder=libx264 --enable-libx264)
+    if(X265_FOUND)
+        string(APPEND _ffmpeg_ldflags " -L${X265_PREFIX}/lib")
+        list(APPEND _ffmpeg_codec_flags --enable-encoder=libx265 --enable-libx265)
+    endif()
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
         string(APPEND _ffmpeg_ldflags " -mno-outline-atomics -nodefaultlibs")
         string(APPEND _ffmpeg_libs " ${MUSL_LIBGCC_PATH} -lc")
@@ -159,7 +164,7 @@ if(USE_MUSL)
             --disable-x86asm --disable-inline-asm --enable-gpl --enable-protocol=file
             --enable-demuxer=mov,matroska,avi,gif,image2
             --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg
-            --enable-encoder=libx264,libx265 --enable-libx264 --enable-libx265
+            ${_ffmpeg_codec_flags}
             --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video --enable-swscale --enable-swresample
         BUILD_COMMAND ${_ffmpeg_env} make -j8
         INSTALL_COMMAND ${_ffmpeg_env} make install

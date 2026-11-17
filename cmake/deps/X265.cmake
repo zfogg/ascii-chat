@@ -31,6 +31,15 @@ endif()
 # musl: Build from source
 # =============================================================================
 if(USE_MUSL)
+    # GCC's host libstdc++/glibc toolchain cannot produce a musl-compatible
+    # x265 archive on this platform: GCC 16 emits glibc __isoc23_* and libmvec
+    # references from x265's C++ sources. Clang's musl libc++ path remains
+    # supported; GCC+musl uses FFmpeg's built-in codecs instead.
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        set(X265_FOUND FALSE)
+        message(STATUS "x265 disabled for GCC musl builds (host C++ runtime is not musl-compatible)")
+        return()
+    endif()
     include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
     function(asciichat_build_x265)
         asciichat_dependency_defaults()
