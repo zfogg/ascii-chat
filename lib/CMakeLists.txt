@@ -1815,17 +1815,19 @@ endif()
 # Release: Static library for distribution
 # USE_MUSL: Always static (musl requires static linking)
 if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev") AND NOT USE_MUSL)
-    # Use the existing ascii-chat-shared target but make it build by default
-    # Remove EXCLUDE_FROM_ALL for Debug/Dev builds
-    set_target_properties(ascii-chat-shared PROPERTIES EXCLUDE_FROM_ALL FALSE)
-
-    # Create interface library that wraps the shared library
-    # Link directly to the target (CMake handles the import library on Windows)
-    add_library(ascii-chat-static INTERFACE)
-    target_link_libraries(ascii-chat-static PRIVATE INTERFACE ascii-chat-shared)
-
-    # Build target name for consistency
-    set(ASCII_CHAT_UNIFIED_BUILD_TARGET ascii-chat-shared)
+    if(TARGET ascii-chat-shared)
+        # Use the existing shared target but make it build by default.
+        set_target_properties(ascii-chat-shared PROPERTIES EXCLUDE_FROM_ALL FALSE)
+        add_library(ascii-chat-static INTERFACE)
+        target_link_libraries(ascii-chat-static PRIVATE INTERFACE ascii-chat-shared)
+        set(ASCII_CHAT_UNIFIED_BUILD_TARGET ascii-chat-shared)
+    else()
+        # Static-only configurations (for example security analysis with
+        # BUILD_SHARED_LIBS=OFF) still need the unified compatibility target.
+        add_library(ascii-chat-static INTERFACE)
+        target_link_libraries(ascii-chat-static PRIVATE INTERFACE ascii-chat-static-lib)
+        set(ASCII_CHAT_UNIFIED_BUILD_TARGET build-ascii-chat-static-lib)
+    endif()
 else()
     # Release builds or USE_MUSL: ascii-chat-static wraps the combined static library
     add_library(ascii-chat-static INTERFACE)
