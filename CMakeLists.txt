@@ -400,19 +400,7 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
     set(_asciichat_recast_cxx_standard_libraries "${CMAKE_CXX_STANDARD_LIBRARIES}")
     set(_asciichat_recast_saved_c_flags "${CMAKE_C_FLAGS}")
     set(_asciichat_recast_saved_cxx_flags "${CMAKE_CXX_FLAGS}")
-    if(EXISTS "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libstdcxx/usr/include/c++")
-      file(GLOB _asciichat_recast_stdcpp_roots LIST_DIRECTORIES true
-        "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libstdcxx/usr/include/c++/*")
-      list(SORT _asciichat_recast_stdcpp_roots)
-      list(GET _asciichat_recast_stdcpp_roots 0 _asciichat_recast_stdcpp_root)
-      file(GLOB _asciichat_recast_stdcpp_target_roots LIST_DIRECTORIES true
-        "${_asciichat_recast_stdcpp_root}/*-linux-musl")
-      list(SORT _asciichat_recast_stdcpp_target_roots)
-      list(GET _asciichat_recast_stdcpp_target_roots 0 _asciichat_recast_stdcpp_target_root)
-      set(RECAST_HOST_CXX_INCLUDE_DIRS
-        "${_asciichat_recast_stdcpp_root};${_asciichat_recast_stdcpp_target_root}"
-        CACHE STRING "Host C++ include roots for Recast" FORCE)
-    endif()
+    find_program(RECAST_HOST_CXX NAMES g++ REQUIRED)
     set(CMAKE_C_FLAGS "")
     set(CMAKE_CXX_FLAGS "")
     set(CMAKE_EXE_LINKER_FLAGS "")
@@ -425,22 +413,6 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
     "${CMAKE_SOURCE_DIR}/deps/recast"
     "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build"
     EXCLUDE_FROM_ALL)
-  if(DEFINED CACHE{RECAST_HOST_CXX_INCLUDE_DIRS})
-    set(_asciichat_recast_host_dirs "$CACHE{RECAST_HOST_CXX_INCLUDE_DIRS}")
-    foreach(_recast_target recast-objects recast)
-      foreach(_recast_host_dir IN LISTS _asciichat_recast_host_dirs)
-        target_compile_options("${_recast_target}" BEFORE PRIVATE
-          "-isystem${_recast_host_dir}")
-      endforeach()
-      target_compile_options("${_recast_target}" PRIVATE "-idirafter" "/usr/include")
-    endforeach()
-    foreach(_recast_llvm_target recast-llvm-support recast-libclang)
-      get_target_property(_recast_llvm_includes "${_recast_llvm_target}" INTERFACE_INCLUDE_DIRECTORIES)
-      list(REMOVE_ITEM _recast_llvm_includes "/usr/include")
-      set_property(TARGET "${_recast_llvm_target}" PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-        "${_recast_llvm_includes}")
-    endforeach()
-  endif()
   if(USE_MUSL)
     set(CMAKE_EXE_LINKER_FLAGS "${_asciichat_recast_exe_linker_flags}")
     set(CMAKE_SHARED_LINKER_FLAGS "${_asciichat_recast_shared_linker_flags}")
