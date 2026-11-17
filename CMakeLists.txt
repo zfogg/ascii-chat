@@ -410,7 +410,8 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
       list(SORT _asciichat_recast_stdcpp_target_roots)
       list(GET _asciichat_recast_stdcpp_target_roots 0 _asciichat_recast_stdcpp_target_root)
       set(RECAST_HOST_CXX_INCLUDE_DIRS
-        "${_asciichat_recast_stdcpp_root};${_asciichat_recast_stdcpp_target_root}")
+        "${_asciichat_recast_stdcpp_root};${_asciichat_recast_stdcpp_target_root}"
+        CACHE STRING "Host C++ include roots for Recast" FORCE)
     endif()
     set(CMAKE_C_FLAGS "")
     set(CMAKE_CXX_FLAGS "")
