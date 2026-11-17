@@ -25,7 +25,7 @@ if(BUILD_CATCH2_TESTS)
     # all three native platforms.
     # The vcpkg Windows Catch2 binaries are not built with ascii-chat's
     # sanitizer/STL ABI flags. Build the pinned Catch2 sources in that case so
-    # the test driver can link the same instrumented OBJECT libraries.
+    # the test driver can link the same Catch2 release everywhere.
     set(_catch2_use_package TRUE)
     if(WIN32)
         set(_catch2_use_package FALSE)
@@ -65,7 +65,9 @@ if(BUILD_CATCH2_TESTS)
                     target_compile_definitions(${_catch2_target} PRIVATE
                         _ITERATOR_DEBUG_LEVEL=0)
                 endif()
-                apply_sanitizers_to_target(${_catch2_target})
+                # Catch2 is third-party code. Keep it outside ascii-chat's
+                # sanitizer instrumentation: Catch2 intentionally relies on
+                # unsigned wraparound in its RNG and hashing implementation.
             endif()
         endforeach()
     endif()
