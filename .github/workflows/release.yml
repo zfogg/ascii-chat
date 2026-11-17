@@ -409,7 +409,7 @@ jobs:
           tar -xOzf "$archive" share/man/man1/ascii-chat.1 > "$RUNNER_TEMP/release-man1"
           grep -q 'MCP SERVER' "$RUNNER_TEMP/release-man1"
           tar -tzf "$archive" > "$RUNNER_TEMP/release-runtime-files"
-          grep -q 'share/man/man5/ascii-chat.5$' "$RUNNER_TEMP/release-runtime-files"
+          grep -Eq '(^|/)share/man/man5/ascii-chat\.5$' "$RUNNER_TEMP/release-runtime-files"
 
       - name: Print build logs on failure
         if: failure()
