@@ -1521,7 +1521,7 @@ TEST_CASE("options::test_server_values", "[options]") {
  * ============================================================================ */
 
 TEST_CASE("options::test_equals_sign_syntax", "[options]") {
-  auto argv_storage = make_argv({"client", "192.168.1.100:8080", "--width=150", "--height=75"});
+  auto argv_storage = make_argv({"client", "--width=150", "--height=75", "192.168.1.100:8080"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
   options_backup_t backup;
