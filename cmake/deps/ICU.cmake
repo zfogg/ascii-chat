@@ -54,7 +54,7 @@ elseif(USE_MUSL OR PLATFORM_IOS)
             # even when its C driver is musl-gcc. Use clang++ for ICU's C++
             # cross objects so libc++ and musl headers stay in one sysroot.
             set(_icu_cxx "${_icu_musl_cxx} --target=${MUSL_TARGET} -stdlib=libc++")
-            string(APPEND _icu_cxxflags " -nostdinc -isystem ${MUSL_INCLUDE_DIR}")
+            string(APPEND _icu_cxxflags " -nostdlibinc -isystem ${MUSL_INCLUDE_DIR}")
         endif()
         set(_icu_host "${MUSL_TARGET}")
         set(_icu_ldflags "-fuse-ld=lld -static-pie -nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o")
