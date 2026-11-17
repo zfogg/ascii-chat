@@ -304,7 +304,7 @@ if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$"
         SKIP_BUILD_RPATH FALSE
     )
 elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND BUILD_SHARED_LIBS)
-    # Release builds with shared deps (Homebrew) need rpath for dynamic linking
+    # Release builds with shared libraries (Homebrew) need rpath for dynamic linking
     # Include:
     #   - @loader_path/../lib for libasciichat.dylib (relative to binary)
     #   - CMAKE_BUILD_RPATH for LLVM library paths (libc++, libunwind)
@@ -319,7 +319,7 @@ elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND BUILD_SHARED_LI
         INSTALL_RPATH "${_install_rpath}"
         INSTALL_RPATH_USE_LINK_PATH FALSE
     )
-    message(STATUS "ascii-chat using rpath for SHARED_DEPS build: ${_install_rpath}")
+    message(STATUS "ascii-chat using rpath for shared-library build: ${_install_rpath}")
 elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
     # Release builds now use shared library (after OBJECT library simplification)
     # Use relative rpath to avoid embedding developer paths in the binary
