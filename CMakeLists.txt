@@ -425,6 +425,10 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
     "${CMAKE_SOURCE_DIR}/deps/recast"
     "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build"
     EXCLUDE_FROM_ALL)
+  if(RECAST_HOST_CXX_INCLUDE_DIRS)
+    target_include_directories(recast-objects BEFORE PRIVATE ${RECAST_HOST_CXX_INCLUDE_DIRS})
+    target_include_directories(recast BEFORE PRIVATE ${RECAST_HOST_CXX_INCLUDE_DIRS})
+  endif()
   if(USE_MUSL)
     set(CMAKE_EXE_LINKER_FLAGS "${_asciichat_recast_exe_linker_flags}")
     set(CMAKE_SHARED_LINKER_FLAGS "${_asciichat_recast_shared_linker_flags}")
