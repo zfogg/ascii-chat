@@ -180,7 +180,7 @@ TEST_CASE("tcp_transport/error_response_hides_internal_details", "[tcp_transport
   int sockets[2];
   REQUIRE((socketpair(AF_UNIX, SOCK_STREAM, 0, sockets)) == (0));
   REQUIRE((packet_send_error(sockets[0], NULL, ERROR_FILE_NOT_FOUND, "private/path and subprocess details")) == (ASCIICHAT_OK));
-  packet_envelope_t envelope = {0};
+  packet_envelope_t envelope = {};
   REQUIRE((receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT)) == (PACKET_RECV_SUCCESS));
   asciichat_error_t code;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1];
@@ -200,7 +200,7 @@ TEST_CASE("tcp_transport/error_response_hides_errno_stack_locations", "[tcp_tran
   (void)SET_ERRNO(ERROR_NETWORK_PROTOCOL, "outer client failure");
   REQUIRE(packet_send_error(sockets[0], NULL, ERROR_NETWORK_PROTOCOL, NULL) == ASCIICHAT_OK);
 
-  packet_envelope_t envelope = {0};
+  packet_envelope_t envelope = {};
   REQUIRE(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT) == PACKET_RECV_SUCCESS);
   asciichat_error_t code;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1];
@@ -230,7 +230,7 @@ TEST_CASE("tcp_transport/acip_error_response_hides_errno_stack_locations", "[tcp
   (void)SET_ERRNO(ERROR_NETWORK_PROTOCOL, "client connection failed");
   REQUIRE(acip_send_error(transport, ERROR_NETWORK_PROTOCOL, NULL) == ASCIICHAT_OK);
 
-  packet_envelope_t envelope = {0};
+  packet_envelope_t envelope = {};
   REQUIRE(receive_packet_secure_with_timeout(sockets[1], NULL, false, &envelope, NS_PER_SEC_INT) == PACKET_RECV_SUCCESS);
   asciichat_error_t code;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1];
