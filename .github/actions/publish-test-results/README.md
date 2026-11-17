@@ -10,7 +10,7 @@ A composite GitHub Action that handles test result publishing for the ascii-chat
 - 💬 Comments on PRs with test summaries
 - 📈 Uploads test results to Codecov
 - 🔍 Uploads coverage data to Codecov (optional)
-- 🎯 Supports different test types (unit, integration, performance)
+- 🎯 Supports different test types (unit, integration, benchmarks)
 
 ## Usage
 
@@ -19,7 +19,7 @@ A composite GitHub Action that handles test result publishing for the ascii-chat
   uses: ./.github/actions/publish-test-results
   if: always()
   with:
-    test-type: unit # Required: unit, integration, or performance
+    test-type: unit # Required: unit, integration, or benchmarks
     os-name: ubuntu # Required: ubuntu or macos
     build-type: debug # Optional: debug or release (for unit tests)
     junit-file: junit.xml # Optional: path to JUnit XML (default: junit.xml)
@@ -32,7 +32,7 @@ A composite GitHub Action that handles test result publishing for the ascii-chat
 
 | Input             | Description                                   | Required | Default              |
 | ----------------- | --------------------------------------------- | -------- | -------------------- |
-| `test-type`       | Type of test (unit, integration, performance) | Yes      | -                    |
+| `test-type`       | Type of test (unit, integration, benchmarks) | Yes      | -                    |
 | `os-name`         | Operating system name (ubuntu, macos)         | Yes      | -                    |
 | `build-type`      | Build type (debug, release)                   | No       | ''                   |
 | `junit-file`      | Path to JUnit XML file                        | No       | 'junit.xml'          |
@@ -69,14 +69,14 @@ A composite GitHub Action that handles test result publishing for the ascii-chat
     upload-coverage: "true"
 ```
 
-### Performance Tests
+### Benchmark Tests
 
 ```yaml
 - name: Publish Test Results and Coverage
   uses: ./.github/actions/publish-test-results
   if: always()
   with:
-    test-type: performance
+    test-type: benchmarks
     os-name: ${{ matrix.os-name }}
     codecov-token: ${{ secrets.CODECOV_TOKEN }}
     upload-coverage: "true"
@@ -97,7 +97,7 @@ The action creates GitHub checks with names based on test type:
 
 - Unit Tests: `Unit Tests (os-build)` e.g., "Unit Tests (ubuntu-debug)"
 - Integration Tests: `Integration Tests (os)` e.g., "Integration Tests (macos)"
-- Performance Tests: `Performance Tests (os)` e.g., "Performance Tests (ubuntu)"
+- Benchmark Tests: `Benchmark Tests (os)` e.g., "Benchmark Tests (ubuntu)"
 
 ## Codecov Flags
 
@@ -105,4 +105,4 @@ The action uses appropriate flags for Codecov organization:
 
 - Unit Tests: `ascii-chat-tests-{os}-{build}`
 - Integration Tests: `ascii-chat-integration-{os}`
-- Performance Tests: `ascii-chat-performance-{os}`
+- Benchmark Tests: `ascii-chat-benchmarks-{os}`

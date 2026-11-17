@@ -551,7 +551,7 @@ jobs:
 
   benchmarks:
     needs: preflight
-    name: Performance Tests
+    name: Benchmark Tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -587,9 +587,9 @@ jobs:
           rm -rf build/bin/test_*
           rm -rf build/lib/*.a
 
-      - name: Configure performance tests with coverage
+      - name: Configure Benchmark Tests with coverage
         run: |
-          # Configure performance tests with Release mode + coverage for accurate performance
+          # Configure Benchmark Tests with Release mode + coverage for accurate benchmarks
           # Use Homebrew LLVM on macOS for better standards support
           # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
           if [ "${{ startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}" = "macos" ]; then
@@ -609,7 +609,7 @@ jobs:
             CLANGXX_BIN="clang++"
           fi
 
-          echo "Configuring performance tests with Release optimization and coverage instrumentation..."
+          echo "Configuring Benchmark Tests with Release optimization and coverage instrumentation..."
           cmake_args=(
             --preset github
             -DCMAKE_C_COMPILER="${CLANG_BIN}"
@@ -629,7 +629,7 @@ jobs:
           rm -rf build/
           cmake -B build -G Ninja "${cmake_args[@]}"
 
-      - name: Save configure cache (performance-tests)
+      - name: Save configure cache (benchmark-tests)
         if: always()
         uses: ./.github/actions/cache-build-save
         with:
@@ -650,24 +650,24 @@ jobs:
       - name: Clear cached coverage counters
         run: find build -name '*.gcda' -type f -delete
 
-      - name: Build performance tests
+      - name: Build Benchmark Tests
         run: |
           cmake --build build --target benchmarks
-          echo "Performance test executables built:"
+          echo "Benchmarks test executables built:"
           ls -la build/bin/benchmarks 2>/dev/null || echo "No Catch2 benchmark executable found"
 
-      - name: Run performance tests
+      - name: Run Benchmark Tests
         run: |
-          echo "Running performance tests..."
+          echo "Running Benchmark Tests..."
 
-          # Run performance tests via ctest preset
+          # Run Benchmark Tests via ctest preset
           # Test adapters generate detailed XML in build/Testing/xml/
           set -o pipefail
           ctest --test-dir build --label-regex "^benchmarks$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee benchmarks-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
-          echo "Performance tests completed successfully"
+          echo "Benchmark Tests completed successfully"
 
-      - name: Save build cache (performance-tests)
+      - name: Save build cache (benchmark-tests)
         if: always()
         uses: ./.github/actions/cache-build-save
         with:
@@ -685,7 +685,7 @@ jobs:
           ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
           ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
-      - name: Generate coverage report for performance tests
+      - name: Generate coverage report for Benchmark Tests
         if: always()
         uses: ./.github/actions/generate-coverage
         with:
@@ -695,20 +695,20 @@ jobs:
         uses: ./.github/actions/publish-test-results
         if: always()
         with:
-          test-type: performance
+          test-type: benchmarks
           os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
           test-xml-dir: build/Testing/xml
           coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
           upload-coverage: "false"
 
-      - name: Upload performance test artifacts
+      - name: Upload benchmarks test artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: performance-test-results-${{ runner.os }}
+          name: benchmark-test-results-${{ runner.os }}
           path: |
-            performance-tests-*.log
+            benchmark-tests-*.log
             build/coverage.xml
             build/Testing/ctest-results.xml
             build/Testing/python-*.xml

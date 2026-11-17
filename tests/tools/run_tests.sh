@@ -130,7 +130,7 @@ PARALLEL_TESTS="1" # Default to parallel execution
 NO_PARALLEL=""
 
 # Test categories
-TEST_CATEGORIES=("unit" "integration" "performance")
+TEST_CATEGORIES=("unit" "integration" "benchmarks")
 
 # =============================================================================
 # Logging Functions
@@ -169,7 +169,7 @@ ascii-chat Test Runner
 Usage: $0 [OPTIONS] [TEST_NAME]
 
 OPTIONS:
-    -t, --type TYPE         Test type: all, unit, integration, performance (default: all)
+    -t, --type TYPE         Test type: all, unit, integration, benchmarks (default: all)
     -b, --build TYPE        Build type: debug, dev, release, coverage, tsan (default: debug)
     -j, --jobs N            Number of parallel test executables to run and jobs per test (default: auto-detect CPU cores and auto-detected jobs)
     -J, --junit             Generate JUnit XML output
@@ -181,7 +181,7 @@ OPTIONS:
     -h, --help              Show this help message
 
 ARGUMENTS:
-    TEST_TYPE               Run all tests of a type (e.g., unit, integration, performance)
+    TEST_TYPE               Run all tests of a type (e.g., unit, integration, benchmarks)
     TEST_NAME               Run a single test binary by name or path (e.g., test_unit_ascii, unit_ascii, bin/test_unit_ascii, /path/to/test)
     TYPE NAME               Run a specific test by type and name (e.g., unit options, integration crypto_network)
     TYPE NAME1 NAME2...     Run multiple tests of the same type (e.g., unit options audio, integration crypto_network neon_color_renderers)
@@ -190,9 +190,9 @@ EXAMPLES:
     $0                                    # Run all tests with debug build
     $0 unit                               # Run all unit tests programmatically
     $0 integration                        # Run all integration tests with debug build
-    $0 performance                        # Run all performance tests with release build
+    $0 benchmarks                        # Run all Benchmark Tests with release build
     $0 -t unit -b release                 # Run unit tests with release build
-    $0 -t performance -J                  # Run performance tests with JUnit output
+    $0 -t benchmarks -J                  # Run Benchmark Tests with JUnit output
     $0 -c -t integration                  # Run integration tests with coverage
     $0 -b coverage -J                     # Run all tests with coverage+JUnit
     $0 -b debug                          # Run with AddressSanitizer for memory checking
@@ -219,7 +219,7 @@ TEST TYPES:
     all                   - Run all test categories
     unit                  - Run only unit tests
     integration           - Run only integration tests
-    performance           - Run only performance tests
+    benchmarks              - Run only Benchmark Tests
 
 EOF
 }
@@ -295,7 +295,7 @@ function _ascii_source_to_test_executable() {
   echo "test_${rel}"
 }
 
-# Extract the top-level test category (unit/integration/performance)
+# Extract the top-level test category (unit/integration/benchmarks)
 function _ascii_source_to_test_category() {
   local source_path="$1"
   local rel="${source_path#$PROJECT_ROOT/tests/}"
@@ -377,7 +377,7 @@ function get_test_executables() {
     fi
     _discover_tests_in_dir "$PROJECT_ROOT/tests/integration" "$bin_dir" "$valid_targets"
     ;;
-  performance)
+  benchmarks)
     if [[ ! -d "$PROJECT_ROOT/tests/benchmarks" ]]; then
       log_warning "Skipping benchmark tests: directory '$PROJECT_ROOT/tests/benchmarks' not found"
       return
@@ -1193,8 +1193,8 @@ function main() {
   # Process positional arguments
   if [[ ${#positional_args[@]} -eq 1 ]]; then
     local arg="${positional_args[0]}"
-    # Check if it's a test type (unit, integration, performance)
-    if [[ "$arg" =~ ^(unit|integration|performance)$ ]]; then
+    # Check if it's a test type (unit, integration, benchmarks)
+    if [[ "$arg" =~ ^(unit|integration|benchmarks)$ ]]; then
       # Single test type - run all tests of that type
       TEST_TYPE="$arg"
       # Clear any default test type since we have a specific one
@@ -1215,7 +1215,7 @@ function main() {
         MULTIPLE_TESTS+=("$arg")
       done
       MULTIPLE_TEST_MODE=1
-    elif [[ "$first_arg" =~ ^(unit|integration|performance)$ ]]; then
+    elif [[ "$first_arg" =~ ^(unit|integration|benchmarks)$ ]]; then
       # First arg is a test type, rest are test names within that type
       local type_arg="$first_arg"
       if [[ ${#positional_args[@]} -eq 2 ]]; then
@@ -1277,7 +1277,7 @@ function main() {
   fi
 
   # Validate arguments
-  if [[ ! "$TEST_TYPE" =~ ^(all|unit|integration|performance)$ ]]; then
+  if [[ ! "$TEST_TYPE" =~ ^(all|unit|integration|benchmarks)$ ]]; then
     log_error "Invalid test type: $TEST_TYPE"
     exit 1
   fi
@@ -1373,7 +1373,7 @@ function main() {
       categories_to_run=("$TEST_TYPE")
     elif [[ ${#TEST_CATEGORIES[@]} -eq 0 ]]; then
       # No categories specified via command line, run all
-      categories_to_run=("unit" "integration" "performance")
+      categories_to_run=("unit" "integration" "benchmarks")
     else
       # Use specified categories
       categories_to_run=("${TEST_CATEGORIES[@]}")
@@ -1390,8 +1390,8 @@ function main() {
 
   # Now we have all tests - build and run them
   if [[ ${#all_tests_to_run[@]} -eq 0 ]]; then
-    if [[ -z "$SINGLE_TEST" && -z "$MULTIPLE_TEST_MODE" && "$TEST_TYPE" == "performance" ]]; then
-      log_warning "No performance tests detected; skipping performance test suite."
+    if [[ -z "$SINGLE_TEST" && -z "$MULTIPLE_TEST_MODE" && "$TEST_TYPE" == "benchmarks" ]]; then
+      log_warning "No Benchmark Tests detected; skipping benchmarks test suite."
       if [[ -n "$GENERATE_JUNIT" ]]; then
         echo '<?xml version="1.0" encoding="UTF-8"?>' >"$junit_file"
         echo "<testsuites name=\"ascii-chat Tests\" tests=\"0\" failures=\"0\" errors=\"0\" time=\"0\"/>" >>"$junit_file"

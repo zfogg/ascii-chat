@@ -23,6 +23,13 @@ The primary native categories are **unit, integration, benchmarks**. Contract is
 
 Write new C++ tests with Catch2 3 (`TEST_CASE`, sections, tags, generators, and `TEMPLATE_TEST_CASE` where useful). C sources can be linked into Catch2 drivers or remain standalone only when a separate process/platform boundary genuinely requires it. Use `BENCHMARK` in `tests/benchmarks/` for performance cases and keep correctness checks outside the timed body. A source file's presence does not prove registration, build inclusion, or coverage participation.
 
+There is no active Criterion dependency in the current CMake test graph. If a
+legacy C file still includes Criterion, do not expand that usage: either
+migrate it to a Catch2-compatible C++ test driver when it is in scope, or
+record it as legacy/dead test code and verify that it is not registered by
+CMake. The target end state is Catch2/CTest for native tests, with Python
+pytest remaining the separate Python framework.
+
 ## Configure and discover
 
 Use Clang and Ninja. On Windows, test natively first with the Windows preset/toolchain; WSL or Docker are optional additional environments for Linux-specific evidence, not prerequisites. Preserve build/dependency caches and unrelated work; reconfigure rather than deleting `build/`. Configure the test preset:

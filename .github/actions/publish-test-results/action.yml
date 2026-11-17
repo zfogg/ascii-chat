@@ -2,7 +2,7 @@ name: "Publish Test Results"
 description: "Validates test JUnit XML, publishes test results to GitHub, uploads to Codecov"
 inputs:
   test-type:
-    description: "Type of test (unit, integration, performance)"
+    description: "Type of test (unit, integration, benchmarks)"
     required: true
   os-name:
     description: "Operating system name (ubuntu, macos)"
@@ -109,11 +109,11 @@ runs:
         check_name: |
           ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Tests ({1})', 'Integration', inputs.os-name) ||
-              format('{0} Tests ({1})', 'Performance', inputs.os-name) }}
+              format('{0} Tests ({1})', 'Benchmarks', inputs.os-name) }}
         comment_title: |
           ${{ inputs.test-type == 'unit' && format('{0} Test Results ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Test Results ({1})', 'Integration', inputs.os-name) ||
-              format('{0} Test Results ({1})', 'Performance', inputs.os-name) }}
+              format('{0} Test Results ({1})', 'Benchmarks', inputs.os-name) }}
         compare_to_earlier_commit: true
         test_changes_limit: 10
         fail_on: "nothing" # Don't fail the workflow based on test results
@@ -128,11 +128,11 @@ runs:
         check_name: |
           ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Tests ({1})', 'Integration', inputs.os-name) ||
-              format('{0} Tests ({1})', 'Performance', inputs.os-name) }}
+              format('{0} Tests ({1})', 'Benchmarks', inputs.os-name) }}
         comment_title: |
           ${{ inputs.test-type == 'unit' && format('{0} Test Results ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Test Results ({1})', 'Integration', inputs.os-name) ||
-              format('{0} Test Results ({1})', 'Performance', inputs.os-name) }}
+              format('{0} Test Results ({1})', 'Benchmarks', inputs.os-name) }}
         compare_to_earlier_commit: true
         test_changes_limit: 10
         fail_on: "nothing" # Don't fail the workflow based on test results
@@ -147,11 +147,11 @@ runs:
         check_name: |
           ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Tests ({1})', 'Integration', inputs.os-name) ||
-              format('{0} Tests ({1})', 'Performance', inputs.os-name) }}
+              format('{0} Tests ({1})', 'Benchmarks', inputs.os-name) }}
         comment_title: |
           ${{ inputs.test-type == 'unit' && format('{0} Test Results ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Test Results ({1})', 'Integration', inputs.os-name) ||
-              format('{0} Test Results ({1})', 'Performance', inputs.os-name) }}
+              format('{0} Test Results ({1})', 'Benchmarks', inputs.os-name) }}
         compare_to_earlier_commit: true
         test_changes_limit: 10
         fail_on: "nothing" # Don't fail the workflow based on test results
@@ -196,7 +196,7 @@ runs:
         flags: |-
           ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) ||
-              format('ascii-chat-performance-{0}', inputs.os-name) }}
+              format('ascii-chat-benchmarks-{0}', inputs.os-name) }}
         token: ${{ inputs.codecov-token }}
         fail_ci_if_error: false
 
@@ -227,10 +227,10 @@ runs:
         flags: |-
           ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) ||
-              format('ascii-chat-performance-{0}', inputs.os-name) }}
+              format('ascii-chat-benchmarks-{0}', inputs.os-name) }}
         name: |-
           ${{ inputs.test-type == 'unit' && format('ascii-chat-coverage-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-coverage-{0}', inputs.os-name) ||
-              format('ascii-chat-performance-coverage-{0}', inputs.os-name) }}
+              format('ascii-chat-benchmarks-coverage-{0}', inputs.os-name) }}
         fail_ci_if_error: true
         verbose: true

@@ -7,7 +7,7 @@
 #   ./tests/tools/run-docker-tests.ps1                            # Run all tests
 #   ./tests/tools/run-docker-tests.ps1 unit                       # Run all unit tests
 #   ./tests/tools/run-docker-tests.ps1 integration                # Run all integration tests
-#   ./tests/tools/run-docker-tests.ps1 performance                # Run all performance tests
+#   ./tests/tools/run-docker-tests.ps1 benchmarks                # Run all Benchmark Tests
 #   ./tests/tools/run-docker-tests.ps1 -ClangTidy                 # Run clang-tidy analysis on all files
 #   ./tests/tools/run-docker-tests.ps1 clang-tidy                 # Run clang-tidy analysis on all files
 #   ./tests/tools/run-docker-tests.ps1 clang-tidy lib/common.c    # Run clang-tidy on specific file
@@ -274,13 +274,13 @@ if ($Interactive) {
         $TestCommand += " -R `"$Filter`""
     }
 
-    # Use Suite parameter to filter by label (unit, integration, performance)
+    # Use Suite parameter to filter by label (unit, integration, benchmarks)
     if ($Suite -and $Suite -ne "") {
         # Map suite names to ctest label regex
         switch ($Suite) {
             "unit" { $TestCommand += " --label-regex `"^unit$`"" }
             "integration" { $TestCommand += " --label-regex `"^integration$`"" }
-            "performance" { $TestCommand += " --label-regex `"^performance$`"" }
+            "benchmarks" { $TestCommand += " --label-regex `"^benchmarks$`"" }
             default {
                 # Assume it's a test name pattern
                 $TestCommand += " -R `"$Suite`""
