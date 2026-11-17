@@ -149,8 +149,11 @@ function(configure_include_directories)
         target_include_directories(asciichat-project-includes BEFORE INTERFACE
             "${MUSL_INCLUDE_DIR}")
         target_include_directories(asciichat-project-includes SYSTEM INTERFACE
-            ${KERNEL_HEADERS_DIR} ${LIBEXECINFO_INCLUDE_DIRS}
-            "$<$<COMPILE_LANGUAGE:CXX>:${ALPINE_LIBCXX_INCLUDE_DIR}>")
+            ${KERNEL_HEADERS_DIR} ${LIBEXECINFO_INCLUDE_DIRS})
+        if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            target_include_directories(asciichat-project-includes SYSTEM INTERFACE
+                "$<$<COMPILE_LANGUAGE:CXX>:${ALPINE_LIBCXX_INCLUDE_DIR}>")
+        endif()
     endif()
 
     # Dependency roots (including mimalloc's vcpkg root) may also contain an
