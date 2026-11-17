@@ -5,7 +5,7 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
     set(_c "-fno-lto -ftls-model=global-dynamic -fPIC")
     set(_asciichat_gcc_toolchain FALSE)
     if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
-       OR CMAKE_C_COMPILER MATCHES "musl-gcc|(^|/)(gcc|g(cc)?-[0-9]+)$")
+       OR CMAKE_C_COMPILER MATCHES "musl-gcc|musl-gcc-wrapper|(^|/)(gcc|g(cc)?-[0-9]+)$")
         set(_asciichat_gcc_toolchain TRUE)
     endif()
     if(_asciichat_gcc_toolchain)
