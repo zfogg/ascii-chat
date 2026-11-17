@@ -33,10 +33,15 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
     # GCC, -nostdinc would hide libstdc++ headers such as <string>; only the C
     # compiler needs the strict musl header isolation above. Put musl headers
     # after the C++ implementation headers instead.
-    set(_cxx "-fno-lto -ftls-model=global-dynamic -fPIC -nostdinc -nostdinc++"
-        " -isystem ${MUSL_INCLUDE_DIR}"
-        " -isystem ${MUSL_GCC_BUILTIN_INCLUDE_DIR}"
-        " -isystem ${MUSL_GCC_FIXED_INCLUDE_DIR}")
+    set(_cxx "-fno-lto -ftls-model=global-dynamic -fPIC")
+    if(_asciichat_gcc_toolchain)
+        string(APPEND _cxx " -nostdinc -nostdinc++")
+        string(APPEND _cxx " -isystem ${MUSL_INCLUDE_DIR}"
+            " -isystem ${MUSL_GCC_BUILTIN_INCLUDE_DIR}"
+            " -isystem ${MUSL_GCC_FIXED_INCLUDE_DIR}")
+    else()
+        string(APPEND _cxx " -idirafter ${MUSL_INCLUDE_DIR}")
+    endif()
     if(_asciichat_gcc_toolchain AND MUSL_LIBSTDCPP_INCLUDE_DIR AND MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
         string(APPEND _cxx " -isystem ${MUSL_LIBSTDCPP_INCLUDE_DIR} -isystem ${MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR}")
     endif()
