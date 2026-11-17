@@ -393,8 +393,11 @@ function(configure_musl_post_project)
             "musl-compatible GCC libsupc++ archive" FORCE)
         set(MUSL_LIBSTDCPP_INCLUDE_DIR "${_alpine_libstdcxx_dir}/usr/include/c++/14.2.0" CACHE PATH
             "musl-compatible GCC C++ headers" FORCE)
-        set(MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR
-            "${MUSL_LIBSTDCPP_INCLUDE_DIR}/x86_64-alpine-linux-musl" CACHE PATH
+        file(GLOB _alpine_libstdcxx_target_dirs LIST_DIRECTORIES true
+            "${MUSL_LIBSTDCPP_INCLUDE_DIR}/*-linux-musl")
+        list(SORT _alpine_libstdcxx_target_dirs)
+        list(GET _alpine_libstdcxx_target_dirs 0 _alpine_libstdcxx_target_dir)
+        set(MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR "${_alpine_libstdcxx_target_dir}" CACHE PATH
             "musl-compatible GCC target C++ headers" FORCE)
         if(NOT EXISTS "${MUSL_LIBSUPCXX_PATH}" OR
            NOT EXISTS "${MUSL_LIBSTDCPP_INCLUDE_DIR}/string")
