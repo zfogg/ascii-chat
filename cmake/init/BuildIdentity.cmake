@@ -1,7 +1,7 @@
 # CMake can rebuild optimization changes in place, but ABI and dependency
 # selections need independent compiler checks, package caches and generated files.
 set(_asciichat_identity "${CMAKE_SYSTEM_NAME}|${CMAKE_SYSTEM_PROCESSOR}|${CMAKE_C_COMPILER}|${CMAKE_C_COMPILER_VERSION}|${CMAKE_C_COMPILER_TARGET}|${CMAKE_TOOLCHAIN_FILE}|${VCPKG_TARGET_TRIPLET}|${CMAKE_MSVC_RUNTIME_LIBRARY}")
-foreach(_selection USE_MUSL ASCIICHAT_SHARED_DEPS)
+foreach(_selection USE_MUSL BUILD_SHARED_LIBS)
     if(${_selection})
         string(APPEND _asciichat_identity "|${_selection}=ON")
     else()
