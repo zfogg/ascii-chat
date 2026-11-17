@@ -167,7 +167,7 @@ Test(options, default_values) {
 }
 
 GENERATE_OPTIONS_TEST_IN_SUITE(
-    options, basic_client_options, ARGV_LIST("client", "192.168.1.1:8080", "-x", "100", "-y", "50"), true,
+    options, basic_client_options, ARGV_LIST("client", "-x", "100", "-y", "50", "192.168.1.1:8080"), true,
     {
       cr_assert_str_eq(opts->address, "192.168.1.1");
       cr_assert_eq(opts->port, 8080);
@@ -179,7 +179,7 @@ GENERATE_OPTIONS_TEST_IN_SUITE(
     { cr_assert_eq(exit_code, 0, "Basic client options should not exit"); })
 
 GENERATE_OPTIONS_TEST(
-    basic_server_options, ARGV_LIST("server", "127.0.0.1", "-p", "3000"), false,
+    basic_server_options, ARGV_LIST("server", "-p", "3000", "127.0.0.1"), false,
     {
       cr_assert_str_eq(opts->address, "127.0.0.1");
       cr_assert_eq(opts->port, 3000);
@@ -264,8 +264,6 @@ TEST_CASE("options::ip_address_validation", "[options][parameterized]") {
   // Test option values in main process (only if no exit expected)
   if (tc.should_succeed) {
     cr_assert_eq(exit_code, 0, "%s should not cause exit", tc.description);
-    // Reset getopt state before calling options_init again
-    options_init(argc, argv);
     // Get options from RCU for assertions
     const options_t *opts = options_get();
     cr_assert_str_eq(opts->address, tc.address, "%s should set address correctly", tc.description);
@@ -273,6 +271,7 @@ TEST_CASE("options::ip_address_validation", "[options][parameterized]") {
     cr_assert_eq(exit_code, tc.expected_exit_code, "%s should cause exit with code %d", tc.description, tc.expected_exit_code);
   }
 
+    options_state_destroy();
     restore_options(&backup);
   }
 }
@@ -713,7 +712,7 @@ Test(options, complex_server_combination) {
 
   // NOTE: --log-file is now a global option, removed from this test
   // NOTE: --palette is client-only, removed from this server test
-  char *argv[] = {"program", "server", "0.0.0.0", "--port=27224", "--encrypt", NULL};
+  char *argv[] = {"program", "server", "--port=27224", "--encrypt", "0.0.0.0", NULL};
   int argc = 5;
 
   int result = test_options_init_with_fork(argv, argc, false);
@@ -1035,7 +1034,7 @@ GENERATE_OPTIONS_TEST(
     { cr_assert_eq(exit_code, 0, "equals sign syntax should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_mixed_syntax, ARGV_LIST("client", "10.0.0.1:3000", "-x", "80", "--height=60"), true,
+    test_mixed_syntax, ARGV_LIST("client", "-x", "80", "--height=60", "10.0.0.1:3000"), true,
     {
       cr_assert_str_eq(opts->address, "10.0.0.1");
       cr_assert_eq(opts->port, 3000);
