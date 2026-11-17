@@ -298,16 +298,16 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
   // ============================================================
 
   const char *acds_argv[] = {binary_path,
-                       "--no-check-update",
-                       "--log-level",
-                       "debug",
-                       "discovery-service",
-                       "--port",
-                       port_str,
-                       "--database",
-                       test_db_path,
-                       "--status-screen=false", // Disable UI for clean log parsing
-                       NULL};
+                             "--no-check-update",
+                             "--log-level",
+                             "debug",
+                             "discovery-service",
+                             "--port",
+                             port_str,
+                             "--database",
+                             test_db_path,
+                             "--status-screen=false", // Disable UI for clean log parsing
+                             NULL};
 
   platform_process_t *acds_process = spawn_process_with_log(binary_path, acds_argv, "acds", acds_log);
   REQUIRE(acds_process != NULL);
@@ -321,17 +321,17 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
   // ============================================================
 
   const char *host_argv[] = {binary_path, "--no-check-update", "--log-level", "debug",
-                       "server",        // Run as SERVER with --discovery flag
-                       "0.0.0.0", "::", // Bind addresses
-                       "--port", "27224",
-                       "--discovery",           // Register with discovery service
-                       "--discovery-expose-ip", // Allow IP exposure for testing
-                       "--discovery-service", "localhost", "--discovery-service-port", port_str,
-                       "--status-screen=false", // Disable UI for clean log parsing
-                       // Server doesn't need video/audio source - clients provide media
-                       // Server runs continuously until terminated
-                       "--no-encrypt", // Simplify for testing
-                       NULL};
+                             "server",        // Run as SERVER with --discovery flag
+                             "0.0.0.0", "::", // Bind addresses
+                             "--port", "27224",
+                             "--discovery",           // Register with discovery service
+                             "--discovery-expose-ip", // Allow IP exposure for testing
+                             "--discovery-service", "localhost", "--discovery-service-port", port_str,
+                             "--status-screen=false", // Disable UI for clean log parsing
+                             // Server doesn't need video/audio source - clients provide media
+                             // Server runs continuously until terminated
+                             "--no-encrypt", // Simplify for testing
+                             NULL};
 
   platform_process_t *host_process = spawn_process_with_log(binary_path, host_argv, "host", host_log);
   REQUIRE(host_process != NULL);
@@ -354,25 +354,25 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
   // ============================================================
 
   const char *guest_argv[] = {binary_path,
-                        "--no-check-update",
-                        "--log-level",
-                        "debug",
-                        session_string, // Discovery mode with session string
-                        "--discovery-service",
-                        "localhost",
-                        "--discovery-service-port",
-                        port_str,
-                        "--prefer-webrtc", // Force WebRTC instead of direct TCP
-                        "--port",
-                        "27234",          // Successor preparation needs a separate local listener.
-                        "--test-pattern", // Use test pattern instead of webcam
-                        "--snapshot",
-                        "--snapshot-delay",
-                        "10", // Keep alive for 10s to allow WebRTC connection
-                        "--volume",
-                        "0",
-                        "--no-encrypt",
-                        NULL};
+                              "--no-check-update",
+                              "--log-level",
+                              "debug",
+                              session_string, // Discovery mode with session string
+                              "--discovery-service",
+                              "localhost",
+                              "--discovery-service-port",
+                              port_str,
+                              "--prefer-webrtc", // Force WebRTC instead of direct TCP
+                              "--port",
+                              "27234",          // Successor preparation needs a separate local listener.
+                              "--test-pattern", // Use test pattern instead of webcam
+                              "--snapshot",
+                              "--snapshot-delay",
+                              "10", // Keep alive for 10s to allow WebRTC connection
+                              "--volume",
+                              "0",
+                              "--no-encrypt",
+                              NULL};
 
   platform_process_t *guest_process = spawn_process_with_log(binary_path, guest_argv, "guest", guest_log);
   REQUIRE(guest_process != NULL);

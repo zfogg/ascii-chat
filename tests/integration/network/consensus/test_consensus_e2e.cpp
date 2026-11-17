@@ -51,11 +51,16 @@ static int read_from_pipe(const char *path, char *buf, size_t *len, size_t max_s
     return 0;
   }
   FILE *file = fopen(path, "rb");
-  if (!file) return 0;
+  if (!file)
+    return 0;
   fseek(file, (long)*len, SEEK_SET);
   size_t n = fread(buf + *len, 1, max_size - *len - 1, file);
   fclose(file);
-  if (n > 0) { *len += n; buf[*len] = '\0'; return 1; }
+  if (n > 0) {
+    *len += n;
+    buf[*len] = '\0';
+    return 1;
+  }
   return 0;
 }
 
@@ -89,7 +94,8 @@ __attribute__((unused)) static int wait_for_pattern(process_t *proc, const char 
 static void start_server(void) {
   platform_setenv("ASCII_CHAT_AUDIO", "false");
   const char *binary_path = test_get_binary_path();
-  char port_str[16]; snprintf(port_str, sizeof(port_str), "%d", SERVER_PORT);
+  char port_str[16];
+  snprintf(port_str, sizeof(port_str), "%d", SERVER_PORT);
   snprintf(server_proc.stdout_path, sizeof(server_proc.stdout_path), "consensus-server.log");
   snprintf(server_proc.stderr_path, sizeof(server_proc.stderr_path), "%s", server_proc.stdout_path);
   const char *argv[] = {binary_path, "--log-level", "debug", "server", "--port", port_str, "--max-clients", "4", "--status-screen=false", "--no-encrypt", NULL};
@@ -118,7 +124,8 @@ static void start_client(int client_num) {
   const char *binary_path = test_get_binary_path();
   snprintf(proc->stdout_path, sizeof(proc->stdout_path), "consensus-client-%d.log", client_num);
   snprintf(proc->stderr_path, sizeof(proc->stderr_path), "%s", proc->stdout_path);
-  char addr_str[32]; snprintf(addr_str, sizeof(addr_str), "127.0.0.1:%d", SERVER_PORT);
+  char addr_str[32];
+  snprintf(addr_str, sizeof(addr_str), "127.0.0.1:%d", SERVER_PORT);
   const char *argv[] = {binary_path, "--log-level", "debug", "client", addr_str, "--snapshot", "--snapshot-delay", "2", "--status-screen=false", "--no-encrypt", NULL};
   int fd = platform_open("consensus-client-log", proc->stdout_path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC | PLATFORM_O_BINARY, 0600);
   REQUIRE(fd >= 0);

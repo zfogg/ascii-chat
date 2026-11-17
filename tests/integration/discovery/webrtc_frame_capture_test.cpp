@@ -73,8 +73,10 @@ static void cleanup_processes(void) {
   // Clean up database and SQLite WAL files only
   platform_unlink(g_acds_db_path);
   char db_sidecar[544];
-  snprintf(db_sidecar, sizeof(db_sidecar), "%s-shm", g_acds_db_path); platform_unlink(db_sidecar);
-  snprintf(db_sidecar, sizeof(db_sidecar), "%s-wal", g_acds_db_path); platform_unlink(db_sidecar);
+  snprintf(db_sidecar, sizeof(db_sidecar), "%s-shm", g_acds_db_path);
+  platform_unlink(db_sidecar);
+  snprintf(db_sidecar, sizeof(db_sidecar), "%s-wal", g_acds_db_path);
+  platform_unlink(db_sidecar);
   // Preserve all log files and client output for inspection:
   // - ACDS_LOG_PATH (/tmp/acds_test.log)
   // - SERVER_LOG_PATH (/tmp/server_test.log)
@@ -276,8 +278,10 @@ static void setup_test(void) {
   platform_unlink(g_acds_log_path);
   platform_unlink(g_acds_db_path);
   char db_sidecar[544];
-  snprintf(db_sidecar, sizeof(db_sidecar), "%s-shm", g_acds_db_path); platform_unlink(db_sidecar);
-  snprintf(db_sidecar, sizeof(db_sidecar), "%s-wal", g_acds_db_path); platform_unlink(db_sidecar);
+  snprintf(db_sidecar, sizeof(db_sidecar), "%s-shm", g_acds_db_path);
+  platform_unlink(db_sidecar);
+  snprintf(db_sidecar, sizeof(db_sidecar), "%s-wal", g_acds_db_path);
+  platform_unlink(db_sidecar);
   platform_unlink(g_server_log_path);
   platform_unlink(g_client_output_path);
   platform_setenv("ASCII_CHAT_AUDIO", "false");
@@ -285,7 +289,8 @@ static void setup_test(void) {
 
 static platform_process_t *spawn_logged(const char *binary_path, const char *const *argv, const char *log_path) {
   int fd = platform_open("webrtc-frame-log", log_path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC | PLATFORM_O_BINARY, 0600);
-  if (fd < 0) return NULL;
+  if (fd < 0)
+    return NULL;
   platform_process_t *process = NULL;
   int result = platform_process_spawn(&process, binary_path, argv, -1, fd, fd);
   platform_close(fd);
@@ -326,7 +331,23 @@ TEST_CASE("webrtc_discovery/frame_capture_via_webrtc", "[webrtc_discovery]") {
   // Step 2: Start server with discovery registration
   // ========================================================================
   log_info("Starting server with discovery...");
-  const char *server_argv[] = {binary_path, "--no-check-update", "--log-level", "debug", "server", "0.0.0.0", "::", "--port", "27224", "--discovery", "--discovery-expose-ip", "--discovery-service", "127.0.0.1", "--discovery-service-port", "27325", "--status-screen=false", NULL};
+  const char *server_argv[] = {binary_path,
+                               "--no-check-update",
+                               "--log-level",
+                               "debug",
+                               "server",
+                               "0.0.0.0",
+                               "::",
+                               "--port",
+                               "27224",
+                               "--discovery",
+                               "--discovery-expose-ip",
+                               "--discovery-service",
+                               "127.0.0.1",
+                               "--discovery-service-port",
+                               "27325",
+                               "--status-screen=false",
+                               NULL};
   g_server_process = spawn_logged(binary_path, server_argv, g_server_log_path);
   REQUIRE(g_server_process != NULL);
 
@@ -360,9 +381,23 @@ TEST_CASE("webrtc_discovery/frame_capture_via_webrtc", "[webrtc_discovery]") {
   // A zero snapshot delay exits before WebRTC signaling and the first frame can
   // complete; give the peer several seconds to connect before taking the frame.
   // Route logs to a file so stdout remains available for the rendered frame.
-  const char *client_argv[] = {binary_path, "--no-check-update", "--log-file", g_client_log_path, session_string,
-                               "--snapshot", "--snapshot-delay", "5", "--test-pattern", "--discovery-service",
-                               "127.0.0.1", "--discovery-service-port", "27325", "--prefer-webrtc", "--port", "27234", NULL};
+  const char *client_argv[] = {binary_path,
+                               "--no-check-update",
+                               "--log-file",
+                               g_client_log_path,
+                               session_string,
+                               "--snapshot",
+                               "--snapshot-delay",
+                               "5",
+                               "--test-pattern",
+                               "--discovery-service",
+                               "127.0.0.1",
+                               "--discovery-service-port",
+                               "27325",
+                               "--prefer-webrtc",
+                               "--port",
+                               "27234",
+                               NULL};
   platform_process_t *client_process = spawn_logged(binary_path, client_argv, g_client_output_path);
   REQUIRE(client_process != NULL);
   int client_result = -1;
