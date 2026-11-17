@@ -32,7 +32,7 @@ function(configure_libuv)
         # headers explicitly so libuv does not reference glibc-only symbols.
         # GCC uses -nostdinc from the shared musl toolchain flags; it does not
         # accept Clang's -nostdlibinc spelling.
-        if(NOT ASCIICHAT_MUSL_USE_GCC AND NOT CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER MATCHES "(^|[/\\\\])clang(\\.exe)?$")
             target_compile_options(uv_a PRIVATE -nostdlibinc)
         endif()
         # Consumers compile sources that include <uv.h>; propagate the musl
