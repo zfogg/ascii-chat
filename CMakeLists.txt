@@ -428,14 +428,17 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
   if(DEFINED CACHE{RECAST_HOST_CXX_INCLUDE_DIRS})
     set(_asciichat_recast_host_dirs "$CACHE{RECAST_HOST_CXX_INCLUDE_DIRS}")
     foreach(_recast_target recast-objects recast)
-      get_target_property(_recast_include_dirs "${_recast_target}" INCLUDE_DIRECTORIES)
-      set_property(TARGET "${_recast_target}" PROPERTY INCLUDE_DIRECTORIES
-        "${_asciichat_recast_host_dirs};${_recast_include_dirs}")
+      foreach(_recast_host_dir IN LISTS _asciichat_recast_host_dirs)
+        target_compile_options("${_recast_target}" BEFORE PRIVATE
+          "-isystem" "${_recast_host_dir}")
+      endforeach()
+      target_compile_options("${_recast_target}" PRIVATE "-idirafter" "/usr/include")
     endforeach()
     foreach(_recast_llvm_target recast-llvm-support recast-libclang)
       get_target_property(_recast_llvm_includes "${_recast_llvm_target}" INTERFACE_INCLUDE_DIRECTORIES)
+      list(REMOVE_ITEM _recast_llvm_includes "/usr/include")
       set_property(TARGET "${_recast_llvm_target}" PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-        "${RECAST_HOST_CXX_INCLUDE_DIRS};${_recast_llvm_includes}")
+        "${_recast_llvm_includes}")
     endforeach()
   endif()
   if(USE_MUSL)
