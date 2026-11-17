@@ -29,43 +29,13 @@ static std::vector<char *> make_argv(std::initializer_list<const char *> args) {
   return result;
 }
 
-#define ARGV_LIST(...) make_argv({__VA_ARGS__})
-#define ARG_WRAP(list) list
-
-// Usage:
-// GENERATE_OPTIONS_TEST(name,
-//   ARGV_LIST("client", "-x", "100", "-y", "50"),
-//   /* is_client */ true,
-//   { /* option_assertions using opt_* variables */ },
-//   { /* exit_assertions using exit_code */ });
-#define GENERATE_OPTIONS_TEST(test_name, argv_list, is_client_val, option_assertions, exit_assertions) \
-  GENERATE_OPTIONS_TEST_IN_SUITE(options, test_name, argv_list, is_client_val, option_assertions, exit_assertions)
-
-#define GENERATE_OPTIONS_TEST_IN_SUITE(suite_name, test_name, argv_list, is_client_val, option_assertions, exit_assertions) \
-  Test(suite_name, test_##test_name) {                                                                                      \
-    auto argv_storage = argv_list;                                                                                          \
-    char **argv = argv_storage.data();                                                                                      \
-    int argc = static_cast<int>(argv_storage.size()) - 1;                                                                   \
-    options_backup_t backup;                                                                                                \
-    save_options(&backup);                                                                                                  \
-                                                                                                                            \
-    int exit_code = test_options_init_with_fork(argv, argc, is_client_val);                                                 \
-    if (exit_code == 0) {                                                                                                   \
-      const options_t *opts = options_get();                                                                                \
-      option_assertions                                                                                                     \
-    }                                                                                                                       \
-    exit_assertions                                                                                                         \
-    options_state_destroy();                                                                                                \
-    restore_options(&backup);                                                                                               \
-  }
-
 // Helper function to save and restore RCU options state for test isolation
-// Use the full options_t struct instead of a custom backup struct
+// Use the full options_t struct instead of a custom backup struc
 typedef options_t options_backup_t;
 
 static void save_options(options_backup_t *backup) {
   // Get current options from RCU and make a copy
-  // Don't call init here - let options_init() handle that in the test
+  // Don't call init here - let options_init() handle that in the tes
   const options_t *current = options_get();
   memcpy(backup, current, sizeof(options_t));
 }
@@ -152,21 +122,39 @@ TEST_CASE("options::default_values", "[options]") {
   restore_options(&backup);
 }
 
-GENERATE_OPTIONS_TEST_IN_SUITE(
-    options, basic_client_options, ARGV_LIST("client", "-x", "100", "-y", "50", "192.168.1.1:8080"), true,
-    {
+TEST_CASE("options::basic_client_options", "[options]") {
+  auto argv_storage = make_argv({"client", "-x", "100", "-y", "50", "192.168.1.1:8080"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(std::strcmp((opts->address), ("192.168.1.1")) == 0);
       REQUIRE((opts->port) == (8080));
       REQUIRE((opts->width) == (100));
       REQUIRE((opts->height) == (50));
       REQUIRE((opts->auto_width) == (0));
       REQUIRE((opts->auto_height) == (0));
-    },
-    { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(
-    basic_server_options, ARGV_LIST("server", "-p", "3000", "127.0.0.1"), false,
-    {
+  }
+ REQUIRE((exit_code) == (0));
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::basic_server_options", "[options]") {
+  auto argv_storage = make_argv({"server", "-p", "3000", "127.0.0.1"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, false);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(std::strcmp((opts->address), ("127.0.0.1")) == 0);
       REQUIRE((opts->port) == (3000));
       // Server should use default or terminal-detected values for dimensions
@@ -179,47 +167,121 @@ GENERATE_OPTIONS_TEST(
       REQUIRE(opts->height > 0);
       REQUIRE((opts->webcam_index) == (0));
       REQUIRE((opts->flip_x) == (true));
-    },
-    { REQUIRE((exit_code) == (0)); })
+
+  }
+ REQUIRE((exit_code) == (0));
+  options_state_destroy();
+  restore_options(&backup);
+}
 
 /* ============================================================================
  * Address and Port Validation Tests
  * ============================================================================ */
 
-GENERATE_OPTIONS_TEST(
-    valid_ipv4_192_168_1_1, ARGV_LIST("client", "192.168.1.1"), true, { REQUIRE(std::strcmp((opts->address), ("192.168.1.1")) == 0); },
-    { REQUIRE((exit_code) == (0)); })
+TEST_CASE("options::valid_ipv4_192_168_1_1", "[options]") {
+  auto argv_storage = make_argv({"client", "192.168.1.1"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(std::strcmp((opts->address), ("192.168.1.1")) == 0);
+  }
+ REQUIRE((exit_code) == (0));
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    valid_ipv4_127_0_0_1, ARGV_LIST("client", "127.0.0.1"), true, { REQUIRE(std::strcmp((opts->address), ("127.0.0.1")) == 0); }, { REQUIRE((exit_code) == (0)); })
+TEST_CASE("options::valid_ipv4_127_0_0_1", "[options]") {
+  auto argv_storage = make_argv({"client", "127.0.0.1"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(std::strcmp((opts->address), ("127.0.0.1")) == 0);
+  }
+ REQUIRE((exit_code) == (0));
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    valid_ipv4_255_255_255_255, ARGV_LIST("client", "255.255.255.255"), true, { REQUIRE(std::strcmp((opts->address), ("255.255.255.255")) == 0); },
-    { REQUIRE((exit_code) == (0)); })
+TEST_CASE("options::valid_ipv4_255_255_255_255", "[options]") {
+  auto argv_storage = make_argv({"client", "255.255.255.255"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(std::strcmp((opts->address), ("255.255.255.255")) == 0);
+  }
+ REQUIRE((exit_code) == (0));
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    invalid_ipv4_octet_too_large, ARGV_LIST("client", "256.1.1.1"), true,
-    {
-      // This should not be reached since options_init should exit
+TEST_CASE("options::invalid_ipv4_octet_too_large", "[options]") {
+  auto argv_storage = make_argv({"client", "256.1.1.1"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
+      // This should not be reached since options_init should exi
       FAIL("test failure");
-    },
-    { REQUIRE((exit_code) == (1)); })
 
-GENERATE_OPTIONS_TEST(
-    invalid_ipv4_too_few_octets, ARGV_LIST("client", "192.168.1"), true,
-    {
-      // This should not be reached since options_init should exit
-      FAIL("test failure");
-    },
-    { REQUIRE((exit_code) == (1)); })
+  }
+ REQUIRE((exit_code) == (1));
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    invalid_ipv4_non_numeric, ARGV_LIST("client", "192.168.1.abc"), true,
-    {
-      // This should not be reached since options_init should exit
+TEST_CASE("options::invalid_ipv4_too_few_octets", "[options]") {
+  auto argv_storage = make_argv({"client", "192.168.1"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
+      // This should not be reached since options_init should exi
       FAIL("test failure");
-    },
-    { REQUIRE((exit_code) == (1)); })
+
+  }
+ REQUIRE((exit_code) == (1));
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::invalid_ipv4_non_numeric", "[options]") {
+  auto argv_storage = make_argv({"client", "192.168.1.abc"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
+      // This should not be reached since options_init should exi
+      FAIL("test failure");
+
+  }
+ REQUIRE((exit_code) == (1));
+  options_state_destroy();
+  restore_options(&backup);
+}
 
 // =============================================================================
 // IP Address Validation Tests - Parameterized (replaces 6 individual tests above)
@@ -266,33 +328,94 @@ TEST_CASE("options::ip_address_validation", "[options][parameterized]") {
 // Port Validation Tests
 // =============================================================================
 
-GENERATE_OPTIONS_TEST(valid_port_80, ARGV_LIST("client", "-p", "80"), true, { REQUIRE((opts->port) == (80)); }, { REQUIRE((exit_code) == (0)); })
+TEST_CASE("options::valid_port_80", "[options]") {
+  auto argv_storage = make_argv({"client", "-p", "80"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE((opts->port) == (80));
+  }
+ REQUIRE((exit_code) == (0));
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(valid_port_65535, ARGV_LIST("client", "-p", "65535"), true, { REQUIRE((opts->port) == (65535)); }, { REQUIRE((exit_code) == (0)); })
+TEST_CASE("options::valid_port_65535", "[options]") {
+  auto argv_storage = make_argv({"client", "-p", "65535"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE((opts->port) == (65535));
+  }
+ REQUIRE((exit_code) == (0));
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    invalid_port_too_low, ARGV_LIST("client", "-p", "0"), true,
-    {
-      // This should not be reached since options_init should exit
+TEST_CASE("options::invalid_port_too_low", "[options]") {
+  auto argv_storage = make_argv({"client", "-p", "0"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
+      // This should not be reached since options_init should exi
       FAIL("test failure");
-    },
-    { REQUIRE((exit_code) == (1)); })
 
-GENERATE_OPTIONS_TEST(
-    invalid_port_too_high, ARGV_LIST("client", "-p", "65536"), true,
-    {
-      // This should not be reached since options_init should exit
-      FAIL("test failure");
-    },
-    { REQUIRE((exit_code) == (1)); })
+  }
+ REQUIRE((exit_code) == (1));
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    invalid_port_non_numeric, ARGV_LIST("client", "-p", "abc"), true,
-    {
-      // This should not be reached since options_init should exit
+TEST_CASE("options::invalid_port_too_high", "[options]") {
+  auto argv_storage = make_argv({"client", "-p", "65536"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
+      // This should not be reached since options_init should exi
       FAIL("test failure");
-    },
-    { REQUIRE((exit_code) == (1)); })
+
+  }
+ REQUIRE((exit_code) == (1));
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::invalid_port_non_numeric", "[options]") {
+  auto argv_storage = make_argv({"client", "-p", "abc"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
+      // This should not be reached since options_init should exi
+      FAIL("test failure");
+
+  }
+ REQUIRE((exit_code) == (1));
+  options_state_destroy();
+  restore_options(&backup);
+}
 
 // =============================================================================
 // Port Validation Tests - Parameterized (replaces 5 individual tests above)
@@ -363,47 +486,174 @@ TEST_CASE("options::port_validation", "[options][parameterized]") {
  * Dimension Tests
  * ============================================================================ */
 
-GENERATE_OPTIONS_TEST(
-    valid_dimensions, ARGV_LIST("client", "-x", "100", "-y", "50"), true,
-    {
+TEST_CASE("options::valid_dimensions", "[options]") {
+  auto argv_storage = make_argv({"client", "-x", "100", "-y", "50"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(opts->width == 100);
       REQUIRE(opts->height == 50);
       REQUIRE(opts->auto_width == 0);
       REQUIRE(opts->auto_height == 0);
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    invalid_dimension_zero, ARGV_LIST("client", "-x", "0"), true, { FAIL("test failure"); },
-    { REQUIRE(exit_code == 1); })
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    invalid_dimension_negative, ARGV_LIST("client", "-x", "-1"), true, { FAIL("test failure"); },
-    { REQUIRE(exit_code == 1); })
+TEST_CASE("options::invalid_dimension_zero", "[options]") {
+  auto argv_storage = make_argv({"client", "-x", "0"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ FAIL("test failure");
+  }
+ REQUIRE(exit_code == 1);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    invalid_dimension_non_numeric, ARGV_LIST("client", "-x", "abc"), true, { FAIL("test failure"); },
-    { REQUIRE(exit_code == 1); })
+TEST_CASE("options::invalid_dimension_negative", "[options]") {
+  auto argv_storage = make_argv({"client", "-x", "-1"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ FAIL("test failure");
+  }
+ REQUIRE(exit_code == 1);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::invalid_dimension_non_numeric", "[options]") {
+  auto argv_storage = make_argv({"client", "-x", "abc"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ FAIL("test failure");
+  }
+ REQUIRE(exit_code == 1);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
 /* ============================================================================
  * Webcam Options Tests
  * ============================================================================ */
 
-GENERATE_OPTIONS_TEST(valid_webcam_index, ARGV_LIST("client", "-c", "2"), true, {/* no option assertions needed for success-only check */}, { REQUIRE(exit_code == 0); })
+TEST_CASE("options::valid_webcam_index", "[options]") {
+  auto argv_storage = make_argv({"client", "-c", "2"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+/* no option assertions needed for success-only check */
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    invalid_webcam_index_neg1, ARGV_LIST("client", "-c", "-1"), true, { FAIL("test failure"); }, { REQUIRE(exit_code == 1); })
+TEST_CASE("options::invalid_webcam_index_neg1", "[options]") {
+  auto argv_storage = make_argv({"client", "-c", "-1"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ FAIL("test failure");
+  }
+ REQUIRE(exit_code == 1);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    invalid_webcam_index_abc, ARGV_LIST("client", "-c", "abc"), true, { FAIL("test failure"); }, { REQUIRE(exit_code == 1); })
+TEST_CASE("options::invalid_webcam_index_abc", "[options]") {
+  auto argv_storage = make_argv({"client", "-c", "abc"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ FAIL("test failure");
+  }
+ REQUIRE(exit_code == 1);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    invalid_webcam_index_decimal, ARGV_LIST("client", "-c", "2.5"), true, { FAIL("test failure"); }, { REQUIRE(exit_code == 1); })
+TEST_CASE("options::invalid_webcam_index_decimal", "[options]") {
+  auto argv_storage = make_argv({"client", "-c", "2.5"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ FAIL("test failure");
+  }
+ REQUIRE(exit_code == 1);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    invalid_webcam_index_empty, ARGV_LIST("client", "-c", ""), true, { FAIL("test failure"); }, { REQUIRE(exit_code == 1); })
+TEST_CASE("options::invalid_webcam_index_empty", "[options]") {
+  auto argv_storage = make_argv({"client", "-c", ""});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ FAIL("test failure");
+  }
+ REQUIRE(exit_code == 1);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(valid_webcam_flip, ARGV_LIST("client", "--flip-x"), true, {/* flip flag only */}, { REQUIRE(exit_code == 0); })
+TEST_CASE("options::valid_webcam_flip", "[options]") {
+  auto argv_storage = make_argv({"client", "--flip-x"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+/* flip flag only */
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
 /* ============================================================================
  * Color Mode Tests
@@ -551,7 +801,7 @@ TEST_CASE("options::valid_snapshot_delays", "[options]") {
   char *valid_delays[] = {"0.0", "1.5", "3.0", "10.0", "0"};
 
   for (int i = 0; i < 5; i++) {
-    // snapshot-delay requires --snapshot to be set
+    // snapshot-delay requires --snapshot to be se
     char *argv[] = {"program", "client", "--snapshot", "--snapshot-delay", valid_delays[i], NULL};
     int result = test_options_init_with_fork(argv, 5, true);
     REQUIRE(result == 0);
@@ -570,7 +820,7 @@ TEST_CASE("options::invalid_snapshot_delays", "[options]") {
   };
 
   for (int i = 0; i < 2; i++) {
-    // snapshot-delay requires --snapshot to be set
+    // snapshot-delay requires --snapshot to be se
     char *argv[] = {"program", "client", "--snapshot", "--snapshot-delay", invalid_delays[i], NULL};
     int result = test_options_init_with_fork(argv, 5, true);
     REQUIRE(result == 1);
@@ -583,17 +833,40 @@ TEST_CASE("options::invalid_snapshot_delays", "[options]") {
  * File Path Tests
  * ============================================================================ */
 
-GENERATE_OPTIONS_TEST(
-    valid_encryption_key, ARGV_LIST("client", "--key", "mysecretkey"), true,
-    {
+TEST_CASE("options::valid_encryption_key", "[options]") {
+  auto argv_storage = make_argv({"client", "--key", "mysecretkey"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(std::strcmp(opts->encrypt_key, "mysecretkey") == 0);
       REQUIRE(opts->encrypt_enabled == 0);
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    invalid_encryption_key, ARGV_LIST("client", "--key", ""), true, { FAIL("test failure"); },
-    { REQUIRE(exit_code == 1); })
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::invalid_encryption_key", "[options]") {
+  auto argv_storage = make_argv({"client", "--key", ""});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ FAIL("test failure");
+  }
+ REQUIRE(exit_code == 1);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
 /* ============================================================================
  * Flag Options Tests
@@ -603,7 +876,7 @@ TEST_CASE("options::flag_options", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
-  // NOTE: --quiet is now a global option, removed from this test
+  // NOTE: --quiet is now a global option, removed from this tes
   char *argv[] = {"program", "client", "--show-capabilities", "--utf8", "--audio", "--stretch", "--snapshot", "--encrypt", NULL};
   int result = test_options_init_with_fork(argv, 8, true);
   REQUIRE(result == 0);
@@ -615,35 +888,95 @@ TEST_CASE("options::flag_options", "[options]") {
  * Help Tests
  * ============================================================================ */
 
-GENERATE_OPTIONS_TEST(help_client, ARGV_LIST("client", "--help"), true,
-                      {
-                          // Help should display and exit cleanly
-                      },
-                      { REQUIRE(exit_code == 0); })
+TEST_CASE("options::help_client", "[options]") {
+  auto argv_storage = make_argv({"client", "--help"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
 
-GENERATE_OPTIONS_TEST(help_server, ARGV_LIST("server", "--help"), false,
-                      {
                           // Help should display and exit cleanly
-                      },
-                      { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(help_short, ARGV_LIST("client", "-h"), true,
-                      {
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::help_server", "[options]") {
+  auto argv_storage = make_argv({"server", "--help"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, false);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
                           // Help should display and exit cleanly
-                      },
-                      { REQUIRE(exit_code == 0); })
+
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::help_short", "[options]") {
+  auto argv_storage = make_argv({"client", "-h"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
+                          // Help should display and exit cleanly
+
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
 /* ============================================================================
  * Error Handling Tests
  * ============================================================================ */
 
-GENERATE_OPTIONS_TEST_IN_SUITE(
-    options_errors, unknown_option, ARGV_LIST("client", "--unknown-option"), true, { FAIL("test failure"); },
-    { REQUIRE(exit_code == 1); })
+TEST_CASE("options_errors::unknown_option", "[options]") {
+  auto argv_storage = make_argv({"client", "--unknown-option"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ FAIL("test failure");
+  }
+ REQUIRE(exit_code == 1);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST_IN_SUITE(
-    options_errors, missing_argument_port, ARGV_LIST("client", "--port"), true, { FAIL("test failure"); },
-    { REQUIRE(exit_code == 1); })
+TEST_CASE("options_errors::missing_argument_port", "[options]") {
+  auto argv_storage = make_argv({"client", "--port"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ FAIL("test failure");
+  }
+ REQUIRE(exit_code == 1);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
 /* ============================================================================
  * Equals Sign Handling Tests
@@ -668,7 +1001,7 @@ TEST_CASE("options::complex_client_combination", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
-  // NOTE: --quiet and --log-file are now global options, removed from this test
+  // NOTE: --quiet and --log-file are now global options, removed from this tes
   char *argv[] = {
       "program", "client",    "192.168.1.100:8080", "--width=120",          "--height=60", "--webcam-index=1",       "--flip-x", "--color-mode=256", "--render-mode=background", "--palette=blocks",
       "--audio", "--stretch", "--snapshot",         "--snapshot-delay=2.5", "--encrypt",   "--key=mysecretpassword", NULL};
@@ -685,8 +1018,8 @@ TEST_CASE("options::complex_server_combination", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
-  // NOTE: --log-file is now a global option, removed from this test
-  // NOTE: --palette is client-only, removed from this server test
+  // NOTE: --log-file is now a global option, removed from this tes
+  // NOTE: --palette is client-only, removed from this server tes
   char *argv[] = {"program", "server", "--port=27224", "--encrypt", "0.0.0.0", NULL};
   int argc = 5;
 
@@ -720,7 +1053,7 @@ TEST_CASE("options::update_dimensions_for_full_height", "[options]") {
   test_opts.auto_height = 1;
   update_dimensions_for_full_height(&test_opts);
 
-  // Test with only auto height
+  // Test with only auto heigh
   test_opts.auto_width = 0;
   test_opts.auto_height = 1;
   update_dimensions_for_full_height(&test_opts);
@@ -756,7 +1089,7 @@ TEST_CASE("options::update_dimensions_to_terminal_size", "[options]") {
   test_opts.auto_height = 0;
   update_dimensions_to_terminal_size(&test_opts);
 
-  // Test with only auto height
+  // Test with only auto heigh
   test_opts.auto_width = 0;
   test_opts.auto_height = 1;
   update_dimensions_to_terminal_size(&test_opts);
@@ -832,7 +1165,7 @@ TEST_CASE("options::random_combinations", "[options]") {
     argv[1] = "client";
 
     // Randomly add valid options
-    // NOTE: --quiet is now a global option, removed from this test
+    // NOTE: --quiet is now a global option, removed from this tes
     if (rand() % 2) {
       argv[argc++] = "192.168.1.1:8080";
     }
@@ -854,66 +1187,192 @@ TEST_CASE("options::random_combinations", "[options]") {
  * Direct Value Testing - Tests that actually verify opt_* variables
  * ============================================================================ */
 
-GENERATE_OPTIONS_TEST(
-    actual_values_client, ARGV_LIST("client", "192.168.1.1:8080", "-x", "100", "-y", "50"), true,
-    {
-      // Test actual values were set
+TEST_CASE("options::actual_values_client", "[options]") {
+  auto argv_storage = make_argv({"client", "192.168.1.1:8080", "-x", "100", "-y", "50"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
+      // Test actual values were se
       REQUIRE(std::strcmp(opts->address, "192.168.1.1") == 0);
       REQUIRE(opts->port == 8080);
       REQUIRE(opts->width == 100);
       REQUIRE(opts->height == 50);
       REQUIRE(opts->auto_width == 0);
       REQUIRE(opts->auto_height == 0);
-    },
-    {
+
+  }
+
       // Test that options_init doesn't exit with error
       REQUIRE(exit_code == 0);
-    })
 
-GENERATE_OPTIONS_TEST(
-    color_mode_auto, ARGV_LIST("client", "--color-mode", "auto"), true, { REQUIRE(opts->color_mode == COLOR_MODE_AUTO); }, { REQUIRE(exit_code == 0); })
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    color_mode_256, ARGV_LIST("client", "--color-mode", "256"), true, { REQUIRE(opts->color_mode == COLOR_MODE_256_COLOR); }, { REQUIRE(exit_code == 0); })
+TEST_CASE("options::color_mode_auto", "[options]") {
+  auto argv_storage = make_argv({"client", "--color-mode", "auto"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->color_mode == COLOR_MODE_AUTO);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    color_mode_truecolor, ARGV_LIST("client", "--color-mode", "truecolor"), true, { REQUIRE(opts->color_mode == COLOR_MODE_TRUECOLOR); },
-    { REQUIRE(exit_code == 0); })
+TEST_CASE("options::color_mode_256", "[options]") {
+  auto argv_storage = make_argv({"client", "--color-mode", "256"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->color_mode == COLOR_MODE_256_COLOR);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    render_mode_foreground, ARGV_LIST("client", "--render-mode", "foreground"), true, { REQUIRE(opts->render_mode == RENDER_MODE_FOREGROUND); },
-    { REQUIRE(exit_code == 0); })
+TEST_CASE("options::color_mode_truecolor", "[options]") {
+  auto argv_storage = make_argv({"client", "--color-mode", "truecolor"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->color_mode == COLOR_MODE_TRUECOLOR);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    render_mode_background, ARGV_LIST("client", "--render-mode", "background"), true, { REQUIRE(opts->render_mode == RENDER_MODE_BACKGROUND); },
-    { REQUIRE(exit_code == 0); })
+TEST_CASE("options::render_mode_foreground", "[options]") {
+  auto argv_storage = make_argv({"client", "--render-mode", "foreground"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->render_mode == RENDER_MODE_FOREGROUND);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    render_mode_half_block, ARGV_LIST("client", "--render-mode", "half-block"), true, { REQUIRE(opts->render_mode == RENDER_MODE_HALF_BLOCK); },
-    { REQUIRE(exit_code == 0); })
+TEST_CASE("options::render_mode_background", "[options]") {
+  auto argv_storage = make_argv({"client", "--render-mode", "background"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->render_mode == RENDER_MODE_BACKGROUND);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    palette_standard, ARGV_LIST("client", "--palette", "standard"), true, { REQUIRE(opts->palette_type == PALETTE_STANDARD); },
-    { REQUIRE(exit_code == 0); })
+TEST_CASE("options::render_mode_half_block", "[options]") {
+  auto argv_storage = make_argv({"client", "--render-mode", "half-block"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->render_mode == RENDER_MODE_HALF_BLOCK);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    palette_blocks, ARGV_LIST("client", "--palette", "blocks"), true, { REQUIRE(opts->palette_type == PALETTE_BLOCKS); }, { REQUIRE(exit_code == 0); })
+TEST_CASE("options::palette_standard", "[options]") {
+  auto argv_storage = make_argv({"client", "--palette", "standard"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->palette_type == PALETTE_STANDARD);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    palette_custom_chars, ARGV_LIST("client", "--palette-chars", "@#%*+=:-. "), true,
-    {
+TEST_CASE("options::palette_blocks", "[options]") {
+  auto argv_storage = make_argv({"client", "--palette", "blocks"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->palette_type == PALETTE_BLOCKS);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::palette_custom_chars", "[options]") {
+  auto argv_storage = make_argv({"client", "--palette-chars", "@#%*+=:-. "});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(opts->palette_type == PALETTE_CUSTOM);
       REQUIRE(std::strcmp(opts->palette_custom, "@#%*+=:-. ") == 0);
       REQUIRE(opts->palette_custom_set == true);
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    test_flag_values,
-    // NOTE: --quiet is now a global option, removed from this test
-    ARGV_LIST("client", "--audio", "--stretch", "--snapshot", "--encrypt", "--utf8", "--show-capabilities", "--flip-x"), true,
-    {
-      // Test all flags were set
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::test_flag_values", "[options]") {
+  auto argv_storage = make_argv({"client", "--audio", "--stretch", "--snapshot", "--encrypt", "--utf8", "--show-capabilities", "--flip-x"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
+      // Test all flags were se
       REQUIRE(opts->audio_enabled == 1);
       REQUIRE(opts->stretch == 1);
       // opts->quiet removed - now a global option
@@ -922,36 +1381,78 @@ GENERATE_OPTIONS_TEST(
       REQUIRE(opts->force_utf8 == 1);
       REQUIRE(opts->show_capabilities == 1);
       REQUIRE(opts->flip_x == true);
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    encryption_key_value, ARGV_LIST("client", "--key", "mysecretpassword123"), true,
-    {
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::encryption_key_value", "[options]") {
+  auto argv_storage = make_argv({"client", "--key", "mysecretpassword123"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(std::strcmp(opts->encrypt_key, "mysecretpassword123") == 0);
       REQUIRE(opts->encrypt_enabled == 0);
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    test_snapshot_delay_values, ARGV_LIST("client", "--snapshot", "--snapshot-delay", "2.5"), true, { REQUIRE(std::fabs(opts->snapshot_delay - 2.5f) <= 0.01f); },
-    { REQUIRE(exit_code == 0); })
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    test_webcam_values, ARGV_LIST("client", "-c", "3", "--flip-x"), true,
-    {
+TEST_CASE("options::test_snapshot_delay_values", "[options]") {
+  auto argv_storage = make_argv({"client", "--snapshot", "--snapshot-delay", "2.5"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(std::fabs(opts->snapshot_delay - 2.5f) <= 0.01f);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::test_webcam_values", "[options]") {
+  auto argv_storage = make_argv({"client", "-c", "3", "--flip-x"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(opts->webcam_index == 3);
       REQUIRE(opts->flip_x == true);
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    test_comprehensive_client_values,
-    // NOTE: --quiet and --log-file are now global options, removed from this test
-    ARGV_LIST("client", "10.0.0.1:9999", "--width=200", "--height=100", "--webcam-index=2", "--flip-x", "--color-mode=256", "--render-mode=background", "--palette=digital", "--audio", "--stretch",
-              "--snapshot", "--snapshot-delay=5.0", "--encrypt", "--key=testkey123"),
-    true,
-    {
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::test_comprehensive_client_values", "[options]") {
+  auto argv_storage = make_argv({"client", "10.0.0.1:9999", "--width=200", "--height=100", "--webcam-index=2", "--flip-x", "--color-mode=256", "--render-mode=background", "--palette=digital", "--audio", "--stretch",
+              "--snapshot", "--snapshot-delay=5.0", "--encrypt", "--key=testkey123"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       // Verify ALL values
       REQUIRE(std::strcmp(opts->address, "10.0.0.1") == 0);
       REQUIRE(opts->port == 9999);
@@ -973,15 +1474,23 @@ GENERATE_OPTIONS_TEST(
       // Should be enabled by color-mode
       REQUIRE(opts->auto_width == 0);
       REQUIRE(opts->auto_height == 0);
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    test_server_values,
-    // NOTE: --log-file is now a global option, removed from this test
-    // NOTE: --palette is client-only, removed from this server test
-    ARGV_LIST("server", "0.0.0.0", "--port=12345", "--encrypt"), false,
-    {
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::test_server_values", "[options]") {
+  auto argv_storage = make_argv({"server", "0.0.0.0", "--port=12345", "--encrypt"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, false);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       // Verify server values
       REQUIRE(std::strcmp(opts->address, "0.0.0.0") == 0);
       REQUIRE(opts->port == 12345);
@@ -989,104 +1498,280 @@ GENERATE_OPTIONS_TEST(
       // opts->log_file removed - now a global option
       // opts->palette_type removed - palette is client-only
       REQUIRE(opts->encrypt_enabled == 1);
-    },
-    { REQUIRE(exit_code == 0); })
+
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
 /* ============================================================================
  * Additional Test Scenarios with the Macro
  * ============================================================================ */
 
-GENERATE_OPTIONS_TEST(
-    test_equals_sign_syntax, ARGV_LIST("client", "192.168.1.100:8080", "--width=150", "--height=75"), true,
-    {
+TEST_CASE("options::test_equals_sign_syntax", "[options]") {
+  auto argv_storage = make_argv({"client", "192.168.1.100:8080", "--width=150", "--height=75"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(std::strcmp(opts->address, "192.168.1.100") == 0);
       REQUIRE(opts->port == 8080);
       REQUIRE(opts->width == 150);
       REQUIRE(opts->height == 75);
       REQUIRE(opts->auto_width == 0);
       REQUIRE(opts->auto_height == 0);
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    test_mixed_syntax, ARGV_LIST("client", "-x", "80", "--height=60", "10.0.0.1:3000"), true,
-    {
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::test_mixed_syntax", "[options]") {
+  auto argv_storage = make_argv({"client", "-x", "80", "--height=60", "10.0.0.1:3000"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(std::strcmp(opts->address, "10.0.0.1") == 0);
       REQUIRE(opts->port == 3000);
       REQUIRE(opts->width == 80);
       REQUIRE(opts->height == 60);
       REQUIRE(opts->auto_width == 0);
       REQUIRE(opts->auto_height == 0);
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    test_none_mode, ARGV_LIST("client", "--color-mode", "none"), true,
-    {
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::test_none_mode", "[options]") {
+  auto argv_storage = make_argv({"client", "--color-mode", "none"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(opts->color_mode == COLOR_MODE_NONE);
       // Color output should be disabled for none mode
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    test_16color_mode, ARGV_LIST("client", "--color-mode", "16"), true, { REQUIRE(opts->color_mode == COLOR_MODE_16_COLOR); }, { REQUIRE(exit_code == 0); })
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    test_16color_alias, ARGV_LIST("client", "--color-mode", "16color"), true, { REQUIRE(opts->color_mode == COLOR_MODE_16_COLOR); },
-    { REQUIRE(exit_code == 0); })
+TEST_CASE("options::test_16color_mode", "[options]") {
+  auto argv_storage = make_argv({"client", "--color-mode", "16"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->color_mode == COLOR_MODE_16_COLOR);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    test_256color_alias, ARGV_LIST("client", "--color-mode", "256color"), true, { REQUIRE(opts->color_mode == COLOR_MODE_256_COLOR); },
-    { REQUIRE(exit_code == 0); })
+TEST_CASE("options::test_16color_alias", "[options]") {
+  auto argv_storage = make_argv({"client", "--color-mode", "16color"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->color_mode == COLOR_MODE_16_COLOR);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    test_truecolor_alias, ARGV_LIST("client", "--color-mode", "24bit"), true, { REQUIRE(opts->color_mode == COLOR_MODE_TRUECOLOR); },
-    { REQUIRE(exit_code == 0); })
+TEST_CASE("options::test_256color_alias", "[options]") {
+  auto argv_storage = make_argv({"client", "--color-mode", "256color"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->color_mode == COLOR_MODE_256_COLOR);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    test_palette_digital, ARGV_LIST("client", "--palette", "digital"), true, { REQUIRE(opts->palette_type == PALETTE_DIGITAL); },
-    { REQUIRE(exit_code == 0); })
+TEST_CASE("options::test_truecolor_alias", "[options]") {
+  auto argv_storage = make_argv({"client", "--color-mode", "24bit"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->color_mode == COLOR_MODE_TRUECOLOR);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    test_palette_minimal, ARGV_LIST("client", "--palette", "minimal"), true, { REQUIRE(opts->palette_type == PALETTE_MINIMAL); },
-    { REQUIRE(exit_code == 0); })
+TEST_CASE("options::test_palette_digital", "[options]") {
+  auto argv_storage = make_argv({"client", "--palette", "digital"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->palette_type == PALETTE_DIGITAL);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    test_palette_cool, ARGV_LIST("client", "--palette", "cool"), true, { REQUIRE(opts->palette_type == PALETTE_COOL); }, { REQUIRE(exit_code == 0); })
+TEST_CASE("options::test_palette_minimal", "[options]") {
+  auto argv_storage = make_argv({"client", "--palette", "minimal"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->palette_type == PALETTE_MINIMAL);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-/* Converted looped palette test into specific GENERATE_OPTIONS_TEST cases above. */
+TEST_CASE("options::test_palette_cool", "[options]") {
+  auto argv_storage = make_argv({"client", "--palette", "cool"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->palette_type == PALETTE_COOL);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    test_render_mode_fg_alias, ARGV_LIST("client", "--render-mode", "fg"), true, { REQUIRE(opts->render_mode == RENDER_MODE_FOREGROUND); },
-    { REQUIRE(exit_code == 0); })
+/* Palette aliases are covered by the individual cases above. */
 
-GENERATE_OPTIONS_TEST(
-    test_render_mode_bg_alias, ARGV_LIST("client", "--render-mode", "bg"), true, { REQUIRE(opts->render_mode == RENDER_MODE_BACKGROUND); },
-    { REQUIRE(exit_code == 0); })
+TEST_CASE("options::test_render_mode_fg_alias", "[options]") {
+  auto argv_storage = make_argv({"client", "--render-mode", "fg"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->render_mode == RENDER_MODE_FOREGROUND);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
-GENERATE_OPTIONS_TEST(
-    test_webcam_index_only, ARGV_LIST("client", "-c", "5"), true,
-    {
+TEST_CASE("options::test_render_mode_bg_alias", "[options]") {
+  auto argv_storage = make_argv({"client", "--render-mode", "bg"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+ REQUIRE(opts->render_mode == RENDER_MODE_BACKGROUND);
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::test_webcam_index_only", "[options]") {
+  auto argv_storage = make_argv({"client", "-c", "5"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(opts->webcam_index == 5);
       REQUIRE(opts->flip_x == true);
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    test_webcam_flip_only, ARGV_LIST("client", "--flip-x"), true,
-    {
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::test_webcam_flip_only", "[options]") {
+  auto argv_storage = make_argv({"client", "--flip-x"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(opts->webcam_index == 0);
       REQUIRE(opts->flip_x == true);
-    },
-    { REQUIRE(exit_code == 0); })
+
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
 /* ============================================================================
  * Server-specific Tests
  * ============================================================================ */
 
-GENERATE_OPTIONS_TEST(
-    test_server_basic_options, ARGV_LIST("client", "127.0.0.1:8080", "--width=110", "--height=70"), true,
-    {
+TEST_CASE("options::test_server_basic_options", "[options]") {
+  auto argv_storage = make_argv({"client", "127.0.0.1:8080", "--width=110", "--height=70"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(std::strcmp(opts->address, "127.0.0.1") == 0);
       REQUIRE(opts->port == 8080);
       // Server should use default values for client-only options
@@ -1094,75 +1779,156 @@ GENERATE_OPTIONS_TEST(
       REQUIRE(opts->height == 70);
       REQUIRE(opts->webcam_index == 0);
       REQUIRE(opts->flip_x == true);
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    test_server_palette_options, ARGV_LIST("client", "--palette", "blocks", "--palette-chars", "0123456789"), true,
-    {
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::test_server_palette_options", "[options]") {
+  auto argv_storage = make_argv({"client", "--palette", "blocks", "--palette-chars", "0123456789"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(opts->palette_type == PALETTE_CUSTOM);
       REQUIRE(std::strcmp(opts->palette_custom, "0123456789") == 0);
       REQUIRE(opts->palette_custom_set == true);
-    },
-    { REQUIRE(exit_code == 0); })
+
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
 /* ============================================================================
  * Edge Cases and Error Conditions
  * ============================================================================ */
 
-GENERATE_OPTIONS_TEST(
-    test_auto_dimensions, ARGV_LIST("client"), true,
-    {
-      // These should be set to auto (1) by default
+TEST_CASE("options::test_auto_dimensions", "[options]") {
+  auto argv_storage = make_argv({"client"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
+      // These should be set to auto (1) by defaul
       REQUIRE(opts->auto_width == 1);
       REQUIRE(opts->auto_height == 1);
       // The actual dimensions will be set by update_dimensions_to_terminal_size()
       // but we can't easily test that without mocking terminal detection
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    test_manual_dimensions_disable_auto, ARGV_LIST("client", "--width", "100", "--height", "50"), true,
-    {
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::test_manual_dimensions_disable_auto", "[options]") {
+  auto argv_storage = make_argv({"client", "--width", "100", "--height", "50"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(opts->width == 100);
       REQUIRE(opts->height == 50);
       REQUIRE(opts->auto_width == 0);
       REQUIRE(opts->auto_height == 0);
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    test_encryption_auto_enable, ARGV_LIST("client", "--key", "mypassword"), true,
-    {
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::test_encryption_auto_enable", "[options]") {
+  auto argv_storage = make_argv({"client", "--key", "mypassword"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(opts->encrypt_enabled == 0);
       REQUIRE(std::strcmp(opts->encrypt_key, "mypassword") == 0);
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    test_custom_palette_auto_set_type, ARGV_LIST("client", "--palette-chars", "ABCDEFGH"), true,
-    {
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::test_custom_palette_auto_set_type", "[options]") {
+  auto argv_storage = make_argv({"client", "--palette-chars", "ABCDEFGH"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(opts->palette_type == PALETTE_CUSTOM);
       REQUIRE(std::strcmp(opts->palette_custom, "ABCDEFGH") == 0);
       REQUIRE(opts->palette_custom_set == true);
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    test_color_output_enabled_by_color_mode, ARGV_LIST("client", "--color-mode", "256"), true,
-    {
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::test_color_output_enabled_by_color_mode", "[options]") {
+  auto argv_storage = make_argv({"client", "--color-mode", "256"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(opts->color_mode == COLOR_MODE_256_COLOR);
       // Should be enabled
-    },
-    { REQUIRE(exit_code == 0); })
 
-GENERATE_OPTIONS_TEST(
-    test_color_output_disabled_by_none, ARGV_LIST("client", "--color-mode", "none"), true,
-    {
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
+
+TEST_CASE("options::test_color_output_disabled_by_none", "[options]") {
+  auto argv_storage = make_argv({"client", "--color-mode", "none"});
+  char **argv = argv_storage.data();
+  int argc = static_cast<int>(argv_storage.size()) - 1;
+  options_backup_t backup;
+  save_options(&backup);
+  int exit_code = test_options_init_with_fork(argv, argc, true);
+  if (exit_code == 0) {
+    const options_t *opts = options_get();
+
       REQUIRE(opts->color_mode == COLOR_MODE_NONE);
       // Color output should be disabled
-    },
-    { REQUIRE(exit_code == 0); })
+
+  }
+ REQUIRE(exit_code == 0);
+  options_state_destroy();
+  restore_options(&backup);
+}
 
 // ============================================================================
 // Deferred Actions Tests
