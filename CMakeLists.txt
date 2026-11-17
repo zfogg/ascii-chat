@@ -413,6 +413,19 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
     "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build"
     EXCLUDE_FROM_ALL)
   if(USE_MUSL AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+     AND ASCIICHAT_DEPS_CACHE_DIR)
+    if(NOT MUSL_LIBSTDCPP_INCLUDE_DIR OR NOT MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
+      file(GLOB _asciichat_recast_stdcpp_roots LIST_DIRECTORIES true
+        "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libstdcxx/usr/include/c++/*")
+      list(SORT _asciichat_recast_stdcpp_roots)
+      list(GET _asciichat_recast_stdcpp_roots 0 MUSL_LIBSTDCPP_INCLUDE_DIR)
+      file(GLOB _asciichat_recast_stdcpp_target_roots LIST_DIRECTORIES true
+        "${MUSL_LIBSTDCPP_INCLUDE_DIR}/*-linux-musl")
+      list(SORT _asciichat_recast_stdcpp_target_roots)
+      list(GET _asciichat_recast_stdcpp_target_roots 0 MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
+    endif()
+  endif()
+  if(USE_MUSL AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
      AND MUSL_LIBSTDCPP_INCLUDE_DIR AND MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
     # LLVM's imported target exposes /usr/include. Put the matching C++
     # headers before it so libstdc++'s include_next reaches the host C headers.
