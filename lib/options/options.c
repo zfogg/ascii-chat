@@ -1718,8 +1718,31 @@ static asciichat_error_t parse_mode_options(options_t *opts, asciichat_mode_t de
     return SET_ERRNO(ERROR_CONFIG, "Failed to apply environment options");
   }
   flags_parse_result_t parsed = {0};
-  const bool parsed_ok = flags_parse(flags_context, mode_argc, mode_argv, &parsed);
-  const bool schema_valid = parsed_ok && flags_validate(flags_context);
+  bool parsed_ok = flags_parse(flags_context, mode_argc, mode_argv, &parsed);
+  bool schema_valid = parsed_ok && flags_validate(flags_context);
+  if (parsed.positional_argc > 0) {
+    char *error_message = NULL;
+    int consumed = 0;
+    if (detected_mode == MODE_CLIENT || detected_mode == MODE_DISCOVERY) {
+      consumed = parse_client_address(parsed.positional_argv[0], opts, parsed.positional_argv + 1, parsed.positional_argc - 1, &error_message);
+    } else if (detected_mode == MODE_SERVER || detected_mode == MODE_DISCOVERY_SERVICE) {
+      consumed = parse_server_bind_address(parsed.positional_argv[0], opts, parsed.positional_argv + 1, parsed.positional_argc - 1, &error_message);
+    } else if (detected_mode == MODE_MIRROR) {
+      consumed = parse_mirror_media(parsed.positional_argv[0], opts, parsed.positional_argv + 1, parsed.positional_argc - 1, &error_message);
+    }
+    if (consumed < 0 || consumed != parsed.positional_argc) {
+      const char *detail = error_message ? error_message : "invalid positional argument";
+      asciichat_error_t positional_error = SET_ERRNO(ERROR_USAGE, "%s", detail);
+      SAFE_FREE(error_message);
+      flags_destroy_preserving_storage(flags_context);
+      flags_schema_builder_destroy(flags_builder);
+      return positional_error;
+    }
+    SAFE_FREE(error_message);
+    parsed.positional_argc = 0;
+    parsed_ok = true;
+    schema_valid = flags_validate(flags_context);
+  }
   if (parsed_ok && schema_valid && !flags_explicit_state_merge(flags_context)) {
     flags_destroy_preserving_storage(flags_context);
     flags_schema_builder_destroy(flags_builder);
