@@ -160,7 +160,7 @@ if(UNIX AND NOT APPLE)
     endforeach()
 endif()
 
-if(FONTCONFIG_LINK_LIBRARIES)
+if(FONTCONFIG_LINK_LIBRARIES AND NOT USE_MUSL)
     target_include_directories(libplatform PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
     target_link_libraries(libplatform PUBLIC ${FONTCONFIG_LINK_LIBRARIES})
 endif()
