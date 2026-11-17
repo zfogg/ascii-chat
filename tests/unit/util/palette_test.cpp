@@ -65,7 +65,7 @@ static utf8_test_case_t utf8_test_cases[] = {{PALETTE_CHARS_STANDARD, "Standard 
                                              {"", "Empty palette", false}};
 
 TEST_CASE("palette_tests/utf8_encoding_tests", "[palette_tests]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(utf8_test_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::values({utf8_test_cases[0], utf8_test_cases[1], utf8_test_cases[2], utf8_test_cases[3], utf8_test_cases[4]}));
   auto *tc = &generated_case;
   size_t len = strlen(tc->palette_chars);
   bool requires_utf8 = palette_requires_utf8_encoding(tc->palette_chars, len);

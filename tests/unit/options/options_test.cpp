@@ -763,12 +763,12 @@ TEST_CASE("options::valid_palettes", "[options]") {
     REQUIRE(result == 0);
   };
 
-  expect_valid({"--renderer", "luminance", "--palette", "standard", "client"});
-  expect_valid({"--renderer", "luminance", "--palette", "blocks", "--utf8", "true", "client"});
-  expect_valid({"--renderer", "luminance", "--palette", "digital", "--utf8", "true", "client"});
-  expect_valid({"--renderer", "luminance", "--palette", "minimal", "client"});
-  expect_valid({"--renderer", "luminance", "--palette", "cool", "--utf8", "true", "client"});
-  expect_valid({"--renderer", "luminance", "--palette", "custom", "--palette-chars", "@#", "client"});
+  expect_valid({"client", "localhost:27224", "--renderer", "luminance", "--palette", "standard"});
+  expect_valid({"client", "localhost:27224", "--renderer", "luminance", "--palette", "blocks", "--utf8=true"});
+  expect_valid({"client", "localhost:27224", "--renderer", "luminance", "--palette", "digital", "--utf8=true"});
+  expect_valid({"client", "localhost:27224", "--renderer", "luminance", "--palette", "minimal"});
+  expect_valid({"client", "localhost:27224", "--renderer", "luminance", "--palette", "cool", "--utf8=true"});
+  expect_valid({"client", "localhost:27224", "--renderer", "luminance", "--palette", "custom", "--palette-chars", "@#"});
 
   restore_options(&backup);
 }
