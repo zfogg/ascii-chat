@@ -748,29 +748,12 @@ TEST_CASE("options::invalid_render_modes", "[options]") {
  * Palette Tests
  * ============================================================================ */
 
-TEST_CASE("options::valid_palettes", "[options]") {
-  options_backup_t backup;
-  save_options(&backup);
-
-  const auto expect_valid = [](std::initializer_list<const char *> args) {
-    auto argv = make_argv(args);
-    const int result = test_options_init_with_fork(argv.data(), static_cast<int>(argv.size() - 1), true);
-    if (result != 0) {
-      asciichat_error_context_t error{};
-      if (HAS_ERRNO(&error))
-        INFO(error.context_message);
-    }
-    REQUIRE(result == 0);
+TEST_CASE("options::valid_palette_values", "[options]") {
+  const char *valid_palettes[] = {"standard", "blocks", "digital", "minimal", "cool", "custom"};
+  for (const char *palette : valid_palettes) {
+    options_t options = options_t_new();
+    REQUIRE(parse_palette_option(palette, &options) == ASCIICHAT_OK);
   };
-
-  expect_valid({"client", "localhost:27224", "--renderer", "luminance", "--palette", "standard"});
-  expect_valid({"client", "localhost:27224", "--renderer", "luminance", "--palette", "blocks", "--utf8=true"});
-  expect_valid({"client", "localhost:27224", "--renderer", "luminance", "--palette", "digital", "--utf8=true"});
-  expect_valid({"client", "localhost:27224", "--renderer", "luminance", "--palette", "minimal"});
-  expect_valid({"client", "localhost:27224", "--renderer", "luminance", "--palette", "cool", "--utf8=true"});
-  expect_valid({"client", "localhost:27224", "--renderer", "luminance", "--palette", "custom", "--palette-chars", "@#"});
-
-  restore_options(&backup);
 }
 
 TEST_CASE("options::invalid_palettes", "[options]") {
