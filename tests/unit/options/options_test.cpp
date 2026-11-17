@@ -63,7 +63,7 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
  * Basic Functionality Tests
  * ============================================================================ */
 
-TEST_CASE("options::explicit_flip_values_survive_mode_parsing", "[options]") {
+TEST_CASE("options::explicit_flip_values_survive_mode_parsing", "[options] [unit]") {
   char *argv[] = {"ascii-chat", "mirror", "--test-pattern", "0", "--flip-x", "--flip-y", NULL};
   REQUIRE(options_init(6, argv) == ASCIICHAT_OK);
   const options_t *opts = options_get();
@@ -71,7 +71,7 @@ TEST_CASE("options::explicit_flip_values_survive_mode_parsing", "[options]") {
   REQUIRE((opts->flip_y) == (true));
 }
 
-TEST_CASE("options::test_pattern_defaults_to_unflipped", "[options]") {
+TEST_CASE("options::test_pattern_defaults_to_unflipped", "[options] [unit]") {
   char *argv[] = {"ascii-chat", "mirror", "--test-pattern", "1", NULL};
   REQUIRE(options_init(4, argv) == ASCIICHAT_OK);
   const options_t *opts = options_get();
@@ -79,7 +79,7 @@ TEST_CASE("options::test_pattern_defaults_to_unflipped", "[options]") {
   REQUIRE_FALSE(opts->flip_x);
 }
 
-TEST_CASE("options::test_pattern_respects_explicit_flip", "[options]") {
+TEST_CASE("options::test_pattern_respects_explicit_flip", "[options] [unit]") {
   char *argv[] = {"ascii-chat", "mirror", "--test-pattern", "1", "--flip-x", NULL};
   REQUIRE(options_init(5, argv) == ASCIICHAT_OK);
   const options_t *opts = options_get();
@@ -87,7 +87,7 @@ TEST_CASE("options::test_pattern_respects_explicit_flip", "[options]") {
   REQUIRE_FALSE(opts->flip_x);
 }
 
-TEST_CASE("options::default_values", "[options]") {
+TEST_CASE("options::default_values", "[options] [unit]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -124,7 +124,7 @@ TEST_CASE("options::default_values", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::basic_client_options", "[options]") {
+TEST_CASE("options::basic_client_options", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "-x", "100", "-y", "50", "192.168.1.1:8080"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -147,7 +147,7 @@ TEST_CASE("options::basic_client_options", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::basic_server_options", "[options]") {
+TEST_CASE("options::basic_server_options", "[options] [unit]") {
   auto argv_storage = make_argv({"server", "-p", "3000", "127.0.0.1"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -180,7 +180,7 @@ TEST_CASE("options::basic_server_options", "[options]") {
  * Address and Port Validation Tests
  * ============================================================================ */
 
-TEST_CASE("options::valid_ipv4_192_168_1_1", "[options]") {
+TEST_CASE("options::valid_ipv4_192_168_1_1", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "192.168.1.1"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -196,7 +196,7 @@ TEST_CASE("options::valid_ipv4_192_168_1_1", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::valid_ipv4_127_0_0_1", "[options]") {
+TEST_CASE("options::valid_ipv4_127_0_0_1", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "127.0.0.1"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -212,7 +212,7 @@ TEST_CASE("options::valid_ipv4_127_0_0_1", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::valid_ipv4_255_255_255_255", "[options]") {
+TEST_CASE("options::valid_ipv4_255_255_255_255", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "255.255.255.255"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -228,7 +228,7 @@ TEST_CASE("options::valid_ipv4_255_255_255_255", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_ipv4_octet_too_large", "[options]") {
+TEST_CASE("options::invalid_ipv4_octet_too_large", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "256.1.1.1"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -247,7 +247,7 @@ TEST_CASE("options::invalid_ipv4_octet_too_large", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_ipv4_too_few_octets", "[options]") {
+TEST_CASE("options::invalid_ipv4_too_few_octets", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "192.168.1"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -266,7 +266,7 @@ TEST_CASE("options::invalid_ipv4_too_few_octets", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_ipv4_non_numeric", "[options]") {
+TEST_CASE("options::invalid_ipv4_non_numeric", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "192.168.1.abc"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -301,7 +301,7 @@ static ip_validation_test_case_t ip_validation_cases[] = {
     {"256.1.1.1", false, 1, "Invalid IP - octet too large"}, {"192.168.1", false, 1, "Invalid IP - too few octets"}, {"192.168.1.abc", false, 1, "Invalid IP - non-numeric"},
 };
 
-TEST_CASE("options::ip_address_validation", "[options][parameterized]") {
+TEST_CASE("options::ip_address_validation", "[options][parameterized] [unit]") {
   for (const auto &tc : ip_validation_cases) {
   char *argv[] = {"program", "client", (char *)tc.address, NULL};
   int argc = 3;
@@ -330,7 +330,7 @@ TEST_CASE("options::ip_address_validation", "[options][parameterized]") {
 // Port Validation Tests
 // =============================================================================
 
-TEST_CASE("options::valid_port_80", "[options]") {
+TEST_CASE("options::valid_port_80", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "-p", "80"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -346,7 +346,7 @@ TEST_CASE("options::valid_port_80", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::valid_port_65535", "[options]") {
+TEST_CASE("options::valid_port_65535", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "-p", "65535"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -362,7 +362,7 @@ TEST_CASE("options::valid_port_65535", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_port_too_low", "[options]") {
+TEST_CASE("options::invalid_port_too_low", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--port=0"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -381,7 +381,7 @@ TEST_CASE("options::invalid_port_too_low", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_port_too_high", "[options]") {
+TEST_CASE("options::invalid_port_too_high", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--port=65536"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -400,7 +400,7 @@ TEST_CASE("options::invalid_port_too_high", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_port_non_numeric", "[options]") {
+TEST_CASE("options::invalid_port_non_numeric", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--port=abc"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -456,7 +456,7 @@ static port_validation_test_case_t port_validation_cases[] = {
     {"", false, 1, "Invalid port - empty string"},
 };
 
-TEST_CASE("options::port_validation", "[options][parameterized]") {
+TEST_CASE("options::port_validation", "[options][parameterized] [unit]") {
   for (const auto &tc : port_validation_cases) {
   char *argv[] = {"program", "client", "-p", (char *)tc.port, NULL};
   int argc = 4;
@@ -488,7 +488,7 @@ TEST_CASE("options::port_validation", "[options][parameterized]") {
  * Dimension Tests
  * ============================================================================ */
 
-TEST_CASE("options::valid_dimensions", "[options]") {
+TEST_CASE("options::valid_dimensions", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "-x", "100", "-y", "50"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -509,7 +509,7 @@ TEST_CASE("options::valid_dimensions", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_dimension_zero", "[options]") {
+TEST_CASE("options::invalid_dimension_zero", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--width=0"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -525,7 +525,7 @@ TEST_CASE("options::invalid_dimension_zero", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_dimension_negative", "[options]") {
+TEST_CASE("options::invalid_dimension_negative", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--width=-1"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -541,7 +541,7 @@ TEST_CASE("options::invalid_dimension_negative", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_dimension_non_numeric", "[options]") {
+TEST_CASE("options::invalid_dimension_non_numeric", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "-x", "abc"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -561,7 +561,7 @@ TEST_CASE("options::invalid_dimension_non_numeric", "[options]") {
  * Webcam Options Tests
  * ============================================================================ */
 
-TEST_CASE("options::valid_webcam_index", "[options]") {
+TEST_CASE("options::valid_webcam_index", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "-c", "2"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -577,7 +577,7 @@ TEST_CASE("options::valid_webcam_index", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_webcam_index_neg1", "[options]") {
+TEST_CASE("options::invalid_webcam_index_neg1", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--webcam-index=-1"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -593,7 +593,7 @@ TEST_CASE("options::invalid_webcam_index_neg1", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_webcam_index_abc", "[options]") {
+TEST_CASE("options::invalid_webcam_index_abc", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "-c", "abc"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -609,7 +609,7 @@ TEST_CASE("options::invalid_webcam_index_abc", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_webcam_index_decimal", "[options]") {
+TEST_CASE("options::invalid_webcam_index_decimal", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "-c", "2.5"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -625,7 +625,7 @@ TEST_CASE("options::invalid_webcam_index_decimal", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_webcam_index_empty", "[options]") {
+TEST_CASE("options::invalid_webcam_index_empty", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "-c", ""});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -641,7 +641,7 @@ TEST_CASE("options::invalid_webcam_index_empty", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::valid_webcam_flip", "[options]") {
+TEST_CASE("options::valid_webcam_flip", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--flip-x"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -696,7 +696,7 @@ static color_mode_test_case_t color_mode_cases[] = {
     {"", false, 1, "Invalid mode: empty string"},
 };
 
-TEST_CASE("options::color_mode_validation", "[options][parameterized]") {
+TEST_CASE("options::color_mode_validation", "[options][parameterized] [unit]") {
   for (const auto &tc : color_mode_cases) {
   char *argv[] = {"program", "client", "--color-mode", (char *)tc.mode_string, NULL};
   int argc = 4;
@@ -713,14 +713,14 @@ TEST_CASE("options::color_mode_validation", "[options][parameterized]") {
 }
 
 // Original loop-based tests replaced by parameterized version above
-// TEST_CASE("options::valid_color_modes", "[options]") { ... }
-// TEST_CASE("options::invalid_color_modes", "[options]") { ... }
+// TEST_CASE("options::valid_color_modes", "[options] [unit]") { ... }
+// TEST_CASE("options::invalid_color_modes", "[options] [unit]") { ... }
 
 /* ============================================================================
  * Render Mode Tests
  * ============================================================================ */
 
-TEST_CASE("options::valid_render_modes", "[options]") {
+TEST_CASE("options::valid_render_modes", "[options] [unit]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -735,7 +735,7 @@ TEST_CASE("options::valid_render_modes", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_render_modes", "[options]") {
+TEST_CASE("options::invalid_render_modes", "[options] [unit]") {
   char *invalid_modes[] = {"invalid", "full", "block", "text", ""};
 
   for (int i = 0; i < 5; i++) {
@@ -749,7 +749,7 @@ TEST_CASE("options::invalid_render_modes", "[options]") {
  * Palette Tests
  * ============================================================================ */
 
-TEST_CASE("options::valid_palette_values", "[options]") {
+TEST_CASE("options::valid_palette_values", "[options] [unit]") {
   const char *valid_palettes[] = {"standard", "blocks", "digital", "minimal", "cool", "custom"};
   for (const char *palette : valid_palettes) {
     options_t options = options_t_new();
@@ -757,7 +757,7 @@ TEST_CASE("options::valid_palette_values", "[options]") {
   };
 }
 
-TEST_CASE("options::invalid_palettes", "[options]") {
+TEST_CASE("options::invalid_palettes", "[options] [unit]") {
   char *invalid_palettes[] = {"invalid", "ascii", "unicode", "color", ""};
 
   for (int i = 0; i < 5; i++) {
@@ -767,7 +767,7 @@ TEST_CASE("options::invalid_palettes", "[options]") {
   }
 }
 
-TEST_CASE("options::valid_palette_chars", "[options]") {
+TEST_CASE("options::valid_palette_chars", "[options] [unit]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -778,7 +778,7 @@ TEST_CASE("options::valid_palette_chars", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_palette_chars", "[options]") {
+TEST_CASE("options::invalid_palette_chars", "[options] [unit]") {
   // Empty palette chars should fail
   char *argv[] = {"program", "client", "--palette-chars", "", NULL};
   int result = test_options_init_with_fork(argv, 4, true);
@@ -789,7 +789,7 @@ TEST_CASE("options::invalid_palette_chars", "[options]") {
  * Snapshot Delay Tests
  * ============================================================================ */
 
-TEST_CASE("options::valid_snapshot_delays", "[options]") {
+TEST_CASE("options::valid_snapshot_delays", "[options] [unit]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -805,7 +805,7 @@ TEST_CASE("options::valid_snapshot_delays", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_snapshot_delays", "[options]") {
+TEST_CASE("options::invalid_snapshot_delays", "[options] [unit]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -828,7 +828,7 @@ TEST_CASE("options::invalid_snapshot_delays", "[options]") {
  * File Path Tests
  * ============================================================================ */
 
-TEST_CASE("options::valid_encryption_key", "[options]") {
+TEST_CASE("options::valid_encryption_key", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--key", "mysecretkey"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -847,7 +847,7 @@ TEST_CASE("options::valid_encryption_key", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::invalid_encryption_key", "[options]") {
+TEST_CASE("options::invalid_encryption_key", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--key", ""});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -867,7 +867,7 @@ TEST_CASE("options::invalid_encryption_key", "[options]") {
  * Flag Options Tests
  * ============================================================================ */
 
-TEST_CASE("options::flag_options", "[options]") {
+TEST_CASE("options::flag_options", "[options] [unit]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -883,7 +883,7 @@ TEST_CASE("options::flag_options", "[options]") {
  * Help Tests
  * ============================================================================ */
 
-TEST_CASE("options::help_client", "[options]") {
+TEST_CASE("options::help_client", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--help"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -901,7 +901,7 @@ TEST_CASE("options::help_client", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::help_server", "[options]") {
+TEST_CASE("options::help_server", "[options] [unit]") {
   auto argv_storage = make_argv({"server", "--help"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -919,7 +919,7 @@ TEST_CASE("options::help_server", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::help_short", "[options]") {
+TEST_CASE("options::help_short", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "-h"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -941,7 +941,7 @@ TEST_CASE("options::help_short", "[options]") {
  * Error Handling Tests
  * ============================================================================ */
 
-TEST_CASE("options_errors::unknown_option", "[options]") {
+TEST_CASE("options_errors::unknown_option", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--unknown-option"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -957,7 +957,7 @@ TEST_CASE("options_errors::unknown_option", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options_errors::missing_argument_port", "[options]") {
+TEST_CASE("options_errors::missing_argument_port", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--port"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -977,7 +977,7 @@ TEST_CASE("options_errors::missing_argument_port", "[options]") {
  * Equals Sign Handling Tests
  * ============================================================================ */
 
-TEST_CASE("options::equals_sign_handling", "[options]") {
+TEST_CASE("options::equals_sign_handling", "[options] [unit]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -992,7 +992,7 @@ TEST_CASE("options::equals_sign_handling", "[options]") {
  * Complex Combinations Tests
  * ============================================================================ */
 
-TEST_CASE("options::complex_client_combination", "[options]") {
+TEST_CASE("options::complex_client_combination", "[options] [unit]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -1009,7 +1009,7 @@ TEST_CASE("options::complex_client_combination", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::complex_server_combination", "[options]") {
+TEST_CASE("options::complex_server_combination", "[options] [unit]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -1035,7 +1035,7 @@ TEST_CASE("options::complex_server_combination", "[options]") {
  * Dimension Update Tests
  * ============================================================================ */
 
-TEST_CASE("options::update_dimensions_for_full_height", "[options]") {
+TEST_CASE("options::update_dimensions_for_full_height", "[options] [unit]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -1066,7 +1066,7 @@ TEST_CASE("options::update_dimensions_for_full_height", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::update_dimensions_to_terminal_size", "[options]") {
+TEST_CASE("options::update_dimensions_to_terminal_size", "[options] [unit]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -1101,7 +1101,7 @@ TEST_CASE("options::update_dimensions_to_terminal_size", "[options]") {
  * Edge Cases and Stress Tests
  * ============================================================================ */
 
-TEST_CASE("options::very_long_arguments", "[options]") {
+TEST_CASE("options::very_long_arguments", "[options] [unit]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -1120,7 +1120,7 @@ TEST_CASE("options::very_long_arguments", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::maximum_values", "[options]") {
+TEST_CASE("options::maximum_values", "[options] [unit]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -1133,7 +1133,7 @@ TEST_CASE("options::maximum_values", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::minimum_values", "[options]") {
+TEST_CASE("options::minimum_values", "[options] [unit]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -1146,7 +1146,7 @@ TEST_CASE("options::minimum_values", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::random_combinations", "[options]") {
+TEST_CASE("options::random_combinations", "[options] [unit]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -1182,7 +1182,7 @@ TEST_CASE("options::random_combinations", "[options]") {
  * Direct Value Testing - Tests that actually verify opt_* variables
  * ============================================================================ */
 
-TEST_CASE("options::actual_values_client", "[options]") {
+TEST_CASE("options::actual_values_client", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "192.168.1.1:8080", "-x", "100", "-y", "50"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1209,7 +1209,7 @@ TEST_CASE("options::actual_values_client", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::color_mode_auto", "[options]") {
+TEST_CASE("options::color_mode_auto", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--color-mode", "auto"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1225,7 +1225,7 @@ TEST_CASE("options::color_mode_auto", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::color_mode_256", "[options]") {
+TEST_CASE("options::color_mode_256", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--color-mode", "256"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1241,7 +1241,7 @@ TEST_CASE("options::color_mode_256", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::color_mode_truecolor", "[options]") {
+TEST_CASE("options::color_mode_truecolor", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--color-mode", "truecolor"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1257,7 +1257,7 @@ TEST_CASE("options::color_mode_truecolor", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::render_mode_foreground", "[options]") {
+TEST_CASE("options::render_mode_foreground", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--render-mode", "foreground"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1273,7 +1273,7 @@ TEST_CASE("options::render_mode_foreground", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::render_mode_background", "[options]") {
+TEST_CASE("options::render_mode_background", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--render-mode", "background"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1289,7 +1289,7 @@ TEST_CASE("options::render_mode_background", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::render_mode_half_block", "[options]") {
+TEST_CASE("options::render_mode_half_block", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--render-mode", "half-block"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1305,7 +1305,7 @@ TEST_CASE("options::render_mode_half_block", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::palette_standard", "[options]") {
+TEST_CASE("options::palette_standard", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--palette", "standard"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1321,7 +1321,7 @@ TEST_CASE("options::palette_standard", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::palette_blocks", "[options]") {
+TEST_CASE("options::palette_blocks", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--palette", "blocks"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1337,7 +1337,7 @@ TEST_CASE("options::palette_blocks", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::palette_custom_chars", "[options]") {
+TEST_CASE("options::palette_custom_chars", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--palette-chars", "@#%*+=:-. "});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1357,7 +1357,7 @@ TEST_CASE("options::palette_custom_chars", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_flag_values", "[options]") {
+TEST_CASE("options::test_flag_values", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--audio", "--stretch", "--snapshot", "--encrypt", "--utf8", "--show-capabilities", "--flip-x"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1383,7 +1383,7 @@ TEST_CASE("options::test_flag_values", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::encryption_key_value", "[options]") {
+TEST_CASE("options::encryption_key_value", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--key", "mysecretpassword123"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1402,7 +1402,7 @@ TEST_CASE("options::encryption_key_value", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_snapshot_delay_values", "[options]") {
+TEST_CASE("options::test_snapshot_delay_values", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--snapshot", "--snapshot-delay", "2.5"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1418,7 +1418,7 @@ TEST_CASE("options::test_snapshot_delay_values", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_webcam_values", "[options]") {
+TEST_CASE("options::test_webcam_values", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "-c", "3", "--flip-x"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1437,7 +1437,7 @@ TEST_CASE("options::test_webcam_values", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_comprehensive_client_values", "[options]") {
+TEST_CASE("options::test_comprehensive_client_values", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "10.0.0.1:9999", "--width=200", "--height=100", "--webcam-index=2", "--flip-x", "--color-mode=256", "--render-mode=background", "--palette=digital", "--audio", "--stretch",
               "--snapshot", "--snapshot-delay=5.0", "--encrypt", "--key=testkey123"});
   char **argv = argv_storage.data();
@@ -1476,7 +1476,7 @@ TEST_CASE("options::test_comprehensive_client_values", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_server_values", "[options]") {
+TEST_CASE("options::test_server_values", "[options] [unit]") {
   auto argv_storage = make_argv({"server", "0.0.0.0", "--port=12345", "--encrypt"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1504,7 +1504,7 @@ TEST_CASE("options::test_server_values", "[options]") {
  * Additional Test Scenarios with the Macro
  * ============================================================================ */
 
-TEST_CASE("options::test_equals_sign_syntax", "[options]") {
+TEST_CASE("options::test_equals_sign_syntax", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--width=150", "--height=75", "192.168.1.100:8080"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1527,7 +1527,7 @@ TEST_CASE("options::test_equals_sign_syntax", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_mixed_syntax", "[options]") {
+TEST_CASE("options::test_mixed_syntax", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "-x", "80", "--height=60", "10.0.0.1:3000"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1550,7 +1550,7 @@ TEST_CASE("options::test_mixed_syntax", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_none_mode", "[options]") {
+TEST_CASE("options::test_none_mode", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--color-mode", "none"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1569,7 +1569,7 @@ TEST_CASE("options::test_none_mode", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_16color_mode", "[options]") {
+TEST_CASE("options::test_16color_mode", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--color-mode", "16"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1585,7 +1585,7 @@ TEST_CASE("options::test_16color_mode", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_16color_alias", "[options]") {
+TEST_CASE("options::test_16color_alias", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--color-mode", "16color"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1601,7 +1601,7 @@ TEST_CASE("options::test_16color_alias", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_256color_alias", "[options]") {
+TEST_CASE("options::test_256color_alias", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--color-mode", "256color"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1617,7 +1617,7 @@ TEST_CASE("options::test_256color_alias", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_truecolor_alias", "[options]") {
+TEST_CASE("options::test_truecolor_alias", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--color-mode", "24bit"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1633,7 +1633,7 @@ TEST_CASE("options::test_truecolor_alias", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_palette_digital", "[options]") {
+TEST_CASE("options::test_palette_digital", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--palette", "digital"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1649,7 +1649,7 @@ TEST_CASE("options::test_palette_digital", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_palette_minimal", "[options]") {
+TEST_CASE("options::test_palette_minimal", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--palette", "minimal"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1665,7 +1665,7 @@ TEST_CASE("options::test_palette_minimal", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_palette_cool", "[options]") {
+TEST_CASE("options::test_palette_cool", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--palette", "cool"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1683,7 +1683,7 @@ TEST_CASE("options::test_palette_cool", "[options]") {
 
 /* Palette aliases are covered by the individual cases above. */
 
-TEST_CASE("options::test_render_mode_fg_alias", "[options]") {
+TEST_CASE("options::test_render_mode_fg_alias", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--render-mode", "fg"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1699,7 +1699,7 @@ TEST_CASE("options::test_render_mode_fg_alias", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_render_mode_bg_alias", "[options]") {
+TEST_CASE("options::test_render_mode_bg_alias", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--render-mode", "bg"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1715,7 +1715,7 @@ TEST_CASE("options::test_render_mode_bg_alias", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_webcam_index_only", "[options]") {
+TEST_CASE("options::test_webcam_index_only", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "-c", "5"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1734,7 +1734,7 @@ TEST_CASE("options::test_webcam_index_only", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_webcam_flip_only", "[options]") {
+TEST_CASE("options::test_webcam_flip_only", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--flip-x"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1757,7 +1757,7 @@ TEST_CASE("options::test_webcam_flip_only", "[options]") {
  * Server-specific Tests
  * ============================================================================ */
 
-TEST_CASE("options::test_server_basic_options", "[options]") {
+TEST_CASE("options::test_server_basic_options", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "127.0.0.1:8080", "--width=110", "--height=70"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1781,7 +1781,7 @@ TEST_CASE("options::test_server_basic_options", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_server_palette_options", "[options]") {
+TEST_CASE("options::test_server_palette_options", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--palette", "blocks", "--palette-chars", "0123456789"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1805,7 +1805,7 @@ TEST_CASE("options::test_server_palette_options", "[options]") {
  * Edge Cases and Error Conditions
  * ============================================================================ */
 
-TEST_CASE("options::test_auto_dimensions", "[options]") {
+TEST_CASE("options::test_auto_dimensions", "[options] [unit]") {
   auto argv_storage = make_argv({"client"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1827,7 +1827,7 @@ TEST_CASE("options::test_auto_dimensions", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_manual_dimensions_disable_auto", "[options]") {
+TEST_CASE("options::test_manual_dimensions_disable_auto", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--width", "100", "--height", "50"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1848,7 +1848,7 @@ TEST_CASE("options::test_manual_dimensions_disable_auto", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_encryption_auto_enable", "[options]") {
+TEST_CASE("options::test_encryption_auto_enable", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--key", "mypassword"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1867,7 +1867,7 @@ TEST_CASE("options::test_encryption_auto_enable", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_custom_palette_auto_set_type", "[options]") {
+TEST_CASE("options::test_custom_palette_auto_set_type", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--palette-chars", "ABCDEFGH"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1887,7 +1887,7 @@ TEST_CASE("options::test_custom_palette_auto_set_type", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_color_output_enabled_by_color_mode", "[options]") {
+TEST_CASE("options::test_color_output_enabled_by_color_mode", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--color-mode", "256"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1906,7 +1906,7 @@ TEST_CASE("options::test_color_output_enabled_by_color_mode", "[options]") {
   restore_options(&backup);
 }
 
-TEST_CASE("options::test_color_output_disabled_by_none", "[options]") {
+TEST_CASE("options::test_color_output_disabled_by_none", "[options] [unit]") {
   auto argv_storage = make_argv({"client", "--color-mode", "none"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
@@ -1940,7 +1940,7 @@ TEST_CASE("options::test_color_output_disabled_by_none", "[options]") {
  * 5. Only the first action is remembered when multiple are deferred
  */
 
-TEST_CASE("options::deferred_action_list_webcams", "[options]") {
+TEST_CASE("options::deferred_action_list_webcams", "[options] [unit]") {
   // Defer the action
   action_list_webcams();
 
@@ -1949,7 +1949,7 @@ TEST_CASE("options::deferred_action_list_webcams", "[options]") {
   REQUIRE(action == ACTION_LIST_WEBCAMS);
 }
 
-TEST_CASE("options::deferred_action_list_microphones", "[options]") {
+TEST_CASE("options::deferred_action_list_microphones", "[options] [unit]") {
   // Defer the action
   action_list_microphones();
 
@@ -1958,7 +1958,7 @@ TEST_CASE("options::deferred_action_list_microphones", "[options]") {
   REQUIRE(action == ACTION_LIST_MICROPHONES);
 }
 
-TEST_CASE("options::deferred_action_list_speakers", "[options]") {
+TEST_CASE("options::deferred_action_list_speakers", "[options] [unit]") {
   // Defer the action
   action_list_speakers();
 
@@ -1967,7 +1967,7 @@ TEST_CASE("options::deferred_action_list_speakers", "[options]") {
   REQUIRE(action == ACTION_LIST_SPEAKERS);
 }
 
-TEST_CASE("options::deferred_action_show_capabilities", "[options]") {
+TEST_CASE("options::deferred_action_show_capabilities", "[options] [unit]") {
   // Defer the action
   action_show_capabilities();
 
@@ -1976,7 +1976,7 @@ TEST_CASE("options::deferred_action_show_capabilities", "[options]") {
   REQUIRE(action == ACTION_SHOW_CAPABILITIES);
 }
 
-TEST_CASE("options::deferred_action_first_wins", "[options]") {
+TEST_CASE("options::deferred_action_first_wins", "[options] [unit]") {
   // Defer first action
   action_list_webcams();
   REQUIRE(actions_get_deferred() == ACTION_LIST_WEBCAMS);
@@ -1990,7 +1990,7 @@ TEST_CASE("options::deferred_action_first_wins", "[options]") {
   REQUIRE(actions_get_deferred() == ACTION_LIST_WEBCAMS);
 }
 
-TEST_CASE("options::deferred_action_arguments", "[options]") {
+TEST_CASE("options::deferred_action_arguments", "[options] [unit]") {
   // Set action with arguments
   action_args_t args = {.output_path = "/tmp/test.txt", .shell_name = "bash"};
 
@@ -2003,7 +2003,7 @@ TEST_CASE("options::deferred_action_arguments", "[options]") {
   REQUIRE(std::strcmp(retrieved_args->shell_name, "bash") == 0);
 }
 
-TEST_CASE("options::deferred_action_no_action_by_default", "[options]") {
+TEST_CASE("options::deferred_action_no_action_by_default", "[options] [unit]") {
   deferred_action_t action = actions_get_deferred();
   REQUIRE(action == ACTION_NONE);
 
@@ -2011,7 +2011,7 @@ TEST_CASE("options::deferred_action_no_action_by_default", "[options]") {
   REQUIRE(args == nullptr);
 }
 
-TEST_CASE("options::repeated_media_arguments_share_one_ordered_playlist", "[options]") {
+TEST_CASE("options::repeated_media_arguments_share_one_ordered_playlist", "[options] [unit]") {
   char *argv[] = {"program", "mirror", "--file", "first.mp4", "--url", "https://example.com/second.webm", "--file=third.mp4", NULL};
   REQUIRE(options_init(7, argv) == ASCIICHAT_OK);
   const options_t *opts = options_get();
@@ -2024,7 +2024,7 @@ TEST_CASE("options::repeated_media_arguments_share_one_ordered_playlist", "[opti
   REQUIRE(opts->media_url[0] == '\0');
 }
 
-TEST_CASE("options::url_first_playlist_does_not_gain_file_priority", "[options]") {
+TEST_CASE("options::url_first_playlist_does_not_gain_file_priority", "[options] [unit]") {
   char *argv[] = {"program", "mirror", "--url=https://example.com/first.webm", "-f", "second.mp4", NULL};
   REQUIRE(options_init(5, argv) == ASCIICHAT_OK);
   const options_t *opts = options_get();
@@ -2034,7 +2034,7 @@ TEST_CASE("options::url_first_playlist_does_not_gain_file_priority", "[options]"
   REQUIRE(opts->media_file[0] == '\0');
 }
 
-TEST_CASE("options::rejected_glyph_palette_is_not_published", "[options]") {
+TEST_CASE("options::rejected_glyph_palette_is_not_published", "[options] [unit]") {
   REQUIRE(options_state_init() == ASCIICHAT_OK);
   options_t *before = SAFE_MALLOC(sizeof(*before), options_t *);
   *before = *options_get();

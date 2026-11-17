@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
 #include <libplatform/symbols.h>
 
@@ -55,7 +54,7 @@ static void fallback_setup(void) {
   REQUIRE((platform_setenv("LLVM_SYMBOLIZER_PATH", "/missing/llvm-symbolizer")) == (0));
   REQUIRE((platform_setenv("ADDR2LINE_PATH", script)) == (0));
 }
-TEST_CASE("symbol_cache_fallback/addr2line_handles_mixed_resolution_and_caches_owned_results", "[symbol_cache_fallback]") {
+TEST_CASE("symbol_cache_fallback/addr2line_handles_mixed_resolution_and_caches_owned_results", "[symbol_cache_fallback] [unit]") {
   REQUIRE((symbol_cache_init()) == (ASCIICHAT_OK));
   void *addresses[] = {(void *)0x1111, (void *)0x2222, (void *)0x3333, (void *)0x4444};
   char **symbols = symbol_cache_resolve_batch(addresses, 4, NULL);
@@ -77,7 +76,7 @@ TEST_CASE("symbol_cache_fallback/addr2line_handles_mixed_resolution_and_caches_o
 }
 #endif
 
-TEST_CASE("symbol_cache_lifecycle/batch_resolution_identifies_exported_functions_and_reuses_the_cache", "[symbol_cache_lifecycle]") {
+TEST_CASE("symbol_cache_lifecycle/batch_resolution_identifies_exported_functions_and_reuses_the_cache", "[symbol_cache_lifecycle] [unit]") {
 #ifdef _WIN32
   SUCCEED("Windows resolves native symbols through the platform debugger API rather than the POSIX symbolizer names tested here");
   return;
@@ -98,7 +97,7 @@ TEST_CASE("symbol_cache_lifecycle/batch_resolution_identifies_exported_functions
   symbol_cache_destroy();
 }
 
-TEST_CASE("symbol_cache_lifecycle/cached_names_are_copied_and_updates_do_not_invalidate_previous_results", "[symbol_cache_lifecycle]") {
+TEST_CASE("symbol_cache_lifecycle/cached_names_are_copied_and_updates_do_not_invalidate_previous_results", "[symbol_cache_lifecycle] [unit]") {
   REQUIRE((symbol_cache_init()) == (ASCIICHAT_OK));
   int key, absent;
   REQUIRE((symbol_cache_lookup(&absent)) == nullptr);
@@ -128,7 +127,7 @@ TEST_CASE("symbol_cache_lifecycle/cached_names_are_copied_and_updates_do_not_inv
   REQUIRE((symbol_cache_lookup(&key)) == nullptr);
 }
 
-TEST_CASE("symbol_cache_lifecycle/source_paths_classify_project_external_and_truncation_without_partial_writes", "[symbol_cache_lifecycle]") {
+TEST_CASE("symbol_cache_lifecycle/source_paths_classify_project_external_and_truncation_without_partial_writes", "[symbol_cache_lifecycle] [unit]") {
   const char *const libraries[] = {"libasciichat.so", "asciichat.dll", "libasciichat.dylib", NULL};
   const char *project[] = {"ascii-chat", "C:\\tools\\ASCII-CHAT.EXE", "libasciichat.so.0.1.0"};
   for (size_t i = 0; i < 3; ++i)

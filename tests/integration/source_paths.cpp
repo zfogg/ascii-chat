@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <libplatform/filesystem.h>
 /** Regressions for source paths in log headers and memory reports. */
 #include <ascii-chat/common.h>
@@ -24,7 +23,7 @@ static void teardown(void) {
   log_destroy();
   REQUIRE((platform_delete_temp_file(report_path)) == (0));
 }
-TEST_CASE("source_paths/project_relative_paths_and_symbol_display", "[source_paths]") {
+TEST_CASE("source_paths/project_relative_paths_and_symbol_display", "[source_paths] [integration]") {
 
   const char *paths[] = {"src/main.c", "lib/platform/windows/keyboard.c", "include/ascii-chat/util/path.h", "tests/integration/source_paths.c"};
   for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
@@ -112,7 +111,7 @@ TEST_CASE("source_paths/project_relative_paths_and_symbol_display", "[source_pat
   CLEAR_ERRNO();
 }
 
-TEST_CASE("source_paths/log_headers_and_memory_reports_preserve_locations", "[source_paths]") {
+TEST_CASE("source_paths/log_headers_and_memory_reports_preserve_locations", "[source_paths] [integration]") {
   // Exercise the actual log header renderer with absolute src/ and lib/ paths.
   log_msg(LOG_DEBUG, ASCIICHAT_SOURCE_ROOT "/src/path_fixture.c", 123, "source_fixture", "src path fixture");
   log_msg(LOG_DEBUG, ASCIICHAT_SOURCE_ROOT "/lib/path_fixture.c", 456, "source_fixture", "lib path fixture");

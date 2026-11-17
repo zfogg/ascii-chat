@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "common/session/display.h"
 #include "common/session/frame_validation.h"
 #include <ascii-chat/options/rcu.h>
@@ -45,7 +44,7 @@ static void teardown(void) {
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-TEST_CASE("session_display_conversion/flips_match_explicit_quadrants_and_never_modify_the_input", "[session_display_conversion]") {
+TEST_CASE("session_display_conversion/flips_match_explicit_quadrants_and_never_modify_the_input", "[session_display_conversion] [unit]") {
   rgb_pixel_t original[32];
   memcpy(original, image->pixels, sizeof(original));
   const uint8_t quadrants[4][4] = {{0, 255, 170, 85}, {255, 0, 85, 170}, {170, 85, 0, 255}, {85, 170, 255, 0}};
@@ -73,7 +72,7 @@ TEST_CASE("session_display_conversion/flips_match_explicit_quadrants_and_never_m
   image_destroy(expected);
 }
 
-TEST_CASE("session_display_conversion/reused_output_can_be_followed_by_owned_output_and_a_size_change", "[session_display_conversion]") {
+TEST_CASE("session_display_conversion/reused_output_can_be_followed_by_owned_output_and_a_size_change", "[session_display_conversion] [unit]") {
   char *owned = session_display_convert_to_ascii(display, image);
   REQUIRE((owned) != nullptr);
   char *reused = session_display_convert_to_ascii_reuse(display, image);
@@ -94,7 +93,7 @@ TEST_CASE("session_display_conversion/reused_output_can_be_followed_by_owned_out
   SAFE_FREE(owned);
 }
 
-TEST_CASE("session_display_conversion/runtime_renderer_and_palette_change_together", "[session_display_conversion]") {
+TEST_CASE("session_display_conversion/runtime_renderer_and_palette_change_together", "[session_display_conversion] [unit]") {
   REQUIRE((options_set_int("palette_type", PALETTE_DIGITAL)) == (ASCIICHAT_OK));
   char *before = session_display_convert_to_ascii_reuse(display, image);
   REQUIRE((before) != nullptr);
@@ -112,7 +111,7 @@ TEST_CASE("session_display_conversion/runtime_renderer_and_palette_change_togeth
   session_display_release_ascii(display, after);
 }
 
-TEST_CASE("session_display_conversion/filters_and_dynamic_rain_leave_the_source_image_intact", "[session_display_conversion]") {
+TEST_CASE("session_display_conversion/filters_and_dynamic_rain_leave_the_source_image_intact", "[session_display_conversion] [unit]") {
   rgb_pixel_t original[32];
   memcpy(original, image->pixels, sizeof(original));
   char *plain = session_display_convert_to_ascii(display, image);
@@ -140,7 +139,7 @@ TEST_CASE("session_display_conversion/filters_and_dynamic_rain_leave_the_source_
   SAFE_FREE(plain);
 }
 
-TEST_CASE("session_display_conversion/display_queries_track_borrowed_reader_and_frame_rate_without_recording", "[session_display_conversion]") {
+TEST_CASE("session_display_conversion/display_queries_track_borrowed_reader_and_frame_rate_without_recording", "[session_display_conversion] [unit]") {
   REQUIRE(std::strcmp((session_display_get_palette_chars(display)), (".#")) == 0);
   REQUIRE((session_display_get_palette_len(display)) == (2));
   REQUIRE((session_display_get_luminance_palette(display)) != nullptr);
@@ -171,7 +170,7 @@ static bool cancel(void *context) {
   ++*(unsigned *)context;
   return true;
 }
-TEST_CASE("session_display_conversion/cancellation_prevents_context_creation_and_invalid_palette_falls_back", "[session_display_conversion]") {
+TEST_CASE("session_display_conversion/cancellation_prevents_context_creation_and_invalid_palette_falls_back", "[session_display_conversion] [unit]") {
   unsigned calls = 0;
   session_display_config_t config = {.should_exit_callback = cancel, .callback_data = &calls};
   REQUIRE((session_display_create(&config)) == nullptr);

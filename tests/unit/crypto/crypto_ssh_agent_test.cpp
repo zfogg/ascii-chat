@@ -4,7 +4,6 @@
  * @brief Unit tests for SSH agent integration
  */
 
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/ssh/ssh_agent.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/crypto/keys.h>
@@ -16,7 +15,7 @@
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("crypto_ssh_agent/check_availability", "[crypto_ssh_agent]") {
+TEST_CASE("crypto_ssh_agent/check_availability", "[crypto_ssh_agent] [unit]") {
   // Test that function doesn't crash
   bool available = ssh_agent_is_available();
 
@@ -24,7 +23,7 @@ TEST_CASE("crypto_ssh_agent/check_availability", "[crypto_ssh_agent]") {
   REQUIRE((available == true || available == false));
 }
 
-TEST_CASE("crypto_ssh_agent/availability_without_env", "[crypto_ssh_agent]") {
+TEST_CASE("crypto_ssh_agent/availability_without_env", "[crypto_ssh_agent] [unit]") {
   // Temporarily unset SSH_AUTH_SOCK
   const char *original = SAFE_GETENV("SSH_AUTH_SOCK");
   char saved_value[1024] = {0};
@@ -57,12 +56,12 @@ TEST_CASE("crypto_ssh_agent/availability_without_env", "[crypto_ssh_agent]") {
 // SSH Agent Key Checking Tests
 // =============================================================================
 
-TEST_CASE("crypto_ssh_agent/check_has_key_null_input", "[crypto_ssh_agent]") {
+TEST_CASE("crypto_ssh_agent/check_has_key_null_input", "[crypto_ssh_agent] [unit]") {
   bool has_key = ssh_agent_has_key(NULL);
   REQUIRE((has_key) == (false));
 }
 
-TEST_CASE("crypto_ssh_agent/check_has_key_valid_key", "[crypto_ssh_agent]") {
+TEST_CASE("crypto_ssh_agent/check_has_key_valid_key", "[crypto_ssh_agent] [unit]") {
   // Create a test public key
   public_key_t test_key;
   memset(&test_key, 0, sizeof(test_key));
@@ -85,12 +84,12 @@ TEST_CASE("crypto_ssh_agent/check_has_key_valid_key", "[crypto_ssh_agent]") {
 // SSH Agent Key Adding Tests
 // =============================================================================
 
-TEST_CASE("crypto_ssh_agent/add_key_null_private_key", "[crypto_ssh_agent]") {
+TEST_CASE("crypto_ssh_agent/add_key_null_private_key", "[crypto_ssh_agent] [unit]") {
   asciichat_error_t result = ssh_agent_add_key(NULL, "test_path");
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_ssh_agent/add_key_null_path", "[crypto_ssh_agent]") {
+TEST_CASE("crypto_ssh_agent/add_key_null_path", "[crypto_ssh_agent] [unit]") {
   private_key_t test_key;
   memset(&test_key, 0, sizeof(test_key));
   test_key.type = KEY_TYPE_ED25519;
@@ -103,7 +102,7 @@ TEST_CASE("crypto_ssh_agent/add_key_null_path", "[crypto_ssh_agent]") {
   REQUIRE((result == ASCIICHAT_OK || result != ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_ssh_agent/add_key_wrong_type", "[crypto_ssh_agent]") {
+TEST_CASE("crypto_ssh_agent/add_key_wrong_type", "[crypto_ssh_agent] [unit]") {
   private_key_t test_key;
   memset(&test_key, 0, sizeof(test_key));
   test_key.type = KEY_TYPE_X25519; // Wrong type (not Ed25519)
@@ -113,7 +112,7 @@ TEST_CASE("crypto_ssh_agent/add_key_wrong_type", "[crypto_ssh_agent]") {
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_ssh_agent/add_key_without_agent", "[crypto_ssh_agent]") {
+TEST_CASE("crypto_ssh_agent/add_key_without_agent", "[crypto_ssh_agent] [unit]") {
   // Temporarily unset SSH_AUTH_SOCK to simulate no agent
   const char *original = SAFE_GETENV("SSH_AUTH_SOCK");
   char saved_value[1024] = {0};
@@ -158,7 +157,7 @@ TEST_CASE("crypto_ssh_agent/add_key_without_agent", "[crypto_ssh_agent]") {
 // Integration Tests (if ssh-agent is available)
 // =============================================================================
 
-TEST_CASE("crypto_ssh_agent/full_workflow_if_agent_available", "[crypto_ssh_agent]") {
+TEST_CASE("crypto_ssh_agent/full_workflow_if_agent_available", "[crypto_ssh_agent] [unit]") {
   // Skip if agent not available
   if (!ssh_agent_is_available()) {
     SKIP("test skipped");

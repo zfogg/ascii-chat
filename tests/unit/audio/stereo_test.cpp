@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/audio/format.h>
 #include <ascii-chat/audio/opus.h>
@@ -25,7 +25,7 @@ static void cleanup(void) {
   options_state_destroy();
   log_destroy();
 }
-TEST_CASE("stereo/routes_interface_inputs_without_mixing_unrelated_channels", "[stereo]") {
+TEST_CASE("stereo/routes_interface_inputs_without_mixing_unrelated_channels", "[stereo] [unit]") {
   const float input[] = {0.1f, 0.3f, -0.7f, 0.9f, 0.2f, 0.4f, -0.6f, 0.8f};
   float output[4];
   REQUIRE((audio_route_capture(input, 2, 4, 1, 2, output)) == (ASCIICHAT_OK));
@@ -43,7 +43,7 @@ TEST_CASE("stereo/routes_interface_inputs_without_mixing_unrelated_channels", "[
   REQUIRE((audio_route_capture(input, 2, 0, 0, 1, output)) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("stereo/mono_conversion_preserves_center_and_cancels_opposite_phase", "[stereo]") {
+TEST_CASE("stereo/mono_conversion_preserves_center_and_cancels_opposite_phase", "[stereo] [unit]") {
   float pcm[8] = {0.2f, -0.4f, 0.6f, -0.8f};
   REQUIRE((audio_convert_channels(pcm, 4, 1, pcm, 2)) == (ASCIICHAT_OK));
   for (size_t i = 0; i < 4; i++)
@@ -55,7 +55,7 @@ TEST_CASE("stereo/mono_conversion_preserves_center_and_cancels_opposite_phase", 
   REQUIRE((pcm[0]) == (0));
 }
 
-TEST_CASE("stereo/resampling_preserves_channels_and_is_independent_of_callback_partition", "[stereo]") {
+TEST_CASE("stereo/resampling_preserves_channels_and_is_independent_of_callback_partition", "[stereo] [unit]") {
   float input[2000], whole[2400], split[2400];
   for (size_t i = 0; i < 1000; i++) {
     input[i * 2] = sinf((float)i * 0.04f) * 0.25f;
@@ -82,7 +82,7 @@ TEST_CASE("stereo/resampling_preserves_channels_and_is_independent_of_callback_p
   REQUIRE((sentinel[0]) == (42));
 }
 
-TEST_CASE("stereo/invalid_resampler_arguments_set_errno_without_mutating_state_or_output", "[stereo]") {
+TEST_CASE("stereo/invalid_resampler_arguments_set_errno_without_mutating_state_or_output", "[stereo] [unit]") {
   audio_resampler_t state = {.phase = 0.25, .previous = {0.2f, 0.3f}, .has_previous = true};
   audio_resampler_t before = state;
   const float input[] = {0.1f, 0.2f, 0.3f, 0.4f};
@@ -112,7 +112,7 @@ TEST_CASE("stereo/invalid_resampler_arguments_set_errno_without_mutating_state_o
   CLEAR_ERRNO_ALL();
 }
 
-TEST_CASE("stereo/opus_preserves_distinct_tones_and_explicit_mono_decoder_downmix", "[stereo]") {
+TEST_CASE("stereo/opus_preserves_distinct_tones_and_explicit_mono_decoder_downmix", "[stereo] [unit]") {
   opus_codec_t *encoder = opus_codec_create_encoder(OPUS_APPLICATION_AUDIO, 48000, 160000);
   opus_codec_t *decoder = opus_codec_create_decoder(48000);
   opus_codec_t *mono_decoder = opus_codec_create_decoder_channels(48000, 1);
@@ -151,7 +151,7 @@ TEST_CASE("stereo/opus_preserves_distinct_tones_and_explicit_mono_decoder_downmi
   opus_codec_destroy(mono_decoder);
 }
 
-TEST_CASE("stereo/jitter_drift_and_fades_do_not_swap_or_mix_channels", "[stereo]") {
+TEST_CASE("stereo/jitter_drift_and_fades_do_not_swap_or_mix_channels", "[stereo] [unit]") {
   audio_ring_buffer_t *rb = audio_ring_buffer_create_format(2, false);
   REQUIRE((rb) != nullptr);
   float input[8000], output[960];
@@ -171,7 +171,7 @@ TEST_CASE("stereo/jitter_drift_and_fades_do_not_swap_or_mix_channels", "[stereo]
   audio_ring_buffer_destroy(rb);
 }
 
-TEST_CASE("stereo/processor_filters_do_not_leak_and_dynamics_share_gain", "[stereo]") {
+TEST_CASE("stereo/processor_filters_do_not_leak_and_dynamics_share_gain", "[stereo] [unit]") {
   audio_processor_config_t config = audio_processor_default_config(48000);
   config.channels = 2;
   config.spectral_enabled = false;
@@ -197,7 +197,7 @@ TEST_CASE("stereo/processor_filters_do_not_leak_and_dynamics_share_gain", "[ster
   audio_processor_destroy(processor);
 }
 
-TEST_CASE("stereo/recording_keeps_channel_alignment_after_partial_submission", "[stereo]") {
+TEST_CASE("stereo/recording_keeps_channel_alignment_after_partial_submission", "[stereo] [unit]") {
   audio_recording_t *recording = NULL;
   REQUIRE((audio_recording_create_channels(&recording, 2)) == (ASCIICHAT_OK));
   audio_recording_start(recording, 1000000000ULL);
@@ -214,7 +214,7 @@ TEST_CASE("stereo/recording_keeps_channel_alignment_after_partial_submission", "
   audio_recording_destroy(recording);
 }
 
-TEST_CASE("stereo/recording_preserves_channels_and_uses_frame_timestamps", "[stereo]") {
+TEST_CASE("stereo/recording_preserves_channels_and_uses_frame_timestamps", "[stereo] [unit]") {
   audio_recording_t *recording = NULL;
   REQUIRE((audio_recording_create_channels(&recording, 2)) == (ASCIICHAT_OK));
   audio_recording_start(recording, 1000000000ULL);
@@ -233,7 +233,7 @@ TEST_CASE("stereo/recording_preserves_channels_and_uses_frame_timestamps", "[ste
   audio_recording_destroy(recording);
 }
 
-TEST_CASE("stereo/server_mix_minus_excludes_self_without_leaking_left_into_right", "[stereo]") {
+TEST_CASE("stereo/server_mix_minus_excludes_self_without_leaking_left_into_right", "[stereo] [unit]") {
   mixer_t *mixer = mixer_create_channels(3, 48000, 2);
   audio_ring_buffer_t *self = audio_ring_buffer_create_format(2, true);
   audio_ring_buffer_t *remote = audio_ring_buffer_create_format(2, true);
@@ -265,7 +265,7 @@ TEST_CASE("stereo/server_mix_minus_excludes_self_without_leaking_left_into_right
   audio_ring_buffer_destroy(remote);
 }
 
-TEST_CASE("stereo/stereo_aec_and_codec_process_complete_ten_and_twenty_millisecond_frames", "[stereo]") {
+TEST_CASE("stereo/stereo_aec_and_codec_process_complete_ten_and_twenty_millisecond_frames", "[stereo] [unit]") {
   client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
   config.channels = config.encoder_channels = 2;
   config.processor.spectral_enabled = false;
@@ -290,7 +290,7 @@ TEST_CASE("stereo/stereo_aec_and_codec_process_complete_ten_and_twenty_milliseco
   client_audio_pipeline_destroy(pipeline);
 }
 
-TEST_CASE("stereo/stereo_media_resampling_and_eof_preserve_duration_and_independent_channels", "[stereo]") {
+TEST_CASE("stereo/stereo_media_resampling_and_eof_preserve_duration_and_independent_channels", "[stereo] [unit]") {
   char path[1024];
   int fd = -1;
   REQUIRE((platform_create_temp_file(path, sizeof(path), "stereo-media", &fd)) == (0));
@@ -330,7 +330,7 @@ TEST_CASE("stereo/stereo_media_resampling_and_eof_preserve_duration_and_independ
   platform_delete_temp_file(path);
 }
 
-TEST_CASE("stereo/session_source_queues_keep_complete_stereo_frames", "[stereo]") {
+TEST_CASE("stereo/session_source_queues_keep_complete_stereo_frames", "[stereo] [unit]") {
   session_audio_ctx_t *session = session_audio_create(true);
   REQUIRE((session) != nullptr);
   REQUIRE((session_audio_add_source(session, 1)) == (ASCIICHAT_OK));
@@ -350,7 +350,7 @@ TEST_CASE("stereo/session_source_queues_keep_complete_stereo_frames", "[stereo]"
   session_audio_destroy(session);
 }
 
-TEST_CASE("stereo/capture_and_transmission_layouts_are_independent", "[stereo]") {
+TEST_CASE("stereo/capture_and_transmission_layouts_are_independent", "[stereo] [unit]") {
   client_audio_pipeline_config_t defaults = client_audio_pipeline_default_config();
   REQUIRE((defaults.channels) == (2));
   REQUIRE((defaults.encoder_channels) == (2));

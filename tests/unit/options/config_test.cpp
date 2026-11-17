@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 /**
  * @file config_test.c
@@ -13,7 +14,6 @@
  * - Edge cases (empty files, missing sections, partial configs)
  */
 
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -121,7 +121,7 @@ static char *create_temp_dir(void) {
 // Basic Loading Tests
 // =============================================================================
 
-TEST_CASE("config/load_missing_file_non_strict_returns_ok", "[config]") {
+TEST_CASE("config/load_missing_file_non_strict_returns_ok", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -134,7 +134,7 @@ TEST_CASE("config/load_missing_file_non_strict_returns_ok", "[config]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_strict/load_missing_file_strict_returns_error", "[config_strict]") {
+TEST_CASE("config_strict/load_missing_file_strict_returns_error", "[config_strict] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -145,7 +145,7 @@ TEST_CASE("config_strict/load_missing_file_strict_returns_error", "[config_stric
   restore_config_options(&backup);
 }
 
-TEST_CASE("config/load_empty_file_returns_ok", "[config]") {
+TEST_CASE("config/load_empty_file_returns_ok", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -160,7 +160,7 @@ TEST_CASE("config/load_empty_file_returns_ok", "[config]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config/load_comments_only_file_returns_ok", "[config]") {
+TEST_CASE("config/load_comments_only_file_returns_ok", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -179,7 +179,7 @@ TEST_CASE("config/load_comments_only_file_returns_ok", "[config]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config/load_invalid_toml_non_strict_returns_ok", "[config]") {
+TEST_CASE("config/load_invalid_toml_non_strict_returns_ok", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -198,7 +198,7 @@ TEST_CASE("config/load_invalid_toml_non_strict_returns_ok", "[config]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_strict/load_invalid_toml_strict_returns_error", "[config_strict]") {
+TEST_CASE("config_strict/load_invalid_toml_strict_returns_error", "[config_strict] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -217,7 +217,7 @@ TEST_CASE("config_strict/load_invalid_toml_strict_returns_error", "[config_stric
   restore_config_options(&backup);
 }
 
-TEST_CASE("config/load_directory_instead_of_file_returns_ok", "[config]") {
+TEST_CASE("config/load_directory_instead_of_file_returns_ok", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -232,7 +232,7 @@ TEST_CASE("config/load_directory_instead_of_file_returns_ok", "[config]") {
 // Network Section Tests
 // =============================================================================
 
-TEST_CASE("config_sections/network_port_as_integer", "[config_sections]") {
+TEST_CASE("config_sections/network_port_as_integer", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -253,7 +253,7 @@ TEST_CASE("config_sections/network_port_as_integer", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/network_port_as_string", "[config_sections]") {
+TEST_CASE("config_sections/network_port_as_string", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -274,7 +274,7 @@ TEST_CASE("config_sections/network_port_as_string", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/network_port_invalid_too_high", "[config_sections]") {
+TEST_CASE("config_sections/network_port_invalid_too_high", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -298,7 +298,7 @@ TEST_CASE("config_sections/network_port_invalid_too_high", "[config_sections]") 
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/network_port_invalid_zero", "[config_sections]") {
+TEST_CASE("config_sections/network_port_invalid_zero", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -321,7 +321,7 @@ TEST_CASE("config_sections/network_port_invalid_zero", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/client_port", "[config_sections]") {
+TEST_CASE("config_sections/client_port", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -342,7 +342,7 @@ TEST_CASE("config_sections/client_port", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/server_max_clients", "[config_sections]") {
+TEST_CASE("config_sections/server_max_clients", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -363,7 +363,7 @@ TEST_CASE("config_sections/server_max_clients", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/network_compression_level", "[config_sections]") {
+TEST_CASE("config_sections/network_compression_level", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -388,7 +388,7 @@ TEST_CASE("config_sections/network_compression_level", "[config_sections]") {
 // Client Section Tests
 // =============================================================================
 
-TEST_CASE("config_sections/client_width_height_as_integers", "[config_sections]") {
+TEST_CASE("config_sections/client_width_height_as_integers", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -419,7 +419,7 @@ TEST_CASE("config_sections/client_width_height_as_integers", "[config_sections]"
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/client_width_height_as_strings", "[config_sections]") {
+TEST_CASE("config_sections/client_width_height_as_strings", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -442,7 +442,7 @@ TEST_CASE("config_sections/client_width_height_as_strings", "[config_sections]")
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/client_webcam_settings", "[config_sections]") {
+TEST_CASE("config_sections/client_webcam_settings", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -468,7 +468,7 @@ TEST_CASE("config_sections/client_webcam_settings", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/client_color_mode_none", "[config_sections]") {
+TEST_CASE("config_sections/client_color_mode_none", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -489,7 +489,7 @@ TEST_CASE("config_sections/client_color_mode_none", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/client_color_mode_256", "[config_sections]") {
+TEST_CASE("config_sections/client_color_mode_256", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -510,7 +510,7 @@ TEST_CASE("config_sections/client_color_mode_256", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/client_color_mode_truecolor", "[config_sections]") {
+TEST_CASE("config_sections/client_color_mode_truecolor", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -531,7 +531,7 @@ TEST_CASE("config_sections/client_color_mode_truecolor", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/client_render_mode_foreground", "[config_sections]") {
+TEST_CASE("config_sections/client_render_mode_foreground", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -551,7 +551,7 @@ TEST_CASE("config_sections/client_render_mode_foreground", "[config_sections]") 
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/client_render_mode_background", "[config_sections]") {
+TEST_CASE("config_sections/client_render_mode_background", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -571,7 +571,7 @@ TEST_CASE("config_sections/client_render_mode_background", "[config_sections]") 
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/client_render_mode_half_block", "[config_sections]") {
+TEST_CASE("config_sections/client_render_mode_half_block", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -591,7 +591,7 @@ TEST_CASE("config_sections/client_render_mode_half_block", "[config_sections]") 
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/client_boolean_options", "[config_sections]") {
+TEST_CASE("config_sections/client_boolean_options", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -617,7 +617,7 @@ TEST_CASE("config_sections/client_boolean_options", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/client_snapshot_delay", "[config_sections]") {
+TEST_CASE("config_sections/client_snapshot_delay", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -638,7 +638,7 @@ TEST_CASE("config_sections/client_snapshot_delay", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/client_fps_as_integer", "[config_sections]") {
+TEST_CASE("config_sections/client_fps_as_integer", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -656,7 +656,7 @@ TEST_CASE("config_sections/client_fps_as_integer", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/client_fps_invalid_too_high", "[config_sections]") {
+TEST_CASE("config_sections/client_fps_invalid_too_high", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -677,7 +677,7 @@ TEST_CASE("config_sections/client_fps_invalid_too_high", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/client_config_ignored_for_server", "[config_sections]") {
+TEST_CASE("config_sections/client_config_ignored_for_server", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -720,7 +720,7 @@ TEST_CASE("config_sections/client_config_ignored_for_server", "[config_sections]
 // Audio Section Tests
 // =============================================================================
 
-TEST_CASE("config_sections/audio_settings", "[config_sections]") {
+TEST_CASE("config_sections/audio_settings", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -745,7 +745,7 @@ TEST_CASE("config_sections/audio_settings", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/audio_device_default", "[config_sections]") {
+TEST_CASE("config_sections/audio_device_default", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -767,7 +767,7 @@ TEST_CASE("config_sections/audio_device_default", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/audio_config_ignored_for_server", "[config_sections]") {
+TEST_CASE("config_sections/audio_config_ignored_for_server", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -807,7 +807,7 @@ TEST_CASE("config_sections/audio_config_ignored_for_server", "[config_sections]"
 // Palette Section Tests
 // =============================================================================
 
-TEST_CASE("config_sections/palette_type_standard", "[config_sections]") {
+TEST_CASE("config_sections/palette_type_standard", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -827,7 +827,7 @@ TEST_CASE("config_sections/palette_type_standard", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/palette_type_blocks", "[config_sections]") {
+TEST_CASE("config_sections/palette_type_blocks", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -847,7 +847,7 @@ TEST_CASE("config_sections/palette_type_blocks", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/palette_type_digital", "[config_sections]") {
+TEST_CASE("config_sections/palette_type_digital", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -867,7 +867,7 @@ TEST_CASE("config_sections/palette_type_digital", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/palette_custom_chars", "[config_sections]") {
+TEST_CASE("config_sections/palette_custom_chars", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -890,7 +890,7 @@ TEST_CASE("config_sections/palette_custom_chars", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/palette_chars_too_long", "[config_sections]") {
+TEST_CASE("config_sections/palette_chars_too_long", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -928,7 +928,7 @@ TEST_CASE("config_sections/palette_chars_too_long", "[config_sections]") {
 // Crypto Section Tests
 // =============================================================================
 
-TEST_CASE("config_sections/crypto_encrypt_enabled", "[config_sections]") {
+TEST_CASE("config_sections/crypto_encrypt_enabled", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -949,7 +949,7 @@ TEST_CASE("config_sections/crypto_encrypt_enabled", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/crypto_no_encrypt", "[config_sections]") {
+TEST_CASE("config_sections/crypto_no_encrypt", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -977,7 +977,7 @@ TEST_CASE("config_sections/crypto_no_encrypt", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/crypto_key_auto_enables_encryption", "[config_sections]") {
+TEST_CASE("config_sections/crypto_key_auto_enables_encryption", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1005,7 +1005,7 @@ TEST_CASE("config_sections/crypto_key_auto_enables_encryption", "[config_section
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/crypto_server_key_client_only", "[config_sections]") {
+TEST_CASE("config_sections/crypto_server_key_client_only", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1027,7 +1027,7 @@ TEST_CASE("config_sections/crypto_server_key_client_only", "[config_sections]") 
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/crypto_client_keys_server_only", "[config_sections]") {
+TEST_CASE("config_sections/crypto_client_keys_server_only", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1059,7 +1059,7 @@ TEST_CASE("config_sections/crypto_client_keys_server_only", "[config_sections]")
 // Logging Section Tests
 // =============================================================================
 
-TEST_CASE("config_sections/log_file_in_logging_section", "[config_sections]") {
+TEST_CASE("config_sections/log_file_in_logging_section", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1080,7 +1080,7 @@ TEST_CASE("config_sections/log_file_in_logging_section", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/log_file_at_root", "[config_sections]") {
+TEST_CASE("config_sections/log_file_at_root", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1105,7 +1105,7 @@ TEST_CASE("config_sections/log_file_at_root", "[config_sections]") {
 // Comprehensive Config Tests
 // =============================================================================
 
-TEST_CASE("config_sections/full_client_config", "[config_sections]") {
+TEST_CASE("config_sections/full_client_config", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1178,7 +1178,7 @@ TEST_CASE("config_sections/full_client_config", "[config_sections]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_sections/full_server_config", "[config_sections]") {
+TEST_CASE("config_sections/full_server_config", "[config_sections] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1228,7 +1228,7 @@ TEST_CASE("config_sections/full_server_config", "[config_sections]") {
 // config_create_default Tests
 // =============================================================================
 
-TEST_CASE("config_create/creates_file_with_content", "[config_create]") {
+TEST_CASE("config_create/creates_file_with_content", "[config_create] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1274,7 +1274,7 @@ TEST_CASE("config_create/creates_file_with_content", "[config_create]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_create/fails_if_file_exists", "[config_create]") {
+TEST_CASE("config_create/fails_if_file_exists", "[config_create] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1302,7 +1302,7 @@ TEST_CASE("config_create/fails_if_file_exists", "[config_create]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config_create/creates_directory_if_needed", "[config_create]") {
+TEST_CASE("config_create/creates_directory_if_needed", "[config_create] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1331,7 +1331,7 @@ TEST_CASE("config_create/creates_directory_if_needed", "[config_create]") {
 // Edge Case Tests
 // =============================================================================
 
-TEST_CASE("config/unknown_sections_are_ignored", "[config]") {
+TEST_CASE("config/unknown_sections_are_ignored", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1355,7 +1355,7 @@ TEST_CASE("config/unknown_sections_are_ignored", "[config]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config/unknown_keys_are_ignored", "[config]") {
+TEST_CASE("config/unknown_keys_are_ignored", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1378,7 +1378,7 @@ TEST_CASE("config/unknown_keys_are_ignored", "[config]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config/multiple_loads_accumulate_correctly", "[config]") {
+TEST_CASE("config/multiple_loads_accumulate_correctly", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1416,7 +1416,7 @@ TEST_CASE("config/multiple_loads_accumulate_correctly", "[config]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config/whitespace_handling", "[config]") {
+TEST_CASE("config/whitespace_handling", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1448,7 +1448,7 @@ TEST_CASE("config/whitespace_handling", "[config]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config/inline_comments", "[config]") {
+TEST_CASE("config/inline_comments", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1482,7 +1482,7 @@ TEST_CASE("config/inline_comments", "[config]") {
 // Type Coercion Tests
 // =============================================================================
 
-TEST_CASE("config/integer_vs_string_port", "[config]") {
+TEST_CASE("config/integer_vs_string_port", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1518,7 +1518,7 @@ TEST_CASE("config/integer_vs_string_port", "[config]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config/boolean_values", "[config]") {
+TEST_CASE("config/boolean_values", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1543,7 +1543,7 @@ TEST_CASE("config/boolean_values", "[config]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config/float_snapshot_delay", "[config]") {
+TEST_CASE("config/float_snapshot_delay", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1568,7 +1568,7 @@ TEST_CASE("config/float_snapshot_delay", "[config]") {
 // Validation Tests
 // =============================================================================
 
-TEST_CASE("config/invalid_color_mode_skipped", "[config]") {
+TEST_CASE("config/invalid_color_mode_skipped", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
   // Set initial color mode
@@ -1595,7 +1595,7 @@ TEST_CASE("config/invalid_color_mode_skipped", "[config]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config/invalid_render_mode_skipped", "[config]") {
+TEST_CASE("config/invalid_render_mode_skipped", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1623,7 +1623,7 @@ TEST_CASE("config/invalid_render_mode_skipped", "[config]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config/invalid_palette_type_skipped", "[config]") {
+TEST_CASE("config/invalid_palette_type_skipped", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1651,7 +1651,7 @@ TEST_CASE("config/invalid_palette_type_skipped", "[config]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config/negative_width_skipped", "[config]") {
+TEST_CASE("config/negative_width_skipped", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1680,7 +1680,7 @@ TEST_CASE("config/negative_width_skipped", "[config]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config/negative_snapshot_delay_skipped", "[config]") {
+TEST_CASE("config/negative_snapshot_delay_skipped", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
   // Set initial snapshot delay to 1.0
@@ -1711,7 +1711,7 @@ TEST_CASE("config/negative_snapshot_delay_skipped", "[config]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config/invalid_port_skipped", "[config]") {
+TEST_CASE("config/invalid_port_skipped", "[config] [unit]") {
   config_options_backup_t backup;
   save_config_options(&backup);
 
@@ -1741,7 +1741,7 @@ TEST_CASE("config/invalid_port_skipped", "[config]") {
   restore_config_options(&backup);
 }
 
-TEST_CASE("config/test_pattern_boolean_and_integer_values", "[config]") {
+TEST_CASE("config/test_pattern_boolean_and_integer_values", "[config] [unit]") {
   config_options_backup_t original;
   save_config_options(&original);
   const char *values[] = {"true", "false", "0", "1"};

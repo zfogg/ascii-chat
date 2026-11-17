@@ -1,9 +1,10 @@
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/benchmark/catch_benchmark.hpp>
 /** Isolated preparation benchmark; no sockets, queue copies, or kernel time.
  * Legacy allocation/copy order matches bf4415dd8a20c8f5423c98c44524cc1b3f42b2c1.
  * Compile the production helper with local instrumentation, leaving release code
  * and the timed crypto implementation untouched.
  */
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/acip/prepare.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/endian.h>
@@ -80,7 +81,7 @@ static void prepare(crypto_context_t *crypto, const socket_buffer_t *slices, siz
   buffer_release(storage);
 }
 
-TEST_CASE("acip_prepare/legacy_and_planned_paths", "[benchmark][acip_prepare]") {
+TEST_CASE("acip_prepare/legacy_and_planned_paths", "[acip_prepare] [benchmark]") {
   log_init(NULL, LOG_WARN, false, false);
   errno_suppress(true);
   crypto_context_t crypto;

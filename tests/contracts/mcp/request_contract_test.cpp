@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/rcu.h>
 #include "../../../src/mcp-server/mcp.h"
 #include <ascii-chat/audio/audio.h>
@@ -105,7 +104,7 @@ static yyjson_doc *read_json(const char *text) {
   REQUIRE((doc) != nullptr);
   return doc;
 }
-TEST_CASE("mcp_requests/malformed_arguments_and_incompatible_sources_are_rejected_and_partial_allocations_are_released", "[mcp_requests]") {
+TEST_CASE("mcp_requests/malformed_arguments_and_incompatible_sources_are_rejected_and_partial_allocations_are_released", "[mcp_requests] [contract]") {
   const struct {
     mcp_tool_t tool;
     const char *json;
@@ -176,7 +175,7 @@ TEST_CASE("mcp_requests/malformed_arguments_and_incompatible_sources_are_rejecte
   }
 }
 
-TEST_CASE("mcp_requests/accepted_sources_produce_bounded_cli_arguments_and_staged_uploads_are_destroyed", "[mcp_requests]") {
+TEST_CASE("mcp_requests/accepted_sources_produce_bounded_cli_arguments_and_staged_uploads_are_destroyed", "[mcp_requests] [contract]") {
   const struct {
     mcp_tool_t tool;
     const char *json;
@@ -223,7 +222,7 @@ TEST_CASE("mcp_requests/accepted_sources_produce_bounded_cli_arguments_and_stage
     CLEAR_ERRNO_ALL();
   }
 }
-TEST_CASE("mcp_requests/binary_options_are_placed_before_mode_and_argument_overflow_preserves_existing_arguments", "[mcp_requests]") {
+TEST_CASE("mcp_requests/binary_options_are_placed_before_mode_and_argument_overflow_preserves_existing_arguments", "[mcp_requests] [contract]") {
   http_renderer_process_request_t request = {.argv = SAFE_CALLOC(MCP_REQUEST_ARGV_CAPACITY, sizeof(char *), char **)};
   REQUIRE((arg(&request, "ascii-chat")) == (ASCIICHAT_OK));
   REQUIRE((arg(&request, "mirror")) == (ASCIICHAT_OK));
@@ -238,7 +237,7 @@ TEST_CASE("mcp_requests/binary_options_are_placed_before_mode_and_argument_overf
   REQUIRE((request.argv[count]) == nullptr);
   mcp_request_destroy(&request);
 }
-TEST_CASE("mcp_requests/output_staging_does_not_create_or_replace_the_published_destination", "[mcp_requests]") {
+TEST_CASE("mcp_requests/output_staging_does_not_create_or_replace_the_published_destination", "[mcp_requests] [contract]") {
   char directory[PLATFORM_MAX_PATH_LENGTH];
   REQUIRE((platform_mkdtemp(directory, sizeof(directory), "mcp-stage-contract")) == (ASCIICHAT_OK));
   char output[PLATFORM_MAX_PATH_LENGTH];
@@ -285,7 +284,7 @@ static void expect_rpc_error(mcp_server_t *server, const char *json, int code) {
   CLEAR_ERRNO_ALL();
 }
 
-TEST_CASE("mcp_requests/protocol_envelopes_reject_invalid_types_and_worker_start_failure_releases_job", "[mcp_requests]") {
+TEST_CASE("mcp_requests/protocol_envelopes_reject_invalid_types_and_worker_start_failure_releases_job", "[mcp_requests] [contract]") {
   mcp_job_t jobs[1] = {0};
   mcp_server_t server = {.policy = {.max_jobs = 1}, .jobs = jobs};
   expect_rpc_error(&server, "[]", -32600);
@@ -309,7 +308,7 @@ TEST_CASE("mcp_requests/protocol_envelopes_reject_invalid_types_and_worker_start
   REQUIRE((server.jobs[0].request.argv) == nullptr);
 }
 
-TEST_CASE("mcp_requests/device_results_include_defaults_and_report_partial_enumeration_failure", "[mcp_requests]") {
+TEST_CASE("mcp_requests/device_results_include_defaults_and_report_partial_enumeration_failure", "[mcp_requests] [contract]") {
   yyjson_mut_doc *response = device_list_result(NULL, NULL);
   yyjson_mut_val *root = yyjson_mut_doc_get_root(response), *result = yyjson_mut_obj_get(root, "result"), *data = yyjson_mut_obj_get(result, "structuredContent");
   REQUIRE((data) != nullptr);
@@ -331,7 +330,7 @@ TEST_CASE("mcp_requests/device_results_include_defaults_and_report_partial_enume
 
 #include "../../../src/mcp-server/downloads.c"
 
-TEST_CASE("mcp_requests/hosted_download_names_are_strict_and_expiration_is_anchored_at_publication", "[mcp_requests]") {
+TEST_CASE("mcp_requests/hosted_download_names_are_strict_and_expiration_is_anchored_at_publication", "[mcp_requests] [contract]") {
   const char *name = "1700000000-0123456789abcdef0123456789abcdef.png";
   int64_t expiry = 0;
   REQUIRE(mcp_download_name(name, &expiry));
@@ -383,7 +382,7 @@ TEST_CASE("mcp_requests/hosted_download_names_are_strict_and_expiration_is_ancho
   REQUIRE((platform_rmdir_recursive(directory)) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("mcp_requests/hosted_profile_accepts_url_and_stages_requested_media_format", "[mcp_requests]") {
+TEST_CASE("mcp_requests/hosted_profile_accepts_url_and_stages_requested_media_format", "[mcp_requests] [contract]") {
   char directory[PLATFORM_MAX_PATH_LENGTH];
   REQUIRE((platform_mkdtemp(directory, sizeof(directory), "mcp-hosted-contract")) == (ASCIICHAT_OK));
   mcp_policy_t policy = {.hosted = true, .restricted = true};
@@ -401,7 +400,7 @@ TEST_CASE("mcp_requests/hosted_profile_accepts_url_and_stages_requested_media_fo
   REQUIRE((platform_rmdir_recursive(directory)) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("mcp_requests/hosted_default_format_tracks_snapshot_mode", "[mcp_requests]") {
+TEST_CASE("mcp_requests/hosted_default_format_tracks_snapshot_mode", "[mcp_requests] [contract]") {
   char directory[PLATFORM_MAX_PATH_LENGTH];
   REQUIRE((platform_mkdtemp(directory, sizeof(directory), "mcp-format-contract")) == (ASCIICHAT_OK));
   mcp_policy_t policy = {.hosted = true, .restricted = true};
@@ -419,7 +418,7 @@ TEST_CASE("mcp_requests/hosted_default_format_tracks_snapshot_mode", "[mcp_reque
   REQUIRE((platform_rmdir_recursive(directory)) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("mcp_requests/gif_media_defaults_to_animation_and_respects_snapshot_options", "[mcp_requests]") {
+TEST_CASE("mcp_requests/gif_media_defaults_to_animation_and_respects_snapshot_options", "[mcp_requests] [contract]") {
   char directory[PLATFORM_MAX_PATH_LENGTH];
   REQUIRE((platform_mkdtemp(directory, sizeof(directory), "mcp-gif-contract")) == (ASCIICHAT_OK));
   mcp_policy_t policy = {.hosted = true, .restricted = true};

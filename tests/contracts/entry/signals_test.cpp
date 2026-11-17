@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
 #include <libplatform/system.h>
 #include <libplatform/filesystem.h>
@@ -86,7 +85,7 @@ static void teardown(void) {
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-TEST_CASE("entry_signals/signal_exit_sets_the_global_flag_before_notifying_the_mode_owner", "[entry_signals]") {
+TEST_CASE("entry_signals/signal_exit_sets_the_global_flag_before_notifying_the_mode_owner", "[entry_signals] [contract]") {
   REQUIRE(!(should_exit()));
   signal_exit();
   REQUIRE(should_exit());
@@ -97,7 +96,7 @@ TEST_CASE("entry_signals/signal_exit_sets_the_global_flag_before_notifying_the_m
   REQUIRE(should_exit());
   REQUIRE((interrupts) == (1));
 }
-TEST_CASE("entry_signals/console_close_and_break_follow_help_dismissal_then_shutdown_then_forced_exit", "[entry_signals]") {
+TEST_CASE("entry_signals/console_close_and_break_follow_help_dismissal_then_shutdown_then_forced_exit", "[entry_signals] [contract]") {
   REQUIRE(!(console_ctrl_handler((console_ctrl_event_t)999)));
   REQUIRE(!(should_exit()));
   REQUIRE((interrupts) == (0));
@@ -117,7 +116,7 @@ TEST_CASE("entry_signals/console_close_and_break_follow_help_dismissal_then_shut
   REQUIRE((interrupts) == (1));
 }
 #ifndef _WIN32
-TEST_CASE("entry_signals/posix_interrupt_dismisses_help_and_termination_interrupts_the_owner", "[entry_signals]") {
+TEST_CASE("entry_signals/posix_interrupt_dismisses_help_and_termination_interrupts_the_owner", "[entry_signals] [contract]") {
   help_active = true;
   handle_sigterm(SIGINT);
   REQUIRE(!(should_exit()));
@@ -134,7 +133,7 @@ TEST_CASE("entry_signals/posix_interrupt_dismisses_help_and_termination_interrup
   }
 }
 #endif
-TEST_CASE("entry_signals/mode_lookup_rejects_out_of_range_values_and_log_paths_keep_mode_names", "[entry_signals]") {
+TEST_CASE("entry_signals/mode_lookup_rejects_out_of_range_values_and_log_paths_keep_mode_names", "[entry_signals] [contract]") {
   const char *names[] = {"server.log", "client.log", "mirror.log", "acds.log", "discovery.log", "mcp-server.log"};
   for (int mode = MODE_SERVER; mode < MODE_INVALID; ++mode) {
     REQUIRE((find_mode((asciichat_mode_t)mode)) != nullptr);

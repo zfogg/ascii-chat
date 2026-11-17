@@ -4,7 +4,6 @@
  * @brief Unit tests for cryptographic key validation
  */
 
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/keys_validation.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/crypto/keys.h>
@@ -17,7 +16,7 @@
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("crypto_validation/validate_public_key_valid_ed25519", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_public_key_valid_ed25519", "[crypto_validation] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_ED25519;
@@ -32,12 +31,12 @@ TEST_CASE("crypto_validation/validate_public_key_valid_ed25519", "[crypto_valida
   REQUIRE((result) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_validation/validate_public_key_null", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_public_key_null", "[crypto_validation] [unit]") {
   asciichat_error_t result = validate_public_key(NULL);
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_validation/validate_public_key_unknown_type", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_public_key_unknown_type", "[crypto_validation] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_UNKNOWN;
@@ -50,7 +49,7 @@ TEST_CASE("crypto_validation/validate_public_key_unknown_type", "[crypto_validat
   REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
-TEST_CASE("crypto_validation/validate_public_key_all_zeros", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_public_key_all_zeros", "[crypto_validation] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_ED25519;
@@ -60,7 +59,7 @@ TEST_CASE("crypto_validation/validate_public_key_all_zeros", "[crypto_validation
   REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
-TEST_CASE("crypto_validation/validate_public_key_comment_too_long", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_public_key_comment_too_long", "[crypto_validation] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_ED25519;
@@ -81,7 +80,7 @@ TEST_CASE("crypto_validation/validate_public_key_comment_too_long", "[crypto_val
 // Private Key Validation Tests
 // =============================================================================
 
-TEST_CASE("crypto_validation/validate_private_key_valid_ed25519", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_private_key_valid_ed25519", "[crypto_validation] [unit]") {
   private_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_ED25519;
@@ -96,12 +95,12 @@ TEST_CASE("crypto_validation/validate_private_key_valid_ed25519", "[crypto_valid
   REQUIRE((result) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_validation/validate_private_key_null", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_private_key_null", "[crypto_validation] [unit]") {
   asciichat_error_t result = validate_private_key(NULL);
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_validation/validate_private_key_all_zeros", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_private_key_all_zeros", "[crypto_validation] [unit]") {
   private_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_ED25519;
@@ -115,68 +114,68 @@ TEST_CASE("crypto_validation/validate_private_key_all_zeros", "[crypto_validatio
 // Key Format Validation Tests
 // =============================================================================
 
-TEST_CASE("crypto_validation/validate_ssh_key_format_valid", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_ssh_key_format_valid", "[crypto_validation] [unit]") {
   const char *valid_ssh_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
 
   asciichat_error_t result = validate_ssh_key_format(valid_ssh_key);
   REQUIRE((result) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_validation/validate_ssh_key_format_null", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_ssh_key_format_null", "[crypto_validation] [unit]") {
   asciichat_error_t result = validate_ssh_key_format(NULL);
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_validation/validate_ssh_key_format_wrong_prefix", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_ssh_key_format_wrong_prefix", "[crypto_validation] [unit]") {
   const char *wrong_prefix = "ssh-rsa AAAAB3NzaC1...";
 
   asciichat_error_t result = validate_ssh_key_format(wrong_prefix);
   REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
-TEST_CASE("crypto_validation/validate_ssh_key_format_no_data", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_ssh_key_format_no_data", "[crypto_validation] [unit]") {
   const char *no_data = "ssh-ed25519 ";
 
   asciichat_error_t result = validate_ssh_key_format(no_data);
   REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
-TEST_CASE("crypto_validation/validate_gpg_key_format_valid", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_gpg_key_format_valid", "[crypto_validation] [unit]") {
   const char *valid_gpg = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: GnuPG v2\n\nmQENBF...\n-----END PGP PUBLIC KEY BLOCK-----\n";
 
   asciichat_error_t result = validate_gpg_key_format(valid_gpg);
   REQUIRE((result) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_validation/validate_gpg_key_format_missing_header", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_gpg_key_format_missing_header", "[crypto_validation] [unit]") {
   const char *no_header = "This is not a GPG key\n-----END PGP PUBLIC KEY BLOCK-----\n";
 
   asciichat_error_t result = validate_gpg_key_format(no_header);
   REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
-TEST_CASE("crypto_validation/validate_gpg_key_format_missing_footer", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_gpg_key_format_missing_footer", "[crypto_validation] [unit]") {
   const char *no_footer = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nmQENBF...\n";
 
   asciichat_error_t result = validate_gpg_key_format(no_footer);
   REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
-TEST_CASE("crypto_validation/validate_x25519_key_format_valid", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_x25519_key_format_valid", "[crypto_validation] [unit]") {
   const char *valid_hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
   asciichat_error_t result = validate_x25519_key_format(valid_hex);
   REQUIRE((result) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_validation/validate_x25519_key_format_wrong_length", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_x25519_key_format_wrong_length", "[crypto_validation] [unit]") {
   const char *too_short = "0123456789abcdef";
 
   asciichat_error_t result = validate_x25519_key_format(too_short);
   REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
-TEST_CASE("crypto_validation/validate_x25519_key_format_invalid_char", "[crypto_validation]") {
+TEST_CASE("crypto_validation/validate_x25519_key_format_invalid_char", "[crypto_validation] [unit]") {
   const char *invalid_char = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeg"; // 'g' is invalid
 
   asciichat_error_t result = validate_x25519_key_format(invalid_char);
@@ -187,7 +186,7 @@ TEST_CASE("crypto_validation/validate_x25519_key_format_invalid_char", "[crypto_
 // Key Strength Tests
 // =============================================================================
 
-TEST_CASE("crypto_validation/check_key_strength_normal", "[crypto_validation]") {
+TEST_CASE("crypto_validation/check_key_strength_normal", "[crypto_validation] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_ED25519;
@@ -204,7 +203,7 @@ TEST_CASE("crypto_validation/check_key_strength_normal", "[crypto_validation]") 
   REQUIRE((is_weak) == (false));
 }
 
-TEST_CASE("crypto_validation/check_key_strength_all_ones", "[crypto_validation]") {
+TEST_CASE("crypto_validation/check_key_strength_all_ones", "[crypto_validation] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_ED25519;
@@ -223,7 +222,7 @@ TEST_CASE("crypto_validation/check_key_strength_all_ones", "[crypto_validation]"
 // Key Pattern Tests
 // =============================================================================
 
-TEST_CASE("crypto_validation/check_key_patterns_sequential", "[crypto_validation]") {
+TEST_CASE("crypto_validation/check_key_patterns_sequential", "[crypto_validation] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_ED25519;
@@ -240,7 +239,7 @@ TEST_CASE("crypto_validation/check_key_patterns_sequential", "[crypto_validation
   REQUIRE((has_weak_patterns) == (true));
 }
 
-TEST_CASE("crypto_validation/check_key_patterns_random", "[crypto_validation]") {
+TEST_CASE("crypto_validation/check_key_patterns_random", "[crypto_validation] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_ED25519;
@@ -261,7 +260,7 @@ TEST_CASE("crypto_validation/check_key_patterns_random", "[crypto_validation]") 
 // Key Comparison Tests
 // =============================================================================
 
-TEST_CASE("crypto_validation/compare_public_keys_equal", "[crypto_validation]") {
+TEST_CASE("crypto_validation/compare_public_keys_equal", "[crypto_validation] [unit]") {
   public_key_t key1, key2;
   memset(&key1, 0, sizeof(key1));
   memset(&key2, 0, sizeof(key2));
@@ -281,7 +280,7 @@ TEST_CASE("crypto_validation/compare_public_keys_equal", "[crypto_validation]") 
   REQUIRE((are_equal) == (true));
 }
 
-TEST_CASE("crypto_validation/compare_public_keys_different", "[crypto_validation]") {
+TEST_CASE("crypto_validation/compare_public_keys_different", "[crypto_validation] [unit]") {
   public_key_t key1, key2;
   memset(&key1, 0, sizeof(key1));
   memset(&key2, 0, sizeof(key2));
@@ -302,7 +301,7 @@ TEST_CASE("crypto_validation/compare_public_keys_different", "[crypto_validation
   REQUIRE((are_equal) == (false));
 }
 
-TEST_CASE("crypto_validation/compare_public_keys_different_types", "[crypto_validation]") {
+TEST_CASE("crypto_validation/compare_public_keys_different_types", "[crypto_validation] [unit]") {
   public_key_t key1, key2;
   memset(&key1, 0, sizeof(key1));
   memset(&key2, 0, sizeof(key2));
@@ -326,7 +325,7 @@ TEST_CASE("crypto_validation/compare_public_keys_different_types", "[crypto_vali
 // Key Fingerprint Tests
 // =============================================================================
 
-TEST_CASE("crypto_validation/generate_key_fingerprint_valid", "[crypto_validation]") {
+TEST_CASE("crypto_validation/generate_key_fingerprint_valid", "[crypto_validation] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_ED25519;
@@ -352,7 +351,7 @@ TEST_CASE("crypto_validation/generate_key_fingerprint_valid", "[crypto_validatio
   REQUIRE((all_zero) == (false));
 }
 
-TEST_CASE("crypto_validation/generate_key_fingerprint_deterministic", "[crypto_validation]") {
+TEST_CASE("crypto_validation/generate_key_fingerprint_deterministic", "[crypto_validation] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_ED25519;
@@ -370,7 +369,7 @@ TEST_CASE("crypto_validation/generate_key_fingerprint_deterministic", "[crypto_v
   REQUIRE(sodium_memcmp(fingerprint1, fingerprint2, 32) == 0);
 }
 
-TEST_CASE("crypto_validation/check_key_fingerprint_match", "[crypto_validation]") {
+TEST_CASE("crypto_validation/check_key_fingerprint_match", "[crypto_validation] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_ED25519;
@@ -389,7 +388,7 @@ TEST_CASE("crypto_validation/check_key_fingerprint_match", "[crypto_validation]"
   REQUIRE((matches) == (true));
 }
 
-TEST_CASE("crypto_validation/check_key_fingerprint_no_match", "[crypto_validation]") {
+TEST_CASE("crypto_validation/check_key_fingerprint_no_match", "[crypto_validation] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_ED25519;
@@ -412,7 +411,7 @@ TEST_CASE("crypto_validation/check_key_fingerprint_no_match", "[crypto_validatio
 // Key Expiry Tests
 // =============================================================================
 
-TEST_CASE("crypto_validation/check_key_expiry", "[crypto_validation]") {
+TEST_CASE("crypto_validation/check_key_expiry", "[crypto_validation] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_ED25519;

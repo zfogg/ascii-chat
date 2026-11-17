@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/tests/logging.h>
@@ -135,7 +135,7 @@ static int invoke(device_stream_t *stream, const float *input, float *output, un
   return stream->callback(input, output, count, &time, flags, stream->data);
 }
 
-TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/duplex_callback_preserves_capture_scales_playback_and_silences_underrun_and_shutdown", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/duplex_callback_preserves_capture_scales_playback_and_silences_underrun_and_shutdown", "[audio_device] [contract]") {
   REQUIRE((audio_start_duplex(&context)) == (ASCIICHAT_OK));
   REQUIRE((context.running && context.duplex_stream && !context.separate_streams));
   REQUIRE((opens) == (1));
@@ -178,7 +178,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/duplex_callback_preserves_cap
   REQUIRE((closes) == (1));
 }
 
-TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/separate_native_rate_callbacks_convert_constant_samples_and_ignore_shutdown_capture", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/separate_native_rate_callbacks_convert_constant_samples_and_ignore_shutdown_capture", "[audio_device] [contract]") {
   input_info.defaultSampleRate = 24000;
   output_info.defaultSampleRate = 32000;
   REQUIRE((audio_start_duplex(&context)) == (ASCIICHAT_OK));
@@ -214,7 +214,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/separate_native_rate_callback
   REQUIRE((context.render_buffer) == nullptr);
 }
 
-TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/duplex_open_failure_falls_back_and_retires_all_partial_streams", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/duplex_open_failure_falls_back_and_retires_all_partial_streams", "[audio_device] [contract]") {
   fail_duplex = true;
   REQUIRE((audio_start_duplex(&context)) == (ASCIICHAT_OK));
   REQUIRE((context.separate_streams && context.input_stream && context.output_stream));
@@ -226,7 +226,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/duplex_open_failure_falls_bac
     REQUIRE(streams[i].closed);
 }
 
-TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/channel_retry_closes_partial_stream_without_unnecessary_rate_change", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/channel_retry_closes_partial_stream_without_unnecessary_rate_change", "[audio_device] [contract]") {
   context.playback_only = true;
   fail_open = 1;
   output_info.defaultSampleRate = 44100;
@@ -239,7 +239,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/channel_retry_closes_partial_
   REQUIRE((closes) == (2));
 }
 
-TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/start_failure_releases_both_streams_and_allows_clean_retry", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/start_failure_releases_both_streams_and_allows_clean_retry", "[audio_device] [contract]") {
   input_info.defaultSampleRate = 24000;
   fail_start = 2;
   REQUIRE((audio_start_duplex(&context)) == (ERROR_AUDIO));
@@ -255,7 +255,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/start_failure_releases_both_s
   REQUIRE((closes) == (opens));
 }
 
-TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/absent_microphone_and_failed_devices_report_audio_error_without_starting_worker", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/absent_microphone_and_failed_devices_report_audio_error_without_starting_worker", "[audio_device] [contract]") {
   no_input = true;
   REQUIRE((audio_start_duplex(&context)) == (ERROR_AUDIO));
   REQUIRE(!(context.worker_running));
@@ -270,7 +270,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/absent_microphone_and_failed_
   REQUIRE((closes) == (opens));
 }
 
-TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/real_worker_publishes_microphone_samples_with_configured_sensitivity", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/real_worker_publishes_microphone_samples_with_configured_sensitivity", "[audio_device] [contract]") {
   REQUIRE((options_set_double("microphone_sensitivity", 0.25)) == (ASCIICHAT_OK));
   REQUIRE((audio_start_duplex(&context)) == (ASCIICHAT_OK));
   float input[480 * AUDIO_CHANNELS], output[480 * AUDIO_CHANNELS], captured[480 * AUDIO_CHANNELS];
@@ -290,7 +290,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/real_worker_publishes_microph
 
 // Signal counters are debug instrumentation; the sample-delivery tests run in every build.
 #ifndef NDEBUG
-TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/capture_callbacks_notify_once_per_twenty_millisecond_batch", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/capture_callbacks_notify_once_per_twenty_millisecond_batch", "[audio_device] [contract]") {
   REQUIRE((audio_start_duplex(&context)) == (ASCIICHAT_OK));
   pause_processing();
   float input[480 * AUDIO_CHANNELS] = {0}, output[480 * AUDIO_CHANNELS];
@@ -303,7 +303,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/capture_callbacks_notify_once
 }
 #endif
 
-TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/real_worker_preserves_both_ten_millisecond_capture_blocks", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/real_worker_preserves_both_ten_millisecond_capture_blocks", "[audio_device] [contract]") {
   REQUIRE((audio_start_duplex(&context)) == (ASCIICHAT_OK));
   float input[960 * AUDIO_CHANNELS], output[480 * AUDIO_CHANNELS], captured[960 * AUDIO_CHANNELS];
   for (unsigned i = 0; i < 960 * AUDIO_CHANNELS; ++i)
@@ -318,7 +318,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/real_worker_preserves_both_te
     REQUIRE((captured[i]) == Catch::Approx(input[i]));
 }
 
-TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/stereo_only_microphone_accepts_mono_speech_with_explicit_capture_fallback", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/stereo_only_microphone_accepts_mono_speech_with_explicit_capture_fallback", "[audio_device] [contract]") {
   options_t options = *options_get();
   options.microphone_channels = 1;
   REQUIRE((options_state_set(&options)) == (ASCIICHAT_OK));
@@ -337,7 +337,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/stereo_only_microphone_accept
     REQUIRE((captured[i]) == (0.25f));
 }
 
-TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/mono_speakers_receive_a_centered_downmix_of_stereo_playback", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/mono_speakers_receive_a_centered_downmix_of_stereo_playback", "[audio_device] [contract]") {
   context.playback_only = true;
   output_info.maxOutputChannels = 1;
   REQUIRE((audio_start_duplex(&context)) == (ASCIICHAT_OK));
@@ -355,7 +355,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/mono_speakers_receive_a_cente
     REQUIRE((output[i]) == (-0.25f));
 }
 
-TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/four_channel_interface_routes_only_the_selected_stereo_pair", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/four_channel_interface_routes_only_the_selected_stereo_pair", "[audio_device] [contract]") {
   input_info.maxInputChannels = 4;
   options_t options = *options_get();
   options.microphone_channel = 2;
@@ -378,7 +378,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/four_channel_interface_routes
   }
 }
 
-TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/invalid_interface_pair_fails_before_opening_any_stream", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/invalid_interface_pair_fails_before_opening_any_stream", "[audio_device] [contract]") {
   options_t options = *options_get();
   options.microphone_channel = 1;
   REQUIRE((options_state_set(&options)) == (ASCIICHAT_OK));
@@ -387,7 +387,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/invalid_interface_pair_fails_
   REQUIRE(!(context.worker_running));
 }
 
-TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/remote_only_capture_without_playback_needs_no_portaudio_device", "[audio_device]") {
+TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/remote_only_capture_without_playback_needs_no_portaudio_device", "[audio_device] [contract]") {
   options_t options = *options_get();
   options.audio_capture_source = AUDIO_CAPTURE_SOURCE_REMOTE;
   options.audio_no_playback = true;

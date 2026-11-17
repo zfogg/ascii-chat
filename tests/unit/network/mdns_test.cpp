@@ -11,7 +11,6 @@
  * - Error handling
  */
 
-#include <catch2/catch_all.hpp>
 #include <stdlib.h>
 #include <string.h>
 
@@ -29,7 +28,7 @@ static void dummy_callback(const asciichat_mdns_discovery_t *discovery, void *us
  * @brief Test mDNS context initialization
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("mdns/init_creates_valid_context", "[mdns]") {
+TEST_CASE("mdns/init_creates_valid_context", "[mdns] [unit]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -43,7 +42,7 @@ TEST_CASE("mdns/init_creates_valid_context", "[mdns]") {
 /**
  * @brief Test mDNS context cleanup
  */
-TEST_CASE("mdns/shutdown_frees_resources", "[mdns]") {
+TEST_CASE("mdns/shutdown_frees_resources", "[mdns] [unit]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -57,7 +56,7 @@ TEST_CASE("mdns/shutdown_frees_resources", "[mdns]") {
 /**
  * @brief Test mDNS service advertisement
  */
-TEST_CASE("mdns/advertise_service_succeeds", "[mdns]") {
+TEST_CASE("mdns/advertise_service_succeeds", "[mdns] [unit]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -79,7 +78,7 @@ TEST_CASE("mdns/advertise_service_succeeds", "[mdns]") {
 /**
  * @brief Test mDNS service advertisement with NULL context
  */
-TEST_CASE("mdns/advertise_service_null_context_fails", "[mdns]") {
+TEST_CASE("mdns/advertise_service_null_context_fails", "[mdns] [unit]") {
   asciichat_mdns_service_t service = {
       .name = "test-service",
       .type = "_test._tcp",
@@ -96,7 +95,7 @@ TEST_CASE("mdns/advertise_service_null_context_fails", "[mdns]") {
 /**
  * @brief Test mDNS service advertisement with NULL service
  */
-TEST_CASE("mdns/advertise_service_null_service_fails", "[mdns]") {
+TEST_CASE("mdns/advertise_service_null_service_fails", "[mdns] [unit]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -109,7 +108,7 @@ TEST_CASE("mdns/advertise_service_null_service_fails", "[mdns]") {
 /**
  * @brief Test mDNS query initialization
  */
-TEST_CASE("mdns/query_initializes_successfully", "[mdns]") {
+TEST_CASE("mdns/query_initializes_successfully", "[mdns] [unit]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -126,7 +125,7 @@ TEST_CASE("mdns/query_initializes_successfully", "[mdns]") {
 /**
  * @brief Test mDNS query with invalid service type
  */
-TEST_CASE("mdns/query_with_empty_service_type_fails", "[mdns]") {
+TEST_CASE("mdns/query_with_empty_service_type_fails", "[mdns] [unit]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -139,7 +138,7 @@ TEST_CASE("mdns/query_with_empty_service_type_fails", "[mdns]") {
 /**
  * @brief Test mDNS update with valid context
  */
-TEST_CASE("mdns/update_processes_responses", "[mdns]") {
+TEST_CASE("mdns/update_processes_responses", "[mdns] [unit]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -153,7 +152,7 @@ TEST_CASE("mdns/update_processes_responses", "[mdns]") {
 /**
  * @brief Test mDNS update with NULL context
  */
-TEST_CASE("mdns/update_null_context_fails", "[mdns]") {
+TEST_CASE("mdns/update_null_context_fails", "[mdns] [unit]") {
   asciichat_error_t result = asciichat_mdns_update(NULL, 100);
   REQUIRE((result) != (ASCIICHAT_OK));
 }
@@ -161,7 +160,7 @@ TEST_CASE("mdns/update_null_context_fails", "[mdns]") {
 /**
  * @brief Test mDNS socket retrieval
  */
-TEST_CASE("mdns/get_socket_returns_valid_descriptor", "[mdns]") {
+TEST_CASE("mdns/get_socket_returns_valid_descriptor", "[mdns] [unit]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -174,7 +173,7 @@ TEST_CASE("mdns/get_socket_returns_valid_descriptor", "[mdns]") {
 /**
  * @brief Test mDNS socket retrieval with NULL context
  */
-TEST_CASE("mdns/get_socket_null_context_returns_invalid", "[mdns]") {
+TEST_CASE("mdns/get_socket_null_context_returns_invalid", "[mdns] [unit]") {
   int socket = asciichat_mdns_get_socket(NULL);
   REQUIRE((socket) == (-1));
 }
@@ -182,7 +181,7 @@ TEST_CASE("mdns/get_socket_null_context_returns_invalid", "[mdns]") {
 /**
  * @brief Test service unadvertisement
  */
-TEST_CASE("mdns/unadvertise_service_succeeds", "[mdns]") {
+TEST_CASE("mdns/unadvertise_service_succeeds", "[mdns] [unit]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -195,7 +194,7 @@ TEST_CASE("mdns/unadvertise_service_succeeds", "[mdns]") {
 /**
  * @brief Test service unadvertisement with NULL context
  */
-TEST_CASE("mdns/unadvertise_service_null_context_fails", "[mdns]") {
+TEST_CASE("mdns/unadvertise_service_null_context_fails", "[mdns] [unit]") {
   asciichat_error_t result = asciichat_mdns_unadvertise(NULL, "test-service");
   REQUIRE((result) != (ASCIICHAT_OK));
 }
@@ -331,7 +330,7 @@ static void capture_bonjour(const asciichat_mdns_discovery_t *found, void *conte
   ++callbacks;
   REQUIRE((context) == (&received));
 }
-TEST_CASE("mdns/bonjour_browse_resolves_address_metadata_and_closes_every_handle", "[mdns]") {
+TEST_CASE("mdns/bonjour_browse_resolves_address_metadata_and_closes_every_handle", "[mdns] [unit]") {
   memset(dns_refs, 0, sizeof(dns_refs));
   fault = callbacks = closed_refs = 0;
   asciichat_mdns_t *context = SAFE_CALLOC(1, sizeof(*context), asciichat_mdns_t *);
@@ -358,7 +357,7 @@ TEST_CASE("mdns/bonjour_browse_resolves_address_metadata_and_closes_every_handle
   contract_mdns_destroy(context);
   REQUIRE((closed_refs) == (6));
 }
-TEST_CASE("mdns/bonjour_failures_preserve_context_and_release_partial_queries", "[mdns]") {
+TEST_CASE("mdns/bonjour_failures_preserve_context_and_release_partial_queries", "[mdns] [unit]") {
   for (fault = 1; fault <= 9; ++fault) {
     memset(dns_refs, 0, sizeof(dns_refs));
     callbacks = closed_refs = 0;
@@ -377,7 +376,7 @@ TEST_CASE("mdns/bonjour_failures_preserve_context_and_release_partial_queries", 
     CLEAR_ERRNO_ALL();
   }
 }
-TEST_CASE("mdns/disappearing_bonjour_records_do_not_abort_other_discoveries", "[mdns]") {
+TEST_CASE("mdns/disappearing_bonjour_records_do_not_abort_other_discoveries", "[mdns] [unit]") {
   for (fault = 10; fault <= 13; ++fault) {
     memset(dns_refs, 0, sizeof(dns_refs));
     callbacks = closed_refs = 0;

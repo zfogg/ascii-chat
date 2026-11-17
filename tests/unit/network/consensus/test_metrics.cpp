@@ -4,7 +4,6 @@
  * @brief Tests for metrics collection and wire protocol
  */
 
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/consensus/metrics.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/util/endian.h>
@@ -25,7 +24,7 @@ static void make_uuid(uint8_t id[16], int value) {
  * Test: Basic measurement returns valid structure
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("consensus_metrics/measure_basic", "[consensus_metrics]") {
+TEST_CASE("consensus_metrics/measure_basic", "[consensus_metrics] [unit]") {
   uint8_t my_id[16];
   make_uuid(my_id, 42);
 
@@ -43,7 +42,7 @@ TEST_CASE("consensus_metrics/measure_basic", "[consensus_metrics]") {
 /**
  * Test: Serialize to wire format with network byte order conversion
  */
-TEST_CASE("consensus_metrics/wire_format_roundtrip", "[consensus_metrics]") {
+TEST_CASE("consensus_metrics/wire_format_roundtrip", "[consensus_metrics] [unit]") {
   uint8_t my_id[16];
   make_uuid(my_id, 123);
 
@@ -93,7 +92,7 @@ TEST_CASE("consensus_metrics/wire_format_roundtrip", "[consensus_metrics]") {
 /**
  * Test: Wire format uses network byte order correctly
  */
-TEST_CASE("consensus_metrics/wire_format_byte_order", "[consensus_metrics]") {
+TEST_CASE("consensus_metrics/wire_format_byte_order", "[consensus_metrics] [unit]") {
   participant_metrics_t original = {0};
   original.nat_tier = 3;
   original.upload_kbps = 0x12345678;
@@ -120,7 +119,7 @@ TEST_CASE("consensus_metrics/wire_format_byte_order", "[consensus_metrics]") {
 /**
  * Test: Collection creation and destruction
  */
-TEST_CASE("consensus_metrics/collection_create_destroy", "[consensus_metrics]") {
+TEST_CASE("consensus_metrics/collection_create_destroy", "[consensus_metrics] [unit]") {
   consensus_metrics_collection_t *collection = NULL;
   asciichat_error_t err = consensus_metrics_collection_create(&collection);
 
@@ -135,7 +134,7 @@ TEST_CASE("consensus_metrics/collection_create_destroy", "[consensus_metrics]") 
 /**
  * Test: Accumulate metrics from multiple participants
  */
-TEST_CASE("consensus_metrics/accumulate_metrics", "[consensus_metrics]") {
+TEST_CASE("consensus_metrics/accumulate_metrics", "[consensus_metrics] [unit]") {
   consensus_metrics_collection_t *collection = NULL;
   consensus_metrics_collection_create(&collection);
 
@@ -174,7 +173,7 @@ TEST_CASE("consensus_metrics/accumulate_metrics", "[consensus_metrics]") {
 /**
  * Test: Collection auto-resizes when capacity exceeded
  */
-TEST_CASE("consensus_metrics/collection_resize", "[consensus_metrics]") {
+TEST_CASE("consensus_metrics/collection_resize", "[consensus_metrics] [unit]") {
   consensus_metrics_collection_t *collection = NULL;
   consensus_metrics_collection_create(&collection);
 
@@ -207,7 +206,7 @@ TEST_CASE("consensus_metrics/collection_resize", "[consensus_metrics]") {
 /**
  * Test: STUN probe success rate is 0-100%
  */
-TEST_CASE("consensus_metrics/stun_probe_success", "[consensus_metrics]") {
+TEST_CASE("consensus_metrics/stun_probe_success", "[consensus_metrics] [unit]") {
   uint8_t my_id[16];
   make_uuid(my_id, 777);
 
@@ -224,7 +223,7 @@ TEST_CASE("consensus_metrics/stun_probe_success", "[consensus_metrics]") {
 /**
  * Test: Invalid parameters return errors
  */
-TEST_CASE("consensus_metrics/invalid_parameters", "[consensus_metrics]") {
+TEST_CASE("consensus_metrics/invalid_parameters", "[consensus_metrics] [unit]") {
   participant_metrics_t metrics = {0};
   uint8_t id[16] = {0};
 

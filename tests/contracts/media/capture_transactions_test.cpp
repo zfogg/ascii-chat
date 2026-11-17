@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
 #include "../../../src/common/session/capture.h"
 #include <ascii-chat/audio/audio.h>
@@ -183,7 +183,7 @@ static void pending_replacement(void) {
   REQUIRE((current->loaded_source) != nullptr);
   REQUIRE((current->loaded_frame) != nullptr);
 }
-TEST_CASE("capture_transactions/automatic_configuration_selects_each_source_kind_and_preserves_explicit_paths", "[capture_transactions]") {
+TEST_CASE("capture_transactions/automatic_configuration_selects_each_source_kind_and_preserves_explicit_paths", "[capture_transactions] [contract]") {
   for (unsigned mode = 0; mode < 4; ++mode) {
     options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
     *v = *options_get();
@@ -216,7 +216,7 @@ TEST_CASE("capture_transactions/automatic_configuration_selects_each_source_kind
     camera_source = NULL;
   }
 }
-TEST_CASE("capture_transactions/source_and_video_start_failures_release_partial_context_and_preserve_error_cause", "[capture_transactions]") {
+TEST_CASE("capture_transactions/source_and_video_start_failures_release_partial_context_and_preserve_error_cause", "[capture_transactions] [contract]") {
   session_capture_config_t config = {.type = MEDIA_SOURCE_FILE, .path = first_path};
   fail_source = true;
   REQUIRE((session_capture_create(&config)) == nullptr);
@@ -236,7 +236,7 @@ TEST_CASE("capture_transactions/source_and_video_start_failures_release_partial_
   REQUIRE((current) != nullptr);
   REQUIRE((current->target_fps) == (60));
 }
-TEST_CASE("capture_transactions/join_failure_defers_commit_without_releasing_either_source", "[capture_transactions]") {
+TEST_CASE("capture_transactions/join_failure_defers_commit_without_releasing_either_source", "[capture_transactions] [contract]") {
   open_first();
   media_source_t *original = current->source;
   uint64_t epoch = session_capture_source_epoch(current);
@@ -256,7 +256,7 @@ TEST_CASE("capture_transactions/join_failure_defers_commit_without_releasing_eit
   REQUIRE(!(current->loader_created));
   REQUIRE((source_destroys) == (before + 1));
 }
-TEST_CASE("capture_transactions/audio_stop_failure_discards_candidate_and_retains_presented_source", "[capture_transactions]") {
+TEST_CASE("capture_transactions/audio_stop_failure_discards_candidate_and_retains_presented_source", "[capture_transactions] [contract]") {
   open_first();
   REQUIRE((audio_init(&borrowed_audio)) == (ASCIICHAT_OK));
   session_capture_set_audio_context(current, &borrowed_audio);
@@ -273,7 +273,7 @@ TEST_CASE("capture_transactions/audio_stop_failure_discards_candidate_and_retain
   REQUIRE(!(current->loader_created));
   REQUIRE((start_calls) == (0));
 }
-TEST_CASE("capture_transactions/replacement_audio_start_failure_restores_previous_audio_and_video", "[capture_transactions]") {
+TEST_CASE("capture_transactions/replacement_audio_start_failure_restores_previous_audio_and_video", "[capture_transactions] [contract]") {
   open_first();
   REQUIRE((audio_init(&borrowed_audio)) == (ASCIICHAT_OK));
   session_capture_set_audio_context(current, &borrowed_audio);
@@ -290,7 +290,7 @@ TEST_CASE("capture_transactions/replacement_audio_start_failure_restores_previou
   REQUIRE((stop_calls) == (2));
   REQUIRE((current->loaded_source) == nullptr);
 }
-TEST_CASE("capture_transactions/failed_stop_of_replacement_audio_retains_the_borrowed_candidate_until_teardown", "[capture_transactions]") {
+TEST_CASE("capture_transactions/failed_stop_of_replacement_audio_retains_the_borrowed_candidate_until_teardown", "[capture_transactions] [contract]") {
   open_first();
   REQUIRE((audio_init(&borrowed_audio)) == (ASCIICHAT_OK));
   session_capture_set_audio_context(current, &borrowed_audio);
@@ -338,13 +338,13 @@ static void toggle_roundtrip(bool camera) {
   REQUIRE(borrowed_audio.playback_only);
   REQUIRE(borrowed_audio.monitor_local_media);
 }
-TEST_CASE("capture_transactions/hiding_file_media_uses_a_synthetic_camera_and_restores_playback", "[capture_transactions]") {
+TEST_CASE("capture_transactions/hiding_file_media_uses_a_synthetic_camera_and_restores_playback", "[capture_transactions] [contract]") {
   toggle_roundtrip(true);
 }
-TEST_CASE("capture_transactions/missing_camera_keeps_animations_available_and_restores_file_playback", "[capture_transactions]") {
+TEST_CASE("capture_transactions/missing_camera_keeps_animations_available_and_restores_file_playback", "[capture_transactions] [contract]") {
   toggle_roundtrip(false);
 }
-TEST_CASE("capture_transactions/file_audio_selection_and_bounded_reads_use_the_selected_source", "[capture_transactions]") {
+TEST_CASE("capture_transactions/file_audio_selection_and_bounded_reads_use_the_selected_source", "[capture_transactions] [contract]") {
   has_audio = true;
   session_capture_config_t config = {.type = MEDIA_SOURCE_FILE, .path = first_path, .enable_audio = true, .target_fps = 30};
   current = session_capture_create(&config);

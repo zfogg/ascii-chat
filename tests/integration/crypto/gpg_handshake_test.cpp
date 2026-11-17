@@ -7,7 +7,6 @@
  * Requires TEST_GPG_KEY_ID environment variable to be set.
  */
 
-#include <catch2/catch_all.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -272,7 +271,7 @@ static void *client_handshake_thread(void *arg) {
 // Tests
 // =============================================================================
 
-TEST_CASE("gpg_handshake/complete_gpg_handshake_with_authentication", "[gpg_handshake]") {
+TEST_CASE("gpg_handshake/complete_gpg_handshake_with_authentication", "[gpg_handshake] [integration]") {
   const char *test_key_id = get_test_gpg_key_id();
   if (!test_key_id)
     SKIP("test skipped");
@@ -333,7 +332,7 @@ TEST_CASE("gpg_handshake/complete_gpg_handshake_with_authentication", "[gpg_hand
   teardown_gpg_test_network();
 }
 
-TEST_CASE("gpg_handshake/gpg_key_parsing_and_verification", "[gpg_handshake]") {
+TEST_CASE("gpg_handshake/gpg_key_parsing_and_verification", "[gpg_handshake] [integration]") {
   const char *test_key_id = get_test_gpg_key_id();
   if (!test_key_id)
     SKIP("test skipped");

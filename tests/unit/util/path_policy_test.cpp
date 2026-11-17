@@ -1,10 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/util/path.h>
 #include <libplatform/filesystem.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
-TEST_CASE("path_policy/normalized_containment_checks_component_boundaries_and_traversal", "[path_policy]") {
+TEST_CASE("path_policy/normalized_containment_checks_component_boundaries_and_traversal", "[path_policy] [unit]") {
 #ifndef _WIN32
   char output[256];
   REQUIRE(path_normalize_copy("/tmp/base/./inner/../file", output, sizeof(output)));
@@ -26,7 +25,7 @@ TEST_CASE("path_policy/normalized_containment_checks_component_boundaries_and_tr
   REQUIRE(!(path_looks_like_path(NULL)));
 }
 
-TEST_CASE("path_policy/log_validation_protects_existing_unrelated_files_without_modifying_them", "[path_policy]") {
+TEST_CASE("path_policy/log_validation_protects_existing_unrelated_files_without_modifying_them", "[path_policy] [unit]") {
   char path[256];
   int fd;
   REQUIRE((platform_create_temp_file(path, sizeof(path), "ascii-path-policy", &fd)) == (0));
@@ -48,7 +47,7 @@ TEST_CASE("path_policy/log_validation_protects_existing_unrelated_files_without_
   platform_delete_temp_file(path);
 }
 
-TEST_CASE("path_policy/relative_key_paths_are_canonical_and_protected_system_paths_are_rejected", "[path_policy]") {
+TEST_CASE("path_policy/relative_key_paths_are_canonical_and_protected_system_paths_are_rejected", "[path_policy] [unit]") {
   char *normalized = NULL;
   REQUIRE((path_validate_user_path("./keys/../key.pub", PATH_ROLE_KEY_PUBLIC, &normalized)) == (ASCIICHAT_OK));
   REQUIRE((normalized) != nullptr);

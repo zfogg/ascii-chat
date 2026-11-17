@@ -4,7 +4,6 @@
  * @brief Ring consensus state machine unit tests
  */
 
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/consensus/state.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/network/consensus/topology.h>
@@ -46,7 +45,7 @@ static consensus_topology_t *make_test_topology(int my_idx, int num_participants
  * Basic Lifecycle Tests
  * ============================================================================ */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("state/create_and_destroy", "[state]") {
+TEST_CASE("state/create_and_destroy", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -64,7 +63,7 @@ TEST_CASE("state/create_and_destroy", "[state]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/create_invalid_params", "[state]") {
+TEST_CASE("state/create_invalid_params", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -90,7 +89,7 @@ TEST_CASE("state/create_invalid_params", "[state]") {
  * State Transition Tests
  * ============================================================================ */
 
-TEST_CASE("state/valid_transition_idle_to_collecting", "[state]") {
+TEST_CASE("state/valid_transition_idle_to_collecting", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -108,7 +107,7 @@ TEST_CASE("state/valid_transition_idle_to_collecting", "[state]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/valid_transition_collecting_to_collection_complete_non_leader", "[state]") {
+TEST_CASE("state/valid_transition_collecting_to_collection_complete_non_leader", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(0, 3); /* Non-leader */
   uint8_t my_id[16];
   make_uuid(my_id, 1);
@@ -132,7 +131,7 @@ TEST_CASE("state/valid_transition_collecting_to_collection_complete_non_leader",
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/valid_transition_collecting_to_election_start_leader", "[state]") {
+TEST_CASE("state/valid_transition_collecting_to_election_start_leader", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(2, 3); /* Leader (last position) */
   uint8_t my_id[16];
   make_uuid(my_id, 3);
@@ -158,7 +157,7 @@ TEST_CASE("state/valid_transition_collecting_to_election_start_leader", "[state]
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/valid_transition_election_start_to_election_complete", "[state]") {
+TEST_CASE("state/valid_transition_election_start_to_election_complete", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(2, 3); /* Leader */
   uint8_t my_id[16];
   make_uuid(my_id, 3);
@@ -183,7 +182,7 @@ TEST_CASE("state/valid_transition_election_start_to_election_complete", "[state]
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/valid_transition_election_complete_to_idle", "[state]") {
+TEST_CASE("state/valid_transition_election_complete_to_idle", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(2, 3); /* Leader */
   uint8_t my_id[16];
   make_uuid(my_id, 3);
@@ -213,7 +212,7 @@ TEST_CASE("state/valid_transition_election_complete_to_idle", "[state]") {
  * Invalid Transition Tests
  * ============================================================================ */
 
-TEST_CASE("state/invalid_transition_idle_to_election_start", "[state]") {
+TEST_CASE("state/invalid_transition_idle_to_election_start", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -229,7 +228,7 @@ TEST_CASE("state/invalid_transition_idle_to_election_start", "[state]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/invalid_transition_idle_to_collection_complete", "[state]") {
+TEST_CASE("state/invalid_transition_idle_to_collection_complete", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -245,7 +244,7 @@ TEST_CASE("state/invalid_transition_idle_to_collection_complete", "[state]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/invalid_transition_collecting_to_collecting", "[state]") {
+TEST_CASE("state/invalid_transition_collecting_to_collecting", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -262,7 +261,7 @@ TEST_CASE("state/invalid_transition_collecting_to_collecting", "[state]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/invalid_transition_election_complete_to_collection", "[state]") {
+TEST_CASE("state/invalid_transition_election_complete_to_collection", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(2, 3); /* Leader */
   uint8_t my_id[16];
   make_uuid(my_id, 3);
@@ -290,7 +289,7 @@ TEST_CASE("state/invalid_transition_election_complete_to_collection", "[state]")
  * Metrics Collection Tests
  * ============================================================================ */
 
-TEST_CASE("state/add_single_metric", "[state]") {
+TEST_CASE("state/add_single_metric", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -309,7 +308,7 @@ TEST_CASE("state/add_single_metric", "[state]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/add_multiple_metrics", "[state]") {
+TEST_CASE("state/add_multiple_metrics", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -329,7 +328,7 @@ TEST_CASE("state/add_multiple_metrics", "[state]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/metrics_array_grows", "[state]") {
+TEST_CASE("state/metrics_array_grows", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -351,7 +350,7 @@ TEST_CASE("state/metrics_array_grows", "[state]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/retrieve_metric_at_index", "[state]") {
+TEST_CASE("state/retrieve_metric_at_index", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -378,7 +377,7 @@ TEST_CASE("state/retrieve_metric_at_index", "[state]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/retrieve_metric_out_of_bounds", "[state]") {
+TEST_CASE("state/retrieve_metric_out_of_bounds", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -398,7 +397,7 @@ TEST_CASE("state/retrieve_metric_out_of_bounds", "[state]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/add_metrics_not_in_collecting_state", "[state]") {
+TEST_CASE("state/add_metrics_not_in_collecting_state", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -420,7 +419,7 @@ TEST_CASE("state/add_metrics_not_in_collecting_state", "[state]") {
  * Election Result Storage Tests
  * ============================================================================ */
 
-TEST_CASE("state/election_result_storage_best_lowest_rtt", "[state]") {
+TEST_CASE("state/election_result_storage_best_lowest_rtt", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(2, 3); /* Leader */
   uint8_t my_id[16];
   make_uuid(my_id, 3);
@@ -447,7 +446,7 @@ TEST_CASE("state/election_result_storage_best_lowest_rtt", "[state]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/election_result_storage_best_highest_bandwidth", "[state]") {
+TEST_CASE("state/election_result_storage_best_highest_bandwidth", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(2, 3); /* Leader */
   uint8_t my_id[16];
   make_uuid(my_id, 3);
@@ -474,7 +473,7 @@ TEST_CASE("state/election_result_storage_best_highest_bandwidth", "[state]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/election_result_backup_selection", "[state]") {
+TEST_CASE("state/election_result_backup_selection", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(2, 3); /* Leader */
   uint8_t my_id[16];
   make_uuid(my_id, 3);
@@ -505,7 +504,7 @@ TEST_CASE("state/election_result_backup_selection", "[state]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/get_election_result_not_complete", "[state]") {
+TEST_CASE("state/get_election_result_not_complete", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(2, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 3);
@@ -527,7 +526,7 @@ TEST_CASE("state/get_election_result_not_complete", "[state]") {
  * Leader Detection Tests
  * ============================================================================ */
 
-TEST_CASE("state/is_leader_true_for_last_position", "[state]") {
+TEST_CASE("state/is_leader_true_for_last_position", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(2, 3); /* Last position (leader) */
   uint8_t my_id[16];
   make_uuid(my_id, 3);
@@ -541,7 +540,7 @@ TEST_CASE("state/is_leader_true_for_last_position", "[state]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/is_leader_false_for_non_last_position", "[state]") {
+TEST_CASE("state/is_leader_false_for_non_last_position", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(0, 3); /* First position (not leader) */
   uint8_t my_id[16];
   make_uuid(my_id, 1);
@@ -555,7 +554,7 @@ TEST_CASE("state/is_leader_false_for_non_last_position", "[state]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("state/is_leader_true_single_participant", "[state]") {
+TEST_CASE("state/is_leader_true_single_participant", "[state] [unit]") {
   consensus_topology_t *topo = make_test_topology(0, 1); /* Only participant */
   uint8_t my_id[16];
   make_uuid(my_id, 1);

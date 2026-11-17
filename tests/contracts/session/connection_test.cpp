@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 #include "../worker_assert.h"
-#include <catch2/catch_all.hpp>
 #include "session/connection.h"
 #include <ascii-chat/common.h>
 #include <libplatform/socket.h>
@@ -166,10 +165,10 @@ static void teardown(void) {
   socket_cleanup();
   log_destroy();
 }
-TEST_CASE("session_connections/protocol_dispatch_and_packets", "[session_connections]") {
+TEST_CASE("session_connections/protocol_dispatch_and_packets", "[session_connections] [contract]") {
   test_session_protocol();
 }
-TEST_CASE("session_connections/webrtc_interrupt_cancels_pending_io", "[session_connections]") {
+TEST_CASE("session_connections/webrtc_interrupt_cancels_pending_io", "[session_connections] [contract]") {
   webrtc_interrupt_test();
 }
 
@@ -211,7 +210,7 @@ static void peer_released(network_connection_t *connection, void *context) {
   atomic_fetch_add_int(&closed_peer_releases, 1);
 }
 
-TEST_CASE("session_connections/disconnected_peer_preserves_receive_cause_without_queuing_rejection", "[session_connections]") {
+TEST_CASE("session_connections/disconnected_peer_preserves_receive_cause_without_queuing_rejection", "[session_connections] [contract]") {
   const acip_transport_methods_t methods = {.recv = peer_closed_recv, .send = peer_closed_send, .close = peer_close, .is_connected = peer_disconnected};
   acip_transport_t *transport = SAFE_CALLOC(1, sizeof(*transport), acip_transport_t *);
   transport->methods = &methods;
@@ -246,7 +245,7 @@ TEST_CASE("session_connections/disconnected_peer_preserves_receive_cause_without
   REQUIRE((server) == nullptr);
 }
 
-TEST_CASE("session_connections/retains_owners_until_workers_join", "[session_connections]") {
+TEST_CASE("session_connections/retains_owners_until_workers_join", "[session_connections] [contract]") {
   int interrupted[2] = {0};
   const acip_transport_methods_t dispatch_methods = {.interrupt = count_interrupt};
   acip_transport_t dispatch[2] = {{.methods = &dispatch_methods, .impl_data = &interrupted[0]}, {.methods = &dispatch_methods, .impl_data = &interrupted[1]}};

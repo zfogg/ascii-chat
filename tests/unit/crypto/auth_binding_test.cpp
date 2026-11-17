@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/log/log.h>
@@ -22,7 +21,7 @@ static void teardown(void) {
   crypto_destroy(&receiver);
   log_destroy();
 }
-TEST_CASE("auth_binding/authentication_mac_binds_nonce_password_and_dh_secret", "[auth_binding]") {
+TEST_CASE("auth_binding/authentication_mac_binds_nonce_password_and_dh_secret", "[auth_binding] [unit]") {
   uint8_t nonce[32], actual[32], expected[32], input[64];
   for (unsigned i = 0; i < 32; ++i)
     nonce[i] = (uint8_t)i;
@@ -68,7 +67,7 @@ TEST_CASE("auth_binding/authentication_mac_binds_nonce_password_and_dh_secret", 
   REQUIRE((crypto_compute_password_hmac(&sender, nonce, nonce, NULL, actual)) == (ERROR_INVALID_PARAM));
   REQUIRE((crypto_compute_password_hmac(&sender, nonce, nonce, nonce, NULL)) == (ERROR_INVALID_PARAM));
 }
-TEST_CASE("auth_binding/ephemeral_signatures_match_independent_ed25519_and_detect_tampering", "[auth_binding]") {
+TEST_CASE("auth_binding/ephemeral_signatures_match_independent_ed25519_and_detect_tampering", "[auth_binding] [unit]") {
   private_key_t key = {.type = KEY_TYPE_ED25519};
   uint8_t seed[32] = {7}, public_key[32], signature[64], reference[64];
   REQUIRE((crypto_sign_seed_keypair(public_key, key.key.ed25519, seed)) == (0));
@@ -92,7 +91,7 @@ TEST_CASE("auth_binding/ephemeral_signatures_match_independent_ed25519_and_detec
   REQUIRE((crypto_verify_peer_signature(public_key, seed, 0, signature)) == (ERROR_INVALID_PARAM));
   sodium_memzero(&key, sizeof(key));
 }
-TEST_CASE("auth_binding/auth_fields_are_packed_in_wire_order_and_invalid_destinations_are_untouched", "[auth_binding]") {
+TEST_CASE("auth_binding/auth_fields_are_packed_in_wire_order_and_invalid_destinations_are_untouched", "[auth_binding] [unit]") {
   uint8_t mac[32], nonce[32], combined[64], out_mac[32], out_nonce[32];
   memset(mac, 0x55, sizeof(mac));
   memset(nonce, 0xaa, sizeof(nonce));

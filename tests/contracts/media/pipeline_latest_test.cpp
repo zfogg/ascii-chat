@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/video/ascii/ascii.h>
@@ -40,7 +39,7 @@ static bool pipeline_recording(session_display_ctx_t *display) {
 #undef platform_wakeup_create
 #undef session_display_has_render_file
 
-TEST_CASE("media_pipeline/bounded_queue_preserves_fifo_and_rejects_overflow", "[media_pipeline]") {
+TEST_CASE("media_pipeline/bounded_queue_preserves_fifo_and_rejects_overflow", "[media_pipeline] [contract]") {
   log_init(NULL, LOG_ERROR, false, false);
   frame_queue_t *queue = frame_queue_create(2, "bounded_frame_test");
   REQUIRE(queue);
@@ -62,7 +61,7 @@ TEST_CASE("media_pipeline/bounded_queue_preserves_fifo_and_rejects_overflow", "[
   frame_queue_destroy(queue);
 }
 
-TEST_CASE("media_pipeline/slots_preserve_pixels_and_reuse_released_storage", "[media_pipeline]") {
+TEST_CASE("media_pipeline/slots_preserve_pixels_and_reuse_released_storage", "[media_pipeline] [contract]") {
   // Three simultaneous owners retain immutable pixels; overflow uses an owned fallback.
   frame_slot_t slots[PIPELINE_FRAME_SLOTS] = {0};
   image_t *source = image_new(8, 4);
@@ -93,7 +92,7 @@ TEST_CASE("media_pipeline/slots_preserve_pixels_and_reuse_released_storage", "[m
   image_destroy(source);
 }
 
-TEST_CASE("media_pipeline/reusable_render_matches_owned_output", "[media_pipeline]") {
+TEST_CASE("media_pipeline/reusable_render_matches_owned_output", "[media_pipeline] [contract]") {
   image_t *source = image_new(32, 8);
   REQUIRE((source) != nullptr);
   memset(source->pixels, 90, 32 * 8 * sizeof(rgb_pixel_t));
@@ -135,7 +134,7 @@ TEST_CASE("media_pipeline/reusable_render_matches_owned_output", "[media_pipelin
   image_destroy(source);
 }
 
-TEST_CASE("media_pipeline/flushing_queued_frames_releases_each_owned_frame_and_slots_can_be_reused", "[media_pipeline]") {
+TEST_CASE("media_pipeline/flushing_queued_frames_releases_each_owned_frame_and_slots_can_be_reused", "[media_pipeline] [contract]") {
   frame_slot_t slots[PIPELINE_FRAME_SLOTS] = {0};
   image_t *image = image_new(2, 2);
   REQUIRE((image) != nullptr);
@@ -164,7 +163,7 @@ TEST_CASE("media_pipeline/flushing_queued_frames_releases_each_owned_frame_and_s
   frame_slots_destroy(slots);
   image_destroy(image);
 }
-TEST_CASE("media_pipeline/timed_full_queue_rejects_new_ownership_without_discarding_the_existing_frame", "[media_pipeline]") {
+TEST_CASE("media_pipeline/timed_full_queue_rejects_new_ownership_without_discarding_the_existing_frame", "[media_pipeline] [contract]") {
   frame_queue_t *queue = frame_queue_create(1, "encode");
   pipeline_frame_t first = {.captured_ns = time_get_ns()}, second = {.captured_ns = time_get_ns()};
   REQUIRE(frame_queue_push(queue, &first, 0));
@@ -175,7 +174,7 @@ TEST_CASE("media_pipeline/timed_full_queue_rejects_new_ownership_without_discard
   REQUIRE((frame_queue_pop(queue, 1)) == (&second));
   frame_queue_destroy(queue);
 }
-TEST_CASE("media_pipeline/corrupted_dimensions_and_missing_pixels_are_rejected_before_rendering", "[media_pipeline]") {
+TEST_CASE("media_pipeline/corrupted_dimensions_and_missing_pixels_are_rejected_before_rendering", "[media_pipeline] [contract]") {
   const int dims[][2] = {{0, 1}, {1, 0}, {-1, 1}, {1, -1}, {10001, 1}, {1, 10001}};
   uint8_t pixels[3] = {1, 2, 3};
   REQUIRE(!(frame_is_valid(NULL)));
@@ -221,12 +220,12 @@ static void pipeline_partial_start(unsigned fail_thread, bool fail_wakeup, bool 
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-TEST_CASE("media_pipeline/failed_display_wakeup_does_not_start_workers_or_consume_borrowed_contexts", "[media_pipeline]") {
+TEST_CASE("media_pipeline/failed_display_wakeup_does_not_start_workers_or_consume_borrowed_contexts", "[media_pipeline] [contract]") {
   pipeline_partial_start(0, true, false);
 }
-TEST_CASE("media_pipeline/failed_capture_worker_rolls_back_queues_without_consuming_borrowed_contexts", "[media_pipeline]") {
+TEST_CASE("media_pipeline/failed_capture_worker_rolls_back_queues_without_consuming_borrowed_contexts", "[media_pipeline] [contract]") {
   pipeline_partial_start(1, false, false);
 }
-TEST_CASE("media_pipeline/failed_encode_worker_joins_capture_before_releasing_its_slots", "[media_pipeline]") {
+TEST_CASE("media_pipeline/failed_encode_worker_joins_capture_before_releasing_its_slots", "[media_pipeline] [contract]") {
   pipeline_partial_start(2, false, true);
 }

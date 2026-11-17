@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "session/participant.h"
 #include "session/capture.h"
 #include "session/audio.h"
@@ -166,7 +165,7 @@ static void teardown(void) {
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-TEST_CASE("participant_workers/capture_source_selection_preserves_urls_files_stdin_and_webcam_index", "[participant_workers]") {
+TEST_CASE("participant_workers/capture_source_selection_preserves_urls_files_stdin_and_webcam_index", "[participant_workers] [contract]") {
   const char *files[] = {"fixture.ppm", "-", ""};
   for (size_t i = 0; i < ARRAY_SIZE(files); ++i) {
     options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
@@ -195,7 +194,7 @@ TEST_CASE("participant_workers/capture_source_selection_preserves_urls_files_std
   REQUIRE((created) == (4));
   REQUIRE((joined) == (3));
 }
-TEST_CASE("participant_workers/failed_start_is_retryable_and_failed_join_retains_the_live_workers_capture", "[participant_workers]") {
+TEST_CASE("participant_workers/failed_start_is_retryable_and_failed_join_retains_the_live_workers_capture", "[participant_workers] [contract]") {
   fail_capture = true;
   REQUIRE((session_participant_start_video(participant)) == (ERROR_MEDIA_INIT));
   REQUIRE((participant->video_capture) == nullptr);
@@ -218,7 +217,7 @@ TEST_CASE("participant_workers/failed_start_is_retryable_and_failed_join_retains
   REQUIRE(!(participant->video_thread_created));
   REQUIRE((session_participant_start_video(participant)) == (ASCIICHAT_OK));
 }
-TEST_CASE("participant_workers/disabled_or_transitioning_media_cannot_start_or_replace_transport", "[participant_workers]") {
+TEST_CASE("participant_workers/disabled_or_transitioning_media_cannot_start_or_replace_transport", "[participant_workers] [contract]") {
   participant->enable_video = participant->enable_audio = false;
   REQUIRE((session_participant_start_video(participant)) == (ERROR_INVALID_STATE));
   REQUIRE((session_participant_start_audio(participant)) == (ERROR_INVALID_STATE));
@@ -230,7 +229,7 @@ TEST_CASE("participant_workers/disabled_or_transitioning_media_cannot_start_or_r
   REQUIRE((session_participant_set_transport(participant, NULL, ACIP_TRANSPORT_BORROWED)) == (ERROR_INVALID_STATE));
   REQUIRE((created) == (0));
 }
-TEST_CASE("participant_workers/borrowed_transport_cannot_silently_change_ownership", "[participant_workers]") {
+TEST_CASE("participant_workers/borrowed_transport_cannot_silently_change_ownership", "[participant_workers] [contract]") {
   REQUIRE((session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED)) == (ASCIICHAT_OK));
   REQUIRE((session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_OWNED)) == (ERROR_INVALID_STATE));
   REQUIRE((session_participant_set_transport(participant, &transport, (acip_transport_ownership_t)99)) == (ERROR_INVALID_PARAM));
@@ -240,7 +239,7 @@ TEST_CASE("participant_workers/borrowed_transport_cannot_silently_change_ownersh
   REQUIRE((connection) == nullptr);
   REQUIRE((session_participant_create(NULL)) == nullptr);
 }
-TEST_CASE("participant_workers/video_worker_retries_missing_frames_and_keeps_capture_on_failed_delivery", "[participant_workers]") {
+TEST_CASE("participant_workers/video_worker_retries_missing_frames_and_keeps_capture_on_failed_delivery", "[participant_workers] [contract]") {
   REQUIRE((session_participant_start_video(participant)) == (ASCIICHAT_OK));
   worker_frame = image_new(8, 4);
   REQUIRE((worker_frame) != nullptr);
@@ -272,10 +271,10 @@ static void run_audio_worker(bool legacy_mono) {
   REQUIRE((participant_audio_capture_thread(NULL)) == nullptr);
 }
 
-TEST_CASE("participant_workers/audio_worker_accumulates_partial_stereo_reads_before_sending_one_frame", "[participant_workers]") {
+TEST_CASE("participant_workers/audio_worker_accumulates_partial_stereo_reads_before_sending_one_frame", "[participant_workers] [contract]") {
   run_audio_worker(false);
 }
-TEST_CASE("participant_workers/audio_worker_downmixes_stereo_capture_for_an_existing_mono_encoder", "[participant_workers]") {
+TEST_CASE("participant_workers/audio_worker_downmixes_stereo_capture_for_an_existing_mono_encoder", "[participant_workers] [contract]") {
   run_audio_worker(true);
 }
 
@@ -294,7 +293,7 @@ static void settings_error(session_participant_t *p, asciichat_error_t error, co
   REQUIRE(std::strcmp((message), ("Remote rendering update rejected")) == 0);
   ++error_events;
 }
-TEST_CASE("participant_workers/rejected_settings_notify_the_caller_but_invalid_payloads_preserve_committed_values", "[participant_workers]") {
+TEST_CASE("participant_workers/rejected_settings_notify_the_caller_but_invalid_payloads_preserve_committed_values", "[participant_workers] [contract]") {
   participant->callbacks.on_settings_changed = settings_changed;
   participant->callbacks.on_error = settings_error;
   participant->user_data = &settings_events;
@@ -314,7 +313,7 @@ TEST_CASE("participant_workers/rejected_settings_notify_the_caller_but_invalid_p
   REQUIRE((settings_events) == (1));
   REQUIRE((error_events) == (1));
 }
-TEST_CASE("participant_workers/failed_audio_join_retains_encoder_and_rejects_restart_until_the_worker_is_joined", "[participant_workers]") {
+TEST_CASE("participant_workers/failed_audio_join_retains_encoder_and_rejects_restart_until_the_worker_is_joined", "[participant_workers] [contract]") {
   REQUIRE((session_participant_start_audio(participant)) == (ASCIICHAT_OK));
   session_audio_ctx_t *audio = participant->audio_capture;
   opus_codec_t *encoder = participant->opus_encoder;
@@ -330,7 +329,7 @@ TEST_CASE("participant_workers/failed_audio_join_retains_encoder_and_rejects_res
   REQUIRE((participant->opus_encoder) == nullptr);
   REQUIRE((session_participant_start_audio(participant)) == (ASCIICHAT_OK));
 }
-TEST_CASE("participant_workers/constructor_owns_identity_strings_and_rejects_an_out_of_range_endpoint_before_connecting", "[participant_workers]") {
+TEST_CASE("participant_workers/constructor_owns_identity_strings_and_rejects_an_out_of_range_endpoint_before_connecting", "[participant_workers] [contract]") {
   char address[] = "127.0.0.9", password[] = "fixture-password", key[] = "fixture-server-key";
   session_participant_config_t config = {.address = address, .port = 65536, .password = password, .server_key = key, .encryption_enabled = true};
   session_participant_t *other = session_participant_create(&config);

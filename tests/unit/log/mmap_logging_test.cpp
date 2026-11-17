@@ -4,7 +4,6 @@
  * @brief Unit tests for mmap-based lock-free logging
  */
 
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/log/mmap.h>
 #include <unistd.h>
@@ -22,7 +21,7 @@ static void cleanup_files(const char *log_path) {
 
 // Test initialization and destruction
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("mmap_logging/init_destroy", "[mmap_logging]") {
+TEST_CASE("mmap_logging/init_destroy", "[mmap_logging] [unit]") {
   const char *log_path = "/tmp/mmap_test_init_destroy.log";
   cleanup_files(log_path);
 
@@ -39,7 +38,7 @@ TEST_CASE("mmap_logging/init_destroy", "[mmap_logging]") {
 }
 
 // Test that log file is created
-TEST_CASE("mmap_logging/creates_log_file", "[mmap_logging]") {
+TEST_CASE("mmap_logging/creates_log_file", "[mmap_logging] [unit]") {
   const char *log_path = "/tmp/mmap_test_creates_log.log";
   cleanup_files(log_path);
 
@@ -59,7 +58,7 @@ TEST_CASE("mmap_logging/creates_log_file", "[mmap_logging]") {
 }
 
 // Test that written text is in the file
-TEST_CASE("mmap_logging/text_is_readable", "[mmap_logging]") {
+TEST_CASE("mmap_logging/text_is_readable", "[mmap_logging] [unit]") {
   const char *log_path = "/tmp/mmap_test_text_readable.log";
   cleanup_files(log_path);
 
@@ -81,7 +80,7 @@ TEST_CASE("mmap_logging/text_is_readable", "[mmap_logging]") {
 }
 
 // Test writing and statistics
-TEST_CASE("mmap_logging/write_and_stats", "[mmap_logging]") {
+TEST_CASE("mmap_logging/write_and_stats", "[mmap_logging] [unit]") {
   const char *log_path = "/tmp/mmap_test_write_stats.log";
   cleanup_files(log_path);
 
@@ -105,7 +104,7 @@ TEST_CASE("mmap_logging/write_and_stats", "[mmap_logging]") {
 }
 
 // Test sync for errors
-TEST_CASE("mmap_logging/error_triggers_sync", "[mmap_logging]") {
+TEST_CASE("mmap_logging/error_triggers_sync", "[mmap_logging] [unit]") {
   const char *log_path = "/tmp/mmap_test_error_sync.log";
   cleanup_files(log_path);
 
@@ -126,7 +125,7 @@ TEST_CASE("mmap_logging/error_triggers_sync", "[mmap_logging]") {
 }
 
 // Test config struct initialization
-TEST_CASE("mmap_logging/config_struct_init", "[mmap_logging]") {
+TEST_CASE("mmap_logging/config_struct_init", "[mmap_logging] [unit]") {
   const char *log_path = "/tmp/mmap_test_config.log";
   cleanup_files(log_path);
 
@@ -153,7 +152,7 @@ TEST_CASE("mmap_logging/config_struct_init", "[mmap_logging]") {
 }
 
 // Test double init (should destroy first, then reinit)
-TEST_CASE("mmap_logging/double_init", "[mmap_logging]") {
+TEST_CASE("mmap_logging/double_init", "[mmap_logging] [unit]") {
   const char *log_path = "/tmp/mmap_test_double_init.log";
   cleanup_files(log_path);
 
@@ -171,7 +170,7 @@ TEST_CASE("mmap_logging/double_init", "[mmap_logging]") {
 }
 
 // Test that mmap logging is lock-free (basic sanity check)
-TEST_CASE("mmap_logging/lock_free_sanity", "[mmap_logging]") {
+TEST_CASE("mmap_logging/lock_free_sanity", "[mmap_logging] [unit]") {
   const char *log_path = "/tmp/mmap_test_lockfree.log";
   cleanup_files(log_path);
 

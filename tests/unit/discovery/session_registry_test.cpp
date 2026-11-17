@@ -12,7 +12,6 @@
  * This focuses on the database session operations.
  */
 
-#include <catch2/catch_all.hpp>
 
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/tests/logging.h>
@@ -41,7 +40,7 @@ static void cleanup_test_db(const char *path) {
 // Test Fixtures
 // ============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("session_database/database_initialization", "[session_database]") {
+TEST_CASE("session_database/database_initialization", "[session_database] [unit]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path));
 
@@ -58,7 +57,7 @@ TEST_CASE("session_database/database_initialization", "[session_database]") {
   cleanup_test_db(db_path);
 }
 
-TEST_CASE("session_database/create_session_basic", "[session_database]") {
+TEST_CASE("session_database/create_session_basic", "[session_database] [unit]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path));
 
@@ -103,7 +102,7 @@ TEST_CASE("session_database/create_session_basic", "[session_database]") {
   cleanup_test_db(db_path);
 }
 
-TEST_CASE("session_database/session_lookup_basic", "[session_database]") {
+TEST_CASE("session_database/session_lookup_basic", "[session_database] [unit]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path));
 
@@ -134,7 +133,7 @@ TEST_CASE("session_database/session_lookup_basic", "[session_database]") {
   cleanup_test_db(db_path);
 }
 
-TEST_CASE("session_database/session_lookup_not_found", "[session_database]") {
+TEST_CASE("session_database/session_lookup_not_found", "[session_database] [unit]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path));
 
@@ -163,7 +162,7 @@ TEST_CASE("session_database/session_lookup_not_found", "[session_database]") {
   cleanup_test_db(db_path);
 }
 
-TEST_CASE("session_database/session_join_basic", "[session_database]") {
+TEST_CASE("session_database/session_join_basic", "[session_database] [unit]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path));
 
@@ -206,7 +205,7 @@ TEST_CASE("session_database/session_join_basic", "[session_database]") {
   cleanup_test_db(db_path);
 }
 
-TEST_CASE("session_database/session_leave_basic", "[session_database]") {
+TEST_CASE("session_database/session_leave_basic", "[session_database] [unit]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path));
 
@@ -245,7 +244,7 @@ TEST_CASE("session_database/session_leave_basic", "[session_database]") {
   cleanup_test_db(db_path);
 }
 
-TEST_CASE("session_database/session_full", "[session_database]") {
+TEST_CASE("session_database/session_full", "[session_database] [unit]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path));
 
@@ -284,7 +283,7 @@ TEST_CASE("session_database/session_full", "[session_database]") {
   cleanup_test_db(db_path);
 }
 
-TEST_CASE("session_database/multiple_sessions", "[session_database]") {
+TEST_CASE("session_database/multiple_sessions", "[session_database] [unit]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path));
 
@@ -318,7 +317,7 @@ TEST_CASE("session_database/multiple_sessions", "[session_database]") {
   cleanup_test_db(db_path);
 }
 
-TEST_CASE("session_database/cleanup_expired_sessions", "[session_database]") {
+TEST_CASE("session_database/cleanup_expired_sessions", "[session_database] [unit]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path));
 

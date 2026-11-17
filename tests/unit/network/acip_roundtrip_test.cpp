@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/network/acip/send.h>
@@ -69,7 +68,7 @@ static void server_ping(void *client, void *context) {
   stream_start(0, client, context);
 }
 
-TEST_CASE("acip_roundtrip/authenticated_envelopes_validate_inner_boundaries_before_dispatch", "[acip_roundtrip]") {
+TEST_CASE("acip_roundtrip/authenticated_envelopes_validate_inner_boundaries_before_dispatch", "[acip_roundtrip] [unit]") {
   crypto_context_t sender, receiver;
   REQUIRE((crypto_init(&sender)) == (CRYPTO_OK));
   REQUIRE((crypto_init(&receiver)) == (CRYPTO_OK));
@@ -124,7 +123,7 @@ static void check_packet(wire_t *wire, packet_type_t type, const void *payload, 
     REQUIRE(std::memcmp((wire->wire + sizeof(header)), (payload), (length)) == 0);
 }
 
-TEST_CASE("acip_roundtrip/control_senders_produce_network_order_packets_and_receiver_dispatches", "[acip_roundtrip]") {
+TEST_CASE("acip_roundtrip/control_senders_produce_network_order_packets_and_receiver_dispatches", "[acip_roundtrip] [unit]") {
   wire_t wire = {.connected = true};
   acip_transport_t transport = {.methods = &methods, .user_data = &wire};
   int client;
@@ -157,7 +156,7 @@ TEST_CASE("acip_roundtrip/control_senders_produce_network_order_packets_and_rece
   check_packet(&wire, PACKET_TYPE_SERVER_STATE, &state, sizeof(state));
 }
 
-TEST_CASE("acip_roundtrip/client_receive_returns_owned_payload_and_dispatches_after_release", "[acip_roundtrip]") {
+TEST_CASE("acip_roundtrip/client_receive_returns_owned_payload_and_dispatches_after_release", "[acip_roundtrip] [unit]") {
   wire_t wire = {.connected = true};
   acip_transport_t transport = {.methods = &methods, .user_data = &wire};
   uint8_t payload[] = {0, 1, 0xff};
@@ -174,7 +173,7 @@ TEST_CASE("acip_roundtrip/client_receive_returns_owned_payload_and_dispatches_af
   REQUIRE((wire.callbacks) == (1));
 }
 
-TEST_CASE("acip_roundtrip/client_drains_queued_packet_after_disconnect", "[acip_roundtrip]") {
+TEST_CASE("acip_roundtrip/client_drains_queued_packet_after_disconnect", "[acip_roundtrip] [unit]") {
   wire_t wire = {.connected = true};
   acip_transport_t transport = {.methods = &methods, .user_data = &wire};
   REQUIRE((packet_send_via_transport(&transport, PACKET_TYPE_PING, NULL, 0, 0)) == (ASCIICHAT_OK));
@@ -185,7 +184,7 @@ TEST_CASE("acip_roundtrip/client_drains_queued_packet_after_disconnect", "[acip_
   buffer_release(envelope.allocated_buffer);
 }
 
-TEST_CASE("acip_roundtrip/incomplete_headers_and_inconsistent_lengths_never_dispatch", "[acip_roundtrip]") {
+TEST_CASE("acip_roundtrip/incomplete_headers_and_inconsistent_lengths_never_dispatch", "[acip_roundtrip] [unit]") {
   wire_t wire = {.connected = true};
   acip_transport_t transport = {.methods = &methods, .user_data = &wire};
   acip_server_callbacks_t server = {.on_stream_start = stream_start, .app_ctx = &wire};
@@ -215,7 +214,7 @@ TEST_CASE("acip_roundtrip/incomplete_headers_and_inconsistent_lengths_never_disp
   REQUIRE((wire.callbacks) == (0));
 }
 
-TEST_CASE("acip_roundtrip/missing_context_disconnection_and_backend_errors", "[acip_roundtrip]") {
+TEST_CASE("acip_roundtrip/missing_context_disconnection_and_backend_errors", "[acip_roundtrip] [unit]") {
   wire_t wire = {0};
   acip_transport_t transport = {.methods = &methods, .user_data = &wire};
   packet_envelope_t envelope;

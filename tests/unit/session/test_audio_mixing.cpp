@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "common/session/audio.h"
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/options/rcu.h>
@@ -37,7 +37,7 @@ static void finish_startup_fade(void) {
   REQUIRE((session_audio_mix_excluding(host, 0, startup, (AUDIO_CROSSFADE_SAMPLES * AUDIO_CHANNELS))) == ((AUDIO_CROSSFADE_SAMPLES * AUDIO_CHANNELS)));
 }
 
-TEST_CASE("session_audio_mixing/mix_minus_excludes_the_recipient_and_averages_only_nonempty_sources", "[session_audio_mixing]") {
+TEST_CASE("session_audio_mixing/mix_minus_excludes_the_recipient_and_averages_only_nonempty_sources", "[session_audio_mixing] [unit]") {
   REQUIRE((session_audio_add_source(host, 1)) == (ASCIICHAT_OK));
   REQUIRE((session_audio_add_source(host, 2)) == (ASCIICHAT_OK));
   REQUIRE((session_audio_add_source(host, 3)) == (ASCIICHAT_OK));
@@ -53,7 +53,7 @@ TEST_CASE("session_audio_mixing/mix_minus_excludes_the_recipient_and_averages_on
     REQUIRE((mixed[i]) == Catch::Approx(0.5f));
 }
 
-TEST_CASE("session_audio_mixing/over_range_multiple_sources_clip_and_empty_mix_is_silent", "[session_audio_mixing]") {
+TEST_CASE("session_audio_mixing/over_range_multiple_sources_clip_and_empty_mix_is_silent", "[session_audio_mixing] [unit]") {
   float mixed[16];
   memset(mixed, 0x7f, sizeof(mixed));
   REQUIRE((session_audio_mix_excluding(host, 0, mixed, 16)) == (16));
@@ -79,7 +79,7 @@ TEST_CASE("session_audio_mixing/over_range_multiple_sources_clip_and_empty_mix_i
     REQUIRE((mixed[i]) == (-1.0f));
 }
 
-TEST_CASE("session_audio_mixing/duplicate_registration_preserves_samples_and_capacity_is_reusable", "[session_audio_mixing]") {
+TEST_CASE("session_audio_mixing/duplicate_registration_preserves_samples_and_capacity_is_reusable", "[session_audio_mixing] [unit]") {
   REQUIRE((session_audio_add_source(host, 1)) == (ASCIICHAT_OK));
   feed(1, 0.4f);
   REQUIRE((session_audio_add_source(host, 1)) == (ASCIICHAT_OK));
@@ -96,7 +96,7 @@ TEST_CASE("session_audio_mixing/duplicate_registration_preserves_samples_and_cap
   REQUIRE((session_audio_add_source(host, MAX_SESSION_PARTICIPANTS + 1)) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("session_audio_mixing/participant_cannot_register_or_mix_host_sources", "[session_audio_mixing]") {
+TEST_CASE("session_audio_mixing/participant_cannot_register_or_mix_host_sources", "[session_audio_mixing] [unit]") {
   float sample = 0.5f, output = 0.75f;
   REQUIRE((session_audio_add_source(participant, 1)) == (ERROR_INVALID_STATE));
   REQUIRE((session_audio_write_source(participant, 1, &sample, 1)) == (ERROR_INVALID_STATE));
@@ -107,7 +107,7 @@ TEST_CASE("session_audio_mixing/participant_cannot_register_or_mix_host_sources"
   session_audio_stop(participant);
 }
 
-TEST_CASE("session_audio_mixing/capture_and_playback_use_the_owned_rings_without_opening_devices", "[session_audio_mixing]") {
+TEST_CASE("session_audio_mixing/capture_and_playback_use_the_owned_rings_without_opening_devices", "[session_audio_mixing] [unit]") {
   audio_context_t *audio = static_cast<audio_context_t *>(session_audio_get_context(participant));
   REQUIRE((audio) != nullptr);
   float input[] = {0.25f, -0.5f, 0.75f, -0.25f, 0.5f, -0.75f}, output[6] = {0};

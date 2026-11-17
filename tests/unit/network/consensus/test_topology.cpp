@@ -4,7 +4,6 @@
  * @brief Ring topology unit tests
  */
 
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/consensus/topology.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
@@ -15,7 +14,7 @@ static void make_uuid(uint8_t id[16], int value) {
   id[0] = value & 0xFF;
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("topology/create_and_destroy", "[topology]") {
+TEST_CASE("topology/create_and_destroy", "[topology] [unit]") {
   uint8_t participants[4][16] = {
       {3, 0, 0, 0}, // C
       {1, 0, 0, 0}, // A
@@ -33,7 +32,7 @@ TEST_CASE("topology/create_and_destroy", "[topology]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("topology/positions_sorted_lexicographically", "[topology]") {
+TEST_CASE("topology/positions_sorted_lexicographically", "[topology] [unit]") {
   // Input: C, A, B, D -> should sort to A, B, C, D (indices 1, 2, 3, 4)
   uint8_t participants[4][16] = {
       {3, 0, 0, 0}, // C -> position 2
@@ -54,7 +53,7 @@ TEST_CASE("topology/positions_sorted_lexicographically", "[topology]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("topology/leader_is_last", "[topology]") {
+TEST_CASE("topology/leader_is_last", "[topology] [unit]") {
   uint8_t participants[4][16] = {
       {3, 0, 0, 0},
       {1, 0, 0, 0},
@@ -73,7 +72,7 @@ TEST_CASE("topology/leader_is_last", "[topology]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("topology/next_prev_circular", "[topology]") {
+TEST_CASE("topology/next_prev_circular", "[topology] [unit]") {
   uint8_t participants[4][16] = {
       {3, 0, 0, 0}, // C
       {1, 0, 0, 0}, // A
@@ -100,7 +99,7 @@ TEST_CASE("topology/next_prev_circular", "[topology]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("topology/get_leader", "[topology]") {
+TEST_CASE("topology/get_leader", "[topology] [unit]") {
   uint8_t participants[4][16] = {
       {3, 0, 0, 0},
       {1, 0, 0, 0},
@@ -125,7 +124,7 @@ TEST_CASE("topology/get_leader", "[topology]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("topology/get_all", "[topology]") {
+TEST_CASE("topology/get_all", "[topology] [unit]") {
   uint8_t participants[4][16] = {
       {3, 0, 0, 0},
       {1, 0, 0, 0},
@@ -159,7 +158,7 @@ TEST_CASE("topology/get_all", "[topology]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("topology/invalid_my_id", "[topology]") {
+TEST_CASE("topology/invalid_my_id", "[topology] [unit]") {
   uint8_t participants[2][16] = {
       {1, 0, 0, 0},
       {2, 0, 0, 0},
@@ -173,7 +172,7 @@ TEST_CASE("topology/invalid_my_id", "[topology]") {
   REQUIRE((err) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("topology/circular_wrap_first_to_last", "[topology]") {
+TEST_CASE("topology/circular_wrap_first_to_last", "[topology] [unit]") {
   uint8_t participants[3][16] = {
       {1, 0, 0, 0},
       {2, 0, 0, 0},
@@ -195,7 +194,7 @@ TEST_CASE("topology/circular_wrap_first_to_last", "[topology]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("topology/circular_wrap_last_to_first", "[topology]") {
+TEST_CASE("topology/circular_wrap_last_to_first", "[topology] [unit]") {
   uint8_t participants[3][16] = {
       {1, 0, 0, 0},
       {2, 0, 0, 0},

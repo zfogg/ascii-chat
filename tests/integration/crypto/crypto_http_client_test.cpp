@@ -7,7 +7,6 @@
  * Tests will be skipped if network is unavailable or endpoints are down.
  */
 
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/http/client/client.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/crypto/https_keys.h>
@@ -31,7 +30,7 @@ static bool is_network_available(void) {
 // Basic HTTPS GET Tests
 // =============================================================================
 
-TEST_CASE("crypto_http_client/https_get_github_zen", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/https_get_github_zen", "[crypto_http_client] [integration]") {
   if (!is_network_available()) {
     SKIP("test skipped");
     return;
@@ -46,25 +45,25 @@ TEST_CASE("crypto_http_client/https_get_github_zen", "[crypto_http_client]") {
   SAFE_FREE(response);
 }
 
-TEST_CASE("crypto_http_client/https_get_null_hostname", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/https_get_null_hostname", "[crypto_http_client] [integration]") {
   char *response = https_get(NULL, "/test");
 
   REQUIRE((response) == nullptr);
 }
 
-TEST_CASE("crypto_http_client/https_get_null_path", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/https_get_null_path", "[crypto_http_client] [integration]") {
   char *response = https_get("api.github.com", NULL);
 
   REQUIRE((response) == nullptr);
 }
 
-TEST_CASE("crypto_http_client/https_get_invalid_hostname", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/https_get_invalid_hostname", "[crypto_http_client] [integration]") {
   char *response = https_get("this.hostname.does.not.exist.invalid", "/test");
 
   REQUIRE((response) == nullptr);
 }
 
-TEST_CASE("crypto_http_client/https_get_404_path", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/https_get_404_path", "[crypto_http_client] [integration]") {
   if (!is_network_available()) {
     SKIP("test skipped");
     return;
@@ -84,7 +83,7 @@ TEST_CASE("crypto_http_client/https_get_404_path", "[crypto_http_client]") {
 // GitHub SSH Key Fetching Tests
 // =============================================================================
 
-TEST_CASE("crypto_http_client/fetch_github_ssh_keys_zfogg", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/fetch_github_ssh_keys_zfogg", "[crypto_http_client] [integration]") {
   if (!is_network_available()) {
     SKIP("test skipped");
     return;
@@ -110,7 +109,7 @@ TEST_CASE("crypto_http_client/fetch_github_ssh_keys_zfogg", "[crypto_http_client
   SAFE_FREE(keys);
 }
 
-TEST_CASE("crypto_http_client/fetch_github_ssh_keys_null_username", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/fetch_github_ssh_keys_null_username", "[crypto_http_client] [integration]") {
   char **keys = NULL;
   size_t num_keys = 0;
 
@@ -119,7 +118,7 @@ TEST_CASE("crypto_http_client/fetch_github_ssh_keys_null_username", "[crypto_htt
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_http_client/fetch_github_ssh_keys_null_keys_out", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/fetch_github_ssh_keys_null_keys_out", "[crypto_http_client] [integration]") {
   size_t num_keys = 0;
 
   asciichat_error_t result = fetch_github_ssh_keys("zfogg", NULL, &num_keys);
@@ -127,7 +126,7 @@ TEST_CASE("crypto_http_client/fetch_github_ssh_keys_null_keys_out", "[crypto_htt
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_http_client/fetch_github_ssh_keys_null_num_keys", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/fetch_github_ssh_keys_null_num_keys", "[crypto_http_client] [integration]") {
   char **keys = NULL;
 
   asciichat_error_t result = fetch_github_ssh_keys("zfogg", &keys, NULL);
@@ -135,7 +134,7 @@ TEST_CASE("crypto_http_client/fetch_github_ssh_keys_null_num_keys", "[crypto_htt
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_http_client/fetch_github_ssh_keys_nonexistent_user", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/fetch_github_ssh_keys_nonexistent_user", "[crypto_http_client] [integration]") {
   if (!is_network_available()) {
     SKIP("test skipped");
     return;
@@ -159,7 +158,7 @@ TEST_CASE("crypto_http_client/fetch_github_ssh_keys_nonexistent_user", "[crypto_
 // GitLab SSH Key Fetching Tests
 // =============================================================================
 
-TEST_CASE("crypto_http_client/fetch_gitlab_ssh_keys_valid_user", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/fetch_gitlab_ssh_keys_valid_user", "[crypto_http_client] [integration]") {
   if (!is_network_available()) {
     SKIP("test skipped");
     return;
@@ -186,7 +185,7 @@ TEST_CASE("crypto_http_client/fetch_gitlab_ssh_keys_valid_user", "[crypto_http_c
   REQUIRE(true);
 }
 
-TEST_CASE("crypto_http_client/fetch_gitlab_ssh_keys_null_username", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/fetch_gitlab_ssh_keys_null_username", "[crypto_http_client] [integration]") {
   char **keys = NULL;
   size_t num_keys = 0;
 
@@ -199,7 +198,7 @@ TEST_CASE("crypto_http_client/fetch_gitlab_ssh_keys_null_username", "[crypto_htt
 // GitHub GPG Key Fetching Tests
 // =============================================================================
 
-TEST_CASE("crypto_http_client/fetch_github_gpg_keys_valid_user", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/fetch_github_gpg_keys_valid_user", "[crypto_http_client] [integration]") {
   if (!is_network_available()) {
     SKIP("test skipped");
     return;
@@ -233,7 +232,7 @@ TEST_CASE("crypto_http_client/fetch_github_gpg_keys_valid_user", "[crypto_http_c
   REQUIRE(true);
 }
 
-TEST_CASE("crypto_http_client/fetch_github_gpg_keys_null_username", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/fetch_github_gpg_keys_null_username", "[crypto_http_client] [integration]") {
   char **keys = NULL;
   size_t num_keys = 0;
 
@@ -242,7 +241,7 @@ TEST_CASE("crypto_http_client/fetch_github_gpg_keys_null_username", "[crypto_htt
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_http_client/fetch_github_gpg_keys_null_keys_out", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/fetch_github_gpg_keys_null_keys_out", "[crypto_http_client] [integration]") {
   size_t num_keys = 0;
 
   asciichat_error_t result = fetch_github_gpg_keys("zfogg", NULL, &num_keys);
@@ -250,7 +249,7 @@ TEST_CASE("crypto_http_client/fetch_github_gpg_keys_null_keys_out", "[crypto_htt
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_http_client/fetch_github_gpg_keys_null_num_keys", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/fetch_github_gpg_keys_null_num_keys", "[crypto_http_client] [integration]") {
   char **keys = NULL;
 
   asciichat_error_t result = fetch_github_gpg_keys("zfogg", &keys, NULL);
@@ -262,7 +261,7 @@ TEST_CASE("crypto_http_client/fetch_github_gpg_keys_null_num_keys", "[crypto_htt
 // GitLab GPG Key Fetching Tests
 // =============================================================================
 
-TEST_CASE("crypto_http_client/fetch_gitlab_gpg_keys_valid_user", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/fetch_gitlab_gpg_keys_valid_user", "[crypto_http_client] [integration]") {
   if (!is_network_available()) {
     SKIP("test skipped");
     return;
@@ -289,7 +288,7 @@ TEST_CASE("crypto_http_client/fetch_gitlab_gpg_keys_valid_user", "[crypto_http_c
   REQUIRE(true);
 }
 
-TEST_CASE("crypto_http_client/fetch_gitlab_gpg_keys_null_username", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/fetch_gitlab_gpg_keys_null_username", "[crypto_http_client] [integration]") {
   char **keys = NULL;
   size_t num_keys = 0;
 
@@ -302,7 +301,7 @@ TEST_CASE("crypto_http_client/fetch_gitlab_gpg_keys_null_username", "[crypto_htt
 // Memory Management Tests
 // =============================================================================
 
-TEST_CASE("crypto_http_client/multiple_fetches_no_leaks", "[crypto_http_client]") {
+TEST_CASE("crypto_http_client/multiple_fetches_no_leaks", "[crypto_http_client] [integration]") {
   if (!is_network_available()) {
     SKIP("test skipped");
     return;

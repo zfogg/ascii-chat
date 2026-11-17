@@ -20,7 +20,6 @@
 
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/common.h>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/tests/common.h>
@@ -301,7 +300,7 @@ static platform_process_t *spawn_logged(const char *binary_path, const char *con
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("webrtc_discovery/frame_capture_via_webrtc", "[webrtc_discovery]") {
+TEST_CASE("webrtc_discovery/frame_capture_via_webrtc", "[webrtc_discovery] [integration]") {
   // Determine binary path based on working directory
   const char *binary_path = test_get_binary_path();
 

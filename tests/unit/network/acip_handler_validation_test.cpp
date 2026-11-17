@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/acip/acds_server.h>
 #include <ascii-chat/network/acip/handlers.h>
 #include <ascii-chat/util/endian.h>
@@ -44,7 +44,7 @@ static void stream_signal(uint32_t types, void *client, void *context) {
   ((observation_t *)context)->flags = types;
 }
 
-TEST_CASE("acip_handlers/audio_batches_decode_wire_samples_and_metadata_for_both_peers", "[acip_handlers]") {
+TEST_CASE("acip_handlers/audio_batches_decode_wire_samples_and_metadata_for_both_peers", "[acip_handlers] [unit]") {
   acip_transport_t transport = {0};
   observation_t seen = {0};
   int client;
@@ -101,7 +101,7 @@ TEST_CASE("acip_handlers/audio_batches_decode_wire_samples_and_metadata_for_both
   REQUIRE((seen.calls) == (0));
 }
 
-TEST_CASE("acip_handlers/ping_pong_console_and_stream_controls_preserve_context_and_wire_flags", "[acip_handlers]") {
+TEST_CASE("acip_handlers/ping_pong_console_and_stream_controls_preserve_context_and_wire_flags", "[acip_handlers] [unit]") {
   acip_transport_t transport = {0};
   observation_t seen = {0};
   int client;
@@ -176,7 +176,7 @@ static void server_crypto(packet_type_t type, const void *data, size_t length, v
   ((observation_t *)context)->client = client;
 }
 
-TEST_CASE("acip_handlers/ascii_header_is_converted_and_invalid_dimensions_never_reach_callback", "[acip_handlers]") {
+TEST_CASE("acip_handlers/ascii_header_is_converted_and_invalid_dimensions_never_reach_callback", "[acip_handlers] [unit]") {
   acip_transport_t transport = {0};
   observation_t seen = {0};
   acip_client_callbacks_t callbacks = {.on_ascii_frame = ascii_frame, .app_ctx = &seen};
@@ -204,7 +204,7 @@ TEST_CASE("acip_handlers/ascii_header_is_converted_and_invalid_dimensions_never_
   REQUIRE((acip_handle_client_packet(&transport, PACKET_TYPE_ASCII_FRAME, NULL, 0, &callbacks)) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("acip_handlers/image_headers_preserve_client_context_and_reject_bad_formats", "[acip_handlers]") {
+TEST_CASE("acip_handlers/image_headers_preserve_client_context_and_reject_bad_formats", "[acip_handlers] [unit]") {
   acip_transport_t transport = {0};
   observation_t seen = {0};
   int client = 17;
@@ -232,7 +232,7 @@ TEST_CASE("acip_handlers/image_headers_preserve_client_context_and_reject_bad_fo
   REQUIRE((acip_handle_server_packet(&transport, PACKET_TYPE_IMAGE_FRAME, &packet, sizeof(packet.header) - 1, &client, &callbacks)) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("acip_handlers/h264_and_h265_validate_access_unit_headers_before_dispatch", "[acip_handlers]") {
+TEST_CASE("acip_handlers/h264_and_h265_validate_access_unit_headers_before_dispatch", "[acip_handlers] [unit]") {
   acip_transport_t transport = {0};
   observation_t seen = {0};
   int client = 22;
@@ -260,7 +260,7 @@ TEST_CASE("acip_handlers/h264_and_h265_validate_access_unit_headers_before_dispa
   }
 }
 
-TEST_CASE("acip_handlers/crypto_dispatch_keeps_packet_type_bytes_and_both_contexts", "[acip_handlers]") {
+TEST_CASE("acip_handlers/crypto_dispatch_keeps_packet_type_bytes_and_both_contexts", "[acip_handlers] [unit]") {
   acip_transport_t transport = {0};
   observation_t seen = {0};
   int client = 31;
@@ -295,7 +295,7 @@ TEST_CASE("acip_handlers/crypto_dispatch_keeps_packet_type_bytes_and_both_contex
   }
 }
 
-TEST_CASE("acip_handlers/unknown_packets_and_missing_dispatch_context_are_rejected", "[acip_handlers]") {
+TEST_CASE("acip_handlers/unknown_packets_and_missing_dispatch_context_are_rejected", "[acip_handlers] [unit]") {
   acip_transport_t transport = {0};
   acip_client_callbacks_t client = {0};
   acip_server_callbacks_t server = {0};
@@ -309,7 +309,7 @@ TEST_CASE("acip_handlers/unknown_packets_and_missing_dispatch_context_are_reject
   REQUIRE((acip_handle_client_packet(&transport, PACKET_TYPE_ACIP_PARTICIPANT_LEFT, NULL, 0, &client)) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("acip_handlers/session_create_participant_and_key_boundaries", "[acip_handlers]") {
+TEST_CASE("acip_handlers/session_create_participant_and_key_boundaries", "[acip_handlers] [unit]") {
   acip_session_create_t req = {.max_participants = MAX_SESSION_PARTICIPANTS, .server_port = 27224, .total_keys = MAX_SESSION_KEYS, .key_index = MAX_SESSION_KEYS - 1};
   REQUIRE((acip_server_validate_session_create(&req)) == (ASCIICHAT_OK));
   req.max_participants = MAX_SESSION_PARTICIPANTS + 1;

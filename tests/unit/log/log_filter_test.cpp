@@ -1,3 +1,4 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
 /**
@@ -7,7 +8,6 @@
  * Tests all flag combinations, multiple patterns, context lines, and edge cases.
  */
 
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdbool.h>
 
@@ -70,7 +70,7 @@ static bool line_matches_pos(const char *line, size_t *match_start, size_t *matc
  * ============================================================================ */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("log_filter/pattern_format_valid", "[log_filter]") {
+TEST_CASE("log_filter/pattern_format_valid", "[log_filter] [unit]") {
   // Valid formats
   REQUIRE(is_valid_pattern("/test/"));
   REQUIRE(is_valid_pattern("/test/i"));
@@ -81,7 +81,7 @@ TEST_CASE("log_filter/pattern_format_valid", "[log_filter]") {
   REQUIRE(is_valid_pattern("/test/C10"));
 }
 
-TEST_CASE("log_filter/pattern_format_invalid", "[log_filter]") {
+TEST_CASE("log_filter/pattern_format_invalid", "[log_filter] [unit]") {
   // Invalid formats (slash format with missing closing slash)
   REQUIRE(!(is_valid_pattern("/test")));
 
@@ -90,7 +90,7 @@ TEST_CASE("log_filter/pattern_format_invalid", "[log_filter]") {
   REQUIRE(!(is_valid_pattern("")));
 }
 
-TEST_CASE("log_filter/pattern_format_edge_cases", "[log_filter]") {
+TEST_CASE("log_filter/pattern_format_edge_cases", "[log_filter] [unit]") {
   // Edge case: "test/" is valid as plain pattern (matches literal "test/")
   REQUIRE(is_valid_pattern("test/"));
   asciichat_error_t result = grep_init("test/");
@@ -99,7 +99,7 @@ TEST_CASE("log_filter/pattern_format_edge_cases", "[log_filter]") {
   REQUIRE(!(line_matches("test endpoint")));
 }
 
-TEST_CASE("log_filter/pattern_format_plain_regex", "[log_filter]") {
+TEST_CASE("log_filter/pattern_format_plain_regex", "[log_filter] [unit]") {
   // Plain regex patterns (without slashes) should now be valid
   REQUIRE(is_valid_pattern("test"));
   REQUIRE(is_valid_pattern("error"));
@@ -137,7 +137,7 @@ static plain_regex_test_t plain_regex_cases[] = {
     {"test.*end", "test something", false, "Dot-star no match without end"},
 };
 
-TEST_CASE("log_filter/plain_regex_format", "[log_filter]") {
+TEST_CASE("log_filter/plain_regex_format", "[log_filter] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(plain_regex_cases), std::end(plain_regex_cases)));
   auto *tc = &generated_case;
   asciichat_error_t result = grep_init(tc->pattern);
@@ -147,7 +147,7 @@ TEST_CASE("log_filter/plain_regex_format", "[log_filter]") {
   REQUIRE((matches) == (tc->should_match));
 }
 
-TEST_CASE("log_filter/plain_regex_no_flags", "[log_filter]") {
+TEST_CASE("log_filter/plain_regex_no_flags", "[log_filter] [unit]") {
   // Verify plain regex has NO flags (case-sensitive by default)
   asciichat_error_t result = grep_init("test");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -157,7 +157,7 @@ TEST_CASE("log_filter/plain_regex_no_flags", "[log_filter]") {
   REQUIRE(!(line_matches("Test message")));
 }
 
-TEST_CASE("log_filter/plain_regex_complex_patterns", "[log_filter]") {
+TEST_CASE("log_filter/plain_regex_complex_patterns", "[log_filter] [unit]") {
   // Test complex regex patterns without slashes
   asciichat_error_t result;
 
@@ -208,7 +208,7 @@ static basic_match_test_t basic_match_cases[] = {
     {"/\\d+/", "No numbers here", false, "Digit pattern no match"},
 };
 
-TEST_CASE("log_filter/basic_regex_matching", "[log_filter]") {
+TEST_CASE("log_filter/basic_regex_matching", "[log_filter] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(basic_match_cases), std::end(basic_match_cases)));
   auto *tc = &generated_case;
   asciichat_error_t result = grep_init(tc->pattern);
@@ -242,7 +242,7 @@ static fixed_string_test_t fixed_string_cases[] = {
     {"/test/Fi", "TEST in caps", true, "Flags order doesn't matter"},
 };
 
-TEST_CASE("log_filter/fixed_string_matching", "[log_filter]") {
+TEST_CASE("log_filter/fixed_string_matching", "[log_filter] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(fixed_string_cases), std::end(fixed_string_cases)));
   auto *tc = &generated_case;
   asciichat_error_t result = grep_init(tc->pattern);
@@ -256,7 +256,7 @@ TEST_CASE("log_filter/fixed_string_matching", "[log_filter]") {
  * Invert Match (I flag) Tests
  * ============================================================================ */
 
-TEST_CASE("log_filter/invert_match_basic", "[log_filter]") {
+TEST_CASE("log_filter/invert_match_basic", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init("/error/I");
   REQUIRE((result) == (ASCIICHAT_OK));
 
@@ -268,7 +268,7 @@ TEST_CASE("log_filter/invert_match_basic", "[log_filter]") {
   REQUIRE(!(line_matches("This is an error")));
 }
 
-TEST_CASE("log_filter/invert_match_with_flags", "[log_filter]") {
+TEST_CASE("log_filter/invert_match_with_flags", "[log_filter] [unit]") {
   // Invert + case-insensitive
   asciichat_error_t result = grep_init("/error/Ii");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -277,7 +277,7 @@ TEST_CASE("log_filter/invert_match_with_flags", "[log_filter]") {
   REQUIRE(!(line_matches("This is an ERROR")));
 }
 
-TEST_CASE("log_filter/invert_match_fixed_string", "[log_filter]") {
+TEST_CASE("log_filter/invert_match_fixed_string", "[log_filter] [unit]") {
   // Invert + fixed string
   asciichat_error_t result = grep_init("/test.*/IF");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -290,7 +290,7 @@ TEST_CASE("log_filter/invert_match_fixed_string", "[log_filter]") {
  * Global Flag (g) Tests
  * ============================================================================ */
 
-TEST_CASE("log_filter/global_flag_multiple_matches", "[log_filter]") {
+TEST_CASE("log_filter/global_flag_multiple_matches", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init("/the/g");
   REQUIRE((result) == (ASCIICHAT_OK));
 
@@ -310,7 +310,7 @@ TEST_CASE("log_filter/global_flag_multiple_matches", "[log_filter]") {
  * Context Line Tests - After (A flag)
  * ============================================================================ */
 
-TEST_CASE("log_filter/context_after_lines", "[log_filter]") {
+TEST_CASE("log_filter/context_after_lines", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init("/ERROR/A2");
   REQUIRE((result) == (ASCIICHAT_OK));
 
@@ -325,7 +325,7 @@ TEST_CASE("log_filter/context_after_lines", "[log_filter]") {
   REQUIRE(!(line_matches("This line is outside context")));
 }
 
-TEST_CASE("log_filter/context_after_multiple_values", "[log_filter]") {
+TEST_CASE("log_filter/context_after_multiple_values", "[log_filter] [unit]") {
   // Test A0, A1, A5, A10
   const char *patterns[] = {"/test/A0", "/test/A1", "/test/A5", "/test/A10"};
   int expected_context[] = {0, 1, 5, 10};
@@ -355,7 +355,7 @@ TEST_CASE("log_filter/context_after_multiple_values", "[log_filter]") {
  * Context Line Tests - Before (B flag)
  * ============================================================================ */
 
-TEST_CASE("log_filter/context_before_lines", "[log_filter]") {
+TEST_CASE("log_filter/context_before_lines", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init("/ERROR/B2");
   REQUIRE((result) == (ASCIICHAT_OK));
 
@@ -372,7 +372,7 @@ TEST_CASE("log_filter/context_before_lines", "[log_filter]") {
  * Context Line Tests - Both (C flag)
  * ============================================================================ */
 
-TEST_CASE("log_filter/context_both_lines", "[log_filter]") {
+TEST_CASE("log_filter/context_both_lines", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init("/ERROR/C3");
   REQUIRE((result) == (ASCIICHAT_OK));
 
@@ -397,7 +397,7 @@ TEST_CASE("log_filter/context_both_lines", "[log_filter]") {
  * Multiple Pattern (OR Logic) Tests
  * ============================================================================ */
 
-TEST_CASE("log_filter/multiple_patterns_or_logic", "[log_filter]") {
+TEST_CASE("log_filter/multiple_patterns_or_logic", "[log_filter] [unit]") {
   // Add two patterns
   asciichat_error_t result1 = grep_init("/ERROR/");
   REQUIRE((result1) == (ASCIICHAT_OK));
@@ -414,7 +414,7 @@ TEST_CASE("log_filter/multiple_patterns_or_logic", "[log_filter]") {
   REQUIRE(!(line_matches("INFO: Normal operation")));
 }
 
-TEST_CASE("log_filter/multiple_patterns_three", "[log_filter]") {
+TEST_CASE("log_filter/multiple_patterns_three", "[log_filter] [unit]") {
   // Add three patterns
   grep_init("/ERROR/");
   grep_init("/WARN/");
@@ -426,7 +426,7 @@ TEST_CASE("log_filter/multiple_patterns_three", "[log_filter]") {
   REQUIRE(!(line_matches("DEBUG message")));
 }
 
-TEST_CASE("log_filter/multiple_patterns_mixed_flags", "[log_filter]") {
+TEST_CASE("log_filter/multiple_patterns_mixed_flags", "[log_filter] [unit]") {
   // Mix of different flags
   grep_init("/error/i");    // Case-insensitive
   grep_init("/critical/F"); // Fixed string
@@ -438,7 +438,7 @@ TEST_CASE("log_filter/multiple_patterns_mixed_flags", "[log_filter]") {
   REQUIRE(!(line_matches("timeout detected")));
 }
 
-TEST_CASE("log_filter/multiple_patterns_mixed_formats", "[log_filter]") {
+TEST_CASE("log_filter/multiple_patterns_mixed_formats", "[log_filter] [unit]") {
   // Mix of slash format and plain format
   grep_init("/error/i"); // Slash format with flag
   grep_init("warn");     // Plain format
@@ -494,7 +494,7 @@ static flag_combo_test_t flag_combo_cases[] = {
     {"/test/FA3B2Iimsxg", "no match", true, "All flags different order"},
 };
 
-TEST_CASE("log_filter/flag_combinations", "[log_filter]") {
+TEST_CASE("log_filter/flag_combinations", "[log_filter] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(flag_combo_cases), std::end(flag_combo_cases)));
   auto *tc = &generated_case;
   asciichat_error_t result = grep_init(tc->pattern);
@@ -508,7 +508,7 @@ TEST_CASE("log_filter/flag_combinations", "[log_filter]") {
  * Invalid Flag Tests
  * ============================================================================ */
 
-TEST_CASE("log_filter/invalid_flags_rejected", "[log_filter]") {
+TEST_CASE("log_filter/invalid_flags_rejected", "[log_filter] [unit]") {
   // Invalid flags should cause pattern to fail validation
   REQUIRE(!(is_valid_pattern("/test/z")));
   REQUIRE(!(is_valid_pattern("/test/Z")));
@@ -516,7 +516,7 @@ TEST_CASE("log_filter/invalid_flags_rejected", "[log_filter]") {
   REQUIRE(!(is_valid_pattern("/test/iX")));
 }
 
-TEST_CASE("log_filter/invalid_flags_with_fixed_string", "[log_filter]") {
+TEST_CASE("log_filter/invalid_flags_with_fixed_string", "[log_filter] [unit]") {
   // With F flag, invalid flags should be ignored (not cause error)
   REQUIRE(is_valid_pattern("/test/Fz"));
   REQUIRE(is_valid_pattern("/test/FzZ123"));
@@ -531,12 +531,12 @@ TEST_CASE("log_filter/invalid_flags_with_fixed_string", "[log_filter]") {
  * Edge Case Tests
  * ============================================================================ */
 
-TEST_CASE("log_filter/empty_pattern", "[log_filter]") {
+TEST_CASE("log_filter/empty_pattern", "[log_filter] [unit]") {
   REQUIRE(!(is_valid_pattern("//")));
   REQUIRE(!(is_valid_pattern("//i")));
 }
 
-TEST_CASE("log_filter/special_characters_in_pattern", "[log_filter]") {
+TEST_CASE("log_filter/special_characters_in_pattern", "[log_filter] [unit]") {
   // Special regex characters
   REQUIRE(is_valid_pattern("/\\[\\]/"));
   REQUIRE(is_valid_pattern("/\\(\\)/"));
@@ -548,14 +548,14 @@ TEST_CASE("log_filter/special_characters_in_pattern", "[log_filter]") {
   REQUIRE(is_valid_pattern("/\\$/"));
 }
 
-TEST_CASE("log_filter/unicode_in_pattern", "[log_filter]") {
+TEST_CASE("log_filter/unicode_in_pattern", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init("/café/");
   REQUIRE((result) == (ASCIICHAT_OK));
   REQUIRE(line_matches("I went to a café"));
   REQUIRE(!(line_matches("I went to a cafe")));
 }
 
-TEST_CASE("log_filter/very_long_pattern", "[log_filter]") {
+TEST_CASE("log_filter/very_long_pattern", "[log_filter] [unit]") {
   // Create a long but valid pattern
   char long_pattern[4096];
   strcpy(long_pattern, "/");
@@ -567,7 +567,7 @@ TEST_CASE("log_filter/very_long_pattern", "[log_filter]") {
   REQUIRE(is_valid_pattern(long_pattern));
 }
 
-TEST_CASE("log_filter/pattern_with_newlines", "[log_filter]") {
+TEST_CASE("log_filter/pattern_with_newlines", "[log_filter] [unit]") {
   // Patterns should not contain newlines
   asciichat_error_t result = grep_init("/test\nline/");
   // This might be valid for multiline matching, depending on implementation
@@ -575,13 +575,13 @@ TEST_CASE("log_filter/pattern_with_newlines", "[log_filter]") {
   (void)result;
 }
 
-TEST_CASE("log_filter/null_pattern", "[log_filter]") {
+TEST_CASE("log_filter/null_pattern", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init(NULL);
   // NULL pattern should be handled gracefully (either error or disable filtering)
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("log_filter/null_line", "[log_filter]") {
+TEST_CASE("log_filter/null_line", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init("/test/");
   REQUIRE((result) == (ASCIICHAT_OK));
 
@@ -595,7 +595,7 @@ TEST_CASE("log_filter/null_line", "[log_filter]") {
  * Regex Mode Flag Tests
  * ============================================================================ */
 
-TEST_CASE("log_filter/multiline_mode", "[log_filter]") {
+TEST_CASE("log_filter/multiline_mode", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init("/^test/m");
   REQUIRE((result) == (ASCIICHAT_OK));
 
@@ -604,7 +604,7 @@ TEST_CASE("log_filter/multiline_mode", "[log_filter]") {
   // (usually one line at a time, so 'm' flag has limited effect)
 }
 
-TEST_CASE("log_filter/dotall_mode", "[log_filter]") {
+TEST_CASE("log_filter/dotall_mode", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init("/test.end/s");
   REQUIRE((result) == (ASCIICHAT_OK));
 
@@ -612,7 +612,7 @@ TEST_CASE("log_filter/dotall_mode", "[log_filter]") {
   // Again, limited effect when processing line-by-line
 }
 
-TEST_CASE("log_filter/extended_mode", "[log_filter]") {
+TEST_CASE("log_filter/extended_mode", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init("/test # comment/x");
   REQUIRE((result) == (ASCIICHAT_OK));
 
@@ -624,7 +624,7 @@ TEST_CASE("log_filter/extended_mode", "[log_filter]") {
  * Performance and Stress Tests
  * ============================================================================ */
 
-TEST_CASE("log_filter/many_patterns", "[log_filter]") {
+TEST_CASE("log_filter/many_patterns", "[log_filter] [unit]") {
   // Add 50 patterns
   for (int i = 0; i < 50; i++) {
     char pattern[64];
@@ -640,7 +640,7 @@ TEST_CASE("log_filter/many_patterns", "[log_filter]") {
   REQUIRE(!(line_matches("no match")));
 }
 
-TEST_CASE("log_filter/rapid_matching", "[log_filter]") {
+TEST_CASE("log_filter/rapid_matching", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init("/test/");
   REQUIRE((result) == (ASCIICHAT_OK));
 
@@ -655,7 +655,7 @@ TEST_CASE("log_filter/rapid_matching", "[log_filter]") {
  * Highlight Position Tests
  * ============================================================================ */
 
-TEST_CASE("log_filter/match_position_simple", "[log_filter]") {
+TEST_CASE("log_filter/match_position_simple", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init("/error/");
   REQUIRE((result) == (ASCIICHAT_OK));
 
@@ -667,7 +667,7 @@ TEST_CASE("log_filter/match_position_simple", "[log_filter]") {
   REQUIRE((match_len) == (5));
 }
 
-TEST_CASE("log_filter/match_position_start", "[log_filter]") {
+TEST_CASE("log_filter/match_position_start", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init("/^error/");
   REQUIRE((result) == (ASCIICHAT_OK));
 
@@ -679,7 +679,7 @@ TEST_CASE("log_filter/match_position_start", "[log_filter]") {
   REQUIRE((match_len) == (5));
 }
 
-TEST_CASE("log_filter/match_position_end", "[log_filter]") {
+TEST_CASE("log_filter/match_position_end", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init("/error$/");
   REQUIRE((result) == (ASCIICHAT_OK));
 
@@ -696,7 +696,7 @@ TEST_CASE("log_filter/match_position_end", "[log_filter]") {
  * Functional Context Line Tests (A/B/C flags)
  * ============================================================================ */
 
-TEST_CASE("log_filter/context_after_functional", "[log_filter]") {
+TEST_CASE("log_filter/context_after_functional", "[log_filter] [unit]") {
   // Test that A3 actually outputs 3 lines after match
   asciichat_error_t result = grep_init("/MATCH/A3");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -720,7 +720,7 @@ TEST_CASE("log_filter/context_after_functional", "[log_filter]") {
   REQUIRE(!(line_matches("Normal log line")));
 }
 
-TEST_CASE("log_filter/context_before_functional", "[log_filter]") {
+TEST_CASE("log_filter/context_before_functional", "[log_filter] [unit]") {
   // Test that B2 actually outputs 2 lines before match
   // NOTE: This test verifies the circular buffer behavior
   asciichat_error_t result = grep_init("/MATCH/B2");
@@ -740,7 +740,7 @@ TEST_CASE("log_filter/context_before_functional", "[log_filter]") {
   REQUIRE(!(line_matches("After match")));
 }
 
-TEST_CASE("log_filter/context_both_functional", "[log_filter]") {
+TEST_CASE("log_filter/context_both_functional", "[log_filter] [unit]") {
   // Test that C2 outputs 2 lines before AND 2 lines after match
   asciichat_error_t result = grep_init("/MATCH/C2");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -760,7 +760,7 @@ TEST_CASE("log_filter/context_both_functional", "[log_filter]") {
   REQUIRE(!(line_matches("After 3")));
 }
 
-TEST_CASE("log_filter/context_separate_matches", "[log_filter]") {
+TEST_CASE("log_filter/context_separate_matches", "[log_filter] [unit]") {
   // Test that separate matches each get their own context windows
   asciichat_error_t result = grep_init("/MATCH/A2");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -786,7 +786,7 @@ TEST_CASE("log_filter/context_separate_matches", "[log_filter]") {
  * UTF-8 Fixed String Tests (Case-Sensitive)
  * ============================================================================ */
 
-TEST_CASE("log_filter/utf8_fixed_string_ascii", "[log_filter]") {
+TEST_CASE("log_filter/utf8_fixed_string_ascii", "[log_filter] [unit]") {
   // Basic ASCII fixed string
   asciichat_error_t result = grep_init("/test/F");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -795,7 +795,7 @@ TEST_CASE("log_filter/utf8_fixed_string_ascii", "[log_filter]") {
   REQUIRE(!(line_matches("This is a TEST message")));
 }
 
-TEST_CASE("log_filter/utf8_fixed_string_accented", "[log_filter]") {
+TEST_CASE("log_filter/utf8_fixed_string_accented", "[log_filter] [unit]") {
   // French accented characters
   asciichat_error_t result = grep_init("/café/F");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -805,7 +805,7 @@ TEST_CASE("log_filter/utf8_fixed_string_accented", "[log_filter]") {
   REQUIRE(!(line_matches("J'aime le CAFÉ français")));
 }
 
-TEST_CASE("log_filter/utf8_fixed_string_greek", "[log_filter]") {
+TEST_CASE("log_filter/utf8_fixed_string_greek", "[log_filter] [unit]") {
   // Greek characters
   asciichat_error_t result = grep_init("/ελληνικά/F");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -814,7 +814,7 @@ TEST_CASE("log_filter/utf8_fixed_string_greek", "[log_filter]") {
   REQUIRE(!(line_matches("Μιλάω ΕΛΛΗΝΙΚΆ")));
 }
 
-TEST_CASE("log_filter/utf8_fixed_string_cyrillic", "[log_filter]") {
+TEST_CASE("log_filter/utf8_fixed_string_cyrillic", "[log_filter] [unit]") {
   // Cyrillic characters
   asciichat_error_t result = grep_init("/русский/F");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -823,7 +823,7 @@ TEST_CASE("log_filter/utf8_fixed_string_cyrillic", "[log_filter]") {
   REQUIRE(!(line_matches("Я говорю по-РУССКИЙ")));
 }
 
-TEST_CASE("log_filter/utf8_fixed_string_cjk", "[log_filter]") {
+TEST_CASE("log_filter/utf8_fixed_string_cjk", "[log_filter] [unit]") {
   // Chinese characters
   asciichat_error_t result = grep_init("/中文/F");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -832,7 +832,7 @@ TEST_CASE("log_filter/utf8_fixed_string_cjk", "[log_filter]") {
   REQUIRE(!(line_matches("我说英文")));
 }
 
-TEST_CASE("log_filter/utf8_fixed_string_emoji", "[log_filter]") {
+TEST_CASE("log_filter/utf8_fixed_string_emoji", "[log_filter] [unit]") {
   // Emoji (4-byte UTF-8)
   asciichat_error_t result = grep_init("/🎉/F");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -845,7 +845,7 @@ TEST_CASE("log_filter/utf8_fixed_string_emoji", "[log_filter]") {
  * UTF-8 Fixed String Tests (Case-Insensitive)
  * ============================================================================ */
 
-TEST_CASE("log_filter/utf8_fixed_string_case_insensitive_ascii", "[log_filter]") {
+TEST_CASE("log_filter/utf8_fixed_string_case_insensitive_ascii", "[log_filter] [unit]") {
   // ASCII case-insensitive
   asciichat_error_t result = grep_init("/test/iF");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -855,7 +855,7 @@ TEST_CASE("log_filter/utf8_fixed_string_case_insensitive_ascii", "[log_filter]")
   REQUIRE(line_matches("This is a TeSt message"));
 }
 
-TEST_CASE("log_filter/utf8_fixed_string_case_insensitive_accented", "[log_filter]") {
+TEST_CASE("log_filter/utf8_fixed_string_case_insensitive_accented", "[log_filter] [unit]") {
   // French with case-insensitive
   asciichat_error_t result = grep_init("/café/iF");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -866,7 +866,7 @@ TEST_CASE("log_filter/utf8_fixed_string_case_insensitive_accented", "[log_filter
   REQUIRE(!(line_matches("J'aime le cafe")));
 }
 
-TEST_CASE("log_filter/utf8_fixed_string_case_insensitive_greek", "[log_filter]") {
+TEST_CASE("log_filter/utf8_fixed_string_case_insensitive_greek", "[log_filter] [unit]") {
   // Greek case-insensitive
   asciichat_error_t result = grep_init("/ελληνικά/iF");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -875,7 +875,7 @@ TEST_CASE("log_filter/utf8_fixed_string_case_insensitive_greek", "[log_filter]")
   REQUIRE(line_matches("Μιλάω ΕΛΛΗΝΙΚΆ"));
 }
 
-TEST_CASE("log_filter/utf8_fixed_string_case_insensitive_cyrillic", "[log_filter]") {
+TEST_CASE("log_filter/utf8_fixed_string_case_insensitive_cyrillic", "[log_filter] [unit]") {
   // Cyrillic case-insensitive
   asciichat_error_t result = grep_init("/русский/iF");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -885,7 +885,7 @@ TEST_CASE("log_filter/utf8_fixed_string_case_insensitive_cyrillic", "[log_filter
   REQUIRE(line_matches("Я говорю по-Русский"));
 }
 
-TEST_CASE("log_filter/utf8_fixed_string_case_insensitive_mixed", "[log_filter]") {
+TEST_CASE("log_filter/utf8_fixed_string_case_insensitive_mixed", "[log_filter] [unit]") {
   // Mixed scripts with case-insensitive
   asciichat_error_t result = grep_init("/Café Μπαρ/iF");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -899,7 +899,7 @@ TEST_CASE("log_filter/utf8_fixed_string_case_insensitive_mixed", "[log_filter]")
  * UTF-8 Regex Tests
  * ============================================================================ */
 
-TEST_CASE("log_filter/utf8_regex_ascii", "[log_filter]") {
+TEST_CASE("log_filter/utf8_regex_ascii", "[log_filter] [unit]") {
   // ASCII regex patterns
   asciichat_error_t result = grep_init("/test[0-9]+/");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -908,7 +908,7 @@ TEST_CASE("log_filter/utf8_regex_ascii", "[log_filter]") {
   REQUIRE(!(line_matches("test passed")));
 }
 
-TEST_CASE("log_filter/utf8_regex_unicode_class", "[log_filter]") {
+TEST_CASE("log_filter/utf8_regex_unicode_class", "[log_filter] [unit]") {
   // Unicode character class (any letter)
   asciichat_error_t result = grep_init("/café.*français/");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -918,7 +918,7 @@ TEST_CASE("log_filter/utf8_regex_unicode_class", "[log_filter]") {
   REQUIRE(!(line_matches("Le cafe est francais")));
 }
 
-TEST_CASE("log_filter/utf8_regex_case_insensitive", "[log_filter]") {
+TEST_CASE("log_filter/utf8_regex_case_insensitive", "[log_filter] [unit]") {
   // Regex with case-insensitive flag
   asciichat_error_t result = grep_init("/café|thé/i");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -929,7 +929,7 @@ TEST_CASE("log_filter/utf8_regex_case_insensitive", "[log_filter]") {
   REQUIRE(line_matches("J'aime le THÉ"));
 }
 
-TEST_CASE("log_filter/utf8_regex_greek_pattern", "[log_filter]") {
+TEST_CASE("log_filter/utf8_regex_greek_pattern", "[log_filter] [unit]") {
   // Greek word boundary
   asciichat_error_t result = grep_init("/\\bελληνικά\\b/");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -938,7 +938,7 @@ TEST_CASE("log_filter/utf8_regex_greek_pattern", "[log_filter]") {
   REQUIRE(!(line_matches("Μιλάω ελληνικάς καλά")));
 }
 
-TEST_CASE("log_filter/utf8_regex_cyrillic_alternation", "[log_filter]") {
+TEST_CASE("log_filter/utf8_regex_cyrillic_alternation", "[log_filter] [unit]") {
   // Cyrillic alternation pattern
   asciichat_error_t result = grep_init("/(русский|английский)/");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -948,7 +948,7 @@ TEST_CASE("log_filter/utf8_regex_cyrillic_alternation", "[log_filter]") {
   REQUIRE(!(line_matches("Я говорю по-французский")));
 }
 
-TEST_CASE("log_filter/utf8_regex_mixed_scripts", "[log_filter]") {
+TEST_CASE("log_filter/utf8_regex_mixed_scripts", "[log_filter] [unit]") {
   // Pattern with multiple Unicode scripts
   asciichat_error_t result = grep_init("/Hello.*你好.*Привет/");
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -961,7 +961,7 @@ TEST_CASE("log_filter/utf8_regex_mixed_scripts", "[log_filter]") {
  * Cleanup Tests
  * ============================================================================ */
 
-TEST_CASE("log_filter/destroy_idempotent", "[log_filter]") {
+TEST_CASE("log_filter/destroy_idempotent", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init("/test/");
   REQUIRE((result) == (ASCIICHAT_OK));
 
@@ -971,7 +971,7 @@ TEST_CASE("log_filter/destroy_idempotent", "[log_filter]") {
   grep_destroy();
 }
 
-TEST_CASE("log_filter/reinitialize_after_destroy", "[log_filter]") {
+TEST_CASE("log_filter/reinitialize_after_destroy", "[log_filter] [unit]") {
   asciichat_error_t result = grep_init("/test/");
   REQUIRE((result) == (ASCIICHAT_OK));
   REQUIRE(line_matches("test message"));

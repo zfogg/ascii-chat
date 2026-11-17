@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
 #include "common/session/capture.h"
 #include <options/rcu.h>
@@ -78,7 +77,7 @@ static void await_color(uint64_t previous_epoch, rgb_pixel_t color) {
   }
   FAIL("Media replacement never committed a frame");
 }
-TEST_CASE("session_capture_playlists/replacement_commits_a_new_source_once_and_rejects_concurrent_loads", "[session_capture_playlists]") {
+TEST_CASE("session_capture_playlists/replacement_commits_a_new_source_once_and_rejects_concurrent_loads", "[session_capture_playlists] [unit]") {
   uint64_t epoch = session_capture_source_epoch(capture);
   REQUIRE((session_capture_open_media(capture, blue)) == (ASCIICHAT_OK));
   REQUIRE((session_capture_source_epoch(capture)) == (epoch));
@@ -89,7 +88,7 @@ TEST_CASE("session_capture_playlists/replacement_commits_a_new_source_once_and_r
   REQUIRE(!(session_capture_cancel_open(capture)));
   REQUIRE(session_capture_media_active(capture));
 }
-TEST_CASE("session_capture_playlists/cancellation_retains_the_old_source_even_if_the_worker_has_already_opened_the_file", "[session_capture_playlists]") {
+TEST_CASE("session_capture_playlists/cancellation_retains_the_old_source_even_if_the_worker_has_already_opened_the_file", "[session_capture_playlists] [unit]") {
   media_source_t *original = static_cast<media_source_t *>(session_capture_get_media_source(capture));
   uint64_t epoch = session_capture_source_epoch(capture);
   REQUIRE((session_capture_open_media(capture, blue)) == (ASCIICHAT_OK));
@@ -108,7 +107,7 @@ TEST_CASE("session_capture_playlists/cancellation_retains_the_old_source_even_if
   REQUIRE((session_capture_open_media(capture, blue)) == (ASCIICHAT_OK));
   await_color(epoch, (rgb_pixel_t){0, 0, 255});
 }
-TEST_CASE("session_capture_playlists/quoted_playlist_supports_forward_and_backward_manual_selection", "[session_capture_playlists]") {
+TEST_CASE("session_capture_playlists/quoted_playlist_supports_forward_and_backward_manual_selection", "[session_capture_playlists] [unit]") {
   char playlist[2 * PLATFORM_MAX_PATH_LENGTH + 8];
   safe_snprintf(playlist, sizeof(playlist), "\"%s\" \"%s\"", red, blue);
   uint64_t epoch = session_capture_source_epoch(capture);
@@ -122,7 +121,7 @@ TEST_CASE("session_capture_playlists/quoted_playlist_supports_forward_and_backwa
   await_color(epoch, (rgb_pixel_t){255, 0, 0});
   REQUIRE(!(session_capture_at_end(capture)));
 }
-TEST_CASE("session_capture_playlists/invalid_playlist_and_missing_media_leave_the_current_source_usable", "[session_capture_playlists]") {
+TEST_CASE("session_capture_playlists/invalid_playlist_and_missing_media_leave_the_current_source_usable", "[session_capture_playlists] [unit]") {
   uint64_t epoch = session_capture_source_epoch(capture);
   media_source_t *original = static_cast<media_source_t *>(session_capture_get_media_source(capture));
   REQUIRE((session_capture_open_playlist(capture, "\"unterminated")) != (ASCIICHAT_OK));

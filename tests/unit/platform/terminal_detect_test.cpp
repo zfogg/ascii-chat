@@ -1,6 +1,6 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -21,7 +21,7 @@ static inline terminal_capabilities_t detect_terminal_capabilities_test(const te
 
 // Use the enhanced macro with stdout/stderr enabled for debugging
 // Note: We don't disable stdout/stderr because terminal detection needs them
-TEST_CASE("terminal_detect/hyperlink_format_and_plain_fallback", "[terminal_detect]") {
+TEST_CASE("terminal_detect/hyperlink_format_and_plain_fallback", "[terminal_detect] [unit]") {
   char output[128];
   int length = terminal_format_hyperlink(output, sizeof(output), "https://ascii-chat.com", "ascii-chat.com", true);
   REQUIRE((length) > (0));
@@ -31,7 +31,7 @@ TEST_CASE("terminal_detect/hyperlink_format_and_plain_fallback", "[terminal_dete
   REQUIRE(std::strcmp((output), ("ascii-chat.com")) == 0);
 }
 
-TEST_CASE("terminal_detect/hyperlink_rejects_controls_and_partial_output", "[terminal_detect]") {
+TEST_CASE("terminal_detect/hyperlink_rejects_controls_and_partial_output", "[terminal_detect] [unit]") {
   char output[128] = "unchanged";
   REQUIRE((terminal_format_hyperlink(output, sizeof(output), "https://example.com\033]8;;evil", "site", true)) == (-1));
   REQUIRE(std::strcmp((output), ("")) == 0);
@@ -48,7 +48,7 @@ TEST_CASE("terminal_detect/hyperlink_rejects_controls_and_partial_output", "[ter
  * Terminal Size Detection Tests
  * ============================================================================ */
 
-TEST_CASE("terminal_detect/get_terminal_size_basic", "[terminal_detect]") {
+TEST_CASE("terminal_detect/get_terminal_size_basic", "[terminal_detect] [unit]") {
   unsigned short int width, height;
 
   int result = get_terminal_size(&width, &height);
@@ -66,7 +66,7 @@ TEST_CASE("terminal_detect/get_terminal_size_basic", "[terminal_detect]") {
   }
 }
 
-TEST_CASE("terminal_detect/get_terminal_size_null_pointers", "[terminal_detect]") {
+TEST_CASE("terminal_detect/get_terminal_size_null_pointers", "[terminal_detect] [unit]") {
   // Note: get_terminal_size doesn't check for NULL pointers, so this test is removed
   // to avoid crashes. The function should be fixed to handle NULL gracefully.
 }
@@ -75,7 +75,7 @@ TEST_CASE("terminal_detect/get_terminal_size_null_pointers", "[terminal_detect]"
  * Terminal Capabilities Detection Tests
  * ============================================================================ */
 
-TEST_CASE("terminal_detect/detect_terminal_capabilities_basic", "[terminal_detect]") {
+TEST_CASE("terminal_detect/detect_terminal_capabilities_basic", "[terminal_detect] [unit]") {
   terminal_capabilities_t caps = detect_terminal_capabilities();
 
   // Basic sanity checks
@@ -103,7 +103,7 @@ static colorterm_test_case_t colorterm_cases[] = {
     {"other", TERM_COLOR_NONE, 0, false, "COLORTERM=other (unknown value)"},
 };
 
-TEST_CASE("terminal_detect/colorterm_variable_detection_parameterized", "[terminal_detect]") {
+TEST_CASE("terminal_detect/colorterm_variable_detection_parameterized", "[terminal_detect] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(colorterm_cases), std::end(colorterm_cases)));
   auto *tc = &generated_case;
   // Save original environment
@@ -166,7 +166,7 @@ static term_color_test_case_t term_color_cases[] = {
     {"dumb", TERM_COLOR_NONE, 0, 0, "TERM=dumb"},
 };
 
-TEST_CASE("terminal_detect/term_variable_color_detection_parameterized", "[terminal_detect]") {
+TEST_CASE("terminal_detect/term_variable_color_detection_parameterized", "[terminal_detect] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(term_color_cases), std::end(term_color_cases)));
   auto *tc = &generated_case;
   // Save original environment
@@ -219,7 +219,7 @@ static utf8_test_case_t utf8_cases[] = {
     {"C", "", "en_US.utf8", true, "LC_CTYPE=en_US.utf8"}, {"C", "", "", false, "LANG=C (no UTF-8)"}, {"", "", "", false, "All locale vars unset"},
 };
 
-TEST_CASE("terminal_detect/utf8_support_detection_parameterized", "[terminal_detect]") {
+TEST_CASE("terminal_detect/utf8_support_detection_parameterized", "[terminal_detect] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(utf8_cases), std::end(utf8_cases)));
   auto *tc = &generated_case;
   // Save original environment
@@ -274,7 +274,7 @@ TEST_CASE("terminal_detect/utf8_support_detection_parameterized", "[terminal_det
   }
 }
 
-TEST_CASE("terminal_detect/render_mode_selection", "[terminal_detect]") {
+TEST_CASE("terminal_detect/render_mode_selection", "[terminal_detect] [unit]") {
   // Save original environment
   char *original_term = getenv("TERM");
   char *original_lang = getenv("LANG");
@@ -322,7 +322,7 @@ TEST_CASE("terminal_detect/render_mode_selection", "[terminal_detect]") {
   }
 }
 
-TEST_CASE("terminal_detect/capability_flags", "[terminal_detect]") {
+TEST_CASE("terminal_detect/capability_flags", "[terminal_detect] [unit]") {
   // Save original environment
   char *original_colorterm = getenv("COLORTERM");
   char *original_term = getenv("TERM");
@@ -356,7 +356,7 @@ TEST_CASE("terminal_detect/capability_flags", "[terminal_detect]") {
   }
 }
 
-TEST_CASE("terminal_detect/terminal_type_storage", "[terminal_detect]") {
+TEST_CASE("terminal_detect/terminal_type_storage", "[terminal_detect] [unit]") {
   // Save original environment
   char *original_term = getenv("TERM");
   char *original_colorterm = getenv("COLORTERM");
@@ -389,14 +389,14 @@ TEST_CASE("terminal_detect/terminal_type_storage", "[terminal_detect]") {
  * Helper Function Tests
  * ============================================================================ */
 
-TEST_CASE("terminal_detect/color_level_names", "[terminal_detect]") {
+TEST_CASE("terminal_detect/color_level_names", "[terminal_detect] [unit]") {
   REQUIRE(std::strcmp((terminal_color_level_name(TERM_COLOR_NONE)), ("none")) == 0);
   REQUIRE(std::strcmp((terminal_color_level_name(TERM_COLOR_16)), ("16-color")) == 0);
   REQUIRE(std::strcmp((terminal_color_level_name(TERM_COLOR_256)), ("256-color")) == 0);
   REQUIRE(std::strcmp((terminal_color_level_name(TERM_COLOR_TRUECOLOR)), ("truecolor")) == 0);
 }
 
-TEST_CASE("terminal_detect/detection_reliability", "[terminal_detect]") {
+TEST_CASE("terminal_detect/detection_reliability", "[terminal_detect] [unit]") {
   terminal_capabilities_t caps = detect_terminal_capabilities();
   // POSIX systems should generally have reliable detection
   REQUIRE(caps.detection_reliable);

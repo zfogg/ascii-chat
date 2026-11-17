@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/ui/input.h>
 #include <libplatform/keyboard.h>
 #include <string.h>
@@ -7,7 +6,7 @@
 
 #define ui_input_edit_key(buffer, capacity, length, cursor, key) ::ui_input_edit_key((buffer), (capacity), (length), (cursor), static_cast<keyboard_key_t>(key))
 
-TEST_CASE("text_edit/insertion_is_atomic_and_keeps_valid_utf8", "[text_edit]") {
+TEST_CASE("text_edit/insertion_is_atomic_and_keeps_valid_utf8", "[text_edit] [unit]") {
   char text[16] = "a界b";
   size_t length = strlen(text), cursor = 1;
   REQUIRE((ui_input_insert(text, sizeof(text), &length, &cursor, "é😀")) == (ASCIICHAT_OK));
@@ -26,7 +25,7 @@ TEST_CASE("text_edit/insertion_is_atomic_and_keeps_valid_utf8", "[text_edit]") {
   REQUIRE((ui_input_insert(text, sizeof(text), &length, &cursor, "")) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("text_edit/invalid_storage_and_mid_character_cursors_are_rejected", "[text_edit]") {
+TEST_CASE("text_edit/invalid_storage_and_mid_character_cursors_are_rejected", "[text_edit] [unit]") {
   char text[8] = "é";
   size_t length = 2, cursor = 1;
   ui_input_edit_key(text, sizeof(text), &length, &cursor, KEY_DELETE);
@@ -61,7 +60,7 @@ TEST_CASE("text_edit/invalid_storage_and_mid_character_cursors_are_rejected", "[
   REQUIRE(std::strcmp((text), ("é")) == 0);
 }
 
-TEST_CASE("text_edit/boundaries_word_operations_and_ignored_keys", "[text_edit]") {
+TEST_CASE("text_edit/boundaries_word_operations_and_ignored_keys", "[text_edit] [unit]") {
   char text[64] = "é  界 😀";
   size_t length = strlen(text), cursor = length;
   ui_input_edit_key(text, sizeof(text), &length, &cursor, KEY_LEFT);
@@ -98,7 +97,7 @@ TEST_CASE("text_edit/boundaries_word_operations_and_ignored_keys", "[text_edit]"
   REQUIRE(std::strcmp((text), ("")) == 0);
 }
 
-TEST_CASE("text_edit/combining_marks_and_emoji_sequences_preserve_codepoint_boundaries", "[text_edit]") {
+TEST_CASE("text_edit/combining_marks_and_emoji_sequences_preserve_codepoint_boundaries", "[text_edit] [unit]") {
   char text[64] = "e\xcc\x81👩‍💻";
   size_t length = strlen(text), cursor = length;
   ui_input_edit_key(text, sizeof(text), &length, &cursor, 127);
@@ -110,7 +109,7 @@ TEST_CASE("text_edit/combining_marks_and_emoji_sequences_preserve_codepoint_boun
   REQUIRE(std::strcmp((text), ("e")) == 0);
 }
 
-TEST_CASE("text_edit/word_deletion_uses_ascii_delimiters_in_every_available_locale", "[text_edit]") {
+TEST_CASE("text_edit/word_deletion_uses_ascii_delimiters_in_every_available_locale", "[text_edit] [unit]") {
   const char *locales[] = {"C", "C.UTF-8", "en_US.ISO8859-1", "fr_FR.ISO8859-1"};
   char original[128];
   SAFE_STRNCPY(original, setlocale(LC_CTYPE, NULL), sizeof(original));

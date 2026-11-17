@@ -20,7 +20,6 @@
 #include "discovery-service/main.h"
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/network/acip/acds.h>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <sodium.h>
 #include <unistd.h>
@@ -47,7 +46,7 @@ static void cleanup_test_db(const char *path) {
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("acds_ip_privacy/password_protected_reveals_ip", "[acds_ip_privacy]") {
+TEST_CASE("acds_ip_privacy/password_protected_reveals_ip", "[acds_ip_privacy] [integration]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path), "passwd_reveal");
 
@@ -103,7 +102,7 @@ TEST_CASE("acds_ip_privacy/password_protected_reveals_ip", "[acds_ip_privacy]") 
 /**
  * @brief Test that IP is withheld for session without password or opt-in
  */
-TEST_CASE("acds_ip_privacy/no_password_no_optin_withholds_ip", "[acds_ip_privacy]") {
+TEST_CASE("acds_ip_privacy/no_password_no_optin_withholds_ip", "[acds_ip_privacy] [integration]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path), "no_passwd");
 
@@ -153,7 +152,7 @@ TEST_CASE("acds_ip_privacy/no_password_no_optin_withholds_ip", "[acds_ip_privacy
 /**
  * @brief Test that IP is revealed for session with explicit expose_ip_publicly opt-in
  */
-TEST_CASE("acds_ip_privacy/explicit_optin_reveals_ip", "[acds_ip_privacy]") {
+TEST_CASE("acds_ip_privacy/explicit_optin_reveals_ip", "[acds_ip_privacy] [integration]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path), "optin");
 
@@ -203,7 +202,7 @@ TEST_CASE("acds_ip_privacy/explicit_optin_reveals_ip", "[acds_ip_privacy]") {
 /**
  * @brief Test that IP is withheld for password-protected session with WRONG password
  */
-TEST_CASE("acds_ip_privacy/wrong_password_withholds_ip", "[acds_ip_privacy]") {
+TEST_CASE("acds_ip_privacy/wrong_password_withholds_ip", "[acds_ip_privacy] [integration]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path), "wrong_passwd");
 
@@ -257,7 +256,7 @@ TEST_CASE("acds_ip_privacy/wrong_password_withholds_ip", "[acds_ip_privacy]") {
 /**
  * @brief Test that WebRTC sessions follow the same IP privacy rules
  */
-TEST_CASE("acds_ip_privacy/webrtc_session_ip_privacy", "[acds_ip_privacy]") {
+TEST_CASE("acds_ip_privacy/webrtc_session_ip_privacy", "[acds_ip_privacy] [integration]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path), "webrtc");
 

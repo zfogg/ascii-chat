@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/gpg/export.h>
 #include <ascii-chat/crypto/gpg/gpg_keys.h>
 #include <ascii-chat/crypto/gpg/openpgp.h>
@@ -50,7 +49,7 @@ static void teardown(void) {
     home[0] = 0;
   }
 }
-TEST_CASE("gpg_keyring/exported_public_and_private_packets_reconstruct_the_same_ed25519_identity", "[gpg_keyring]") {
+TEST_CASE("gpg_keyring/exported_public_and_private_packets_reconstruct_the_same_ed25519_identity", "[gpg_keyring] [integration]") {
   uint8_t exported[32], armored_public[32], private_public[32], seed[32], regenerated[32], secret[64];
   char grip[41] = {0}, armor[16384];
   bool escaped = false;
@@ -80,7 +79,7 @@ TEST_CASE("gpg_keyring/exported_public_and_private_packets_reconstruct_the_same_
   sodium_memzero(secret, sizeof(secret));
 }
 
-TEST_CASE("gpg_keyring/native_detached_signature_is_accepted_by_gnupg_and_tampering_is_rejected", "[gpg_keyring]") {
+TEST_CASE("gpg_keyring/native_detached_signature_is_accepted_by_gnupg_and_tampering_is_rejected", "[gpg_keyring] [integration]") {
   const uint8_t message[] = "an isolated ascii-chat authentication message";
   uint8_t signature[4096], raw[64];
   size_t size = 0;

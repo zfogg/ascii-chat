@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/acip/send.h>
 #include <libplatform/compiler.h>
@@ -17,7 +16,7 @@
 #ifndef _WIN32
 #include <sys/socket.h>
 
-TEST_CASE("tcp_transport/send_failure_preserves_nested_system_context", "[tcp_transport]") {
+TEST_CASE("tcp_transport/send_failure_preserves_nested_system_context", "[tcp_transport] [unit]") {
   int sockets[2];
   REQUIRE((socketpair(AF_UNIX, SOCK_STREAM, 0, sockets)) == (0));
   acip_transport_t *transport = acip_tcp_transport_create("send-failure-context", sockets[0], NULL);
@@ -47,7 +46,7 @@ TEST_CASE("tcp_transport/send_failure_preserves_nested_system_context", "[tcp_tr
   CLEAR_ERRNO_ALL();
 }
 
-TEST_CASE("tcp_transport/peer_eof_marks_transport_disconnected", "[tcp_transport]") {
+TEST_CASE("tcp_transport/peer_eof_marks_transport_disconnected", "[tcp_transport] [unit]") {
   int sockets[2];
   REQUIRE((socketpair(AF_UNIX, SOCK_STREAM, 0, sockets)) == (0));
   acip_transport_t *transport = acip_tcp_transport_create("eof-test", sockets[0], NULL);
@@ -64,7 +63,7 @@ TEST_CASE("tcp_transport/peer_eof_marks_transport_disconnected", "[tcp_transport
   socket_close(sockets[0]);
 }
 
-TEST_CASE("tcp_transport/socket_ownership_survives_peer_eof", "[tcp_transport]") {
+TEST_CASE("tcp_transport/socket_ownership_survives_peer_eof", "[tcp_transport] [unit]") {
   for (int owned = 0; owned < 2; ++owned) {
     int sockets[2];
     REQUIRE((socketpair(AF_UNIX, SOCK_STREAM, 0, sockets)) == (0));
@@ -112,20 +111,20 @@ static void check_timeout(size_t header_bytes, bool payload_byte, bool retryable
   socket_close(sockets[1]);
   CLEAR_ERRNO_ALL();
 }
-TEST_CASE("tcp_transport/idle_header_timeout_is_retryable", "[tcp_transport]") {
+TEST_CASE("tcp_transport/idle_header_timeout_is_retryable", "[tcp_transport] [unit]") {
   check_timeout(0, false, true);
 }
-TEST_CASE("tcp_transport/partial_header_timeout_disconnects", "[tcp_transport]") {
+TEST_CASE("tcp_transport/partial_header_timeout_disconnects", "[tcp_transport] [unit]") {
   check_timeout(1, false, false);
 }
-TEST_CASE("tcp_transport/missing_payload_timeout_disconnects", "[tcp_transport]") {
+TEST_CASE("tcp_transport/missing_payload_timeout_disconnects", "[tcp_transport] [unit]") {
   check_timeout(sizeof(packet_header_t), false, false);
 }
-TEST_CASE("tcp_transport/partial_payload_timeout_disconnects", "[tcp_transport]") {
+TEST_CASE("tcp_transport/partial_payload_timeout_disconnects", "[tcp_transport] [unit]") {
   check_timeout(sizeof(packet_header_t), true, false);
 }
 
-TEST_CASE("tcp_transport/discovery_rejections_preserve_codes", "[tcp_transport]") {
+TEST_CASE("tcp_transport/discovery_rejections_preserve_codes", "[tcp_transport] [unit]") {
   REQUIRE(sodium_init() >= 0);
   for (int operation = 0; operation < 3; ++operation) {
     int sockets[2];
@@ -157,7 +156,7 @@ TEST_CASE("tcp_transport/discovery_rejections_preserve_codes", "[tcp_transport]"
     CLEAR_ERRNO_ALL();
   }
 }
-TEST_CASE("tcp_transport/discovery_joined_rejection_is_failure", "[tcp_transport]") {
+TEST_CASE("tcp_transport/discovery_joined_rejection_is_failure", "[tcp_transport] [unit]") {
   REQUIRE(sodium_init() >= 0);
   int sockets[2];
   REQUIRE((socketpair(AF_UNIX, SOCK_STREAM, 0, sockets)) == (0));
@@ -176,7 +175,7 @@ TEST_CASE("tcp_transport/discovery_joined_rejection_is_failure", "[tcp_transport
   socket_close(sockets[1]);
   CLEAR_ERRNO_ALL();
 }
-TEST_CASE("tcp_transport/error_response_hides_internal_details", "[tcp_transport]") {
+TEST_CASE("tcp_transport/error_response_hides_internal_details", "[tcp_transport] [unit]") {
   int sockets[2];
   REQUIRE((socketpair(AF_UNIX, SOCK_STREAM, 0, sockets)) == (0));
   REQUIRE((packet_send_error(sockets[0], NULL, ERROR_FILE_NOT_FOUND, "private/path and subprocess details")) == (ASCIICHAT_OK));
@@ -192,7 +191,7 @@ TEST_CASE("tcp_transport/error_response_hides_internal_details", "[tcp_transport
   socket_close(sockets[1]);
 }
 
-TEST_CASE("tcp_transport/error_response_hides_errno_stack_locations", "[tcp_transport]") {
+TEST_CASE("tcp_transport/error_response_hides_errno_stack_locations", "[tcp_transport] [unit]") {
   int sockets[2];
   REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) == 0);
   CLEAR_ERRNO_ALL();
@@ -217,7 +216,7 @@ TEST_CASE("tcp_transport/error_response_hides_errno_stack_locations", "[tcp_tran
   CLEAR_ERRNO_ALL();
 }
 
-TEST_CASE("tcp_transport/acip_error_response_hides_errno_stack_locations", "[tcp_transport]") {
+TEST_CASE("tcp_transport/acip_error_response_hides_errno_stack_locations", "[tcp_transport] [unit]") {
   int sockets[2];
   REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) == 0);
   acip_transport_t *transport = acip_tcp_transport_create("acip-error-stack", sockets[0], NULL);

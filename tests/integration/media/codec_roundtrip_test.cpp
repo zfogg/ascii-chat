@@ -1,7 +1,6 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/audio/limits.h>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/media/ffmpeg_encoder.h>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/media/source.h>
@@ -82,7 +81,7 @@ static format_case_t formats[] = {{"png", false, true, 0},   {"jpg", false, true
                                   {"webm", true, false, 20}, {"avi", true, false, 20},     {"mov", true, false, 20},  {"flv", true, false, 20}, {"3gp", true, false, 20},
                                   {"mka", true, false, 20},  {"unknown", true, false, 20}, {"jpeg", false, true, 20}};
 
-TEST_CASE("codec_roundtrip/encoded_frames_and_audio_decode_to_the_original_signal", "[codec_roundtrip]") {
+TEST_CASE("codec_roundtrip/encoded_frames_and_audio_decode_to_the_original_signal", "[codec_roundtrip] [integration]") {
   format_case_t *format = formats;
   encode_fixture(format->extension, format->image ? 1 : 12, format->audio);
   decoder = ffmpeg_decoder_create(path);
@@ -130,7 +129,7 @@ TEST_CASE("codec_roundtrip/encoded_frames_and_audio_decode_to_the_original_signa
   }
 }
 
-TEST_CASE("codec_roundtrip/media_source_pause_seek_rewind_and_loop_preserve_a_playable_stream", "[codec_roundtrip]") {
+TEST_CASE("codec_roundtrip/media_source_pause_seek_rewind_and_loop_preserve_a_playable_stream", "[codec_roundtrip] [integration]") {
   encode_fixture("avi", 12, true);
   source = media_source_create(MEDIA_SOURCE_FILE, path);
   REQUIRE((source) != nullptr);
@@ -167,7 +166,7 @@ static void put_le32(uint8_t *out, uint32_t value) {
   put_le16(out + 2, (uint16_t)(value >> 16));
 }
 
-TEST_CASE("codec_roundtrip/independent_stereo_pcm_is_resampled_and_rewound", "[codec_roundtrip]") {
+TEST_CASE("codec_roundtrip/independent_stereo_pcm_is_resampled_and_rewound", "[codec_roundtrip] [integration]") {
   // A manually serialized WAV keeps the decoder check independent of our encoder.
   uint8_t wav[44 + 8000 * 4] = {0};
   memcpy(wav, "RIFF", 4);

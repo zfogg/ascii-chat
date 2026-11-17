@@ -1,9 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/tui/too_small.h>
 #include <string.h>
 
-TEST_CASE("ui_too_small/media_boundaries", "[ui_too_small]") {
+TEST_CASE("ui_too_small/media_boundaries", "[ui_too_small] [unit]") {
   terminal_size_t minimum = {.cols = UI_MEDIA_MIN_COLS, .rows = UI_MEDIA_MIN_ROWS};
   REQUIRE(!(ui_too_small(minimum, minimum)));
   REQUIRE(ui_too_small((terminal_size_t){.cols = 19, .rows = 10}, minimum));
@@ -13,7 +12,7 @@ TEST_CASE("ui_too_small/media_boundaries", "[ui_too_small]") {
   REQUIRE(!(ui_too_small((terminal_size_t){0}, minimum)));
 }
 
-TEST_CASE("ui_too_small/one_cell_has_no_newline_or_out_of_bounds_cursor", "[ui_too_small]") {
+TEST_CASE("ui_too_small/one_cell_has_no_newline_or_out_of_bounds_cursor", "[ui_too_small] [unit]") {
   frame_buffer_t *buffer = frame_buffer_create(1, 1);
   REQUIRE((buffer) != nullptr);
   ui_too_small_render(buffer, (terminal_size_t){.cols = 1, .rows = 1}, (terminal_size_t){.cols = 20, .rows = 10});
@@ -23,7 +22,7 @@ TEST_CASE("ui_too_small/one_cell_has_no_newline_or_out_of_bounds_cursor", "[ui_t
   frame_buffer_destroy(buffer);
 }
 
-TEST_CASE("ui_too_small/unknown_dimensions_emit_nothing", "[ui_too_small]") {
+TEST_CASE("ui_too_small/unknown_dimensions_emit_nothing", "[ui_too_small] [unit]") {
   frame_buffer_t *buffer = frame_buffer_create(1, 1);
   REQUIRE((buffer) != nullptr);
   ui_too_small_render(buffer, (terminal_size_t){0}, (terminal_size_t){.cols = 20, .rows = 10});

@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
@@ -29,7 +28,7 @@ static void cleanup(void) {
     fixture_path[0] = '\0';
   }
 }
-TEST_CASE("ffmpeg_decoder/decodes_zlib_compressed_png", "[ffmpeg_decoder]") {
+TEST_CASE("ffmpeg_decoder/decodes_zlib_compressed_png", "[ffmpeg_decoder] [unit]") {
   const rgb_pixel_t expected[] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}, {255, 255, 255}};
   REQUIRE((platform_create_temp_file(fixture_path, sizeof(fixture_path), "png-decoder", &fixture_fd)) == (0));
   REQUIRE((platform_temp_file_open("png-decoder", fixture_path, &fixture_fd)) == (ASCIICHAT_OK));
@@ -63,7 +62,7 @@ static bool cancel_video_read(void *data) {
   return true;
 }
 
-TEST_CASE("ffmpeg_decoder/cancelled_prefetch_is_not_a_decode_failure", "[ffmpeg_decoder]") {
+TEST_CASE("ffmpeg_decoder/cancelled_prefetch_is_not_a_decode_failure", "[ffmpeg_decoder] [unit]") {
   static const char header[] = "YUV4MPEG2 W256 H256 F30:1 Ip A1:1 C420jpeg\n";
   static const char marker[] = "FRAME\n";
   unsigned char pixels[256 * 256 * 3 / 2];

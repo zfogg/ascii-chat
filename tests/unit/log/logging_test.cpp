@@ -1,6 +1,6 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdbool.h>
 #include <ascii-chat/tests/logging.h>
@@ -52,7 +52,7 @@ static void init_long_message_case(log_message_test_case_t *tc) {
   SAFE_STRNCPY(tc->description, "Long message", sizeof(tc->description));
 }
 
-TEST_CASE("logging/log_message_variations", "[logging]") {
+TEST_CASE("logging/log_message_variations", "[logging] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(log_message_cases), std::end(log_message_cases)));
   auto *tc = &generated_case;
   // Test all log levels with this message
@@ -90,7 +90,7 @@ static log_special_char_test_case_t log_special_char_cases[] = {
     {"Message with format chars: %s %d %f (but no args)", true, "Format chars with args"},
 };
 
-TEST_CASE("logging/log_special_characters", "[logging]") {
+TEST_CASE("logging/log_special_characters", "[logging] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(log_special_char_cases), std::end(log_special_char_cases)));
   auto *tc = &generated_case;
   if (tc->use_format) {
@@ -108,7 +108,7 @@ TEST_CASE("logging/log_special_characters", "[logging]") {
   REQUIRE(true);
 }
 
-TEST_CASE("logging/log_null_safety", "[logging]") {
+TEST_CASE("logging/log_null_safety", "[logging] [unit]") {
   // Test logging with NULL string (should be handled gracefully)
   const char *null_string = NULL;
 
@@ -125,7 +125,7 @@ TEST_CASE("logging/log_null_safety", "[logging]") {
 // Performance and Stress Tests
 // =============================================================================
 
-TEST_CASE("logging/log_performance", "[logging]") {
+TEST_CASE("logging/log_performance", "[logging] [unit]") {
   // Test that we can log many messages without issues
   for (int i = 0; i < 1000; i++) {
     log_debug("Debug message number %d", i);
@@ -137,7 +137,7 @@ TEST_CASE("logging/log_performance", "[logging]") {
   REQUIRE(true);
 }
 
-TEST_CASE("logging/mixed_log_levels", "[logging]") {
+TEST_CASE("logging/mixed_log_levels", "[logging] [unit]") {
   // Test mixing different log levels rapidly
   for (int i = 0; i < 100; i++) {
     switch (i % 4) {
@@ -163,7 +163,7 @@ TEST_CASE("logging/mixed_log_levels", "[logging]") {
 // Context and Threading Tests
 // =============================================================================
 
-TEST_CASE("logging/log_with_context", "[logging]") {
+TEST_CASE("logging/log_with_context", "[logging] [unit]") {
   // Test logging with different context information
   log_debug("Starting test function: %s", __func__);
   log_info("Current file: %s, line: %d", __FILE__, __LINE__);
@@ -178,7 +178,7 @@ TEST_CASE("logging/log_with_context", "[logging]") {
   REQUIRE(true);
 }
 
-TEST_CASE("logging/concurrent_logging", "[logging]") {
+TEST_CASE("logging/concurrent_logging", "[logging] [unit]") {
   // Simple concurrent logging test (not full threading, just rapid calls)
   for (int i = 0; i < 50; i++) {
     log_debug("Thread-like debug %d", i);
@@ -194,7 +194,7 @@ TEST_CASE("logging/concurrent_logging", "[logging]") {
 // Error Conditions
 // =============================================================================
 
-TEST_CASE("logging/log_with_extreme_formats", "[logging]") {
+TEST_CASE("logging/log_with_extreme_formats", "[logging] [unit]") {
   // Test with complex format strings
   log_debug("Complex format: %*.*s", 10, 5, "hello world");
   log_info("Hex dump style: %02x %02x %02x", 0xAA, 0xBB, 0xCC);
@@ -208,7 +208,7 @@ TEST_CASE("logging/log_with_extreme_formats", "[logging]") {
 // Integration with Common Module
 // =============================================================================
 
-TEST_CASE("logging/log_memory_operations", "[logging]") {
+TEST_CASE("logging/log_memory_operations", "[logging] [unit]") {
   // Test logging during memory operations
   void *ptr;
   ptr = SAFE_MALLOC(1024, void *);
@@ -228,7 +228,7 @@ TEST_CASE("logging/log_memory_operations", "[logging]") {
   REQUIRE(true);
 }
 
-TEST_CASE("logging/log_error_codes", "[logging]") {
+TEST_CASE("logging/log_error_codes", "[logging] [unit]") {
   // Test logging with common error codes
   log_error("Network error: %d", ERROR_NETWORK);
   log_error("Memory error: %d", ERROR_MEMORY);
@@ -243,7 +243,7 @@ TEST_CASE("logging/log_error_codes", "[logging]") {
 // Real-world Usage Simulation
 // =============================================================================
 
-TEST_CASE("logging/simulate_application_logging", "[logging]") {
+TEST_CASE("logging/simulate_application_logging", "[logging] [unit]") {
   // Simulate typical application logging patterns
   log_info("Application starting up...");
 
@@ -273,7 +273,7 @@ TEST_CASE("logging/simulate_application_logging", "[logging]") {
   REQUIRE(true);
 }
 
-TEST_CASE("logging/network_simulation_logging", "[logging]") {
+TEST_CASE("logging/network_simulation_logging", "[logging] [unit]") {
   // Simulate network-related logging
   const char *client_ip = "192.168.1.100";
   uint16_t port = 8080;
@@ -297,7 +297,7 @@ TEST_CASE("logging/network_simulation_logging", "[logging]") {
  * Log Level Management Tests
  * ============================================================================ */
 
-TEST_CASE("logging/log_level_setting_and_getting", "[logging]") {
+TEST_CASE("logging/log_level_setting_and_getting", "[logging] [unit]") {
   // Test setting and getting log levels
   log_level_t original_level = log_get_level();
 
@@ -315,7 +315,7 @@ TEST_CASE("logging/log_level_setting_and_getting", "[logging]") {
   log_set_level(original_level);
 }
 
-TEST_CASE("logging/log_level_filtering", "[logging]") {
+TEST_CASE("logging/log_level_filtering", "[logging] [unit]") {
   // Test that log level filtering works correctly
   log_set_level(LOG_WARN);
 
@@ -336,7 +336,7 @@ TEST_CASE("logging/log_level_filtering", "[logging]") {
   REQUIRE(true);
 }
 
-TEST_CASE("logging/log_level_edge_cases", "[logging]") {
+TEST_CASE("logging/log_level_edge_cases", "[logging] [unit]") {
   // Test edge cases for log levels
   log_set_level(LOG_DEBUG); // Most permissive
   log_debug("Debug message at most permissive level");
@@ -355,7 +355,7 @@ TEST_CASE("logging/log_level_edge_cases", "[logging]") {
  * Log File Management Tests
  * ============================================================================ */
 
-TEST_CASE("logging/log_file_operations", "[logging]") {
+TEST_CASE("logging/log_file_operations", "[logging] [unit]") {
   // Test log file operations
   const char *test_log_file = "/tmp/test_logging.log";
 
@@ -383,7 +383,7 @@ TEST_CASE("logging/log_file_operations", "[logging]") {
   unlink(test_log_file);
 }
 
-TEST_CASE("logging/log_file_initialization_failure", "[logging]") {
+TEST_CASE("logging/log_file_initialization_failure", "[logging] [unit]") {
   // Test log initialization with invalid filename
   const char *invalid_file = "/invalid/path/that/does/not/exist/test.log";
 
@@ -397,7 +397,7 @@ TEST_CASE("logging/log_file_initialization_failure", "[logging]") {
   REQUIRE(true);
 }
 
-TEST_CASE("logging/log_file_reinitialization", "[logging]") {
+TEST_CASE("logging/log_file_reinitialization", "[logging] [unit]") {
   // Test reinitializing logging
   const char *test_log_file1 = "/tmp/test_logging1.log";
   const char *test_log_file2 = "/tmp/test_logging2.log";
@@ -425,7 +425,7 @@ TEST_CASE("logging/log_file_reinitialization", "[logging]") {
   unlink(test_log_file2);
 }
 
-TEST_CASE("logging/log_file_null_filename", "[logging]") {
+TEST_CASE("logging/log_file_null_filename", "[logging] [unit]") {
   // Test logging with NULL filename (should use stderr)
   // Save current settings
   log_level_t original_level = log_get_level();
@@ -448,7 +448,7 @@ TEST_CASE("logging/log_file_null_filename", "[logging]") {
  * Terminal Output Control Tests
  * ============================================================================ */
 
-TEST_CASE("logging/terminal_output_control", "[logging]") {
+TEST_CASE("logging/terminal_output_control", "[logging] [unit]") {
   // Test terminal output control
   log_set_terminal_output(false);
   log_info("This should not appear on terminal");
@@ -459,7 +459,7 @@ TEST_CASE("logging/terminal_output_control", "[logging]") {
   REQUIRE(true);
 }
 
-TEST_CASE("logging/terminal_output_with_file_logging", "[logging]") {
+TEST_CASE("logging/terminal_output_with_file_logging", "[logging] [unit]") {
   // Test terminal output control when logging to file
   const char *test_log_file = "/tmp/test_terminal_output.log";
 
@@ -489,7 +489,7 @@ TEST_CASE("logging/terminal_output_with_file_logging", "[logging]") {
  * Log Truncation Tests
  * ============================================================================ */
 
-TEST_CASE("logging/log_truncation_manual", "[logging]") {
+TEST_CASE("logging/log_truncation_manual", "[logging] [unit]") {
   // Test manual log truncation
   const char *test_log_file = "/tmp/test_log_truncation.log";
 
@@ -527,7 +527,7 @@ TEST_CASE("logging/log_truncation_manual", "[logging]") {
  * Log Message Formatting Tests
  * ============================================================================ */
 
-TEST_CASE("logging/log_message_formatting_complex", "[logging]") {
+TEST_CASE("logging/log_message_formatting_complex", "[logging] [unit]") {
   // Test complex message formatting
   const char *string_var = "test_string";
   int int_var = 42;
@@ -543,7 +543,7 @@ TEST_CASE("logging/log_message_formatting_complex", "[logging]") {
   REQUIRE(true);
 }
 
-TEST_CASE("logging/log_message_formatting_edge_cases", "[logging]") {
+TEST_CASE("logging/log_message_formatting_edge_cases", "[logging] [unit]") {
   // Test edge cases in message formatting
   log_info("Empty string: '%s'", "");
   log_info("Null pointer: %p", NULL);
@@ -554,7 +554,7 @@ TEST_CASE("logging/log_message_formatting_edge_cases", "[logging]") {
   REQUIRE(true);
 }
 
-TEST_CASE("logging/log_message_formatting_long_strings", "[logging]") {
+TEST_CASE("logging/log_message_formatting_long_strings", "[logging] [unit]") {
   // Test formatting with long strings
   char long_string[1000];
   memset(long_string, 'A', sizeof(long_string) - 1);
@@ -572,7 +572,7 @@ TEST_CASE("logging/log_message_formatting_long_strings", "[logging]") {
  * Thread Safety Tests
  * ============================================================================ */
 
-TEST_CASE("logging/thread_safety_basic", "[logging]") {
+TEST_CASE("logging/thread_safety_basic", "[logging] [unit]") {
   // Test basic thread safety by calling logging functions rapidly
   for (int i = 0; i < 100; i++) {
     log_debug("Thread safety test message %d", i);
@@ -584,7 +584,7 @@ TEST_CASE("logging/thread_safety_basic", "[logging]") {
   REQUIRE(true);
 }
 
-TEST_CASE("logging/thread_safety_level_changes", "[logging]") {
+TEST_CASE("logging/thread_safety_level_changes", "[logging] [unit]") {
   SKIP("test skipped");
   // Test thread safety with level changes
 
@@ -606,7 +606,7 @@ TEST_CASE("logging/thread_safety_level_changes", "[logging]") {
  * Log Rotation Tests
  * ============================================================================ */
 
-TEST_CASE("logging/log_rotation_simulation", "[logging]") {
+TEST_CASE("logging/log_rotation_simulation", "[logging] [unit]") {
   // Test log rotation by creating a large log file
   const char *test_log_file = "/tmp/test_log_rotation.log";
 
@@ -645,7 +645,7 @@ static log_init_test_case_t log_init_cases[] = {
     {LOG_ERROR, "ERROR", "Initialization with ERROR level"}, {LOG_FATAL, "FATAL", "Initialization with FATAL level"},
 };
 
-TEST_CASE("logging/log_initialization_variations", "[logging]") {
+TEST_CASE("logging/log_initialization_variations", "[logging] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(log_init_cases), std::end(log_init_cases)));
   auto *tc = &generated_case;
   log_init(NULL, tc->level, false, false);
@@ -676,7 +676,7 @@ TEST_CASE("logging/log_initialization_variations", "[logging]") {
   REQUIRE(true);
 }
 
-TEST_CASE("logging/log_destroy_without_init", "[logging]") {
+TEST_CASE("logging/log_destroy_without_init", "[logging] [unit]") {
   // Test destroying logging without initialization
   log_destroy();
   log_destroy(); // Call twice to test idempotency
@@ -691,7 +691,7 @@ TEST_CASE("logging/log_destroy_without_init", "[logging]") {
  * Log Message Edge Cases
  * ============================================================================ */
 
-TEST_CASE("logging/log_message_edge_cases", "[logging]") {
+TEST_CASE("logging/log_message_edge_cases", "[logging] [unit]") {
   // Test edge cases in log messages
   log_info("Message with newline\nin the middle");
   log_info("Message with tab\tand carriage return\r");
@@ -707,7 +707,7 @@ TEST_CASE("logging/log_message_edge_cases", "[logging]") {
   REQUIRE(true);
 }
 
-TEST_CASE("logging/log_message_format_specifiers", "[logging]") {
+TEST_CASE("logging/log_message_format_specifiers", "[logging] [unit]") {
   // Test various format specifiers
   log_info("Integer: %d, unsigned: %u, hex: %x, octal: %o", 42, 42U, 42, 42);
   log_info("Float: %f, scientific: %e, shortest: %g", 3.14159, 3.14159, 3.14159);
@@ -738,7 +738,7 @@ static void safe_setenv(const char *name, const char *value) {
   }
 }
 
-TEST_CASE("logging/log_level_env_string_values", "[logging]") {
+TEST_CASE("logging/log_level_env_string_values", "[logging] [unit]") {
   char test_log_file[256];
   safe_snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_strings_%d.log", getpid());
 
@@ -832,7 +832,7 @@ TEST_CASE("logging/log_level_env_string_values", "[logging]") {
   safe_setenv("LOG_LEVEL", NULL);
 }
 
-TEST_CASE("logging/log_level_env_case_insensitive", "[logging]") {
+TEST_CASE("logging/log_level_env_case_insensitive", "[logging] [unit]") {
   char test_log_file[256];
   safe_snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_case_%d.log", getpid());
 
@@ -883,7 +883,7 @@ TEST_CASE("logging/log_level_env_case_insensitive", "[logging]") {
   safe_setenv("LOG_LEVEL", NULL);
 }
 
-TEST_CASE("logging/log_level_env_numeric_values", "[logging]") {
+TEST_CASE("logging/log_level_env_numeric_values", "[logging] [unit]") {
   char test_log_file[256];
   safe_snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_numeric_%d.log", getpid());
 
@@ -939,7 +939,7 @@ TEST_CASE("logging/log_level_env_numeric_values", "[logging]") {
   safe_setenv("LOG_LEVEL", NULL);
 }
 
-TEST_CASE("logging/log_level_env_unset_uses_default", "[logging]") {
+TEST_CASE("logging/log_level_env_unset_uses_default", "[logging] [unit]") {
   char test_log_file[256];
   safe_snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_unset_%d.log", getpid());
 
@@ -973,7 +973,7 @@ TEST_CASE("logging/log_level_env_unset_uses_default", "[logging]") {
   REQUIRE(!(found_info));
 }
 
-TEST_CASE("logging/log_level_env_invalid_uses_default", "[logging]") {
+TEST_CASE("logging/log_level_env_invalid_uses_default", "[logging] [unit]") {
   char test_log_file[256];
   safe_snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_invalid_%d.log", getpid());
 
@@ -1016,7 +1016,7 @@ TEST_CASE("logging/log_level_env_invalid_uses_default", "[logging]") {
   safe_setenv("LOG_LEVEL", NULL);
 }
 
-TEST_CASE("logging/log_level_env_dos_protection", "[logging]") {
+TEST_CASE("logging/log_level_env_dos_protection", "[logging] [unit]") {
   char test_log_file[256];
   safe_snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_dos_%d.log", getpid());
 
@@ -1064,7 +1064,7 @@ TEST_CASE("logging/log_level_env_dos_protection", "[logging]") {
   safe_setenv("LOG_LEVEL", NULL);
 }
 
-TEST_CASE("logging/log_level_env_boundary_64_chars", "[logging]") {
+TEST_CASE("logging/log_level_env_boundary_64_chars", "[logging] [unit]") {
   char test_log_file[256];
   safe_snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_boundary_%d.log", getpid());
 
@@ -1123,7 +1123,7 @@ TEST_CASE("logging/log_level_env_boundary_64_chars", "[logging]") {
   safe_setenv("LOG_LEVEL", NULL);
 }
 
-TEST_CASE("logging/log_level_env_before_init", "[logging]") {
+TEST_CASE("logging/log_level_env_before_init", "[logging] [unit]") {
   char test_log_file[256];
   safe_snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_before_init_%d.log", getpid());
 
@@ -1164,7 +1164,7 @@ TEST_CASE("logging/log_level_env_before_init", "[logging]") {
  * Log Once Tests
  * ============================================================================ */
 
-TEST_CASE("logging/log_once_compiles_and_runs", "[logging]") {
+TEST_CASE("logging/log_once_compiles_and_runs", "[logging] [unit]") {
   // Test that log_once macros compile and execute without crashing
   // Note: Due to static variable persistence in tests, we can't directly test
   // "exactly once" behavior, but we can verify the macros compile and run.

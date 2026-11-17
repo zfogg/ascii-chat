@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <libplatform/cond.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/network/acip/acds_client.h>
@@ -115,26 +114,26 @@ static void run_join(uint8_t expected) {
   REQUIRE((entry->current_participants) == (expected == ACIP_ERROR_NONE ? 1 : expected == ACIP_ERROR_SESSION_FULL ? 2 : 0));
   session_entry_destroy(entry);
 }
-TEST_CASE("discovery_password_lock/unrelated_lookup_proceeds_during_password_verification", "[discovery_password_lock]") {
+TEST_CASE("discovery_password_lock/unrelated_lookup_proceeds_during_password_verification", "[discovery_password_lock] [contract]") {
   run_join(ACIP_ERROR_NONE);
 }
-TEST_CASE("discovery_password_lock/revocation_during_password_verification_is_rechecked", "[discovery_password_lock]") {
+TEST_CASE("discovery_password_lock/revocation_during_password_verification_is_rechecked", "[discovery_password_lock] [contract]") {
   mutation = "UPDATE session_identity_keys SET revoked = 1";
   run_join(ACIP_ERROR_INVALID_SIGNATURE);
 }
-TEST_CASE("discovery_password_lock/capacity_during_password_verification_is_rechecked", "[discovery_password_lock]") {
+TEST_CASE("discovery_password_lock/capacity_during_password_verification_is_rechecked", "[discovery_password_lock] [contract]") {
   mutation = "UPDATE sessions SET current_participants = max_participants";
   run_join(ACIP_ERROR_SESSION_FULL);
 }
-TEST_CASE("discovery_password_lock/replaced_session_cannot_inherit_verified_password", "[discovery_password_lock]") {
+TEST_CASE("discovery_password_lock/replaced_session_cannot_inherit_verified_password", "[discovery_password_lock] [contract]") {
   mutation = "UPDATE sessions SET session_id = randomblob(16)";
   run_join(ACIP_ERROR_SESSION_NOT_FOUND);
 }
-TEST_CASE("discovery_password_lock/changed_password_requires_a_retry", "[discovery_password_lock]") {
+TEST_CASE("discovery_password_lock/changed_password_requires_a_retry", "[discovery_password_lock] [contract]") {
   mutation = "UPDATE sessions SET password_hash = 'different-hash'";
   run_join(ACIP_ERROR_INVALID_PASSWORD);
 }
-TEST_CASE("discovery_password_lock/unlisted_identity_cannot_trigger_password_work", "[discovery_password_lock]") {
+TEST_CASE("discovery_password_lock/unlisted_identity_cannot_trigger_password_work", "[discovery_password_lock] [contract]") {
   acip_session_join_t join = request();
   memset(join.identity_pubkey, 0, sizeof(join.identity_pubkey));
   acip_session_joined_t response;

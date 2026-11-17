@@ -1,9 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
-TEST_CASE("packet_queue/copy_is_independent", "[packet_queue]") {
+TEST_CASE("packet_queue/copy_is_independent", "[packet_queue] [unit]") {
   packet_queue_t *queue = packet_queue_create(4);
   REQUIRE((queue) != nullptr);
   char input[] = "packet";
@@ -17,7 +16,7 @@ TEST_CASE("packet_queue/copy_is_independent", "[packet_queue]") {
   packet_queue_free_packet(packet);
 }
 
-TEST_CASE("packet_queue/failed_take_preserves_owner", "[packet_queue]") {
+TEST_CASE("packet_queue/failed_take_preserves_owner", "[packet_queue] [unit]") {
   packet_queue_t *queue = packet_queue_create(1);
   REQUIRE((queue) != nullptr);
   void *first = buffer_alloc(NULL, 64);
@@ -34,7 +33,7 @@ TEST_CASE("packet_queue/failed_take_preserves_owner", "[packet_queue]") {
   packet_queue_destroy(queue);
 }
 
-TEST_CASE("packet_queue/byte_limit_and_drop_policy", "[packet_queue]") {
+TEST_CASE("packet_queue/byte_limit_and_drop_policy", "[packet_queue] [unit]") {
   packet_queue_config_t config = {100, 8, PACKET_QUEUE_DROP_OLDEST};
   packet_queue_t *queue = packet_queue_create_config(&config);
   REQUIRE((queue) != nullptr);
@@ -48,7 +47,7 @@ TEST_CASE("packet_queue/byte_limit_and_drop_policy", "[packet_queue]") {
   packet_queue_destroy(queue);
 }
 
-TEST_CASE("packet_queue/stopped_queue_drains_on_destroy", "[packet_queue]") {
+TEST_CASE("packet_queue/stopped_queue_drains_on_destroy", "[packet_queue] [unit]") {
   packet_queue_t *queue = packet_queue_create(1);
   REQUIRE((queue) != nullptr);
   REQUIRE((packet_queue_push_copy(queue, PACKET_TYPE_PING, "test", 5, 0)) == (ASCIICHAT_OK));
@@ -60,7 +59,7 @@ TEST_CASE("packet_queue/stopped_queue_drains_on_destroy", "[packet_queue]") {
   packet_queue_destroy(queue);
 }
 
-TEST_CASE("packet_queue/malformed_inputs", "[packet_queue]") {
+TEST_CASE("packet_queue/malformed_inputs", "[packet_queue] [unit]") {
   packet_queue_t *queue = packet_queue_create(1);
   REQUIRE((packet_queue_push_copy(queue, PACKET_TYPE_PING, NULL, 5, 0)) != (ASCIICHAT_OK));
   REQUIRE((packet_queue_push_copy(queue, static_cast<packet_type_t>(0), "test", 5, 0)) != (ASCIICHAT_OK));

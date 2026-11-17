@@ -1,11 +1,11 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <stdio.h>
 #include <string.h>
 
-TEST_CASE("time_util/relative_duration_thresholds_and_direction", "[time_util]") {
+TEST_CASE("time_util/relative_duration_thresholds_and_direction", "[time_util] [unit]") {
   const struct {
     int64_t seconds;
     const char *phrase;
@@ -31,7 +31,7 @@ TEST_CASE("time_util/relative_duration_thresholds_and_direction", "[time_util]")
   }
 }
 
-TEST_CASE("time_util/relative_duration_requires_room_for_terminator", "[time_util]") {
+TEST_CASE("time_util/relative_duration_requires_room_for_terminator", "[time_util] [unit]") {
   char text[13]; // "a moment ago" plus the terminator.
   REQUIRE((time_human_readable(0, text, sizeof(text))) == (12));
   REQUIRE(std::strcmp((text), ("a moment ago")) == 0);
@@ -43,7 +43,7 @@ TEST_CASE("time_util/relative_duration_requires_room_for_terminator", "[time_uti
   REQUIRE((time_human_readable_unsigned(0, text, 0)) == (-1));
 }
 
-TEST_CASE("time_util/adaptive_pacing_drains_backlog_and_recovers_gradually", "[time_util]") {
+TEST_CASE("time_util/adaptive_pacing_drains_backlog_and_recovers_gradually", "[time_util] [unit]") {
   adaptive_sleep_config_t config = {1000, 1.0, 4.0, 0.5, 0.5};
   adaptive_sleep_state_t state;
   adaptive_sleep_init(&state, &config);
@@ -64,7 +64,7 @@ TEST_CASE("time_util/adaptive_pacing_drains_backlog_and_recovers_gradually", "[t
   REQUIRE((state.current_speed_multiplier) == Catch::Approx(1.0));
 }
 
-TEST_CASE("time_util/adaptive_pacing_respects_ranges_excluding_normal_speed", "[time_util]") {
+TEST_CASE("time_util/adaptive_pacing_respects_ranges_excluding_normal_speed", "[time_util] [unit]") {
   adaptive_sleep_state_t state;
   adaptive_sleep_config_t fast = {1200, 2.0, 4.0, 1.0, 1.0};
   adaptive_sleep_init(&state, &fast);
@@ -83,7 +83,7 @@ TEST_CASE("time_util/adaptive_pacing_respects_ranges_excluding_normal_speed", "[
   adaptive_sleep_do(NULL, 0, 0);
 }
 
-TEST_CASE("time_util/formatting_rejects_incomplete_specifiers_and_invalid_buffers", "[time_util]") {
+TEST_CASE("time_util/formatting_rejects_incomplete_specifiers_and_invalid_buffers", "[time_util] [unit]") {
   const char *invalid[] = {"%", "%-", "%04", "%.", "%.3", "%E", "%O", "%Q"};
   for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
     REQUIRE(!(time_format_is_valid_strftime(invalid[i])));

@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "client/connection_internal.h"
 #include "client/crypto.h"
 #include <ascii-chat/options/rcu.h>
@@ -111,7 +110,7 @@ static void startup_security(bool verify_key) {
   REQUIRE((network_connection_open("crypto-startup-peer", "127.0.0.1", NET_TO_HOST_U16(address.sin_port), &settings, &startup_owner, NULL)) == (ASCIICHAT_OK));
   connection.network = startup_owner;
 }
-TEST_CASE("client_crypto/discovery_identity_is_verified_and_bound_to_the_expected_server_key", "[client_crypto]") {
+TEST_CASE("client_crypto/discovery_identity_is_verified_and_bound_to_the_expected_server_key", "[client_crypto] [contract]") {
   startup_security(true);
   REQUIRE((client_crypto_init(&connection, NULL)) == (ASCIICHAT_OK));
   REQUIRE((startup_verifications) == (1));
@@ -125,7 +124,7 @@ TEST_CASE("client_crypto/discovery_identity_is_verified_and_bound_to_the_expecte
   REQUIRE(connection.crypto_ctx->verify_server_key);
   REQUIRE(std::strcmp((connection.crypto_ctx->expected_server_key), ("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")) == 0);
 }
-TEST_CASE("client_crypto/failed_discovery_key_verification_does_not_attempt_an_untrusted_lookup", "[client_crypto]") {
+TEST_CASE("client_crypto/failed_discovery_key_verification_does_not_attempt_an_untrusted_lookup", "[client_crypto] [contract]") {
   startup_security(true);
   startup_key_fails = true;
   REQUIRE((client_crypto_init(&connection, NULL)) == (ERROR_CRYPTO_AUTH));
@@ -134,7 +133,7 @@ TEST_CASE("client_crypto/failed_discovery_key_verification_does_not_attempt_an_u
   REQUIRE((startup_lookups) == (0));
   REQUIRE(!(connection.crypto_ctx->verify_server_key));
 }
-TEST_CASE("client_crypto/discovery_connection_failure_is_fatal_to_required_identity_verification", "[client_crypto]") {
+TEST_CASE("client_crypto/discovery_connection_failure_is_fatal_to_required_identity_verification", "[client_crypto] [contract]") {
   startup_security(false);
   startup_connect_fails = true;
   REQUIRE((client_crypto_init(&connection, NULL)) == (ERROR_CRYPTO_AUTH));
@@ -142,21 +141,21 @@ TEST_CASE("client_crypto/discovery_connection_failure_is_fatal_to_required_ident
   REQUIRE((startup_lookups) == (0));
   REQUIRE((startup_disconnects) == (0));
 }
-TEST_CASE("client_crypto/failed_discovery_lookup_does_not_publish_an_expected_key", "[client_crypto]") {
+TEST_CASE("client_crypto/failed_discovery_lookup_does_not_publish_an_expected_key", "[client_crypto] [contract]") {
   startup_security(false);
   startup_lookup_fails = true;
   REQUIRE((client_crypto_init(&connection, NULL)) == (ERROR_CRYPTO_AUTH));
   REQUIRE((startup_disconnects) == (1));
   REQUIRE(!(connection.crypto_ctx->verify_server_key));
 }
-TEST_CASE("client_crypto/missing_discovery_session_does_not_publish_an_expected_key", "[client_crypto]") {
+TEST_CASE("client_crypto/missing_discovery_session_does_not_publish_an_expected_key", "[client_crypto] [contract]") {
   startup_security(false);
   startup_session_missing = true;
   REQUIRE((client_crypto_init(&connection, NULL)) == (ERROR_CRYPTO_AUTH));
   REQUIRE((startup_disconnects) == (1));
   REQUIRE(!(connection.crypto_ctx->verify_server_key));
 }
-TEST_CASE("client_crypto/security_preparation_and_checkpoint_failures_do_not_start_identity_lookup", "[client_crypto]") {
+TEST_CASE("client_crypto/security_preparation_and_checkpoint_failures_do_not_start_identity_lookup", "[client_crypto] [contract]") {
   connection.network = NULL;
   REQUIRE((client_crypto_init(&connection, NULL)) != (ASCIICHAT_OK));
   REQUIRE((startup_connects) == (0));

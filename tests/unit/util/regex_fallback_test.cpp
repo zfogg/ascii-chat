@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <stdlib.h>
 #include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/util/pcre2.h>
@@ -21,7 +20,7 @@ static void setup(void) {
   REQUIRE((jit_size) == (0));
   pcre2_code_free(code);
 }
-TEST_CASE("regex_fallback/valid_and_invalid_ports_without_jit", "[regex_fallback]") {
+TEST_CASE("regex_fallback/valid_and_invalid_ports_without_jit", "[regex_fallback] [unit]") {
   uint16_t port = 0;
   REQUIRE((parse_port("47097", &port)) == (ASCIICHAT_OK));
   REQUIRE((port) == (47097));
@@ -34,7 +33,7 @@ TEST_CASE("regex_fallback/valid_and_invalid_ports_without_jit", "[regex_fallback
   errno_clear();
 }
 
-TEST_CASE("regex_fallback/urls_validate_and_parse_without_jit", "[regex_fallback]") {
+TEST_CASE("regex_fallback/urls_validate_and_parse_without_jit", "[regex_fallback] [unit]") {
   REQUIRE(url_is_valid("https://example.com:443/video.mp4"));
   REQUIRE(!(url_is_valid("invalid URL")));
   url_parts_t parts = {0};
@@ -45,13 +44,13 @@ TEST_CASE("regex_fallback/urls_validate_and_parse_without_jit", "[regex_fallback
   url_parts_destroy(&parts);
 }
 
-TEST_CASE("regex_fallback/paths_normalize_without_jit", "[regex_fallback]") {
+TEST_CASE("regex_fallback/paths_normalize_without_jit", "[regex_fallback] [unit]") {
   char normalized[256];
   REQUIRE(path_normalize_copy("/media//./video.mp4", normalized, sizeof(normalized)));
   REQUIRE(std::strcmp((normalized), ("/media/video.mp4")) == 0);
 }
 
-TEST_CASE("regex_fallback/settings_parse_without_jit", "[regex_fallback]") {
+TEST_CASE("regex_fallback/settings_parse_without_jit", "[regex_fallback] [unit]") {
   int setting = 0;
   REQUIRE(parse_color_setting("false", &setting, NULL));
   REQUIRE((setting) == (COLOR_SETTING_FALSE));
@@ -60,7 +59,7 @@ TEST_CASE("regex_fallback/settings_parse_without_jit", "[regex_fallback]") {
   REQUIRE(!(parse_color_setting("invalid", &setting, NULL)));
 }
 
-TEST_CASE("regex_fallback/session_strings_validate_without_jit", "[regex_fallback]") {
+TEST_CASE("regex_fallback/session_strings_validate_without_jit", "[regex_fallback] [unit]") {
   REQUIRE(is_session_string("happy-cat-dog"));
   REQUIRE(!(is_session_string("happy--dog")));
   REQUIRE(!(is_session_string("happy-cat-dog-extra")));

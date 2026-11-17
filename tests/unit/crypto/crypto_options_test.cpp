@@ -1,3 +1,4 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
 /**
@@ -5,7 +6,6 @@
  * @brief Unit tests for crypto CLI options parsing - Tests the intended final crypto implementation
  */
 
-#include <catch2/catch_all.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -197,7 +197,7 @@ static crypto_options_test_case_t crypto_options_cases[] = {
     {"Missing key value (should fail)", 3, {"program", "client", "--key"}, true, false, false, false, false, "", "", "", -1}};
 // clang-format on
 
-TEST_CASE("crypto_options/crypto_options_parsing_tests", "[crypto_options]") {
+TEST_CASE("crypto_options/crypto_options_parsing_tests", "[crypto_options] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(crypto_options_cases), std::end(crypto_options_cases)));
   crypto_options_test_case_t *tc = &generated_case;
   // Reset globals before each parameterized test case
@@ -253,7 +253,7 @@ TEST_CASE("crypto_options/crypto_options_parsing_tests", "[crypto_options]") {
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("crypto_options/client_only_options", "[crypto_options]") {
+TEST_CASE("crypto_options/client_only_options", "[crypto_options] [unit]") {
   const char *argv[] = {"program", "client", "--server-key", "/path/to/server/key"};
 
   // --server-key is client-only, should work for client
@@ -268,7 +268,7 @@ TEST_CASE("crypto_options/client_only_options", "[crypto_options]") {
   REQUIRE(std::strcmp((opts->server_key), ("/path/to/server/key")) == 0);
 }
 
-TEST_CASE("crypto_options/server_only_options", "[crypto_options]") {
+TEST_CASE("crypto_options/server_only_options", "[crypto_options] [unit]") {
   const char *argv[] = {"program", "server", "--client-keys", "/path/to/authorized_keys"};
 
   // This should work for server
@@ -281,7 +281,7 @@ TEST_CASE("crypto_options/server_only_options", "[crypto_options]") {
   REQUIRE(std::strcmp((opts->client_keys), ("/path/to/authorized_keys")) == 0);
 }
 
-TEST_CASE("crypto_options/mutually_exclusive_options", "[crypto_options]") {
+TEST_CASE("crypto_options/mutually_exclusive_options", "[crypto_options] [unit]") {
   char program[] = "program";
   char client[] = "client";
   char encrypt[] = "--encrypt";
@@ -291,7 +291,7 @@ TEST_CASE("crypto_options/mutually_exclusive_options", "[crypto_options]") {
   REQUIRE((options_init_exit_code(4, argv)) != (0));
 }
 
-TEST_CASE("crypto_options/no_auth_rejects_authentication", "[crypto_options]") {
+TEST_CASE("crypto_options/no_auth_rejects_authentication", "[crypto_options] [unit]") {
   char program[] = "program";
   char client[] = "client";
   char no_auth[] = "--no-auth";
@@ -302,7 +302,7 @@ TEST_CASE("crypto_options/no_auth_rejects_authentication", "[crypto_options]") {
   REQUIRE((options_init_exit_code(5, argv)) != (0));
 }
 
-TEST_CASE("crypto_options/invalid_key_formats", "[crypto_options]") {
+TEST_CASE("crypto_options/invalid_key_formats", "[crypto_options] [unit]") {
   const char *invalid_keys[] = {
       "invalid-key-format",
       "too-short",
@@ -333,7 +333,7 @@ TEST_CASE("crypto_options/invalid_key_formats", "[crypto_options]") {
 // Edge Cases and Error Handling
 // =============================================================================
 
-TEST_CASE("crypto_options/very_long_key_value", "[crypto_options]") {
+TEST_CASE("crypto_options/very_long_key_value", "[crypto_options] [unit]") {
   char long_key[251]; // Less than OPTIONS_BUFF_SIZE (256)
   memset(long_key, 'A', 250);
   long_key[250] = '\0';
@@ -349,7 +349,7 @@ TEST_CASE("crypto_options/very_long_key_value", "[crypto_options]") {
   REQUIRE(std::strcmp((opts->encrypt_key), (long_key)) == 0);
 }
 
-TEST_CASE("crypto_options/special_characters_in_key", "[crypto_options]") {
+TEST_CASE("crypto_options/special_characters_in_key", "[crypto_options] [unit]") {
   const char *special_key = "key!@#$%^&*()_+-=[]{}|;':\",./<>?`~";
   const char *argv[] = {"program", "client", "--key", special_key};
 
@@ -362,7 +362,7 @@ TEST_CASE("crypto_options/special_characters_in_key", "[crypto_options]") {
   REQUIRE(std::strcmp((opts->encrypt_key), (special_key)) == 0);
 }
 
-TEST_CASE("crypto_options/unicode_characters_in_key", "[crypto_options]") {
+TEST_CASE("crypto_options/unicode_characters_in_key", "[crypto_options] [unit]") {
   const char *unicode_key = "key_with_unicode_测试_🔑";
   const char *argv[] = {"program", "client", "--key", unicode_key};
 
@@ -375,7 +375,7 @@ TEST_CASE("crypto_options/unicode_characters_in_key", "[crypto_options]") {
   REQUIRE(std::strcmp((opts->encrypt_key), (unicode_key)) == 0);
 }
 
-TEST_CASE("crypto_options/empty_arguments", "[crypto_options]") {
+TEST_CASE("crypto_options/empty_arguments", "[crypto_options] [unit]") {
   const char *argv[] = {"program", "client"};
 
   options_init(2, (char **)argv);
@@ -388,7 +388,7 @@ TEST_CASE("crypto_options/empty_arguments", "[crypto_options]") {
   REQUIRE(opts->encrypt_key[0] == '\0');
 }
 
-TEST_CASE("crypto_options/null_arguments", "[crypto_options]") {
+TEST_CASE("crypto_options/null_arguments", "[crypto_options] [unit]") {
   // This should not crash
   options_init(0, NULL);
 
@@ -404,7 +404,7 @@ TEST_CASE("crypto_options/null_arguments", "[crypto_options]") {
 // Theory Tests for Option Combinations
 // =============================================================================
 
-TEST_CASE("crypto_options/option_combinations", "[crypto_options]") {
+TEST_CASE("crypto_options/option_combinations", "[crypto_options] [unit]") {
   struct option_combination_t {
     bool is_client;
     bool no_encrypt;
@@ -457,7 +457,7 @@ TEST_CASE("crypto_options/option_combinations", "[crypto_options]") {
 // File Path Tests
 // =============================================================================
 
-TEST_CASE("crypto_options/absolute_file_paths", "[crypto_options]") {
+TEST_CASE("crypto_options/absolute_file_paths", "[crypto_options] [unit]") {
   const char *argv[] = {"program", "client", "--server-key", "/etc/ascii-chat/server_key"};
 
   // --server-key is CLIENT ONLY (client verifies server's public key)
@@ -470,7 +470,7 @@ TEST_CASE("crypto_options/absolute_file_paths", "[crypto_options]") {
   REQUIRE(std::strcmp((opts->server_key), ("/etc/ascii-chat/server_key")) == 0);
 }
 
-TEST_CASE("crypto_options/relative_file_paths", "[crypto_options]") {
+TEST_CASE("crypto_options/relative_file_paths", "[crypto_options] [unit]") {
   const char *argv[] = {"program", "server", "--client-keys", "./authorized_keys"};
 
   options_init(4, (char **)argv);
@@ -487,7 +487,7 @@ TEST_CASE("crypto_options/relative_file_paths", "[crypto_options]") {
 // =============================================================================
 
 // Test that --help returns success (previously called exit(0))
-TEST_CASE("crypto_options/help_display", "[crypto_options]") {
+TEST_CASE("crypto_options/help_display", "[crypto_options] [unit]") {
   const char *argv[] = {"program", "--help"};
 
   // options_init now returns a value instead of calling exit()
@@ -498,7 +498,7 @@ TEST_CASE("crypto_options/help_display", "[crypto_options]") {
 }
 
 // Test that --version returns success (previously called exit(0))
-TEST_CASE("crypto_options/version_display", "[crypto_options]") {
+TEST_CASE("crypto_options/version_display", "[crypto_options] [unit]") {
   const char *argv[] = {"program", "--version"};
 
   // options_init now returns a value instead of calling exit()
@@ -512,7 +512,7 @@ TEST_CASE("crypto_options/version_display", "[crypto_options]") {
 // Stress Tests
 // =============================================================================
 
-TEST_CASE("crypto_options/many_options", "[crypto_options]") {
+TEST_CASE("crypto_options/many_options", "[crypto_options] [unit]") {
   // Note: --server-key is CLIENT-only, --client-keys is SERVER-only
   // So we test with client mode and skip --client-keys
   char program[] = "program";
@@ -532,7 +532,7 @@ TEST_CASE("crypto_options/many_options", "[crypto_options]") {
   REQUIRE(std::strcmp((opts->server_key), (server_key_value)) == 0);
 }
 
-TEST_CASE("crypto_options/repeated_options", "[crypto_options]") {
+TEST_CASE("crypto_options/repeated_options", "[crypto_options] [unit]") {
   const char *argv[] = {"program", "--key", "first-key", "--key", "second-key"};
 
   options_init(5, (char **)argv);

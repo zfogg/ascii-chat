@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "session/render.h"
 #include <options/rcu.h>
 #include <options/runtime.h>
@@ -120,7 +119,7 @@ static size_t count_pixels(void) {
   }
   return count;
 }
-TEST_CASE("render_loop_contract/event_callbacks_deliver_frames_and_temporary_gaps_do_not_exit", "[render_loop_contract]") {
+TEST_CASE("render_loop_contract/event_callbacks_deliver_frames_and_temporary_gaps_do_not_exit", "[render_loop_contract] [contract]") {
   gap_first = true;
   SET_ERRNO(ERROR_MEDIA_DECODE, "An older failure must not poison a successful capture");
   REQUIRE((run()) == (ASCIICHAT_OK));
@@ -129,7 +128,7 @@ TEST_CASE("render_loop_contract/event_callbacks_deliver_frames_and_temporary_gap
   REQUIRE((count_pixels()) == (2 * 40 * 12));
   REQUIRE((session_display_get_global_context()) == nullptr);
 }
-TEST_CASE("render_loop_contract/capture_failure_propagates_and_unregisters_display", "[render_loop_contract]") {
+TEST_CASE("render_loop_contract/capture_failure_propagates_and_unregisters_display", "[render_loop_contract] [contract]") {
   fail_capture = true;
   REQUIRE((run()) == (ERROR_NETWORK));
   REQUIRE((captures) == (1));
@@ -137,14 +136,14 @@ TEST_CASE("render_loop_contract/capture_failure_propagates_and_unregisters_displ
   REQUIRE((count_pixels()) == (0));
   REQUIRE((session_display_get_global_context()) == nullptr);
 }
-TEST_CASE("render_loop_contract/preexisting_exit_does_not_capture_or_render", "[render_loop_contract]") {
+TEST_CASE("render_loop_contract/preexisting_exit_does_not_capture_or_render", "[render_loop_contract] [contract]") {
   exit_immediately = true;
   REQUIRE((run()) == (ASCIICHAT_OK));
   REQUIRE((captures) == (0));
   REQUIRE((sleeps) == (0));
   REQUIRE((count_pixels()) == (0));
 }
-TEST_CASE("render_loop_contract/callback_pairs_and_required_parameters_are_validated_before_use", "[render_loop_contract]") {
+TEST_CASE("render_loop_contract/callback_pairs_and_required_parameters_are_validated_before_use", "[render_loop_contract] [contract]") {
   REQUIRE((session_render_loop(NULL, NULL, done, capture, pace, NULL, &captures)) == (ERROR_INVALID_PARAM));
   REQUIRE((session_render_loop(NULL, display, NULL, capture, pace, NULL, &captures)) == (ERROR_INVALID_PARAM));
   REQUIRE((session_render_loop(NULL, display, done, NULL, NULL, NULL, &captures)) == (ERROR_INVALID_PARAM));
@@ -152,7 +151,7 @@ TEST_CASE("render_loop_contract/callback_pairs_and_required_parameters_are_valid
   REQUIRE((captures) == (0));
 }
 
-TEST_CASE("render_loop_contract/immediate_snapshot_renders_one_frame_and_starts_its_timer", "[render_loop_contract]") {
+TEST_CASE("render_loop_contract/immediate_snapshot_renders_one_frame_and_starts_its_timer", "[render_loop_contract] [contract]") {
   options_t *values = SAFE_MALLOC(sizeof(*values), options_t *);
   *values = *options_get();
   values->snapshot_mode = true;
@@ -182,14 +181,14 @@ static void on_key(session_capture_ctx_t *source, int key, void *context) {
   REQUIRE((key) == ('q'));
   ++keyboard_events;
 }
-TEST_CASE("render_loop_contract/event_mode_delivers_keys_without_requiring_a_native_terminal", "[render_loop_contract]") {
+TEST_CASE("render_loop_contract/event_mode_delivers_keys_without_requiring_a_native_terminal", "[render_loop_contract] [contract]") {
   REQUIRE((session_render_loop(NULL, display, done, capture, pace, on_key, &captures)) == (ASCIICHAT_OK));
   REQUIRE((keyboard_events) == (3));
   REQUIRE((captures) == (3));
   REQUIRE((count_pixels()) == (3 * 40 * 12));
   REQUIRE((session_display_get_global_context()) == nullptr);
 }
-TEST_CASE("render_loop_contract/mixed_capture_modes_and_unpaired_sleep_are_rejected_before_capture", "[render_loop_contract]") {
+TEST_CASE("render_loop_contract/mixed_capture_modes_and_unpaired_sleep_are_rejected_before_capture", "[render_loop_contract] [contract]") {
   session_capture_ctx_t *sentinel = (session_capture_ctx_t *)&captures;
   REQUIRE((session_render_loop(sentinel, display, done, capture, pace, NULL, &captures)) == (ERROR_INVALID_PARAM));
   CLEAR_ERRNO_ALL();

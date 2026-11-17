@@ -11,7 +11,6 @@
  * - All participants converge on same elected host
  */
 
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/consensus/coordinator.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/network/consensus/topology.h>
@@ -135,7 +134,7 @@ static void destroy_participant(participant_t *p) {
  * Test basic topology formation with 4 participants
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("consensus_integration/topology_formation", "[consensus_integration]") {
+TEST_CASE("consensus_integration/topology_formation", "[consensus_integration] [integration]") {
   // Create 4 participants
   uint8_t participants[4][16];
   participant_t parts[4];
@@ -173,7 +172,7 @@ TEST_CASE("consensus_integration/topology_formation", "[consensus_integration]")
 /**
  * Test ring navigation (next/prev)
  */
-TEST_CASE("consensus_integration/ring_navigation", "[consensus_integration]") {
+TEST_CASE("consensus_integration/ring_navigation", "[consensus_integration] [integration]") {
   // Create 3 participants
   uint8_t participants[3][16];
   participant_t parts[3];
@@ -216,7 +215,7 @@ TEST_CASE("consensus_integration/ring_navigation", "[consensus_integration]") {
 /**
  * Test complete election with deterministic scoring
  */
-TEST_CASE("consensus_integration/complete_election_flow", "[consensus_integration]") {
+TEST_CASE("consensus_integration/complete_election_flow", "[consensus_integration] [integration]") {
   // Create 4 participants with different network characteristics
   uint8_t participants[4][16];
   participant_metrics_t metrics[4];
@@ -266,7 +265,7 @@ TEST_CASE("consensus_integration/complete_election_flow", "[consensus_integratio
 /**
  * Test state machine transitions
  */
-TEST_CASE("consensus_integration/state_machine_transitions", "[consensus_integration]") {
+TEST_CASE("consensus_integration/state_machine_transitions", "[consensus_integration] [integration]") {
   uint8_t participants[2][16];
   make_test_id(participants[0], 10);
   make_test_id(participants[1], 20);
@@ -331,7 +330,7 @@ TEST_CASE("consensus_integration/state_machine_transitions", "[consensus_integra
 /**
  * Test coordinator creation and lifecycle
  */
-TEST_CASE("consensus_integration/coordinator_lifecycle", "[consensus_integration]") {
+TEST_CASE("consensus_integration/coordinator_lifecycle", "[consensus_integration] [integration]") {
   uint8_t participants[3][16];
   participant_t parts[3];
 
@@ -368,7 +367,7 @@ TEST_CASE("consensus_integration/coordinator_lifecycle", "[consensus_integration
 /**
  * Test multiple rounds with state persistence
  */
-TEST_CASE("consensus_integration/multiple_election_rounds", "[consensus_integration]") {
+TEST_CASE("consensus_integration/multiple_election_rounds", "[consensus_integration] [integration]") {
   // Create 3 participants with similar initial metrics
   uint8_t participants[3][16];
   participant_metrics_t metrics[3];

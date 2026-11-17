@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "server/stream.h"
 #include <options/rcu.h>
 #include "session/frame_validation.h"
@@ -97,7 +96,7 @@ static size_t cells(const char *frame, char wanted) {
   return count;
 }
 
-TEST_CASE("server_stream/latest_frame_is_reusable_and_source_bytes_remain_owned_by_buffer", "[server_stream]") {
+TEST_CASE("server_stream/latest_frame_is_reusable_and_source_bytes_remain_owned_by_buffer", "[server_stream] [contract]") {
   publish(0, 16, 8, 255);
   size_t size;
   bool changed;
@@ -121,7 +120,7 @@ TEST_CASE("server_stream/latest_frame_is_reusable_and_source_bytes_remain_owned_
   SAFE_FREE(second);
 }
 
-TEST_CASE("server_stream/multiple_aspect_ratios_reach_grid_and_leaving_changes_layout", "[server_stream]") {
+TEST_CASE("server_stream/multiple_aspect_ratios_reach_grid_and_leaving_changes_layout", "[server_stream] [contract]") {
   publish(0, 32, 8, 0);
   publish(1, 8, 32, 255);
   REQUIRE(any_clients_sending_video());
@@ -150,7 +149,7 @@ TEST_CASE("server_stream/multiple_aspect_ratios_reach_grid_and_leaving_changes_l
   REQUIRE((sources) == (0));
 }
 
-TEST_CASE("server_stream/malformed_or_unannounced_frames_are_not_rendered", "[server_stream]") {
+TEST_CASE("server_stream/malformed_or_unannounced_frames_are_not_rendered", "[server_stream] [contract]") {
   size_t size;
   bool changed;
   int sources;
@@ -176,7 +175,7 @@ TEST_CASE("server_stream/malformed_or_unannounced_frames_are_not_rendered", "[se
   REQUIRE((size) == (0));
 }
 
-TEST_CASE("server_stream/missing_capabilities_or_target_rejects_render_then_recovers", "[server_stream]") {
+TEST_CASE("server_stream/missing_capabilities_or_target_rejects_render_then_recovers", "[server_stream] [contract]") {
   publish(0, 8, 8, 255);
   size_t size;
   bool changed;
@@ -211,7 +210,7 @@ static void stream_settings(client_info_t *client, bool rain, int width, int hei
   REQUIRE((acip_render_settings_prepare(&client->render_settings, v)) == (ASCIICHAT_OK));
   SAFE_FREE(v);
 }
-TEST_CASE("server_stream/matrix_rain_rebuilds_for_dimensions_and_is_released_when_disabled", "[server_stream]") {
+TEST_CASE("server_stream/matrix_rain_rebuilds_for_dimensions_and_is_released_when_disabled", "[server_stream] [contract]") {
   publish(0, 16, 8, 120);
   client_info_t *client = &g_client_manager.clients[0];
   size_t size;
@@ -238,7 +237,7 @@ TEST_CASE("server_stream/matrix_rain_rebuilds_for_dimensions_and_is_released_whe
   REQUIRE((session_frame_validate(frame, size, 40, 12)) == (ASCIICHAT_OK));
   SAFE_FREE(frame);
 }
-TEST_CASE("server_stream/wide_palette_normalization_keeps_every_row_at_the_recipients_display_width", "[server_stream]") {
+TEST_CASE("server_stream/wide_palette_normalization_keeps_every_row_at_the_recipients_display_width", "[server_stream] [contract]") {
   publish(0, 16, 8, 120);
   client_info_t *client = &g_client_manager.clients[0];
   stream_settings(client, false, 40, 12, "界é");
@@ -252,7 +251,7 @@ TEST_CASE("server_stream/wide_palette_normalization_keeps_every_row_at_the_recip
   REQUIRE((sources) == (1));
   SAFE_FREE(frame);
 }
-TEST_CASE("server_stream/three_sources_use_multiple_grid_cells_and_dimension_rejections_do_not_consume_frames", "[server_stream]") {
+TEST_CASE("server_stream/three_sources_use_multiple_grid_cells_and_dimension_rejections_do_not_consume_frames", "[server_stream] [contract]") {
   publish(0, 16, 8, 0);
   publish(1, 8, 16, 255);
   publish(2, 16, 16, 120);

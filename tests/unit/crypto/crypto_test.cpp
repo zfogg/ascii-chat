@@ -1,6 +1,6 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 
 #include <ascii-chat/tests/logging.h>
@@ -27,7 +27,7 @@ void teardown_crypto_context(void) {
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("crypto/init_basic", "[crypto]") {
+TEST_CASE("crypto/init_basic", "[crypto] [unit]") {
   crypto_result_t result = crypto_init(&ctx1);
   REQUIRE((result) == (CRYPTO_OK));
   REQUIRE(ctx1.initialized);
@@ -36,7 +36,7 @@ TEST_CASE("crypto/init_basic", "[crypto]") {
   REQUIRE(crypto_is_ready(&ctx1) == false);
 }
 
-TEST_CASE("crypto/init_with_password", "[crypto]") {
+TEST_CASE("crypto/init_with_password", "[crypto] [unit]") {
   const char *password = "test-password-123";
   crypto_result_t result = crypto_init_with_password(&ctx1, password);
 
@@ -46,7 +46,7 @@ TEST_CASE("crypto/init_with_password", "[crypto]") {
   REQUIRE(crypto_is_ready(&ctx1));
 }
 
-TEST_CASE("crypto/init_invalid_params", "[crypto]") {
+TEST_CASE("crypto/init_invalid_params", "[crypto] [unit]") {
   crypto_result_t result = crypto_init(NULL);
   REQUIRE((result) == (CRYPTO_ERROR_INVALID_PARAMS));
 
@@ -64,7 +64,7 @@ TEST_CASE("crypto/init_invalid_params", "[crypto]") {
 // Key Exchange Tests
 // =============================================================================
 
-TEST_CASE("crypto/key_exchange_flow", "[crypto]") {
+TEST_CASE("crypto/key_exchange_flow", "[crypto] [unit]") {
   // Initialize both contexts
   crypto_result_t result = crypto_init(&ctx1);
   REQUIRE((result) == (CRYPTO_OK));
@@ -97,7 +97,7 @@ TEST_CASE("crypto/key_exchange_flow", "[crypto]") {
   REQUIRE(crypto_is_ready(&ctx2));
 }
 
-TEST_CASE("crypto/public_key_invalid_params", "[crypto]") {
+TEST_CASE("crypto/public_key_invalid_params", "[crypto] [unit]") {
   uint8_t pub_key[CRYPTO_PUBLIC_KEY_SIZE];
 
   crypto_result_t result = crypto_get_public_key(NULL, pub_key);
@@ -117,7 +117,7 @@ TEST_CASE("crypto/public_key_invalid_params", "[crypto]") {
 // Password Verification Tests
 // =============================================================================
 
-TEST_CASE("crypto/password_verification", "[crypto]") {
+TEST_CASE("crypto/password_verification", "[crypto] [unit]") {
   const char *correct_password = "my-secure-password-123";
   const char *wrong_password = "wrong-password-456";
 
@@ -143,7 +143,7 @@ TEST_CASE("crypto/password_verification", "[crypto]") {
 
 // Theory: Encryption roundtrip property - decrypt(encrypt(data)) == data
 // Replaces: encrypt_decrypt_password_based and encrypt_decrypt_key_exchange
-TEST_CASE("crypto/encryption_roundtrip_property", "[crypto]") {
+TEST_CASE("crypto/encryption_roundtrip_property", "[crypto] [unit]") {
   size_t data_size = GENERATE(1u, 16u, 64u, 256u, 512u, 1024u, 2048u);
   if (!(data_size > 0 && data_size <= 2048))
     SKIP("assumption not satisfied");
@@ -177,7 +177,7 @@ TEST_CASE("crypto/encryption_roundtrip_property", "[crypto]") {
 }
 
 // Theory: Key exchange encryption roundtrip
-TEST_CASE("crypto/key_exchange_roundtrip_property", "[crypto]") {
+TEST_CASE("crypto/key_exchange_roundtrip_property", "[crypto] [unit]") {
   size_t data_size = GENERATE(1u, 32u, 128u, 512u, 1024u);
   if (!(data_size > 0 && data_size <= 1024))
     SKIP("assumption not satisfied");
@@ -220,7 +220,7 @@ TEST_CASE("crypto/key_exchange_roundtrip_property", "[crypto]") {
   crypto_destroy(&ctx2);
 }
 
-TEST_CASE("crypto/encrypt_not_ready", "[crypto]") {
+TEST_CASE("crypto/encrypt_not_ready", "[crypto] [unit]") {
   const char *plaintext = "test";
   uint8_t ciphertext[1024];
   size_t ciphertext_len;
@@ -233,7 +233,7 @@ TEST_CASE("crypto/encrypt_not_ready", "[crypto]") {
   REQUIRE((result) == (CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE));
 }
 
-TEST_CASE("crypto/encrypt_invalid_params", "[crypto]") {
+TEST_CASE("crypto/encrypt_invalid_params", "[crypto] [unit]") {
   crypto_init_with_password(&ctx1, "password");
 
   const char *plaintext = "test";
@@ -257,7 +257,7 @@ TEST_CASE("crypto/encrypt_invalid_params", "[crypto]") {
   REQUIRE((result) == (CRYPTO_ERROR_INVALID_PARAMS));
 }
 
-TEST_CASE("crypto/decrypt_invalid_data", "[crypto]") {
+TEST_CASE("crypto/decrypt_invalid_data", "[crypto] [unit]") {
   crypto_init_with_password(&ctx1, "password");
 
   uint8_t invalid_ciphertext[] = {0x01, 0x02, 0x03}; // Too small
@@ -272,7 +272,7 @@ TEST_CASE("crypto/decrypt_invalid_data", "[crypto]") {
 // Network Packet Tests
 // =============================================================================
 
-TEST_CASE("crypto/public_key_packet", "[crypto]") {
+TEST_CASE("crypto/public_key_packet", "[crypto] [unit]") {
   crypto_init(&ctx1);
 
   uint8_t packet[1024];
@@ -291,7 +291,7 @@ TEST_CASE("crypto/public_key_packet", "[crypto]") {
   REQUIRE(ctx2.key_exchange_complete);
 }
 
-TEST_CASE("crypto/encrypted_data_packet", "[crypto]") {
+TEST_CASE("crypto/encrypted_data_packet", "[crypto] [unit]") {
   // Set up key exchange
   crypto_init(&ctx1);
   crypto_init(&ctx2);
@@ -327,7 +327,7 @@ TEST_CASE("crypto/encrypted_data_packet", "[crypto]") {
 // Utility Function Tests
 // =============================================================================
 
-TEST_CASE("crypto/random_bytes", "[crypto]") {
+TEST_CASE("crypto/random_bytes", "[crypto] [unit]") {
   uint8_t random1[32];
   uint8_t random2[32];
 
@@ -341,7 +341,7 @@ TEST_CASE("crypto/random_bytes", "[crypto]") {
   REQUIRE((memcmp(random1, random2, sizeof(random1))) != (0));
 }
 
-TEST_CASE("crypto/secure_compare", "[crypto]") {
+TEST_CASE("crypto/secure_compare", "[crypto] [unit]") {
   uint8_t data1[] = {0x01, 0x02, 0x03, 0x04};
   uint8_t data2[] = {0x01, 0x02, 0x03, 0x04};
   uint8_t data3[] = {0x01, 0x02, 0x03, 0x05};
@@ -352,7 +352,7 @@ TEST_CASE("crypto/secure_compare", "[crypto]") {
   REQUIRE(crypto_secure_compare(data1, NULL, sizeof(data1)) == false);
 }
 
-TEST_CASE("crypto/result_to_string", "[crypto]") {
+TEST_CASE("crypto/result_to_string", "[crypto] [unit]") {
   const char *ok_str = crypto_result_to_string(CRYPTO_OK);
   REQUIRE(std::strcmp((ok_str), ("Success")) == 0);
 
@@ -363,7 +363,7 @@ TEST_CASE("crypto/result_to_string", "[crypto]") {
   REQUIRE(std::strcmp((unknown_str), ("Unknown error")) == 0);
 }
 
-TEST_CASE("crypto/get_status", "[crypto]") {
+TEST_CASE("crypto/get_status", "[crypto] [unit]") {
   char status[512];
 
   // Uninitialized context
@@ -384,7 +384,7 @@ TEST_CASE("crypto/get_status", "[crypto]") {
 // =============================================================================
 
 // Theory: Nonce uniqueness property - same plaintext encrypted twice produces different ciphertext
-TEST_CASE("crypto/nonce_uniqueness_property", "[crypto]") {
+TEST_CASE("crypto/nonce_uniqueness_property", "[crypto] [unit]") {
   size_t data_size = GENERATE(8u, 64u, 256u);
   if (!(data_size > 0 && data_size <= 256))
     SKIP("assumption not satisfied");
@@ -411,7 +411,7 @@ TEST_CASE("crypto/nonce_uniqueness_property", "[crypto]") {
   crypto_destroy(&ctx);
 }
 
-TEST_CASE("crypto/buffer_size_checks", "[crypto]") {
+TEST_CASE("crypto/buffer_size_checks", "[crypto] [unit]") {
   crypto_init_with_password(&ctx1, "password");
 
   const char *plaintext = "test message for buffer size testing";
@@ -424,7 +424,7 @@ TEST_CASE("crypto/buffer_size_checks", "[crypto]") {
   REQUIRE((result) == (CRYPTO_ERROR_BUFFER_TOO_SMALL));
 }
 
-TEST_CASE("crypto/cleanup_security", "[crypto]") {
+TEST_CASE("crypto/cleanup_security", "[crypto] [unit]") {
   const char *password = "secret-password-123";
 
   crypto_init_with_password(&ctx1, password);
@@ -441,7 +441,7 @@ TEST_CASE("crypto/cleanup_security", "[crypto]") {
   REQUIRE(ctx1.has_password == false);
 }
 
-TEST_CASE("crypto/nonce_counter_exhaustion", "[crypto]") {
+TEST_CASE("crypto/nonce_counter_exhaustion", "[crypto] [unit]") {
   crypto_init_with_password(&ctx1, "test-password");
 
   const char *plaintext = "test message for nonce exhaustion";
@@ -499,7 +499,7 @@ static crypto_error_test_case_t crypto_error_cases[] = {{"NULL context", CRYPTO_
                                                         {"NULL ciphertext", CRYPTO_ERROR_INVALID_PARAMS, false, false, false, true, false},
                                                         {"NULL length out", CRYPTO_ERROR_INVALID_PARAMS, false, false, false, false, true}};
 
-TEST_CASE("crypto/error_conditions", "[crypto]") {
+TEST_CASE("crypto/error_conditions", "[crypto] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(crypto_error_cases), std::end(crypto_error_cases)));
   auto *tc = &generated_case;
   crypto_context_t ctx;
@@ -541,7 +541,7 @@ static crypto_init_test_case_t crypto_init_cases[] = {{"Valid password", "test-p
                                                       {"Long password", "very-long-password-that-is-still-valid", true, CRYPTO_OK},
                                                       {"Special chars password", "p@ssw0rd!@#$%", true, CRYPTO_OK}};
 
-TEST_CASE("crypto/init_conditions", "[crypto]") {
+TEST_CASE("crypto/init_conditions", "[crypto] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(crypto_init_cases), std::end(crypto_init_cases)));
   auto *tc = &generated_case;
   crypto_context_t ctx;
@@ -574,7 +574,7 @@ static crypto_verify_test_case_t crypto_verify_cases[] = {{true, "my-password", 
                                                           {false, "MyPassword", "mypassword", "Case sensitive"},
                                                           {false, "password", " password ", "Extra spaces"}};
 
-TEST_CASE("crypto/password_verification_comprehensive", "[crypto]") {
+TEST_CASE("crypto/password_verification_comprehensive", "[crypto] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(crypto_verify_cases), std::end(crypto_verify_cases)));
   auto *tc = &generated_case;
   crypto_context_t ctx;
@@ -605,7 +605,7 @@ static crypto_result_string_test_case_t crypto_result_string_cases[] = {{CRYPTO_
                                                                         {CRYPTO_ERROR_NONCE_EXHAUSTED, "Nonce counter exhausted", "Nonce exhausted result"},
                                                                         {(crypto_result_t)999, "Unknown error", "Unknown result"}};
 
-TEST_CASE("crypto/result_strings", "[crypto]") {
+TEST_CASE("crypto/result_strings", "[crypto] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(crypto_result_string_cases), std::end(crypto_result_string_cases)));
   auto *tc = &generated_case;
   const char *result_str = crypto_result_to_string(tc->result);
@@ -616,7 +616,7 @@ TEST_CASE("crypto/result_strings", "[crypto]") {
 // Session Rekeying Tests
 // =============================================================================
 
-TEST_CASE("crypto/rekey_initialization", "[crypto]") {
+TEST_CASE("crypto/rekey_initialization", "[crypto] [unit]") {
   // Initialize context with key exchange
   crypto_init(&ctx1);
   crypto_init(&ctx2);
@@ -647,7 +647,7 @@ TEST_CASE("crypto/rekey_initialization", "[crypto]") {
   REQUIRE((ctx1.rekey_time_threshold) == (REKEY_TEST_TIME_THRESHOLD));
 }
 
-TEST_CASE("crypto/rekey_should_trigger_on_packet_count", "[crypto]") {
+TEST_CASE("crypto/rekey_should_trigger_on_packet_count", "[crypto] [unit]") {
   // Initialize with test thresholds
   crypto_init(&ctx1);
   ctx1.rekey_packet_threshold = 100; // Low threshold for testing
@@ -669,7 +669,7 @@ TEST_CASE("crypto/rekey_should_trigger_on_packet_count", "[crypto]") {
   REQUIRE((crypto_should_rekey(&ctx1)) == (true));
 }
 
-TEST_CASE("crypto/rekey_should_trigger_on_time", "[crypto]") {
+TEST_CASE("crypto/rekey_should_trigger_on_time", "[crypto] [unit]") {
   // Initialize with test thresholds
   crypto_init(&ctx1);
   ctx1.rekey_packet_threshold = 1000000;
@@ -688,7 +688,7 @@ TEST_CASE("crypto/rekey_should_trigger_on_time", "[crypto]") {
   REQUIRE((crypto_should_rekey(&ctx1)) == (true));
 }
 
-TEST_CASE("crypto/rekey_should_not_trigger_during_rekey", "[crypto]") {
+TEST_CASE("crypto/rekey_should_not_trigger_during_rekey", "[crypto] [unit]") {
   crypto_init(&ctx1);
   ctx1.rekey_packet_threshold = 100;
   ctx1.rekey_time_threshold = 3600;
@@ -704,7 +704,7 @@ TEST_CASE("crypto/rekey_should_not_trigger_during_rekey", "[crypto]") {
   REQUIRE((crypto_should_rekey(&ctx1)) == (false));
 }
 
-TEST_CASE("crypto/rekey_init_basic", "[crypto]") {
+TEST_CASE("crypto/rekey_init_basic", "[crypto] [unit]") {
   // Set up context
   crypto_init(&ctx1);
   ctx1.key_exchange_complete = true;
@@ -722,7 +722,7 @@ TEST_CASE("crypto/rekey_init_basic", "[crypto]") {
   REQUIRE((memcmp(ctx1.temp_private_key, zero_key, CRYPTO_PRIVATE_KEY_SIZE)) != (0));
 }
 
-TEST_CASE("crypto/rekey_init_rate_limiting", "[crypto]") {
+TEST_CASE("crypto/rekey_init_rate_limiting", "[crypto] [unit]") {
   crypto_init(&ctx1);
   ctx1.key_exchange_complete = true;
   ctx1.handshake_complete = true;
@@ -736,7 +736,7 @@ TEST_CASE("crypto/rekey_init_rate_limiting", "[crypto]") {
   REQUIRE((ctx1.has_temp_key) == (false));
 }
 
-TEST_CASE("crypto/rekey_init_failure_limit", "[crypto]") {
+TEST_CASE("crypto/rekey_init_failure_limit", "[crypto] [unit]") {
   crypto_init(&ctx1);
   ctx1.key_exchange_complete = true;
   ctx1.handshake_complete = true;
@@ -750,7 +750,7 @@ TEST_CASE("crypto/rekey_init_failure_limit", "[crypto]") {
   REQUIRE((ctx1.rekey_in_progress) == (false));
 }
 
-TEST_CASE("crypto/rekey_process_request", "[crypto]") {
+TEST_CASE("crypto/rekey_process_request", "[crypto] [unit]") {
   // Initialize both contexts
   crypto_init(&ctx1);
   crypto_init(&ctx2);
@@ -782,7 +782,7 @@ TEST_CASE("crypto/rekey_process_request", "[crypto]") {
   REQUIRE((memcmp(ctx2.temp_shared_key, zero_key, CRYPTO_SHARED_KEY_SIZE)) != (0));
 }
 
-TEST_CASE("crypto/rekey_process_response", "[crypto]") {
+TEST_CASE("crypto/rekey_process_response", "[crypto] [unit]") {
   // Initialize both contexts with key exchange
   crypto_init(&ctx1);
   crypto_init(&ctx2);
@@ -811,7 +811,7 @@ TEST_CASE("crypto/rekey_process_response", "[crypto]") {
   REQUIRE((memcmp(ctx1.temp_shared_key, ctx2.temp_shared_key, CRYPTO_SHARED_KEY_SIZE)) == (0));
 }
 
-TEST_CASE("crypto/rekey_commit", "[crypto]") {
+TEST_CASE("crypto/rekey_commit", "[crypto] [unit]") {
   // Set up context with temp keys
   crypto_init(&ctx1);
   ctx1.key_exchange_complete = true;
@@ -853,7 +853,7 @@ TEST_CASE("crypto/rekey_commit", "[crypto]") {
   REQUIRE((memcmp(ctx1.temp_shared_key, zero_key, CRYPTO_SHARED_KEY_SIZE)) == (0));
 }
 
-TEST_CASE("crypto/rekey_abort", "[crypto]") {
+TEST_CASE("crypto/rekey_abort", "[crypto] [unit]") {
   // Set up context with rekey in progress
   crypto_init(&ctx1);
   ctx1.key_exchange_complete = true;
@@ -886,7 +886,7 @@ TEST_CASE("crypto/rekey_abort", "[crypto]") {
   REQUIRE((memcmp(ctx1.temp_shared_key, zero_key, CRYPTO_SHARED_KEY_SIZE)) == (0));
 }
 
-TEST_CASE("crypto/rekey_full_exchange", "[crypto]") {
+TEST_CASE("crypto/rekey_full_exchange", "[crypto] [unit]") {
   // Initialize both contexts
   crypto_init(&ctx1);
   crypto_init(&ctx2);
@@ -970,7 +970,7 @@ TEST_CASE("crypto/rekey_full_exchange", "[crypto]") {
   REQUIRE((result) != (CRYPTO_OK));
 }
 
-TEST_CASE("crypto/rekey_packet_counter_increments", "[crypto]") {
+TEST_CASE("crypto/rekey_packet_counter_increments", "[crypto] [unit]") {
   // Initialize context
   crypto_init(&ctx1);
   ctx1.key_exchange_complete = true;

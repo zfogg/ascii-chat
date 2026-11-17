@@ -1,9 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/media/playlist.h>
 #include <string.h>
 
-TEST_CASE("media_playlist/quoted_drops_and_uri_lines_preserve_order", "[media_playlist]") {
+TEST_CASE("media_playlist/quoted_drops_and_uri_lines_preserve_order", "[media_playlist] [unit]") {
   media_playlist_t list = {0}, again = {0};
   REQUIRE((media_playlist_parse("  \"C:\\Videos\\first movie.webm\"  \"C:\\Videos\\second.mp4\" ", &list)) == (ASCIICHAT_OK));
   REQUIRE((list.count) == (2));
@@ -23,7 +22,7 @@ TEST_CASE("media_playlist/quoted_drops_and_uri_lines_preserve_order", "[media_pl
   REQUIRE(list.urls[1]);
 }
 
-TEST_CASE("media_playlist/invalid_edits_do_not_replace_the_list", "[media_playlist]") {
+TEST_CASE("media_playlist/invalid_edits_do_not_replace_the_list", "[media_playlist] [unit]") {
   media_playlist_t list = {0};
   REQUIRE((media_playlist_append(&list, "/tmp/good.mp4", false)) == (ASCIICHAT_OK));
   REQUIRE((media_playlist_parse("\"unfinished", &list)) != (ASCIICHAT_OK));
@@ -33,7 +32,7 @@ TEST_CASE("media_playlist/invalid_edits_do_not_replace_the_list", "[media_playli
   REQUIRE((list.count) == (1));
 }
 
-TEST_CASE("media_playlist/boundaries_and_stdin_are_explicit", "[media_playlist]") {
+TEST_CASE("media_playlist/boundaries_and_stdin_are_explicit", "[media_playlist] [unit]") {
   media_playlist_t list = {0};
   REQUIRE((media_playlist_append(&list, "-", false)) == (ASCIICHAT_OK));
   REQUIRE((media_playlist_append(&list, "/tmp/file.mp4", false)) != (ASCIICHAT_OK));
@@ -52,7 +51,7 @@ TEST_CASE("media_playlist/boundaries_and_stdin_are_explicit", "[media_playlist]"
   REQUIRE((next) == (list.count - 2));
 }
 
-TEST_CASE("media_playlist/unquoted_absolute_drop_lists_keep_spaces_within_paths", "[media_playlist]") {
+TEST_CASE("media_playlist/unquoted_absolute_drop_lists_keep_spaces_within_paths", "[media_playlist] [unit]") {
   media_playlist_t list = {0};
   REQUIRE((media_playlist_parse("C:\\My Videos\\a.mp4 C:\\Videos\\b.mp4 ", &list)) == (ASCIICHAT_OK));
   REQUIRE((list.count) == (2));
@@ -60,7 +59,7 @@ TEST_CASE("media_playlist/unquoted_absolute_drop_lists_keep_spaces_within_paths"
   REQUIRE(std::strcmp((list.paths[1]), ("C:\\Videos\\b.mp4")) == 0);
 }
 
-TEST_CASE("media_playlist/display_capacity_includes_quotes_and_terminator", "[media_playlist]") {
+TEST_CASE("media_playlist/display_capacity_includes_quotes_and_terminator", "[media_playlist] [unit]") {
   media_playlist_t list = {0};
   REQUIRE((media_playlist_append(&list, "a", false)) == (ASCIICHAT_OK));
   char exact[4], short_buffer[3];
@@ -69,7 +68,7 @@ TEST_CASE("media_playlist/display_capacity_includes_quotes_and_terminator", "[me
   REQUIRE((media_playlist_format(&list, short_buffer, sizeof(short_buffer))) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("media_playlist/bare_cli_urls_normalize_before_capture_matches_the_playlist", "[media_playlist]") {
+TEST_CASE("media_playlist/bare_cli_urls_normalize_before_capture_matches_the_playlist", "[media_playlist] [unit]") {
   media_playlist_t list = {0};
   REQUIRE((media_playlist_append(&list, "example.com/first.mp4", true)) == (ASCIICHAT_OK));
   REQUIRE(std::strcmp((list.paths[0]), ("http://example.com/first.mp4")) == 0);

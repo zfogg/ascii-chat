@@ -13,7 +13,6 @@
  * These unit tests focus on the C API and macro behavior.
  */
 
-#include <catch2/catch_all.hpp>
 #include <stdlib.h>
 
 #include <ascii-chat/tooling/query/query.h>
@@ -26,7 +25,7 @@
 // Basic API Tests
 // ============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("query_api/macros_compile_in_debug", "[query_api]") {
+TEST_CASE("query_api/macros_compile_in_debug", "[query_api] [unit]") {
   // Verify macros are defined and callable
   // In debug builds, these should call real functions
   // In release builds, they should be no-ops
@@ -36,13 +35,13 @@ TEST_CASE("query_api/macros_compile_in_debug", "[query_api]") {
   (void)QUERY_PORT();
 }
 
-TEST_CASE("query_api/shutdown_safe_when_not_initialized", "[query_api]") {
+TEST_CASE("query_api/shutdown_safe_when_not_initialized", "[query_api] [unit]") {
   // Shutdown should be safe to call even if init was never called
   QUERY_SHUTDOWN();
   REQUIRE(true);
 }
 
-TEST_CASE("query_api/shutdown_multiple_calls_safe", "[query_api]") {
+TEST_CASE("query_api/shutdown_multiple_calls_safe", "[query_api] [unit]") {
   // Multiple shutdown calls should be safe
   QUERY_SHUTDOWN();
   QUERY_SHUTDOWN();
@@ -50,12 +49,12 @@ TEST_CASE("query_api/shutdown_multiple_calls_safe", "[query_api]") {
   REQUIRE(true);
 }
 
-TEST_CASE("query_api/active_returns_false_when_not_initialized", "[query_api]") {
+TEST_CASE("query_api/active_returns_false_when_not_initialized", "[query_api] [unit]") {
   // Before init, active should return false
   REQUIRE((QUERY_ACTIVE()) == (false));
 }
 
-TEST_CASE("query_api/port_returns_negative_when_not_initialized", "[query_api]") {
+TEST_CASE("query_api/port_returns_negative_when_not_initialized", "[query_api] [unit]") {
   // Before init, port should return -1
   REQUIRE((QUERY_PORT()) == (-1));
 }
@@ -64,7 +63,7 @@ TEST_CASE("query_api/port_returns_negative_when_not_initialized", "[query_api]")
 // Init failure cases (no valid controller binary)
 // ============================================================================
 
-TEST_CASE("query_api/init_returns_negative_without_controller", "[query_api]") {
+TEST_CASE("query_api/init_returns_negative_without_controller", "[query_api] [unit]") {
   // When ascii-query-server binary is not found, init should fail gracefully
   // Clear the environment variable to ensure it doesn't find a controller
   unsetenv("ASCIICHAT_QUERY_SERVER");
@@ -85,7 +84,7 @@ TEST_CASE("query_api/init_returns_negative_without_controller", "[query_api]") {
   }
 }
 
-TEST_CASE("query_api/init_with_invalid_port_zero", "[query_api]") {
+TEST_CASE("query_api/init_with_invalid_port_zero", "[query_api] [unit]") {
   // Port 0 is technically valid (OS assigns port), but controller may reject it
   // This tests the boundary condition
   unsetenv("ASCIICHAT_QUERY_SERVER");
@@ -103,7 +102,7 @@ TEST_CASE("query_api/init_with_invalid_port_zero", "[query_api]") {
 // State consistency tests
 // ============================================================================
 
-TEST_CASE("query_api/state_consistent_after_shutdown", "[query_api]") {
+TEST_CASE("query_api/state_consistent_after_shutdown", "[query_api] [unit]") {
   // Ensure state is reset properly after shutdown
   QUERY_SHUTDOWN();
 
@@ -111,7 +110,7 @@ TEST_CASE("query_api/state_consistent_after_shutdown", "[query_api]") {
   REQUIRE((QUERY_PORT()) == (-1));
 }
 
-TEST_CASE("query_api/active_reflects_port_state", "[query_api]") {
+TEST_CASE("query_api/active_reflects_port_state", "[query_api] [unit]") {
   // QUERY_ACTIVE and QUERY_PORT should be consistent
   bool active = QUERY_ACTIVE();
   int port = QUERY_PORT();
@@ -128,7 +127,7 @@ TEST_CASE("query_api/active_reflects_port_state", "[query_api]") {
 // ============================================================================
 
 #ifdef NDEBUG
-TEST_CASE("query_api_release/macros_are_noops_in_release", "[query_api_release]") {
+TEST_CASE("query_api_release/macros_are_noops_in_release", "[query_api_release] [unit]") {
   // In release builds, macros should be no-ops that don't call functions
   // QUERY_INIT should return -1
   int result = QUERY_INIT(9999);

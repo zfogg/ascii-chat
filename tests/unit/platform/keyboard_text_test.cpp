@@ -1,9 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <libplatform/keyboard.h>
 #include <string.h>
 
-TEST_CASE("keyboard_text/every_unicode_scalar_round_trips", "[keyboard_text]") {
+TEST_CASE("keyboard_text/every_unicode_scalar_round_trips", "[keyboard_text] [unit]") {
   for (uint32_t cp = 1; cp <= 0x10ffff; ++cp) {
     if (cp >= 0xd800 && cp <= 0xdfff)
       continue;
@@ -21,7 +20,7 @@ TEST_CASE("keyboard_text/every_unicode_scalar_round_trips", "[keyboard_text]") {
   }
 }
 
-TEST_CASE("keyboard_text/rejects_non_text_and_invalid_scalar_keys", "[keyboard_text]") {
+TEST_CASE("keyboard_text/rejects_non_text_and_invalid_scalar_keys", "[keyboard_text] [unit]") {
   const int keys[] = {0, -1, KEY_UP, KEY_SHIFT_ENTER, 0xd800, 0xdfff, 0x110000, 0x11007f, 0x220000};
   for (size_t i = 0; i < sizeof(keys) / sizeof(*keys); ++i) {
     char text[5] = "keep";
@@ -30,7 +29,7 @@ TEST_CASE("keyboard_text/rejects_non_text_and_invalid_scalar_keys", "[keyboard_t
   }
 }
 
-TEST_CASE("keyboard_text/malformed_sequences_are_discarded_without_losing_next_key", "[keyboard_text]") {
+TEST_CASE("keyboard_text/malformed_sequences_are_discarded_without_losing_next_key", "[keyboard_text] [unit]") {
   const char *invalid[] = {"\x80", "\xbf", "\xc0\xaf", "\xc1\xbf", "\xe0\x80\xaf", "\xed\xa0\x80", "\xed\xbf\xbf", "\xf0\x80\x80\xaf", "\xf4\x90\x80\x80", "\xf5\x80\x80\x80", "\xff"};
   for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
     keyboard_text_decoder_t decoder = {0};
@@ -49,7 +48,7 @@ TEST_CASE("keyboard_text/malformed_sequences_are_discarded_without_losing_next_k
   REQUIRE((keyboard_text_decode(&decoder, 0xa9)) == (0xe9));
 }
 
-TEST_CASE("keyboard_text/utf16_surrogates_and_recovery", "[keyboard_text]") {
+TEST_CASE("keyboard_text/utf16_surrogates_and_recovery", "[keyboard_text] [unit]") {
   uint16_t high = 0;
   REQUIRE((keyboard_text_utf16(&high, 'x')) == ('x'));
   REQUIRE((keyboard_text_utf16(&high, 0x754c)) == (0x754c));

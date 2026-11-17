@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/rcu.h>
 #include <libplatform/filesystem.h>
 #include "../../../src/discovery/session.h"
@@ -118,7 +117,7 @@ static void teardown(void) {
   options_state_destroy();
   asciichat_shared_destroy();
 }
-TEST_CASE("nat_refresh/stale_result_refreshes_without_overlap_or_cache_loss", "[nat_refresh]") {
+TEST_CASE("nat_refresh/stale_result_refreshes_without_overlap_or_cache_loss", "[nat_refresh] [contract]") {
   start_nat_detection(&session);
   REQUIRE((launches) == (1));
   start_nat_detection(&session);
@@ -150,7 +149,7 @@ TEST_CASE("nat_refresh/stale_result_refreshes_without_overlap_or_cache_loss", "[
   REQUIRE((session.nat_quality_measured_ms) == (clock_ms));
 }
 
-TEST_CASE("nat_refresh/failed_probe_and_failed_start_are_throttled_and_retryable", "[nat_refresh]") {
+TEST_CASE("nat_refresh/failed_probe_and_failed_start_are_throttled_and_retryable", "[nat_refresh] [contract]") {
   start_nat_detection(&session);
   pending_worker(pending_arg);
   uint64_t measured = session.nat_quality_measured_ms;
@@ -225,7 +224,7 @@ static void recovery_participant(void) {
   REQUIRE((session.participant_ctx) != nullptr);
   REQUIRE((session_participant_set_transport(session.participant_ctx, &recovery_transport, ACIP_TRANSPORT_BORROWED)) == (ASCIICHAT_OK));
 }
-TEST_CASE("nat_refresh/host_liveness_uses_pongs_and_bounded_consecutive_failures", "[nat_refresh]") {
+TEST_CASE("nat_refresh/host_liveness_uses_pongs_and_bounded_consecutive_failures", "[nat_refresh] [contract]") {
   recovery_participant();
   session.state = DISCOVERY_STATE_ACTIVE;
   session.session_type = SESSION_TYPE_DIRECT_TCP;
@@ -250,7 +249,7 @@ TEST_CASE("nat_refresh/host_liveness_uses_pongs_and_bounded_consecutive_failures
   REQUIRE((discovery_session_check_host_alive(&session)) == (ERROR_NETWORK));
   REQUIRE((session.liveness.consecutive_failures) == (2));
 }
-TEST_CASE("nat_refresh/failed_ping_sends_and_disconnected_transport_are_not_mistaken_for_a_live_host", "[nat_refresh]") {
+TEST_CASE("nat_refresh/failed_ping_sends_and_disconnected_transport_are_not_mistaken_for_a_live_host", "[nat_refresh] [contract]") {
   recovery_participant();
   session.session_type = SESSION_TYPE_DIRECT_TCP;
   session.liveness.max_failures = 2;
@@ -270,7 +269,7 @@ TEST_CASE("nat_refresh/failed_ping_sends_and_disconnected_transport_are_not_mist
   session.webrtc_transport_ready = true;
   REQUIRE((discovery_session_check_host_alive(&session)) == (ASCIICHAT_OK));
 }
-TEST_CASE("nat_refresh/host_loss_reports_identity_and_waits_for_authoritative_handoff", "[nat_refresh]") {
+TEST_CASE("nat_refresh/host_loss_reports_identity_and_waits_for_authoritative_handoff", "[nat_refresh] [contract]") {
   session.acds_transport = &recovery_transport;
   session.session_id[0] = 1;
   session.participant_id[0] = 2;
@@ -292,7 +291,7 @@ TEST_CASE("nat_refresh/host_loss_reports_identity_and_waits_for_authoritative_ha
   REQUIRE((session.state) == (DISCOVERY_STATE_FAILED));
   REQUIRE((session.error) == (ERROR_NETWORK));
 }
-TEST_CASE("nat_refresh/committed_tcp_role_change_clears_old_liveness_and_requires_a_new_connection", "[nat_refresh]") {
+TEST_CASE("nat_refresh/committed_tcp_role_change_clears_old_liveness_and_requires_a_new_connection", "[nat_refresh] [contract]") {
   recovery_participant();
   session.handoff_pending = true;
   session.session_type = SESSION_TYPE_DIRECT_TCP;
@@ -323,7 +322,7 @@ TEST_CASE("nat_refresh/committed_tcp_role_change_clears_old_liveness_and_require
   REQUIRE(session.is_host);
   REQUIRE((session.state) == (DISCOVERY_STATE_STARTING_HOST));
 }
-TEST_CASE("nat_refresh/webrtc_credentials_must_be_complete_bounded_and_compatible_with_relay_policy", "[nat_refresh]") {
+TEST_CASE("nat_refresh/webrtc_credentials_must_be_complete_bounded_and_compatible_with_relay_policy", "[nat_refresh] [contract]") {
   for (unsigned scenario = 0; scenario < 5; ++scenario) {
     options_t *v = recovery_options();
     v->webrtc_relay_only = false;
@@ -354,7 +353,7 @@ TEST_CASE("nat_refresh/webrtc_credentials_must_be_complete_bounded_and_compatibl
     CLEAR_ERRNO_ALL();
   }
 }
-TEST_CASE("nat_refresh/custom_turn_configuration_trims_urls_and_retains_full_credentials_without_network_io", "[nat_refresh]") {
+TEST_CASE("nat_refresh/custom_turn_configuration_trims_urls_and_retains_full_credentials_without_network_io", "[nat_refresh] [contract]") {
   options_t *v = recovery_options();
   v->webrtc_skip_stun = true;
   v->webrtc_disable_turn = false;
@@ -372,7 +371,7 @@ TEST_CASE("nat_refresh/custom_turn_configuration_trims_urls_and_retains_full_cre
   REQUIRE(std::strcmp((session.turn_username), ("local-user")) == 0);
   REQUIRE(std::strcmp((session.turn_password), ("local-secret")) == 0);
 }
-TEST_CASE("nat_refresh/retry_exhaustion_is_terminal_and_retry_rebuilds_the_peer_manager_after_backoff", "[nat_refresh]") {
+TEST_CASE("nat_refresh/retry_exhaustion_is_terminal_and_retry_rebuilds_the_peer_manager_after_backoff", "[nat_refresh] [contract]") {
   options_t *v = recovery_options();
   v->webrtc_skip_stun = true;
   v->webrtc_disable_turn = true;
@@ -392,7 +391,7 @@ TEST_CASE("nat_refresh/retry_exhaustion_is_terminal_and_retry_rebuilds_the_peer_
   REQUIRE((session.state) == (DISCOVERY_STATE_FAILED));
   REQUIRE((session.error) == (ERROR_NETWORK_TIMEOUT));
 }
-TEST_CASE("nat_refresh/backoff_is_saturated_before_shift_overflow_for_extreme_attempt_counts", "[nat_refresh]") {
+TEST_CASE("nat_refresh/backoff_is_saturated_before_shift_overflow_for_extreme_attempt_counts", "[nat_refresh] [contract]") {
   const int attempts[] = {-1, 0, 1, 4, 5, 22, 30, INT_MAX};
   const unsigned expected[] = {1000, 1000, 2000, 16000, 30000, 30000, 30000, 30000};
   for (unsigned i = 0; i < ARRAY_SIZE(attempts); ++i) {
@@ -428,7 +427,7 @@ static bool cancel_start(void *context) {
   REQUIRE((context) == (&session));
   return true;
 }
-TEST_CASE("nat_refresh/explicit_identity_configuration_is_copied_and_cancelled_start_does_not_connect", "[nat_refresh]") {
+TEST_CASE("nat_refresh/explicit_identity_configuration_is_copied_and_cancelled_start_does_not_connect", "[nat_refresh] [contract]") {
   char path[PLATFORM_MAX_PATH_LENGTH];
   uint8_t key[32];
   identity_fixture(path, key);
@@ -478,7 +477,7 @@ TEST_CASE("nat_refresh/explicit_identity_configuration_is_copied_and_cancelled_s
   REQUIRE((discovery_session_destroy(created)) == (ASCIICHAT_OK));
   REQUIRE((platform_unlink(path)) == (0));
 }
-TEST_CASE("nat_refresh/multiple_identity_keys_are_loaded_completely_or_constructor_rejects_them", "[nat_refresh]") {
+TEST_CASE("nat_refresh/multiple_identity_keys_are_loaded_completely_or_constructor_rejects_them", "[nat_refresh] [contract]") {
   char paths[2][PLATFORM_MAX_PATH_LENGTH];
   uint8_t keys[2][32];
   for (unsigned i = 0; i < 2; ++i)
@@ -510,7 +509,7 @@ TEST_CASE("nat_refresh/multiple_identity_keys_are_loaded_completely_or_construct
   REQUIRE((discovery_session_create(&config)) == nullptr);
   REQUIRE((platform_unlink(paths[0])) == (0));
 }
-TEST_CASE("nat_refresh/absent_session_is_rejected_without_allocating_or_publishing_transport_state", "[nat_refresh]") {
+TEST_CASE("nat_refresh/absent_session_is_rejected_without_allocating_or_publishing_transport_state", "[nat_refresh] [contract]") {
   REQUIRE((discovery_session_create(NULL)) == nullptr);
   REQUIRE((discovery_session_destroy(NULL)) == (ERROR_INVALID_PARAM));
   REQUIRE((discovery_session_start(NULL)) == (ERROR_INVALID_PARAM));
@@ -531,7 +530,7 @@ TEST_CASE("nat_refresh/absent_session_is_rejected_without_allocating_or_publishi
   REQUIRE((session.participant_ctx) == nullptr);
   REQUIRE((session.peer_manager) == nullptr);
 }
-TEST_CASE("nat_refresh/late_or_unexpected_webrtc_transport_does_not_change_the_direct_tcp_role", "[nat_refresh]") {
+TEST_CASE("nat_refresh/late_or_unexpected_webrtc_transport_does_not_change_the_direct_tcp_role", "[nat_refresh] [contract]") {
   session.session_type = SESSION_TYPE_DIRECT_TCP;
   session.state = DISCOVERY_STATE_ACTIVE;
   uint8_t peer[16] = {1};
@@ -542,7 +541,7 @@ TEST_CASE("nat_refresh/late_or_unexpected_webrtc_transport_does_not_change_the_d
   REQUIRE((session.participant_ctx) == nullptr);
   REQUIRE((session.state) == (DISCOVERY_STATE_ACTIVE));
 }
-TEST_CASE("nat_refresh/ready_webrtc_channel_can_create_or_replace_a_participant_and_reset_retry_state", "[nat_refresh]") {
+TEST_CASE("nat_refresh/ready_webrtc_channel_can_create_or_replace_a_participant_and_reset_retry_state", "[nat_refresh] [contract]") {
   session.session_type = SESSION_TYPE_WEBRTC;
   session.webrtc_retry_attempt = 2;
   session.webrtc_disconnected_since_ms = 3;
@@ -564,7 +563,7 @@ TEST_CASE("nat_refresh/ready_webrtc_channel_can_create_or_replace_a_participant_
   REQUIRE((recovery_destroyed) == (1));
   REQUIRE(session.webrtc_transport_ready);
 }
-TEST_CASE("nat_refresh/host_without_listener_rejects_a_ready_channel_and_frees_its_owned_transport", "[nat_refresh]") {
+TEST_CASE("nat_refresh/host_without_listener_rejects_a_ready_channel_and_frees_its_owned_transport", "[nat_refresh] [contract]") {
   session_host_config_t config = {.max_clients = 1};
   session.host_ctx = session_host_create(&config);
   REQUIRE((session.host_ctx) != nullptr);
@@ -585,7 +584,7 @@ static void signaling_options(void) {
   v->webrtc_disable_turn = true;
   recovery_publish(v);
 }
-TEST_CASE("nat_refresh/malformed_signaling_is_not_forwarded_and_valid_packets_preserve_the_peer_manager_target", "[nat_refresh]") {
+TEST_CASE("nat_refresh/malformed_signaling_is_not_forwarded_and_valid_packets_preserve_the_peer_manager_target", "[nat_refresh] [contract]") {
   struct {
     acip_webrtc_sdp_t header;
     char body[4];
@@ -619,7 +618,7 @@ TEST_CASE("nat_refresh/malformed_signaling_is_not_forwarded_and_valid_packets_pr
   REQUIRE((session.state) == (DISCOVERY_STATE_CONNECTING_HOST));
   REQUIRE(!(session.webrtc_transport_ready));
 }
-TEST_CASE("nat_refresh/peer_manager_creation_failure_releases_stun_and_turn_arrays_before_retry", "[nat_refresh]") {
+TEST_CASE("nat_refresh/peer_manager_creation_failure_releases_stun_and_turn_arrays_before_retry", "[nat_refresh] [contract]") {
   options_t *v = recovery_options();
   v->webrtc_skip_stun = false;
   v->webrtc_disable_turn = false;
@@ -642,7 +641,7 @@ TEST_CASE("nat_refresh/peer_manager_creation_failure_releases_stun_and_turn_arra
   REQUIRE((session.stun_count) == (1));
   REQUIRE((session.turn_count) == (1));
 }
-TEST_CASE("nat_refresh/webrtc_handoff_releases_old_host_and_peer_and_propagates_reinitialization_failure", "[nat_refresh]") {
+TEST_CASE("nat_refresh/webrtc_handoff_releases_old_host_and_peer_and_propagates_reinitialization_failure", "[nat_refresh] [contract]") {
   signaling_options();
   session_host_config_t config = {.max_clients = 1};
   session.host_ctx = session_host_create(&config);
@@ -666,7 +665,7 @@ TEST_CASE("nat_refresh/webrtc_handoff_releases_old_host_and_peer_and_propagates_
   REQUIRE((session.peer_manager) != nullptr);
   REQUIRE((session.state) == (DISCOVERY_STATE_CONNECTING_HOST));
 }
-TEST_CASE("nat_refresh/signaling_send_failures_are_reported_and_successful_messages_preserve_identity_and_payload", "[nat_refresh]") {
+TEST_CASE("nat_refresh/signaling_send_failures_are_reported_and_successful_messages_preserve_identity_and_payload", "[nat_refresh] [contract]") {
   uint8_t id[16] = {1}, peer[16] = {2};
   session.participant_id[0] = 3;
   REQUIRE((discovery_send_sdp_via_acds(id, peer, "offer", "v=0", NULL)) == (ERROR_INVALID_PARAM));

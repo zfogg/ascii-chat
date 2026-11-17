@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
@@ -256,7 +255,7 @@ static void write_sample_record(const char *file_path) {
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("instrument_log/writes_log_with_defaults", "[instrument_log]") {
+TEST_CASE("instrument_log/writes_log_with_defaults", "[instrument_log] [unit]") {
   char temp_dir[PATH_MAX];
   make_unique_directory(temp_dir, sizeof(temp_dir));
 
@@ -282,7 +281,7 @@ TEST_CASE("instrument_log/writes_log_with_defaults", "[instrument_log]") {
   clear_filter_environment();
 }
 
-TEST_CASE("instrument_log/include_filter_drops_non_matching_files", "[instrument_log]") {
+TEST_CASE("instrument_log/include_filter_drops_non_matching_files", "[instrument_log] [unit]") {
   char temp_dir[PATH_MAX];
   make_unique_directory(temp_dir, sizeof(temp_dir));
 
@@ -299,7 +298,7 @@ TEST_CASE("instrument_log/include_filter_drops_non_matching_files", "[instrument
   clear_filter_environment();
 }
 
-TEST_CASE("instrument_log/thread_filter_blocks_unlisted_thread", "[instrument_log]") {
+TEST_CASE("instrument_log/thread_filter_blocks_unlisted_thread", "[instrument_log] [unit]") {
   char temp_dir[PATH_MAX];
   make_unique_directory(temp_dir, sizeof(temp_dir));
 
@@ -320,7 +319,7 @@ TEST_CASE("instrument_log/thread_filter_blocks_unlisted_thread", "[instrument_lo
   clear_filter_environment();
 }
 
-TEST_CASE("instrument_log/thread_filter_allows_matching_thread", "[instrument_log]") {
+TEST_CASE("instrument_log/thread_filter_allows_matching_thread", "[instrument_log] [unit]") {
   char temp_dir[PATH_MAX];
   make_unique_directory(temp_dir, sizeof(temp_dir));
 
@@ -360,7 +359,7 @@ static void reset_extended_filters(void) {
     set_env_variable(keys[i], NULL);
 }
 
-TEST_CASE("instrument_log/selector_and_regex_filters_write_only_the_selected_records", "[instrument_log]") {
+TEST_CASE("instrument_log/selector_and_regex_filters_write_only_the_selected_records", "[instrument_log] [unit]") {
   const struct {
     const char *key, *value;
     unsigned mask;
@@ -420,7 +419,7 @@ TEST_CASE("instrument_log/selector_and_regex_filters_write_only_the_selected_rec
   reset_extended_filters();
 }
 
-TEST_CASE("instrument_log/sampling_and_disabled_values_control_persisted_records", "[instrument_log]") {
+TEST_CASE("instrument_log/sampling_and_disabled_values_control_persisted_records", "[instrument_log] [unit]") {
   const char *values[] = {"0", "false", "OFF", "  no"};
   for (size_t i = 0; i < sizeof(values) / sizeof(*values); ++i) {
     reset_extended_filters();
@@ -455,7 +454,7 @@ TEST_CASE("instrument_log/sampling_and_disabled_values_control_persisted_records
   reset_extended_filters();
 }
 
-TEST_CASE("instrument_log/custom_trace_files_append_escape_snippets_and_record_program_counters", "[instrument_log]") {
+TEST_CASE("instrument_log/custom_trace_files_append_escape_snippets_and_record_program_counters", "[instrument_log] [unit]") {
   reset_extended_filters();
   char directory[PATH_MAX], path[PATH_MAX];
   make_unique_directory(directory, sizeof(directory));

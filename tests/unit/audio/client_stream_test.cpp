@@ -1,9 +1,9 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/audio/client_pipeline.h>
 #include <ascii-chat/tests/logging.h>
 #include <math.h>
-TEST_CASE("client_stream/opus_round_trip_preserves_audible_and_quiet_media", "[client_stream]") {
+TEST_CASE("client_stream/opus_round_trip_preserves_audible_and_quiet_media", "[client_stream] [unit]") {
   client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
   config.flags = CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL;
   config.opus_application = 2049;
@@ -43,7 +43,7 @@ TEST_CASE("client_stream/opus_round_trip_preserves_audible_and_quiet_media", "[c
   client_audio_pipeline_destroy(pipeline);
 }
 
-TEST_CASE("client_stream/duplex_startup_fades_in_and_echo_processing_remains_finite", "[client_stream]") {
+TEST_CASE("client_stream/duplex_startup_fades_in_and_echo_processing_remains_finite", "[client_stream] [unit]") {
   for (int echo = 0; echo < 2; ++echo) {
     client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
     config.flags = echo ? CLIENT_AUDIO_PIPELINE_FLAGS_ALL : CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL;

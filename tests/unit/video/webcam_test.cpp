@@ -1,11 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/video/anim/test_pattern.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <string.h>
 #include <math.h>
-TEST_CASE("webcam/test_pattern_deterministic_and_independent", "[webcam]") {
+TEST_CASE("webcam/test_pattern_deterministic_and_independent", "[webcam] [unit]") {
   test_pattern_t *a = NULL, *b = NULL;
   CLEAR_ERRNO();
   REQUIRE((test_pattern_create(320, 240, &a)) == (ASCIICHAT_OK));
@@ -24,7 +23,7 @@ TEST_CASE("webcam/test_pattern_deterministic_and_independent", "[webcam]") {
   test_pattern_destroy(b);
 }
 
-TEST_CASE("webcam/test_pattern_resize_and_invalid_input", "[webcam]") {
+TEST_CASE("webcam/test_pattern_resize_and_invalid_input", "[webcam] [unit]") {
   test_pattern_t *p = NULL;
   REQUIRE((test_pattern_create(1, 1, &p)) == (ASCIICHAT_OK));
   for (int index = 0; index < 2; index++)
@@ -41,7 +40,7 @@ TEST_CASE("webcam/test_pattern_resize_and_invalid_input", "[webcam]") {
   test_pattern_destroy(NULL);
 }
 
-TEST_CASE("webcam/test_pattern_circle_wraps_and_cadence_is_opt_in", "[webcam]") {
+TEST_CASE("webcam/test_pattern_circle_wraps_and_cadence_is_opt_in", "[webcam] [unit]") {
   test_pattern_t *p = NULL;
   REQUIRE((test_pattern_create(800, 400, &p)) == (ASCIICHAT_OK));
   REQUIRE((test_pattern_render(p, 1, 2000, false)) == (ASCIICHAT_OK));
@@ -59,7 +58,7 @@ TEST_CASE("webcam/test_pattern_circle_wraps_and_cadence_is_opt_in", "[webcam]") 
   test_pattern_destroy(p);
 }
 
-TEST_CASE("webcam/palette_round_trip_and_endpoints", "[webcam]") {
+TEST_CASE("webcam/palette_round_trip_and_endpoints", "[webcam] [unit]") {
   for (int i = 16; i < 256; i++) {
     uint8_t r, g, b, rr, gg, bb;
     get_256color_rgb((uint8_t)i, &r, &g, &b);

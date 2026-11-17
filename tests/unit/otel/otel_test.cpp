@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <gotel/testing.h>
 #include <ascii-chat/otel.h>
 #include <options/options.h>
@@ -80,7 +79,7 @@ static void operation(size_t id) {
   gotel_begin(host, &scope, id, NULL);
   gotel_end(&scope);
 }
-TEST_CASE("otel/all_signal_combinations", "[otel]") {
+TEST_CASE("otel/all_signal_combinations", "[otel] [unit]") {
   for (unsigned mask = 0; mask <= GOTEL_ALL; ++mask) {
     gotel_options_t o = config();
     o.signals = mask;
@@ -97,7 +96,7 @@ TEST_CASE("otel/all_signal_combinations", "[otel]") {
     host = NULL;
   }
 }
-TEST_CASE("otel/scope_end_is_idempotent", "[otel]") {
+TEST_CASE("otel/scope_end_is_idempotent", "[otel] [unit]") {
   create(config());
   gotel_scope_t scope;
   gotel_begin(host, &scope, 0, NULL);
@@ -106,7 +105,7 @@ TEST_CASE("otel/scope_end_is_idempotent", "[otel]") {
   REQUIRE((stats().emitted) == (1));
   REQUIRE(!(gotel_current_context().valid));
 }
-TEST_CASE("otel/invalid_operation_preserves_context", "[otel]") {
+TEST_CASE("otel/invalid_operation_preserves_context", "[otel] [unit]") {
   create(config());
   gotel_scope_t root, invalid;
   gotel_begin(host, &root, 0, NULL);
@@ -117,7 +116,7 @@ TEST_CASE("otel/invalid_operation_preserves_context", "[otel]") {
   REQUIRE(std::memcmp((before.span_id), (gotel_current_context().span_id), (8)) == 0);
   gotel_end(&root);
 }
-TEST_CASE("otel/nested_context_restored_and_nearest_error", "[otel]") {
+TEST_CASE("otel/nested_context_restored_and_nearest_error", "[otel] [unit]") {
   create(config());
   gotel_scope_t root, child;
   gotel_begin(host, &root, 0, NULL);
@@ -132,7 +131,7 @@ TEST_CASE("otel/nested_context_restored_and_nearest_error", "[otel]") {
   gotel_end(&root);
   REQUIRE(!(gotel_current_context().valid));
 }
-TEST_CASE("otel/explicit_context_can_be_attached_by_value", "[otel]") {
+TEST_CASE("otel/explicit_context_can_be_attached_by_value", "[otel] [unit]") {
   create(config());
   gotel_context_t parent = {.valid = true, .sampled = true, .realtime = true};
   memset(parent.trace_id, 11, sizeof(parent.trace_id));
@@ -144,7 +143,7 @@ TEST_CASE("otel/explicit_context_can_be_attached_by_value", "[otel]") {
   REQUIRE((memcmp(child.context.span_id, parent.span_id, 8)) != (0));
   gotel_end(&child);
 }
-TEST_CASE("otel/unsampled_parent_cannot_be_resampled", "[otel]") {
+TEST_CASE("otel/unsampled_parent_cannot_be_resampled", "[otel] [unit]") {
   create(config());
   gotel_context_t parent = {.valid = true, .sampled = false, .realtime = true};
   gotel_scope_t child;
@@ -156,7 +155,7 @@ TEST_CASE("otel/unsampled_parent_cannot_be_resampled", "[otel]") {
   REQUIRE((stats().sent) == (0));
   REQUIRE((stats().sent_metrics) == (4));
 }
-TEST_CASE("otel/realtime_sampling_zero_retains_metrics", "[otel]") {
+TEST_CASE("otel/realtime_sampling_zero_retains_metrics", "[otel] [unit]") {
   gotel_options_t o = config();
   o.realtime_sample_rate = 0;
   create(o);
@@ -166,7 +165,7 @@ TEST_CASE("otel/realtime_sampling_zero_retains_metrics", "[otel]") {
   REQUIRE((gotel_drain(host)) == (OTLP_OK));
   REQUIRE((stats().sent_metrics) == (4));
 }
-TEST_CASE("otel/root_rate_limit_resets_at_second_boundary", "[otel]") {
+TEST_CASE("otel/root_rate_limit_resets_at_second_boundary", "[otel] [unit]") {
   create(config());
   operation(1);
   operation(1);
@@ -176,7 +175,7 @@ TEST_CASE("otel/root_rate_limit_resets_at_second_boundary", "[otel]") {
   operation(1);
   REQUIRE((stats().emitted) == (3));
 }
-TEST_CASE("otel/sampled_descendants_do_not_consume_root_budget", "[otel]") {
+TEST_CASE("otel/sampled_descendants_do_not_consume_root_budget", "[otel] [unit]") {
   create(config());
   gotel_scope_t root, child;
   gotel_begin(host, &root, 1, NULL);
@@ -190,7 +189,7 @@ TEST_CASE("otel/sampled_descendants_do_not_consume_root_budget", "[otel]") {
   operation(1);
   REQUIRE((stats().emitted) == (12));
 }
-TEST_CASE("otel/metric_validation_and_unused_instruments", "[otel]") {
+TEST_CASE("otel/metric_validation_and_unused_instruments", "[otel] [unit]") {
   create(config());
   REQUIRE((gotel_metric_record(host, 0, -1)) == (OTLP_ERR_INVALID_ARGUMENT));
   REQUIRE((gotel_metric_record(host, 1, NAN)) == (OTLP_ERR_INVALID_ARGUMENT));
@@ -200,7 +199,7 @@ TEST_CASE("otel/metric_validation_and_unused_instruments", "[otel]") {
   REQUIRE((gotel_drain(host)) == (OTLP_OK));
   REQUIRE((stats().sent_metrics) == (1));
 }
-TEST_CASE("otel/zero_observations_are_exported", "[otel]") {
+TEST_CASE("otel/zero_observations_are_exported", "[otel] [unit]") {
   create(config());
   REQUIRE((gotel_metric_record(host, 0, 0)) == (OTLP_OK));
   REQUIRE((gotel_metric_record(host, 1, 0)) == (OTLP_OK));
@@ -208,7 +207,7 @@ TEST_CASE("otel/zero_observations_are_exported", "[otel]") {
   REQUIRE((gotel_drain(host)) == (OTLP_OK));
   REQUIRE((stats().sent_metrics) == (3));
 }
-TEST_CASE("otel/metric_interval_and_final_flush", "[otel]") {
+TEST_CASE("otel/metric_interval_and_final_flush", "[otel] [unit]") {
   create(config());
   REQUIRE((gotel_metric_record(host, 0, 1)) == (OTLP_OK));
   REQUIRE((gotel_tick(host)) == (OTLP_OK));
@@ -220,7 +219,7 @@ TEST_CASE("otel/metric_interval_and_final_flush", "[otel]") {
   REQUIRE((gotel_drain(host)) == (OTLP_OK));
   REQUIRE((stats().sent_metrics) == (3));
 }
-TEST_CASE("otel/retries_recover_without_losing_records", "[otel]") {
+TEST_CASE("otel/retries_recover_without_losing_records", "[otel] [unit]") {
   create(config());
   const int responses[] = {503, 429, 200};
   gotel_test_script_t script = {responses, 3, 0, 200};
@@ -231,7 +230,7 @@ TEST_CASE("otel/retries_recover_without_losing_records", "[otel]") {
   REQUIRE((gotel_test_events_snapshot(events).retries) == (2));
   REQUIRE((stats().dropped_err) == (0));
 }
-TEST_CASE("otel/permanent_http_failure_drops_without_retry", "[otel]") {
+TEST_CASE("otel/permanent_http_failure_drops_without_retry", "[otel] [unit]") {
   gotel_options_t o = config();
   o.signals = GOTEL_TRACES;
   create(o);
@@ -244,7 +243,7 @@ TEST_CASE("otel/permanent_http_failure_drops_without_retry", "[otel]") {
   REQUIRE((gotel_test_events_snapshot(events).retries) == (0));
   REQUIRE((gotel_test_events_snapshot(events).dropped) == (1));
 }
-TEST_CASE("otel/bounded_queue_reports_loss", "[otel]") {
+TEST_CASE("otel/bounded_queue_reports_loss", "[otel] [unit]") {
   gotel_options_t o = config();
   o.signals = GOTEL_TRACES;
   o.exporter.queue_capacity = 2;
@@ -258,7 +257,7 @@ TEST_CASE("otel/bounded_queue_reports_loss", "[otel]") {
   REQUIRE((gotel_drain(host)) == (OTLP_OK));
   REQUIRE((stats().sent) == (s.emitted));
 }
-TEST_CASE("otel/invalid_catalogs_are_rejected", "[otel]") {
+TEST_CASE("otel/invalid_catalogs_are_rejected", "[otel] [unit]") {
   gotel_options_t o = config();
   gotel_metric_t duplicate[] = {metrics[0], metrics[0]};
   o.metrics = duplicate;
@@ -274,7 +273,7 @@ TEST_CASE("otel/invalid_catalogs_are_rejected", "[otel]") {
   o.realtime_sample_rate = NAN;
   REQUIRE((gotel_test_create(&o, &host)) == (OTLP_ERR_INVALID_ARGUMENT));
 }
-TEST_CASE("otel/signal_parser_rejects_ambiguous_lists", "[otel]") {
+TEST_CASE("otel/signal_parser_rejects_ambiguous_lists", "[otel] [unit]") {
   unsigned mask = 0;
   REQUIRE((gotel_parse_signals("traces,logs,metrics", &mask)) == (OTLP_OK));
   REQUIRE((mask) == (GOTEL_ALL));
@@ -282,14 +281,14 @@ TEST_CASE("otel/signal_parser_rejects_ambiguous_lists", "[otel]") {
   for (size_t i = 0; i < sizeof(bad) / sizeof(*bad); ++i)
     REQUIRE((gotel_parse_signals(bad[i], &mask)) != (OTLP_OK));
 }
-TEST_CASE("otel/http_names_redact_secrets_and_bound_output", "[otel]") {
+TEST_CASE("otel/http_names_redact_secrets_and_bound_output", "[otel] [unit]") {
   char name[256];
   REQUIRE((gotel_http_name(name, sizeof(name), "fixture", false, "GET", "https://user:password@host/a/123?q=secret#fragment")) == (OTLP_OK));
   REQUIRE(std::strcmp((name), ("fixture.http.client.GET host/a/{id}")) == 0);
   REQUIRE((gotel_http_name(name, 4, "fixture", false, "GET", "https://host/a")) == (OTLP_ERR_OVERFLOW));
   REQUIRE((name[0]) == (0));
 }
-TEST_CASE("otel/sqlite_lifecycle_unknown_and_detach", "[otel]") {
+TEST_CASE("otel/sqlite_lifecycle_unknown_and_detach", "[otel] [unit]") {
   create(config());
   sqlite3 *db = NULL;
   REQUIRE((sqlite3_open(":memory:", &db)) == (SQLITE_OK));
@@ -312,7 +311,7 @@ TEST_CASE("otel/sqlite_lifecycle_unknown_and_detach", "[otel]") {
   REQUIRE((gotel_drain(host)) == (OTLP_OK));
   REQUIRE((stats().sent_metrics) == (3));
 }
-TEST_CASE("otel/sqlite_prepare_wrapper_preserves_success", "[otel]") {
+TEST_CASE("otel/sqlite_prepare_wrapper_preserves_success", "[otel] [unit]") {
   sqlite3 *db = NULL;
   REQUIRE((sqlite3_open(":memory:", &db)) == (SQLITE_OK));
   sqlite3_stmt *statement = NULL;
@@ -323,7 +322,7 @@ TEST_CASE("otel/sqlite_prepare_wrapper_preserves_success", "[otel]") {
   REQUIRE((sqlite3_finalize(statement)) == (SQLITE_OK));
   REQUIRE((sqlite3_close(db)) == (SQLITE_OK));
 }
-TEST_CASE("otel/sqlite_prepare_wrapper_preserves_rejection", "[otel]") {
+TEST_CASE("otel/sqlite_prepare_wrapper_preserves_rejection", "[otel] [unit]") {
   sqlite3 *db = NULL;
   REQUIRE((sqlite3_open(":memory:", &db)) == (SQLITE_OK));
   sqlite3_stmt *statement = NULL;
@@ -332,7 +331,7 @@ TEST_CASE("otel/sqlite_prepare_wrapper_preserves_rejection", "[otel]") {
   REQUIRE((sqlite3_errcode(db)) == (SQLITE_ERROR));
   REQUIRE((sqlite3_close(db)) == (SQLITE_OK));
 }
-TEST_CASE("otel/sqlite_close_frees_attachment_and_duplicate_sql_rejected", "[otel]") {
+TEST_CASE("otel/sqlite_close_frees_attachment_and_duplicate_sql_rejected", "[otel] [unit]") {
   create(config());
   sqlite3 *db = NULL;
   REQUIRE((sqlite3_open(":memory:", &db)) == (SQLITE_OK));
@@ -343,7 +342,7 @@ TEST_CASE("otel/sqlite_close_frees_attachment_and_duplicate_sql_rejected", "[ote
   REQUIRE((gotel_sqlite_attach(host, db, "fixture", queries, 1, &attachment)) == (OTLP_OK));
   REQUIRE((sqlite3_close(db)) == (SQLITE_OK));
 }
-TEST_CASE("otel/sqlite_unsampled_parent_keeps_duration_metrics", "[otel]") {
+TEST_CASE("otel/sqlite_unsampled_parent_keeps_duration_metrics", "[otel] [unit]") {
   create(config());
   sqlite3 *db = NULL;
   REQUIRE((sqlite3_open(":memory:", &db)) == (SQLITE_OK));
@@ -359,7 +358,7 @@ TEST_CASE("otel/sqlite_unsampled_parent_keeps_duration_metrics", "[otel]") {
   REQUIRE((stats().sent) == (0));
   REQUIRE((stats().sent_metrics) == (5));
 }
-TEST_CASE("otel/disabled_ascii_adapter_is_safe", "[otel]") {
+TEST_CASE("otel/disabled_ascii_adapter_is_safe", "[otel] [unit]") {
   ascii_otel_scope_t scope = {0};
   ascii_otel_scope_begin(&scope, ASCII_OTEL_PIPELINE_CAPTURE);
   REQUIRE(!(scope.retained));
@@ -381,11 +380,11 @@ static void adapter_start(const char *signals) {
   char *args[] = {"fixture"};
   REQUIRE((ascii_otel_init("mirror", 1, args)) == (ASCIICHAT_OK));
 }
-TEST_CASE("otel/ascii_none_does_not_start_worker", "[otel]") {
+TEST_CASE("otel/ascii_none_does_not_start_worker", "[otel] [unit]") {
   adapter_start("none");
   REQUIRE(!(ascii_otel_enabled()));
 }
-TEST_CASE("otel/test_mode_cannot_start_adapter_with_explicit_collector", "[otel]") {
+TEST_CASE("otel/test_mode_cannot_start_adapter_with_explicit_collector", "[otel] [unit]") {
   adapter_start("traces,logs,metrics");
   REQUIRE(!(ascii_otel_enabled()));
   REQUIRE(!(ascii_otel_context().valid));
@@ -395,7 +394,7 @@ TEST_CASE("otel/test_mode_cannot_start_adapter_with_explicit_collector", "[otel]
   ascii_otel_scope_end(&scope);
 }
 
-TEST_CASE("otel/bounded_children_keep_unsampled_parent_decision", "[otel]") {
+TEST_CASE("otel/bounded_children_keep_unsampled_parent_decision", "[otel] [unit]") {
   adapter_start("traces");
   gotel_context_t unsampled = {.valid = true, .sampled = false, .realtime = true};
   ascii_otel_scope_t operation_scope = {0}, child = {0};
@@ -406,7 +405,7 @@ TEST_CASE("otel/bounded_children_keep_unsampled_parent_decision", "[otel]") {
   ascii_otel_scope_end(&child);
   ascii_otel_scope_end(&operation_scope);
 }
-TEST_CASE("otel/ascii_http_in_test_mode_is_a_safe_noop", "[otel]") {
+TEST_CASE("otel/ascii_http_in_test_mode_is_a_safe_noop", "[otel] [unit]") {
   adapter_start("traces,metrics");
   ascii_otel_scope_t scope = {0};
   ascii_otel_scope_begin(&scope, ASCII_OTEL_HTTP);
@@ -421,7 +420,7 @@ TEST_CASE("otel/ascii_http_in_test_mode_is_a_safe_noop", "[otel]") {
   REQUIRE(!(ascii_otel_enabled()));
 }
 
-TEST_CASE("otel/stats_share_canonical_metrics_without_mirror_series", "[otel]") {
+TEST_CASE("otel/stats_share_canonical_metrics_without_mirror_series", "[otel] [unit]") {
   static const char *names[] = {
 #define ASCII_OTEL_METRIC(id, name, type, unit) name,
 #include <ascii-chat/otel_metrics.def>
@@ -447,7 +446,7 @@ TEST_CASE("otel/stats_share_canonical_metrics_without_mirror_series", "[otel]") 
   REQUIRE((ascii_otel_stats_metric(STATS_RECORD_COUNTER, 65536)) == (ASCII_OTEL_METRIC_COUNT));
 }
 
-TEST_CASE("otel/complete_application_catalog_exports_without_loss", "[otel]") {
+TEST_CASE("otel/complete_application_catalog_exports_without_loss", "[otel] [unit]") {
   gotel_options_t o = config();
   o.operations = application_operations;
   o.operation_count = ASCII_OTEL_OPERATION_COUNT;
@@ -467,7 +466,7 @@ TEST_CASE("otel/complete_application_catalog_exports_without_loss", "[otel]") {
   REQUIRE((s.dropped_full + s.dropped_err + s.dropped_metrics_full + s.dropped_metrics_err) == (0));
 }
 
-TEST_CASE("otel/exhausted_retry_budget_reports_permanent_loss", "[otel]") {
+TEST_CASE("otel/exhausted_retry_budget_reports_permanent_loss", "[otel] [unit]") {
   gotel_options_t o = config();
   o.signals = GOTEL_TRACES;
   o.exporter.max_retries = 1;
@@ -482,7 +481,7 @@ TEST_CASE("otel/exhausted_retry_budget_reports_permanent_loss", "[otel]") {
   REQUIRE((s.http_5xx) == (2));
   REQUIRE((gotel_test_events_snapshot(events).retries) == (1));
 }
-TEST_CASE("otel/null_inputs_are_rejected_or_noops", "[otel]") {
+TEST_CASE("otel/null_inputs_are_rejected_or_noops", "[otel] [unit]") {
   REQUIRE((gotel_tick(NULL)) == (OTLP_ERR_NULL));
   REQUIRE((gotel_drain(NULL)) == (OTLP_ERR_NULL));
   REQUIRE((gotel_stats(NULL, NULL)) == (OTLP_ERR_NULL));
@@ -495,7 +494,7 @@ TEST_CASE("otel/null_inputs_are_rejected_or_noops", "[otel]") {
   REQUIRE((host) == nullptr);
   REQUIRE((gotel_test_create(NULL, NULL)) == (OTLP_ERR_NULL));
 }
-TEST_CASE("otel/http_error_status_marks_scope_failed", "[otel]") {
+TEST_CASE("otel/http_error_status_marks_scope_failed", "[otel] [unit]") {
   create(config());
   gotel_scope_t scope;
   gotel_begin(host, &scope, 0, NULL);
@@ -506,7 +505,7 @@ TEST_CASE("otel/http_error_status_marks_scope_failed", "[otel]") {
   REQUIRE((stats().sent) == (1));
 }
 
-TEST_CASE("otel/classifies_actionable_failures_without_cancellation_or_incomplete_reads", "[otel]") {
+TEST_CASE("otel/classifies_actionable_failures_without_cancellation_or_incomplete_reads", "[otel] [unit]") {
   REQUIRE((ascii_otel_failure_operation(ERROR_CRYPTO_AUTH, "")) == (ASCII_OTEL_FAILURE_CRYPTO));
   REQUIRE((ascii_otel_failure_operation(ERROR_INVALID_SIGNATURE, "")) == (ASCII_OTEL_FAILURE_CRYPTO));
   REQUIRE((ascii_otel_failure_operation(ERROR_NETWORK_PROTOCOL, "")) == (ASCII_OTEL_FAILURE_PROTOCOL));
@@ -517,7 +516,7 @@ TEST_CASE("otel/classifies_actionable_failures_without_cancellation_or_incomplet
   REQUIRE((ascii_otel_failure_operation(ERROR_NETWORK_INCOMPLETE, "ascii-chat.discovery.connect")) == (ASCII_OTEL_OPERATION_COUNT));
   REQUIRE((ascii_otel_failure_operation(ERROR_NETWORK, "ascii-chat.network.receive")) == (ASCII_OTEL_OPERATION_COUNT));
 }
-TEST_CASE("otel/pipeline_stall_requires_recent_capture_and_an_expected_stage", "[otel]") {
+TEST_CASE("otel/pipeline_stall_requires_recent_capture_and_an_expected_stage", "[otel] [unit]") {
   const uint64_t now = UINT64_C(20000000000), capture = UINT64_C(19500000000), progress = UINT64_C(10000000000);
   REQUIRE((ascii_otel_pipeline_age(now, capture, progress, true)) == (10));
   REQUIRE((ascii_otel_pipeline_age(now, capture, progress, false)) == (0));
@@ -527,7 +526,7 @@ TEST_CASE("otel/pipeline_stall_requires_recent_capture_and_an_expected_stage", "
   REQUIRE((ascii_otel_pipeline_age(now, capture, now, true)) == (0));
 }
 
-TEST_CASE("otel/mcp_render_context_survives_request_completion", "[otel]") {
+TEST_CASE("otel/mcp_render_context_survives_request_completion", "[otel] [unit]") {
   gotel_options_t o = config();
   o.operations = application_operations;
   o.operation_count = ASCII_OTEL_OPERATION_COUNT;

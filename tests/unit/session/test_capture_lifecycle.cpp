@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
 #include "common/session/capture.h"
 #include <ascii-chat/audio/audio.h>
@@ -40,7 +39,7 @@ static void create_pattern(bool resize) {
   REQUIRE(session_capture_is_valid(capture));
 }
 
-TEST_CASE("session_capture_lifecycle/acquired_frames_advance_serial_but_transmission_copies_do_not", "[session_capture_lifecycle]") {
+TEST_CASE("session_capture_lifecycle/acquired_frames_advance_serial_but_transmission_copies_do_not", "[session_capture_lifecycle] [unit]") {
   create_pattern(false);
   REQUIRE((session_capture_get_target_fps(capture)) == (120));
   REQUIRE((session_capture_get_current_fps(capture)) == (0));
@@ -63,7 +62,7 @@ TEST_CASE("session_capture_lifecycle/acquired_frames_advance_serial_but_transmis
   image_destroy(copy);
 }
 
-TEST_CASE("session_capture_lifecycle/transmission_workspace_reuses_storage_accepts_alias_and_resizes_to_network_budget", "[session_capture_lifecycle]") {
+TEST_CASE("session_capture_lifecycle/transmission_workspace_reuses_storage_accepts_alias_and_resizes_to_network_budget", "[session_capture_lifecycle] [unit]") {
   create_pattern(true);
   image_t *frame = image_new(640, 360), *output = NULL;
   REQUIRE((frame) != nullptr);
@@ -87,7 +86,7 @@ TEST_CASE("session_capture_lifecycle/transmission_workspace_reuses_storage_accep
   image_destroy(frame);
 }
 
-TEST_CASE("session_capture_lifecycle/microphone_fallback_borrows_context_and_preserves_exact_captured_samples", "[session_capture_lifecycle]") {
+TEST_CASE("session_capture_lifecycle/microphone_fallback_borrows_context_and_preserves_exact_captured_samples", "[session_capture_lifecycle] [unit]") {
   audio_context_t microphone = {0};
   REQUIRE((audio_init(&microphone)) == (ASCIICHAT_OK));
   session_capture_config_t config = {.type = MEDIA_SOURCE_TEST, .enable_audio = true, .audio_fallback_to_mic = true, .mic_audio_ctx = &microphone};
@@ -111,7 +110,7 @@ static bool cancel(void *context) {
   ++*(unsigned *)context;
   return true;
 }
-TEST_CASE("session_capture_lifecycle/cancelled_creation_and_empty_network_capture_do_not_open_local_sources", "[session_capture_lifecycle]") {
+TEST_CASE("session_capture_lifecycle/cancelled_creation_and_empty_network_capture_do_not_open_local_sources", "[session_capture_lifecycle] [unit]") {
   unsigned calls = 0;
   session_capture_config_t config = {.type = MEDIA_SOURCE_TEST, .should_exit_callback = cancel, .callback_data = &calls};
   REQUIRE((session_mirror_capture_create(&config)) == nullptr);
@@ -129,7 +128,7 @@ TEST_CASE("session_capture_lifecycle/cancelled_creation_and_empty_network_captur
   REQUIRE(!(session_capture_cancel_open(capture)));
 }
 
-TEST_CASE("session_capture_lifecycle/paused_file_redraw_retains_frame_without_counting_another_acquisition", "[session_capture_lifecycle]") {
+TEST_CASE("session_capture_lifecycle/paused_file_redraw_retains_frame_without_counting_another_acquisition", "[session_capture_lifecycle] [unit]") {
   int fd = -1;
   REQUIRE((platform_create_temp_file(path, sizeof(path), "capture-contract", &fd)) == (0));
   REQUIRE((platform_close(fd)) == (0));

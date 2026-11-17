@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/discovery_keys.h>
 #include <ascii-chat/crypto/keys.h>
 #include <libplatform/filesystem.h>
@@ -42,7 +41,7 @@ static void prepare_parent(const char *server, char *path) {
   REQUIRE((platform_mkdir_recursive(parent, 0700)) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("discovery_cache/saved_key_is_standard_openssh_and_roundtrips", "[discovery_cache]") {
+TEST_CASE("discovery_cache/saved_key_is_standard_openssh_and_roundtrips", "[discovery_cache] [unit]") {
   uint8_t key[32], loaded[32];
   for (size_t i = 0; i < sizeof(key); ++i)
     key[i] = (uint8_t)(i * 7 + 1);
@@ -73,14 +72,14 @@ TEST_CASE("discovery_cache/saved_key_is_standard_openssh_and_roundtrips", "[disc
   REQUIRE((discovery_keys_clear_cache("cache.example")) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("discovery_cache/first_use_creates_all_cache_directories", "[discovery_cache]") {
+TEST_CASE("discovery_cache/first_use_creates_all_cache_directories", "[discovery_cache] [unit]") {
   uint8_t key[32] = {1}, loaded[32];
   REQUIRE((discovery_keys_save_cached("new.example", key)) == (ASCIICHAT_OK));
   REQUIRE((discovery_keys_load_cached("new.example", loaded)) == (ASCIICHAT_OK));
   REQUIRE(std::memcmp((loaded), (key), (sizeof(key))) == 0);
 }
 
-TEST_CASE("discovery_cache/explicit_key_rotation_requires_acceptance_and_preserves_rejected_key", "[discovery_cache]") {
+TEST_CASE("discovery_cache/explicit_key_rotation_requires_acceptance_and_preserves_rejected_key", "[discovery_cache] [unit]") {
   uint8_t first[32] = {1}, second[32] = {2}, loaded[32];
   char first_path[PLATFORM_MAX_PATH_LENGTH], second_path[PLATFORM_MAX_PATH_LENGTH];
   REQUIRE((discovery_keys_save_cached("source-one.example", first)) == (ASCIICHAT_OK));
@@ -108,7 +107,7 @@ TEST_CASE("discovery_cache/explicit_key_rotation_requires_acceptance_and_preserv
   platform_unsetenv("ASCII_CHAT_QUESTION_PROMPT_RESPONSE");
 }
 
-TEST_CASE("discovery_cache/rejects_missing_and_malformed_keys_without_publishing_output", "[discovery_cache]") {
+TEST_CASE("discovery_cache/rejects_missing_and_malformed_keys_without_publishing_output", "[discovery_cache] [unit]") {
   uint8_t loaded[32];
   memset(loaded, 0xa5, sizeof(loaded));
   char path[PLATFORM_MAX_PATH_LENGTH];
@@ -126,7 +125,7 @@ TEST_CASE("discovery_cache/rejects_missing_and_malformed_keys_without_publishing
     REQUIRE((loaded[i]) == (0xa5));
 }
 
-TEST_CASE("discovery_cache/invalid_parameters", "[discovery_cache]") {
+TEST_CASE("discovery_cache/invalid_parameters", "[discovery_cache] [unit]") {
   uint8_t key[32] = {0};
   char path[128];
   REQUIRE((discovery_keys_get_cache_path(NULL, path, sizeof(path))) == (ERROR_INVALID_PARAM));

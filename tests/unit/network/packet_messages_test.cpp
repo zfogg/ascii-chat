@@ -1,11 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/messages.h>
 #include <ascii-chat/util/endian.h>
 #include <string.h>
 
-TEST_CASE("packet_messages/error_packets_use_declared_length_and_terminate_every_output_capacity", "[packet_messages]") {
+TEST_CASE("packet_messages/error_packets_use_declared_length_and_terminate_every_output_capacity", "[packet_messages] [unit]") {
   struct {
     error_packet_t header;
     char message[6];
@@ -30,7 +29,7 @@ TEST_CASE("packet_messages/error_packets_use_declared_length_and_terminate_every
   REQUIRE((output)[0] == '\0');
 }
 
-TEST_CASE("packet_messages/error_packet_rejections_preserve_message_storage", "[packet_messages]") {
+TEST_CASE("packet_messages/error_packet_rejections_preserve_message_storage", "[packet_messages] [unit]") {
   struct {
     error_packet_t header;
     char message[4];
@@ -55,7 +54,7 @@ TEST_CASE("packet_messages/error_packet_rejections_preserve_message_storage", "[
   REQUIRE((code) == (ERROR_GENERAL));
 }
 
-TEST_CASE("packet_messages/remote_log_levels_directions_flags_and_truncation", "[packet_messages]") {
+TEST_CASE("packet_messages/remote_log_levels_directions_flags_and_truncation", "[packet_messages] [unit]") {
   struct {
     remote_log_packet_t header;
     char message[7];
@@ -93,7 +92,7 @@ TEST_CASE("packet_messages/remote_log_levels_directions_flags_and_truncation", "
   REQUIRE((output)[0] == '\0');
 }
 
-TEST_CASE("packet_messages/malformed_remote_log_packets_are_rejected_without_writing_message", "[packet_messages]") {
+TEST_CASE("packet_messages/malformed_remote_log_packets_are_rejected_without_writing_message", "[packet_messages] [unit]") {
   remote_log_packet_t packet = {.log_level = LOG_INFO, .message_length = HOST_TO_NET_U32(1)};
   char output[8];
   memset(output, 0xa5, sizeof(output));

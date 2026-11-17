@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "../../../src/common/session/server_like.h"
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/util/time.h>
@@ -200,7 +199,7 @@ static void teardown(void) {
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-TEST_CASE("server_lifecycle/missing_callbacks_and_conflicting_keepawake_reject_start_before_allocating_listener", "[server_lifecycle]") {
+TEST_CASE("server_lifecycle/missing_callbacks_and_conflicting_keepawake_reject_start_before_allocating_listener", "[server_lifecycle] [contract]") {
   session_server_like_config_t c = {0};
   REQUIRE((session_server_like_run(NULL)) == (ERROR_INVALID_PARAM));
   REQUIRE((session_server_like_run(&c)) == (ERROR_INVALID_PARAM));
@@ -218,7 +217,7 @@ TEST_CASE("server_lifecycle/missing_callbacks_and_conflicting_keepawake_reject_s
   REQUIRE((created) == (0));
   REQUIRE((cleaned) == (0));
 }
-TEST_CASE("server_lifecycle/listener_creation_failure_runs_mode_cleanup_without_starting_mode_or_event_loop", "[server_lifecycle]") {
+TEST_CASE("server_lifecycle/listener_creation_failure_runs_mode_cleanup_without_starting_mode_or_event_loop", "[server_lifecycle] [contract]") {
   session_server_like_config_t c = config();
   fail_stage = 1;
   REQUIRE((session_server_like_run(&c)) == (ERROR_NETWORK));
@@ -230,7 +229,7 @@ TEST_CASE("server_lifecycle/listener_creation_failure_runs_mode_cleanup_without_
   REQUIRE((destroyed) == (0));
   REQUIRE((stopped) == (1));
 }
-TEST_CASE("server_lifecycle/mode_failure_and_requested_shutdown_never_start_accepting_connections", "[server_lifecycle]") {
+TEST_CASE("server_lifecycle/mode_failure_and_requested_shutdown_never_start_accepting_connections", "[server_lifecycle] [contract]") {
   session_server_like_config_t c = config();
   fail_stage = 4;
   REQUIRE((session_server_like_run(&c)) == (ERROR_CONFIG));
@@ -246,7 +245,7 @@ TEST_CASE("server_lifecycle/mode_failure_and_requested_shutdown_never_start_acce
   REQUIRE((cleaned) == (2));
   REQUIRE((destroyed) == (2));
 }
-TEST_CASE("server_lifecycle/event_loop_start_and_run_failures_return_the_failure_after_owned_resources_are_released", "[server_lifecycle]") {
+TEST_CASE("server_lifecycle/event_loop_start_and_run_failures_return_the_failure_after_owned_resources_are_released", "[server_lifecycle] [contract]") {
   session_server_like_config_t c = config();
   fail_stage = 2;
   REQUIRE((session_server_like_run(&c)) == (ERROR_NETWORK_BIND));
@@ -259,7 +258,7 @@ TEST_CASE("server_lifecycle/event_loop_start_and_run_failures_return_the_failure
   REQUIRE((destroyed) == (2));
   REQUIRE((cleaned) == (2));
 }
-TEST_CASE("server_lifecycle/listener_options_preserve_ipv4_ipv6_websocket_and_packet_limits", "[server_lifecycle]") {
+TEST_CASE("server_lifecycle/listener_options_preserve_ipv4_ipv6_websocket_and_packet_limits", "[server_lifecycle] [contract]") {
   session_server_like_config_t c = config();
   c.websocket_enabled = true;
   c.max_payload = 1234;
@@ -284,7 +283,7 @@ TEST_CASE("server_lifecycle/listener_options_preserve_ipv4_ipv6_websocket_and_pa
     REQUIRE(observed_network.websocket_enabled);
   }
 }
-TEST_CASE("server_lifecycle/mapping_and_advertisement_failures_are_nonfatal_and_remove_mappings_before_mode_cleanup", "[server_lifecycle]") {
+TEST_CASE("server_lifecycle/mapping_and_advertisement_failures_are_nonfatal_and_remove_mappings_before_mode_cleanup", "[server_lifecycle] [contract]") {
   session_server_like_config_t c = config();
   c.upnp.enabled = true;
   c.upnp.description = "coverage service";
@@ -315,7 +314,7 @@ TEST_CASE("server_lifecycle/mapping_and_advertisement_failures_are_nonfatal_and_
   REQUIRE((cleaned) == (3));
   REQUIRE((session_server_like_mdns_advertise("no-context", "_coverage._tcp", 27001, NULL, 0)) == (ERROR_INVALID_STATE));
 }
-TEST_CASE("server_lifecycle/failed_renewal_worker_removes_both_tcp_and_websocket_mappings", "[server_lifecycle]") {
+TEST_CASE("server_lifecycle/failed_renewal_worker_removes_both_tcp_and_websocket_mappings", "[server_lifecycle] [contract]") {
   session_server_like_config_t c = config();
   c.upnp.enabled = true;
   c.upnp.description = "coverage";
@@ -333,7 +332,7 @@ TEST_CASE("server_lifecycle/failed_renewal_worker_removes_both_tcp_and_websocket
   REQUIRE((joined) == (0));
   REQUIRE((cleaned) == (1));
 }
-TEST_CASE("server_lifecycle/renewal_attempts_each_expired_mapping_and_handles_failed_refresh_before_stop", "[server_lifecycle]") {
+TEST_CASE("server_lifecycle/renewal_attempts_each_expired_mapping_and_handles_failed_refresh_before_stop", "[server_lifecycle] [contract]") {
   g_upnp_ctx = &mapping_storage[0];
   g_ws_upnp_ctx = &mapping_storage[1];
   atomic_store_bool(&g_upnp_ready, true);
@@ -342,7 +341,7 @@ TEST_CASE("server_lifecycle/renewal_attempts_each_expired_mapping_and_handles_fa
   REQUIRE((renewed) == (2));
   g_upnp_ctx = g_ws_upnp_ctx = NULL;
 }
-TEST_CASE("server_lifecycle/status_worker_lifetime_tracks_start_success_and_failure", "[server_lifecycle]") {
+TEST_CASE("server_lifecycle/status_worker_lifetime_tracks_start_success_and_failure", "[server_lifecycle] [contract]") {
   session_server_like_config_t c = config();
   c.status_fn = mode_status;
   c.status_user_data = &status_draws;

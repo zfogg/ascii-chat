@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/log/log.h>
 #include <libplatform/filesystem.h>
 #include <ascii-chat/session/session_log_buffer.h>
@@ -39,7 +38,7 @@ static char *read_records(size_t *size) {
     *size = (size_t)length;
   return text;
 }
-TEST_CASE("log_persistence/file_records_survive_disabled_terminal_and_exclude_terminal_only_output", "[log_persistence]") {
+TEST_CASE("log_persistence/file_records_survive_disabled_terminal_and_exclude_terminal_only_output", "[log_persistence] [unit]") {
   REQUIRE((log_set_format("[%level] ", false)) == (ASCIICHAT_OK));
   log_msg(LOG_INFO, "test.c", 20, "test", "persist-%d", 42);
   log_plain_msg("plain-%s", "record");
@@ -58,7 +57,7 @@ TEST_CASE("log_persistence/file_records_survive_disabled_terminal_and_exclude_te
   SAFE_FREE(records);
 }
 
-TEST_CASE("log_persistence/terminal_history_receives_persistent_and_presentation_messages", "[log_persistence]") {
+TEST_CASE("log_persistence/terminal_history_receives_persistent_and_presentation_messages", "[log_persistence] [unit]") {
   session_log_buffer_t *buffer = session_log_buffer_create();
   REQUIRE((buffer) != nullptr);
   log_set_session_log_buffer(buffer);
@@ -79,7 +78,7 @@ TEST_CASE("log_persistence/terminal_history_receives_persistent_and_presentation
   session_log_buffer_destroy(buffer);
 }
 
-TEST_CASE("log_persistence/tail_rotation_keeps_recent_complete_records_and_new_writes", "[log_persistence]") {
+TEST_CASE("log_persistence/tail_rotation_keeps_recent_complete_records_and_new_writes", "[log_persistence] [unit]") {
   char payload[4001];
   memset(payload, 'x', sizeof(payload) - 1);
   payload[sizeof(payload) - 1] = '\0';
@@ -98,7 +97,7 @@ TEST_CASE("log_persistence/tail_rotation_keeps_recent_complete_records_and_new_w
   SAFE_FREE(records);
 }
 
-TEST_CASE("log_persistence/disabling_file_output_stops_persistence", "[log_persistence]") {
+TEST_CASE("log_persistence/disabling_file_output_stops_persistence", "[log_persistence] [unit]") {
   log_file_msg("before-disable");
   size_t before, after;
   char *records = read_records(&before);
@@ -113,7 +112,7 @@ TEST_CASE("log_persistence/disabling_file_output_stops_persistence", "[log_persi
   SAFE_FREE(records);
 }
 
-TEST_CASE("log_persistence/recoloring_rejects_incomplete_headers_and_keeps_message_content", "[log_persistence]") {
+TEST_CASE("log_persistence/recoloring_rejects_incomplete_headers_and_keeps_message_content", "[log_persistence] [unit]") {
   char output[4096];
   const char *invalid[] = {"",
                            "plain",
@@ -144,7 +143,7 @@ TEST_CASE("log_persistence/recoloring_rejects_incomplete_headers_and_keeps_messa
   }
 }
 
-TEST_CASE("log_persistence/notice_records_follow_levels_while_announcements_bypass_them", "[log_persistence]") {
+TEST_CASE("log_persistence/notice_records_follow_levels_while_announcements_bypass_them", "[log_persistence] [unit]") {
   session_log_buffer_t *buffer = session_log_buffer_create();
   REQUIRE((buffer) != nullptr);
   log_set_session_log_buffer(buffer);
@@ -171,7 +170,7 @@ TEST_CASE("log_persistence/notice_records_follow_levels_while_announcements_bypa
   log_clear_session_log_buffer();
   session_log_buffer_destroy(buffer);
 }
-TEST_CASE("log_persistence/long_notice_chunks_preserve_every_utf8_character_and_final_marker", "[log_persistence]") {
+TEST_CASE("log_persistence/long_notice_chunks_preserve_every_utf8_character_and_final_marker", "[log_persistence] [unit]") {
   char body[6004];
   for (size_t i = 0; i < 6000; i += 3)
     memcpy(body + i, "\xe2\x82\xac", 3);

@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "server/client.h"
 #include "server/protocol.h"
 #include "session/h265/server.h"
@@ -79,7 +79,7 @@ static void expect_disconnect(void) {
   REQUIRE((NET_TO_HOST_U16(header.type)) == (PACKET_TYPE_ERROR_MESSAGE));
 }
 
-TEST_CASE("server_protocol/join_capabilities_update_state_and_reject_invalid_flags", "[server_protocol]") {
+TEST_CASE("server_protocol/join_capabilities_update_state_and_reject_invalid_flags", "[server_protocol] [contract]") {
   client_info_packet_t joined = {.capabilities = HOST_TO_NET_U32(CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO | CLIENT_CAP_STRETCH)};
   SAFE_STRNCPY(joined.display_name, "Alice", sizeof(joined.display_name));
   handle_client_join_packet(client, &joined, sizeof(joined));
@@ -110,7 +110,7 @@ TEST_CASE("server_protocol/join_capabilities_update_state_and_reject_invalid_fla
   expect_disconnect();
 }
 
-TEST_CASE("server_protocol/stream_controls_toggle_media_and_keep_other_stream_enabled", "[server_protocol]") {
+TEST_CASE("server_protocol/stream_controls_toggle_media_and_keep_other_stream_enabled", "[server_protocol] [contract]") {
   uint32_t both = HOST_TO_NET_U32(STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO);
   handle_stream_start_packet(client, &both, sizeof(both));
   REQUIRE(atomic_load_bool(&client->is_sending_audio));
@@ -141,7 +141,7 @@ TEST_CASE("server_protocol/stream_controls_toggle_media_and_keep_other_stream_en
   }
 }
 
-TEST_CASE("server_protocol/terminal_resize_bounds_and_disconnect_are_idempotent", "[server_protocol]") {
+TEST_CASE("server_protocol/terminal_resize_bounds_and_disconnect_are_idempotent", "[server_protocol] [contract]") {
   size_packet_t size = {.width = HOST_TO_NET_U16(120), .height = HOST_TO_NET_U16(40)};
   handle_size_packet(client, &size, sizeof(size));
   REQUIRE((client->width) == (120));
@@ -164,7 +164,7 @@ TEST_CASE("server_protocol/terminal_resize_bounds_and_disconnect_are_idempotent"
   expect_disconnect();
 }
 
-TEST_CASE("server_protocol/protocol_versions_remain_compatible_but_bad_payloads_disconnect", "[server_protocol]") {
+TEST_CASE("server_protocol/protocol_versions_remain_compatible_but_bad_payloads_disconnect", "[server_protocol] [contract]") {
   protocol_version_packet_t version = {.protocol_version = HOST_TO_NET_U16(PROTOCOL_VERSION_MAJOR),
                                        .protocol_revision = HOST_TO_NET_U16(PROTOCOL_VERSION_MINOR),
                                        .supports_encryption = 1,
@@ -187,7 +187,7 @@ TEST_CASE("server_protocol/protocol_versions_remain_compatible_but_bad_payloads_
   expect_disconnect();
 }
 
-TEST_CASE("server_protocol/leave_notifications_deactivate_without_requiring_a_reason", "[server_protocol]") {
+TEST_CASE("server_protocol/leave_notifications_deactivate_without_requiring_a_reason", "[server_protocol] [contract]") {
   const uint8_t printable[] = "leaving\tsoon\n";
   const uint8_t binary[] = {1, 2, 3};
   handle_client_leave_packet(client, NULL, 0);
@@ -208,7 +208,7 @@ TEST_CASE("server_protocol/leave_notifications_deactivate_without_requiring_a_re
   handle_client_leave_packet(NULL, NULL, 0);
 }
 
-TEST_CASE("server_protocol/media_packets_require_valid_payloads_and_announced_resources", "[server_protocol]") {
+TEST_CASE("server_protocol/media_packets_require_valid_payloads_and_announced_resources", "[server_protocol] [contract]") {
   float sample = 0;
   handle_audio_packet(client, &sample, sizeof(sample));
   expect_disconnect();
@@ -240,7 +240,7 @@ TEST_CASE("server_protocol/media_packets_require_valid_payloads_and_announced_re
   expect_disconnect();
 }
 
-TEST_CASE("server_protocol/legacy_rgb_frames_reach_owned_video_buffer_without_payload_changes", "[server_protocol]") {
+TEST_CASE("server_protocol/legacy_rgb_frames_reach_owned_video_buffer_without_payload_changes", "[server_protocol] [contract]") {
   client->codec_capabilities_video = VIDEO_CODEC_CAP_RGBA;
   client->incoming_video_buffer = video_frame_buffer_create(client->client_id);
   REQUIRE((client->incoming_video_buffer) != nullptr);
@@ -270,7 +270,7 @@ TEST_CASE("server_protocol/legacy_rgb_frames_reach_owned_video_buffer_without_pa
   expect_disconnect();
 }
 
-TEST_CASE("server_protocol/raw_and_quantized_audio_are_stored_and_disabled_streams_rejected", "[server_protocol]") {
+TEST_CASE("server_protocol/raw_and_quantized_audio_are_stored_and_disabled_streams_rejected", "[server_protocol] [contract]") {
   client->incoming_audio_buffer = audio_ring_buffer_create_format(AUDIO_CHANNELS, true);
   REQUIRE((client->incoming_audio_buffer) != nullptr);
   atomic_store_bool(&client->is_sending_audio, true);
@@ -309,7 +309,7 @@ TEST_CASE("server_protocol/raw_and_quantized_audio_are_stored_and_disabled_strea
   expect_disconnect();
 }
 
-TEST_CASE("server_protocol/opus_single_and_large_batches_decode_into_the_capture_ring", "[server_protocol]") {
+TEST_CASE("server_protocol/opus_single_and_large_batches_decode_into_the_capture_ring", "[server_protocol] [contract]") {
   client->incoming_audio_buffer = audio_ring_buffer_create_format(2, true);
   client->opus_decoder = opus_codec_create_decoder(48000);
   opus_codec_t *encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
@@ -372,7 +372,7 @@ TEST_CASE("server_protocol/opus_single_and_large_batches_decode_into_the_capture
   SAFE_FREE(output);
 }
 
-TEST_CASE("server_protocol/h265_frames_decode_to_grayscale_rgba_and_preserve_client_isolation", "[server_protocol]") {
+TEST_CASE("server_protocol/h265_frames_decode_to_grayscale_rgba_and_preserve_client_isolation", "[server_protocol] [contract]") {
   uint8_t input[32 * 16 * 3];
   for (size_t i = 0; i < sizeof(input); ++i)
     input[i] = (uint8_t)(32 + i % 96);
@@ -428,7 +428,7 @@ TEST_CASE("server_protocol/h265_frames_decode_to_grayscale_rgba_and_preserve_cli
   REQUIRE((h265_server_get_client_decoder(g_h265_server, 7)) != nullptr);
 }
 
-TEST_CASE("server_protocol/repeated_capabilities_update_codecs_without_overwriting_committed_render_preferences", "[server_protocol]") {
+TEST_CASE("server_protocol/repeated_capabilities_update_codecs_without_overwriting_committed_render_preferences", "[server_protocol] [contract]") {
   log_set_level(LOG_DEV);
   terminal_capabilities_packet_t caps = {.width = HOST_TO_NET_U16(40),
                                          .height = HOST_TO_NET_U16(12),
@@ -458,7 +458,7 @@ TEST_CASE("server_protocol/repeated_capabilities_update_codecs_without_overwriti
   REQUIRE((handle_runtime_settings(client, request, length)) == (ERROR_INVALID_STATE));
   REQUIRE((sends) == (before));
 }
-TEST_CASE("server_protocol/invalid_capabilities_disconnect_before_committing_dimensions", "[server_protocol]") {
+TEST_CASE("server_protocol/invalid_capabilities_disconnect_before_committing_dimensions", "[server_protocol] [contract]") {
   log_set_level(LOG_DEV);
   handle_client_capabilities_packet(client, NULL, 0);
   expect_disconnect();
@@ -469,7 +469,7 @@ TEST_CASE("server_protocol/invalid_capabilities_disconnect_before_committing_dim
   REQUIRE(!(client->has_terminal_caps));
   REQUIRE((client->width) == (0));
 }
-TEST_CASE("server_protocol/hevc_rejections_preserve_frame_count_and_handle_shutdown_without_a_decoder", "[server_protocol]") {
+TEST_CASE("server_protocol/hevc_rejections_preserve_frame_count_and_handle_shutdown_without_a_decoder", "[server_protocol] [contract]") {
   log_set_level(LOG_DEV);
   client->codec_capabilities_video = VIDEO_CODEC_CAP_H265;
   const uint8_t malformed[] = {3, 0, 8, 0, 4, 0xff, 0xff};
@@ -493,7 +493,7 @@ TEST_CASE("server_protocol/hevc_rejections_preserve_frame_count_and_handle_shutd
   REQUIRE((client->frames_received) == (0));
   REQUIRE((video_frame_get_latest(client->incoming_video_buffer)) == nullptr);
 }
-TEST_CASE("server_protocol/malformed_opus_batches_release_both_scratch_sizes_without_publishing_partial_audio", "[server_protocol]") {
+TEST_CASE("server_protocol/malformed_opus_batches_release_both_scratch_sizes_without_publishing_partial_audio", "[server_protocol] [contract]") {
   log_set_level(LOG_DEV);
   atomic_store_bool(&client->is_sending_audio, true);
   uint8_t single[18] = {0};
@@ -531,7 +531,7 @@ TEST_CASE("server_protocol/malformed_opus_batches_release_both_scratch_sizes_wit
     REQUIRE((audio_ring_buffer_available_read(client->incoming_audio_buffer)) == (0));
   }
 }
-TEST_CASE("server_protocol/oversized_pcm_and_unsupported_formats_never_publish_audio", "[server_protocol]") {
+TEST_CASE("server_protocol/oversized_pcm_and_unsupported_formats_never_publish_audio", "[server_protocol] [contract]") {
   log_set_level(LOG_DEV);
   atomic_store_bool(&client->is_sending_audio, true);
   client->incoming_audio_buffer = audio_ring_buffer_create_format(AUDIO_CHANNELS, true);
@@ -552,7 +552,7 @@ TEST_CASE("server_protocol/oversized_pcm_and_unsupported_formats_never_publish_a
   REQUIRE((audio_ring_buffer_available_read(client->incoming_audio_buffer)) == (0));
   SAFE_FREE(packet);
 }
-TEST_CASE("server_protocol/frames_without_storage_during_shutdown_and_obsolete_console_clear_do_not_send_data", "[server_protocol]") {
+TEST_CASE("server_protocol/frames_without_storage_during_shutdown_and_obsolete_console_clear_do_not_send_data", "[server_protocol] [contract]") {
   log_set_level(LOG_DEV);
   client->codec_capabilities_video = VIDEO_CODEC_CAP_RGBA;
   uint8_t packet[] = {0, 0, 0, 2, 0, 0, 0, 1, 255, 0, 0, 0, 255, 0};

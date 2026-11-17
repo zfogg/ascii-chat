@@ -1,6 +1,7 @@
+#include <catch2/generators/catch_generators_all.hpp>
+#include <catch2/catch_approx.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -14,7 +15,7 @@
 // Audio Initialization Tests
 // =============================================================================
 
-TEST_CASE("audio/initialization_and_cleanup", "[audio]") {
+TEST_CASE("audio/initialization_and_cleanup", "[audio] [unit]") {
   audio_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
@@ -32,7 +33,7 @@ TEST_CASE("audio/initialization_and_cleanup", "[audio]") {
   audio_destroy(&ctx);
 }
 
-TEST_CASE("audio/multiple_init_cleanup_cycles", "[audio]") {
+TEST_CASE("audio/multiple_init_cleanup_cycles", "[audio] [unit]") {
   // Test multiple init/cleanup cycles
   for (int i = 0; i < 3; i++) {
     audio_context_t ctx;
@@ -44,7 +45,7 @@ TEST_CASE("audio/multiple_init_cleanup_cycles", "[audio]") {
   }
 }
 
-TEST_CASE("audio/discard_pending_audio_on_consumer_read", "[audio]") {
+TEST_CASE("audio/discard_pending_audio_on_consumer_read", "[audio] [unit]") {
   buffer_system_init();
   audio_ring_buffer_t *rb = audio_ring_buffer_create_for_capture();
   REQUIRE((rb) != nullptr);
@@ -64,7 +65,7 @@ TEST_CASE("audio/discard_pending_audio_on_consumer_read", "[audio]") {
   audio_ring_buffer_destroy(rb);
 }
 
-TEST_CASE("audio/flush_playback_buffers_discards_queued_audio", "[audio]") {
+TEST_CASE("audio/flush_playback_buffers_discards_queued_audio", "[audio] [unit]") {
   buffer_system_init();
   audio_context_t ctx = {0};
   ctx.initialized = true;
@@ -117,7 +118,7 @@ static ringbuffer_operation_test_case_t ringbuffer_operation_cases[] = {{100, 50
                                                                         {512, 0, "Write only", true},
                                                                         {0, 0, "Zero operations", true}};
 
-TEST_CASE("audio/ringbuffer_operations", "[audio]") {
+TEST_CASE("audio/ringbuffer_operations", "[audio] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ringbuffer_operation_cases), std::end(ringbuffer_operation_cases)));
   auto *tc = &generated_case;
   buffer_system_init(); // Initialize buffer domain for ring buffer allocation
@@ -183,7 +184,7 @@ static ringbuffer_capacity_test_case_t ringbuffer_capacity_cases[] = {
     {100, 1, 1, "Single write/read cycle"},   {100, 5, 3, "Multiple write cycles, fewer reads"}, {100, 3, 5, "Multiple read cycles, fewer writes"},
     {100, 10, 10, "Equal write/read cycles"}, {256, 2, 2, "Larger buffer, two cycles"},          {50, 20, 20, "Small buffer, many cycles"}};
 
-TEST_CASE("audio/ringbuffer_capacity_scenarios", "[audio]") {
+TEST_CASE("audio/ringbuffer_capacity_scenarios", "[audio] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ringbuffer_capacity_cases), std::end(ringbuffer_capacity_cases)));
   auto *tc = &generated_case;
   buffer_system_init(); // Initialize buffer domain for ring buffer allocation
@@ -232,7 +233,7 @@ TEST_CASE("audio/ringbuffer_capacity_scenarios", "[audio]") {
 // Ringbuffer Tests
 // =============================================================================
 
-TEST_CASE("audio/ringbuffer_roundtrip_property", "[audio]") {
+TEST_CASE("audio/ringbuffer_roundtrip_property", "[audio] [unit]") {
   int sample_count = GENERATE(10, 50, 100, 256, 512, 1024);
 
   // Use capture buffer which disables jitter buffering for basic roundtrip testing
@@ -268,7 +269,7 @@ TEST_CASE("audio/ringbuffer_roundtrip_property", "[audio]") {
   audio_ring_buffer_destroy(rb);
 }
 
-TEST_CASE("audio/ringbuffer_basic_operations", "[audio]") {
+TEST_CASE("audio/ringbuffer_basic_operations", "[audio] [unit]") {
   buffer_system_init(); // Initialize buffer domain for ring buffer allocation
 
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
@@ -281,7 +282,7 @@ TEST_CASE("audio/ringbuffer_basic_operations", "[audio]") {
   audio_ring_buffer_destroy(rb);
 }
 
-TEST_CASE("audio/ringbuffer_write_read", "[audio]") {
+TEST_CASE("audio/ringbuffer_write_read", "[audio] [unit]") {
   buffer_system_init(); // Initialize buffer domain for ring buffer allocation
 
   // Use capture buffer which disables jitter buffering for basic read/write testing
@@ -317,7 +318,7 @@ TEST_CASE("audio/ringbuffer_write_read", "[audio]") {
   audio_ring_buffer_destroy(rb);
 }
 
-TEST_CASE("audio/ringbuffer_overflow_property", "[audio]") {
+TEST_CASE("audio/ringbuffer_overflow_property", "[audio] [unit]") {
   int write_size = GENERATE(500, 1000, 2000, 4000, 8000);
 
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
@@ -344,7 +345,7 @@ TEST_CASE("audio/ringbuffer_overflow_property", "[audio]") {
   audio_ring_buffer_destroy(rb);
 }
 
-TEST_CASE("audio/ringbuffer_overflow_behavior", "[audio]") {
+TEST_CASE("audio/ringbuffer_overflow_behavior", "[audio] [unit]") {
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   REQUIRE((rb) != nullptr);
 
@@ -365,7 +366,7 @@ TEST_CASE("audio/ringbuffer_overflow_behavior", "[audio]") {
   audio_ring_buffer_destroy(rb);
 }
 
-TEST_CASE("audio/ringbuffer_wrap_around", "[audio]") {
+TEST_CASE("audio/ringbuffer_wrap_around", "[audio] [unit]") {
   // Use capture buffer which disables jitter buffering for basic wrap-around testing
   audio_ring_buffer_t *rb = audio_ring_buffer_create_for_capture();
   REQUIRE((rb) != nullptr);
@@ -405,7 +406,7 @@ TEST_CASE("audio/ringbuffer_wrap_around", "[audio]") {
   audio_ring_buffer_destroy(rb);
 }
 
-TEST_CASE("audio/ringbuffer_concurrent_access_simulation", "[audio]") {
+TEST_CASE("audio/ringbuffer_concurrent_access_simulation", "[audio] [unit]") {
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   REQUIRE((rb) != nullptr);
 
@@ -434,7 +435,7 @@ TEST_CASE("audio/ringbuffer_concurrent_access_simulation", "[audio]") {
 // Audio Context and Streaming Tests
 // =============================================================================
 
-TEST_CASE("audio/audio_context_operations", "[audio]") {
+TEST_CASE("audio/audio_context_operations", "[audio] [unit]") {
   audio_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
@@ -454,7 +455,7 @@ TEST_CASE("audio/audio_context_operations", "[audio]") {
   REQUIRE(ctx.initialized == false);
 }
 
-TEST_CASE("audio/audio_sample_buffer_operations", "[audio]") {
+TEST_CASE("audio/audio_sample_buffer_operations", "[audio] [unit]") {
   audio_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
@@ -485,7 +486,7 @@ TEST_CASE("audio/audio_sample_buffer_operations", "[audio]") {
 // Audio Capture and Playback Tests
 // =============================================================================
 
-TEST_CASE("audio/audio_duplex_operations", "[audio]") {
+TEST_CASE("audio/audio_duplex_operations", "[audio] [unit]") {
   SKIP("test skipped");
 }
 
@@ -493,7 +494,7 @@ TEST_CASE("audio/audio_duplex_operations", "[audio]") {
 // Audio Constants and Configuration Tests
 // =============================================================================
 
-TEST_CASE("audio/audio_constants", "[audio]") {
+TEST_CASE("audio/audio_constants", "[audio] [unit]") {
   // Test that audio constants are sensible
   REQUIRE((AUDIO_SAMPLE_RATE) == (48000));
   REQUIRE((AUDIO_CHANNELS) == (2));
@@ -504,7 +505,7 @@ TEST_CASE("audio/audio_constants", "[audio]") {
   REQUIRE((AUDIO_BUFFER_SIZE) == (AUDIO_FRAMES_PER_BUFFER * AUDIO_CHANNELS));
 }
 
-TEST_CASE("audio/audio_realtime_priority", "[audio]") {
+TEST_CASE("audio/audio_realtime_priority", "[audio] [unit]") {
   // Test realtime priority setting (may fail in Docker/containers without privileges)
   asciichat_error_t result = audio_set_realtime_priority();
 
@@ -529,7 +530,7 @@ TEST_CASE("audio/audio_realtime_priority", "[audio]") {
 // Audio Ring Buffer Advanced Tests
 // =============================================================================
 
-TEST_CASE("audio/audio_ring_buffer_stress_test", "[audio]") {
+TEST_CASE("audio/audio_ring_buffer_stress_test", "[audio] [unit]") {
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   REQUIRE((rb) != nullptr);
 
@@ -555,7 +556,7 @@ TEST_CASE("audio/audio_ring_buffer_stress_test", "[audio]") {
   audio_ring_buffer_destroy(rb);
 }
 
-TEST_CASE("audio/audio_ring_buffer_partial_operations", "[audio]") {
+TEST_CASE("audio/audio_ring_buffer_partial_operations", "[audio] [unit]") {
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   REQUIRE((rb) != nullptr);
 
@@ -593,11 +594,11 @@ TEST_CASE("audio/audio_ring_buffer_partial_operations", "[audio]") {
 // Audio Integration Tests
 // =============================================================================
 
-TEST_CASE("audio/audio_context_integration", "[audio]") {
+TEST_CASE("audio/audio_context_integration", "[audio] [unit]") {
   SKIP("test skipped");
 }
 
-TEST_CASE("audio/audio_buffer_size_consistency", "[audio]") {
+TEST_CASE("audio/audio_buffer_size_consistency", "[audio] [unit]") {
   // Test that audio constants are consistent
   REQUIRE((AUDIO_BUFFER_SIZE) > (0));
   REQUIRE((AUDIO_BUFFER_SIZE) == (AUDIO_FRAMES_PER_BUFFER * AUDIO_CHANNELS));
@@ -615,7 +616,7 @@ TEST_CASE("audio/audio_buffer_size_consistency", "[audio]") {
 // Error Handling and Edge Cases
 // =============================================================================
 
-TEST_CASE("audio/null_pointer_handling", "[audio]") {
+TEST_CASE("audio/null_pointer_handling", "[audio] [unit]") {
   audio_context_t ctx;
   float samples[100];
 
@@ -639,7 +640,7 @@ TEST_CASE("audio/null_pointer_handling", "[audio]") {
   }
 }
 
-TEST_CASE("audio/zero_sample_count_handling", "[audio]") {
+TEST_CASE("audio/zero_sample_count_handling", "[audio] [unit]") {
   audio_context_t ctx;
   float samples[100];
 
@@ -656,7 +657,7 @@ TEST_CASE("audio/zero_sample_count_handling", "[audio]") {
   }
 }
 
-TEST_CASE("audio/ringbuffer_edge_cases", "[audio]") {
+TEST_CASE("audio/ringbuffer_edge_cases", "[audio] [unit]") {
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   REQUIRE((rb) != nullptr);
 
@@ -691,7 +692,7 @@ typedef struct {
 
 static audio_buffer_test_case_t audio_buffer_cases[] = {{64, "Small buffer"}, {256, "Medium buffer"}, {1024, "Large buffer"}, {4096, "Very large buffer"}};
 
-TEST_CASE("audio/buffer_sizes", "[audio]") {
+TEST_CASE("audio/buffer_sizes", "[audio] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(audio_buffer_cases), std::end(audio_buffer_cases)));
   auto *tc = &generated_case;
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
@@ -734,7 +735,7 @@ typedef struct {
 static audio_frequency_test_case_t audio_frequency_cases[] = {{440.0f, "A4 note"},    {880.0f, "A5 note"},       {220.0f, "A3 note"},
                                                               {1000.0f, "1kHz tone"}, {100.0f, "Low frequency"}, {10000.0f, "High frequency"}};
 
-TEST_CASE("audio/frequency_tests", "[audio]") {
+TEST_CASE("audio/frequency_tests", "[audio] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(audio_frequency_cases), std::end(audio_frequency_cases)));
   auto *tc = &generated_case;
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
@@ -772,7 +773,7 @@ typedef struct {
 
 static audio_stress_test_case_t audio_stress_cases[] = {{10, "Light stress test"}, {50, "Medium stress test"}, {100, "Heavy stress test"}, {500, "Intensive stress test"}};
 
-TEST_CASE("audio/stress_tests", "[audio]") {
+TEST_CASE("audio/stress_tests", "[audio] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(audio_stress_cases), std::end(audio_stress_cases)));
   auto *tc = &generated_case;
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
@@ -816,7 +817,7 @@ static audio_edge_test_case_t audio_edge_cases[] = {{0, 0, "Zero size operations
                                                     {10, 5, "Write more than read"},        {5, 10, "Read more than available"},
                                                     {1000, 100, "Large write, small read"}, {100, 1000, "Small write, large read"}};
 
-TEST_CASE("audio/edge_cases", "[audio]") {
+TEST_CASE("audio/edge_cases", "[audio] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(audio_edge_cases), std::end(audio_edge_cases)));
   auto *tc = &generated_case;
   audio_ring_buffer_t *rb = audio_ring_buffer_create();

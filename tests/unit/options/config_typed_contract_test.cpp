@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/config.h>
 #include <ascii-chat/options/schema.h>
 #include <ascii-chat/options/builder.h>
@@ -57,7 +57,7 @@ static asciichat_error_t load(const char *toml, bool strict, options_t *options)
   REQUIRE((fclose(file)) == (0));
   return config_load_and_apply(MODE_MIRROR, path, strict, options);
 }
-TEST_CASE("config_typed_contract/typed_toml_loads_enum_names_scalars_and_escaped_strings", "[config_typed_contract]") {
+TEST_CASE("config_typed_contract/typed_toml_loads_enum_names_scalars_and_escaped_strings", "[config_typed_contract] [unit]") {
   options_t options = options_t_new();
   const char *toml = "[contract]\ncolor_mode='truecolor'\nrender_mode='background'\npalette_type='blocks'\ncolor_filter='none'\n"
                      "fps=24\nstretch=true\nsnapshot_delay=1.25\nlog_file=\"folder\\\\trace\\\"name.log\"\n";
@@ -74,7 +74,7 @@ TEST_CASE("config_typed_contract/typed_toml_loads_enum_names_scalars_and_escaped
   REQUIRE((load("[contract]\ncolor_mode='auto'\n", true, &options)) == (ASCIICHAT_OK));
   REQUIRE((options.color_mode) == (TERM_COLOR_AUTO));
 }
-TEST_CASE("config_typed_contract/numeric_enum_compatibility_and_invalid_values_preserve_fields", "[config_typed_contract]") {
+TEST_CASE("config_typed_contract/numeric_enum_compatibility_and_invalid_values_preserve_fields", "[config_typed_contract] [unit]") {
   const struct {
     const char *key;
     size_t offset;
@@ -104,7 +104,7 @@ TEST_CASE("config_typed_contract/numeric_enum_compatibility_and_invalid_values_p
     }
   }
 }
-TEST_CASE("config_typed_contract/malformed_scalars_and_wrong_toml_types_do_not_replace_existing_values", "[config_typed_contract]") {
+TEST_CASE("config_typed_contract/malformed_scalars_and_wrong_toml_types_do_not_replace_existing_values", "[config_typed_contract] [unit]") {
   options_t options = options_t_new();
   options.fps = 30;
   options.snapshot_delay = 2;

@@ -4,7 +4,6 @@
  * @brief Unit tests for lib/crypto/handshake.c
  */
 
-#include <catch2/catch_all.hpp>
 #include <string.h>
 
 #include <ascii-chat/tests/logging.h>
@@ -16,7 +15,7 @@
 // Handshake Initialization Tests
 // =============================================================================
 
-TEST_CASE("crypto_handshake/init_server", "[crypto_handshake]") {
+TEST_CASE("crypto_handshake/init_server", "[crypto_handshake] [unit]") {
   crypto_handshake_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
@@ -28,7 +27,7 @@ TEST_CASE("crypto_handshake/init_server", "[crypto_handshake]") {
   crypto_handshake_destroy(&ctx);
 }
 
-TEST_CASE("crypto_handshake/init_client", "[crypto_handshake]") {
+TEST_CASE("crypto_handshake/init_client", "[crypto_handshake] [unit]") {
   crypto_handshake_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
@@ -40,12 +39,12 @@ TEST_CASE("crypto_handshake/init_client", "[crypto_handshake]") {
   crypto_handshake_destroy(&ctx);
 }
 
-TEST_CASE("crypto_handshake/init_null_context", "[crypto_handshake]") {
+TEST_CASE("crypto_handshake/init_null_context", "[crypto_handshake] [unit]") {
   asciichat_error_t result = crypto_handshake_init("test", NULL, true);
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_handshake/init_null_name", "[crypto_handshake]") {
+TEST_CASE("crypto_handshake/init_null_name", "[crypto_handshake] [unit]") {
   crypto_handshake_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
@@ -57,7 +56,7 @@ TEST_CASE("crypto_handshake/init_null_name", "[crypto_handshake]") {
 // Context State Tests
 // =============================================================================
 
-TEST_CASE("crypto_handshake/context_state_transitions", "[crypto_handshake]") {
+TEST_CASE("crypto_handshake/context_state_transitions", "[crypto_handshake] [unit]") {
   crypto_handshake_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
@@ -71,13 +70,13 @@ TEST_CASE("crypto_handshake/context_state_transitions", "[crypto_handshake]") {
   crypto_handshake_destroy(&ctx);
 }
 
-TEST_CASE("crypto_handshake/destroy_null_context", "[crypto_handshake]") {
+TEST_CASE("crypto_handshake/destroy_null_context", "[crypto_handshake] [unit]") {
   // Destroying NULL should be safe
   crypto_handshake_destroy(NULL);
   REQUIRE(true);
 }
 
-TEST_CASE("crypto_handshake/destroy_twice", "[crypto_handshake]") {
+TEST_CASE("crypto_handshake/destroy_twice", "[crypto_handshake] [unit]") {
   crypto_handshake_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
@@ -96,7 +95,7 @@ TEST_CASE("crypto_handshake/destroy_twice", "[crypto_handshake]") {
 // Client vs Server Tests
 // =============================================================================
 
-TEST_CASE("crypto_handshake/server_vs_client_flags", "[crypto_handshake]") {
+TEST_CASE("crypto_handshake/server_vs_client_flags", "[crypto_handshake] [unit]") {
   crypto_handshake_context_t server_ctx;
   crypto_handshake_context_t client_ctx;
 
@@ -117,7 +116,7 @@ TEST_CASE("crypto_handshake/server_vs_client_flags", "[crypto_handshake]") {
 // Key Generation Tests
 // =============================================================================
 
-TEST_CASE("crypto_handshake/ephemeral_key_generation", "[crypto_handshake]") {
+TEST_CASE("crypto_handshake/ephemeral_key_generation", "[crypto_handshake] [unit]") {
   crypto_handshake_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
@@ -136,7 +135,7 @@ TEST_CASE("crypto_handshake/ephemeral_key_generation", "[crypto_handshake]") {
 // Name Handling Tests
 // =============================================================================
 
-TEST_CASE("crypto_handshake/various_names", "[crypto_handshake]") {
+TEST_CASE("crypto_handshake/various_names", "[crypto_handshake] [unit]") {
   const char *names[] = {
       "simple", "with-dashes", "with_underscores", "123numbers", "UPPERCASE", "CamelCase",
   };

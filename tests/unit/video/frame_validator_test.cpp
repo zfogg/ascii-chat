@@ -1,10 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/video/ascii/frame_validator.h>
 #include <stdint.h>
 #include <string.h>
 
-TEST_CASE("ascii_frame_validation/accepts_bounded_nonterminated_frames_and_uses_last_reset", "[ascii_frame_validation]") {
+TEST_CASE("ascii_frame_validation/accepts_bounded_nonterminated_frames_and_uses_last_reset", "[ascii_frame_validation] [unit]") {
   const char raw[] = {'X', '\033', '[', '0', 'm'};
   REQUIRE(frame_validate_integrity(raw, sizeof(raw)));
   REQUIRE((frame_get_valid_end(raw, sizeof(raw))) == (sizeof(raw)));
@@ -14,7 +13,7 @@ TEST_CASE("ascii_frame_validation/accepts_bounded_nonterminated_frames_and_uses_
   REQUIRE(!(frame_validate_integrity(colored, sizeof(colored))));
 }
 
-TEST_CASE("ascii_frame_validation/rejects_missing_or_truncated_resets_and_trailing_garbage", "[ascii_frame_validation]") {
+TEST_CASE("ascii_frame_validation/rejects_missing_or_truncated_resets_and_trailing_garbage", "[ascii_frame_validation] [unit]") {
   REQUIRE(!(frame_validate_integrity(NULL, 10)));
   REQUIRE(!(frame_validate_integrity("", 0)));
   REQUIRE(!(frame_validate_integrity("abc", 3)));

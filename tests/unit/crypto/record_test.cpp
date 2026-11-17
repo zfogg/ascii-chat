@@ -1,4 +1,4 @@
-#include <catch2/catch_all.hpp>
+#include <catch2/catch_test_macros.hpp>
 #include <ascii-chat/crypto/record.h>
 #include <ascii-chat/crypto/rekey.h>
 #include <ascii-chat/crypto/session.h>
@@ -19,7 +19,7 @@ static void teardown(void) {
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-TEST_CASE("crypto_records/rejects_raw_secretbox_packets_without_accepting_an_alternate_format", "[crypto_records]") {
+TEST_CASE("crypto_records/rejects_raw_secretbox_packets_without_accepting_an_alternate_format", "[crypto_records] [unit]") {
   crypto_context_t sender, receiver;
   CHECK((crypto_init(&sender) == CRYPTO_OK && crypto_init(&receiver) == CRYPTO_OK));
   CHECK(crypto_set_peer_public_key(&sender, receiver.public_key) == CRYPTO_OK);
@@ -61,7 +61,7 @@ static uint8_t *make_packet(packet_type_t type, size_t payload_length, size_t *l
   return packet;
 }
 
-TEST_CASE("crypto_records/authenticates_channels_and_delivery_and_rejects_replays", "[crypto_records]") {
+TEST_CASE("crypto_records/authenticates_channels_and_delivery_and_rejects_replays", "[crypto_records] [unit]") {
   crypto_context_t client_crypto, server_crypto;
   CHECK((crypto_init(&client_crypto) == CRYPTO_OK && crypto_init(&server_crypto) == CRYPTO_OK));
   CHECK(crypto_set_peer_public_key(&client_crypto, server_crypto.public_key) == CRYPTO_OK);
@@ -199,7 +199,7 @@ static void rekey_deliver(rekey_peer_t *from, rekey_peer_t *to, uint64_t now) {
   buffer_release(plain);
 }
 
-TEST_CASE("crypto_records/rotates_twice_and_bounds_control_and_key_retirement", "[crypto_records]") {
+TEST_CASE("crypto_records/rotates_twice_and_bounds_control_and_key_retirement", "[crypto_records] [unit]") {
   crypto_context_t client_crypto, server_crypto;
   CHECK((crypto_init(&client_crypto) == CRYPTO_OK && crypto_init(&server_crypto) == CRYPTO_OK));
   CHECK(crypto_set_peer_public_key(&client_crypto, server_crypto.public_key) == CRYPTO_OK);
@@ -294,7 +294,7 @@ TEST_CASE("crypto_records/rotates_twice_and_bounds_control_and_key_retirement", 
   crypto_destroy(&client_crypto);
 }
 
-TEST_CASE("crypto_records/accepts_inflight_epochs_until_authenticated_channel_retirement", "[crypto_records]") {
+TEST_CASE("crypto_records/accepts_inflight_epochs_until_authenticated_channel_retirement", "[crypto_records] [unit]") {
   crypto_context_t client_crypto, server_crypto;
   CHECK((crypto_init(&client_crypto) == CRYPTO_OK && crypto_init(&server_crypto) == CRYPTO_OK));
   CHECK(crypto_set_peer_public_key(&client_crypto, server_crypto.public_key) == CRYPTO_OK);

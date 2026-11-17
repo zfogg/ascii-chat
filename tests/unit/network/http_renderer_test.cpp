@@ -1,8 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <common/http_renderer.h>
 
-TEST_CASE("http_renderer/request_initializes_safe_defaults", "[http_renderer]") {
+TEST_CASE("http_renderer/request_initializes_safe_defaults", "[http_renderer] [unit]") {
   http_render_request_t request;
   http_render_request_init(&request);
   REQUIRE((request.source.type) == (HTTP_RENDER_SOURCE_UPLOAD));
@@ -11,7 +10,7 @@ TEST_CASE("http_renderer/request_initializes_safe_defaults", "[http_renderer]") 
   REQUIRE(!(request.restricted));
 }
 
-TEST_CASE("http_renderer/result_destroy_is_idempotent", "[http_renderer]") {
+TEST_CASE("http_renderer/result_destroy_is_idempotent", "[http_renderer] [unit]") {
   http_render_result_t result = {0};
   result.ascii = SAFE_MALLOC(4, char *);
   SAFE_STRNCPY(result.ascii, "abc", 4);
@@ -22,7 +21,7 @@ TEST_CASE("http_renderer/result_destroy_is_idempotent", "[http_renderer]") {
   REQUIRE((result.ascii_length) == (0));
 }
 
-TEST_CASE("http_renderer/result_collects_bounded_text_frames", "[http_renderer]") {
+TEST_CASE("http_renderer/result_collects_bounded_text_frames", "[http_renderer] [unit]") {
   http_render_result_t result = {0};
   REQUIRE((http_render_result_add_text_frame(&result, "first", 5, 0)) == (ASCIICHAT_OK));
   REQUIRE((http_render_result_add_text_frame(&result, "second", 6, 40)) == (ASCIICHAT_OK));
@@ -33,7 +32,7 @@ TEST_CASE("http_renderer/result_collects_bounded_text_frames", "[http_renderer]"
   REQUIRE((result.frames) == nullptr);
 }
 
-TEST_CASE("http_renderer/result_rejects_excess_frames", "[http_renderer]") {
+TEST_CASE("http_renderer/result_rejects_excess_frames", "[http_renderer] [unit]") {
   http_render_result_t result = {0};
   for (size_t i = 0; i < HTTP_RENDERER_MAX_FRAMES; ++i)
     REQUIRE((http_render_result_add_file_frame(&result, "frame.png", i)) == (ASCIICHAT_OK));
@@ -41,7 +40,7 @@ TEST_CASE("http_renderer/result_rejects_excess_frames", "[http_renderer]") {
   http_render_result_destroy(&result);
 }
 
-TEST_CASE("http_renderer/service_reaps_failed_normalized_jobs", "[http_renderer]") {
+TEST_CASE("http_renderer/service_reaps_failed_normalized_jobs", "[http_renderer] [unit]") {
   http_renderer_t *renderer = NULL;
   http_renderer_config_t config = {.max_jobs = 1, .max_input_bytes = 1024, .max_output_bytes = 1024};
   REQUIRE((http_renderer_init(&renderer, &config)) == (ASCIICHAT_OK));

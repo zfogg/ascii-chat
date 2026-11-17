@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "session/h265/client.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/h265/decoder.h>
@@ -17,7 +16,7 @@ static void teardown(void) {
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-TEST_CASE("session_h265_client/neutral_rgb_frame_encodes_and_decodes_with_correct_geometry_and_keyframe_stats", "[session_h265_client]") {
+TEST_CASE("session_h265_client/neutral_rgb_frame_encodes_and_decodes_with_correct_geometry_and_keyframe_stats", "[session_h265_client] [contract]") {
   REQUIRE((h265_client_init_media_source(client, H265_SOURCE_TEST_PATTERN, NULL)) == (ASCIICHAT_OK));
   uint8_t packet[65536], output[64 * 32];
   size_t size = sizeof(packet), decoded_size = sizeof(output);
@@ -46,7 +45,7 @@ TEST_CASE("session_h265_client/neutral_rgb_frame_encodes_and_decodes_with_correc
   REQUIRE((frames) == (2));
   REQUIRE((keyframes) == (2));
 }
-TEST_CASE("session_h265_client/insufficient_output_and_missing_arguments_do_not_advance_encoder_stats", "[session_h265_client]") {
+TEST_CASE("session_h265_client/insufficient_output_and_missing_arguments_do_not_advance_encoder_stats", "[session_h265_client] [contract]") {
   uint8_t packet[4] = {1, 2, 3, 4};
   size_t size = sizeof(packet);
   REQUIRE((h265_client_capture_and_encode(client, packet, &size)) == (ERROR_NETWORK_SIZE));
@@ -64,7 +63,7 @@ TEST_CASE("session_h265_client/insufficient_output_and_missing_arguments_do_not_
   h265_client_context_destroy(NULL);
   h265_client_request_keyframe(NULL);
 }
-TEST_CASE("session_h265_client/source_configuration_owns_caller_text_for_each_supported_kind", "[session_h265_client]") {
+TEST_CASE("session_h265_client/source_configuration_owns_caller_text_for_each_supported_kind", "[session_h265_client] [contract]") {
   const h265_media_source_t sources[] = {H265_SOURCE_FILE, H265_SOURCE_URL, H265_SOURCE_WEBCAM};
   for (size_t i = 0; i < sizeof(sources) / sizeof(sources[0]); ++i) {
     h265_client_context_t *context = h265_client_context_create(64, 32);

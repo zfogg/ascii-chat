@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <libplatform/atomic.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/util/time.h>
@@ -28,7 +27,7 @@ static void cleanup(void) {
   log_destroy();
 }
 
-TEST_CASE("palette_init/concurrent_first_renderers_observe_a_complete_cache", "[palette_init]") {
+TEST_CASE("palette_init/concurrent_first_renderers_observe_a_complete_cache", "[palette_init] [unit]") {
   for (unsigned round = 0; round < 20; round++) {
     simd_caches_destroy_all();
     atomic_t ready = {0}, start = {0};

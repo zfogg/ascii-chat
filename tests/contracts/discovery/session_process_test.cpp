@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 #include "../worker_assert.h"
-#include <catch2/catch_all.hpp>
 /** Regression checks for discovery processing against the production library. */
 #include "discovery/session.h"
 #include <ascii-chat/app_callbacks.h>
@@ -210,7 +209,7 @@ static void discovery_session_check_negotiation(void) {
   REQUIRE(!strcmp(session.host_address, "127.0.0.2"));
 }
 
-TEST_CASE("discovery_session_process/state_dispatch_keepalive_and_migration", "[discovery_session_process]") {
+TEST_CASE("discovery_session_process/state_dispatch_keepalive_and_migration", "[discovery_session_process] [contract]") {
   REQUIRE((asciichat_shared_init(NULL, false, true)) == (ASCIICHAT_OK));
   REQUIRE((options_state_init()) == (ASCIICHAT_OK));
   options_t opts = options_t_new();
@@ -335,7 +334,7 @@ TEST_CASE("discovery_session_process/state_dispatch_keepalive_and_migration", "[
   asciichat_shared_destroy();
 }
 
-TEST_CASE("discovery_session_process/tcp_establishment_and_negotiation", "[discovery_session_process]") {
+TEST_CASE("discovery_session_process/tcp_establishment_and_negotiation", "[discovery_session_process] [contract]") {
   REQUIRE((asciichat_shared_init(NULL, false, true)) == (ASCIICHAT_OK));
   REQUIRE((options_state_init()) == (ASCIICHAT_OK));
   app_callbacks_t callbacks = {.platform_get_monotonic_time_us = discovery_session_clock};
@@ -349,7 +348,7 @@ TEST_CASE("discovery_session_process/tcp_establishment_and_negotiation", "[disco
   asciichat_shared_destroy();
 }
 
-TEST_CASE("discovery_session_process/authoritative_designation_is_idempotent_and_session_scoped", "[discovery_session_process]") {
+TEST_CASE("discovery_session_process/authoritative_designation_is_idempotent_and_session_scoped", "[discovery_session_process] [contract]") {
   REQUIRE((asciichat_shared_init(NULL, false, true)) == (ASCIICHAT_OK));
   REQUIRE((options_state_init()) == (ASCIICHAT_OK));
   app_callbacks_t callbacks = {.platform_get_monotonic_time_us = discovery_session_clock};
@@ -559,7 +558,7 @@ static acip_transport_t *designation_peer(network_server_t *server, const uint8_
   return transport;
 }
 
-TEST_CASE("discovery_session_process/host_fanout_authority_isolation_and_reconnect", "[discovery_session_process]") {
+TEST_CASE("discovery_session_process/host_fanout_authority_isolation_and_reconnect", "[discovery_session_process] [contract]") {
   REQUIRE((asciichat_shared_init(NULL, false, true)) == (ASCIICHAT_OK));
   REQUIRE((socket_init()) == (ASCIICHAT_OK));
   acds_server_t server = {0};

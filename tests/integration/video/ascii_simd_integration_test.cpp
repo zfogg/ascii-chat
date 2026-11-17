@@ -4,11 +4,10 @@
  * @brief SIMD ASCII rendering integration tests
  */
 
-#include <catch2/catch_all.hpp>
 #include <string.h>
 
 #include <ascii-chat/video/rgba/video_frame.h>
-TEST_CASE("ascii_simd_integration/quality_metrics_collection", "[ascii_simd_integration]") {
+TEST_CASE("ascii_simd_integration/quality_metrics_collection", "[ascii_simd_integration] [integration]") {
   video_frame_buffer_t *vfb = video_frame_buffer_create("quality_test");
 
   // Write multiple frames and consume them to avoid dropping

@@ -1,7 +1,7 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
 #include <ascii-chat/common.h>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -13,7 +13,7 @@
 // SAFE_MALLOC Tests
 // =============================================================================
 
-TEST_CASE("common/safe_malloc_basic", "[common]") {
+TEST_CASE("common/safe_malloc_basic", "[common] [unit]") {
   void *ptr;
   ptr = SAFE_MALLOC(1024, void *);
   REQUIRE((ptr) != nullptr);
@@ -31,7 +31,7 @@ TEST_CASE("common/safe_malloc_basic", "[common]") {
 // SAFE_CALLOC Tests
 // =============================================================================
 
-TEST_CASE("common/safe_calloc_basic", "[common]") {
+TEST_CASE("common/safe_calloc_basic", "[common] [unit]") {
   int *ptr;
   size_t count = 256;
   size_t size = sizeof(int);
@@ -51,7 +51,7 @@ TEST_CASE("common/safe_calloc_basic", "[common]") {
 // SAFE_REALLOC Tests
 // =============================================================================
 
-TEST_CASE("common/safe_realloc_basic", "[common]") {
+TEST_CASE("common/safe_realloc_basic", "[common] [unit]") {
   void *ptr;
   // Initial allocation
   ptr = SAFE_MALLOC(512, void *);
@@ -91,7 +91,7 @@ static error_code_test_case_t error_code_cases[] = {
     {ERROR_BUFFER_FULL, "ERROR_BUFFER_FULL", "Buffer full error code"},
 };
 
-TEST_CASE("common/error_code_definitions", "[common]") {
+TEST_CASE("common/error_code_definitions", "[common] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(error_code_cases), std::end(error_code_cases)));
   auto *tc = &generated_case;
   // Error codes should be defined
@@ -103,7 +103,7 @@ TEST_CASE("common/error_code_definitions", "[common]") {
   REQUIRE(strlen(error_str) > 0);
 }
 
-TEST_CASE("common/error_codes_are_distinct", "[common]") {
+TEST_CASE("common/error_codes_are_distinct", "[common] [unit]") {
   // Test that all error codes are distinct from each other
   int codes[] = {ASCIICHAT_OK, ERROR_NETWORK, ERROR_MEMORY, ERROR_INVALID_PARAM, ERROR_BUFFER_FULL};
   size_t count = sizeof(codes) / sizeof(codes[0]);
@@ -156,7 +156,7 @@ static min_max_test_case_t min_max_cases[] = {
     {INT_MAX, INT_MAX, INT_MAX, INT_MAX, "Both INT_MAX"},
 };
 
-TEST_CASE("common/min_max_macros", "[common]") {
+TEST_CASE("common/min_max_macros", "[common] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(min_max_cases), std::end(min_max_cases)));
   auto *tc = &generated_case;
   int min_result = MIN(tc->a, tc->b);
@@ -166,7 +166,7 @@ TEST_CASE("common/min_max_macros", "[common]") {
   REQUIRE((max_result) == (tc->expected_max));
 }
 
-TEST_CASE("common/array_size_macro", "[common]") {
+TEST_CASE("common/array_size_macro", "[common] [unit]") {
   int test_array[42];
   REQUIRE((ARRAY_SIZE(test_array)) == (42));
 
@@ -178,7 +178,7 @@ TEST_CASE("common/array_size_macro", "[common]") {
 // Thread Safety Tests (basic)
 // =============================================================================
 
-TEST_CASE("common/concurrent_allocations", "[common]") {
+TEST_CASE("common/concurrent_allocations", "[common] [unit]") {
   // Simple test to ensure allocations work in basic concurrent scenario
   void *ptrs[10];
 
@@ -208,7 +208,7 @@ TEST_CASE("common/concurrent_allocations", "[common]") {
 // Edge Case Tests
 // =============================================================================
 
-TEST_CASE("common/large_allocations", "[common]") {
+TEST_CASE("common/large_allocations", "[common] [unit]") {
   void *ptr;
   // Test reasonably large allocation (1MB)
   size_t large_size = 1024 * 1024;
@@ -225,7 +225,7 @@ TEST_CASE("common/large_allocations", "[common]") {
   SAFE_FREE(ptr);
 }
 
-TEST_CASE("common/alignment_checks", "[common]") {
+TEST_CASE("common/alignment_checks", "[common] [unit]") {
   void *ptr1, *ptr2, *ptr3;
 
   // Test that allocated memory is properly aligned
@@ -255,7 +255,7 @@ TEST_CASE("common/alignment_checks", "[common]") {
 // Integration with Logging Tests
 // =============================================================================
 
-TEST_CASE("common/log_memory_operations", "[common]") {
+TEST_CASE("common/log_memory_operations", "[common] [unit]") {
   void *ptr;
 
   // Test logging during memory operations

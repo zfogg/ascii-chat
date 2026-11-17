@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
@@ -25,7 +24,7 @@ static void visit(uintptr_t key, uint64_t generation, const char *name, const ch
 static void read_value(uintptr_t key, void *data) {
   *(int *)data = *(int *)key;
 }
-TEST_CASE("registry_snapshot/metadata_and_protected_snapshots_follow_rename_and_removal", "[registry_snapshot]") {
+TEST_CASE("registry_snapshot/metadata_and_protected_snapshots_follow_rename_and_removal", "[registry_snapshot] [unit]") {
   REQUIRE((named_init()) == (ASCIICHAT_OK));
   int object = 42, value = 0;
   uintptr_t key = (uintptr_t)&object;

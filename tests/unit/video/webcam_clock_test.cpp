@@ -1,8 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/video/webcam/frame_clock.h>
 
-TEST_CASE("webcam_clock/detects_buffered_frames_and_catchup_without_hiding_backlog", "[webcam_clock]") {
+TEST_CASE("webcam_clock/detects_buffered_frames_and_catchup_without_hiding_backlog", "[webcam_clock] [unit]") {
   webcam_frame_clock_t clock = {0};
   REQUIRE((webcam_frame_clock_age(&clock, 1000000, 1000000000)) == (0));
   // A 60 Hz camera consumed at 5 Hz accumulates queued samples.
@@ -13,7 +12,7 @@ TEST_CASE("webcam_clock/detects_buffered_frames_and_catchup_without_hiding_backl
   REQUIRE((webcam_frame_clock_age(&clock, 5000000, 1402000000)) == (2000000));
 }
 
-TEST_CASE("webcam_clock/faster_delivery_and_clock_restarts_establish_a_new_origin", "[webcam_clock]") {
+TEST_CASE("webcam_clock/faster_delivery_and_clock_restarts_establish_a_new_origin", "[webcam_clock] [unit]") {
   webcam_frame_clock_t clock = {0};
   REQUIRE((webcam_frame_clock_age(&clock, -100000, 1000000000)) == (0));
   REQUIRE((webcam_frame_clock_age(&clock, 100000, 1010000000)) == (0));
@@ -23,7 +22,7 @@ TEST_CASE("webcam_clock/faster_delivery_and_clock_restarts_establish_a_new_origi
   REQUIRE((webcam_frame_clock_age(&clock, 20000, 1000100)) == (0));
 }
 
-TEST_CASE("webcam_clock/flushing_a_drifting_clock_allows_new_frames_again", "[webcam_clock]") {
+TEST_CASE("webcam_clock/flushing_a_drifting_clock_allows_new_frames_again", "[webcam_clock] [unit]") {
   webcam_frame_clock_t clock = {0};
   webcam_frame_clock_age(&clock, 0, 1000000000);
   for (unsigned i = 1; i <= 200; ++i)

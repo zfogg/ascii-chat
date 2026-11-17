@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/consensus/handoff.h>
 #include <string.h>
 
@@ -21,7 +20,7 @@ static consensus_handoff_t setup(void) {
   REQUIRE((consensus_handoff_join(&s, fast_id)) == (ASCIICHAT_OK));
   return s;
 }
-TEST_CASE("handoff/measured_successor_prepares_before_commit", "[handoff]") {
+TEST_CASE("handoff/measured_successor_prepares_before_commit", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   consensus_handoff_message_t action;
   sample(&s, slow_id, 100, 300, 1);
@@ -37,14 +36,14 @@ TEST_CASE("handoff/measured_successor_prepares_before_commit", "[handoff]") {
   REQUIRE((action.kind) == (HANDOFF_COMMIT));
   REQUIRE((memcmp(action.participant, fast_id, 16)) == (0));
 }
-TEST_CASE("handoff/unknown_and_expired_never_win", "[handoff]") {
+TEST_CASE("handoff/unknown_and_expired_never_win", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   consensus_handoff_message_t action;
   REQUIRE(!(consensus_handoff_tick(&s, 1, &action)));
   sample(&s, fast_id, 100, 110, 1);
   REQUIRE(!(consensus_handoff_tick(&s, 16000, &action)));
 }
-TEST_CASE("handoff/no_successor_reports_failure_after_deadline_once", "[handoff]") {
+TEST_CASE("handoff/no_successor_reports_failure_after_deadline_once", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   consensus_handoff_message_t action;
   consensus_handoff_leave(&s, host_id);
@@ -53,7 +52,7 @@ TEST_CASE("handoff/no_successor_reports_failure_after_deadline_once", "[handoff]
   REQUIRE((action.kind) == (HANDOFF_FAILED));
   REQUIRE(!(consensus_handoff_tick(&s, 15200, &action)));
 }
-TEST_CASE("handoff/ties_ignore_arrival_order", "[handoff]") {
+TEST_CASE("handoff/ties_ignore_arrival_order", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   consensus_handoff_message_t action;
   sample(&s, fast_id, 100, 110, 1);
@@ -61,7 +60,7 @@ TEST_CASE("handoff/ties_ignore_arrival_order", "[handoff]") {
   REQUIRE(consensus_handoff_tick(&s, 111, &action));
   REQUIRE((memcmp(action.participant, slow_id, 16)) == (0));
 }
-TEST_CASE("handoff/failed_preparation_tries_next_candidate", "[handoff]") {
+TEST_CASE("handoff/failed_preparation_tries_next_candidate", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   consensus_handoff_message_t action;
   sample(&s, slow_id, 100, 300, 1);
@@ -72,7 +71,7 @@ TEST_CASE("handoff/failed_preparation_tries_next_candidate", "[handoff]") {
   REQUIRE(consensus_handoff_tick(&s, 303, &action));
   REQUIRE((memcmp(action.participant, slow_id, 16)) == (0));
 }
-TEST_CASE("handoff/departure_fences_preparation_ack", "[handoff]") {
+TEST_CASE("handoff/departure_fences_preparation_ack", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   consensus_handoff_message_t action;
   sample(&s, fast_id, 100, 110, 1);
@@ -81,7 +80,7 @@ TEST_CASE("handoff/departure_fences_preparation_ack", "[handoff]") {
   action.kind = HANDOFF_READY;
   REQUIRE((consensus_handoff_receive(&s, &action, CONSENSUS_HANDOFF_HEADER, 112)) != (ASCIICHAT_OK));
 }
-TEST_CASE("handoff/exact_wire_length_and_version", "[handoff]") {
+TEST_CASE("handoff/exact_wire_length_and_version", "[handoff] [unit]") {
   uint8_t bytes[CONSENSUS_HANDOFF_HEADER];
   consensus_handoff_message_t m = {.kind = HANDOFF_PLAN, .generation = 0x01020304, .sequence = 17}, out;
   memcpy(m.session, session_id, 16);
@@ -95,7 +94,7 @@ TEST_CASE("handoff/exact_wire_length_and_version", "[handoff]") {
   bytes[0] = 99;
   REQUIRE((consensus_handoff_decode(bytes, sizeof(bytes), &out)) != (ASCIICHAT_OK));
 }
-TEST_CASE("handoff/accepts_128_members_and_rejects_129th", "[handoff]") {
+TEST_CASE("handoff/accepts_128_members_and_rejects_129th", "[handoff] [unit]") {
   consensus_handoff_t s;
   consensus_handoff_init(&s, session_id, host_id);
   for (unsigned i = 0; i < 128; ++i) {
@@ -116,7 +115,7 @@ TEST_CASE("handoff/accepts_128_members_and_rejects_129th", "[handoff]") {
   REQUIRE((consensus_handoff_join(&s, extra)) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("handoff/incumbent_leaves_before_first_sample", "[handoff]") {
+TEST_CASE("handoff/incumbent_leaves_before_first_sample", "[handoff] [unit]") {
   consensus_handoff_t s;
   consensus_handoff_init(&s, session_id, host_id);
   consensus_handoff_join(&s, fast_id);
@@ -130,7 +129,7 @@ TEST_CASE("handoff/incumbent_leaves_before_first_sample", "[handoff]") {
   REQUIRE((action.kind) == (HANDOFF_COMMIT));
 }
 
-TEST_CASE("handoff/rejected_peer_can_succeed_in_later_handoff", "[handoff]") {
+TEST_CASE("handoff/rejected_peer_can_succeed_in_later_handoff", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   consensus_handoff_message_t action;
   sample(&s, slow_id, 100, 300, 1);
@@ -150,7 +149,7 @@ TEST_CASE("handoff/rejected_peer_can_succeed_in_later_handoff", "[handoff]") {
   REQUIRE((memcmp(action.participant, fast_id, 16)) == (0));
 }
 
-TEST_CASE("handoff/fresh_measurement_retries_a_transient_preparation_failure", "[handoff]") {
+TEST_CASE("handoff/fresh_measurement_retries_a_transient_preparation_failure", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   consensus_handoff_message_t action;
   sample(&s, fast_id, 100, 110, 1);
@@ -163,7 +162,7 @@ TEST_CASE("handoff/fresh_measurement_retries_a_transient_preparation_failure", "
   REQUIRE((action.kind) == (HANDOFF_PREPARE));
 }
 
-TEST_CASE("handoff/successive_commits_share_generation_but_advance_decision_sequence", "[handoff]") {
+TEST_CASE("handoff/successive_commits_share_generation_but_advance_decision_sequence", "[handoff] [unit]") {
   consensus_handoff_t state = setup();
   consensus_handoff_message_t action;
   sample(&state, fast_id, 100, 110, 1);
@@ -189,7 +188,7 @@ TEST_CASE("handoff/successive_commits_share_generation_but_advance_decision_sequ
   REQUIRE(std::memcmp((action.participant), (slow_id), (16)) == 0);
 }
 
-TEST_CASE("handoff/silent_incumbent_without_first_sample_has_bounded_failure", "[handoff]") {
+TEST_CASE("handoff/silent_incumbent_without_first_sample_has_bounded_failure", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   consensus_handoff_message_t action;
   REQUIRE(!(consensus_handoff_tick(&s, 0, &action)));
@@ -201,7 +200,7 @@ TEST_CASE("handoff/silent_incumbent_without_first_sample_has_bounded_failure", "
   REQUIRE(!(consensus_handoff_tick(&s, 31011, &action)));
 }
 
-TEST_CASE("handoff/fresh_samples_cannot_extend_failed_recovery", "[handoff]") {
+TEST_CASE("handoff/fresh_samples_cannot_extend_failed_recovery", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   consensus_handoff_message_t action;
   sample(&s, fast_id, 100, 110, 1);
@@ -215,7 +214,7 @@ TEST_CASE("handoff/fresh_samples_cannot_extend_failed_recovery", "[handoff]") {
   REQUIRE((action.kind) == (HANDOFF_FAILED));
 }
 
-TEST_CASE("handoff/silent_preparation_fails_at_shared_deadline_even_with_other_candidates", "[handoff]") {
+TEST_CASE("handoff/silent_preparation_fails_at_shared_deadline_even_with_other_candidates", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   consensus_handoff_message_t action;
   sample(&s, fast_id, 100, 110, 1);
@@ -231,7 +230,7 @@ TEST_CASE("handoff/silent_preparation_fails_at_shared_deadline_even_with_other_c
   REQUIRE((action.kind) == (HANDOFF_FAILED));
 }
 
-TEST_CASE("handoff/rejected_successor_recovers_to_fresh_backup", "[handoff]") {
+TEST_CASE("handoff/rejected_successor_recovers_to_fresh_backup", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   consensus_handoff_message_t action;
   sample(&s, fast_id, 100, 110, 1);
@@ -250,7 +249,7 @@ TEST_CASE("handoff/rejected_successor_recovers_to_fresh_backup", "[handoff]") {
   REQUIRE(!(s.host_lost));
 }
 
-TEST_CASE("handoff/incomplete_refresh_cannot_change_eligible_metrics", "[handoff]") {
+TEST_CASE("handoff/incomplete_refresh_cannot_change_eligible_metrics", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   sample(&s, fast_id, 100, 110, 1);
   consensus_handoff_message_t m = {.kind = HANDOFF_SAMPLE_START, .sequence = 2, .capabilities = 0, .nat_tier = 0};
@@ -270,7 +269,7 @@ TEST_CASE("handoff/incomplete_refresh_cannot_change_eligible_metrics", "[handoff
   REQUIRE(!(s.ready));
 }
 
-TEST_CASE("handoff/departed_peer_and_late_probe_cannot_win", "[handoff]") {
+TEST_CASE("handoff/departed_peer_and_late_probe_cannot_win", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   sample(&s, fast_id, 100, 110, 1);
   consensus_handoff_leave(&s, fast_id);
@@ -284,7 +283,7 @@ TEST_CASE("handoff/departed_peer_and_late_probe_cannot_win", "[handoff]") {
   REQUIRE((memcmp(action.participant, slow_id, 16)) == (0));
 }
 
-TEST_CASE("handoff/completed_refresh_changes_the_election", "[handoff]") {
+TEST_CASE("handoff/completed_refresh_changes_the_election", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   sample(&s, fast_id, 100, 110, 1);
   sample(&s, slow_id, 100, 300, 1);
@@ -295,7 +294,7 @@ TEST_CASE("handoff/completed_refresh_changes_the_election", "[handoff]") {
   REQUIRE((memcmp(action.participant, slow_id, 16)) == (0));
 }
 
-TEST_CASE("handoff/stale_prepared_peer_cannot_commit_on_host_loss", "[handoff]") {
+TEST_CASE("handoff/stale_prepared_peer_cannot_commit_on_host_loss", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   sample(&s, fast_id, 100, 110, 1);
   consensus_handoff_message_t action;
@@ -308,14 +307,14 @@ TEST_CASE("handoff/stale_prepared_peer_cannot_commit_on_host_loss", "[handoff]")
   REQUIRE((action.kind) == (HANDOFF_FAILED));
 }
 
-TEST_CASE("handoff/probe_body_after_timeout_is_ineligible", "[handoff]") {
+TEST_CASE("handoff/probe_body_after_timeout_is_ineligible", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   sample(&s, fast_id, 100, 5101, 1);
   consensus_handoff_message_t action;
   REQUIRE(!(consensus_handoff_tick(&s, 5102, &action)));
 }
 
-TEST_CASE("handoff/silent_successor_recovers_to_prepared_backup_within_budget", "[handoff]") {
+TEST_CASE("handoff/silent_successor_recovers_to_prepared_backup_within_budget", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   consensus_handoff_message_t action;
   sample(&s, fast_id, 100, 110, 1);
@@ -330,7 +329,7 @@ TEST_CASE("handoff/silent_successor_recovers_to_prepared_backup_within_budget", 
   REQUIRE((action.kind) == (HANDOFF_COMMIT));
 }
 
-TEST_CASE("handoff/membership_capacity_rejects_excess_without_mutation", "[handoff]") {
+TEST_CASE("handoff/membership_capacity_rejects_excess_without_mutation", "[handoff] [unit]") {
   consensus_handoff_t s;
   consensus_handoff_init(&s, session_id, host_id);
   for (size_t i = 0; i < MAX_SESSION_PARTICIPANTS; ++i) {
@@ -349,7 +348,7 @@ TEST_CASE("handoff/membership_capacity_rejects_excess_without_mutation", "[hando
   REQUIRE((s.count) == (MAX_SESSION_PARTICIPANTS));
 }
 
-TEST_CASE("handoff/departure_during_pending_preparation_reissues_the_current_generation", "[handoff]") {
+TEST_CASE("handoff/departure_during_pending_preparation_reissues_the_current_generation", "[handoff] [unit]") {
   consensus_handoff_t s = setup();
   sample(&s, fast_id, 100, 110, 1);
   consensus_handoff_message_t action;

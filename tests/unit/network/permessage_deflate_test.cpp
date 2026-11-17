@@ -1,3 +1,4 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 /**
  * @file permessage_deflate_test.c
@@ -10,7 +11,6 @@
  * - Data integrity verification
  */
 
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdlib.h>
 #include <zlib.h>
@@ -140,7 +140,7 @@ static void generate_test_data(uint8_t *data, size_t size, int pattern) {
 /**
  * Theory: Small messages decompress correctly
  */
-TEST_CASE("permessage_deflate/small_messages", "[permessage_deflate]") {
+TEST_CASE("permessage_deflate/small_messages", "[permessage_deflate] [unit]") {
   size_t msg_size = GENERATE(1u, 8u, 64u, 256u, 512u);
   if (!(msg_size > 0 && msg_size <= 512))
     SKIP("assumption not satisfied");
@@ -176,7 +176,7 @@ TEST_CASE("permessage_deflate/small_messages", "[permessage_deflate]") {
 /**
  * Theory: Medium messages (typical video frame size)
  */
-TEST_CASE("permessage_deflate/medium_messages", "[permessage_deflate]") {
+TEST_CASE("permessage_deflate/medium_messages", "[permessage_deflate] [unit]") {
   size_t msg_size = GENERATE(1024u, 4096u, 16384u, 65536u);
   if (!(msg_size > 0 && msg_size <= 65536))
     SKIP("assumption not satisfied");
@@ -206,7 +206,7 @@ TEST_CASE("permessage_deflate/medium_messages", "[permessage_deflate]") {
 /**
  * Theory: Various compression patterns
  */
-TEST_CASE("permessage_deflate/compression_patterns", "[permessage_deflate]") {
+TEST_CASE("permessage_deflate/compression_patterns", "[permessage_deflate] [unit]") {
   int pattern = GENERATE(0, 1, 2, 3);
   size_t msg_size = 8192;
 
@@ -241,7 +241,7 @@ TEST_CASE("permessage_deflate/compression_patterns", "[permessage_deflate]") {
  * Test: Buffer overflow prevention - large message
  * Ensure decompression doesn't write beyond output buffer
  */
-TEST_CASE("permessage_deflate/buffer_overflow_protection", "[permessage_deflate]") {
+TEST_CASE("permessage_deflate/buffer_overflow_protection", "[permessage_deflate] [unit]") {
   size_t msg_size = 256 * 1024; // 256KB - large video frame
 
   uint8_t *original = SAFE_MALLOC(msg_size, uint8_t *);
@@ -280,7 +280,7 @@ TEST_CASE("permessage_deflate/buffer_overflow_protection", "[permessage_deflate]
  * Test: Fragmented message handling
  * Simulate receiving a message in multiple fragments
  */
-TEST_CASE("permessage_deflate/fragmented_decompression", "[permessage_deflate]") {
+TEST_CASE("permessage_deflate/fragmented_decompression", "[permessage_deflate] [unit]") {
   size_t total_size = 128 * 1024; // 128KB total message
 
   uint8_t *original = SAFE_MALLOC(total_size, uint8_t *);
@@ -342,7 +342,7 @@ TEST_CASE("permessage_deflate/fragmented_decompression", "[permessage_deflate]")
  * Test: Invalid/corrupted compressed data
  * Ensure decompression fails gracefully with corrupted input
  */
-TEST_CASE("permessage_deflate/corrupted_data_handling", "[permessage_deflate]") {
+TEST_CASE("permessage_deflate/corrupted_data_handling", "[permessage_deflate] [unit]") {
   size_t msg_size = 16384;
 
   uint8_t *original = SAFE_MALLOC(msg_size, uint8_t *);
@@ -376,7 +376,7 @@ TEST_CASE("permessage_deflate/corrupted_data_handling", "[permessage_deflate]") 
 /**
  * Test: Empty message handling
  */
-TEST_CASE("permessage_deflate/empty_message", "[permessage_deflate]") {
+TEST_CASE("permessage_deflate/empty_message", "[permessage_deflate] [unit]") {
   uint8_t dummy[1] = {0};
   uint8_t *compressed = NULL;
   size_t compressed_len = 0;
@@ -394,7 +394,7 @@ TEST_CASE("permessage_deflate/empty_message", "[permessage_deflate]") {
  * Test: Very large message (video frame size)
  * Ensure large messages are handled without buffer overflows
  */
-TEST_CASE("permessage_deflate/large_video_frame", "[permessage_deflate]") {
+TEST_CASE("permessage_deflate/large_video_frame", "[permessage_deflate] [unit]") {
   // Typical video frame: 1920x1080 RGB = 6,220,800 bytes
   // But test with smaller version: 640x480 RGB = 921,600 bytes
   size_t msg_size = 921600;
@@ -440,7 +440,7 @@ TEST_CASE("permessage_deflate/large_video_frame", "[permessage_deflate]") {
  * Test: Multiple sequential messages
  * Ensure compression state doesn't leak between messages
  */
-TEST_CASE("permessage_deflate/sequential_messages", "[permessage_deflate]") {
+TEST_CASE("permessage_deflate/sequential_messages", "[permessage_deflate] [unit]") {
   size_t msg_size = 65536;
   int num_messages = 5;
 

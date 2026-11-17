@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <libplatform/system.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
@@ -12,7 +11,7 @@ static void setup(void) {
 #include <signal.h>
 #include <unistd.h>
 
-TEST_CASE("subprocess_contract/closed_gate_with_ignored_sigpipe_does_not_block", "[subprocess_contract]") {
+TEST_CASE("subprocess_contract/closed_gate_with_ignored_sigpipe_does_not_block", "[subprocess_contract] [unit]") {
   int gate[2];
   REQUIRE((pipe(gate)) == (0));
   close(gate[0]);
@@ -25,13 +24,13 @@ TEST_CASE("subprocess_contract/closed_gate_with_ignored_sigpipe_does_not_block",
   REQUIRE(!(released));
 }
 
-TEST_CASE("subprocess_contract/capture_preserves_empty_arguments_and_shell_metacharacters", "[subprocess_contract]") {
+TEST_CASE("subprocess_contract/capture_preserves_empty_arguments_and_shell_metacharacters", "[subprocess_contract] [unit]") {
   const char *args[] = {"printf", "<%s>|<%s>|<%s>|<%s>", "", "two words", "$(echo changed);*", "single'quote", NULL};
   char output[256];
   REQUIRE((platform_execute_subprocess("/usr/bin/printf", args, output, sizeof(output), NULL, NULL)) == (0));
   REQUIRE(std::strcmp((output), ("<>|<two words>|<$(echo changed);*>|<single'quote>")) == 0);
 }
-TEST_CASE("subprocess_contract/executable_is_independent_of_display_name_and_exit_status_is_preserved", "[subprocess_contract]") {
+TEST_CASE("subprocess_contract/executable_is_independent_of_display_name_and_exit_status_is_preserved", "[subprocess_contract] [unit]") {
   const char *args[] = {"display-name", "%s", "literal", NULL};
   char output[32];
   REQUIRE((platform_execute_subprocess("/usr/bin/printf", args, output, sizeof(output), NULL, NULL)) == (0));
@@ -44,7 +43,7 @@ TEST_CASE("subprocess_contract/executable_is_independent_of_display_name_and_exi
   REQUIRE(platform_execute_subprocess("/definitely-missing-ascii-chat-program", missing, output, sizeof(output), NULL, NULL), 127);
   REQUIRE(std::strcmp(output, "") == 0);
 }
-TEST_CASE("subprocess_contract/captured_output_has_exact_capacity_and_overflow_is_drained", "[subprocess_contract]") {
+TEST_CASE("subprocess_contract/captured_output_has_exact_capacity_and_overflow_is_drained", "[subprocess_contract] [unit]") {
   const char *small[] = {"printf", "abcd", NULL};
   struct {
     char output[5];
@@ -64,7 +63,7 @@ TEST_CASE("subprocess_contract/captured_output_has_exact_capacity_and_overflow_i
   REQUIRE(buffer.output[4] == '\0');
   REQUIRE(buffer.guard == 'G');
 }
-TEST_CASE("subprocess_contract/invalid_parameters_and_signal_termination_report_failure", "[subprocess_contract]") {
+TEST_CASE("subprocess_contract/invalid_parameters_and_signal_termination_report_failure", "[subprocess_contract] [unit]") {
   const char *args[] = {"sh", "-c", "kill -TERM $$", NULL};
   char output[16];
   REQUIRE(platform_execute_subprocess(NULL, args, output, sizeof(output), NULL, NULL) == -1);

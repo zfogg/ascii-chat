@@ -13,7 +13,6 @@
  * - Network errors
  */
 
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/ssh/ssh_agent.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/crypto/keys.h>
@@ -25,7 +24,7 @@
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("crypto_ssh_agent_sign/null_public_key", "[crypto_ssh_agent_sign]") {
+TEST_CASE("crypto_ssh_agent_sign/null_public_key", "[crypto_ssh_agent_sign] [unit]") {
   uint8_t message[32] = {0};
   uint8_t signature[64] = {0};
 
@@ -34,7 +33,7 @@ TEST_CASE("crypto_ssh_agent_sign/null_public_key", "[crypto_ssh_agent_sign]") {
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_ssh_agent_sign/null_message", "[crypto_ssh_agent_sign]") {
+TEST_CASE("crypto_ssh_agent_sign/null_message", "[crypto_ssh_agent_sign] [unit]") {
   public_key_t pub_key;
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = KEY_TYPE_ED25519;
@@ -45,7 +44,7 @@ TEST_CASE("crypto_ssh_agent_sign/null_message", "[crypto_ssh_agent_sign]") {
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_ssh_agent_sign/null_signature", "[crypto_ssh_agent_sign]") {
+TEST_CASE("crypto_ssh_agent_sign/null_signature", "[crypto_ssh_agent_sign] [unit]") {
   public_key_t pub_key;
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = KEY_TYPE_ED25519;
@@ -56,7 +55,7 @@ TEST_CASE("crypto_ssh_agent_sign/null_signature", "[crypto_ssh_agent_sign]") {
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_ssh_agent_sign/zero_message_length", "[crypto_ssh_agent_sign]") {
+TEST_CASE("crypto_ssh_agent_sign/zero_message_length", "[crypto_ssh_agent_sign] [unit]") {
   public_key_t pub_key;
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = KEY_TYPE_ED25519;
@@ -72,7 +71,7 @@ TEST_CASE("crypto_ssh_agent_sign/zero_message_length", "[crypto_ssh_agent_sign]"
   }
 }
 
-TEST_CASE("crypto_ssh_agent_sign/very_large_message", "[crypto_ssh_agent_sign]") {
+TEST_CASE("crypto_ssh_agent_sign/very_large_message", "[crypto_ssh_agent_sign] [unit]") {
   public_key_t pub_key;
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = KEY_TYPE_ED25519;
@@ -98,7 +97,7 @@ TEST_CASE("crypto_ssh_agent_sign/very_large_message", "[crypto_ssh_agent_sign]")
 // Invalid Key Type Tests
 // =============================================================================
 
-TEST_CASE("crypto_ssh_agent_sign/wrong_key_type_x25519", "[crypto_ssh_agent_sign]") {
+TEST_CASE("crypto_ssh_agent_sign/wrong_key_type_x25519", "[crypto_ssh_agent_sign] [unit]") {
   public_key_t pub_key;
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = KEY_TYPE_X25519; // Wrong type
@@ -110,7 +109,7 @@ TEST_CASE("crypto_ssh_agent_sign/wrong_key_type_x25519", "[crypto_ssh_agent_sign
   REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
-TEST_CASE("crypto_ssh_agent_sign/wrong_key_type_gpg", "[crypto_ssh_agent_sign]") {
+TEST_CASE("crypto_ssh_agent_sign/wrong_key_type_gpg", "[crypto_ssh_agent_sign] [unit]") {
   public_key_t pub_key;
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = KEY_TYPE_GPG; // Wrong type
@@ -122,7 +121,7 @@ TEST_CASE("crypto_ssh_agent_sign/wrong_key_type_gpg", "[crypto_ssh_agent_sign]")
   REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
-TEST_CASE("crypto_ssh_agent_sign/uninitialized_key_type", "[crypto_ssh_agent_sign]") {
+TEST_CASE("crypto_ssh_agent_sign/uninitialized_key_type", "[crypto_ssh_agent_sign] [unit]") {
   public_key_t pub_key;
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = (key_type_t)999; // Invalid type
@@ -138,7 +137,7 @@ TEST_CASE("crypto_ssh_agent_sign/uninitialized_key_type", "[crypto_ssh_agent_sig
 // SSH Agent Availability Tests
 // =============================================================================
 
-TEST_CASE("crypto_ssh_agent_sign/agent_not_available", "[crypto_ssh_agent_sign]") {
+TEST_CASE("crypto_ssh_agent_sign/agent_not_available", "[crypto_ssh_agent_sign] [unit]") {
   // Temporarily unset SSH_AUTH_SOCK
   const char *original = SAFE_GETENV("SSH_AUTH_SOCK");
   char saved_value[1024] = {0};
@@ -174,7 +173,7 @@ TEST_CASE("crypto_ssh_agent_sign/agent_not_available", "[crypto_ssh_agent_sign]"
   }
 }
 
-TEST_CASE("crypto_ssh_agent_sign/invalid_agent_socket_path", "[crypto_ssh_agent_sign]") {
+TEST_CASE("crypto_ssh_agent_sign/invalid_agent_socket_path", "[crypto_ssh_agent_sign] [unit]") {
   // Set SSH_AUTH_SOCK to invalid path
   const char *original = SAFE_GETENV("SSH_AUTH_SOCK");
   char saved_value[1024] = {0};
@@ -221,7 +220,7 @@ TEST_CASE("crypto_ssh_agent_sign/invalid_agent_socket_path", "[crypto_ssh_agent_
 // Key Not in Agent Tests
 // =============================================================================
 
-TEST_CASE("crypto_ssh_agent_sign/key_not_in_agent", "[crypto_ssh_agent_sign]") {
+TEST_CASE("crypto_ssh_agent_sign/key_not_in_agent", "[crypto_ssh_agent_sign] [unit]") {
   // Skip if agent not available
   if (!ssh_agent_is_available()) {
     SKIP("test skipped");
@@ -251,7 +250,7 @@ TEST_CASE("crypto_ssh_agent_sign/key_not_in_agent", "[crypto_ssh_agent_sign]") {
 // Message Validity Tests
 // =============================================================================
 
-TEST_CASE("crypto_ssh_agent_sign/all_zero_message", "[crypto_ssh_agent_sign]") {
+TEST_CASE("crypto_ssh_agent_sign/all_zero_message", "[crypto_ssh_agent_sign] [unit]") {
   // Skip if agent not available
   if (!ssh_agent_is_available()) {
     SKIP("test skipped");
@@ -271,7 +270,7 @@ TEST_CASE("crypto_ssh_agent_sign/all_zero_message", "[crypto_ssh_agent_sign]") {
   REQUIRE((result == ASCIICHAT_OK || result != ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_ssh_agent_sign/all_ff_message", "[crypto_ssh_agent_sign]") {
+TEST_CASE("crypto_ssh_agent_sign/all_ff_message", "[crypto_ssh_agent_sign] [unit]") {
   // Skip if agent not available
   if (!ssh_agent_is_available()) {
     SKIP("test skipped");
@@ -296,7 +295,7 @@ TEST_CASE("crypto_ssh_agent_sign/all_ff_message", "[crypto_ssh_agent_sign]") {
 // Signature Buffer Tests
 // =============================================================================
 
-TEST_CASE("crypto_ssh_agent_sign/signature_buffer_unchanged_on_error", "[crypto_ssh_agent_sign]") {
+TEST_CASE("crypto_ssh_agent_sign/signature_buffer_unchanged_on_error", "[crypto_ssh_agent_sign] [unit]") {
   public_key_t pub_key;
   memset(&pub_key, 0, sizeof(pub_key));
   pub_key.type = KEY_TYPE_X25519; // Wrong type - will fail
@@ -317,7 +316,7 @@ TEST_CASE("crypto_ssh_agent_sign/signature_buffer_unchanged_on_error", "[crypto_
 // Integration Test (if agent available with test key)
 // =============================================================================
 
-TEST_CASE("crypto_ssh_agent_sign/successful_signing_if_key_available", "[crypto_ssh_agent_sign]") {
+TEST_CASE("crypto_ssh_agent_sign/successful_signing_if_key_available", "[crypto_ssh_agent_sign] [unit]") {
   // Skip if agent not available
   if (!ssh_agent_is_available()) {
     SKIP("test skipped");

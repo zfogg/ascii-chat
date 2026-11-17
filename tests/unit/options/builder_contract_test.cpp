@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/builder.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/logging.h>
@@ -71,7 +71,7 @@ static sample_t defaults(void) {
   return result;
 }
 
-TEST_CASE("builder_contract/typed_cli_values_short_flags_and_optional_callback", "[builder_contract]") {
+TEST_CASE("builder_contract/typed_cli_values_short_flags_and_optional_callback", "[builder_contract] [unit]") {
   options_config_t *c = config();
   sample_t sample = defaults();
   char *args[] = {"program", "--enabled=yes", "-c", "-12", "--ratio=1.25", "--label", "-", "--custom", "--act"};
@@ -94,7 +94,7 @@ TEST_CASE("builder_contract/typed_cli_values_short_flags_and_optional_callback",
   options_config_destroy(c);
 }
 
-TEST_CASE("builder_contract/malformed_cli_values_do_not_replace_their_fields", "[builder_contract]") {
+TEST_CASE("builder_contract/malformed_cli_values_do_not_replace_their_fields", "[builder_contract] [unit]") {
   options_config_t *c = config();
   const char *bad[][3] = {{"--count", "no"},   {"--count", "2147483648"},   {"--count", "-2147483649"}, {"--ratio", "no"},  {"--ratio", "1.5suffix"},
                           {"--custom", "bad"}, {"--enabled=perhaps", NULL}, {"--count", NULL},          {"--unknown", NULL}};
@@ -111,7 +111,7 @@ TEST_CASE("builder_contract/malformed_cli_values_do_not_replace_their_fields", "
   options_config_destroy(c);
 }
 
-TEST_CASE("builder_contract/environment_then_explicit_cli_and_already_set_values", "[builder_contract]") {
+TEST_CASE("builder_contract/environment_then_explicit_cli_and_already_set_values", "[builder_contract] [unit]") {
   options_config_t *c = config();
   platform_setenv("ASCII_TEST_BUILDER_BOOL", "yes");
   platform_setenv("ASCII_TEST_BUILDER_INT", "12");
@@ -147,7 +147,7 @@ TEST_CASE("builder_contract/environment_then_explicit_cli_and_already_set_values
   options_config_destroy(c);
 }
 
-TEST_CASE("builder_contract/invalid_double_environment_preserves_value_and_returns_error", "[builder_contract]") {
+TEST_CASE("builder_contract/invalid_double_environment_preserves_value_and_returns_error", "[builder_contract] [unit]") {
   options_config_t *c = config();
   const char *invalid[] = {"not-a-number", "2.5suffix", "1e9999", "nan"};
   for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
@@ -162,7 +162,7 @@ TEST_CASE("builder_contract/invalid_double_environment_preserves_value_and_retur
   options_config_destroy(c);
 }
 
-TEST_CASE("builder_contract/requires_and_conflicts_validate_the_final_option_set", "[builder_contract]") {
+TEST_CASE("builder_contract/requires_and_conflicts_validate_the_final_option_set", "[builder_contract] [unit]") {
   for (unsigned variant = 0; variant < 3; ++variant) {
     bool conflict = variant != 0;
     options_builder_t *b = builder();
@@ -199,7 +199,7 @@ static int parse_pair(const char *argument, void *destination, char **remaining,
   sample->count = count;
   return 2;
 }
-TEST_CASE("builder_contract/positional_parser_consumes_pairs_and_rejects_missing_or_extra_arguments", "[builder_contract]") {
+TEST_CASE("builder_contract/positional_parser_consumes_pairs_and_rejects_missing_or_extra_arguments", "[builder_contract] [unit]") {
   options_builder_t *b = builder();
   options_builder_add_positional(b, "pair", "A two-word pair", true, NULL, NULL, 0, OPTION_MODE_ALL, parse_pair);
   options_config_t *c = options_builder_build(b);
@@ -230,7 +230,7 @@ static bool validate_count(const void *destination) {
   }
   return sample->count < 10;
 }
-TEST_CASE("builder_contract/custom_validator_propagates_fresh_errors_and_ignores_stale_ones", "[builder_contract]") {
+TEST_CASE("builder_contract/custom_validator_propagates_fresh_errors_and_ignores_stale_ones", "[builder_contract] [unit]") {
   options_builder_t *b = options_builder_create(sizeof(sample_t));
   REQUIRE((b) != nullptr);
   options_builder_add_int(b, "count", 'c', offsetof(sample_t, count), 7, "Count", "Test", false, NULL, validate_count);
@@ -247,7 +247,7 @@ TEST_CASE("builder_contract/custom_validator_propagates_fresh_errors_and_ignores
   REQUIRE((options_config_validate(c, &sample, NULL)) == (ASCIICHAT_OK));
   options_config_destroy(c);
 }
-TEST_CASE("builder_contract/required_fields_report_the_cli_and_environment_routes", "[builder_contract]") {
+TEST_CASE("builder_contract/required_fields_report_the_cli_and_environment_routes", "[builder_contract] [unit]") {
   for (unsigned with_environment = 0; with_environment < 2; ++with_environment) {
     options_builder_t *b = options_builder_create(sizeof(sample_t));
     REQUIRE((b) != nullptr);
@@ -279,7 +279,7 @@ static int parse_literals(const char *argument, void *destination, char **remain
   SAFE_STRNCPY(((sample_t *)destination)->label, argument, sizeof(((sample_t *)destination)->label));
   return 2;
 }
-TEST_CASE("builder_contract/boolean_spellings_and_end_of_options_preserve_positional_arguments", "[builder_contract]") {
+TEST_CASE("builder_contract/boolean_spellings_and_end_of_options_preserve_positional_arguments", "[builder_contract] [unit]") {
   options_builder_t *b = builder();
   options_builder_add_positional(b, "literals", "Literal words", false, NULL, NULL, 0, OPTION_MODE_CLIENT, parse_literals);
   options_config_t *c = options_builder_build(b);
@@ -303,7 +303,7 @@ TEST_CASE("builder_contract/boolean_spellings_and_end_of_options_preserve_positi
   REQUIRE(!(sample.enabled));
   options_config_destroy(c);
 }
-TEST_CASE("builder_contract/primary_port_environment_overrides_short_aliases", "[builder_contract]") {
+TEST_CASE("builder_contract/primary_port_environment_overrides_short_aliases", "[builder_contract] [unit]") {
   const char *primary[] = {"ASCII_CHAT_PORT", "ASCII_CHAT_WEBSOCKET_PORT"};
   const char *alias[] = {"PORT", "WS_PORT"};
   for (size_t i = 0; i < 2; ++i) {
@@ -345,7 +345,7 @@ TEST_CASE("builder_contract/primary_port_environment_overrides_short_aliases", "
   }
 }
 
-TEST_CASE("builder_contract/conflicting_color_options_return_an_owned_error_message", "[builder_contract]") {
+TEST_CASE("builder_contract/conflicting_color_options_return_an_owned_error_message", "[builder_contract] [unit]") {
   options_config_t *c = config();
   sample_t sample = defaults();
   sample.base.color = true;
@@ -361,7 +361,7 @@ TEST_CASE("builder_contract/conflicting_color_options_return_an_owned_error_mess
   options_config_destroy(c);
 }
 
-TEST_CASE("builder_contract/string_defaults_belong_to_each_builder_and_survive_transfer", "[builder_contract]") {
+TEST_CASE("builder_contract/string_defaults_belong_to_each_builder_and_survive_transfer", "[builder_contract] [unit]") {
   for (unsigned i = 0; i < 1100; ++i) {
     options_builder_t *b = options_builder_create(sizeof(sample_t));
     char initial[] = "owned default";

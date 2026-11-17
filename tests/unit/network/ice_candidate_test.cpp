@@ -1,10 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/webrtc/ice.h>
 #include <ascii-chat/common.h>
 #include <string.h>
 
-TEST_CASE("ice_candidate/parses_and_formats_all_candidate_types_and_tcp_modes", "[ice_candidate]") {
+TEST_CASE("ice_candidate/parses_and_formats_all_candidate_types_and_tcp_modes", "[ice_candidate] [unit]") {
   const struct {
     const char *line;
     ice_candidate_type_t type;
@@ -39,7 +38,7 @@ TEST_CASE("ice_candidate/parses_and_formats_all_candidate_types_and_tcp_modes", 
   }
 }
 
-TEST_CASE("ice_candidate/rejects_malformed_input_and_missing_outputs", "[ice_candidate]") {
+TEST_CASE("ice_candidate/rejects_malformed_input_and_missing_outputs", "[ice_candidate] [unit]") {
   const char *invalid[] = {"", "host 1 udp", "f 1 sctp 1 127.0.0.1 9 typ host", "f 1 udp 1 127.0.0.1 9 typ other", "f one udp 1 127.0.0.1 9 typ host", "f 1 udp 1 not-an-ip 9 typ host"};
   ice_candidate_t candidate = {0};
   for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i)
@@ -57,7 +56,7 @@ TEST_CASE("ice_candidate/rejects_malformed_input_and_missing_outputs", "[ice_can
   REQUIRE(std::strcmp((ice_protocol_name((ice_protocol_t)99)), ("unknown")) == 0);
 }
 
-TEST_CASE("ice_candidate/formats_extensions_without_overwriting_short_buffers", "[ice_candidate]") {
+TEST_CASE("ice_candidate/formats_extensions_without_overwriting_short_buffers", "[ice_candidate] [unit]") {
   ice_candidate_t candidate = {.component_id = 1, .protocol = ICE_PROTOCOL_TCP, .type = ICE_CANDIDATE_RELAY, .priority = 1, .port = 443, .rport = 5000, .tcp_type = ICE_TCP_TYPE_SO};
   SAFE_STRNCPY(candidate.foundation, "relay", sizeof(candidate.foundation));
   SAFE_STRNCPY(candidate.ip_address, "1.1.1.1", sizeof(candidate.ip_address));
@@ -74,7 +73,7 @@ TEST_CASE("ice_candidate/formats_extensions_without_overwriting_short_buffers", 
   REQUIRE(std::strcmp((output), (expected)) == 0);
 }
 
-TEST_CASE("ice_candidate/priority_follows_rfc_and_prefers_lan_then_loopback_then_internet", "[ice_candidate]") {
+TEST_CASE("ice_candidate/priority_follows_rfc_and_prefers_lan_then_loopback_then_internet", "[ice_candidate] [unit]") {
   REQUIRE((ice_calculate_priority(ICE_CANDIDATE_HOST, 65535, 1)) == (UINT32_C(2130706431)));
   REQUIRE((ice_calculate_priority(ICE_CANDIDATE_SRFLX, 65535, 2)) == (UINT32_C(1694498814)));
   REQUIRE((ice_calculate_priority(ICE_CANDIDATE_PRFLX, 0, 1)) == (UINT32_C(1845494015)));

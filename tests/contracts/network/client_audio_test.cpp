@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "../../../src/client/connection_internal.h"
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/thread_pool.h>
@@ -141,19 +140,19 @@ static void queue_failure(const char *stage) {
   REQUIRE(!(audio_connection.audio_queue_cond_initialized));
   audio_sender_finalize(&audio_connection);
 }
-TEST_CASE("client_audio_contract/queue_partial_mutex_initialization_is_releasable", "[client_audio_contract]") {
+TEST_CASE("client_audio_contract/queue_partial_mutex_initialization_is_releasable", "[client_audio_contract] [contract]") {
   queue_failure("audio-queue-mutex");
 }
-TEST_CASE("client_audio_contract/queue_partial_condition_initialization_is_releasable", "[client_audio_contract]") {
+TEST_CASE("client_audio_contract/queue_partial_condition_initialization_is_releasable", "[client_audio_contract] [contract]") {
   queue_failure("audio-queue");
 }
-TEST_CASE("client_audio_contract/sender_start_failure_retains_queue_until_owner_finalization", "[client_audio_contract]") {
+TEST_CASE("client_audio_contract/sender_start_failure_retains_queue_until_owner_finalization", "[client_audio_contract] [contract]") {
   fail_worker = "audio_sender";
   REQUIRE((audio_sender_init(&audio_connection)) == (ERROR_THREAD));
   REQUIRE(!(audio_connection.audio_sender_thread_created));
   REQUIRE(audio_connection.audio_queue_cond_initialized);
 }
-TEST_CASE("client_audio_contract/queue_owns_payload_and_frame_sizes_and_applies_bounded_backpressure", "[client_audio_contract]") {
+TEST_CASE("client_audio_contract/queue_owns_payload_and_frame_sizes_and_applies_bounded_backpressure", "[client_audio_contract] [contract]") {
   uint8_t encoded[3] = {1, 2, 3};
   uint16_t sizes[2] = {1, 2};
   REQUIRE((audio_queue_packet(&audio_connection, encoded, 3, sizes, 2)) == (-1));
@@ -182,7 +181,7 @@ TEST_CASE("client_audio_contract/queue_owns_payload_and_frame_sizes_and_applies_
   REQUIRE((audio_queue_packet(&audio_connection, (uint8_t[]){4}, 1, (uint16_t[]){1}, 1)) == (0));
   REQUIRE((audio_connection.audio_send_queue_head) == (0));
 }
-TEST_CASE("client_audio_contract/sender_continues_after_local_rejection_and_exits_after_network_failure", "[client_audio_contract]") {
+TEST_CASE("client_audio_contract/sender_continues_after_local_rejection_and_exits_after_network_failure", "[client_audio_contract] [contract]") {
   REQUIRE((audio_sender_init(&audio_connection)) == (ASCIICHAT_OK));
   for (unsigned i = 0; i < 2; ++i)
     REQUIRE((audio_queue_packet(&audio_connection, (uint8_t[]){1}, 1, (uint16_t[]){1}, 1)) == (0));
@@ -201,7 +200,7 @@ TEST_CASE("client_audio_contract/sender_continues_after_local_rejection_and_exit
   REQUIRE(server_connection_is_lost(&audio_connection));
   REQUIRE(atomic_load_bool(&audio_connection.audio_sender_exited));
 }
-TEST_CASE("client_audio_contract/received_pcm_checks_bounds_and_delivers_non_silent_audio_to_owned_playback", "[client_audio_contract]") {
+TEST_CASE("client_audio_contract/received_pcm_checks_bounds_and_delivers_non_silent_audio_to_owned_playback", "[client_audio_contract] [contract]") {
   REQUIRE((audio_client_init()) == (0));
   audio_connection.audio_context = audio_get_context();
   REQUIRE(audio_connection.audio_context->initialized);
@@ -233,7 +232,7 @@ TEST_CASE("client_audio_contract/received_pcm_checks_bounds_and_delivers_non_sil
     energy += actual[i] * actual[i];
   REQUIRE((energy) > (0.001));
 }
-TEST_CASE("client_audio_contract/pipeline_decodes_real_opus_and_capture_stop_preserves_application_audio_until_cleanup", "[client_audio_contract]") {
+TEST_CASE("client_audio_contract/pipeline_decodes_real_opus_and_capture_stop_preserves_application_audio_until_cleanup", "[client_audio_contract] [contract]") {
   REQUIRE((audio_client_init()) == (0));
   audio_connection.audio_context = audio_get_context();
   session_capture_config_t config = {.type = MEDIA_SOURCE_TEST, .target_fps = 60};
@@ -271,7 +270,7 @@ TEST_CASE("client_audio_contract/pipeline_decodes_real_opus_and_capture_stop_pre
   REQUIRE(audio_thread_exited(&audio_connection));
   audio_stop_thread(NULL);
 }
-TEST_CASE("client_audio_contract/capture_worker_encodes_oversized_input_and_flushes_a_partial_batch_after_idle", "[client_audio_contract]") {
+TEST_CASE("client_audio_contract/capture_worker_encodes_oversized_input_and_flushes_a_partial_batch_after_idle", "[client_audio_contract] [contract]") {
   REQUIRE((audio_client_init()) == (0));
   audio_connection.audio_context = audio_get_context();
   session_capture_config_t config = {.type = MEDIA_SOURCE_TEST, .target_fps = 60};
@@ -299,7 +298,7 @@ TEST_CASE("client_audio_contract/capture_worker_encodes_oversized_input_and_flus
   REQUIRE(!(server_connection_is_lost(&audio_connection)));
 }
 
-TEST_CASE("client_audio_contract/protocol_startup_retains_resources_for_owner_cleanup_at_each_checkpoint", "[client_audio_contract]") {
+TEST_CASE("client_audio_contract/protocol_startup_retains_resources_for_owner_cleanup_at_each_checkpoint", "[client_audio_contract] [contract]") {
   const char *stages[] = {"audio-pipeline", "receive", "capture", "audio-duplex", "audio-queue-mutex", "audio-queue", "audio-sender", "audio-capture", "keepalive"};
   for (unsigned i = 0; i < ARRAY_SIZE(stages); ++i) {
     fail_checkpoint = stages[i];
@@ -317,7 +316,7 @@ TEST_CASE("client_audio_contract/protocol_startup_retains_resources_for_owner_cl
   REQUIRE((keepalive_starts) > (0));
   REQUIRE(audio_connection.audio_sender_thread_created);
 }
-TEST_CASE("client_audio_contract/protocol_startup_reports_each_worker_failure", "[client_audio_contract]") {
+TEST_CASE("client_audio_contract/protocol_startup_reports_each_worker_failure", "[client_audio_contract] [contract]") {
   fail_worker = "data_reception";
   REQUIRE((client_protocol_start(&audio_connection)) == (ERROR_THREAD));
   CLEAR_ERRNO_ALL();
@@ -336,7 +335,7 @@ TEST_CASE("client_audio_contract/protocol_startup_reports_each_worker_failure", 
   keepalive_start_result = -1;
   REQUIRE((client_protocol_start(&audio_connection)) == (ERROR_THREAD));
 }
-TEST_CASE("client_audio_contract/startup_prefers_a_received_rejection_and_restores_transport_timeout", "[client_audio_contract]") {
+TEST_CASE("client_audio_contract/startup_prefers_a_received_rejection_and_restores_transport_timeout", "[client_audio_contract] [contract]") {
   audio_transport.receive_timeout_ns = 12345;
   receive_remote_error = true;
   REQUIRE((client_startup_peer_error(&audio_connection, ERROR_NETWORK)) == (ERROR_INVALID_PASSWORD));
@@ -349,7 +348,7 @@ TEST_CASE("client_audio_contract/startup_prefers_a_received_rejection_and_restor
   REQUIRE((receive_calls) == (2));
   REQUIRE((audio_transport.receive_timeout_ns) == (12345));
 }
-TEST_CASE("client_audio_contract/startup_control_send_failures_stop_before_spawning_receivers", "[client_audio_contract]") {
+TEST_CASE("client_audio_contract/startup_control_send_failures_stop_before_spawning_receivers", "[client_audio_contract] [contract]") {
   network_result = ERROR_NETWORK;
   receive_remote_error = true;
   REQUIRE((client_protocol_start(&audio_connection)) == (ERROR_INVALID_PASSWORD));
@@ -362,7 +361,7 @@ TEST_CASE("client_audio_contract/startup_control_send_failures_stop_before_spawn
   REQUIRE((atomic_load_int(&sent)) == (2));
   REQUIRE((scheduled) == (0));
 }
-TEST_CASE("client_audio_contract/server_error_callbacks_distinguish_audio_degradation_from_connection_rejection", "[client_audio_contract]") {
+TEST_CASE("client_audio_contract/server_error_callbacks_distinguish_audio_degradation_from_connection_rejection", "[client_audio_contract] [contract]") {
   REQUIRE(!(handle_error_message_packet(&audio_connection, NULL, 0)));
   error_packet_t error = {.error_code = HOST_TO_NET_U32(ERROR_AUDIO), .message_length = 0};
   acip_on_error(&error, NULL, &audio_connection);
@@ -379,7 +378,7 @@ TEST_CASE("client_audio_contract/server_error_callbacks_distinguish_audio_degrad
   REQUIRE(should_exit());
   REQUIRE((server_connection_get_remote_error(&audio_connection)) == (ERROR_INVALID_PASSWORD));
 }
-TEST_CASE("client_audio_contract/control_callbacks_do_not_replace_the_active_media_transport", "[client_audio_contract]") {
+TEST_CASE("client_audio_contract/control_callbacks_do_not_replace_the_active_media_transport", "[client_audio_contract] [contract]") {
   acip_on_ping(&audio_connection);
   REQUIRE((atomic_load_int(&sent)) == (1));
   network_result = ERROR_NETWORK;

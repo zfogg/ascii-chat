@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/ascii/zalgo.h>
 #include <string.h>
@@ -7,7 +6,7 @@
 #include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/tui/controller.h>
 
-TEST_CASE("zalgo/respects_output_budget", "[zalgo]") {
+TEST_CASE("zalgo/respects_output_budget", "[zalgo] [unit]") {
   char *output = NULL;
   REQUIRE((zalgo_apply("@", 1, 10, SIZE_MAX, &output)) == (ASCIICHAT_OK));
   size_t exact_size = strlen(output);
@@ -20,7 +19,7 @@ TEST_CASE("zalgo/respects_output_budget", "[zalgo]") {
   REQUIRE((output) == nullptr);
 }
 
-TEST_CASE("zalgo/rejects_dense_frame_exceeding_presenter_budget", "[zalgo]") {
+TEST_CASE("zalgo/rejects_dense_frame_exceeding_presenter_budget", "[zalgo] [unit]") {
   size_t length = 1024 * 1024 - 1;
   char *input = SAFE_MALLOC(length + 1, char *);
   memset(input, '@', length);
@@ -31,7 +30,7 @@ TEST_CASE("zalgo/rejects_dense_frame_exceeding_presenter_budget", "[zalgo]") {
   SAFE_FREE(input);
 }
 
-TEST_CASE("zalgo/preserves_whitespace_unicode_and_controls", "[zalgo]") {
+TEST_CASE("zalgo/preserves_whitespace_unicode_and_controls", "[zalgo] [unit]") {
   const char *source = " \t\r\n\xc3\xa9\x1b[31m\x1b]0;title\a\x1b[0m";
   char *output = NULL;
   REQUIRE((zalgo_apply(source, strlen(source), 10, SIZE_MAX, &output)) == (ASCIICHAT_OK));
@@ -39,7 +38,7 @@ TEST_CASE("zalgo/preserves_whitespace_unicode_and_controls", "[zalgo]") {
   SAFE_FREE(output);
 }
 
-TEST_CASE("zalgo/expands_rep_before_decoration", "[zalgo]") {
+TEST_CASE("zalgo/expands_rep_before_decoration", "[zalgo] [unit]") {
   char *compressed = NULL, *plain = NULL;
   const char *source = "A\x1b[19b\n";
   const char *expanded = "AAAAAAAAAAAAAAAAAAAA\n";
@@ -50,7 +49,7 @@ TEST_CASE("zalgo/expands_rep_before_decoration", "[zalgo]") {
   SAFE_FREE(plain);
 }
 
-TEST_CASE("zalgo/rejects_invalid_levels", "[zalgo]") {
+TEST_CASE("zalgo/rejects_invalid_levels", "[zalgo] [unit]") {
   char *output = NULL;
   REQUIRE((zalgo_apply("abc", 3, 0, SIZE_MAX, &output)) != (ASCIICHAT_OK));
   REQUIRE((output) == nullptr);
@@ -58,7 +57,7 @@ TEST_CASE("zalgo/rejects_invalid_levels", "[zalgo]") {
   REQUIRE((output) == nullptr);
 }
 
-TEST_CASE("zalgo/rejects_unbounded_rep", "[zalgo]") {
+TEST_CASE("zalgo/rejects_unbounded_rep", "[zalgo] [unit]") {
   const char *source = "A\x1b[4294967295b";
   char *output = NULL;
   REQUIRE((zalgo_apply(source, strlen(source), 10, SIZE_MAX, &output)) != (ASCIICHAT_OK));
@@ -68,7 +67,7 @@ TEST_CASE("zalgo/rejects_unbounded_rep", "[zalgo]") {
   REQUIRE((output) == nullptr);
 }
 
-TEST_CASE("zalgo/deterministic_bounded_and_increasing", "[zalgo]") {
+TEST_CASE("zalgo/deterministic_bounded_and_increasing", "[zalgo] [unit]") {
   char input[1001];
   memset(input, '@', 1000);
   input[1000] = '\0';
@@ -103,7 +102,7 @@ TEST_CASE("zalgo/deterministic_bounded_and_increasing", "[zalgo]") {
   }
 }
 
-TEST_CASE("zalgo/raster_levels_are_distinct_and_disable_restores_frame", "[zalgo]") {
+TEST_CASE("zalgo/raster_levels_are_distinct_and_disable_restores_frame", "[zalgo] [unit]") {
   term_renderer_config_t cfg = {.cols = 80, .rows = 24, .font_size_pt = 12.0, .theme = TERM_RENDERER_THEME_DARK, .font_data = g_font_default, .font_data_size = g_font_default_size};
   terminal_renderer_t *renderer = NULL;
   REQUIRE((term_renderer_create(&cfg, &renderer)) == (ASCIICHAT_OK));

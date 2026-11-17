@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "../../../src/discovery-service/server.h"
 #include "../../../src/discovery-service/signaling.h"
 #include "session/server_like.h"
@@ -220,7 +219,7 @@ static void create_session_fixture(void) {
   REQUIRE(creator_data.joined_session);
   REQUIRE(creator_data.session_established);
 }
-TEST_CASE("discovery_service_callbacks/initialization_failures_clear_ownership_and_allow_idempotent_shutdown", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/initialization_failures_clear_ownership_and_allow_idempotent_shutdown", "[discovery_service_callbacks] [contract]") {
   acds_config_t config = service_config();
   REQUIRE((acds_server_init(&authority, &config)) == (ERROR_INVALID_STATE));
   REQUIRE((authority.db) == nullptr);
@@ -229,7 +228,7 @@ TEST_CASE("discovery_service_callbacks/initialization_failures_clear_ownership_a
   acds_server_shutdown(&authority);
   acds_server_shutdown(&authority);
 }
-TEST_CASE("discovery_service_callbacks/database_and_rate_factory_failures_do_not_publish_partial_services", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/database_and_rate_factory_failures_do_not_publish_partial_services", "[discovery_service_callbacks] [contract]") {
   acds_config_t config = service_config();
   SAFE_STRNCPY(config.database_path, "/missing/ascii-coverage/database.sqlite", sizeof(config.database_path));
   REQUIRE((acds_server_init(&authority, &config)) != (ASCIICHAT_OK));
@@ -242,7 +241,7 @@ TEST_CASE("discovery_service_callbacks/database_and_rate_factory_failures_do_not
   REQUIRE((authority.rate_limiter) == nullptr);
   acds_server_shutdown(&authority);
 }
-TEST_CASE("discovery_service_callbacks/worker_pool_failure_cleans_database_and_rate_limiter", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/worker_pool_failure_cleans_database_and_rate_limiter", "[discovery_service_callbacks] [contract]") {
   make_network();
   fail_pool_create = true;
   acds_config_t config = service_config();
@@ -252,7 +251,7 @@ TEST_CASE("discovery_service_callbacks/worker_pool_failure_cleans_database_and_r
   REQUIRE((authority.worker_pool) == nullptr);
   acds_server_shutdown(&authority);
 }
-TEST_CASE("discovery_service_callbacks/session_create_lookup_join_and_leave_commit_matching_connection_membership", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/session_create_lookup_join_and_leave_commit_matching_connection_membership", "[discovery_service_callbacks] [contract]") {
   initialize();
   create_session_fixture();
   acip_session_lookup_t lookup = {.session_string_len = created.session_string_len};
@@ -291,7 +290,7 @@ TEST_CASE("discovery_service_callbacks/session_create_lookup_join_and_leave_comm
   entry = database_session_find_by_id(authority.db, created.session_id);
   REQUIRE((entry) == nullptr);
 }
-TEST_CASE("discovery_service_callbacks/invalid_creation_and_address_claims_do_not_publish_a_session", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/invalid_creation_and_address_claims_do_not_publish_a_session", "[discovery_service_callbacks] [contract]") {
   initialize();
   acip_session_create_t request = create_request();
   creator_transport.user_data = NULL;
@@ -310,7 +309,7 @@ TEST_CASE("discovery_service_callbacks/invalid_creation_and_address_claims_do_no
   REQUIRE((created_responses) == (0));
   REQUIRE((creator_data.create_keys.count) == (0));
 }
-TEST_CASE("discovery_service_callbacks/rate_limit_rejection_and_backend_failure_clear_pending_creation_proofs", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/rate_limit_rejection_and_backend_failure_clear_pending_creation_proofs", "[discovery_service_callbacks] [contract]") {
   initialize();
   acip_session_create_t create = create_request();
   acip_session_join_t join = {0};
@@ -327,7 +326,7 @@ TEST_CASE("discovery_service_callbacks/rate_limit_rejection_and_backend_failure_
     REQUIRE((response_type) == (PACKET_TYPE_ERROR_MESSAGE));
   }
 }
-TEST_CASE("discovery_service_callbacks/unknown_session_join_returns_a_rejection_without_membership_mutation", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/unknown_session_join_returns_a_rejection_without_membership_mutation", "[discovery_service_callbacks] [contract]") {
   initialize();
   acip_session_join_t request = {.session_string_len = 13, .timestamp = time_ns_to_ms(time_get_realtime_ns())};
   memcpy(request.session_string, "missing-words", 13);
@@ -342,7 +341,7 @@ TEST_CASE("discovery_service_callbacks/unknown_session_join_returns_a_rejection_
   REQUIRE((acds_remove_client_from_session(NULL, &joiner_data)) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("discovery_service_callbacks/connection_open_installs_identity_and_closing_releases_membership", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/connection_open_installs_identity_and_closing_releases_membership", "[discovery_service_callbacks] [contract]") {
   initialize();
   authority.config.require_client_identity = true;
   service_connection_t c = {.transport = {.methods = &service_methods}, .secure = true, .state = NETWORK_READY};
@@ -376,7 +375,7 @@ TEST_CASE("discovery_service_callbacks/connection_open_installs_identity_and_clo
   acds_connection_closed(connection, &authority);
   REQUIRE((acds_connection_closing(connection, &authority)) == (ASCIICHAT_OK));
 }
-TEST_CASE("discovery_service_callbacks/partial_creation_allows_keepalive_but_blocks_lookup_and_counts_wire_bytes", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/partial_creation_allows_keepalive_but_blocks_lookup_and_counts_wire_bytes", "[discovery_service_callbacks] [contract]") {
   initialize();
   service_connection_t c = {.transport = {.methods = &service_methods}, .state = NETWORK_READY};
   network_connection_t *connection = (network_connection_t *)&c;
@@ -399,7 +398,7 @@ TEST_CASE("discovery_service_callbacks/partial_creation_allows_keepalive_but_blo
   acds_connection_closed(connection, &authority);
 }
 
-TEST_CASE("discovery_service_callbacks/sent_byte_statistics_include_the_serialized_packet_header", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/sent_byte_statistics_include_the_serialized_packet_header", "[discovery_service_callbacks] [contract]") {
   initialize();
   create_session_fixture();
   REQUIRE((atomic_load_u64(&authority.stats.packets_sent)) == (1));
@@ -456,7 +455,7 @@ static void startup_identity(void) {
   REQUIRE((options_state_set(v)) == (ASCIICHAT_OK));
   SAFE_FREE(v);
 }
-TEST_CASE("discovery_service_callbacks/startup_options_trim_and_bound_servers_and_install_identity_after_initialization", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/startup_options_trim_and_bound_servers_and_install_identity_after_initialization", "[discovery_service_callbacks] [contract]") {
   startup_identity();
   options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
   *v = *options_get();
@@ -495,7 +494,7 @@ TEST_CASE("discovery_service_callbacks/startup_options_trim_and_bound_servers_an
   stats_runtime_set_provider(NULL, NULL);
   REQUIRE((platform_unlink(startup_path)) == (0));
 }
-TEST_CASE("discovery_service_callbacks/startup_rejects_bad_port_or_identity_and_honors_cancellation_before_and_after_init", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/startup_rejects_bad_port_or_identity_and_honors_cancellation_before_and_after_init", "[discovery_service_callbacks] [contract]") {
   startup_identity();
   options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
   *v = *options_get();
@@ -526,7 +525,7 @@ TEST_CASE("discovery_service_callbacks/startup_rejects_bad_port_or_identity_and_
   REQUIRE((startup_calls) == (2));
   REQUIRE((platform_unlink(startup_path)) == (0));
 }
-TEST_CASE("discovery_service_callbacks/startup_discards_overlong_ice_urls_and_credentials_instead_of_truncating_them", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/startup_discards_overlong_ice_urls_and_credentials_instead_of_truncating_them", "[discovery_service_callbacks] [contract]") {
   startup_identity();
   options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
   *v = *options_get();
@@ -556,7 +555,7 @@ TEST_CASE("discovery_service_callbacks/startup_discards_overlong_ice_urls_and_cr
   stats_runtime_set_provider(NULL, NULL);
   REQUIRE((platform_unlink(startup_path)) == (0));
 }
-TEST_CASE("discovery_service_callbacks/entry_point_wires_lifecycle_callbacks_and_restores_interrupt_handler", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/entry_point_wires_lifecycle_callbacks_and_restores_interrupt_handler", "[discovery_service_callbacks] [contract]") {
   REQUIRE((acds_main()) == (ERROR_NETWORK));
   REQUIRE((startup_interrupt) == nullptr);
   REQUIRE((startup_run_config.init_fn) != nullptr);
@@ -568,7 +567,7 @@ TEST_CASE("discovery_service_callbacks/entry_point_wires_lifecycle_callbacks_and
   REQUIRE((startup_run_config.partial_timeout_ms) == (5000));
   REQUIRE((startup_run_config.idle_timeout_ms) == (60000));
 }
-TEST_CASE("discovery_service_callbacks/database_statistics_report_rows_totals_and_unavailability", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/database_statistics_report_rows_totals_and_unavailability", "[discovery_service_callbacks] [contract]") {
   initialize();
   create_session_fixture();
   stats_view_t view = {0};
@@ -602,13 +601,13 @@ static void run_periodic_cleanup(bool prune_failure) {
   REQUIRE((database_session_find_by_id(authority.db, created.session_id)) == nullptr);
   cleanup_owner = NULL;
 }
-TEST_CASE("discovery_service_callbacks/periodic_cleanup_expires_inactive_sessions_after_the_complete_poll_interval", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/periodic_cleanup_expires_inactive_sessions_after_the_complete_poll_interval", "[discovery_service_callbacks] [contract]") {
   run_periodic_cleanup(false);
 }
-TEST_CASE("discovery_service_callbacks/rate_cleanup_failure_does_not_prevent_expiring_inactive_sessions", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/rate_cleanup_failure_does_not_prevent_expiring_inactive_sessions", "[discovery_service_callbacks] [contract]") {
   run_periodic_cleanup(true);
 }
-TEST_CASE("discovery_service_callbacks/host_loss_requires_matching_transport_membership_before_mutating_handoff_state", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/host_loss_requires_matching_transport_membership_before_mutating_handoff_state", "[discovery_service_callbacks] [contract]") {
   initialize();
   create_session_fixture();
   consensus_handoff_t *state = acds_handoff_find(&authority, created.session_id, true);
@@ -634,7 +633,7 @@ TEST_CASE("discovery_service_callbacks/host_loss_requires_matching_transport_mem
   REQUIRE(state->host_lost);
   REQUIRE((creator_data.joined_session) == (true));
 }
-TEST_CASE("discovery_service_callbacks/malformed_handoff_and_signaling_requests_reply_without_changing_membership", "[discovery_service_callbacks]") {
+TEST_CASE("discovery_service_callbacks/malformed_handoff_and_signaling_requests_reply_without_changing_membership", "[discovery_service_callbacks] [contract]") {
   initialize();
   create_session_fixture();
   uint8_t bytes[CONSENSUS_HANDOFF_HEADER] = {0};

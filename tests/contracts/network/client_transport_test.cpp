@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "client/connection_internal.h"
 #include "client/server.h"
 #include "client/display.h"
@@ -77,7 +77,7 @@ static void teardown(void) {
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-TEST_CASE("client_transport/endpoint_metadata_and_transport_selection_are_scoped_to_the_connection", "[client_transport]") {
+TEST_CASE("client_transport/endpoint_metadata_and_transport_selection_are_scoped_to_the_connection", "[client_transport] [contract]") {
   server_connection_set_ip(&connection, "::1");
   server_connection_set_port(&connection, 27001);
   connection.my_client_id = 42;
@@ -100,7 +100,7 @@ TEST_CASE("client_transport/endpoint_metadata_and_transport_selection_are_scoped
   REQUIRE(!(server_connection_is_active(NULL)));
   REQUIRE(server_connection_is_lost(NULL));
 }
-TEST_CASE("client_transport/control_packets_preserve_network_order_and_capability_acknowledgement_state", "[client_transport]") {
+TEST_CASE("client_transport/control_packets_preserve_network_order_and_capability_acknowledgement_state", "[client_transport] [contract]") {
   REQUIRE((threaded_send_ping_packet(&connection)) == (ASCIICHAT_OK));
   REQUIRE((records[0].type) == (PACKET_TYPE_PING));
   REQUIRE((atomic_load_u64(&connection.telemetry_ping_ns)) > (0));
@@ -125,7 +125,7 @@ TEST_CASE("client_transport/control_packets_preserve_network_order_and_capabilit
   REQUIRE((connection.advertised_dimensions.cols) == (80));
   REQUIRE((connection.advertised_dimensions.rows) == (24));
 }
-TEST_CASE("client_transport/zero_clock_value_does_not_collide_with_the_no_ping_sentinel", "[client_transport]") {
+TEST_CASE("client_transport/zero_clock_value_does_not_collide_with_the_no_ping_sentinel", "[client_transport] [contract]") {
   client_connection_mark_ping_sent(&connection, 0);
   REQUIRE((atomic_load_u64(&connection.telemetry_ping_ns)) == (1));
   server_connection_pong_received(&connection);
@@ -137,7 +137,7 @@ TEST_CASE("client_transport/zero_clock_value_does_not_collide_with_the_no_ping_s
   client_connection_mark_ping_sent(&connection, 42);
   REQUIRE((atomic_load_u64(&connection.telemetry_ping_ns)) == (42));
 }
-TEST_CASE("client_transport/local_payload_rejection_keeps_the_connection_but_network_failure_marks_it_lost", "[client_transport]") {
+TEST_CASE("client_transport/local_payload_rejection_keeps_the_connection_but_network_failure_marks_it_lost", "[client_transport] [contract]") {
   const uint8_t pixel[3] = {10, 20, 30};
   REQUIRE((threaded_send_image_frame(&connection, NULL, 1, 1, PIXEL_FORMAT_RGB)) == (ERROR_INVALID_PARAM));
   REQUIRE(server_connection_is_active(&connection));
@@ -150,7 +150,7 @@ TEST_CASE("client_transport/local_payload_rejection_keeps_the_connection_but_net
   REQUIRE(server_connection_is_lost(&connection));
   REQUIRE(!(server_connection_is_active(&connection)));
 }
-TEST_CASE("client_transport/single_opus_uses_one_frame_batch_framing_and_batch_keeps_frame_sizes", "[client_transport]") {
+TEST_CASE("client_transport/single_opus_uses_one_frame_batch_framing_and_batch_keeps_frame_sizes", "[client_transport] [contract]") {
   const uint8_t encoded[6] = {1, 2, 3, 4, 5, 6};
   REQUIRE((threaded_send_audio_opus(&connection, encoded, sizeof(encoded), 48000, 20)) == (ASCIICHAT_OK));
   REQUIRE((records[0].type) == (PACKET_TYPE_AUDIO_OPUS_BATCH));
@@ -170,7 +170,7 @@ TEST_CASE("client_transport/single_opus_uses_one_frame_batch_framing_and_batch_k
   REQUIRE((NET_TO_HOST_U16(on_wire[0])) == (2));
   REQUIRE((NET_TO_HOST_U16(on_wire[1])) == (4));
 }
-TEST_CASE("client_transport/inactive_connection_rejects_all_audio_sends_without_touching_the_transport", "[client_transport]") {
+TEST_CASE("client_transport/inactive_connection_rejects_all_audio_sends_without_touching_the_transport", "[client_transport] [contract]") {
   server_connection_set_transport(&connection, NULL);
   float sample = 0;
   uint8_t encoded = 0;
@@ -189,7 +189,7 @@ static void receive_pcm(const audio_batch_packet_t *header, const float *samples
   for (size_t i = 0; i < count; ++i)
     REQUIRE((samples[i]) == Catch::Approx(expected[i]));
 }
-TEST_CASE("client_transport/pcm_batches_preserve_signed_samples_and_audio_send_errors_mark_connection_loss", "[client_transport]") {
+TEST_CASE("client_transport/pcm_batches_preserve_signed_samples_and_audio_send_errors_mark_connection_loss", "[client_transport] [contract]") {
   float samples[] = {0.0f, 0.5f, -0.5f, 0.25f};
   REQUIRE((threaded_send_audio_batch_packet(&connection, samples, 4, 1)) == (ASCIICHAT_OK));
   REQUIRE((records[0].type) == (PACKET_TYPE_AUDIO_BATCH));
@@ -216,7 +216,7 @@ TEST_CASE("client_transport/pcm_batches_preserve_signed_samples_and_audio_send_e
   REQUIRE((threaded_send_audio_opus_batch(&connection, &encoded, 1, &size, 1)) == (ERROR_NETWORK));
   REQUIRE(server_connection_is_lost(&connection));
 }
-TEST_CASE("client_transport/pcm_sender_bounds_payload_size_clips_finite_samples_and_rejects_nan_before_send", "[client_transport]") {
+TEST_CASE("client_transport/pcm_sender_bounds_payload_size_clips_finite_samples_and_rejects_nan_before_send", "[client_transport] [contract]") {
   float samples[OPUS_FRAME_SAMPLES + 1];
   for (size_t i = 0; i < sizeof(samples) / sizeof(samples[0]); ++i)
     samples[i] = i & 1 ? 2.0f : -2.0f;
@@ -232,14 +232,14 @@ TEST_CASE("client_transport/pcm_sender_bounds_payload_size_clips_finite_samples_
   REQUIRE((acip_send_audio_batch(&transport, samples, UINT32_MAX, 1)) == (ERROR_NETWORK_SIZE));
   REQUIRE((atomic_load_u64(&send_count)) == (1));
 }
-TEST_CASE("client_transport/malformed_single_frame_size_is_rejected_before_sending_and_does_not_lose_connection", "[client_transport]") {
+TEST_CASE("client_transport/malformed_single_frame_size_is_rejected_before_sending_and_does_not_lose_connection", "[client_transport] [contract]") {
   uint8_t sample = 0;
   REQUIRE((threaded_send_audio_opus(&connection, &sample, UINT16_MAX + 1u, 48000, 20)) == (ERROR_INVALID_PARAM));
   REQUIRE((atomic_load_u64(&send_count)) == (0));
   REQUIRE(server_connection_is_active(&connection));
   REQUIRE(!(server_connection_is_lost(&connection)));
 }
-TEST_CASE("client_transport/encoded_uploads_reuse_workspace_and_report_encoding_failure_separately_from_network_failure", "[client_transport]") {
+TEST_CASE("client_transport/encoded_uploads_reuse_workspace_and_report_encoding_failure_separately_from_network_failure", "[client_transport] [contract]") {
   uint8_t rgb[64 * 32 * 3];
   memset(rgb, 128, sizeof(rgb));
   bool failed = true;
@@ -269,7 +269,7 @@ TEST_CASE("client_transport/encoded_uploads_reuse_workspace_and_report_encoding_
   REQUIRE(!(failed));
   REQUIRE(server_connection_is_lost(&connection));
 }
-TEST_CASE("client_transport/display_cleanup_retains_the_framework_owned_context_and_resets_first_frame_state", "[client_transport]") {
+TEST_CASE("client_transport/display_cleanup_retains_the_framework_owned_context_and_resets_first_frame_state", "[client_transport] [contract]") {
   session_display_config_t config = {.snapshot_mode = true, .palette_type = PALETTE_STANDARD, .color_mode = TERM_COLOR_NONE};
   session_display_ctx_t *display = session_display_create(&config);
   REQUIRE((display) != nullptr);
@@ -291,7 +291,7 @@ TEST_CASE("client_transport/display_cleanup_retains_the_framework_owned_context_
   connection.display_context = NULL;
   session_display_destroy(display);
 }
-TEST_CASE("client_transport/failed_keepalive_send_exits_its_real_worker_and_repeated_start_is_idempotent", "[client_transport]") {
+TEST_CASE("client_transport/failed_keepalive_send_exits_its_real_worker_and_repeated_start_is_idempotent", "[client_transport] [contract]") {
   connection.client_worker_pool = thread_pool_create("keepalive-contract");
   REQUIRE((connection.client_worker_pool) != nullptr);
   send_result = ERROR_NETWORK;

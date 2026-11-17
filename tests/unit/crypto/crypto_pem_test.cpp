@@ -4,7 +4,6 @@
  * @brief Unit tests for PEM utility functions (trust anchor parsing)
  */
 
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/pem.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/common.h>
@@ -64,7 +63,7 @@ static const unsigned char test_ca_der[] = {
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("crypto_pem/parse_pem_certificate", "[crypto_pem]") {
+TEST_CASE("crypto_pem/parse_pem_certificate", "[crypto_pem] [unit]") {
   anchor_list anchors = ANCHOR_LIST_INIT;
 
   size_t num = read_trust_anchors_from_memory(&anchors, (const unsigned char *)test_ca_pem, strlen(test_ca_pem));
@@ -98,7 +97,7 @@ TEST_CASE("crypto_pem/parse_pem_certificate", "[crypto_pem]") {
 // BearSSL correctly rejects certificates with invalid signatures during X.509 validation
 // in certificate_to_trust_anchor_inner(). To re-enable, replace test_ca_der with a valid
 // DER-encoded certificate (e.g., convert ISRG Root X1 PEM to DER format).
-TEST_CASE("crypto_pem/parse_der_certificate", "[crypto_pem]") {
+TEST_CASE("crypto_pem/parse_der_certificate", "[crypto_pem] [unit]") {
   anchor_list anchors = ANCHOR_LIST_INIT;
 
   size_t num = read_trust_anchors_from_memory(&anchors, test_ca_der, sizeof(test_ca_der));
@@ -114,7 +113,7 @@ TEST_CASE("crypto_pem/parse_der_certificate", "[crypto_pem]") {
   SAFE_FREE(anchors.buf);
 }
 
-TEST_CASE("crypto_pem/parse_invalid_pem", "[crypto_pem]") {
+TEST_CASE("crypto_pem/parse_invalid_pem", "[crypto_pem] [unit]") {
   anchor_list anchors = ANCHOR_LIST_INIT;
   const char *invalid_pem = "This is not a valid PEM certificate\n";
 
@@ -124,7 +123,7 @@ TEST_CASE("crypto_pem/parse_invalid_pem", "[crypto_pem]") {
   REQUIRE((anchors.buf) == nullptr);
 }
 
-TEST_CASE("crypto_pem/parse_empty_data", "[crypto_pem]") {
+TEST_CASE("crypto_pem/parse_empty_data", "[crypto_pem] [unit]") {
   anchor_list anchors = ANCHOR_LIST_INIT;
   const char *empty_data = "";
 
@@ -134,7 +133,7 @@ TEST_CASE("crypto_pem/parse_empty_data", "[crypto_pem]") {
   REQUIRE((anchors.buf) == nullptr);
 }
 
-TEST_CASE("crypto_pem/parse_pem_without_trailing_newline", "[crypto_pem]") {
+TEST_CASE("crypto_pem/parse_pem_without_trailing_newline", "[crypto_pem] [unit]") {
   // Test PEM data without trailing newline (should still parse correctly)
   // Use valid ISRG Root X1 certificate without trailing newline
   const char *pem_no_newline = "-----BEGIN CERTIFICATE-----\n"
@@ -185,7 +184,7 @@ TEST_CASE("crypto_pem/parse_pem_without_trailing_newline", "[crypto_pem]") {
 // Multiple Certificates Tests
 // =============================================================================
 
-TEST_CASE("crypto_pem/parse_multiple_certificates", "[crypto_pem]") {
+TEST_CASE("crypto_pem/parse_multiple_certificates", "[crypto_pem] [unit]") {
   // Two certificates concatenated
   char multi_pem[4096];
   safe_snprintf(multi_pem, sizeof(multi_pem), "%s%s", test_ca_pem, test_ca_pem);
@@ -208,7 +207,7 @@ TEST_CASE("crypto_pem/parse_multiple_certificates", "[crypto_pem]") {
 // Memory Management Tests
 // =============================================================================
 
-TEST_CASE("crypto_pem/memory_cleanup", "[crypto_pem]") {
+TEST_CASE("crypto_pem/memory_cleanup", "[crypto_pem] [unit]") {
   anchor_list anchors = ANCHOR_LIST_INIT;
 
   read_trust_anchors_from_memory(&anchors, (const unsigned char *)test_ca_pem, strlen(test_ca_pem));
@@ -223,7 +222,7 @@ TEST_CASE("crypto_pem/memory_cleanup", "[crypto_pem]") {
   REQUIRE((anchors.buf) == nullptr);
 }
 
-TEST_CASE("crypto_pem/free_ta_contents_null", "[crypto_pem]") {
+TEST_CASE("crypto_pem/free_ta_contents_null", "[crypto_pem] [unit]") {
   // Should handle NULL pointer gracefully
   free_ta_contents(NULL);
 
@@ -235,7 +234,7 @@ TEST_CASE("crypto_pem/free_ta_contents_null", "[crypto_pem]") {
 // Edge Case Tests
 // =============================================================================
 
-TEST_CASE("crypto_pem/pem_with_comments", "[crypto_pem]") {
+TEST_CASE("crypto_pem/pem_with_comments", "[crypto_pem] [unit]") {
   // Use valid ISRG Root X1 certificate with comments
   const char *pem_with_comments = "# This is a comment\n"
                                   "-----BEGIN CERTIFICATE-----\n"
@@ -283,7 +282,7 @@ TEST_CASE("crypto_pem/pem_with_comments", "[crypto_pem]") {
   SAFE_FREE(anchors.buf);
 }
 
-TEST_CASE("crypto_pem/x509_certificate_name_variant", "[crypto_pem]") {
+TEST_CASE("crypto_pem/x509_certificate_name_variant", "[crypto_pem] [unit]") {
   // Test Windows CryptBinaryToStringA format which adds "-----" suffix
   // Use valid ISRG Root X1 certificate
   const char *pem_with_dashes = "-----BEGIN X509 CERTIFICATE-----\n"

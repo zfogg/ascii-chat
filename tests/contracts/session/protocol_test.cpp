@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/audio/limits.h>
 #include "session/protocol.h"
 #include "session/frame_validation.h"

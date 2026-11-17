@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/http/server/server.h>
 #include "../../../lib/network/http/server/server_internal.h"
 #include <string.h>
@@ -40,14 +39,14 @@ static void dispatch_request(http_request_t *request, http_response_t *response,
   REQUIRE((http_response_finish(response)) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("http_server/rejects_missing_handler", "[http_server]") {
+TEST_CASE("http_server/rejects_missing_handler", "[http_server] [unit]") {
   http_server_t *server = NULL;
   http_server_config_t config = {.enable_http1 = true, .max_connections = 1, .max_request_body_bytes = 1024};
   REQUIRE((http_server_init(&server, &config)) != (ASCIICHAT_OK));
   REQUIRE((server) == nullptr);
 }
 
-TEST_CASE("http_server/accepts_http1_contract", "[http_server]") {
+TEST_CASE("http_server/accepts_http1_contract", "[http_server] [unit]") {
   http_server_t *server = NULL;
   http_server_config_t config = {.bind_address = "127.0.0.1", .port = 0, .enable_http1 = true, .max_connections = 4, .max_request_body_bytes = 1024, .on_request = request};
   REQUIRE((http_server_init(&server, &config)) == (ASCIICHAT_OK));
@@ -56,7 +55,7 @@ TEST_CASE("http_server/accepts_http1_contract", "[http_server]") {
   REQUIRE((server) == nullptr);
 }
 
-TEST_CASE("http_server/accepts_http2_contract", "[http_server]") {
+TEST_CASE("http_server/accepts_http2_contract", "[http_server] [unit]") {
   http_server_t *server = NULL;
   http_server_config_t config = {.bind_address = "127.0.0.1", .port = 0, .enable_http2 = true, .max_connections = 4, .max_request_body_bytes = 1024, .on_request = request};
   REQUIRE((http_server_init(&server, &config)) == (ASCIICHAT_OK));
@@ -64,27 +63,27 @@ TEST_CASE("http_server/accepts_http2_contract", "[http_server]") {
   REQUIRE((server) == nullptr);
 }
 
-TEST_CASE("http_server/exposes_http1_protocol_versions", "[http_server]") {
+TEST_CASE("http_server/exposes_http1_protocol_versions", "[http_server] [unit]") {
   REQUIRE((HTTP_PROTOCOL_10) == (0));
   REQUIRE((HTTP_PROTOCOL_11) == (1));
   REQUIRE((HTTP_PROTOCOL_2) == (2));
   REQUIRE((HTTP_PROTOCOL_3) == (3));
 }
 
-TEST_CASE("http_server/exposes_wakeup_callback_in_configuration", "[http_server]") {
+TEST_CASE("http_server/exposes_wakeup_callback_in_configuration", "[http_server] [unit]") {
   http_server_config_t config = {0};
   config.on_wakeup = NULL;
   REQUIRE((config.on_wakeup) == nullptr);
 }
 
-TEST_CASE("http_server/rejects_unavailable_http3_and_tls", "[http_server]") {
+TEST_CASE("http_server/rejects_unavailable_http3_and_tls", "[http_server] [unit]") {
   http_server_t *server = NULL;
   http_server_config_t config = {.enable_http1 = true, .enable_http3 = true, .tls_cert_path = "certificate.pem", .max_connections = 4, .max_request_body_bytes = 1024, .on_request = request};
   REQUIRE((http_server_init(&server, &config)) != (ASCIICHAT_OK));
   REQUIRE((server) == nullptr);
 }
 
-TEST_CASE("http_server/accepts_http3_with_preopened_endpoint", "[http_server]") {
+TEST_CASE("http_server/accepts_http3_with_preopened_endpoint", "[http_server] [unit]") {
   http_server_t *server = NULL;
   http_server_config_t config = {.enable_http3 = true, .http3_endpoint = (void *)1, .max_connections = 1, .max_request_body_bytes = 1024, .on_request = request};
   REQUIRE((http_server_init(&server, &config)) == (ASCIICHAT_OK));
@@ -92,7 +91,7 @@ TEST_CASE("http_server/accepts_http3_with_preopened_endpoint", "[http_server]") 
   REQUIRE((server) == nullptr);
 }
 
-TEST_CASE("http_server/accepts_custom_request_rate_limit", "[http_server]") {
+TEST_CASE("http_server/accepts_custom_request_rate_limit", "[http_server] [unit]") {
   http_server_t *server = NULL;
   http_server_config_t config = {.bind_address = "127.0.0.1",
                                  .port = 0,
@@ -107,7 +106,7 @@ TEST_CASE("http_server/accepts_custom_request_rate_limit", "[http_server]") {
   REQUIRE((server) == nullptr);
 }
 
-TEST_CASE("http_server/dispatches_http3_request_contract", "[http_server]") {
+TEST_CASE("http_server/dispatches_http3_request_contract", "[http_server] [unit]") {
   http_server_t *server = NULL;
   http_server_config_t config = {.enable_http3 = true, .http3_endpoint = (void *)1, .max_connections = 1, .max_request_body_bytes = 1024, .on_request = dispatch_request};
   REQUIRE((http_server_init(&server, &config)) == (ASCIICHAT_OK));
@@ -122,7 +121,7 @@ TEST_CASE("http_server/dispatches_http3_request_contract", "[http_server]") {
   http_server_destroy(&server);
 }
 
-TEST_CASE("http_server/rejects_http3_body_over_configured_limit", "[http_server]") {
+TEST_CASE("http_server/rejects_http3_body_over_configured_limit", "[http_server] [unit]") {
   http_server_t *server = NULL;
   http_server_config_t config = {.enable_http3 = true, .http3_endpoint = (void *)1, .max_connections = 1, .max_request_body_bytes = 3, .on_request = request};
   REQUIRE((http_server_init(&server, &config)) == (ASCIICHAT_OK));
@@ -130,7 +129,7 @@ TEST_CASE("http_server/rejects_http3_body_over_configured_limit", "[http_server]
   http_server_destroy(&server);
 }
 
-TEST_CASE("http_server/starts_and_drains_private_loop", "[http_server]") {
+TEST_CASE("http_server/starts_and_drains_private_loop", "[http_server] [unit]") {
   http_server_t *server = NULL;
   http_server_config_t config = {.bind_address = "127.0.0.1", .port = 0, .enable_http1 = true, .max_connections = 4, .max_request_body_bytes = 1024, .on_request = request};
   REQUIRE((http_server_init(&server, &config)) == (ASCIICHAT_OK));

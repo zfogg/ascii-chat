@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/consensus/election.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
@@ -19,7 +18,7 @@ static void set_id(participant_metrics_t *m, int id) {
   m->participant_id[0] = id & 0xFF;
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("election/score_computation", "[election]") {
+TEST_CASE("election/score_computation", "[election] [unit]") {
   // LAN, 100Mbps, 20ms RTT, 98% success
   participant_metrics_t m = make_metrics(0, 100000, 20, 98);
 
@@ -30,7 +29,7 @@ TEST_CASE("election/score_computation", "[election]") {
   REQUIRE((score) == (14578));
 }
 
-TEST_CASE("election/stun_only_network", "[election]") {
+TEST_CASE("election/stun_only_network", "[election] [unit]") {
   // STUN NAT, 10Mbps, 50ms, 85% success
   participant_metrics_t m = make_metrics(3, 10000, 50, 85);
 
@@ -40,7 +39,7 @@ TEST_CASE("election/stun_only_network", "[election]") {
   REQUIRE((score) == (2535));
 }
 
-TEST_CASE("election/choose_best_two", "[election]") {
+TEST_CASE("election/choose_best_two", "[election] [unit]") {
   // 4 participants
   participant_metrics_t metrics[4] = {
       make_metrics(1, 50000, 30, 95),  // Score: 3000+5000+470+95 = 8565
@@ -62,7 +61,7 @@ TEST_CASE("election/choose_best_two", "[election]") {
   REQUIRE((backup) == (3)); // Participant 3 has second-highest
 }
 
-TEST_CASE("election/verify_correct", "[election]") {
+TEST_CASE("election/verify_correct", "[election] [unit]") {
   participant_metrics_t metrics[2] = {
       make_metrics(0, 50000, 30, 95),
       make_metrics(1, 75000, 25, 96), // Better score
@@ -84,7 +83,7 @@ TEST_CASE("election/verify_correct", "[election]") {
   REQUIRE((valid) == (true));
 }
 
-TEST_CASE("election/verify_incorrect", "[election]") {
+TEST_CASE("election/verify_incorrect", "[election] [unit]") {
   participant_metrics_t metrics[2] = {
       make_metrics(0, 50000, 30, 95),
       make_metrics(1, 75000, 25, 96), // Better score

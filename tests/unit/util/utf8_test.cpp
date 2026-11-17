@@ -1,10 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/string.h>
 #include <string.h>
 
-TEST_CASE("utf8/prefix_columns", "[utf8]") {
+TEST_CASE("utf8/prefix_columns", "[utf8] [unit]") {
   REQUIRE((utf8_prefix_bytes_for_width("abc", 3, 2)) == (2));
   REQUIRE((utf8_prefix_bytes_for_width("é中😀x", 10, 3)) == (5));
   REQUIRE((utf8_prefix_bytes_for_width("é中😀x", 10, 4)) == (5));
@@ -13,7 +12,7 @@ TEST_CASE("utf8/prefix_columns", "[utf8]") {
   REQUIRE((utf8_display_width("é中😀")) == (5));
 }
 
-TEST_CASE("utf8/bounded_and_invalid_input", "[utf8]") {
+TEST_CASE("utf8/bounded_and_invalid_input", "[utf8] [unit]") {
   const char slice[] = {'A', (char)0xe4, (char)0xb8, (char)0xad, 'B'};
   REQUIRE((utf8_prefix_bytes_for_width(slice, sizeof(slice), 3)) == (4));
   REQUIRE((utf8_prefix_bytes_for_width(slice, 3, 3)) == (1));
@@ -26,7 +25,7 @@ TEST_CASE("utf8/bounded_and_invalid_input", "[utf8]") {
   REQUIRE((utf8_prefix_bytes_for_width("a\0b", 3, 5)) == (1));
 }
 
-TEST_CASE("utf8/complete_csi_and_trailing_marks", "[utf8]") {
+TEST_CASE("utf8/complete_csi_and_trailing_marks", "[utf8] [unit]") {
   const char *text = "\033[31me\xcc\x81\033[0m\033[2Kx";
   size_t prefix = strlen(text) - 1;
   REQUIRE((utf8_prefix_bytes_for_width(text, strlen(text), 1)) == (prefix));
@@ -39,7 +38,7 @@ TEST_CASE("utf8/complete_csi_and_trailing_marks", "[utf8]") {
   REQUIRE((utf8_prefix_bytes_for_width("\033[0mx", 5, 0)) == (4));
 }
 
-TEST_CASE("utf8/ellipsis_width_and_byte_limits", "[utf8]") {
+TEST_CASE("utf8/ellipsis_width_and_byte_limits", "[utf8] [unit]") {
   char output[64];
   truncate_with_ellipsis_mode("é中😀x", output, sizeof(output), 4, true);
   REQUIRE(std::strcmp((output), ("é中\033[0m…")) == 0);
@@ -59,7 +58,7 @@ TEST_CASE("utf8/ellipsis_width_and_byte_limits", "[utf8]") {
   REQUIRE(std::strcmp((output), ("\033[0m…")) == 0);
 }
 
-TEST_CASE("utf8/ellipsis_uses_ascii_when_utf8_is_disabled", "[utf8]") {
+TEST_CASE("utf8/ellipsis_uses_ascii_when_utf8_is_disabled", "[utf8] [unit]") {
   char output[64];
   truncate_with_ellipsis_mode("abcdef", output, sizeof(output), 4, false);
   REQUIRE(std::strcmp((output), ("a\033[0m...")) == 0);
@@ -71,7 +70,7 @@ TEST_CASE("utf8/ellipsis_uses_ascii_when_utf8_is_disabled", "[utf8]") {
   REQUIRE(std::strcmp((output), ("")) == 0);
 }
 
-TEST_CASE("utf8/ellipsis_small_buffers", "[utf8]") {
+TEST_CASE("utf8/ellipsis_small_buffers", "[utf8] [unit]") {
   unsigned char guarded[18];
   for (size_t size = 0; size <= 16; ++size) {
     memset(guarded, 0xa5, sizeof(guarded));
@@ -93,7 +92,7 @@ TEST_CASE("utf8/ellipsis_small_buffers", "[utf8]") {
   REQUIRE(std::strcmp((tiny), ("é")) == 0);
 }
 
-TEST_CASE("utf8/repeat_sequences_count_cells_without_splitting", "[utf8]") {
+TEST_CASE("utf8/repeat_sequences_count_cells_without_splitting", "[utf8] [unit]") {
   const char *text = "é\033[3bX";
   REQUIRE((utf8_display_width(text)) == (5));
   REQUIRE((utf8_prefix_bytes_for_width(text, strlen(text), 4)) == (strlen(text) - 1));
@@ -106,7 +105,7 @@ TEST_CASE("utf8/repeat_sequences_count_cells_without_splitting", "[utf8]") {
   REQUIRE((utf8_prefix_bytes_for_width("x\033[1;2b", strlen("x\033[1;2b"), 20)) == (1));
 }
 
-TEST_CASE("utf8/invalid_scalar_encodings_and_truncated_strings_are_rejected", "[utf8]") {
+TEST_CASE("utf8/invalid_scalar_encodings_and_truncated_strings_are_rejected", "[utf8] [unit]") {
   const char *invalid[] = {"\xc0\x80", "\xc1\xbf", "\xe0\x80\xaf", "\xed\xa0\x80", "\xf0\x80\x80\xaf", "\xf4\x90\x80\x80", "\xf5\x80\x80\x80", "\xc3", "\xe2\x82", "\xf0\x9f\x98", "\x80"};
   for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
     uint32_t cp = 42;

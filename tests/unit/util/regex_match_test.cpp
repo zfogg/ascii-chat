@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/util/pcre2.h>
 
 static pcre2_code *pattern;
@@ -22,7 +21,7 @@ static void teardown(void) {
   pcre2_code_free(pattern);
   pattern = NULL;
 }
-TEST_CASE("regex_match/successful_match_retains_capture_count_and_offsets", "[regex_match]") {
+TEST_CASE("regex_match/successful_match_retains_capture_count_and_offsets", "[regex_match] [unit]") {
   REQUIRE((asciichat_pcre2_match(pattern, (PCRE2_SPTR) "tone", 4, 0, 0, matches, NULL)) == (2));
   PCRE2_SIZE *offsets = pcre2_get_ovector_pointer(matches);
   REQUIRE((offsets[0]) == (0));
@@ -31,15 +30,15 @@ TEST_CASE("regex_match/successful_match_retains_capture_count_and_offsets", "[re
   REQUIRE((offsets[3]) == (4));
 }
 
-TEST_CASE("regex_match/no_match_retains_native_error", "[regex_match]") {
+TEST_CASE("regex_match/no_match_retains_native_error", "[regex_match] [unit]") {
   REQUIRE((asciichat_pcre2_match(pattern, (PCRE2_SPTR) "silence", 7, 0, 0, matches, NULL)) == (PCRE2_ERROR_NOMATCH));
 }
 
-TEST_CASE("regex_match/partial_mode_falls_back_when_not_jit_compiled", "[regex_match]") {
+TEST_CASE("regex_match/partial_mode_falls_back_when_not_jit_compiled", "[regex_match] [unit]") {
   REQUIRE((asciichat_pcre2_match(pattern, (PCRE2_SPTR) "to", 2, 0, PCRE2_PARTIAL_HARD, matches, NULL)) == (PCRE2_ERROR_PARTIAL));
 }
 
-TEST_CASE("regex_match/nonzero_start_offset_is_forwarded", "[regex_match]") {
+TEST_CASE("regex_match/nonzero_start_offset_is_forwarded", "[regex_match] [unit]") {
   REQUIRE((asciichat_pcre2_match(pattern, (PCRE2_SPTR) "tone tone", 9, 5, 0, matches, NULL)) == (2));
   PCRE2_SIZE *offsets = pcre2_get_ovector_pointer(matches);
   REQUIRE((offsets[0]) == (5));

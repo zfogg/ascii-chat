@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
 #include "../../../src/common/session/client_like.h"
 #include "../../../src/common/session/capture.h"
@@ -145,7 +144,7 @@ static void teardown(void) {
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-TEST_CASE("client_lifecycle/optional_keepawake_failure_preserves_prior_errors_without_notification", "[client_lifecycle]") {
+TEST_CASE("client_lifecycle/optional_keepawake_failure_preserves_prior_errors_without_notification", "[client_lifecycle] [contract]") {
   errno_notifications_enable(true);
   SET_ERRNO(ERROR_NETWORK, "Earlier failure");
   size_t notifications = errno_notifications_snapshot(NULL, ASCIICHAT_ERRNO_HISTORY_SIZE, NULL);
@@ -157,7 +156,7 @@ TEST_CASE("client_lifecycle/optional_keepawake_failure_preserves_prior_errors_wi
   REQUIRE(HAS_ERRNO_CODE(ERROR_NETWORK));
   REQUIRE((errno_notifications_snapshot(NULL, ASCIICHAT_ERRNO_HISTORY_SIZE, NULL)) == (notifications));
 }
-TEST_CASE("client_lifecycle/successful_keepawake_restores_error_cause_scope", "[client_lifecycle]") {
+TEST_CASE("client_lifecycle/successful_keepawake_restores_error_cause_scope", "[client_lifecycle] [contract]") {
   SET_ERRNO(ERROR_NETWORK, "Earlier failure");
   asciichat_error_context_t previous, next;
   REQUIRE(errno_has(&previous));
@@ -177,7 +176,7 @@ static void lifecycle_publish(options_t *v) {
   REQUIRE((options_state_set(v)) == (ASCIICHAT_OK));
   SAFE_FREE(v);
 }
-TEST_CASE("client_lifecycle/mirror_webcam_selection_validates_devices_but_explicit_sources_bypass_enumeration", "[client_lifecycle]") {
+TEST_CASE("client_lifecycle/mirror_webcam_selection_validates_devices_but_explicit_sources_bypass_enumeration", "[client_lifecycle] [contract]") {
   session_client_like_config_t c = {.kind = SESSION_CLIENT_LIKE_KIND_MIRROR};
   stdout_tty = true;
   options_t *v = lifecycle_options();
@@ -212,7 +211,7 @@ TEST_CASE("client_lifecycle/mirror_webcam_selection_validates_devices_but_explic
   REQUIRE((client_like_validate_mirror_webcam_selection(&c)) == (ASCIICHAT_OK));
   REQUIRE((enumerations) == (before));
 }
-TEST_CASE("client_lifecycle/absent_required_run_and_conflicting_keepawake_fail_before_creating_display", "[client_lifecycle]") {
+TEST_CASE("client_lifecycle/absent_required_run_and_conflicting_keepawake_fail_before_creating_display", "[client_lifecycle] [contract]") {
   REQUIRE((session_client_like_run(NULL)) == (ERROR_INVALID_PARAM));
   session_client_like_config_t c = {0};
   REQUIRE((session_client_like_run(&c)) == (ERROR_INVALID_PARAM));
@@ -225,7 +224,7 @@ TEST_CASE("client_lifecycle/absent_required_run_and_conflicting_keepawake_fail_b
   REQUIRE((state.display) == nullptr);
   REQUIRE((session_display_get_global_context()) == nullptr);
 }
-TEST_CASE("client_lifecycle/exit_adapters_combine_global_and_per_session_cancellation", "[client_lifecycle]") {
+TEST_CASE("client_lifecycle/exit_adapters_combine_global_and_per_session_cancellation", "[client_lifecycle] [contract]") {
   g_current_config = (session_client_like_config_t){0};
   REQUIRE(!(client_like_capture_should_exit_adapter(NULL)));
   REQUIRE(!(client_like_display_should_exit_adapter(NULL)));
@@ -237,7 +236,7 @@ TEST_CASE("client_lifecycle/exit_adapters_combine_global_and_per_session_cancell
   REQUIRE(client_like_display_should_exit_adapter(NULL));
   g_current_config = (session_client_like_config_t){0};
 }
-TEST_CASE("client_lifecycle/stdin_render_constraints_reject_width_and_reader_failure_before_allocating_capture", "[client_lifecycle]") {
+TEST_CASE("client_lifecycle/stdin_render_constraints_reject_width_and_reader_failure_before_allocating_capture", "[client_lifecycle] [contract]") {
   session_client_like_config_t c = {.kind = SESSION_CLIENT_LIKE_KIND_CLIENT};
   state.capture_config.target_fps = 60;
   options_t *v = lifecycle_options();
@@ -258,7 +257,7 @@ TEST_CASE("client_lifecycle/stdin_render_constraints_reject_width_and_reader_fai
   REQUIRE((g_stdin_reader) == nullptr);
   REQUIRE((state.capture) == nullptr);
 }
-TEST_CASE("client_lifecycle/capture_factory_failure_propagates_for_network_capture_without_creating_local_devices", "[client_lifecycle]") {
+TEST_CASE("client_lifecycle/capture_factory_failure_propagates_for_network_capture_without_creating_local_devices", "[client_lifecycle] [contract]") {
   session_client_like_config_t c = {.kind = SESSION_CLIENT_LIKE_KIND_CLIENT};
   state.capture_config.target_fps = 60;
   fail_capture = true;
@@ -272,7 +271,7 @@ TEST_CASE("client_lifecycle/capture_factory_failure_propagates_for_network_captu
   REQUIRE((state.capture) != nullptr);
   REQUIRE((session_capture_get_media_source(state.capture)) == nullptr);
 }
-TEST_CASE("client_lifecycle/mirror_audio_start_failure_retains_context_and_retries_only_after_options_change", "[client_lifecycle]") {
+TEST_CASE("client_lifecycle/mirror_audio_start_failure_retains_context_and_retries_only_after_options_change", "[client_lifecycle] [contract]") {
   options_t *v = lifecycle_options();
   v->audio_enabled = true;
   v->test_audio = true;
@@ -310,7 +309,7 @@ TEST_CASE("client_lifecycle/mirror_audio_start_failure_retains_context_and_retri
   REQUIRE(!(audio->running));
   REQUIRE((audio_stops) == (2));
 }
-TEST_CASE("client_lifecycle/mirror_audio_init_failure_has_no_context_and_file_audio_selection_preserves_source_ownership", "[client_lifecycle]") {
+TEST_CASE("client_lifecycle/mirror_audio_init_failure_has_no_context_and_file_audio_selection_preserves_source_ownership", "[client_lifecycle] [contract]") {
   options_t *v = lifecycle_options();
   v->audio_enabled = true;
   v->test_audio = true;
@@ -335,7 +334,7 @@ TEST_CASE("client_lifecycle/mirror_audio_init_failure_has_no_context_and_file_au
   REQUIRE(audio->monitor_local_media);
   REQUIRE(audio->playback_only);
 }
-TEST_CASE("client_lifecycle/default_retry_policy_obeys_limits_and_success_and_uses_bounded_rejection_backoff", "[client_lifecycle]") {
+TEST_CASE("client_lifecycle/default_retry_policy_obeys_limits_and_success_and_uses_bounded_rejection_backoff", "[client_lifecycle] [contract]") {
   session_client_like_config_t c = {.kind = SESSION_CLIENT_LIKE_KIND_CLIENT, .run_fn = lifecycle_attempt, .run_user_data = &attempts, .max_reconnect_attempts = 2, .reconnect_delay_ms = 125};
   attempt_result = ERROR_NETWORK;
   REQUIRE((client_like_run_session_attempts(&c, &state)) == (ERROR_NETWORK));

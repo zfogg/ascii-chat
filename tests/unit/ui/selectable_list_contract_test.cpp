@@ -1,8 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/ui/selectable_list.h>
 
-TEST_CASE("selectable_list_contract/reset_and_empty_lists_have_no_selected_viewport", "[selectable_list_contract]") {
+TEST_CASE("selectable_list_contract/reset_and_empty_lists_have_no_selected_viewport", "[selectable_list_contract] [unit]") {
   ui_selectable_list_t list = {.selected = 12, .first_visible = 8};
   ui_selectable_list_reset(&list);
   REQUIRE((list.selected) == (0));
@@ -15,7 +14,7 @@ TEST_CASE("selectable_list_contract/reset_and_empty_lists_have_no_selected_viewp
   ui_selectable_list_keep_visible(NULL, 1, 1);
   ui_selectable_list_move(NULL, 1, 1, 1);
 }
-TEST_CASE("selectable_list_contract/selection_scrolls_at_edges_and_recovers_when_rows_or_items_shrink", "[selectable_list_contract]") {
+TEST_CASE("selectable_list_contract/selection_scrolls_at_edges_and_recovers_when_rows_or_items_shrink", "[selectable_list_contract] [unit]") {
   ui_selectable_list_t list = {0};
   ui_selectable_list_move(&list, 20, 5, 15);
   REQUIRE((list.selected) == (15));
@@ -40,7 +39,7 @@ TEST_CASE("selectable_list_contract/selection_scrolls_at_edges_and_recovers_when
   REQUIRE((list.selected) == (0));
   REQUIRE((list.first_visible) == (0));
 }
-TEST_CASE("selectable_list_contract/repeated_navigation_keeps_selection_inside_the_available_viewport", "[selectable_list_contract]") {
+TEST_CASE("selectable_list_contract/repeated_navigation_keeps_selection_inside_the_available_viewport", "[selectable_list_contract] [unit]") {
   for (int count = 1; count <= 30; ++count) {
     for (int rows = 1; rows <= 35; ++rows) {
       ui_selectable_list_t list = {0};

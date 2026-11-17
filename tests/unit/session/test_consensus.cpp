@@ -4,7 +4,6 @@
  * @brief Tests for session consensus abstraction
  */
 
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdint.h>
 
@@ -86,7 +85,7 @@ static asciichat_error_t mock_get_metrics(void *context, const uint8_t my_id[16]
 // Consensus Creation Tests
 // =============================================================================
 
-TEST_CASE("test_consensus/create_basic", "[test_consensus]") {
+TEST_CASE("test_consensus/create_basic", "[test_consensus] [unit]") {
   uint8_t my_id[16] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   uint8_t participant_ids[64][16];
   memset(participant_ids, 0, sizeof(participant_ids));
@@ -103,7 +102,7 @@ TEST_CASE("test_consensus/create_basic", "[test_consensus]") {
   session_consensus_destroy(consensus);
 }
 
-TEST_CASE("test_consensus/create_as_leader", "[test_consensus]") {
+TEST_CASE("test_consensus/create_as_leader", "[test_consensus] [unit]") {
   uint8_t my_id[16] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   uint8_t participant_ids[64][16];
   memset(participant_ids, 0, sizeof(participant_ids));
@@ -119,7 +118,7 @@ TEST_CASE("test_consensus/create_as_leader", "[test_consensus]") {
   session_consensus_destroy(consensus);
 }
 
-TEST_CASE("test_consensus/create_multiple_participants", "[test_consensus]") {
+TEST_CASE("test_consensus/create_multiple_participants", "[test_consensus] [unit]") {
   uint8_t my_id[16] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   uint8_t participant_ids[64][16];
   memset(participant_ids, 0, sizeof(participant_ids));
@@ -141,12 +140,12 @@ TEST_CASE("test_consensus/create_multiple_participants", "[test_consensus]") {
 // Consensus Destruction Tests
 // =============================================================================
 
-TEST_CASE("test_consensus/destroy_null_consensus", "[test_consensus]") {
+TEST_CASE("test_consensus/destroy_null_consensus", "[test_consensus] [unit]") {
   session_consensus_destroy(NULL);
   REQUIRE(true);
 }
 
-TEST_CASE("test_consensus/destroy_twice", "[test_consensus]") {
+TEST_CASE("test_consensus/destroy_twice", "[test_consensus] [unit]") {
   uint8_t my_id[16] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   uint8_t participant_ids[64][16];
   memset(participant_ids, 0, sizeof(participant_ids));
@@ -169,7 +168,7 @@ TEST_CASE("test_consensus/destroy_twice", "[test_consensus]") {
 // Consensus Processing Tests
 // =============================================================================
 
-TEST_CASE("test_consensus/process_basic", "[test_consensus]") {
+TEST_CASE("test_consensus/process_basic", "[test_consensus] [unit]") {
   uint8_t my_id[16] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   uint8_t participant_ids[64][16];
   memset(participant_ids, 0, sizeof(participant_ids));
@@ -190,7 +189,7 @@ TEST_CASE("test_consensus/process_basic", "[test_consensus]") {
 // Consensus State Tests
 // =============================================================================
 
-TEST_CASE("test_consensus/is_ready_initially_false", "[test_consensus]") {
+TEST_CASE("test_consensus/is_ready_initially_false", "[test_consensus] [unit]") {
   uint8_t my_id[16] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   uint8_t participant_ids[64][16];
   memset(participant_ids, 0, sizeof(participant_ids));
@@ -207,7 +206,7 @@ TEST_CASE("test_consensus/is_ready_initially_false", "[test_consensus]") {
   session_consensus_destroy(consensus);
 }
 
-TEST_CASE("test_consensus/get_state", "[test_consensus]") {
+TEST_CASE("test_consensus/get_state", "[test_consensus] [unit]") {
   uint8_t my_id[16] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   uint8_t participant_ids[64][16];
   memset(participant_ids, 0, sizeof(participant_ids));
@@ -224,7 +223,7 @@ TEST_CASE("test_consensus/get_state", "[test_consensus]") {
   session_consensus_destroy(consensus);
 }
 
-TEST_CASE("test_consensus/get_metrics_count", "[test_consensus]") {
+TEST_CASE("test_consensus/get_metrics_count", "[test_consensus] [unit]") {
   uint8_t my_id[16] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   uint8_t participant_ids[64][16];
   memset(participant_ids, 0, sizeof(participant_ids));
@@ -241,7 +240,7 @@ TEST_CASE("test_consensus/get_metrics_count", "[test_consensus]") {
   session_consensus_destroy(consensus);
 }
 
-TEST_CASE("test_consensus/time_until_next_round", "[test_consensus]") {
+TEST_CASE("test_consensus/time_until_next_round", "[test_consensus] [unit]") {
   uint8_t my_id[16] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   uint8_t participant_ids[64][16];
   memset(participant_ids, 0, sizeof(participant_ids));
@@ -262,7 +261,7 @@ TEST_CASE("test_consensus/time_until_next_round", "[test_consensus]") {
 // Topology Update Tests
 // =============================================================================
 
-TEST_CASE("test_consensus/set_topology", "[test_consensus]") {
+TEST_CASE("test_consensus/set_topology", "[test_consensus] [unit]") {
   uint8_t my_id[16] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   uint8_t participant_ids[64][16];
   memset(participant_ids, 0, sizeof(participant_ids));

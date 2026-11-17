@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "../../../src/discovery/negotiate.h"
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/common.h>
@@ -12,7 +11,7 @@ static void teardown(void) {
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-TEST_CASE("negotiate/initialization_copies_identity_and_discards_previous_election", "[negotiate]") {
+TEST_CASE("negotiate/initialization_copies_identity_and_discards_previous_election", "[negotiate] [unit]") {
   uint8_t session[16] = {1, 2}, participant[16] = {3, 4};
   negotiate_ctx_t context;
   memset(&context, 0xa5, sizeof(context));
@@ -34,7 +33,7 @@ TEST_CASE("negotiate/initialization_copies_identity_and_discards_previous_electi
   negotiate_init(NULL, session, participant, true);
 }
 
-TEST_CASE("negotiate/incomplete_observations_cannot_publish_a_host", "[negotiate]") {
+TEST_CASE("negotiate/incomplete_observations_cannot_publish_a_host", "[negotiate] [unit]") {
   REQUIRE((negotiate_determine_result(NULL)) == (ERROR_INVALID_PARAM));
   for (unsigned flags = 0; flags < 3; ++flags) {
     negotiate_ctx_t context;
@@ -48,7 +47,7 @@ TEST_CASE("negotiate/incomplete_observations_cannot_publish_a_host", "[negotiate
   }
 }
 
-TEST_CASE("negotiate/elected_endpoint_uses_public_address_mapping_and_connection_type", "[negotiate]") {
+TEST_CASE("negotiate/elected_endpoint_uses_public_address_mapping_and_connection_type", "[negotiate] [unit]") {
   for (unsigned host_is_local = 0; host_is_local < 2; ++host_is_local) {
     for (unsigned kind = 0; kind < 3; ++kind) {
       negotiate_ctx_t context;
@@ -70,7 +69,7 @@ TEST_CASE("negotiate/elected_endpoint_uses_public_address_mapping_and_connection
   }
 }
 
-TEST_CASE("negotiate/equal_quality_peers_choose_the_initiator_and_local_host_has_loopback_fallback", "[negotiate]") {
+TEST_CASE("negotiate/equal_quality_peers_choose_the_initiator_and_local_host_has_loopback_fallback", "[negotiate] [unit]") {
   for (unsigned initiator = 0; initiator < 2; ++initiator) {
     negotiate_ctx_t context;
     negotiate_init(&context, NULL, NULL, initiator);

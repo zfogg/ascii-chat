@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <libplatform/keyboard.h>
 #include <ascii-chat/util/time.h>
 #include <libplatform/system.h>
@@ -10,7 +9,7 @@ static int next_byte(void) {
   return *input ? (unsigned char)*input++ : 0;
 }
 
-TEST_CASE("terminal_response/fragmented_reply_is_not_media_or_keyboard_input", "[terminal_response]") {
+TEST_CASE("terminal_response/fragmented_reply_is_not_media_or_keyboard_input", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   const char *reply = "\033]11;rgb:1234/5678/9abc\033\\";
   uint64_t before = keyboard_stream_terminal_reply_ns();
@@ -26,7 +25,7 @@ TEST_CASE("terminal_response/fragmented_reply_is_not_media_or_keyboard_input", "
   REQUIRE((keyboard_stream_read(next_byte)) == ('o'));
 }
 
-TEST_CASE("terminal_response/bell_terminated_reply_preserves_the_next_shortcut", "[terminal_response]") {
+TEST_CASE("terminal_response/bell_terminated_reply_preserves_the_next_shortcut", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   uint64_t before = keyboard_stream_terminal_reply_ns();
   input = "\033]11;rgb:ffff/ffff/ffff\a-";
@@ -35,7 +34,7 @@ TEST_CASE("terminal_response/bell_terminated_reply_preserves_the_next_shortcut",
   REQUIRE((keyboard_stream_read(next_byte)) == ('-'));
 }
 
-TEST_CASE("terminal_response/unrelated_osc_does_not_acknowledge_a_frame", "[terminal_response]") {
+TEST_CASE("terminal_response/unrelated_osc_does_not_acknowledge_a_frame", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   uint64_t before = keyboard_stream_terminal_reply_ns();
   input = "\033]0;title with o and r and -\a>";
@@ -44,7 +43,7 @@ TEST_CASE("terminal_response/unrelated_osc_does_not_acknowledge_a_frame", "[term
   REQUIRE((keyboard_stream_read(next_byte)) == ('>'));
 }
 
-TEST_CASE("terminal_response/escape_before_reply_does_not_open_logs_or_search", "[terminal_response]") {
+TEST_CASE("terminal_response/escape_before_reply_does_not_open_logs_or_search", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   input = "\033\033]11;rgb:1717/1717/1717\033\\o";
   REQUIRE((keyboard_stream_read(next_byte)) == (KEY_ESCAPE));
@@ -52,14 +51,14 @@ TEST_CASE("terminal_response/escape_before_reply_does_not_open_logs_or_search", 
   REQUIRE((keyboard_stream_read(next_byte)) == (KEY_NONE));
 }
 
-TEST_CASE("terminal_response/escape_inside_reply_is_not_reply_text", "[terminal_response]") {
+TEST_CASE("terminal_response/escape_inside_reply_is_not_reply_text", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   input = "\033]11;rgb:1717/\0331717/1717\a>";
   REQUIRE((keyboard_stream_read(next_byte)) == (KEY_ESCAPE));
   REQUIRE((keyboard_stream_read(next_byte)) == ('>'));
 }
 
-TEST_CASE("terminal_response/slow_reply_does_not_expire_into_keyboard_input", "[terminal_response]") {
+TEST_CASE("terminal_response/slow_reply_does_not_expire_into_keyboard_input", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   input = "\033]11;rgb:1717/";
   REQUIRE((keyboard_stream_read(next_byte)) == (KEY_NONE));
@@ -70,7 +69,7 @@ TEST_CASE("terminal_response/slow_reply_does_not_expire_into_keyboard_input", "[
   REQUIRE((keyboard_stream_read(next_byte)) == ('-'));
 }
 
-TEST_CASE("terminal_response/delayed_osc_reply_escape_does_not_become_keyboard_input", "[terminal_response]") {
+TEST_CASE("terminal_response/delayed_osc_reply_escape_does_not_become_keyboard_input", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   input = "\033";
   REQUIRE((keyboard_stream_read(next_byte)) == (KEY_NONE));
@@ -80,7 +79,7 @@ TEST_CASE("terminal_response/delayed_osc_reply_escape_does_not_become_keyboard_i
   REQUIRE((keyboard_stream_read(next_byte)) == ('o'));
 }
 
-TEST_CASE("terminal_response/oversized_reply_is_discarded_through_terminator", "[terminal_response]") {
+TEST_CASE("terminal_response/oversized_reply_is_discarded_through_terminator", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   char reply[400];
   memset(reply, '/', sizeof(reply));
@@ -98,7 +97,7 @@ TEST_CASE("terminal_response/oversized_reply_is_discarded_through_terminator", "
   REQUIRE((keyboard_stream_read(next_byte)) == (KEY_NONE));
 }
 
-TEST_CASE("terminal_response/escape_before_arrow_preserves_both_keys", "[terminal_response]") {
+TEST_CASE("terminal_response/escape_before_arrow_preserves_both_keys", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   input = "\033\033[Ao";
   REQUIRE((keyboard_stream_read(next_byte)) == (KEY_ESCAPE));
@@ -106,7 +105,7 @@ TEST_CASE("terminal_response/escape_before_arrow_preserves_both_keys", "[termina
   REQUIRE((keyboard_stream_read(next_byte)) == ('o'));
 }
 
-TEST_CASE("terminal_response/terminator_at_buffer_boundary_preserves_next_key", "[terminal_response]") {
+TEST_CASE("terminal_response/terminator_at_buffer_boundary_preserves_next_key", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   char reply[130];
   memset(reply, '/', sizeof(reply));
@@ -127,7 +126,7 @@ static bool send_test_query(void) {
   return true;
 }
 
-TEST_CASE("terminal_response/background_queries_refresh_and_preserve_shortcuts", "[terminal_response]") {
+TEST_CASE("terminal_response/background_queries_refresh_and_preserve_shortcuts", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   const char *replies[] = {"o\033]11;rgb:ffff/ffff/ffff\033\\q", "o\033]11;rgb:00/00/00\aq", "o\033]11;rgb:f/f/f\aq", "o\033]11;rgb:0000/0000/0000\aq"};
   for (unsigned i = 0; i < 4; ++i) {
@@ -142,7 +141,7 @@ TEST_CASE("terminal_response/background_queries_refresh_and_preserve_shortcuts",
   }
 }
 
-TEST_CASE("terminal_response/background_query_timeout_does_not_reuse_a_previous_reply", "[terminal_response]") {
+TEST_CASE("terminal_response/background_query_timeout_does_not_reuse_a_previous_reply", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   uint8_t r = 12, g = 34, b = 56;
   query_reply = "\033]11;rgb:ffff/ffff/ffff\a";
@@ -158,7 +157,7 @@ TEST_CASE("terminal_response/background_query_timeout_does_not_reuse_a_previous_
   REQUIRE((keyboard_stream_read(next_byte)) == ('o'));
 }
 
-TEST_CASE("terminal_response/background_snapshot_never_consumes_shortcuts", "[terminal_response]") {
+TEST_CASE("terminal_response/background_snapshot_never_consumes_shortcuts", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   input = "\033]11;rgb:12/34/56\ao";
   uint8_t r = 0, g = 0, b = 0;
@@ -176,7 +175,7 @@ TEST_CASE("terminal_response/background_snapshot_never_consumes_shortcuts", "[te
   REQUIRE((keyboard_stream_read(next_byte)) == ('q'));
 }
 
-TEST_CASE("terminal_response/shifted_enter_is_distinct_and_survives_fragmented_input", "[terminal_response]") {
+TEST_CASE("terminal_response/shifted_enter_is_distinct_and_survives_fragmented_input", "[terminal_response] [unit]") {
   const char *sequences[] = {"\033[13;2u", "\033[27;2;13~"};
   for (size_t sequence = 0; sequence < 2; ++sequence) {
     keyboard_stream_reset();
@@ -191,7 +190,7 @@ TEST_CASE("terminal_response/shifted_enter_is_distinct_and_survives_fragmented_i
   }
 }
 
-TEST_CASE("terminal_response/extended_keyboard_controls_preserve_cancel_and_edit_keys", "[terminal_response]") {
+TEST_CASE("terminal_response/extended_keyboard_controls_preserve_cancel_and_edit_keys", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   input = "\033[27u\033[13u\033[9u\033[127u\033[99;5u\033[27;5;99~\033[118;5u\033[27;5;118~";
   const keyboard_key_t keys[] = {KEY_ESCAPE,
@@ -206,7 +205,7 @@ TEST_CASE("terminal_response/extended_keyboard_controls_preserve_cancel_and_edit
     REQUIRE((keyboard_stream_read(next_byte)) == (keys[i]));
 }
 
-TEST_CASE("terminal_response/utf8_fragments_readiness_and_reset", "[terminal_response]") {
+TEST_CASE("terminal_response/utf8_fragments_readiness_and_reset", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   input = "\xf0";
   REQUIRE(!(keyboard_stream_ready(next_byte)));
@@ -227,7 +226,7 @@ TEST_CASE("terminal_response/utf8_fragments_readiness_and_reset", "[terminal_res
   REQUIRE((keyboard_stream_read(next_byte)) == ('q'));
 }
 
-TEST_CASE("terminal_response/unicode_extended_keys_and_shift_enter_do_not_alias_pageup", "[terminal_response]") {
+TEST_CASE("terminal_response/unicode_extended_keys_and_shift_enter_do_not_alias_pageup", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   input = "\033[233;2u\033[30028u\033[128512u\033[13;2u\033[5~";
   const keyboard_key_t expected[] = {static_cast<keyboard_key_t>(233), static_cast<keyboard_key_t>(30028), static_cast<keyboard_key_t>(128512), KEY_SHIFT_ENTER, KEY_PAGEUP};
@@ -236,7 +235,7 @@ TEST_CASE("terminal_response/unicode_extended_keys_and_shift_enter_do_not_alias_
     REQUIRE((keyboard_stream_read(next_byte)) == (expected[i]));
 }
 
-TEST_CASE("terminal_response/malformed_utf8_cannot_become_shortcuts", "[terminal_response]") {
+TEST_CASE("terminal_response/malformed_utf8_cannot_become_shortcuts", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   input = "\xc0\xaf\xed\xa0\x80\xf4\x90\x80\x80o";
   REQUIRE((keyboard_stream_read(next_byte)) == ('o'));
@@ -246,7 +245,7 @@ TEST_CASE("terminal_response/malformed_utf8_cannot_become_shortcuts", "[terminal
     REQUIRE((keyboard_stream_read(next_byte)) == (expected[i]));
 }
 
-TEST_CASE("terminal_response/unicode_characters_in_the_old_special_key_range_remain_text", "[terminal_response]") {
+TEST_CASE("terminal_response/unicode_characters_in_the_old_special_key_range_remain_text", "[terminal_response] [unit]") {
   keyboard_stream_reset();
   input = "ĀāĂăĄąĆćĈĉĊċČčĎď";
   for (unsigned cp = 0x100; cp <= 0x10f; ++cp)

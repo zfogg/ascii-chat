@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/network/crc32.h>
@@ -9,7 +8,7 @@
  * Basic CRC32 Computation Tests
  * ============================================================================ */
 
-TEST_CASE("crc32_hw/empty_data", "[crc32_hw]") {
+TEST_CASE("crc32_hw/empty_data", "[crc32_hw] [unit]") {
   // CRC32 of empty data should be a specific value
   uint32_t crc_hw = asciichat_crc32_hw(NULL, 0);
   uint32_t crc_sw = asciichat_crc32_sw(NULL, 0);
@@ -18,7 +17,7 @@ TEST_CASE("crc32_hw/empty_data", "[crc32_hw]") {
   REQUIRE((crc_hw) == (0));
 }
 
-TEST_CASE("crc32_hw/single_byte", "[crc32_hw]") {
+TEST_CASE("crc32_hw/single_byte", "[crc32_hw] [unit]") {
   uint8_t data = 0x42;
   uint32_t crc_hw = asciichat_crc32_hw(&data, 1);
   uint32_t crc_sw = asciichat_crc32_sw(&data, 1);
@@ -27,7 +26,7 @@ TEST_CASE("crc32_hw/single_byte", "[crc32_hw]") {
   REQUIRE((crc_hw) != (0));
 }
 
-TEST_CASE("crc32_hw/simple_string", "[crc32_hw]") {
+TEST_CASE("crc32_hw/simple_string", "[crc32_hw] [unit]") {
   const char *test_str = "Hello, World!";
   uint32_t crc_hw = asciichat_crc32_hw(test_str, strlen(test_str));
   uint32_t crc_sw = asciichat_crc32_sw(test_str, strlen(test_str));
@@ -47,7 +46,7 @@ TEST_CASE("crc32_hw/simple_string", "[crc32_hw]") {
   REQUIRE((crc_hw) == (expected));
 }
 
-TEST_CASE("crc32_hw/ascii_chat_string", "[crc32_hw]") {
+TEST_CASE("crc32_hw/ascii_chat_string", "[crc32_hw] [unit]") {
   const char *test_str = "ascii-chat";
   uint32_t crc_hw = asciichat_crc32_hw(test_str, strlen(test_str));
   uint32_t crc_sw = asciichat_crc32_sw(test_str, strlen(test_str));
@@ -55,7 +54,7 @@ TEST_CASE("crc32_hw/ascii_chat_string", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/binary_data", "[crc32_hw]") {
+TEST_CASE("crc32_hw/binary_data", "[crc32_hw] [unit]") {
   uint8_t data[256];
   for (int i = 0; i < 256; i++) {
     data[i] = (uint8_t)i;
@@ -67,7 +66,7 @@ TEST_CASE("crc32_hw/binary_data", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/all_zeros", "[crc32_hw]") {
+TEST_CASE("crc32_hw/all_zeros", "[crc32_hw] [unit]") {
   uint8_t data[128];
   memset(data, 0, sizeof(data));
 
@@ -77,7 +76,7 @@ TEST_CASE("crc32_hw/all_zeros", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/all_ones", "[crc32_hw]") {
+TEST_CASE("crc32_hw/all_ones", "[crc32_hw] [unit]") {
   uint8_t data[128];
   memset(data, 0xFF, sizeof(data));
 
@@ -91,7 +90,7 @@ TEST_CASE("crc32_hw/all_ones", "[crc32_hw]") {
  * Size Alignment Tests
  * ============================================================================ */
 
-TEST_CASE("crc32_hw/size_7_bytes", "[crc32_hw]") {
+TEST_CASE("crc32_hw/size_7_bytes", "[crc32_hw] [unit]") {
   // Test odd size (not aligned to 8 bytes)
   const char *data = "1234567";
   uint32_t crc_hw = asciichat_crc32_hw(data, 7);
@@ -100,7 +99,7 @@ TEST_CASE("crc32_hw/size_7_bytes", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/size_8_bytes", "[crc32_hw]") {
+TEST_CASE("crc32_hw/size_8_bytes", "[crc32_hw] [unit]") {
   // Test 8-byte aligned size
   const char *data = "12345678";
   uint32_t crc_hw = asciichat_crc32_hw(data, 8);
@@ -114,7 +113,7 @@ TEST_CASE("crc32_hw/size_8_bytes", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/size_9_bytes", "[crc32_hw]") {
+TEST_CASE("crc32_hw/size_9_bytes", "[crc32_hw] [unit]") {
   // Test 8 bytes + 1
   const char *data = "123456789";
   uint32_t crc_hw = asciichat_crc32_hw(data, 9);
@@ -123,7 +122,7 @@ TEST_CASE("crc32_hw/size_9_bytes", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/size_16_bytes", "[crc32_hw]") {
+TEST_CASE("crc32_hw/size_16_bytes", "[crc32_hw] [unit]") {
   // Test 2x 8-byte aligned
   const char *data = "0123456789ABCDEF";
   uint32_t crc_hw = asciichat_crc32_hw(data, 16);
@@ -132,7 +131,7 @@ TEST_CASE("crc32_hw/size_16_bytes", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/size_17_bytes", "[crc32_hw]") {
+TEST_CASE("crc32_hw/size_17_bytes", "[crc32_hw] [unit]") {
   // Test 2x 8 bytes + 1
   const char *data = "0123456789ABCDEFG";
   uint32_t crc_hw = asciichat_crc32_hw(data, 17);
@@ -141,7 +140,7 @@ TEST_CASE("crc32_hw/size_17_bytes", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/size_1_byte", "[crc32_hw]") {
+TEST_CASE("crc32_hw/size_1_byte", "[crc32_hw] [unit]") {
   const char *data = "A";
   uint32_t crc_hw = asciichat_crc32_hw(data, 1);
   uint32_t crc_sw = asciichat_crc32_sw(data, 1);
@@ -149,7 +148,7 @@ TEST_CASE("crc32_hw/size_1_byte", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/size_2_bytes", "[crc32_hw]") {
+TEST_CASE("crc32_hw/size_2_bytes", "[crc32_hw] [unit]") {
   const char *data = "AB";
   uint32_t crc_hw = asciichat_crc32_hw(data, 2);
   uint32_t crc_sw = asciichat_crc32_sw(data, 2);
@@ -157,7 +156,7 @@ TEST_CASE("crc32_hw/size_2_bytes", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/size_3_bytes", "[crc32_hw]") {
+TEST_CASE("crc32_hw/size_3_bytes", "[crc32_hw] [unit]") {
   const char *data = "ABC";
   uint32_t crc_hw = asciichat_crc32_hw(data, 3);
   uint32_t crc_sw = asciichat_crc32_sw(data, 3);
@@ -165,7 +164,7 @@ TEST_CASE("crc32_hw/size_3_bytes", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/size_4_bytes", "[crc32_hw]") {
+TEST_CASE("crc32_hw/size_4_bytes", "[crc32_hw] [unit]") {
   const char *data = "ABCD";
   uint32_t crc_hw = asciichat_crc32_hw(data, 4);
   uint32_t crc_sw = asciichat_crc32_sw(data, 4);
@@ -173,7 +172,7 @@ TEST_CASE("crc32_hw/size_4_bytes", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/size_5_bytes", "[crc32_hw]") {
+TEST_CASE("crc32_hw/size_5_bytes", "[crc32_hw] [unit]") {
   const char *data = "ABCDE";
   uint32_t crc_hw = asciichat_crc32_hw(data, 5);
   uint32_t crc_sw = asciichat_crc32_sw(data, 5);
@@ -181,7 +180,7 @@ TEST_CASE("crc32_hw/size_5_bytes", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/size_6_bytes", "[crc32_hw]") {
+TEST_CASE("crc32_hw/size_6_bytes", "[crc32_hw] [unit]") {
   const char *data = "ABCDEF";
   uint32_t crc_hw = asciichat_crc32_hw(data, 6);
   uint32_t crc_sw = asciichat_crc32_sw(data, 6);
@@ -193,7 +192,7 @@ TEST_CASE("crc32_hw/size_6_bytes", "[crc32_hw]") {
  * Large Data Tests
  * ============================================================================ */
 
-TEST_CASE("crc32_hw/large_buffer_1kb", "[crc32_hw]") {
+TEST_CASE("crc32_hw/large_buffer_1kb", "[crc32_hw] [unit]") {
   uint8_t data[1024];
   for (size_t i = 0; i < sizeof(data); i++) {
     data[i] = (uint8_t)(i & 0xFF);
@@ -205,7 +204,7 @@ TEST_CASE("crc32_hw/large_buffer_1kb", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/large_buffer_4kb", "[crc32_hw]") {
+TEST_CASE("crc32_hw/large_buffer_4kb", "[crc32_hw] [unit]") {
   uint8_t *data;
   data = SAFE_MALLOC(4096, uint8_t *);
   for (size_t i = 0; i < 4096; i++) {
@@ -220,7 +219,7 @@ TEST_CASE("crc32_hw/large_buffer_4kb", "[crc32_hw]") {
   SAFE_FREE(data);
 }
 
-TEST_CASE("crc32_hw/large_buffer_64kb", "[crc32_hw]") {
+TEST_CASE("crc32_hw/large_buffer_64kb", "[crc32_hw] [unit]") {
   size_t size = 65536;
   uint8_t *data;
   data = SAFE_MALLOC(size, uint8_t *);
@@ -240,7 +239,7 @@ TEST_CASE("crc32_hw/large_buffer_64kb", "[crc32_hw]") {
  * Data Variation Tests
  * ============================================================================ */
 
-TEST_CASE("crc32_hw/different_data_different_crc", "[crc32_hw]") {
+TEST_CASE("crc32_hw/different_data_different_crc", "[crc32_hw] [unit]") {
   const char *data1 = "Hello, World!";
   const char *data2 = "Hello, World?";
 
@@ -250,7 +249,7 @@ TEST_CASE("crc32_hw/different_data_different_crc", "[crc32_hw]") {
   REQUIRE((crc1) != (crc2));
 }
 
-TEST_CASE("crc32_hw/same_data_same_crc", "[crc32_hw]") {
+TEST_CASE("crc32_hw/same_data_same_crc", "[crc32_hw] [unit]") {
   const char *data1 = "Testing CRC32";
   const char *data2 = "Testing CRC32";
 
@@ -260,7 +259,7 @@ TEST_CASE("crc32_hw/same_data_same_crc", "[crc32_hw]") {
   REQUIRE((crc1) == (crc2));
 }
 
-TEST_CASE("crc32_hw/order_matters", "[crc32_hw]") {
+TEST_CASE("crc32_hw/order_matters", "[crc32_hw] [unit]") {
   uint8_t data1[] = {0x01, 0x02, 0x03, 0x04};
   uint8_t data2[] = {0x04, 0x03, 0x02, 0x01};
 
@@ -274,7 +273,7 @@ TEST_CASE("crc32_hw/order_matters", "[crc32_hw]") {
  * Hardware Availability Tests
  * ============================================================================ */
 
-TEST_CASE("crc32_hw/hardware_availability_check", "[crc32_hw]") {
+TEST_CASE("crc32_hw/hardware_availability_check", "[crc32_hw] [unit]") {
   bool hw_available = crc32_hw_is_available();
 
   // Should not crash
@@ -288,7 +287,7 @@ TEST_CASE("crc32_hw/hardware_availability_check", "[crc32_hw]") {
   }
 }
 
-TEST_CASE("crc32_hw/repeated_hw_check", "[crc32_hw]") {
+TEST_CASE("crc32_hw/repeated_hw_check", "[crc32_hw] [unit]") {
   // Check multiple times - should return consistent result
   bool hw1 = crc32_hw_is_available();
   bool hw2 = crc32_hw_is_available();
@@ -302,7 +301,7 @@ TEST_CASE("crc32_hw/repeated_hw_check", "[crc32_hw]") {
  * Macro Tests
  * ============================================================================ */
 
-TEST_CASE("crc32_hw/macro_dispatches_correctly", "[crc32_hw]") {
+TEST_CASE("crc32_hw/macro_dispatches_correctly", "[crc32_hw] [unit]") {
   const char *test_str = "Macro test";
   uint32_t crc_macro = asciichat_crc32(test_str, strlen(test_str));
   uint32_t crc_hw = asciichat_crc32_hw(test_str, strlen(test_str));
@@ -314,7 +313,7 @@ TEST_CASE("crc32_hw/macro_dispatches_correctly", "[crc32_hw]") {
  * Edge Cases
  * ============================================================================ */
 
-TEST_CASE("crc32_hw/special_characters", "[crc32_hw]") {
+TEST_CASE("crc32_hw/special_characters", "[crc32_hw] [unit]") {
   const char *data = "!@#$%^&*()_+-=[]{}|;':\",./<>?";
   uint32_t crc_hw = asciichat_crc32_hw(data, strlen(data));
   uint32_t crc_sw = asciichat_crc32_sw(data, strlen(data));
@@ -322,7 +321,7 @@ TEST_CASE("crc32_hw/special_characters", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/unicode_data", "[crc32_hw]") {
+TEST_CASE("crc32_hw/unicode_data", "[crc32_hw] [unit]") {
   const char *data = "café résumé naïve";
   uint32_t crc_hw = asciichat_crc32_hw(data, strlen(data));
   uint32_t crc_sw = asciichat_crc32_sw(data, strlen(data));
@@ -330,7 +329,7 @@ TEST_CASE("crc32_hw/unicode_data", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/null_bytes_in_data", "[crc32_hw]") {
+TEST_CASE("crc32_hw/null_bytes_in_data", "[crc32_hw] [unit]") {
   uint8_t data[] = {0x01, 0x00, 0x02, 0x00, 0x03, 0x00, 0x04};
   uint32_t crc_hw = asciichat_crc32_hw(data, sizeof(data));
   uint32_t crc_sw = asciichat_crc32_sw(data, sizeof(data));
@@ -338,7 +337,7 @@ TEST_CASE("crc32_hw/null_bytes_in_data", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/repeating_pattern", "[crc32_hw]") {
+TEST_CASE("crc32_hw/repeating_pattern", "[crc32_hw] [unit]") {
   uint8_t data[256];
   for (size_t i = 0; i < sizeof(data); i++) {
     data[i] = 0xAA;
@@ -350,7 +349,7 @@ TEST_CASE("crc32_hw/repeating_pattern", "[crc32_hw]") {
   REQUIRE((crc_hw) == (crc_sw));
 }
 
-TEST_CASE("crc32_hw/alternating_pattern", "[crc32_hw]") {
+TEST_CASE("crc32_hw/alternating_pattern", "[crc32_hw] [unit]") {
   uint8_t data[256];
   for (size_t i = 0; i < sizeof(data); i++) {
     data[i] = (i % 2) ? 0xFF : 0x00;
@@ -366,7 +365,7 @@ TEST_CASE("crc32_hw/alternating_pattern", "[crc32_hw]") {
  * Consistency Tests - Multiple Calls
  * ============================================================================ */
 
-TEST_CASE("crc32_hw/consistent_results", "[crc32_hw]") {
+TEST_CASE("crc32_hw/consistent_results", "[crc32_hw] [unit]") {
   const char *data = "Consistency test";
 
   uint32_t crc1 = asciichat_crc32_hw(data, strlen(data));
@@ -377,7 +376,7 @@ TEST_CASE("crc32_hw/consistent_results", "[crc32_hw]") {
   REQUIRE((crc2) == (crc3));
 }
 
-TEST_CASE("crc32_hw/sw_consistent_results", "[crc32_hw]") {
+TEST_CASE("crc32_hw/sw_consistent_results", "[crc32_hw] [unit]") {
   const char *data = "Software consistency test";
 
   uint32_t crc1 = asciichat_crc32_sw(data, strlen(data));

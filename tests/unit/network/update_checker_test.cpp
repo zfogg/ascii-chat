@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/string.h>
@@ -50,7 +49,7 @@ static void restore_test_config_root(void) {
   test_config_root = NULL;
 }
 
-TEST_CASE("update_checker/cache_round_trip_preserves_release_link", "[update_checker]") {
+TEST_CASE("update_checker/cache_round_trip_preserves_release_link", "[update_checker] [unit]") {
   set_test_config_root();
 
   update_check_result_t expected = {0};
@@ -72,7 +71,7 @@ TEST_CASE("update_checker/cache_round_trip_preserves_release_link", "[update_che
   restore_test_config_root();
 }
 
-TEST_CASE("update_checker/cached_current_release_does_not_report_update", "[update_checker]") {
+TEST_CASE("update_checker/cached_current_release_does_not_report_update", "[update_checker] [unit]") {
   set_test_config_root();
 
   update_check_result_t expected = {0};
@@ -90,7 +89,7 @@ TEST_CASE("update_checker/cached_current_release_does_not_report_update", "[upda
   restore_test_config_root();
 }
 
-TEST_CASE("update_checker/cache_without_release_link_is_rejected", "[update_checker]") {
+TEST_CASE("update_checker/cache_without_release_link_is_rejected", "[update_checker] [unit]") {
   set_test_config_root();
 
   char cache_dir[1024];
@@ -110,7 +109,7 @@ TEST_CASE("update_checker/cache_without_release_link_is_rejected", "[update_chec
   restore_test_config_root();
 }
 
-TEST_CASE("update_checker/cache_freshness_obeys_one_week_window", "[update_checker]") {
+TEST_CASE("update_checker/cache_freshness_obeys_one_week_window", "[update_checker] [unit]") {
   update_check_result_t result = {0};
   result.last_check_time = time(NULL);
   REQUIRE(update_check_is_cache_fresh(&result));
@@ -122,7 +121,7 @@ TEST_CASE("update_checker/cache_freshness_obeys_one_week_window", "[update_check
   REQUIRE(!(update_check_is_cache_fresh(&result)));
 }
 
-TEST_CASE("update_checker/notification_contains_action_and_exact_release_source", "[update_checker]") {
+TEST_CASE("update_checker/notification_contains_action_and_exact_release_source", "[update_checker] [unit]") {
   update_check_result_t result = {0};
   snprintf(result.current_version, sizeof(result.current_version), "v1.0.0");
   snprintf(result.latest_version, sizeof(result.latest_version), "v2.0.0");
@@ -137,7 +136,7 @@ TEST_CASE("update_checker/notification_contains_action_and_exact_release_source"
   REQUIRE((strstr(notification, "Download:") != NULL || strstr(notification, "Run:") != NULL));
 }
 
-TEST_CASE("update_checker/override_cache_directory_accepts_a_missing_or_existing_separator", "[update_checker]") {
+TEST_CASE("update_checker/override_cache_directory_accepts_a_missing_or_existing_separator", "[update_checker] [unit]") {
   set_test_config_root();
   const char *existing = getenv("ASCII_CHAT_UPDATE_CACHE_DIR");
   char *saved = existing ? platform_strdup(existing) : NULL;

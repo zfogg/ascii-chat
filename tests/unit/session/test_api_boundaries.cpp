@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
 #include "common/session/capture.h"
 #include "common/session/display.h"
@@ -35,7 +35,7 @@ static void teardown(void) {
     REQUIRE(((call)) == (ERROR_INVALID_PARAM)); \
     CLEAR_ERRNO_ALL();                          \
   } while (0)
-TEST_CASE("session_api_boundaries/capture_null_queries_and_rejected_transmission_do_not_take_ownership", "[session_api_boundaries]") {
+TEST_CASE("session_api_boundaries/capture_null_queries_and_rejected_transmission_do_not_take_ownership", "[session_api_boundaries] [unit]") {
   REQUIRE((session_mirror_capture_create(NULL)) == nullptr);
   CLEAR_ERRNO_ALL();
   REQUIRE((session_capture_read_frame(NULL)) == nullptr);
@@ -74,7 +74,7 @@ TEST_CASE("session_api_boundaries/capture_null_queries_and_rejected_transmission
   image_destroy(image);
   CLEAR_ERRNO_ALL();
 }
-TEST_CASE("session_api_boundaries/missing_display_is_rejected_and_empty_ascii_does_not_publish_a_first_frame", "[session_api_boundaries]") {
+TEST_CASE("session_api_boundaries/missing_display_is_rejected_and_empty_ascii_does_not_publish_a_first_frame", "[session_api_boundaries] [unit]") {
   REQUIRE((session_display_get_caps(NULL)) == nullptr);
   REQUIRE((session_display_get_palette_chars(NULL)) == nullptr);
   REQUIRE((session_display_get_luminance_palette(NULL)) == nullptr);
@@ -119,7 +119,7 @@ TEST_CASE("session_api_boundaries/missing_display_is_rejected_and_empty_ascii_do
   session_display_reset(display);
   session_display_destroy(display);
 }
-TEST_CASE("session_api_boundaries/host_invalid_mutations_preserve_the_registered_memory_participant", "[session_api_boundaries]") {
+TEST_CASE("session_api_boundaries/host_invalid_mutations_preserve_the_registered_memory_participant", "[session_api_boundaries] [unit]") {
   REQUIRE((session_host_create(NULL)) == nullptr);
   CLEAR_ERRNO_ALL();
   INVALID(session_host_start(NULL));
@@ -168,7 +168,7 @@ TEST_CASE("session_api_boundaries/host_invalid_mutations_preserve_the_registered
   CLEAR_ERRNO_ALL();
   REQUIRE((session_host_destroy(host)) == (ASCIICHAT_OK));
 }
-TEST_CASE("session_api_boundaries/audio_invalid_sources_and_buffers_do_not_change_a_valid_host_context", "[session_api_boundaries]") {
+TEST_CASE("session_api_boundaries/audio_invalid_sources_and_buffers_do_not_change_a_valid_host_context", "[session_api_boundaries] [unit]") {
   INVALID(session_audio_start_capture(NULL));
   INVALID(session_audio_start_playback(NULL));
   INVALID(session_audio_start_duplex(NULL));
@@ -195,7 +195,7 @@ TEST_CASE("session_api_boundaries/audio_invalid_sources_and_buffers_do_not_chang
   REQUIRE(std::memcmp((output), (((float[]){0, 0, 0, 0})), (sizeof(output))) == 0);
   session_audio_destroy(audio);
 }
-TEST_CASE("session_api_boundaries/disconnected_participants_reject_media_and_settings_without_consuming_connection_outputs", "[session_api_boundaries]") {
+TEST_CASE("session_api_boundaries/disconnected_participants_reject_media_and_settings_without_consuming_connection_outputs", "[session_api_boundaries] [unit]") {
   INVALID(session_participant_connect(NULL));
   INVALID(session_participant_start_video(NULL));
   INVALID(session_participant_start_audio(NULL));

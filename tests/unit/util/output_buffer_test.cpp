@@ -1,6 +1,6 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -14,7 +14,7 @@
  * Basic Buffer Operations Tests
  * ============================================================================ */
 
-TEST_CASE("output_buffer/ob_reserve_basic", "[output_buffer]") {
+TEST_CASE("output_buffer/ob_reserve_basic", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   ob_reserve(&ob, 100);
@@ -25,7 +25,7 @@ TEST_CASE("output_buffer/ob_reserve_basic", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/ob_reserve_zero", "[output_buffer]") {
+TEST_CASE("output_buffer/ob_reserve_zero", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   ob_reserve(&ob, 0);
@@ -36,7 +36,7 @@ TEST_CASE("output_buffer/ob_reserve_zero", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/ob_reserve_expansion", "[output_buffer]") {
+TEST_CASE("output_buffer/ob_reserve_expansion", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   // Reserve small amount first
@@ -51,7 +51,7 @@ TEST_CASE("output_buffer/ob_reserve_expansion", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/ob_putc_basic", "[output_buffer]") {
+TEST_CASE("output_buffer/ob_putc_basic", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   ob_putc(&ob, 'A');
@@ -65,7 +65,7 @@ TEST_CASE("output_buffer/ob_putc_basic", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/ob_putc_multiple", "[output_buffer]") {
+TEST_CASE("output_buffer/ob_putc_multiple", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   for (int i = 0; i < 100; i++) {
@@ -78,7 +78,7 @@ TEST_CASE("output_buffer/ob_putc_multiple", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/ob_write_basic", "[output_buffer]") {
+TEST_CASE("output_buffer/ob_write_basic", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
   const char *data = "Hello World";
 
@@ -89,7 +89,7 @@ TEST_CASE("output_buffer/ob_write_basic", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/ob_write_empty", "[output_buffer]") {
+TEST_CASE("output_buffer/ob_write_empty", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   ob_write(&ob, "", 0);
@@ -98,7 +98,7 @@ TEST_CASE("output_buffer/ob_write_empty", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/ob_write_large", "[output_buffer]") {
+TEST_CASE("output_buffer/ob_write_large", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
   char data[1000];
 
@@ -113,7 +113,7 @@ TEST_CASE("output_buffer/ob_write_large", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/ob_term_basic", "[output_buffer]") {
+TEST_CASE("output_buffer/ob_term_basic", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   ob_putc(&ob, 'H');
@@ -149,7 +149,7 @@ static ob_u8_test_case_t ob_u8_cases[] = {
     {100, "100", "Boundary: first triple digit"},
 };
 
-TEST_CASE("output_buffer/ob_u8_values", "[output_buffer]") {
+TEST_CASE("output_buffer/ob_u8_values", "[output_buffer] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ob_u8_cases), std::end(ob_u8_cases)));
   auto *tc = &generated_case;
   outbuf_t ob = {0};
@@ -182,7 +182,7 @@ static ob_u32_test_case_t ob_u32_cases[] = {
     {10000, "10000", "Boundary: first quintuple digit"},
 };
 
-TEST_CASE("output_buffer/ob_u32_values", "[output_buffer]") {
+TEST_CASE("output_buffer/ob_u32_values", "[output_buffer] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ob_u32_cases), std::end(ob_u32_cases)));
   auto *tc = &generated_case;
   outbuf_t ob = {0};
@@ -198,7 +198,7 @@ TEST_CASE("output_buffer/ob_u32_values", "[output_buffer]") {
  * ANSI Escape Sequence Tests
  * ============================================================================ */
 
-TEST_CASE("output_buffer/emit_set_truecolor_fg_basic", "[output_buffer]") {
+TEST_CASE("output_buffer/emit_set_truecolor_fg_basic", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   emit_set_truecolor_fg(&ob, 255, 128, 64);
@@ -210,7 +210,7 @@ TEST_CASE("output_buffer/emit_set_truecolor_fg_basic", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/emit_set_truecolor_bg_basic", "[output_buffer]") {
+TEST_CASE("output_buffer/emit_set_truecolor_bg_basic", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   emit_set_truecolor_bg(&ob, 0, 255, 128);
@@ -222,7 +222,7 @@ TEST_CASE("output_buffer/emit_set_truecolor_bg_basic", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/emit_set_256_color_fg_basic", "[output_buffer]") {
+TEST_CASE("output_buffer/emit_set_256_color_fg_basic", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   emit_set_256_color_fg(&ob, 42);
@@ -234,7 +234,7 @@ TEST_CASE("output_buffer/emit_set_256_color_fg_basic", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/emit_set_256_color_bg_basic", "[output_buffer]") {
+TEST_CASE("output_buffer/emit_set_256_color_bg_basic", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   emit_set_256_color_bg(&ob, 200);
@@ -246,7 +246,7 @@ TEST_CASE("output_buffer/emit_set_256_color_bg_basic", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/emit_reset_basic", "[output_buffer]") {
+TEST_CASE("output_buffer/emit_reset_basic", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   emit_reset(&ob);
@@ -258,7 +258,7 @@ TEST_CASE("output_buffer/emit_reset_basic", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/emit_set_fg_basic", "[output_buffer]") {
+TEST_CASE("output_buffer/emit_set_fg_basic", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   emit_set_fg(&ob, 255, 0, 0);
@@ -269,7 +269,7 @@ TEST_CASE("output_buffer/emit_set_fg_basic", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/emit_set_bg_basic", "[output_buffer]") {
+TEST_CASE("output_buffer/emit_set_bg_basic", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   emit_set_bg(&ob, 0, 255, 0);
@@ -284,7 +284,7 @@ TEST_CASE("output_buffer/emit_set_bg_basic", "[output_buffer]") {
  * REP (Repetition) Tests
  * ============================================================================ */
 
-TEST_CASE("output_buffer/rep_is_profitable_basic", "[output_buffer]") {
+TEST_CASE("output_buffer/rep_is_profitable_basic", "[output_buffer] [unit]") {
   // Test various run lengths
   REQUIRE((rep_is_profitable(0)) == (false));
   REQUIRE((rep_is_profitable(1)) == (false));
@@ -297,7 +297,7 @@ TEST_CASE("output_buffer/rep_is_profitable_basic", "[output_buffer]") {
   REQUIRE((rep_is_profitable(100)) == (true));
 }
 
-TEST_CASE("output_buffer/emit_rep_basic", "[output_buffer]") {
+TEST_CASE("output_buffer/emit_rep_basic", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   emit_rep(&ob, 5);
@@ -309,7 +309,7 @@ TEST_CASE("output_buffer/emit_rep_basic", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/emit_rep_large", "[output_buffer]") {
+TEST_CASE("output_buffer/emit_rep_large", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   emit_rep(&ob, 1000);
@@ -325,7 +325,7 @@ TEST_CASE("output_buffer/emit_rep_large", "[output_buffer]") {
  * Digits Calculation Tests
  * ============================================================================ */
 
-TEST_CASE("output_buffer/digits_u32_basic", "[output_buffer]") {
+TEST_CASE("output_buffer/digits_u32_basic", "[output_buffer] [unit]") {
   REQUIRE((digits_u32(0)) == (1));
   REQUIRE((digits_u32(9)) == (1));
   REQUIRE((digits_u32(10)) == (2));
@@ -347,7 +347,7 @@ TEST_CASE("output_buffer/digits_u32_basic", "[output_buffer]") {
  * Complex Operations Tests
  * ============================================================================ */
 
-TEST_CASE("output_buffer/complex_ansi_sequence", "[output_buffer]") {
+TEST_CASE("output_buffer/complex_ansi_sequence", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   // Build a complex ANSI sequence
@@ -366,7 +366,7 @@ TEST_CASE("output_buffer/complex_ansi_sequence", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/mixed_operations", "[output_buffer]") {
+TEST_CASE("output_buffer/mixed_operations", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   // Mix different operations
@@ -385,7 +385,7 @@ TEST_CASE("output_buffer/mixed_operations", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/large_buffer_operations", "[output_buffer]") {
+TEST_CASE("output_buffer/large_buffer_operations", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   // Test with large amounts of data
@@ -405,7 +405,7 @@ TEST_CASE("output_buffer/large_buffer_operations", "[output_buffer]") {
  * Edge Cases and Error Handling Tests
  * ============================================================================ */
 
-TEST_CASE("output_buffer/null_buffer_operations", "[output_buffer]") {
+TEST_CASE("output_buffer/null_buffer_operations", "[output_buffer] [unit]") {
   // These should not crash
   ob_reserve(NULL, 100);
   ob_putc(NULL, 'A');
@@ -423,7 +423,7 @@ TEST_CASE("output_buffer/null_buffer_operations", "[output_buffer]") {
   emit_set_bg(NULL, 0, 255, 0);
 }
 
-TEST_CASE("output_buffer/zero_length_operations", "[output_buffer]") {
+TEST_CASE("output_buffer/zero_length_operations", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   ob_write(&ob, "test", 0);
@@ -432,7 +432,7 @@ TEST_CASE("output_buffer/zero_length_operations", "[output_buffer]") {
   SAFE_FREE(ob.buf);
 }
 
-TEST_CASE("output_buffer/extreme_values", "[output_buffer]") {
+TEST_CASE("output_buffer/extreme_values", "[output_buffer] [unit]") {
   outbuf_t ob = {0};
 
   // Test with extreme values

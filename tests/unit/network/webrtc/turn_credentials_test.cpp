@@ -7,7 +7,6 @@
 #include <ascii-chat/network/webrtc/turn_credentials.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <time.h>
 
@@ -17,7 +16,7 @@
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("turn_credentials/basic_generation", "[turn_credentials]") {
+TEST_CASE("turn_credentials/basic_generation", "[turn_credentials] [unit]") {
   turn_credentials_t creds;
   asciichat_error_t result = turn_generate_credentials("swift-river-mountain", "my-secret-key", 86400, &creds);
 
@@ -30,7 +29,7 @@ TEST_CASE("turn_credentials/basic_generation", "[turn_credentials]") {
 /**
  * @brief Test username format: "{timestamp}:{session_id}"
  */
-TEST_CASE("turn_credentials/username_format", "[turn_credentials]") {
+TEST_CASE("turn_credentials/username_format", "[turn_credentials] [unit]") {
   turn_credentials_t creds;
   const char *session_id = "swift-river-mountain";
   asciichat_error_t result = turn_generate_credentials(session_id, "secret", 3600, &creds);
@@ -57,7 +56,7 @@ TEST_CASE("turn_credentials/username_format", "[turn_credentials]") {
 /**
  * @brief Test password is base64-encoded (contains only valid base64 chars)
  */
-TEST_CASE("turn_credentials/password_base64", "[turn_credentials]") {
+TEST_CASE("turn_credentials/password_base64", "[turn_credentials] [unit]") {
   turn_credentials_t creds;
   asciichat_error_t result = turn_generate_credentials("test-session", "secret", 3600, &creds);
 
@@ -74,7 +73,7 @@ TEST_CASE("turn_credentials/password_base64", "[turn_credentials]") {
 /**
  * @brief Test different secrets produce different passwords
  */
-TEST_CASE("turn_credentials/different_secrets", "[turn_credentials]") {
+TEST_CASE("turn_credentials/different_secrets", "[turn_credentials] [unit]") {
   turn_credentials_t creds1, creds2;
 
   turn_generate_credentials("session-1", "secret-A", 3600, &creds1);
@@ -86,7 +85,7 @@ TEST_CASE("turn_credentials/different_secrets", "[turn_credentials]") {
 /**
  * @brief Test different session IDs produce different credentials
  */
-TEST_CASE("turn_credentials/different_sessions", "[turn_credentials]") {
+TEST_CASE("turn_credentials/different_sessions", "[turn_credentials] [unit]") {
   turn_credentials_t creds1, creds2;
 
   turn_generate_credentials("session-A", "same-secret", 3600, &creds1);
@@ -99,7 +98,7 @@ TEST_CASE("turn_credentials/different_sessions", "[turn_credentials]") {
 /**
  * @brief Test expiration time calculation
  */
-TEST_CASE("turn_credentials/expiration_time", "[turn_credentials]") {
+TEST_CASE("turn_credentials/expiration_time", "[turn_credentials] [unit]") {
   time_t now = time(NULL);
   uint32_t validity = 7200; // 2 hours
 
@@ -117,7 +116,7 @@ TEST_CASE("turn_credentials/expiration_time", "[turn_credentials]") {
 /**
  * @brief Test credentials haven't expired immediately after generation
  */
-TEST_CASE("turn_credentials/not_expired_immediately", "[turn_credentials]") {
+TEST_CASE("turn_credentials/not_expired_immediately", "[turn_credentials] [unit]") {
   turn_credentials_t creds;
   turn_generate_credentials("test", "secret", 3600, &creds);
 
@@ -128,7 +127,7 @@ TEST_CASE("turn_credentials/not_expired_immediately", "[turn_credentials]") {
 /**
  * @brief Test NULL parameter handling
  */
-TEST_CASE("turn_credentials/null_parameters", "[turn_credentials]") {
+TEST_CASE("turn_credentials/null_parameters", "[turn_credentials] [unit]") {
   turn_credentials_t creds;
 
   // NULL session_id
@@ -151,7 +150,7 @@ TEST_CASE("turn_credentials/null_parameters", "[turn_credentials]") {
 /**
  * @brief Test password length is reasonable (HMAC-SHA1 base64 = 28 bytes)
  */
-TEST_CASE("turn_credentials/password_length", "[turn_credentials]") {
+TEST_CASE("turn_credentials/password_length", "[turn_credentials] [unit]") {
   turn_credentials_t creds;
   turn_generate_credentials("test", "secret", 3600, &creds);
 
@@ -166,7 +165,7 @@ TEST_CASE("turn_credentials/password_length", "[turn_credentials]") {
 /**
  * @brief Test deterministic generation (same inputs = same outputs at same time)
  */
-TEST_CASE("turn_credentials/deterministic", "[turn_credentials]") {
+TEST_CASE("turn_credentials/deterministic", "[turn_credentials] [unit]") {
   turn_credentials_t creds1, creds2;
 
   // Generate twice with same parameters

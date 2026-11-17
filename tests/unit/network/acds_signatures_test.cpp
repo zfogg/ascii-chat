@@ -4,7 +4,6 @@
  * @brief Unit tests for ACDS Ed25519 signature verification
  */
 
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <sodium.h>
 
@@ -23,7 +22,7 @@ static void acds_signatures_init(void) {
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("acds_signatures/session_create_sign_and_verify", "[acds_signatures]") {
+TEST_CASE("acds_signatures/session_create_sign_and_verify", "[acds_signatures] [unit]") {
   // Generate test keypair
   uint8_t pubkey[32];
   uint8_t seckey[64];
@@ -44,7 +43,7 @@ TEST_CASE("acds_signatures/session_create_sign_and_verify", "[acds_signatures]")
   REQUIRE((verify_result) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("acds_signatures/session_create_wrong_pubkey", "[acds_signatures]") {
+TEST_CASE("acds_signatures/session_create_wrong_pubkey", "[acds_signatures] [unit]") {
   // Generate two keypairs
   uint8_t pubkey1[32], seckey1[64];
   uint8_t pubkey2[32], seckey2[64];
@@ -64,7 +63,7 @@ TEST_CASE("acds_signatures/session_create_wrong_pubkey", "[acds_signatures]") {
   REQUIRE((verify_result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("acds_signatures/session_create_tampered_timestamp", "[acds_signatures]") {
+TEST_CASE("acds_signatures/session_create_tampered_timestamp", "[acds_signatures] [unit]") {
   uint8_t pubkey[32], seckey[64];
   crypto_sign_keypair(pubkey, seckey);
 
@@ -82,7 +81,7 @@ TEST_CASE("acds_signatures/session_create_tampered_timestamp", "[acds_signatures
   REQUIRE((verify_result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("acds_signatures/session_create_tampered_capabilities", "[acds_signatures]") {
+TEST_CASE("acds_signatures/session_create_tampered_capabilities", "[acds_signatures] [unit]") {
   uint8_t pubkey[32], seckey[64];
   crypto_sign_keypair(pubkey, seckey);
 
@@ -100,7 +99,7 @@ TEST_CASE("acds_signatures/session_create_tampered_capabilities", "[acds_signatu
   REQUIRE((verify_result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("acds_signatures/session_create_tampered_max_participants", "[acds_signatures]") {
+TEST_CASE("acds_signatures/session_create_tampered_max_participants", "[acds_signatures] [unit]") {
   uint8_t pubkey[32], seckey[64];
   crypto_sign_keypair(pubkey, seckey);
 
@@ -122,7 +121,7 @@ TEST_CASE("acds_signatures/session_create_tampered_max_participants", "[acds_sig
 // SESSION_JOIN Signature Tests
 // =============================================================================
 
-TEST_CASE("acds_signatures/session_join_sign_and_verify", "[acds_signatures]") {
+TEST_CASE("acds_signatures/session_join_sign_and_verify", "[acds_signatures] [unit]") {
   // Generate test keypair
   uint8_t pubkey[32];
   uint8_t seckey[64];
@@ -142,7 +141,7 @@ TEST_CASE("acds_signatures/session_join_sign_and_verify", "[acds_signatures]") {
   REQUIRE((verify_result) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("acds_signatures/session_join_wrong_pubkey", "[acds_signatures]") {
+TEST_CASE("acds_signatures/session_join_wrong_pubkey", "[acds_signatures] [unit]") {
   uint8_t pubkey1[32], seckey1[64];
   uint8_t pubkey2[32], seckey2[64];
   crypto_sign_keypair(pubkey1, seckey1);
@@ -160,7 +159,7 @@ TEST_CASE("acds_signatures/session_join_wrong_pubkey", "[acds_signatures]") {
   REQUIRE((verify_result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("acds_signatures/session_join_tampered_timestamp", "[acds_signatures]") {
+TEST_CASE("acds_signatures/session_join_tampered_timestamp", "[acds_signatures] [unit]") {
   uint8_t pubkey[32], seckey[64];
   crypto_sign_keypair(pubkey, seckey);
 
@@ -177,7 +176,7 @@ TEST_CASE("acds_signatures/session_join_tampered_timestamp", "[acds_signatures]"
   REQUIRE((verify_result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("acds_signatures/session_join_tampered_session_string", "[acds_signatures]") {
+TEST_CASE("acds_signatures/session_join_tampered_session_string", "[acds_signatures] [unit]") {
   uint8_t pubkey[32], seckey[64];
   crypto_sign_keypair(pubkey, seckey);
 
@@ -194,7 +193,7 @@ TEST_CASE("acds_signatures/session_join_tampered_session_string", "[acds_signatu
   REQUIRE((verify_result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("acds_signatures/session_join_empty_session_string", "[acds_signatures]") {
+TEST_CASE("acds_signatures/session_join_empty_session_string", "[acds_signatures] [unit]") {
   uint8_t pubkey[32], seckey[64];
   crypto_sign_keypair(pubkey, seckey);
 
@@ -215,7 +214,7 @@ TEST_CASE("acds_signatures/session_join_empty_session_string", "[acds_signatures
 // Timestamp Validation Tests
 // =============================================================================
 
-TEST_CASE("acds_signatures/timestamp_validation_current_time", "[acds_signatures]") {
+TEST_CASE("acds_signatures/timestamp_validation_current_time", "[acds_signatures] [unit]") {
   // Get current time
   uint64_t now_ms = (uint64_t)time(NULL) * 1000;
 
@@ -224,7 +223,7 @@ TEST_CASE("acds_signatures/timestamp_validation_current_time", "[acds_signatures
   REQUIRE(is_valid);
 }
 
-TEST_CASE("acds_signatures/timestamp_validation_recent_past", "[acds_signatures]") {
+TEST_CASE("acds_signatures/timestamp_validation_recent_past", "[acds_signatures] [unit]") {
   // 2 minutes ago
   uint64_t now_ms = (uint64_t)time(NULL) * 1000;
   uint64_t two_min_ago = now_ms - (2 * 60 * 1000);
@@ -234,7 +233,7 @@ TEST_CASE("acds_signatures/timestamp_validation_recent_past", "[acds_signatures]
   REQUIRE(is_valid);
 }
 
-TEST_CASE("acds_signatures/timestamp_validation_too_old", "[acds_signatures]") {
+TEST_CASE("acds_signatures/timestamp_validation_too_old", "[acds_signatures] [unit]") {
   // 10 minutes ago
   uint64_t now_ms = (uint64_t)time(NULL) * 1000;
   uint64_t ten_min_ago = now_ms - (10 * 60 * 1000);
@@ -244,7 +243,7 @@ TEST_CASE("acds_signatures/timestamp_validation_too_old", "[acds_signatures]") {
   REQUIRE(!(is_valid));
 }
 
-TEST_CASE("acds_signatures/timestamp_validation_future", "[acds_signatures]") {
+TEST_CASE("acds_signatures/timestamp_validation_future", "[acds_signatures] [unit]") {
   // 2 minutes in future (well beyond 60 second clock skew allowance)
   uint64_t now_ms = (uint64_t)time(NULL) * 1000;
   uint64_t future = now_ms + (2 * 60 * 1000);
@@ -254,7 +253,7 @@ TEST_CASE("acds_signatures/timestamp_validation_future", "[acds_signatures]") {
   REQUIRE(!(is_valid));
 }
 
-TEST_CASE("acds_signatures/timestamp_validation_edge_of_window", "[acds_signatures]") {
+TEST_CASE("acds_signatures/timestamp_validation_edge_of_window", "[acds_signatures] [unit]") {
   // 4 minutes ago (safely within 5 minute window, accounting for race condition)
   uint64_t now_ms = (uint64_t)time(NULL) * 1000;
   uint64_t edge = now_ms - (4 * 60 * 1000);
@@ -268,7 +267,7 @@ TEST_CASE("acds_signatures/timestamp_validation_edge_of_window", "[acds_signatur
 // NULL Parameter Tests
 // =============================================================================
 
-TEST_CASE("acds_signatures/session_create_null_signature_output", "[acds_signatures]") {
+TEST_CASE("acds_signatures/session_create_null_signature_output", "[acds_signatures] [unit]") {
   uint8_t seckey[64];
   memset(seckey, 0, sizeof(seckey));
 
@@ -276,7 +275,7 @@ TEST_CASE("acds_signatures/session_create_null_signature_output", "[acds_signatu
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("acds_signatures/session_join_null_session_string", "[acds_signatures]") {
+TEST_CASE("acds_signatures/session_join_null_session_string", "[acds_signatures] [unit]") {
   uint8_t seckey[64];
   uint8_t signature[64];
   memset(seckey, 0, sizeof(seckey));

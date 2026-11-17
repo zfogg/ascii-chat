@@ -31,7 +31,7 @@ static struct sockaddr_in bind_loopback(socket_t sock) {
   return address;
 }
 
-TEST_CASE("nat_quality/deterministic_host_selection_respects_tiers_and_tiebreakers", "[nat_quality]") {
+TEST_CASE("nat_quality/deterministic_host_selection_respects_tiers_and_tiebreakers", "[nat_quality] [contract]") {
   nat_quality_t worst;
   nat_quality_init(NULL);
   nat_quality_init(&worst);
@@ -70,7 +70,7 @@ TEST_CASE("nat_quality/deterministic_host_selection_respects_tiers_and_tiebreake
   REQUIRE(std::strcmp((nat_type_to_string((acip_nat_type_t)255)), ("Unknown")) == 0);
 }
 
-TEST_CASE("nat_quality/bandwidth_override_does_not_wrap_large_peer_values", "[nat_quality]") {
+TEST_CASE("nat_quality/bandwidth_override_does_not_wrap_large_peer_values", "[nat_quality] [contract]") {
   nat_quality_t a = {.upload_kbps = 3500000000u, .nat_type = ACIP_NAT_TYPE_SYMMETRIC};
   nat_quality_t b = {.upload_kbps = 3500000000u, .lan_reachable = true};
   REQUIRE((nat_compare_quality(&a, &b, true)) == (1));
@@ -116,7 +116,7 @@ static void *stun_reply(void *data) {
   return NULL;
 }
 
-TEST_CASE("nat_quality/real_stun_probe_records_only_supported_observations_and_recovers_from_bad_replies", "[nat_quality]") {
+TEST_CASE("nat_quality/real_stun_probe_records_only_supported_observations_and_recovers_from_bad_replies", "[nat_quality] [contract]") {
   REQUIRE((nat_detect_quality(NULL, NULL, 0)) == (ERROR_INVALID_PARAM));
   CLEAR_ERRNO_ALL();
   errno_notifications_enable(true);

@@ -1,6 +1,6 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -94,7 +94,7 @@ static invalid_socket_test_case_t invalid_socket_cases[] = {
     {OP_SEND_PONG, "send_pong_packet with invalid socket"},
 };
 
-TEST_CASE("network/invalid_socket_operations", "[network]") {
+TEST_CASE("network/invalid_socket_operations", "[network] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(invalid_socket_cases), std::end(invalid_socket_cases)));
   auto *tc = &generated_case;
   int result;
@@ -183,7 +183,7 @@ TEST_CASE("network/invalid_socket_operations", "[network]") {
 // Valid Socket Operation Tests
 // =============================================================================
 
-TEST_CASE("network/set_socket_timeout_valid", "[network]") {
+TEST_CASE("network/set_socket_timeout_valid", "[network] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -195,7 +195,7 @@ TEST_CASE("network/set_socket_timeout_valid", "[network]") {
 
 // Replaced by parameterized test: invalid_socket_operations
 
-TEST_CASE("network/set_socket_keepalive_valid", "[network]") {
+TEST_CASE("network/set_socket_keepalive_valid", "[network] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -207,7 +207,7 @@ TEST_CASE("network/set_socket_keepalive_valid", "[network]") {
 
 // Replaced by parameterized test: invalid_socket_operations
 
-TEST_CASE("network/set_socket_nonblocking_valid", "[network]") {
+TEST_CASE("network/set_socket_nonblocking_valid", "[network] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -241,7 +241,7 @@ static parse_size_message_test_case_t parse_size_message_cases[] = {
     {"SIZE:80,24\n", true, -1, 0, 0, "NULL pointers"},
 };
 
-TEST_CASE("network/parse_size_message_variations", "[network]") {
+TEST_CASE("network/parse_size_message_variations", "[network] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(parse_size_message_cases), std::end(parse_size_message_cases)));
   auto *tc = &generated_case;
   unsigned short width = 0, height = 0;
@@ -275,12 +275,12 @@ TEST_CASE("network/parse_size_message_variations", "[network]") {
 
 // Replaced by parameterized test: invalid_socket_operations
 
-TEST_CASE("network/network_error_string_valid_codes", "[network]") {
+TEST_CASE("network/network_error_string_valid_codes", "[network] [unit]") {
   const char *error = network_error_string();
   REQUIRE((error) != nullptr);
 }
 
-TEST_CASE("network/random_size_messages", "[network]") {
+TEST_CASE("network/random_size_messages", "[network] [unit]") {
   log_debug("Starting random_size_messages test");
   srand(42);
 

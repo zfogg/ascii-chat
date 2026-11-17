@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 #include "../worker_assert.h"
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/connection.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/network/acip/send.h>
@@ -383,11 +382,11 @@ static void teardown(void) {
   socket_cleanup();
   log_destroy();
 }
-TEST_CASE("network_connections/establishment_controls", "[network_connections]") {
+TEST_CASE("network_connections/establishment_controls", "[network_connections] [contract]") {
   establishment_controls();
 }
 
-TEST_CASE("network_connections/tcp_packet_rejection_is_delivered_before_close", "[network_connections]") {
+TEST_CASE("network_connections/tcp_packet_rejection_is_delivered_before_close", "[network_connections] [contract]") {
   fixture_t f = {.packet_rejection = ERROR_SESSION_FULL};
   uint16_t port = unused_port();
   network_server_config_t config = {.port = port, .ipv4_address = "127.0.0.1", .bind_ipv4 = true, .max_connections = 4, .callbacks = {opened, packet, closing, closed}, .user_data = &f};
@@ -426,51 +425,51 @@ TEST_CASE("network_connections/tcp_packet_rejection_is_delivered_before_close", 
   REQUIRE((f.server) == nullptr);
 }
 
-TEST_CASE("network_connections/tcp_echo", "[network_connections]") {
+TEST_CASE("network_connections/tcp_echo", "[network_connections] [contract]") {
   scenario(0, false, false, 0, false);
 }
 
-TEST_CASE("network_connections/tcp_reject", "[network_connections]") {
+TEST_CASE("network_connections/tcp_reject", "[network_connections] [contract]") {
   scenario(0, true, false, 0, false);
 }
 
-TEST_CASE("network_connections/tcp_stall", "[network_connections]") {
+TEST_CASE("network_connections/tcp_stall", "[network_connections] [contract]") {
   scenario(0, false, true, 0, false);
 }
 
-TEST_CASE("network_connections/tcp_failed_join", "[network_connections]") {
+TEST_CASE("network_connections/tcp_failed_join", "[network_connections] [contract]") {
   scenario(0, false, false, 1, false);
 }
 
-TEST_CASE("network_connections/tcp_partial_start", "[network_connections]") {
+TEST_CASE("network_connections/tcp_partial_start", "[network_connections] [contract]") {
   scenario(0, false, false, 2, false);
 }
 
-TEST_CASE("network_connections/tcp_close", "[network_connections]") {
+TEST_CASE("network_connections/tcp_close", "[network_connections] [contract]") {
   scenario(0, false, false, 0, true);
 }
 
-TEST_CASE("network_connections/websocket_echo", "[network_connections]") {
+TEST_CASE("network_connections/websocket_echo", "[network_connections] [contract]") {
   scenario(1, false, false, 0, false);
 }
 
-TEST_CASE("network_connections/websocket_reject", "[network_connections]") {
+TEST_CASE("network_connections/websocket_reject", "[network_connections] [contract]") {
   scenario(1, true, false, 0, false);
 }
 
-TEST_CASE("network_connections/websocket_stall", "[network_connections]") {
+TEST_CASE("network_connections/websocket_stall", "[network_connections] [contract]") {
   scenario(1, false, true, 0, false);
 }
 
-TEST_CASE("network_connections/websocket_failed_join", "[network_connections]") {
+TEST_CASE("network_connections/websocket_failed_join", "[network_connections] [contract]") {
   scenario(1, false, false, 1, false);
 }
 
-TEST_CASE("network_connections/websocket_partial_start", "[network_connections]") {
+TEST_CASE("network_connections/websocket_partial_start", "[network_connections] [contract]") {
   scenario(1, false, false, 2, false);
 }
 
-TEST_CASE("network_connections/websocket_close", "[network_connections]") {
+TEST_CASE("network_connections/websocket_close", "[network_connections] [contract]") {
   scenario(1, false, false, 0, true);
 }
 
@@ -500,7 +499,7 @@ static void *close_websocket_concurrently(void *arg) {
   return NULL;
 }
 
-TEST_CASE("network_connections/websocket_concurrent_close", "[network_connections]") {
+TEST_CASE("network_connections/websocket_concurrent_close", "[network_connections] [contract]") {
   acip_websocket_runtime_t *runtime = NULL;
   REQUIRE((acip_websocket_runtime_create(&runtime)) == (ASCIICHAT_OK));
   acip_transport_t *transport = acip_websocket_client_transport_create("concurrent_close", "ws://127.0.0.1:1", NULL);
@@ -542,58 +541,58 @@ TEST_CASE("network_connections/websocket_concurrent_close", "[network_connection
   acip_websocket_runtime_destroy(&runtime);
 }
 
-TEST_CASE("network_connections/webrtc_echo", "[network_connections]") {
+TEST_CASE("network_connections/webrtc_echo", "[network_connections] [contract]") {
   REQUIRE((webrtc_init()) == (ASCIICHAT_OK));
   scenario(2, false, false, 0, false);
   webrtc_destroy();
 }
 
-TEST_CASE("network_connections/webrtc_reject", "[network_connections]") {
+TEST_CASE("network_connections/webrtc_reject", "[network_connections] [contract]") {
   REQUIRE((webrtc_init()) == (ASCIICHAT_OK));
   scenario(2, true, false, 0, false);
   webrtc_destroy();
 }
 
-TEST_CASE("network_connections/webrtc_idle_timeout_reports_error", "[network_connections]") {
+TEST_CASE("network_connections/webrtc_idle_timeout_reports_error", "[network_connections] [contract]") {
   REQUIRE((webrtc_init()) == (ASCIICHAT_OK));
   scenario(2, false, true, 0, false);
   webrtc_destroy();
 }
 
-TEST_CASE("network_connections/webrtc_failed_join", "[network_connections]") {
+TEST_CASE("network_connections/webrtc_failed_join", "[network_connections] [contract]") {
   REQUIRE((webrtc_init()) == (ASCIICHAT_OK));
   scenario(2, false, false, 1, false);
   webrtc_destroy();
 }
 
-TEST_CASE("network_connections/webrtc_partial_start", "[network_connections]") {
+TEST_CASE("network_connections/webrtc_partial_start", "[network_connections] [contract]") {
   REQUIRE((webrtc_init()) == (ASCIICHAT_OK));
   scenario(2, false, false, 2, false);
   webrtc_destroy();
 }
 
-TEST_CASE("network_connections/webrtc_close", "[network_connections]") {
+TEST_CASE("network_connections/webrtc_close", "[network_connections] [contract]") {
   REQUIRE((webrtc_init()) == (ASCIICHAT_OK));
   scenario(2, false, false, 0, true);
   webrtc_destroy();
 }
 
-TEST_CASE("network_connections/stalled_upgrade_deadline", "[network_connections]") {
+TEST_CASE("network_connections/stalled_upgrade_deadline", "[network_connections] [contract]") {
   stalled_upgrade_deadline();
 }
 
-TEST_CASE("network_connections/cancelled_upgrade", "[network_connections]") {
+TEST_CASE("network_connections/cancelled_upgrade", "[network_connections] [contract]") {
   cancelled_upgrade();
 }
 
-TEST_CASE("network_connections/unicode_hostname_tcp_echo", "[network_connections]") {
+TEST_CASE("network_connections/unicode_hostname_tcp_echo", "[network_connections] [contract]") {
   scenario(4, false, false, 0, false);
 }
-TEST_CASE("network_connections/unicode_hostname_websocket_echo", "[network_connections]") {
+TEST_CASE("network_connections/unicode_hostname_websocket_echo", "[network_connections] [contract]") {
   scenario(3, false, false, 0, false);
 }
 
-TEST_CASE("network_connections/explicit_zero_websocket_ports_are_rejected_before_connection", "[network_connections]") {
+TEST_CASE("network_connections/explicit_zero_websocket_ports_are_rejected_before_connection", "[network_connections] [contract]") {
   REQUIRE((acip_websocket_client_transport_create("zero_port", "ws://localhost:0", NULL)) == nullptr);
   REQUIRE((acip_websocket_client_transport_create("zero_port", "wss://localhost:0", NULL)) == nullptr);
 }

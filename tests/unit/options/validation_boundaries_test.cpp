@@ -1,11 +1,11 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/validation.h>
 #include <ascii-chat/options/parsers.h>
 #include <ascii-chat/tests/logging.h>
 #include <limits.h>
 #include <string.h>
-TEST_CASE("option_validation_boundaries/finite_float_and_volume_inputs", "[option_validation_boundaries]") {
+TEST_CASE("option_validation_boundaries/finite_float_and_volume_inputs", "[option_validation_boundaries] [unit]") {
   char error[256];
   float (*validators[])(const char *, char *, size_t) = {validate_opt_float_non_negative, validate_opt_volume};
   const char *invalid[] = {NULL, "", "garbage", "0.5junk", "-0.01", "nan", "NAN", "nan(payload)", "inf", "-inf", "Infinity", "1e1000"};
@@ -26,7 +26,7 @@ TEST_CASE("option_validation_boundaries/finite_float_and_volume_inputs", "[optio
   REQUIRE((validate_opt_volume("1.001", NULL, 0)) == (-1.0f));
 }
 
-TEST_CASE("option_validation_boundaries/address_literals_and_local_hostname", "[option_validation_boundaries]") {
+TEST_CASE("option_validation_boundaries/address_literals_and_local_hostname", "[option_validation_boundaries] [unit]") {
   const char *inputs[] = {"127.0.0.1", "0.0.0.0", "192.0.2.123", "::1", "[::1]", "2001:db8::1", "[2001:db8::1]", "localhost", "ｌｏｃａｌｈｏｓｔ"};
   const char *expected[] = {"127.0.0.1", "0.0.0.0", "192.0.2.123", "::1", "::1", "2001:db8::1", "2001:db8::1", "127.0.0.1", "127.0.0.1"};
   char parsed[256], error[256];
@@ -46,7 +46,7 @@ TEST_CASE("option_validation_boundaries/address_literals_and_local_hostname", "[
   }
 }
 
-TEST_CASE("option_validation_boundaries/numeric_ranges_and_error_messages", "[option_validation_boundaries]") {
+TEST_CASE("option_validation_boundaries/numeric_ranges_and_error_messages", "[option_validation_boundaries] [unit]") {
   char error[256];
   const char *invalid[] = {NULL, "", "invalid", "1junk", "999999999999999999999"};
   int (*validators[])(const char *, char *, size_t) = {validate_opt_positive_int, validate_opt_non_negative_int,  validate_opt_fps,
@@ -80,7 +80,7 @@ TEST_CASE("option_validation_boundaries/numeric_ranges_and_error_messages", "[op
   REQUIRE((validate_opt_device_index("bad", error, sizeof(error))) == (INT_MIN));
 }
 
-TEST_CASE("option_validation_boundaries/passwords_and_remote_identity_key_schemes", "[option_validation_boundaries]") {
+TEST_CASE("option_validation_boundaries/passwords_and_remote_identity_key_schemes", "[option_validation_boundaries] [unit]") {
   char error[256], password[258];
   memset(password, 'a', sizeof(password));
   password[257] = '\0';
@@ -104,7 +104,7 @@ TEST_CASE("option_validation_boundaries/passwords_and_remote_identity_key_scheme
   SAFE_FREE(options);
 }
 
-TEST_CASE("option_validation_boundaries/enum_parsers_reject_unknown_values_without_overwriting_destination", "[option_validation_boundaries]") {
+TEST_CASE("option_validation_boundaries/enum_parsers_reject_unknown_values_without_overwriting_destination", "[option_validation_boundaries] [unit]") {
   bool (*parsers[])(const char *, void *, char **) = {parse_color_mode, parse_color_filter, parse_render_mode, parse_render_theme, parse_palette_type, parse_log_level, parse_port_option};
   for (size_t i = 0; i < sizeof(parsers) / sizeof(*parsers); ++i) {
     int value = 12345;
@@ -135,7 +135,7 @@ TEST_CASE("option_validation_boundaries/enum_parsers_reject_unknown_values_witho
   SAFE_FREE(options);
 }
 
-TEST_CASE("option_validation_boundaries/session_key_array_rejects_excess_and_truncated_paths", "[option_validation_boundaries]") {
+TEST_CASE("option_validation_boundaries/session_key_array_rejects_excess_and_truncated_paths", "[option_validation_boundaries] [unit]") {
   options_t opts{};
   char *args[MAX_SESSION_KEYS + 2];
   args[0] = "ascii-chat";

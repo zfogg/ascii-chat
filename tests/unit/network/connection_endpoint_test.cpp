@@ -1,10 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/util/url.h>
 #include <ascii-chat/util/ip.h>
 
 #include <ascii-chat/network/connection_endpoint.h>
-TEST_CASE("connection_endpoint/resolve_ws_with_port", "[connection_endpoint]") {
+TEST_CASE("connection_endpoint/resolve_ws_with_port", "[connection_endpoint] [unit]") {
   connection_endpoint_t endpoint{};
   asciichat_error_t result = connection_endpoint_resolve("ws://example.com:443", 27225, &endpoint);
 
@@ -14,7 +13,7 @@ TEST_CASE("connection_endpoint/resolve_ws_with_port", "[connection_endpoint]") {
   REQUIRE((endpoint.port) == (443));
 }
 
-TEST_CASE("connection_endpoint/resolve_wss_without_port", "[connection_endpoint]") {
+TEST_CASE("connection_endpoint/resolve_wss_without_port", "[connection_endpoint] [unit]") {
   connection_endpoint_t endpoint{};
   asciichat_error_t result = connection_endpoint_resolve("wss://example.com", 27225, &endpoint);
 
@@ -24,7 +23,7 @@ TEST_CASE("connection_endpoint/resolve_wss_without_port", "[connection_endpoint]
   REQUIRE((endpoint.port) == (27225));
 }
 
-TEST_CASE("connection_endpoint/resolve_tcp_with_port", "[connection_endpoint]") {
+TEST_CASE("connection_endpoint/resolve_tcp_with_port", "[connection_endpoint] [unit]") {
   connection_endpoint_t endpoint{};
   asciichat_error_t result = connection_endpoint_resolve("tcp://example.com:5000", 27225, &endpoint);
 
@@ -34,7 +33,7 @@ TEST_CASE("connection_endpoint/resolve_tcp_with_port", "[connection_endpoint]") 
   REQUIRE((endpoint.port) == (5000));
 }
 
-TEST_CASE("connection_endpoint/resolve_quic_endpoints", "[connection_endpoint]") {
+TEST_CASE("connection_endpoint/resolve_quic_endpoints", "[connection_endpoint] [unit]") {
   connection_endpoint_t endpoint{};
   REQUIRE((connection_endpoint_resolve("quic://example.com:443", 27224, &endpoint)) == (ASCIICHAT_OK));
   REQUIRE((endpoint.protocol) == (CONNECTION_ENDPOINT_QUIC));
@@ -47,7 +46,7 @@ TEST_CASE("connection_endpoint/resolve_quic_endpoints", "[connection_endpoint]")
   REQUIRE((connection_endpoint_resolve("quic://user@example.com", 27224, &endpoint)) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("connection_endpoint/resolve_bare_hostname", "[connection_endpoint]") {
+TEST_CASE("connection_endpoint/resolve_bare_hostname", "[connection_endpoint] [unit]") {
   connection_endpoint_t endpoint{};
   asciichat_error_t result = connection_endpoint_resolve("example.com", 27224, &endpoint);
 
@@ -57,7 +56,7 @@ TEST_CASE("connection_endpoint/resolve_bare_hostname", "[connection_endpoint]") 
   REQUIRE((endpoint.port) == (27224));
 }
 
-TEST_CASE("connection_endpoint/resolve_hostname_with_port", "[connection_endpoint]") {
+TEST_CASE("connection_endpoint/resolve_hostname_with_port", "[connection_endpoint] [unit]") {
   connection_endpoint_t endpoint{};
   asciichat_error_t result = connection_endpoint_resolve("example.com:6000", 27224, &endpoint);
 
@@ -67,14 +66,14 @@ TEST_CASE("connection_endpoint/resolve_hostname_with_port", "[connection_endpoin
   REQUIRE((endpoint.port) == (6000));
 }
 
-TEST_CASE("connection_endpoint/resolve_invalid_scheme", "[connection_endpoint]") {
+TEST_CASE("connection_endpoint/resolve_invalid_scheme", "[connection_endpoint] [unit]") {
   connection_endpoint_t endpoint{};
   asciichat_error_t result = connection_endpoint_resolve("http://example.com", 27224, &endpoint);
 
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("connection_endpoint/url_storage_boundary_does_not_truncate_or_mutate_on_error", "[connection_endpoint]") {
+TEST_CASE("connection_endpoint/url_storage_boundary_does_not_truncate_or_mutate_on_error", "[connection_endpoint] [unit]") {
   char input[URL_BUFFER_SIZE + 1];
   const char *prefix = "wss://example.com/";
   size_t prefix_len = strlen(prefix);
@@ -91,7 +90,7 @@ TEST_CASE("connection_endpoint/url_storage_boundary_does_not_truncate_or_mutate_
   REQUIRE(std::memcmp((&endpoint), (&before), (sizeof(endpoint))) == 0);
 }
 
-TEST_CASE("connection_endpoint/host_storage_boundary_preserves_full_host", "[connection_endpoint]") {
+TEST_CASE("connection_endpoint/host_storage_boundary_preserves_full_host", "[connection_endpoint] [unit]") {
   char host[HOSTNAME_BUFFER_SIZE + 1];
   memset(host, 'a', sizeof(host));
   host[63] = host[127] = host[191] = '.';
@@ -106,7 +105,7 @@ TEST_CASE("connection_endpoint/host_storage_boundary_preserves_full_host", "[con
   REQUIRE(std::memcmp((&endpoint), (&before), (sizeof(endpoint))) == 0);
 }
 
-TEST_CASE("connection_endpoint/unicode_and_ascii_names_share_connection_identity", "[connection_endpoint]") {
+TEST_CASE("connection_endpoint/unicode_and_ascii_names_share_connection_identity", "[connection_endpoint] [unit]") {
   connection_endpoint_t unicode{}, ascii{};
   REQUIRE((connection_endpoint_resolve("wss://bücher.de:443/日本語", 443, &unicode)) == (ASCIICHAT_OK));
   REQUIRE((connection_endpoint_resolve("wss://xn--bcher-kva.de:443/日本語", 443, &ascii)) == (ASCIICHAT_OK));
@@ -115,7 +114,7 @@ TEST_CASE("connection_endpoint/unicode_and_ascii_names_share_connection_identity
   REQUIRE((unicode.port) == (ascii.port));
 }
 
-TEST_CASE("connection_endpoint/unicode_input_byte_length_does_not_bound_ascii_host_storage", "[connection_endpoint]") {
+TEST_CASE("connection_endpoint/unicode_input_byte_length_does_not_bound_ascii_host_storage", "[connection_endpoint] [unit]") {
   char host[512], ascii[HOSTNAME_BUFFER_SIZE];
   size_t used = 0;
   for (size_t label = 0; label < 4; ++label) {

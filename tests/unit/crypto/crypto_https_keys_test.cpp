@@ -4,7 +4,6 @@
  * @brief Unit tests for HTTPS key fetching, parsing, and multi-key support
  */
 
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/https_keys.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/crypto/keys.h>
@@ -15,7 +14,7 @@
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("crypto_https_keys/build_github_ssh_url_valid", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_github_ssh_url_valid", "[crypto_https_keys] [unit]") {
   char url[256];
   asciichat_error_t result = build_github_ssh_url("testuser", url, sizeof(url));
 
@@ -23,27 +22,27 @@ TEST_CASE("crypto_https_keys/build_github_ssh_url_valid", "[crypto_https_keys]")
   REQUIRE(std::strcmp((url), ("https://github.com/testuser.keys")) == 0);
 }
 
-TEST_CASE("crypto_https_keys/build_github_ssh_url_null_username", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_github_ssh_url_null_username", "[crypto_https_keys] [unit]") {
   char url[256];
   asciichat_error_t result = build_github_ssh_url(NULL, url, sizeof(url));
 
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_https_keys/build_github_ssh_url_null_output", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_github_ssh_url_null_output", "[crypto_https_keys] [unit]") {
   asciichat_error_t result = build_github_ssh_url("testuser", NULL, 256);
 
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_https_keys/build_github_ssh_url_buffer_too_small", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_github_ssh_url_buffer_too_small", "[crypto_https_keys] [unit]") {
   char url[10];
   asciichat_error_t result = build_github_ssh_url("testuser", url, sizeof(url));
 
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_https_keys/build_github_ssh_url_long_username", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_github_ssh_url_long_username", "[crypto_https_keys] [unit]") {
   char url[256];
   char long_username[200];
   memset(long_username, 'a', sizeof(long_username) - 1);
@@ -59,7 +58,7 @@ TEST_CASE("crypto_https_keys/build_github_ssh_url_long_username", "[crypto_https
 // URL Construction Tests - GitLab SSH
 // =============================================================================
 
-TEST_CASE("crypto_https_keys/build_gitlab_ssh_url_valid", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_gitlab_ssh_url_valid", "[crypto_https_keys] [unit]") {
   char url[256];
   asciichat_error_t result = build_gitlab_ssh_url("testuser", url, sizeof(url));
 
@@ -67,20 +66,20 @@ TEST_CASE("crypto_https_keys/build_gitlab_ssh_url_valid", "[crypto_https_keys]")
   REQUIRE(std::strcmp((url), ("https://gitlab.com/testuser.keys")) == 0);
 }
 
-TEST_CASE("crypto_https_keys/build_gitlab_ssh_url_null_username", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_gitlab_ssh_url_null_username", "[crypto_https_keys] [unit]") {
   char url[256];
   asciichat_error_t result = build_gitlab_ssh_url(NULL, url, sizeof(url));
 
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_https_keys/build_gitlab_ssh_url_null_output", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_gitlab_ssh_url_null_output", "[crypto_https_keys] [unit]") {
   asciichat_error_t result = build_gitlab_ssh_url("testuser", NULL, 256);
 
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_https_keys/build_gitlab_ssh_url_buffer_too_small", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_gitlab_ssh_url_buffer_too_small", "[crypto_https_keys] [unit]") {
   char url[10];
   asciichat_error_t result = build_gitlab_ssh_url("testuser", url, sizeof(url));
 
@@ -91,7 +90,7 @@ TEST_CASE("crypto_https_keys/build_gitlab_ssh_url_buffer_too_small", "[crypto_ht
 // URL Construction Tests - GitHub GPG
 // =============================================================================
 
-TEST_CASE("crypto_https_keys/build_github_gpg_url_valid", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_github_gpg_url_valid", "[crypto_https_keys] [unit]") {
   char url[256];
   asciichat_error_t result = build_github_gpg_url("testuser", url, sizeof(url));
 
@@ -99,20 +98,20 @@ TEST_CASE("crypto_https_keys/build_github_gpg_url_valid", "[crypto_https_keys]")
   REQUIRE(std::strcmp((url), ("https://github.com/testuser.gpg")) == 0);
 }
 
-TEST_CASE("crypto_https_keys/build_github_gpg_url_null_username", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_github_gpg_url_null_username", "[crypto_https_keys] [unit]") {
   char url[256];
   asciichat_error_t result = build_github_gpg_url(NULL, url, sizeof(url));
 
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_https_keys/build_github_gpg_url_null_output", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_github_gpg_url_null_output", "[crypto_https_keys] [unit]") {
   asciichat_error_t result = build_github_gpg_url("testuser", NULL, 256);
 
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_https_keys/build_github_gpg_url_buffer_too_small", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_github_gpg_url_buffer_too_small", "[crypto_https_keys] [unit]") {
   char url[10];
   asciichat_error_t result = build_github_gpg_url("testuser", url, sizeof(url));
 
@@ -123,7 +122,7 @@ TEST_CASE("crypto_https_keys/build_github_gpg_url_buffer_too_small", "[crypto_ht
 // URL Construction Tests - GitLab GPG
 // =============================================================================
 
-TEST_CASE("crypto_https_keys/build_gitlab_gpg_url_valid", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_gitlab_gpg_url_valid", "[crypto_https_keys] [unit]") {
   char url[256];
   asciichat_error_t result = build_gitlab_gpg_url("testuser", url, sizeof(url));
 
@@ -131,20 +130,20 @@ TEST_CASE("crypto_https_keys/build_gitlab_gpg_url_valid", "[crypto_https_keys]")
   REQUIRE(std::strcmp((url), ("https://gitlab.com/testuser.gpg")) == 0);
 }
 
-TEST_CASE("crypto_https_keys/build_gitlab_gpg_url_null_username", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_gitlab_gpg_url_null_username", "[crypto_https_keys] [unit]") {
   char url[256];
   asciichat_error_t result = build_gitlab_gpg_url(NULL, url, sizeof(url));
 
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_https_keys/build_gitlab_gpg_url_null_output", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_gitlab_gpg_url_null_output", "[crypto_https_keys] [unit]") {
   asciichat_error_t result = build_gitlab_gpg_url("testuser", NULL, 256);
 
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_https_keys/build_gitlab_gpg_url_buffer_too_small", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/build_gitlab_gpg_url_buffer_too_small", "[crypto_https_keys] [unit]") {
   char url[10];
   asciichat_error_t result = build_gitlab_gpg_url("testuser", url, sizeof(url));
 
@@ -155,7 +154,7 @@ TEST_CASE("crypto_https_keys/build_gitlab_gpg_url_buffer_too_small", "[crypto_ht
 // SSH Key Parsing Tests
 // =============================================================================
 
-TEST_CASE("crypto_https_keys/parse_ssh_keys_single_key", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/parse_ssh_keys_single_key", "[crypto_https_keys] [unit]") {
   const char *response = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
   char **keys = NULL;
   size_t num_keys = 0;
@@ -174,7 +173,7 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_single_key", "[crypto_https_keys]") 
   SAFE_FREE(keys);
 }
 
-TEST_CASE("crypto_https_keys/parse_ssh_keys_multiple_keys", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/parse_ssh_keys_multiple_keys", "[crypto_https_keys] [unit]") {
   const char *response = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT key1@example.com\n"
                          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop key2@example.com\n"
                          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456 key3@example.com";
@@ -200,7 +199,7 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_multiple_keys", "[crypto_https_keys]
   SAFE_FREE(keys);
 }
 
-TEST_CASE("crypto_https_keys/parse_ssh_keys_with_empty_lines", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/parse_ssh_keys_with_empty_lines", "[crypto_https_keys] [unit]") {
   const char *response = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT "
                          "key1@example.com\n\nssh-ed25519 "
                          "AAAAC3NzaC1lZDI1NTE5AAAAIABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop key2@example.com\n\n";
@@ -220,7 +219,7 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_with_empty_lines", "[crypto_https_ke
   SAFE_FREE(keys);
 }
 
-TEST_CASE("crypto_https_keys/parse_ssh_keys_max_keys_limit", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/parse_ssh_keys_max_keys_limit", "[crypto_https_keys] [unit]") {
   const char *response = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT "
                          "key1@example.com\nssh-ed25519 "
                          "AAAAC3NzaC1lZDI1NTE5AAAAIABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnop "
@@ -243,7 +242,7 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_max_keys_limit", "[crypto_https_keys
   SAFE_FREE(keys);
 }
 
-TEST_CASE("crypto_https_keys/parse_ssh_keys_null_response", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/parse_ssh_keys_null_response", "[crypto_https_keys] [unit]") {
   char **keys = NULL;
   size_t num_keys = 0;
 
@@ -252,7 +251,7 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_null_response", "[crypto_https_keys]
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_https_keys/parse_ssh_keys_null_keys_out", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/parse_ssh_keys_null_keys_out", "[crypto_https_keys] [unit]") {
   const char *response = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
   size_t num_keys = 0;
 
@@ -261,7 +260,7 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_null_keys_out", "[crypto_https_keys]
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_https_keys/parse_ssh_keys_null_num_keys", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/parse_ssh_keys_null_num_keys", "[crypto_https_keys] [unit]") {
   const char *response = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
   char **keys = NULL;
 
@@ -270,7 +269,7 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_null_num_keys", "[crypto_https_keys]
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_https_keys/parse_ssh_keys_empty_response", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/parse_ssh_keys_empty_response", "[crypto_https_keys] [unit]") {
   const char *response = "";
   char **keys = NULL;
   size_t num_keys = 0;
@@ -280,7 +279,7 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_empty_response", "[crypto_https_keys
   REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
-TEST_CASE("crypto_https_keys/parse_ssh_keys_only_newlines", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/parse_ssh_keys_only_newlines", "[crypto_https_keys] [unit]") {
   const char *response = "\n\n\n";
   char **keys = NULL;
   size_t num_keys = 0;
@@ -294,7 +293,7 @@ TEST_CASE("crypto_https_keys/parse_ssh_keys_only_newlines", "[crypto_https_keys]
 // GPG Key Parsing Tests
 // =============================================================================
 
-TEST_CASE("crypto_https_keys/parse_gpg_keys_valid", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/parse_gpg_keys_valid", "[crypto_https_keys] [unit]") {
   // Use the real expired test key fixture
   const char *response = "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
                          "\n"
@@ -330,7 +329,7 @@ TEST_CASE("crypto_https_keys/parse_gpg_keys_valid", "[crypto_https_keys]") {
   SAFE_FREE(keys);
 }
 
-TEST_CASE("crypto_https_keys/parse_gpg_keys_null_response", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/parse_gpg_keys_null_response", "[crypto_https_keys] [unit]") {
   char **keys = NULL;
   size_t num_keys = 0;
 
@@ -339,7 +338,7 @@ TEST_CASE("crypto_https_keys/parse_gpg_keys_null_response", "[crypto_https_keys]
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_https_keys/parse_gpg_keys_null_keys_out", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/parse_gpg_keys_null_keys_out", "[crypto_https_keys] [unit]") {
   const char *response = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nmQENBF...\n-----END PGP PUBLIC KEY BLOCK-----\n";
   size_t num_keys = 0;
 
@@ -348,7 +347,7 @@ TEST_CASE("crypto_https_keys/parse_gpg_keys_null_keys_out", "[crypto_https_keys]
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_https_keys/parse_gpg_keys_null_num_keys", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/parse_gpg_keys_null_num_keys", "[crypto_https_keys] [unit]") {
   const char *response = "-----BEGIN PGP PUBLIC KEY BLOCK-----\nmQENBF...\n-----END PGP PUBLIC KEY BLOCK-----\n";
   char **keys = NULL;
 
@@ -357,7 +356,7 @@ TEST_CASE("crypto_https_keys/parse_gpg_keys_null_num_keys", "[crypto_https_keys]
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_https_keys/parse_gpg_keys_invalid_format", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/parse_gpg_keys_invalid_format", "[crypto_https_keys] [unit]") {
   const char *response = "This is not a GPG key";
   char **keys = NULL;
   size_t num_keys = 0;
@@ -367,7 +366,7 @@ TEST_CASE("crypto_https_keys/parse_gpg_keys_invalid_format", "[crypto_https_keys
   REQUIRE((result) == (ERROR_CRYPTO_KEY));
 }
 
-TEST_CASE("crypto_https_keys/parse_gpg_keys_ssh_key_input", "[crypto_https_keys]") {
+TEST_CASE("crypto_https_keys/parse_gpg_keys_ssh_key_input", "[crypto_https_keys] [unit]") {
   const char *response = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
   char **keys = NULL;
   size_t num_keys = 0;
@@ -381,7 +380,7 @@ TEST_CASE("crypto_https_keys/parse_gpg_keys_ssh_key_input", "[crypto_https_keys]
 // Multi-Key Parsing Tests (parse_public_keys)
 // =============================================================================
 
-TEST_CASE("crypto_multi_keys/parse_public_keys_null_input", "[crypto_multi_keys]") {
+TEST_CASE("crypto_multi_keys/parse_public_keys_null_input", "[crypto_multi_keys] [unit]") {
   public_key_t keys[10];
   size_t num_keys = 0;
 
@@ -390,7 +389,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_null_input", "[crypto_multi_keys]
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_multi_keys/parse_public_keys_null_keys_out", "[crypto_multi_keys]") {
+TEST_CASE("crypto_multi_keys/parse_public_keys_null_keys_out", "[crypto_multi_keys] [unit]") {
   size_t num_keys = 0;
 
   asciichat_error_t result = parse_public_keys("ssh-ed25519 AAAAC3...", NULL, &num_keys, 10);
@@ -398,7 +397,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_null_keys_out", "[crypto_multi_ke
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_multi_keys/parse_public_keys_null_num_keys", "[crypto_multi_keys]") {
+TEST_CASE("crypto_multi_keys/parse_public_keys_null_num_keys", "[crypto_multi_keys] [unit]") {
   public_key_t keys[10];
 
   asciichat_error_t result = parse_public_keys("ssh-ed25519 AAAAC3...", keys, NULL, 10);
@@ -406,7 +405,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_null_num_keys", "[crypto_multi_ke
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_multi_keys/parse_public_keys_zero_max_keys", "[crypto_multi_keys]") {
+TEST_CASE("crypto_multi_keys/parse_public_keys_zero_max_keys", "[crypto_multi_keys] [unit]") {
   public_key_t keys[10];
   size_t num_keys = 0;
 
@@ -415,7 +414,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_zero_max_keys", "[crypto_multi_ke
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_multi_keys/parse_public_keys_single_ssh_key", "[crypto_multi_keys]") {
+TEST_CASE("crypto_multi_keys/parse_public_keys_single_ssh_key", "[crypto_multi_keys] [unit]") {
   // Valid Ed25519 public key (base64 decoded is 32 bytes after ssh-ed25519 prefix)
   const char *key_str = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
   public_key_t keys[10];
@@ -428,7 +427,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_single_ssh_key", "[crypto_multi_k
   REQUIRE((keys[0].type) == (KEY_TYPE_ED25519));
 }
 
-TEST_CASE("crypto_multi_keys/parse_public_keys_raw_hex", "[crypto_multi_keys]") {
+TEST_CASE("crypto_multi_keys/parse_public_keys_raw_hex", "[crypto_multi_keys] [unit]") {
   // Valid 64-char hex string representing 32 bytes
   const char *hex_key = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
   public_key_t keys[10];
@@ -441,7 +440,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_raw_hex", "[crypto_multi_keys]") 
   REQUIRE((keys[0].type) == (KEY_TYPE_X25519));
 }
 
-TEST_CASE("crypto_multi_keys/parse_public_keys_github_prefix_detection", "[crypto_multi_keys]") {
+TEST_CASE("crypto_multi_keys/parse_public_keys_github_prefix_detection", "[crypto_multi_keys] [unit]") {
   // This test verifies the function recognizes the github: prefix
   // Note: Actual fetching is tested separately (requires network)
   public_key_t keys[10];
@@ -457,7 +456,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_github_prefix_detection", "[crypt
   REQUIRE((num_keys == 0 || num_keys >= 1));
 }
 
-TEST_CASE("crypto_multi_keys/parse_public_keys_gitlab_prefix_detection", "[crypto_multi_keys]") {
+TEST_CASE("crypto_multi_keys/parse_public_keys_gitlab_prefix_detection", "[crypto_multi_keys] [unit]") {
   // Similar test for gitlab: prefix
   public_key_t keys[10];
   size_t num_keys = 99;
@@ -468,7 +467,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_gitlab_prefix_detection", "[crypt
   (void)result; // Ignore result - we're testing prefix handling
 }
 
-TEST_CASE("crypto_multi_keys/parse_public_keys_respects_max_keys", "[crypto_multi_keys]") {
+TEST_CASE("crypto_multi_keys/parse_public_keys_respects_max_keys", "[crypto_multi_keys] [unit]") {
   // Test with file path that would have multiple keys
   // For unit testing without file system, we test the single key case with max_keys=1
   const char *key_str = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGPkW7kWr6FXmS8j1YJv4VoxXu+XYC+oPOC5AXsB/3kT test@example.com";
@@ -481,7 +480,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_respects_max_keys", "[crypto_mult
   REQUIRE((num_keys) == (1));
 }
 
-TEST_CASE("crypto_multi_keys/parse_public_keys_invalid_format", "[crypto_multi_keys]") {
+TEST_CASE("crypto_multi_keys/parse_public_keys_invalid_format", "[crypto_multi_keys] [unit]") {
   // Test with completely invalid input
   const char *invalid = "not a valid key format at all";
   public_key_t keys[10];
@@ -517,7 +516,7 @@ TEST_CASE("crypto_multi_keys/parse_public_keys_invalid_format", "[crypto_multi_k
 #define ZFOGG_ED25519_KEY3 "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHff83Fv185QyZs3vxprrvLO8Gm26ruzUMHOlBPdDkEV"
 
 // Test that parse_ssh_keys_from_response handles real multi-key GitHub profiles
-TEST_CASE("crypto_multi_keys/real_github_zfogg_multi_key_response", "[crypto_multi_keys]") {
+TEST_CASE("crypto_multi_keys/real_github_zfogg_multi_key_response", "[crypto_multi_keys] [unit]") {
   // Simulate the exact response from github.com/zfogg.keys
   // 1 RSA key + 3 Ed25519 keys
   const char *zfogg_keys_response = ZFOGG_RSA_KEY "\n" ZFOGG_ED25519_KEY1 "\n" ZFOGG_ED25519_KEY2 "\n" ZFOGG_ED25519_KEY3;
@@ -553,7 +552,7 @@ TEST_CASE("crypto_multi_keys/real_github_zfogg_multi_key_response", "[crypto_mul
 }
 
 // Test the verification scenario: server presents one of zfogg's Ed25519 keys
-TEST_CASE("crypto_multi_keys/real_github_zfogg_server_key_match_any", "[crypto_multi_keys]") {
+TEST_CASE("crypto_multi_keys/real_github_zfogg_server_key_match_any", "[crypto_multi_keys] [unit]") {
   // Use zfogg's actual Ed25519 keys
   const char *zfogg_ed25519_keys[] = {ZFOGG_ED25519_KEY1, ZFOGG_ED25519_KEY2, ZFOGG_ED25519_KEY3};
 
@@ -588,7 +587,7 @@ TEST_CASE("crypto_multi_keys/real_github_zfogg_server_key_match_any", "[crypto_m
 }
 
 // Test that each of zfogg's Ed25519 keys matches when presented as server key
-TEST_CASE("crypto_multi_keys/real_github_zfogg_each_key_matches", "[crypto_multi_keys]") {
+TEST_CASE("crypto_multi_keys/real_github_zfogg_each_key_matches", "[crypto_multi_keys] [unit]") {
   const char *zfogg_ed25519_keys[] = {ZFOGG_ED25519_KEY1, ZFOGG_ED25519_KEY2, ZFOGG_ED25519_KEY3};
 
   public_key_t all_keys[3];
@@ -614,7 +613,7 @@ TEST_CASE("crypto_multi_keys/real_github_zfogg_each_key_matches", "[crypto_multi
 }
 
 // Test that RSA key is properly rejected
-TEST_CASE("crypto_multi_keys/real_github_zfogg_rsa_rejected", "[crypto_multi_keys]") {
+TEST_CASE("crypto_multi_keys/real_github_zfogg_rsa_rejected", "[crypto_multi_keys] [unit]") {
   public_key_t key;
   asciichat_error_t result = parse_public_key(ZFOGG_RSA_KEY, &key);
 
@@ -622,7 +621,7 @@ TEST_CASE("crypto_multi_keys/real_github_zfogg_rsa_rejected", "[crypto_multi_key
 }
 
 // Test that no match is detected when server key is not in zfogg's list
-TEST_CASE("crypto_multi_keys/real_github_zfogg_unknown_server_key_no_match", "[crypto_multi_keys]") {
+TEST_CASE("crypto_multi_keys/real_github_zfogg_unknown_server_key_no_match", "[crypto_multi_keys] [unit]") {
   // Parse zfogg's actual Ed25519 keys
   const char *zfogg_ed25519_keys[] = {ZFOGG_ED25519_KEY1, ZFOGG_ED25519_KEY2, ZFOGG_ED25519_KEY3};
 

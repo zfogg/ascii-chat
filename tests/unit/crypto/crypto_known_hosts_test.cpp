@@ -1,3 +1,4 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
 /**
@@ -5,7 +6,6 @@
  * @brief Unit tests for lib/crypto/known_hosts.c - Tests the intended final crypto implementation
  */
 
-#include <catch2/catch_all.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -69,7 +69,7 @@ void teardown_crypto_known_hosts_tests(void) {
 // Known Hosts Path Tests
 // =============================================================================
 
-TEST_CASE("crypto_known_hosts/get_known_hosts_path", "[crypto_known_hosts]") {
+TEST_CASE("crypto_known_hosts/get_known_hosts_path", "[crypto_known_hosts] [unit]") {
   const char *path = get_known_hosts_path();
 
   log_info("well test");
@@ -113,7 +113,7 @@ static add_known_host_test_case_t add_known_host_cases[] = {
      -1,
      "empty hostname should fail"}};
 
-TEST_CASE("crypto_known_hosts/add_known_host_tests", "[crypto_known_hosts]") {
+TEST_CASE("crypto_known_hosts/add_known_host_tests", "[crypto_known_hosts] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(add_known_host_cases), std::end(add_known_host_cases)));
   auto *tc = &generated_case;
   // Validate the test case pointer is not NULL
@@ -135,7 +135,7 @@ TEST_CASE("crypto_known_hosts/add_known_host_tests", "[crypto_known_hosts]") {
 // Check Known Host Tests
 // =============================================================================
 
-TEST_CASE("crypto_known_hosts/check_known_host_exists_match", "[crypto_known_hosts]") {
+TEST_CASE("crypto_known_hosts/check_known_host_exists_match", "[crypto_known_hosts] [unit]") {
   // First add a known host
   const char *hostname = "test.example.com";
   uint16_t port = 8080;
@@ -151,7 +151,7 @@ TEST_CASE("crypto_known_hosts/check_known_host_exists_match", "[crypto_known_hos
   REQUIRE((check_result) == (1));
 }
 
-TEST_CASE("crypto_known_hosts/check_known_host_exists_mismatch", "[crypto_known_hosts]") {
+TEST_CASE("crypto_known_hosts/check_known_host_exists_mismatch", "[crypto_known_hosts] [unit]") {
   // First add a known host
   const char *hostname = "test2.example.com";
   uint16_t port = 8080;
@@ -170,7 +170,7 @@ TEST_CASE("crypto_known_hosts/check_known_host_exists_mismatch", "[crypto_known_
   REQUIRE((check_result) == (ERROR_CRYPTO_VERIFICATION));
 }
 
-TEST_CASE("crypto_known_hosts/check_known_host_not_exists", "[crypto_known_hosts]") {
+TEST_CASE("crypto_known_hosts/check_known_host_not_exists", "[crypto_known_hosts] [unit]") {
   const char *hostname = "nonexistent.example.com";
   uint16_t port = 8080;
   const uint8_t server_key[32] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
@@ -180,7 +180,7 @@ TEST_CASE("crypto_known_hosts/check_known_host_not_exists", "[crypto_known_hosts
   REQUIRE((check_result) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_known_hosts/check_known_host_null_params", "[crypto_known_hosts]") {
+TEST_CASE("crypto_known_hosts/check_known_host_null_params", "[crypto_known_hosts] [unit]") {
   const uint8_t server_key[32] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
                                   0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef};
 
@@ -193,7 +193,7 @@ TEST_CASE("crypto_known_hosts/check_known_host_null_params", "[crypto_known_host
 // Remove Known Host Tests
 // =============================================================================
 
-TEST_CASE("crypto_known_hosts/remove_known_host_exists", "[crypto_known_hosts]") {
+TEST_CASE("crypto_known_hosts/remove_known_host_exists", "[crypto_known_hosts] [unit]") {
   // First add a known host
   const char *hostname = "remove.example.com";
   uint16_t port = 8080;
@@ -212,7 +212,7 @@ TEST_CASE("crypto_known_hosts/remove_known_host_exists", "[crypto_known_hosts]")
   REQUIRE((check_result) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_known_hosts/remove_known_host_not_exists", "[crypto_known_hosts]") {
+TEST_CASE("crypto_known_hosts/remove_known_host_not_exists", "[crypto_known_hosts] [unit]") {
   const char *hostname = "nonexistent.example.com";
   uint16_t port = 8080;
 
@@ -223,7 +223,7 @@ TEST_CASE("crypto_known_hosts/remove_known_host_not_exists", "[crypto_known_host
   REQUIRE((result) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_known_hosts/remove_known_host_null_params", "[crypto_known_hosts]") {
+TEST_CASE("crypto_known_hosts/remove_known_host_null_params", "[crypto_known_hosts] [unit]") {
   asciichat_error_t result = remove_known_host(NULL, 8080);
   REQUIRE((result) != (ASCIICHAT_OK));
   REQUIRE((result) == (ERROR_INVALID_PARAM));
@@ -233,7 +233,7 @@ TEST_CASE("crypto_known_hosts/remove_known_host_null_params", "[crypto_known_hos
 // MITM Warning Tests
 // =============================================================================
 
-TEST_CASE("crypto_known_hosts/display_mitm_warning", "[crypto_known_hosts]") {
+TEST_CASE("crypto_known_hosts/display_mitm_warning", "[crypto_known_hosts] [unit]") {
   const char *hostname = "mitm.example.com";
   uint16_t port = 8080;
   const uint8_t expected_key[32] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
@@ -253,7 +253,7 @@ TEST_CASE("crypto_known_hosts/display_mitm_warning", "[crypto_known_hosts]") {
 // Edge Cases and Error Handling
 // =============================================================================
 
-TEST_CASE("crypto_known_hosts/add_known_host_duplicate", "[crypto_known_hosts]") {
+TEST_CASE("crypto_known_hosts/add_known_host_duplicate", "[crypto_known_hosts] [unit]") {
   const char *hostname = "duplicate.example.com";
   uint16_t port = 8080;
   const uint8_t server_key[32] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
@@ -268,7 +268,7 @@ TEST_CASE("crypto_known_hosts/add_known_host_duplicate", "[crypto_known_hosts]")
   REQUIRE((result2 == ASCIICHAT_OK || result2 != ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_known_hosts/large_known_hosts_file", "[crypto_known_hosts]") {
+TEST_CASE("crypto_known_hosts/large_known_hosts_file", "[crypto_known_hosts] [unit]") {
   // Test handling of large known hosts files
   uint16_t port = 8080;
   const uint8_t server_key[32] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
@@ -289,7 +289,7 @@ TEST_CASE("crypto_known_hosts/large_known_hosts_file", "[crypto_known_hosts]") {
   REQUIRE((check_result) == (1));
 }
 
-TEST_CASE("crypto_known_hosts/port_boundary_values", "[crypto_known_hosts]") {
+TEST_CASE("crypto_known_hosts/port_boundary_values", "[crypto_known_hosts] [unit]") {
   const char *hostname = "boundary.example.com";
   const uint8_t server_key[32] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
                                   0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef};
@@ -308,7 +308,7 @@ TEST_CASE("crypto_known_hosts/port_boundary_values", "[crypto_known_hosts]") {
   REQUIRE((result3 == ASCIICHAT_OK || result3 == ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("crypto_known_hosts/key_validation", "[crypto_known_hosts]") {
+TEST_CASE("crypto_known_hosts/key_validation", "[crypto_known_hosts] [unit]") {
   const char *hostname = "keytest.example.com";
   uint16_t port = 8080;
 

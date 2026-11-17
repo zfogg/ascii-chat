@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 #include "../worker_assert.h"
-#include <catch2/catch_all.hpp>
 /* Exercise production readiness dispatch without external ICE services. */
 #include "../../../lib/network/webrtc/peer_manager.c"
 #include <stdlib.h>
@@ -53,7 +52,7 @@ static asciichat_error_t send_ice(const uint8_t session[16], const uint8_t recip
   (void)context;
   return ASCIICHAT_OK;
 }
-TEST_CASE("peer_ready/dispatches_on_owner_and_releases_once", "[peer_ready]") {
+TEST_CASE("peer_ready/dispatches_on_owner_and_releases_once", "[peer_ready] [contract]") {
   log_init(NULL, LOG_WARN, false, false);
   controlling_thread = thread_self();
   webrtc_peer_manager_t *manager = NULL;

@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/terminal/fd/reader.h>
 #include <ascii-chat/terminal/fd/writer.h>
 #include <libplatform/filesystem.h>
@@ -40,7 +39,7 @@ static void open_reader(int height) {
   REQUIRE((terminal_fd_reader_create(fd, height, &reader)) == (ASCIICHAT_OK));
   fd = -1; // Reader owns the descriptor.
 }
-TEST_CASE("terminal_fd_stream/writer_and_reader_preserve_ansi_frames_and_partial_final_frame", "[terminal_fd_stream]") {
+TEST_CASE("terminal_fd_stream/writer_and_reader_preserve_ansi_frames_and_partial_final_frame", "[terminal_fd_stream] [unit]") {
   const char first[] = "\033[31mred\033[0m\nblue";
   REQUIRE((terminal_fd_writer_create(fd, &writer)) == (ASCIICHAT_OK));
   fd = -1;
@@ -65,7 +64,7 @@ TEST_CASE("terminal_fd_stream/writer_and_reader_preserve_ansi_frames_and_partial
   REQUIRE((frame) == nullptr);
 }
 
-TEST_CASE("terminal_fd_stream/unterminated_input_line_becomes_a_terminated_frame", "[terminal_fd_stream]") {
+TEST_CASE("terminal_fd_stream/unterminated_input_line_becomes_a_terminated_frame", "[terminal_fd_stream] [unit]") {
   REQUIRE((platform_write(fd, "last line", 9)) == (9));
   open_reader(1);
   REQUIRE((terminal_fd_reader_next(reader, &frame)) == (ASCIICHAT_OK));
@@ -77,7 +76,7 @@ TEST_CASE("terminal_fd_stream/unterminated_input_line_becomes_a_terminated_frame
   REQUIRE((frame) == nullptr);
 }
 
-TEST_CASE("terminal_fd_stream/empty_input_and_empty_frames_are_distinct", "[terminal_fd_stream]") {
+TEST_CASE("terminal_fd_stream/empty_input_and_empty_frames_are_distinct", "[terminal_fd_stream] [unit]") {
   open_reader(2);
   REQUIRE((terminal_fd_reader_next(reader, &frame)) == (ASCIICHAT_OK));
   REQUIRE((frame) == nullptr);
@@ -97,7 +96,7 @@ TEST_CASE("terminal_fd_stream/empty_input_and_empty_frames_are_distinct", "[term
   REQUIRE((frame) == nullptr);
 }
 
-TEST_CASE("terminal_fd_stream/invalid_parameters_do_not_create_streams", "[terminal_fd_stream]") {
+TEST_CASE("terminal_fd_stream/invalid_parameters_do_not_create_streams", "[terminal_fd_stream] [unit]") {
   REQUIRE((terminal_fd_reader_create(fd, 1, NULL)) == (ERROR_INVALID_PARAM));
   REQUIRE((terminal_fd_writer_create(fd, NULL)) == (ERROR_INVALID_PARAM));
   REQUIRE((terminal_fd_reader_create(-1, 1, &reader)) == (ERROR_INVALID_PARAM));

@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/audio/visualization.h>
 #include <options/options.h>
 #include <ascii-chat/video/anim/waveform.h>
@@ -18,7 +18,7 @@ static void enable_visualization(void) {
   options.fft = true;
   REQUIRE((options_state_set(&options)) == (ASCIICHAT_OK));
 }
-TEST_CASE("audio_visualization/fft_refreshes_on_a_bounded_cadence", "[audio_visualization]") {
+TEST_CASE("audio_visualization/fft_refreshes_on_a_bounded_cadence", "[audio_visualization] [unit]") {
   float samples[48000] = {0};
   audio_visualization_submit(AUDIO_VISUALIZATION_SOURCE_MIC, samples, 48000);
   char *quiet = audio_visualization_render_fft(16, 8, AUDIO_VISUALIZATION_SOURCE_MIC, false, 0, false, false);
@@ -40,7 +40,7 @@ TEST_CASE("audio_visualization/fft_refreshes_on_a_bounded_cadence", "[audio_visu
   SAFE_FREE(updated);
 }
 
-TEST_CASE("audio_visualization/clips_invalid_samples_and_mixes_sources_without_aliasing", "[audio_visualization]") {
+TEST_CASE("audio_visualization/clips_invalid_samples_and_mixes_sources_without_aliasing", "[audio_visualization] [unit]") {
   float microphone[] = {NAN, INFINITY, -INFINITY, 2.0f, -2.0f, 0.25f};
   float media[] = {0, 0, 0, 0, 0, 0.5f}, remote[] = {0, 0, 0, 0, 0, 0.5f};
   audio_visualization_submit(AUDIO_VISUALIZATION_SOURCE_MIC, microphone, 6);
@@ -64,7 +64,7 @@ TEST_CASE("audio_visualization/clips_invalid_samples_and_mixes_sources_without_a
   REQUIRE((microphone[3]) == Catch::Approx(2.0));
 }
 
-TEST_CASE("audio_visualization/ring_wrap_preserves_latest_samples_and_zero_pads_older_history", "[audio_visualization]") {
+TEST_CASE("audio_visualization/ring_wrap_preserves_latest_samples_and_zero_pads_older_history", "[audio_visualization] [unit]") {
   const size_t total = 48010;
   float *input = SAFE_MALLOC(total * sizeof(float), float *);
   for (size_t i = 0; i < total; ++i)
@@ -80,7 +80,7 @@ TEST_CASE("audio_visualization/ring_wrap_preserves_latest_samples_and_zero_pads_
   SAFE_FREE(input);
 }
 
-TEST_CASE("audio_visualization/waveform_and_fft_render_bounded_plain_and_colored_frames", "[audio_visualization]") {
+TEST_CASE("audio_visualization/waveform_and_fft_render_bounded_plain_and_colored_frames", "[audio_visualization] [unit]") {
   float *samples = SAFE_MALLOC(48000 * sizeof(float), float *);
   for (size_t i = 0; i < 48000; ++i)
     samples[i] = 0.75f * sinf((float)i * 6.28318530718f * 440.0f / 48000.0f);

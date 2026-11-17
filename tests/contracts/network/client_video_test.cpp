@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "../../../src/client/connection_internal.h"
 #include "../../../src/client/capture.h"
 #include "../../../src/client/display.h"
@@ -170,7 +169,7 @@ static void run_worker(void) {
   REQUIRE(capture_thread_exited(&video_connection));
   capture_stop_thread(&video_connection);
 }
-TEST_CASE("client_video_contract/capture_selection_prioritizes_url_then_stdin_file_test_pattern_and_camera", "[client_video_contract]") {
+TEST_CASE("client_video_contract/capture_selection_prioritizes_url_then_stdin_file_test_pattern_and_camera", "[client_video_contract] [contract]") {
   for (unsigned scenario = 0; scenario < 5; ++scenario) {
     options_t *v = video_options();
     v->media_url[0] = v->media_file[0] = 0;
@@ -212,7 +211,7 @@ TEST_CASE("client_video_contract/capture_selection_prioritizes_url_then_stdin_fi
     REQUIRE((capture_get_context()) == nullptr);
   }
 }
-TEST_CASE("client_video_contract/capture_factory_preserves_specific_failure_and_supplies_a_fallback_error", "[client_video_contract]") {
+TEST_CASE("client_video_contract/capture_factory_preserves_specific_failure_and_supplies_a_fallback_error", "[client_video_contract] [contract]") {
   fail_open = true;
   open_sets_error = true;
   REQUIRE((capture_init()) == (ERROR_WEBCAM_IN_USE));
@@ -224,7 +223,7 @@ TEST_CASE("client_video_contract/capture_factory_preserves_specific_failure_and_
   REQUIRE(HAS_ERRNO(&error));
   REQUIRE((error.code) == (ERROR_MEDIA_INIT));
 }
-TEST_CASE("client_video_contract/capture_worker_start_failure_is_retryable_and_existing_worker_is_not_duplicated", "[client_video_contract]") {
+TEST_CASE("client_video_contract/capture_worker_start_failure_is_retryable_and_existing_worker_is_not_duplicated", "[client_video_contract] [contract]") {
   REQUIRE((capture_start_thread(&video_connection)) == (0));
   REQUIRE((spawn_calls) == (0));
   start_capture();
@@ -243,7 +242,7 @@ TEST_CASE("client_video_contract/capture_worker_start_failure_is_retryable_and_e
   capture_stop_thread(NULL);
   REQUIRE(!(video_connection.capture_thread_created));
 }
-TEST_CASE("client_video_contract/automatic_codec_failure_falls_back_to_h264_then_raw_without_losing_connection", "[client_video_contract]") {
+TEST_CASE("client_video_contract/automatic_codec_failure_falls_back_to_h264_then_raw_without_losing_connection", "[client_video_contract] [contract]") {
   options_t *v = video_options();
   SAFE_STRNCPY(v->video_codec, "auto", sizeof(v->video_codec));
   video_publish(v);
@@ -257,14 +256,14 @@ TEST_CASE("client_video_contract/automatic_codec_failure_falls_back_to_h264_then
   REQUIRE(!(atomic_load_bool(&g_should_exit)));
 }
 
-TEST_CASE("client_video_contract/encoder_availability_probe_does_not_create_client_errors", "[client_video_contract]") {
+TEST_CASE("client_video_contract/encoder_availability_probe_does_not_create_client_errors", "[client_video_contract] [contract]") {
   asciichat_errno_scope_t scope = errno_scope_begin();
   (void)video_encoder_is_available(VIDEO_CODEC_H265);
   (void)video_encoder_is_available(VIDEO_CODEC_H264);
   REQUIRE(errno_scope_is_clean(scope));
   errno_scope_end(scope, ASCIICHAT_ERRNO_HANDLED);
 }
-TEST_CASE("client_video_contract/forced_codec_failure_requests_exit_without_falling_back", "[client_video_contract]") {
+TEST_CASE("client_video_contract/forced_codec_failure_requests_exit_without_falling_back", "[client_video_contract] [contract]") {
   options_t *v = video_options();
   SAFE_STRNCPY(v->video_codec, "h264", sizeof(v->video_codec));
   video_publish(v);
@@ -275,14 +274,14 @@ TEST_CASE("client_video_contract/forced_codec_failure_requests_exit_without_fall
   REQUIRE((raw_calls) == (0));
   REQUIRE(atomic_load_bool(&g_should_exit));
 }
-TEST_CASE("client_video_contract/capture_decode_failure_requests_exit_before_encoding_any_frame", "[client_video_contract]") {
+TEST_CASE("client_video_contract/capture_decode_failure_requests_exit_before_encoding_any_frame", "[client_video_contract] [contract]") {
   start_capture();
   frame_mode = 1;
   run_worker();
   REQUIRE((encoded_calls) == (0));
   REQUIRE(atomic_load_bool(&g_should_exit));
 }
-TEST_CASE("client_video_contract/missing_frame_can_wait_for_later_capture_without_losing_connection", "[client_video_contract]") {
+TEST_CASE("client_video_contract/missing_frame_can_wait_for_later_capture_without_losing_connection", "[client_video_contract] [contract]") {
   start_capture();
   frame_mode = 2;
   run_worker();
@@ -290,7 +289,7 @@ TEST_CASE("client_video_contract/missing_frame_can_wait_for_later_capture_withou
   REQUIRE((raw_calls) == (0));
   REQUIRE(!(server_connection_is_lost(&video_connection)));
 }
-TEST_CASE("client_video_contract/local_video_rejection_is_dropped_while_transport_failure_marks_connection_lost", "[client_video_contract]") {
+TEST_CASE("client_video_contract/local_video_rejection_is_dropped_while_transport_failure_marks_connection_lost", "[client_video_contract] [contract]") {
   start_capture();
   wire_result = ERROR_INVALID_PARAM;
   run_worker();
@@ -302,7 +301,7 @@ TEST_CASE("client_video_contract/local_video_rejection_is_dropped_while_transpor
   run_worker();
   REQUIRE(server_connection_is_lost(&video_connection));
 }
-TEST_CASE("client_video_contract/raw_codec_and_requested_encoded_codec_send_a_frame_without_fallback", "[client_video_contract]") {
+TEST_CASE("client_video_contract/raw_codec_and_requested_encoded_codec_send_a_frame_without_fallback", "[client_video_contract] [contract]") {
   options_t *v = video_options();
   SAFE_STRNCPY(v->video_codec, "raw", sizeof(v->video_codec));
   video_publish(v);
@@ -318,7 +317,7 @@ TEST_CASE("client_video_contract/raw_codec_and_requested_encoded_codec_send_a_fr
   REQUIRE((encoded_calls) == (1));
   REQUIRE((raw_calls) == (1));
 }
-TEST_CASE("client_video_contract/display_adapter_honors_first_frame_and_keeps_borrowed_display_alive_after_cleanup", "[client_video_contract]") {
+TEST_CASE("client_video_contract/display_adapter_honors_first_frame_and_keeps_borrowed_display_alive_after_cleanup", "[client_video_contract] [contract]") {
   session_display_config_t config = {.snapshot_mode = true, .color_mode = TERM_COLOR_NONE};
   owned_display = session_display_create(&config);
   REQUIRE((owned_display) != nullptr);
@@ -350,7 +349,7 @@ TEST_CASE("client_video_contract/display_adapter_honors_first_frame_and_keeps_bo
   display_set_context(NULL);
 }
 
-TEST_CASE("client_video_contract/display_initialization_selects_local_controls_for_file_url_and_stdin_and_releases_them", "[client_video_contract]") {
+TEST_CASE("client_video_contract/display_initialization_selects_local_controls_for_file_url_and_stdin_and_releases_them", "[client_video_contract] [contract]") {
   for (unsigned scenario = 0; scenario < 4; ++scenario) {
     options_t *v = video_options();
     v->media_url[0] = v->media_file[0] = 0;
@@ -385,7 +384,7 @@ TEST_CASE("client_video_contract/display_initialization_selects_local_controls_f
     owned_display = NULL;
   }
 }
-TEST_CASE("client_video_contract/local_capture_failure_degrades_keyboard_controls_while_display_remains_available", "[client_video_contract]") {
+TEST_CASE("client_video_contract/local_capture_failure_degrades_keyboard_controls_while_display_remains_available", "[client_video_contract] [contract]") {
   options_t *v = video_options();
   SAFE_STRNCPY(v->media_file, "unavailable.ppm", sizeof(v->media_file));
   video_publish(v);

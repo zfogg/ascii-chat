@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/key_identity/keymask.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
@@ -7,7 +6,7 @@
 static void setup(void) {
   log_init(NULL, LOG_FATAL, false, false);
 }
-TEST_CASE("keymask_contract/fingerprint_matches_sha256_known_answer_and_rejects_missing_arguments", "[keymask_contract]") {
+TEST_CASE("keymask_contract/fingerprint_matches_sha256_known_answer_and_rejects_missing_arguments", "[keymask_contract] [unit]") {
   const uint8_t key[32] = {0};
   const uint8_t expected[32] = {0x66, 0x68, 0x7a, 0xad, 0xf8, 0x62, 0xbd, 0x77, 0x6c, 0x8f, 0xc1, 0x8b, 0x8e, 0x9f, 0x8e, 0x20,
                                 0x08, 0x97, 0x14, 0x85, 0x6e, 0xe2, 0x33, 0xb3, 0x90, 0x2a, 0x59, 0x1d, 0x0d, 0x5f, 0x29, 0x25};
@@ -18,7 +17,7 @@ TEST_CASE("keymask_contract/fingerprint_matches_sha256_known_answer_and_rejects_
   REQUIRE((key_fingerprint_digest(key, NULL)) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("keymask_contract/unicode_preserves_geometry_and_exact_capacity_is_sufficient", "[keymask_contract]") {
+TEST_CASE("keymask_contract/unicode_preserves_geometry_and_exact_capacity_is_sufficient", "[keymask_contract] [unit]") {
   for (unsigned variant = 0; variant < 32; ++variant) {
     uint8_t digest[32] = {0};
     digest[variant] = 1;
@@ -49,7 +48,7 @@ TEST_CASE("keymask_contract/unicode_preserves_geometry_and_exact_capacity_is_suf
   }
 }
 
-TEST_CASE("keymask_contract/invalid_inputs_leave_output_empty_and_zero_capacity_untouched", "[keymask_contract]") {
+TEST_CASE("keymask_contract/invalid_inputs_leave_output_empty_and_zero_capacity_untouched", "[keymask_contract] [unit]") {
   uint8_t digest[32] = {0};
   char output[] = "guard";
   REQUIRE((keymask_render(digest, false, NULL, 1)) == (ERROR_INVALID_PARAM));

@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <libplatform/keyboard.h>
 #include <string.h>
 
@@ -28,7 +27,7 @@ static void expect(editor_t *edit, const char *text, size_t cursor) {
   REQUIRE((edit->cursor) == (cursor));
 }
 
-TEST_CASE("keyboard_edit/insertion_navigation_and_forward_delete", "[keyboard_edit]") {
+TEST_CASE("keyboard_edit/insertion_navigation_and_forward_delete", "[keyboard_edit] [unit]") {
   editor_t edit;
   start(&edit, "ac", 1);
   REQUIRE((key(&edit, 'b')) == (LINE_EDIT_CONTINUE));
@@ -50,7 +49,7 @@ TEST_CASE("keyboard_edit/insertion_navigation_and_forward_delete", "[keyboard_ed
   expect(&edit, "b\tc", 2);
 }
 
-TEST_CASE("keyboard_edit/backspace_removes_before_cursor_without_losing_suffix", "[keyboard_edit]") {
+TEST_CASE("keyboard_edit/backspace_removes_before_cursor_without_losing_suffix", "[keyboard_edit] [unit]") {
   const keyboard_key_t backspaces[] = {static_cast<keyboard_key_t>(8), static_cast<keyboard_key_t>(127)};
   for (size_t i = 0; i < 2; ++i) {
     editor_t edit;
@@ -67,7 +66,7 @@ TEST_CASE("keyboard_edit/backspace_removes_before_cursor_without_losing_suffix",
   }
 }
 
-TEST_CASE("keyboard_edit/word_deletion_keeps_suffix_and_updates_cursor", "[keyboard_edit]") {
+TEST_CASE("keyboard_edit/word_deletion_keeps_suffix_and_updates_cursor", "[keyboard_edit] [unit]") {
   editor_t edit;
   start(&edit, "one  two three", 9);
   key(&edit, 23);
@@ -90,7 +89,7 @@ TEST_CASE("keyboard_edit/word_deletion_keeps_suffix_and_updates_cursor", "[keybo
   expect(&edit, "tthree", 6);
 }
 
-TEST_CASE("keyboard_edit/completion_cancellation_and_ignored_keys_do_not_mutate_text", "[keyboard_edit]") {
+TEST_CASE("keyboard_edit/completion_cancellation_and_ignored_keys_do_not_mutate_text", "[keyboard_edit] [unit]") {
   editor_t edit;
   start(&edit, "keep", 2);
   REQUIRE((key(&edit, '\r')) == (LINE_EDIT_ACCEPTED));
@@ -103,7 +102,7 @@ TEST_CASE("keyboard_edit/completion_cancellation_and_ignored_keys_do_not_mutate_
   expect(&edit, "keep", 2);
 }
 
-TEST_CASE("keyboard_edit/missing_state_is_rejected", "[keyboard_edit]") {
+TEST_CASE("keyboard_edit/missing_state_is_rejected", "[keyboard_edit] [unit]") {
   editor_t edit;
   start(&edit, "", 0);
   edit.opts.key = static_cast<keyboard_key_t>('x');
@@ -120,7 +119,7 @@ TEST_CASE("keyboard_edit/missing_state_is_rejected", "[keyboard_edit]") {
   expect(&edit, "", 0);
 }
 
-TEST_CASE("keyboard_edit/unicode_movement_deletion_and_insertion_share_ui_editor", "[keyboard_edit]") {
+TEST_CASE("keyboard_edit/unicode_movement_deletion_and_insertion_share_ui_editor", "[keyboard_edit] [unit]") {
   editor_t edit;
   start(&edit, "a界😀b", 8);
   key(&edit, KEY_LEFT);
@@ -145,7 +144,7 @@ TEST_CASE("keyboard_edit/unicode_movement_deletion_and_insertion_share_ui_editor
   expect(&edit, "", 0);
 }
 
-TEST_CASE("keyboard_edit/invalid_storage_is_not_dereferenced_or_modified", "[keyboard_edit]") {
+TEST_CASE("keyboard_edit/invalid_storage_is_not_dereferenced_or_modified", "[keyboard_edit] [unit]") {
   editor_t edit;
   start(&edit, "x", 1);
   edit.opts.max_len = 0;
@@ -158,7 +157,7 @@ TEST_CASE("keyboard_edit/invalid_storage_is_not_dereferenced_or_modified", "[key
   REQUIRE(std::strcmp((edit.text), ("x")) == 0);
 }
 
-TEST_CASE("keyboard_edit/unicode_codepoints_do_not_execute_old_special_keys", "[keyboard_edit]") {
+TEST_CASE("keyboard_edit/unicode_codepoints_do_not_execute_old_special_keys", "[keyboard_edit] [unit]") {
   editor_t edit;
   start(&edit, "ab", 1);
   key(&edit, (keyboard_key_t)0x100);

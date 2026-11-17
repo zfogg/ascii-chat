@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/audio/client_pipeline.h>
 #include <libplatform/filesystem.h>
@@ -45,7 +44,7 @@ static void teardown(void) {
   platform_unsetenv("ALSA_CONFIG_PATH");
   platform_delete_temp_file(config_path);
 }
-TEST_CASE("null_device/duplex_callbacks_deliver_capture_and_stop_cleanly", "[null_device]") {
+TEST_CASE("null_device/duplex_callbacks_deliver_capture_and_stop_cleanly", "[null_device] [integration]") {
   client_audio_pipeline_config_t config = client_audio_pipeline_default_config();
   config.flags = CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL;
   config.processor.spectral_enabled = false;
@@ -73,7 +72,7 @@ TEST_CASE("null_device/duplex_callbacks_deliver_capture_and_stop_cleanly", "[nul
   REQUIRE((audio_stop_duplex(&context)) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("null_device/playback_only_stream_consumes_queued_samples", "[null_device]") {
+TEST_CASE("null_device/playback_only_stream_consumes_queued_samples", "[null_device] [integration]") {
   context.playback_only = true;
   assert_audio_ok(audio_start_duplex(&context), "start duplex");
   REQUIRE((context.output_stream) != nullptr);
@@ -86,7 +85,7 @@ TEST_CASE("null_device/playback_only_stream_consumes_queued_samples", "[null_dev
   REQUIRE((audio_stop_duplex(&context)) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("null_device/input_only_device_is_enumerated_and_normalized_to_the_pipeline_clock", "[null_device]") {
+TEST_CASE("null_device/input_only_device_is_enumerated_and_normalized_to_the_pipeline_clock", "[null_device] [integration]") {
   options_t *options = SAFE_MALLOC(sizeof(*options), options_t *);
   *options = *options_get();
   options->audio_no_playback = true;

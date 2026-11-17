@@ -1,6 +1,7 @@
+#include <catch2/generators/catch_generators_all.hpp>
+#include <catch2/catch_approx.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <math.h>
 
@@ -11,7 +12,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/fnv1a.h>
 
-TEST_CASE("mixer/independent_listener_audio_and_self_exclusion", "[mixer]") {
+TEST_CASE("mixer/independent_listener_audio_and_self_exclusion", "[mixer] [unit]") {
   mixer_t *mixer = mixer_create(3, 48000);
   REQUIRE((mixer) != nullptr);
   float input[480], first[480], second[480], self[480];
@@ -39,7 +40,7 @@ TEST_CASE("mixer/independent_listener_audio_and_self_exclusion", "[mixer]") {
     audio_ring_buffer_destroy(buffers[i]);
 }
 
-TEST_CASE("mixer/listener_exclusion_and_activation_across_mask_words", "[mixer]") {
+TEST_CASE("mixer/listener_exclusion_and_activation_across_mask_words", "[mixer] [unit]") {
   enum { SOURCES = 65 };
   mixer_t *mixer = mixer_create(SOURCES, 48000);
   REQUIRE((mixer) != nullptr);
@@ -119,7 +120,7 @@ static audio_ring_buffer_t *create_test_buffer_with_data(const float *data, int 
  * ============================================================================ */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("mixer/create_and_destroy", "[mixer]") {
+TEST_CASE("mixer/create_and_destroy", "[mixer] [unit]") {
   mixer_t *mixer = mixer_create(4, 44100);
   REQUIRE((mixer) != nullptr);
   REQUIRE((mixer->max_sources) == (4));
@@ -140,14 +141,14 @@ static mixer_invalid_params_test_case_t mixer_invalid_params_cases[] = {
     {0, 44100, "Zero max_sources"}, {4, 0, "Zero sample_rate"}, {-1, 44100, "Negative max_sources"}, {4, -1, "Negative sample_rate"}, {MIXER_MAX_SOURCES + 1, 44100, "Exceeds MIXER_MAX_SOURCES"},
 };
 
-TEST_CASE("mixer/create_with_invalid_params", "[mixer]") {
+TEST_CASE("mixer/create_with_invalid_params", "[mixer] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(mixer_invalid_params_cases), std::end(mixer_invalid_params_cases)));
   auto *tc = &generated_case;
   mixer_t *mixer = mixer_create(tc->max_sources, tc->sample_rate);
   REQUIRE((mixer) == nullptr);
 }
 
-TEST_CASE("mixer/add_and_remove_sources", "[mixer]") {
+TEST_CASE("mixer/add_and_remove_sources", "[mixer] [unit]") {
   mixer_t *mixer = mixer_create(4, 44100);
   REQUIRE((mixer) != nullptr);
 
@@ -197,7 +198,7 @@ TEST_CASE("mixer/add_and_remove_sources", "[mixer]") {
   mixer_destroy(mixer);
 }
 
-TEST_CASE("mixer/set_source_active", "[mixer]") {
+TEST_CASE("mixer/set_source_active", "[mixer] [unit]") {
   mixer_t *mixer = mixer_create(2, 44100);
   REQUIRE((mixer) != nullptr);
 
@@ -224,7 +225,7 @@ TEST_CASE("mixer/set_source_active", "[mixer]") {
   mixer_destroy(mixer);
 }
 
-TEST_CASE("mixer/process_single_source", "[mixer]") {
+TEST_CASE("mixer/process_single_source", "[mixer] [unit]") {
   mixer_t *mixer = mixer_create(2, 44100);
   REQUIRE((mixer) != nullptr);
 
@@ -252,7 +253,7 @@ TEST_CASE("mixer/process_single_source", "[mixer]") {
   mixer_destroy(mixer);
 }
 
-TEST_CASE("mixer/process_multiple_sources", "[mixer]") {
+TEST_CASE("mixer/process_multiple_sources", "[mixer] [unit]") {
   mixer_t *mixer = mixer_create(3, 44100);
   REQUIRE((mixer) != nullptr);
 
@@ -285,7 +286,7 @@ TEST_CASE("mixer/process_multiple_sources", "[mixer]") {
   mixer_destroy(mixer);
 }
 
-TEST_CASE("mixer/process_excluding_source", "[mixer]") {
+TEST_CASE("mixer/process_excluding_source", "[mixer] [unit]") {
   mixer_t *mixer = mixer_create(3, 44100);
   REQUIRE((mixer) != nullptr);
 
@@ -325,7 +326,7 @@ TEST_CASE("mixer/process_excluding_source", "[mixer]") {
   mixer_destroy(mixer);
 }
 
-TEST_CASE("mixer/process_no_sources", "[mixer]") {
+TEST_CASE("mixer/process_no_sources", "[mixer] [unit]") {
   mixer_t *mixer = mixer_create(2, 44100);
   REQUIRE((mixer) != nullptr);
 
@@ -357,7 +358,7 @@ static db_to_linear_test_case_t db_to_linear_cases[] = {{0.0f, 1.0f, 1e-6f, "0 d
                                                         {-20.0f, 0.1f, 1e-3f, "-20 dB equals 0.1 gain"},     {-40.0f, 0.01f, 1e-4f, "-40 dB equals 0.01 gain"},
                                                         {-60.0f, 0.001f, 1e-4f, "-60 dB equals 0.001 gain"}, {6.0f, 2.0f, 0.01f, "+6 dB equals double gain"}};
 
-TEST_CASE("mixer_utils/db_to_linear_conversion_param", "[mixer_utils]") {
+TEST_CASE("mixer_utils/db_to_linear_conversion_param", "[mixer_utils] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(db_to_linear_cases), std::end(db_to_linear_cases)));
   auto *tc = &generated_case;
   float result = db_to_linear(tc->db_value);
@@ -376,7 +377,7 @@ static linear_to_db_test_case_t linear_to_db_cases[] = {{1.0f, 0.0f, 1e-6f, "Uni
                                                         {0.1f, -20.0f, 1e-3f, "0.1 gain equals -20 dB"},     {0.01f, -40.0f, 1e-3f, "0.01 gain equals -40 dB"},
                                                         {0.001f, -60.0f, 1e-3f, "0.001 gain equals -60 dB"}, {2.0f, 6.0f, 0.1f, "Double gain equals +6 dB"}};
 
-TEST_CASE("mixer_utils/linear_to_db_conversion_param", "[mixer_utils]") {
+TEST_CASE("mixer_utils/linear_to_db_conversion_param", "[mixer_utils] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(linear_to_db_cases), std::end(linear_to_db_cases)));
   auto *tc = &generated_case;
   float result = linear_to_db(tc->linear_value);
@@ -397,7 +398,7 @@ static clamp_float_test_case_t clamp_float_cases[] = {{0.5f, 0.0f, 1.0f, 0.5f, "
                                                       {-2.0f, -1.0f, 1.0f, -1.0f, "Clamp to negative min"}, {2.0f, -1.0f, 1.0f, 1.0f, "Clamp to positive max"},
                                                       {0.0f, 0.0f, 0.0f, 0.0f, "Degenerate range"}};
 
-TEST_CASE("mixer_utils/clamp_float_param", "[mixer_utils]") {
+TEST_CASE("mixer_utils/clamp_float_param", "[mixer_utils] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(clamp_float_cases), std::end(clamp_float_cases)));
   auto *tc = &generated_case;
   float result = clamp_float(tc->value, tc->min, tc->max);
@@ -408,7 +409,7 @@ TEST_CASE("mixer_utils/clamp_float_param", "[mixer_utils]") {
  * Compressor Tests
  * ============================================================================ */
 
-TEST_CASE("compressor/init_and_params", "[compressor]") {
+TEST_CASE("compressor/init_and_params", "[compressor] [unit]") {
   compressor_t comp;
   compressor_init(&comp, 44100.0f);
 
@@ -422,7 +423,7 @@ TEST_CASE("compressor/init_and_params", "[compressor]") {
   REQUIRE((comp.gain_lin) == Catch::Approx(1.0f));
 }
 
-TEST_CASE("compressor/set_params", "[compressor]") {
+TEST_CASE("compressor/set_params", "[compressor] [unit]") {
   compressor_t comp;
   compressor_init(&comp, 44100.0f);
 
@@ -435,7 +436,7 @@ TEST_CASE("compressor/set_params", "[compressor]") {
   REQUIRE((comp.makeup_dB) == Catch::Approx(6.0f));
 }
 
-TEST_CASE("compressor/process_below_threshold", "[compressor]") {
+TEST_CASE("compressor/process_below_threshold", "[compressor] [unit]") {
   compressor_t comp;
   compressor_init(&comp, 44100.0f);
   compressor_set_params(&comp, -10.0f, 4.0f, 10 * NS_PER_MS_INT, 100 * NS_PER_MS_INT, 0.0f);
@@ -445,7 +446,7 @@ TEST_CASE("compressor/process_below_threshold", "[compressor]") {
   REQUIRE((gain) >= (0.9f));                           // Should have minimal compression
 }
 
-TEST_CASE("compressor/process_above_threshold", "[compressor]") {
+TEST_CASE("compressor/process_above_threshold", "[compressor] [unit]") {
   compressor_t comp;
   compressor_init(&comp, 44100.0f);
   compressor_set_params(&comp, -10.0f, 4.0f, 10 * NS_PER_MS_INT, 100 * NS_PER_MS_INT, 0.0f);
@@ -459,7 +460,7 @@ TEST_CASE("compressor/process_above_threshold", "[compressor]") {
  * Ducking Tests
  * ============================================================================ */
 
-TEST_CASE("ducking/init_and_params", "[ducking]") {
+TEST_CASE("ducking/init_and_params", "[ducking] [unit]") {
   ducking_t duck;
   ducking_init(&duck, 4, 44100.0f);
 
@@ -479,7 +480,7 @@ TEST_CASE("ducking/init_and_params", "[ducking]") {
   ducking_destroy(&duck);
 }
 
-TEST_CASE("ducking/set_params", "[ducking]") {
+TEST_CASE("ducking/set_params", "[ducking] [unit]") {
   ducking_t duck;
   ducking_init(&duck, 4, 44100.0f);
 
@@ -494,7 +495,7 @@ TEST_CASE("ducking/set_params", "[ducking]") {
   ducking_destroy(&duck);
 }
 
-TEST_CASE("ducking/process_frame_leader_detection", "[ducking]") {
+TEST_CASE("ducking/process_frame_leader_detection", "[ducking] [unit]") {
   ducking_t duck;
   ducking_init(&duck, 3, 44100.0f);
   ducking_set_params(&duck, -40.0f, 3.0f, -12.0f, 5 * NS_PER_MS_INT, 100 * NS_PER_MS_INT);
@@ -518,7 +519,7 @@ TEST_CASE("ducking/process_frame_leader_detection", "[ducking]") {
  * Noise Gate Tests
  * ============================================================================ */
 
-TEST_CASE("noise_gate/init_and_params", "[noise_gate]") {
+TEST_CASE("noise_gate/init_and_params", "[noise_gate] [unit]") {
   noise_gate_t gate;
   noise_gate_init(&gate, 44100.0f);
 
@@ -531,7 +532,7 @@ TEST_CASE("noise_gate/init_and_params", "[noise_gate]") {
   REQUIRE(!(gate.gate_open));
 }
 
-TEST_CASE("noise_gate/set_params", "[noise_gate]") {
+TEST_CASE("noise_gate/set_params", "[noise_gate] [unit]") {
   noise_gate_t gate;
   noise_gate_init(&gate, 44100.0f);
 
@@ -543,7 +544,7 @@ TEST_CASE("noise_gate/set_params", "[noise_gate]") {
   REQUIRE((gate.hysteresis) == Catch::Approx(0.8f));
 }
 
-TEST_CASE("noise_gate/process_below_threshold", "[noise_gate]") {
+TEST_CASE("noise_gate/process_below_threshold", "[noise_gate] [unit]") {
   noise_gate_t gate;
   noise_gate_init(&gate, 44100.0f);
   noise_gate_set_params(&gate, 0.1f, 2 * NS_PER_MS_INT, 50 * NS_PER_MS_INT, 0.9f);
@@ -554,7 +555,7 @@ TEST_CASE("noise_gate/process_below_threshold", "[noise_gate]") {
   REQUIRE(!(noise_gate_is_open(&gate)));
 }
 
-TEST_CASE("noise_gate/process_above_threshold", "[noise_gate]") {
+TEST_CASE("noise_gate/process_above_threshold", "[noise_gate] [unit]") {
   noise_gate_t gate;
   noise_gate_init(&gate, 44100.0f);
   noise_gate_set_params(&gate, 0.1f, 2 * NS_PER_MS_INT, 50 * NS_PER_MS_INT, 0.9f);
@@ -565,7 +566,7 @@ TEST_CASE("noise_gate/process_above_threshold", "[noise_gate]") {
   REQUIRE(noise_gate_is_open(&gate));
 }
 
-TEST_CASE("noise_gate/process_buffer", "[noise_gate]") {
+TEST_CASE("noise_gate/process_buffer", "[noise_gate] [unit]") {
   noise_gate_t gate;
   noise_gate_init(&gate, 44100.0f);
   noise_gate_set_params(&gate, 0.1f, 2 * NS_PER_MS_INT, 50 * NS_PER_MS_INT, 0.9f);
@@ -584,7 +585,7 @@ TEST_CASE("noise_gate/process_buffer", "[noise_gate]") {
  * High-Pass Filter Tests
  * ============================================================================ */
 
-TEST_CASE("highpass_filter/init_and_reset", "[highpass_filter]") {
+TEST_CASE("highpass_filter/init_and_reset", "[highpass_filter] [unit]") {
   highpass_filter_t filter;
   highpass_filter_init(&filter, 100.0f, 44100.0f);
 
@@ -598,7 +599,7 @@ TEST_CASE("highpass_filter/init_and_reset", "[highpass_filter]") {
   REQUIRE((filter.prev_output) == Catch::Approx(0.0f));
 }
 
-TEST_CASE("highpass_filter/process_dc_signal", "[highpass_filter]") {
+TEST_CASE("highpass_filter/process_dc_signal", "[highpass_filter] [unit]") {
   highpass_filter_t filter;
   highpass_filter_init(&filter, 100.0f, 44100.0f);
 
@@ -613,7 +614,7 @@ TEST_CASE("highpass_filter/process_dc_signal", "[highpass_filter]") {
   REQUIRE((fabsf(output)) < (0.5f)); // Should be attenuated (high-pass filters may not be perfect)
 }
 
-TEST_CASE("highpass_filter/process_high_frequency", "[highpass_filter]") {
+TEST_CASE("highpass_filter/process_high_frequency", "[highpass_filter] [unit]") {
   highpass_filter_t filter;
   highpass_filter_init(&filter, 100.0f, 44100.0f);
 
@@ -626,7 +627,7 @@ TEST_CASE("highpass_filter/process_high_frequency", "[highpass_filter]") {
   REQUIRE((fabsf(output)) > (0.1f)); // Should have significant output
 }
 
-TEST_CASE("highpass_filter/process_buffer", "[highpass_filter]") {
+TEST_CASE("highpass_filter/process_buffer", "[highpass_filter] [unit]") {
   highpass_filter_t filter;
   highpass_filter_init(&filter, 100.0f, 44100.0f);
 
@@ -644,7 +645,7 @@ TEST_CASE("highpass_filter/process_buffer", "[highpass_filter]") {
  * Soft Clipping Tests
  * ============================================================================ */
 
-TEST_CASE("soft_clip/process_within_threshold", "[soft_clip]") {
+TEST_CASE("soft_clip/process_within_threshold", "[soft_clip] [unit]") {
   float output = soft_clip(0.5f, 0.8f, 6.0f);
   REQUIRE((output) == Catch::Approx(0.5f));
 
@@ -652,7 +653,7 @@ TEST_CASE("soft_clip/process_within_threshold", "[soft_clip]") {
   REQUIRE((output) == Catch::Approx(-0.3f));
 }
 
-TEST_CASE("soft_clip/process_above_threshold", "[soft_clip]") {
+TEST_CASE("soft_clip/process_above_threshold", "[soft_clip] [unit]") {
   float output = soft_clip(1.0f, 0.8f, 6.0f);
   REQUIRE((output) < (1.0f));
   REQUIRE((output) > (0.8f));
@@ -662,7 +663,7 @@ TEST_CASE("soft_clip/process_above_threshold", "[soft_clip]") {
   REQUIRE((output) < (-0.6f)); // Should be soft clipped (smooth curve, not hard threshold)
 }
 
-TEST_CASE("soft_clip/process_buffer", "[soft_clip]") {
+TEST_CASE("soft_clip/process_buffer", "[soft_clip] [unit]") {
   float buffer[5] = {0.5f, 1.0f, -0.3f, -1.0f, 0.0f};
   soft_clip_buffer(buffer, 5, 0.8f, 6.0f);
 
@@ -677,7 +678,7 @@ TEST_CASE("soft_clip/process_buffer", "[soft_clip]") {
  * Integration Tests
  * ============================================================================ */
 
-TEST_CASE("mixer_integration/full_pipeline_with_processing", "[mixer_integration]") {
+TEST_CASE("mixer_integration/full_pipeline_with_processing", "[mixer_integration] [unit]") {
   mixer_t *mixer = mixer_create(3, 44100);
   REQUIRE((mixer) != nullptr);
 
@@ -718,7 +719,7 @@ TEST_CASE("mixer_integration/full_pipeline_with_processing", "[mixer_integration
   mixer_destroy(mixer);
 }
 
-TEST_CASE("mixer_integration/stress_test_multiple_sources", "[mixer_integration]") {
+TEST_CASE("mixer_integration/stress_test_multiple_sources", "[mixer_integration] [unit]") {
   mixer_t *mixer = mixer_create(MIXER_MAX_SOURCES, 44100);
   REQUIRE((mixer) != nullptr);
 
@@ -762,7 +763,7 @@ TEST_CASE("mixer_integration/stress_test_multiple_sources", "[mixer_integration]
 // regardless of number of sources or their amplitudes
 static constexpr int audio_bounds_property_catch2_data[] = {1, 2, 3, 4, 8};
 
-TEST_CASE("mixer_integration/audio_bounds_property", "[mixer_integration]") {
+TEST_CASE("mixer_integration/audio_bounds_property", "[mixer_integration] [unit]") {
   size_t num_sources = GENERATE(Catch::Generators::from_range(std::begin(audio_bounds_property_catch2_data), std::end(audio_bounds_property_catch2_data)));
   float amplitude = GENERATE(0.1f, 0.5f, 1.0f, 1.5f, 2.0f);
   if (!(num_sources > 0 && num_sources <= MIXER_MAX_SOURCES))

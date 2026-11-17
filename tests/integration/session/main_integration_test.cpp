@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/common.h>
-#include <catch2/catch_all.hpp>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -162,7 +161,7 @@ static bool wait_for_tcp_port(int port, int timeout_ms) {
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("main_integration/server_main_starts_and_stops", "[main_integration]") {
+TEST_CASE("main_integration/server_main_starts_and_stops", "[main_integration] [integration]") {
   int port = get_unique_test_port();
   int websocket_port = get_unique_test_port();
   char port_str[16];
@@ -186,7 +185,7 @@ TEST_CASE("main_integration/server_main_starts_and_stops", "[main_integration]")
   terminate_process(server_pid, "server");
 }
 
-TEST_CASE("main_integration/server_main_help_flag", "[main_integration]") {
+TEST_CASE("main_integration/server_main_help_flag", "[main_integration] [integration]") {
   char *argv[] = {"ascii-chat", "server", "--help", NULL};
 
   platform_process_t *server_pid = spawn_process(get_binary_path(), argv, "server_help");
@@ -198,7 +197,7 @@ TEST_CASE("main_integration/server_main_help_flag", "[main_integration]") {
   REQUIRE((exit_code) == (0));
 }
 
-TEST_CASE("main_integration/server_main_invalid_port", "[main_integration]") {
+TEST_CASE("main_integration/server_main_invalid_port", "[main_integration] [integration]") {
   char *argv[] = {"ascii-chat", "server", "--port", "99999", // Invalid port
                   NULL};
 
@@ -215,7 +214,7 @@ TEST_CASE("main_integration/server_main_invalid_port", "[main_integration]") {
 // Client Main Function Tests
 // =============================================================================
 
-TEST_CASE("main_integration/client_main_help_flag", "[main_integration]") {
+TEST_CASE("main_integration/client_main_help_flag", "[main_integration] [integration]") {
   char *argv[] = {"ascii-chat", "client", "--help", NULL};
 
   platform_process_t *client_pid = spawn_process(get_binary_path(), argv, "client_help");
@@ -227,7 +226,7 @@ TEST_CASE("main_integration/client_main_help_flag", "[main_integration]") {
   REQUIRE((exit_code) == (0));
 }
 
-TEST_CASE("main_integration/client_main_no_server", "[main_integration]") {
+TEST_CASE("main_integration/client_main_no_server", "[main_integration] [integration]") {
   // Client is designed to retry connecting forever - verify it stays alive
   int port = get_unique_test_port();
   char port_str[16];
@@ -252,7 +251,7 @@ TEST_CASE("main_integration/client_main_no_server", "[main_integration]") {
 // Combined Server-Client Tests
 // =============================================================================
 
-TEST_CASE("main_integration/server_client_basic_connection", "[main_integration]") {
+TEST_CASE("main_integration/server_client_basic_connection", "[main_integration] [integration]") {
   int port = get_unique_test_port();
   int websocket_port = get_unique_test_port();
   char port_str[16];
@@ -301,7 +300,7 @@ TEST_CASE("main_integration/server_client_basic_connection", "[main_integration]
   terminate_process(server_pid, "server");
 }
 
-TEST_CASE("main_integration/server_multiple_clients_sequential", "[main_integration]") {
+TEST_CASE("main_integration/server_multiple_clients_sequential", "[main_integration] [integration]") {
   int port = get_unique_test_port();
   int websocket_port = get_unique_test_port();
   char port_str[16];
@@ -343,7 +342,7 @@ TEST_CASE("main_integration/server_multiple_clients_sequential", "[main_integrat
   terminate_process(server_pid, "server");
 }
 
-TEST_CASE("main_integration/server_multiple_clients_concurrent", "[main_integration]") {
+TEST_CASE("main_integration/server_multiple_clients_concurrent", "[main_integration] [integration]") {
   int port = get_unique_test_port();
   int websocket_port = get_unique_test_port();
   char port_str[16];
@@ -394,7 +393,7 @@ TEST_CASE("main_integration/server_multiple_clients_concurrent", "[main_integrat
   terminate_process(server_pid, "server");
 }
 
-TEST_CASE("main_integration/server_client_with_options", "[main_integration]") {
+TEST_CASE("main_integration/server_client_with_options", "[main_integration] [integration]") {
   int port = get_unique_test_port();
   int websocket_port = get_unique_test_port();
   char port_str[16];
@@ -444,7 +443,7 @@ TEST_CASE("main_integration/server_client_with_options", "[main_integration]") {
   terminate_process(server_pid, "server");
 }
 
-TEST_CASE("main_integration/server_survives_client_crash", "[main_integration]") {
+TEST_CASE("main_integration/server_survives_client_crash", "[main_integration] [integration]") {
   int port = get_unique_test_port();
   int websocket_port = get_unique_test_port();
   char port_str[16];

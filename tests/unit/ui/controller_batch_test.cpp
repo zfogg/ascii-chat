@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/tui/prompt.h>
 #include <ascii-chat/tui/controller.h>
 #include <options/options.h>
@@ -46,7 +45,7 @@ private:
   FILE *file_;
 };
 
-TEST_CASE("controller_batch/utf8_chunk_trim_does_not_read_past_chunk", "[controller_batch]") {
+TEST_CASE("controller_batch/utf8_chunk_trim_does_not_read_past_chunk", "[controller_batch] [unit]") {
   char data[32769];
   memset(data, 'A', sizeof(data));
   // This byte belongs to the next chunk and must not affect the boundary.
@@ -62,7 +61,7 @@ static void render_snapshot(terminal_size_t size, const void *snapshot) {
   REQUIRE((ui_controller_printf(-1, "%s %d\n", (const char *)snapshot, size.rows)) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("controller_batch/redirected_output_is_synchronous_and_restores_ownership", "[controller_batch]") {
+TEST_CASE("controller_batch/redirected_output_is_synchronous_and_restores_ownership", "[controller_batch] [unit]") {
   options_t options = *options_get();
   options.width = 32;
   options.height = 12;
@@ -95,7 +94,7 @@ TEST_CASE("controller_batch/redirected_output_is_synchronous_and_restores_owners
   REQUIRE((platform_delete_temp_file(path)) == (0));
 }
 
-TEST_CASE("controller_batch/invalid_snapshots_and_frames_are_rejected_before_rendering", "[controller_batch]") {
+TEST_CASE("controller_batch/invalid_snapshots_and_frames_are_rejected_before_rendering", "[controller_batch] [unit]") {
   terminal_size_t minimum = {.cols = 8, .rows = 4};
   const char snapshot[] = "unused";
   REQUIRE((ui_controller_submit(UI_SCREEN_COUNT, -1, minimum, render_snapshot, snapshot, sizeof(snapshot))) == (ERROR_INVALID_PARAM));
@@ -113,7 +112,7 @@ TEST_CASE("controller_batch/invalid_snapshots_and_frames_are_rejected_before_ren
   REQUIRE(!(ui_controller_is_owner()));
 }
 
-TEST_CASE("controller_batch/prompt_dismissal_terminates_redirected_output", "[controller_batch]") {
+TEST_CASE("controller_batch/prompt_dismissal_terminates_redirected_output", "[controller_batch] [unit]") {
   stdout_capture capture;
   REQUIRE(!(ui_controller_is_presenting()));
   ui_prompt_dismiss(-1);
@@ -130,7 +129,7 @@ static void dismiss_over_sync(terminal_size_t size, const void *snapshot) {
   ui_prompt_dismiss(UI_SCREEN_SYNC);
 }
 
-TEST_CASE("controller_batch/sync_mailbox_dismissal_does_not_emit_batch_newline", "[controller_batch]") {
+TEST_CASE("controller_batch/sync_mailbox_dismissal_does_not_emit_batch_newline", "[controller_batch] [unit]") {
   stdout_capture capture;
   ui_controller_select_interactive(UI_SCREEN_SYNC);
   const bool snapshot = true;

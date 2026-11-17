@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #define CHECK(...) REQUIRE(__VA_ARGS__)
 #include "../../standalone/network/prepare_fixture.h"
 
@@ -18,26 +17,26 @@ static void teardown(void) {
   REQUIRE((buffer_process_reserved()) == (0));
   log_destroy();
 }
-TEST_CASE("prepare/wire_headers_and_crc", "[prepare]") {
+TEST_CASE("prepare/wire_headers_and_crc", "[prepare] [contract]") {
   fixtures();
 }
 
-TEST_CASE("prepare/retained_async_owners", "[prepare]") {
+TEST_CASE("prepare/retained_async_owners", "[prepare] [contract]") {
   retained_async_receive();
 }
 
-TEST_CASE("prepare/sync_plain", "[prepare]") {
+TEST_CASE("prepare/sync_plain", "[prepare] [contract]") {
   tcp_fixture(false, false);
 }
 
-TEST_CASE("prepare/sync_encrypted", "[prepare]") {
+TEST_CASE("prepare/sync_encrypted", "[prepare] [contract]") {
   tcp_fixture(false, true);
 }
 
-TEST_CASE("prepare/async_plain", "[prepare]") {
+TEST_CASE("prepare/async_plain", "[prepare] [contract]") {
   tcp_fixture(true, false);
 }
 
-TEST_CASE("prepare/async_encrypted", "[prepare]") {
+TEST_CASE("prepare/async_encrypted", "[prepare] [contract]") {
   tcp_fixture(true, true);
 }

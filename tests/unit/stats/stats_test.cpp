@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/stats/stats.h>
 #include <ascii-chat/stats/runtime.h>
 #include <libplatform/compiler.h>
@@ -37,7 +37,7 @@ static void observe_record(stats_record_kind_t kind, unsigned id, uint64_t value
   records->values[kind] = value;
 }
 
-TEST_CASE("stats/observer_receives_only_supported_process_records", "[stats]") {
+TEST_CASE("stats/observer_receives_only_supported_process_records", "[stats] [unit]") {
   stats_scope_t *process = make_scope(), *peer = make_scope();
   observer_records_t records = {0};
   stats_scope_set_observer(process, observe_record, &records);
@@ -78,7 +78,7 @@ static stats_snapshot_t sample(uint64_t time, uint64_t frames) {
   return snapshot;
 }
 
-TEST_CASE("stats/scope_values_and_capabilities", "[stats]") {
+TEST_CASE("stats/scope_values_and_capabilities", "[stats] [unit]") {
   stats_scope_t *scope = make_scope();
   stats_snapshot_t initial, current;
   REQUIRE((stats_scope_snapshot(scope, &initial)) == (ASCIICHAT_OK));
@@ -117,7 +117,7 @@ TEST_CASE("stats/scope_values_and_capabilities", "[stats]") {
   stats_scope_destroy(scope);
 }
 
-TEST_CASE("stats/invalid_arguments", "[stats]") {
+TEST_CASE("stats/invalid_arguments", "[stats] [unit]") {
   stats_scope_t *scope = NULL;
   stats_sampler_t *sampler = NULL;
   stats_snapshot_t snapshot;
@@ -151,7 +151,7 @@ TEST_CASE("stats/invalid_arguments", "[stats]") {
   stats_sampler_destroy(NULL);
 }
 
-TEST_CASE("stats/rolling_window_and_idle", "[stats]") {
+TEST_CASE("stats/rolling_window_and_idle", "[stats] [unit]") {
   stats_sampler_t *sampler = make_sampler(1000000000, 250000000);
   stats_rates_t rates;
   // Exercise many ring wraps, including updates faster than retained history.
@@ -174,7 +174,7 @@ TEST_CASE("stats/rolling_window_and_idle", "[stats]") {
   stats_sampler_destroy(sampler);
 }
 
-TEST_CASE("stats/irregular_intervals_and_duration_means", "[stats]") {
+TEST_CASE("stats/irregular_intervals_and_duration_means", "[stats] [unit]") {
   stats_sampler_t *sampler = make_sampler(1000, 300);
   stats_rates_t rates;
   stats_snapshot_t snapshot = sample(0, UINT64_MAX - 100);
@@ -202,7 +202,7 @@ TEST_CASE("stats/irregular_intervals_and_duration_means", "[stats]") {
   stats_sampler_destroy(sampler);
 }
 
-TEST_CASE("stats/independent_consumers_and_baseline_changes", "[stats]") {
+TEST_CASE("stats/independent_consumers_and_baseline_changes", "[stats] [unit]") {
   stats_sampler_t *a = make_sampler(100, 25);
   stats_sampler_t *b = make_sampler(100, 25);
   stats_rates_t rates;
@@ -268,7 +268,7 @@ static void *record_worker(void *arg) {
   return NULL;
 }
 
-TEST_CASE("stats/concurrent_recording_and_snapshots", "[stats]") {
+TEST_CASE("stats/concurrent_recording_and_snapshots", "[stats] [unit]") {
   worker_context_t context = {.scope = make_scope(), .done = {0}};
   platform_thread_t threads[4];
   for (size_t i = 0; i < 4; ++i)
@@ -294,7 +294,7 @@ TEST_CASE("stats/concurrent_recording_and_snapshots", "[stats]") {
   stats_scope_destroy(context.scope);
 }
 
-TEST_CASE("stats/last_duration_survives_idle_and_tracks_latest_attempt", "[stats]") {
+TEST_CASE("stats/last_duration_survives_idle_and_tracks_latest_attempt", "[stats] [unit]") {
   stats_scope_t *scope = make_scope();
   stats_duration_record(scope, STATS_DURATION_CAPTURE, 900);
   stats_duration_record(scope, STATS_DURATION_CAPTURE, 200);
@@ -317,7 +317,7 @@ TEST_CASE("stats/last_duration_survives_idle_and_tracks_latest_attempt", "[stats
   stats_scope_destroy(scope);
 }
 
-TEST_CASE("stats/descriptors", "[stats]") {
+TEST_CASE("stats/descriptors", "[stats] [unit]") {
   for (int i = 0; i < STATS_COUNTER_COUNT; ++i) {
     const stats_descriptor_t *d = stats_counter_descriptor((stats_counter_id_t)i);
     REQUIRE((d) != nullptr);
@@ -338,7 +338,7 @@ TEST_CASE("stats/descriptors", "[stats]") {
   REQUIRE((stats_duration_descriptor(STATS_DURATION_COUNT)) == nullptr);
 }
 
-TEST_CASE("stats/capabilities_are_copied_and_wrap_rebaselines", "[stats]") {
+TEST_CASE("stats/capabilities_are_copied_and_wrap_rebaselines", "[stats] [unit]") {
   stats_capabilities_t caps = capabilities();
   stats_scope_t *scope = NULL;
   REQUIRE((stats_scope_create(&caps, &scope)) == (ASCIICHAT_OK));
@@ -375,7 +375,7 @@ TEST_CASE("stats/capabilities_are_copied_and_wrap_rebaselines", "[stats]") {
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/packet/parsing.h>
 
-TEST_CASE("stats/transport_totals_survive_disconnect_and_restart", "[stats]") {
+TEST_CASE("stats/transport_totals_survive_disconnect_and_restart", "[stats] [unit]") {
   options_state_init();
   REQUIRE((stats_runtime_start("client", 0)) == (ASCIICHAT_OK));
   const char *transports[] = {"TCP", "WebSocket", "WebRTC"};
@@ -420,7 +420,7 @@ TEST_CASE("stats/transport_totals_survive_disconnect_and_restart", "[stats]") {
   options_state_destroy();
 }
 
-TEST_CASE("stats/view_labels_cannot_inject_terminal_controls", "[stats]") {
+TEST_CASE("stats/view_labels_cannot_inject_terminal_controls", "[stats] [unit]") {
   stats_view_t view = {0};
   stats_view_add(&view, "peer %s", "bad\033[2J\nname");
   REQUIRE((view.count) == (1));
@@ -434,7 +434,7 @@ static void count_named_object(uintptr_t key, void *data) {
   (void)key;
   (*(unsigned *)data)++;
 }
-TEST_CASE("stats/duplicate_debug_registration_is_fully_retired", "[stats]") {
+TEST_CASE("stats/duplicate_debug_registration_is_fully_retired", "[stats] [unit]") {
 #ifndef NDEBUG
   REQUIRE((named_init()) == (ASCIICHAT_OK));
   unsigned object = 0, reads = 0;
@@ -449,7 +449,7 @@ TEST_CASE("stats/duplicate_debug_registration_is_fully_retired", "[stats]") {
 }
 
 #include <ascii-chat/audio/audio.h>
-TEST_CASE("stats/audio_teardown_retires_debug_atomics", "[stats]") {
+TEST_CASE("stats/audio_teardown_retires_debug_atomics", "[stats] [unit]") {
   audio_context_t context;
   REQUIRE((audio_init(&context)) == (ASCIICHAT_OK));
   audio_destroy(&context);
@@ -466,7 +466,7 @@ static void count_provider_calls(stats_view_t *view, void *data) {
   atomic_fetch_add_u64_impl((atomic_t *)data, 1);
 }
 
-TEST_CASE("stats/idle_runtime_does_not_call_provider", "[stats]") {
+TEST_CASE("stats/idle_runtime_does_not_call_provider", "[stats] [unit]") {
   atomic_t calls = {0};
   REQUIRE((stats_runtime_start("discovery-service", 0)) == (ASCIICHAT_OK));
   stats_runtime_set_provider(count_provider_calls, &calls);
@@ -476,7 +476,7 @@ TEST_CASE("stats/idle_runtime_does_not_call_provider", "[stats]") {
   REQUIRE((atomic_load_u64_impl(&calls)) == (0));
 }
 
-TEST_CASE("stats/summary_runtime_calls_provider_when_due", "[stats]") {
+TEST_CASE("stats/summary_runtime_calls_provider_when_due", "[stats] [unit]") {
   atomic_t calls = {0};
   REQUIRE((stats_runtime_start("discovery-service", 1)) == (ASCIICHAT_OK));
   stats_runtime_set_provider(count_provider_calls, &calls);
@@ -487,7 +487,7 @@ TEST_CASE("stats/summary_runtime_calls_provider_when_due", "[stats]") {
   REQUIRE((atomic_load_u64_impl(&calls)) >= (1));
 }
 
-TEST_CASE("stats/mcp_measurements_share_the_process_observer", "[stats]") {
+TEST_CASE("stats/mcp_measurements_share_the_process_observer", "[stats] [unit]") {
   stats_capabilities_t caps = {0};
   caps.counters[STATS_COUNTER_MCP_REQUESTS] = true;
   caps.counters[STATS_COUNTER_MCP_RENDERS] = true;

@@ -15,7 +15,6 @@
  */
 
 #include <ascii-chat/tests/logging.h>
-#include <catch2/catch_all.hpp>
 
 /**
  * @brief Test TURN relay fallback when STUN is unavailable
@@ -29,7 +28,7 @@
  * Expected: Connection established using relay candidates only
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("webrtc_turn_fallback/force_turn_relay", "[webrtc_turn_fallback]") {
+TEST_CASE("webrtc_turn_fallback/force_turn_relay", "[webrtc_turn_fallback] [integration]") {
   INFO("=== Testing TURN Relay Fallback (Symmetric NAT Simulation) ===");
 
   // This test is disabled by default because it requires:
@@ -56,7 +55,7 @@ TEST_CASE("webrtc_turn_fallback/force_turn_relay", "[webrtc_turn_fallback]") {
  * This test checks that when we skip host and STUN candidates,
  * the ICE negotiation falls back to using TURN relay candidates.
  */
-TEST_CASE("webrtc_turn_fallback/relay_candidate_selection", "[webrtc_turn_fallback]") {
+TEST_CASE("webrtc_turn_fallback/relay_candidate_selection", "[webrtc_turn_fallback] [integration]") {
   INFO("=== Testing Relay Candidate Selection ===");
 
   // Test would verify:
@@ -76,7 +75,7 @@ TEST_CASE("webrtc_turn_fallback/relay_candidate_selection", "[webrtc_turn_fallba
  * - Maintain connection stability
  * - Handle packet loss gracefully
  */
-TEST_CASE("webrtc_turn_fallback/relay_performance", "[webrtc_turn_fallback]") {
+TEST_CASE("webrtc_turn_fallback/relay_performance", "[webrtc_turn_fallback] [integration]") {
   INFO("=== Testing TURN Relay Performance ===");
 
   // Test would verify:
@@ -96,7 +95,7 @@ TEST_CASE("webrtc_turn_fallback/relay_performance", "[webrtc_turn_fallback]") {
  * - Timeout within configured period
  * - Graceful fallback if possible
  */
-TEST_CASE("webrtc_turn_fallback/turn_server_unreachable", "[webrtc_turn_fallback]") {
+TEST_CASE("webrtc_turn_fallback/turn_server_unreachable", "[webrtc_turn_fallback] [integration]") {
   INFO("=== Testing TURN Server Unreachable ===");
 
   // This test can run without real TURN server (negative test)

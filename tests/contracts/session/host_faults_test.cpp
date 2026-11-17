@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "../../../src/common/session/host.h"
 #include "../../../src/common/session/audio.h"
 #include <options/rcu.h>
@@ -94,7 +93,7 @@ static void create(void) {
   owner = session_host_create(&config);
   REQUIRE((owner) != nullptr);
 }
-TEST_CASE("host_faults/mutex_failure_does_not_publish_host_and_configuration_strings_are_owned", "[host_faults]") {
+TEST_CASE("host_faults/mutex_failure_does_not_publish_host_and_configuration_strings_are_owned", "[host_faults] [contract]") {
   session_host_config_t config = configuration();
   fail_mutex = true;
   REQUIRE((session_host_create(&config)) == nullptr);
@@ -106,7 +105,7 @@ TEST_CASE("host_faults/mutex_failure_does_not_publish_host_and_configuration_str
   REQUIRE(std::strcmp((owner->key_path), ("fixture-key")) == 0);
   REQUIRE(std::strcmp((owner->password), ("fixture-password")) == 0);
 }
-TEST_CASE("host_faults/memory_participant_allocation_failure_does_not_consume_capacity_or_publish_admission", "[host_faults]") {
+TEST_CASE("host_faults/memory_participant_allocation_failure_does_not_consume_capacity_or_publish_admission", "[host_faults] [contract]") {
   create();
   for (unsigned failure = 0; failure < 2; ++failure) {
     fail_image = failure == 0;
@@ -123,7 +122,7 @@ TEST_CASE("host_faults/memory_participant_allocation_failure_does_not_consume_ca
   REQUIRE((session_host_add_memory_participant(owner)) != (0));
   REQUIRE((admission_calls) == (1));
 }
-TEST_CASE("host_faults/network_participant_allocation_failure_keeps_caller_transport_and_capacity", "[host_faults]") {
+TEST_CASE("host_faults/network_participant_allocation_failure_keeps_caller_transport_and_capacity", "[host_faults] [contract]") {
   create();
   for (unsigned failure = 0; failure < 2; ++failure) {
     fail_image = failure == 0;
@@ -139,7 +138,7 @@ TEST_CASE("host_faults/network_participant_allocation_failure_keeps_caller_trans
   REQUIRE((session_host_add_client(owner, NULL, ACIP_TRANSPORT_BORROWED, NULL, 0)) != (0));
   REQUIRE((admission_calls) == (1));
 }
-TEST_CASE("host_faults/failed_frame_resize_preserves_the_last_committed_video_buffer_and_pixels", "[host_faults]") {
+TEST_CASE("host_faults/failed_frame_resize_preserves_the_last_committed_video_buffer_and_pixels", "[host_faults] [contract]") {
   create();
   uint32_t id = session_host_add_memory_participant(owner);
   REQUIRE((id) != (0));
@@ -158,7 +157,7 @@ TEST_CASE("host_faults/failed_frame_resize_preserves_the_last_committed_video_bu
   REQUIRE((((uint8_t *)previous->pixels)[0]) == (91));
   image_destroy(image);
 }
-TEST_CASE("host_faults/malformed_injected_frame_is_rejected_before_replacing_the_committed_buffer", "[host_faults]") {
+TEST_CASE("host_faults/malformed_injected_frame_is_rejected_before_replacing_the_committed_buffer", "[host_faults] [contract]") {
   create();
   uint32_t id = session_host_add_memory_participant(owner);
   REQUIRE((id) != (0));
@@ -175,7 +174,7 @@ TEST_CASE("host_faults/malformed_injected_frame_is_rejected_before_replacing_the
     CLEAR_ERRNO_ALL();
   }
 }
-TEST_CASE("host_faults/render_start_failure_is_retryable_and_failed_stop_retains_worker_owned_audio", "[host_faults]") {
+TEST_CASE("host_faults/render_start_failure_is_retryable_and_failed_stop_retains_worker_owned_audio", "[host_faults] [contract]") {
   create();
   REQUIRE((session_host_start_render(owner)) == (ERROR_INVALID_STATE));
   owner->running = true;
@@ -231,7 +230,7 @@ static void fault_display_frame(void *context, const char *frame, size_t length,
   REQUIRE((height) == (12));
   ++local_frames;
 }
-TEST_CASE("host_faults/host_renderer_waits_for_peer_capabilities_before_presenting_local_frames", "[host_faults]") {
+TEST_CASE("host_faults/host_renderer_waits_for_peer_capabilities_before_presenting_local_frames", "[host_faults] [contract]") {
   session_host_config_t c = configuration();
   c.max_clients = 2;
   owner = session_host_create(&c);

@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 /** Production participant lifecycle with deterministic device/startup failures and real workers. */
 #include "session/participant.h"
 #include "session/capture.h"
@@ -247,7 +246,7 @@ static void *fixture_run(void *arg) {
   return NULL;
 }
 
-TEST_CASE("participant_media/startup_failures_and_worker_lifecycle", "[participant_media]") {
+TEST_CASE("participant_media/startup_failures_and_worker_lifecycle", "[participant_media] [contract]") {
   log_init(NULL, LOG_WARN, false, false);
   log_set_terminal_output(true);
   REQUIRE((platform_setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1")) == (0));
@@ -461,7 +460,7 @@ TEST_CASE("participant_media/startup_failures_and_worker_lifecycle", "[participa
   log_info("PASS: six startup failures, 20 real-worker cycles, media packets, cleanup, async cancellation");
 }
 
-TEST_CASE("participant_media/stale_startup_tokens_cannot_reactivate_streams", "[participant_media]") {
+TEST_CASE("participant_media/stale_startup_tokens_cannot_reactivate_streams", "[participant_media] [contract]") {
   // Async host startup tokens cannot reactivate a stopped or replaced stream.
   session_av_state_t *state = session_av_state_create();
   REQUIRE((state && session_av_state_generation(state) == 0));

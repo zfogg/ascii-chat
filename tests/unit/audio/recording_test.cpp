@@ -1,8 +1,8 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <ascii-chat/common.h>
 
 extern "C" uint64_t g_snapshot_last_capture_elapsed_ns;
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/audio/recording.h>
 #include <ascii-chat/audio/audio.h>
 #include <libplatform/atomic.h>
@@ -107,7 +107,7 @@ static void teardown(void) {
   errno_clear();
   options_state_destroy();
 }
-TEST_CASE("recording/mixes_local_media_microphone_and_remote_without_modifying_inputs", "[recording]") {
+TEST_CASE("recording/mixes_local_media_microphone_and_remote_without_modifying_inputs", "[recording] [unit]") {
   const float mic[] = {0.2f, -0.2f};
   const float media[] = {0.3f, -0.3f};
   const float remote[] = {0.4f, -0.4f};
@@ -121,7 +121,7 @@ TEST_CASE("recording/mixes_local_media_microphone_and_remote_without_modifying_i
   REQUIRE((mic[0]) == Catch::Approx(0.2f));
 }
 
-TEST_CASE("recording/clips_final_mix_and_rejects_nonfinite_samples", "[recording]") {
+TEST_CASE("recording/clips_final_mix_and_rejects_nonfinite_samples", "[recording] [unit]") {
   const float a[] = {0.8f, -0.8f, NAN, INFINITY};
   float output[4];
   audio_recording_submit(AUDIO_RECORDING_MIC, a, 4, epoch);
@@ -133,7 +133,7 @@ TEST_CASE("recording/clips_final_mix_and_rejects_nonfinite_samples", "[recording
   REQUIRE((output[3]) == (0.0f));
 }
 
-TEST_CASE("recording/session_capture_does_not_encode_uninitialized_audio_when_empty", "[recording]") {
+TEST_CASE("recording/session_capture_does_not_encode_uninitialized_audio_when_empty", "[recording] [unit]") {
   session_audio_ctx_t *ctx = session_audio_create(false);
   REQUIRE((ctx) != nullptr);
   float samples[960];
@@ -141,7 +141,7 @@ TEST_CASE("recording/session_capture_does_not_encode_uninitialized_audio_when_em
   session_audio_destroy(ctx);
 }
 
-TEST_CASE("recording/empty_input_is_temporary_and_partial_intervals_are_padded", "[recording]") {
+TEST_CASE("recording/empty_input_is_temporary_and_partial_intervals_are_padded", "[recording] [unit]") {
   float output[960];
   audio_recording_read(recording, output, 480);
   const float audio[] = {0.5f, 0.25f};
@@ -153,7 +153,7 @@ TEST_CASE("recording/empty_input_is_temporary_and_partial_intervals_are_padded",
     REQUIRE((output[i]) == (0.0f));
 }
 
-TEST_CASE("recording/callback_jitter_does_not_duplicate_or_skip_samples", "[recording]") {
+TEST_CASE("recording/callback_jitter_does_not_duplicate_or_skip_samples", "[recording] [unit]") {
   const float audio[] = {0.5f, 0.25f};
   float output[4];
   audio_recording_submit(AUDIO_RECORDING_MEDIA, audio, 2, epoch);
@@ -165,7 +165,7 @@ TEST_CASE("recording/callback_jitter_does_not_duplicate_or_skip_samples", "[reco
   REQUIRE((output[3]) == (0.25f));
 }
 
-TEST_CASE("recording/subsequent_recording_has_no_old_timing_or_eof_state", "[recording]") {
+TEST_CASE("recording/subsequent_recording_has_no_old_timing_or_eof_state", "[recording] [unit]") {
   float output[1];
   const float audio[] = {0.5f};
   audio_recording_submit(AUDIO_RECORDING_MEDIA, audio, 1, epoch);
@@ -178,7 +178,7 @@ TEST_CASE("recording/subsequent_recording_has_no_old_timing_or_eof_state", "[rec
   REQUIRE((output[0]) == (0.5f));
 }
 
-TEST_CASE("recording/playback_and_recording_are_independent_consumers", "[recording]") {
+TEST_CASE("recording/playback_and_recording_are_independent_consumers", "[recording] [unit]") {
   audio_context_t ctx = {0};
   ctx.initialized = true;
   ctx.playback_buffer = audio_ring_buffer_create_for_capture();
@@ -210,7 +210,7 @@ static void create_audio_fixture(char *path, size_t size) {
   wav_writer_close(writer);
 }
 
-TEST_CASE("recording/file_source_can_be_read_destroyed_and_reopened_repeatedly", "[recording]") {
+TEST_CASE("recording/file_source_can_be_read_destroyed_and_reopened_repeatedly", "[recording] [unit]") {
   char path[1024];
   create_audio_fixture(path, sizeof(path));
   for (int iteration = 0; iteration < 8; iteration++) {
@@ -223,7 +223,7 @@ TEST_CASE("recording/file_source_can_be_read_destroyed_and_reopened_repeatedly",
   platform_delete_temp_file(path);
 }
 
-TEST_CASE("recording/small_audio_blocks_preserve_every_decoded_sample_until_end", "[recording]") {
+TEST_CASE("recording/small_audio_blocks_preserve_every_decoded_sample_until_end", "[recording] [unit]") {
   char path[1024];
   create_audio_fixture(path, sizeof(path));
   media_source_t *source = media_source_create(MEDIA_SOURCE_FILE, path);
@@ -242,7 +242,7 @@ TEST_CASE("recording/small_audio_blocks_preserve_every_decoded_sample_until_end"
   platform_delete_temp_file(path);
 }
 
-TEST_CASE("recording/small_audio_blocks_preserve_resampled_duration_and_tone", "[recording]") {
+TEST_CASE("recording/small_audio_blocks_preserve_resampled_duration_and_tone", "[recording] [unit]") {
   char path[1024];
   int fd = -1;
   REQUIRE((platform_create_temp_file(path, sizeof(path), "recording-resampled", &fd)) == (0));
@@ -275,7 +275,7 @@ TEST_CASE("recording/small_audio_blocks_preserve_resampled_duration_and_tone", "
   platform_delete_temp_file(path);
 }
 
-TEST_CASE("recording/audio_only_file_selects_webcam_without_opening_it_during_probe", "[recording]") {
+TEST_CASE("recording/audio_only_file_selects_webcam_without_opening_it_during_probe", "[recording] [unit]") {
   webcam_starts = 0;
   char path[1024];
   create_audio_fixture(path, sizeof(path));
@@ -301,7 +301,7 @@ TEST_CASE("recording/audio_only_file_selects_webcam_without_opening_it_during_pr
   platform_delete_temp_file(path);
 }
 
-TEST_CASE("recording/audio_only_file_uses_test_pattern_without_opening_webcam", "[recording]") {
+TEST_CASE("recording/audio_only_file_uses_test_pattern_without_opening_webcam", "[recording] [unit]") {
   webcam_starts = 0;
   options_t options = *options_get();
   options.test_pattern = true;
@@ -344,7 +344,7 @@ static float recorded_energy_since(uint64_t started) {
   return energy;
 }
 
-TEST_CASE("recording/microphone_worker_copies_audio_without_draining_transmission", "[recording]") {
+TEST_CASE("recording/microphone_worker_copies_audio_without_draining_transmission", "[recording] [unit]") {
   audio_context_t ctx = {0};
   REQUIRE((audio_init(&ctx)) == (ASCIICHAT_OK));
   ctx.playback_only = true;
@@ -371,7 +371,7 @@ TEST_CASE("recording/microphone_worker_copies_audio_without_draining_transmissio
   audio_destroy(&ctx);
 }
 
-TEST_CASE("recording/file_audio_worker_feeds_transmission_playback_and_recording", "[recording]") {
+TEST_CASE("recording/file_audio_worker_feeds_transmission_playback_and_recording", "[recording] [unit]") {
   char path[1024];
   create_audio_fixture(path, sizeof(path));
   media_source_t *source = media_source_create(MEDIA_SOURCE_FILE, path);
@@ -398,7 +398,7 @@ TEST_CASE("recording/file_audio_worker_feeds_transmission_playback_and_recording
   platform_delete_temp_file(path);
 }
 
-TEST_CASE("recording/remote_audio_selection_retains_network_jitter_buffer", "[recording]") {
+TEST_CASE("recording/remote_audio_selection_retains_network_jitter_buffer", "[recording] [unit]") {
   char path[1024];
   create_audio_fixture(path, sizeof(path));
   media_source_t *source = media_source_create(MEDIA_SOURCE_FILE, path);
@@ -420,7 +420,7 @@ TEST_CASE("recording/remote_audio_selection_retains_network_jitter_buffer", "[re
   REQUIRE(jitter_enabled);
 }
 
-TEST_CASE("recording/media_audio_recording_runs_without_input_or_output_devices", "[recording]") {
+TEST_CASE("recording/media_audio_recording_runs_without_input_or_output_devices", "[recording] [unit]") {
   options_t options = *options_get();
   options.audio_capture_source = AUDIO_CAPTURE_SOURCE_MEDIA;
   options.speakers_index = INT_MAX;
@@ -452,7 +452,7 @@ TEST_CASE("recording/media_audio_recording_runs_without_input_or_output_devices"
   platform_delete_temp_file(path);
 }
 
-TEST_CASE("recording/session_audio_stops_worker_before_releasing_borrowed_media", "[recording]") {
+TEST_CASE("recording/session_audio_stops_worker_before_releasing_borrowed_media", "[recording] [unit]") {
   char path[1024];
   create_audio_fixture(path, sizeof(path));
   media_source_t *source = media_source_create(MEDIA_SOURCE_FILE, path);
@@ -475,7 +475,7 @@ TEST_CASE("recording/session_audio_stops_worker_before_releasing_borrowed_media"
   platform_delete_temp_file(path);
 }
 
-TEST_CASE("recording/rendered_video_contains_mixed_audio_and_flushes_the_tail", "[recording]") {
+TEST_CASE("recording/rendered_video_contains_mixed_audio_and_flushes_the_tail", "[recording] [unit]") {
   char path[1024];
   int fd = -1;
   REQUIRE((platform_create_temp_file(path, sizeof(path), "recording-video", &fd)) == (0));
@@ -517,7 +517,7 @@ TEST_CASE("recording/rendered_video_contains_mixed_audio_and_flushes_the_tail", 
   platform_delete_temp_file(path);
 }
 
-TEST_CASE("recording/both_source_mixes_microphone_and_file_in_the_same_outgoing_block", "[recording]") {
+TEST_CASE("recording/both_source_mixes_microphone_and_file_in_the_same_outgoing_block", "[recording] [unit]") {
   options_t options = *options_get();
   options.audio_capture_source = AUDIO_CAPTURE_SOURCE_BOTH;
   REQUIRE((options_state_set(&options)) == (ASCIICHAT_OK));
@@ -551,7 +551,7 @@ TEST_CASE("recording/both_source_mixes_microphone_and_file_in_the_same_outgoing_
   platform_delete_temp_file(path);
 }
 
-TEST_CASE("recording/file_snapshot_ignores_capture_startup_delay", "[recording]") {
+TEST_CASE("recording/file_snapshot_ignores_capture_startup_delay", "[recording] [unit]") {
   options_t options = *options_get();
   options.snapshot_mode = true;
   options.snapshot_delay = 3;
@@ -581,7 +581,7 @@ TEST_CASE("recording/file_snapshot_ignores_capture_startup_delay", "[recording]"
   g_snapshot_last_capture_elapsed_ns = 0;
 }
 
-TEST_CASE("recording/live_recording_uses_elapsed_time_instead_of_received_frame_count", "[recording]") {
+TEST_CASE("recording/live_recording_uses_elapsed_time_instead_of_received_frame_count", "[recording] [unit]") {
   char path[1024];
   int fd = -1;
   REQUIRE((platform_create_temp_file(path, sizeof(path), "recording-live", &fd)) == (0));
@@ -610,7 +610,7 @@ TEST_CASE("recording/live_recording_uses_elapsed_time_instead_of_received_frame_
   platform_delete_temp_file(path);
 }
 
-TEST_CASE("recording/file_pause_gap_keeps_audio_and_video_timelines_aligned", "[recording]") {
+TEST_CASE("recording/file_pause_gap_keeps_audio_and_video_timelines_aligned", "[recording] [unit]") {
   char path[1024];
   int fd = -1;
   REQUIRE((platform_create_temp_file(path, sizeof(path), "recording-pause", &fd)) == (0));

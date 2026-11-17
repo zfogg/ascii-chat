@@ -1,11 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/audio/processor.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
-TEST_CASE("audio_processor/block_partition_invariance_and_finite_output", "[audio_processor]") {
+TEST_CASE("audio_processor/block_partition_invariance_and_finite_output", "[audio_processor] [unit]") {
   float input[48000], reference[48000], split[48000];
   for (size_t i = 0; i < 48000; ++i)
     input[i] = i < 12000 ? 0 : 0.12f * sinf((float)i * 0.0916298f);
@@ -33,7 +32,7 @@ TEST_CASE("audio_processor/block_partition_invariance_and_finite_output", "[audi
   audio_processor_destroy(processor);
 }
 
-TEST_CASE("audio_processor/disabled_processing_preserves_in_place_samples", "[audio_processor]") {
+TEST_CASE("audio_processor/disabled_processing_preserves_in_place_samples", "[audio_processor] [unit]") {
   float input[48000], split[48000];
   for (size_t i = 0; i < 48000; ++i)
     input[i] = 0.12f * sinf((float)i * 0.0916298f);

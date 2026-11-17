@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "server/render.h"
 #include "server/main.h"
 #include "server/connections.h"
@@ -171,7 +170,7 @@ static void teardown(void) {
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-TEST_CASE("server_render/failed_worker_creation_rolls_back_flags_and_preserves_joinable_handles", "[server_render]") {
+TEST_CASE("server_render/failed_worker_creation_rolls_back_flags_and_preserves_joinable_handles", "[server_render] [contract]") {
   fail_start = 1;
   REQUIRE((create_client_render_threads(&server, &client)) == (-1));
   REQUIRE(!(atomic_load_bool(&client.video_render_thread_running)));
@@ -188,7 +187,7 @@ TEST_CASE("server_render/failed_worker_creation_rolls_back_flags_and_preserves_j
   REQUIRE((joins) == (1));
   REQUIRE(!(handles[0]));
 }
-TEST_CASE("server_render/join_failures_retain_handles_until_successful_retry_and_stop_is_idempotent", "[server_render]") {
+TEST_CASE("server_render/join_failures_retain_handles_until_successful_retry_and_stop_is_idempotent", "[server_render] [contract]") {
   REQUIRE((create_client_render_threads(&server, &client)) == (0));
   fail_join = 1;
   REQUIRE((stop_client_render_threads(&client)) == (ERROR_THREAD));
@@ -204,7 +203,7 @@ TEST_CASE("server_render/join_failures_retain_handles_until_successful_retry_and
   REQUIRE((stop_client_render_threads(&client)) == (ASCIICHAT_OK));
   REQUIRE((joins) == (before));
 }
-TEST_CASE("server_render/missing_contexts_and_encoder_failure_do_not_start_rendering", "[server_render]") {
+TEST_CASE("server_render/missing_contexts_and_encoder_failure_do_not_start_rendering", "[server_render] [contract]") {
   REQUIRE((create_client_render_threads(NULL, &client)) == (-1));
   REQUIRE((create_client_render_threads(&server, NULL)) == (-1));
   REQUIRE((stop_client_render_threads(NULL)) == (ERROR_INVALID_PARAM));
@@ -215,14 +214,14 @@ TEST_CASE("server_render/missing_contexts_and_encoder_failure_do_not_start_rende
   REQUIRE((mixes) == (0));
   REQUIRE((queued) == (0));
 }
-TEST_CASE("server_render/video_waits_for_capabilities_and_supplies_default_dimensions_before_delivery", "[server_render]") {
+TEST_CASE("server_render/video_waits_for_capabilities_and_supplies_default_dimensions_before_delivery", "[server_render] [contract]") {
   client.has_terminal_caps = false;
   capability_wait = 502;
   REQUIRE((client_video_render_thread(&client)) == nullptr);
   REQUIRE((waits) == (capability_wait));
   REQUIRE((video_frames) == (1));
 }
-TEST_CASE("server_render/shutdown_during_capability_wait_and_absent_frames_do_not_queue_video", "[server_render]") {
+TEST_CASE("server_render/shutdown_during_capability_wait_and_absent_frames_do_not_queue_video", "[server_render] [contract]") {
   client.has_terminal_caps = false;
   exit_wait = true;
   REQUIRE((client_video_render_thread(&client)) == nullptr);
@@ -237,13 +236,13 @@ TEST_CASE("server_render/shutdown_during_capability_wait_and_absent_frames_do_no
   REQUIRE((client_video_render_thread(&client)) == nullptr);
   REQUIRE((video_frames) == (0));
 }
-TEST_CASE("server_render/absent_mixer_yields_without_queuing_or_leaking_the_encoder", "[server_render]") {
+TEST_CASE("server_render/absent_mixer_yields_without_queuing_or_leaking_the_encoder", "[server_render] [contract]") {
   REQUIRE((client_audio_render_thread(&client)) == nullptr);
   REQUIRE((sleeps) == (stop_after));
   REQUIRE((mixes) == (0));
   REQUIRE((queued) == (0));
 }
-TEST_CASE("server_render/partial_mixes_form_one_decodable_stereo_packet_and_failed_delivery_is_recoverable", "[server_render]") {
+TEST_CASE("server_render/partial_mixes_form_one_decodable_stereo_packet_and_failed_delivery_is_recoverable", "[server_render] [contract]") {
   g_audio_mixer = (mixer_t *)&server;
   reject_audio = true;
   REQUIRE((client_audio_render_thread(&client)) == nullptr);

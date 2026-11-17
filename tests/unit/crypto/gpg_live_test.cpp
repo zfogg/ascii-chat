@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/gpg/signing.h>
 #include <ascii-chat/crypto/gpg/verification.h>
 #include <ascii-chat/crypto/gpg/export.h>
@@ -64,7 +63,7 @@ static void setup(void) {
   memcpy(fingerprint, line, 40);
   fingerprint[40] = 0;
 }
-TEST_CASE("gpg_live/packet_signatures_verify_and_reject_altered_messages_signatures_and_signers", "[gpg_live]") {
+TEST_CASE("gpg_live/packet_signatures_verify_and_reject_altered_messages_signatures_and_signers", "[gpg_live] [unit]") {
   uint8_t message[] = {'m', 0, 'e', 0xff, 's', 's', 'a', 'g', 'e'};
   uint8_t signature[512];
   size_t length = 0;
@@ -83,7 +82,7 @@ TEST_CASE("gpg_live/packet_signatures_verify_and_reject_altered_messages_signatu
   REQUIRE((gpg_verify_signature_with_binary(signature, 1, message, sizeof(message), fingerprint)) != (0));
 }
 
-TEST_CASE("gpg_live/exported_public_key_matches_independent_gpg_ssh_export", "[gpg_live]") {
+TEST_CASE("gpg_live/exported_public_key_matches_independent_gpg_ssh_export", "[gpg_live] [unit]") {
   const char *args[] = {"gpg", "--export-ssh-key", fingerprint, NULL};
   char output[2048];
   REQUIRE((platform_execute_subprocess("gpg", args, output, sizeof(output), NULL, NULL)) == (0));
@@ -106,7 +105,7 @@ TEST_CASE("gpg_live/exported_public_key_matches_independent_gpg_ssh_export", "[g
   REQUIRE((gpg_get_public_key("0000000000000000", again, NULL)) != (0));
 }
 
-TEST_CASE("gpg_live/invalid_arguments_are_rejected_before_running_gpg", "[gpg_live]") {
+TEST_CASE("gpg_live/invalid_arguments_are_rejected_before_running_gpg", "[gpg_live] [unit]") {
   uint8_t message[] = "message", signature[512] = {0};
   size_t length = 999;
   REQUIRE((gpg_sign_with_key(NULL, message, sizeof(message), signature, &length)) != (0));
@@ -121,7 +120,7 @@ TEST_CASE("gpg_live/invalid_arguments_are_rejected_before_running_gpg", "[gpg_li
   REQUIRE((gpg_verify_signature_with_binary(signature, 20, NULL, sizeof(message), NULL)) != (0));
   REQUIRE((gpg_verify_signature_with_binary(signature, 20, message, 0, NULL)) != (0));
 }
-TEST_CASE("gpg_live/real_armored_keys_parse_to_the_same_public_key_and_a_usable_ed25519_seed", "[gpg_live]") {
+TEST_CASE("gpg_live/real_armored_keys_parse_to_the_same_public_key_and_a_usable_ed25519_seed", "[gpg_live] [unit]") {
   char armor[8192];
   const char *pubargs[] = {"gpg", "--batch", "--armor", "--export", fingerprint, NULL};
   REQUIRE((platform_execute_subprocess("gpg", pubargs, armor, sizeof(armor), NULL, NULL)) == (0));
@@ -143,7 +142,7 @@ TEST_CASE("gpg_live/real_armored_keys_parse_to_the_same_public_key_and_a_usable_
   sodium_memzero(sodium_secret, sizeof(sodium_secret));
   sodium_memzero(armor, sizeof(armor));
 }
-TEST_CASE("gpg_live/short_signature_integers_are_restored_to_exactly_32_bytes_each", "[gpg_live]") {
+TEST_CASE("gpg_live/short_signature_integers_are_restored_to_exactly_32_bytes_each", "[gpg_live] [unit]") {
   const char *original = getenv("PATH");
   REQUIRE((original) != nullptr);
   SAFE_STRDUP(old_path, original);
@@ -195,7 +194,7 @@ TEST_CASE("gpg_live/short_signature_integers_are_restored_to_exactly_32_bytes_ea
     }
   }
 }
-TEST_CASE("gpg_live/agent_signature_verifies_independently_over_the_documented_sha512_digest", "[gpg_live]") {
+TEST_CASE("gpg_live/agent_signature_verifies_independently_over_the_documented_sha512_digest", "[gpg_live] [unit]") {
   uint8_t public_key[32], signature[64], digest[crypto_hash_sha512_BYTES];
   char grip[41];
   REQUIRE((gpg_get_public_key(fingerprint, public_key, grip)) == (0));
@@ -223,7 +222,7 @@ static void wire_cleanup(void) {
   wire_client = wire_peer = INVALID_SOCKET_VALUE;
   log_destroy();
 }
-TEST_CASE("gpg_agent_wire/binary_nulls_and_percent_escapes_preserve_signature_bytes_and_bad_frames_are_rejected", "[gpg_agent_wire]") {
+TEST_CASE("gpg_agent_wire/binary_nulls_and_percent_escapes_preserve_signature_bytes_and_bad_frames_are_rejected", "[gpg_agent_wire] [unit]") {
   for (unsigned malformed = 0; malformed < 3; ++malformed) {
     socket_t listener = socket_create("gpg-wire-listen", AF_INET, SOCK_STREAM, 0);
     REQUIRE((listener) != (INVALID_SOCKET_VALUE));
@@ -292,7 +291,7 @@ TEST_CASE("gpg_agent_wire/binary_nulls_and_percent_escapes_preserve_signature_by
     wire_client = wire_peer = INVALID_SOCKET_VALUE;
   }
 }
-TEST_CASE("gpg_live/public_key_export_falls_back_to_packet_parsing_when_the_isolated_agent_stops", "[gpg_live]") {
+TEST_CASE("gpg_live/public_key_export_falls_back_to_packet_parsing_when_the_isolated_agent_stops", "[gpg_live] [unit]") {
   uint8_t expected[32], actual[32];
   char grip[41];
   REQUIRE((gpg_get_public_key(fingerprint, expected, grip)) == (0));

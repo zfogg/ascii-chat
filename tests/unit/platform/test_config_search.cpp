@@ -5,7 +5,6 @@
  * @ingroup tests
  */
 
-#include <catch2/catch_all.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,7 +20,7 @@
 // Data Structure Tests (safe - don't trigger error logging)
 // ============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("platform_config_search/list_cleanup_null_safe", "[platform_config_search]") {
+TEST_CASE("platform_config_search/list_cleanup_null_safe", "[platform_config_search] [unit]") {
   // Test that config_file_list_destroy is safe with NULL
   config_file_list_destroy(NULL);
 
@@ -30,7 +29,7 @@ TEST_CASE("platform_config_search/list_cleanup_null_safe", "[platform_config_sea
   config_file_list_destroy(&list);
 }
 
-TEST_CASE("platform_config_search/list_cleanup_with_entries", "[platform_config_search]") {
+TEST_CASE("platform_config_search/list_cleanup_with_entries", "[platform_config_search] [unit]") {
   config_file_list_t list = {0};
   list.capacity = 2;
   list.count = 2;
@@ -56,7 +55,7 @@ TEST_CASE("platform_config_search/list_cleanup_with_entries", "[platform_config_
   REQUIRE((list.files) == nullptr);
 }
 
-TEST_CASE("platform_config_search/basic_allocation", "[platform_config_search]") {
+TEST_CASE("platform_config_search/basic_allocation", "[platform_config_search] [unit]") {
   // Test basic allocation of an empty result list
   config_file_list_t list = {0};
   list.capacity = 1;

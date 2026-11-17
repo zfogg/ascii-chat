@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/audio/mixer.h>
@@ -178,7 +177,7 @@ static void contract_teardown(void) {
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-TEST_CASE("server_main_contract/sdp_relay_preserves_ids_type_and_exact_nonterminated_payload", "[server_main_contract]") {
+TEST_CASE("server_main_contract/sdp_relay_preserves_ids_type_and_exact_nonterminated_payload", "[server_main_contract] [contract]") {
   uint8_t session[16] = {1}, recipient[16] = {2};
   g_server_participant_id[0] = 3;
   REQUIRE((server_send_sdp(session, recipient, "offer", "v=0", NULL)) == (ERROR_INVALID_STATE));
@@ -210,7 +209,7 @@ TEST_CASE("server_main_contract/sdp_relay_preserves_ids_type_and_exact_nontermin
   contract_send_result = ERROR_NETWORK;
   REQUIRE((server_send_sdp(session, recipient, "offer", "v=0", NULL)) == (ERROR_NETWORK));
 }
-TEST_CASE("server_main_contract/ice_relay_encodes_two_strings_and_bounds_combined_payload", "[server_main_contract]") {
+TEST_CASE("server_main_contract/ice_relay_encodes_two_strings_and_bounds_combined_payload", "[server_main_contract] [contract]") {
   uint8_t session[16] = {4}, recipient[16] = {5};
   g_server_participant_id[0] = 6;
   REQUIRE((server_send_ice(session, recipient, "candidate", "0", NULL)) == (ERROR_INVALID_STATE));
@@ -251,7 +250,7 @@ static void server_options_commit(options_t *v) {
   REQUIRE((options_state_set(v)) == (ASCIICHAT_OK));
   SAFE_FREE(v);
 }
-TEST_CASE("server_main_contract/identity_selection_skips_invalid_entries_and_commits_the_complete_loaded_set", "[server_main_contract]") {
+TEST_CASE("server_main_contract/identity_selection_skips_invalid_entries_and_commits_the_complete_loaded_set", "[server_main_contract] [contract]") {
   options_t *v = server_options();
   v->num_identity_keys = 4;
   v->identity_keys[0][0] = 0;
@@ -267,7 +266,7 @@ TEST_CASE("server_main_contract/identity_selection_skips_invalid_entries_and_com
   REQUIRE(g_server_encryption_enabled);
   REQUIRE((g_client_whitelist[0].type) == (KEY_TYPE_ED25519));
 }
-TEST_CASE("server_main_contract/identity_failures_leave_encryption_disabled_and_report_key_errors", "[server_main_contract]") {
+TEST_CASE("server_main_contract/identity_failures_leave_encryption_disabled_and_report_key_errors", "[server_main_contract] [contract]") {
   options_t *v = server_options();
   v->num_identity_keys = 2;
   SAFE_STRNCPY(v->identity_keys[0], "bad-file", sizeof(v->identity_keys[0]));
@@ -279,7 +278,7 @@ TEST_CASE("server_main_contract/identity_failures_leave_encryption_disabled_and_
   REQUIRE((GET_ERRNO()) == (ERROR_CRYPTO_KEY));
   CLEAR_ERRNO_ALL();
 }
-TEST_CASE("server_main_contract/legacy_single_identity_and_whitelist_failures_are_distinct_from_simple_mode", "[server_main_contract]") {
+TEST_CASE("server_main_contract/legacy_single_identity_and_whitelist_failures_are_distinct_from_simple_mode", "[server_main_contract] [contract]") {
   options_t *v = server_options();
   v->num_identity_keys = 0;
   SAFE_STRNCPY(v->encrypt_key, "bad-file", sizeof(v->encrypt_key));
@@ -304,7 +303,7 @@ TEST_CASE("server_main_contract/legacy_single_identity_and_whitelist_failures_ar
   REQUIRE((init_server_crypto()) == (0));
   REQUIRE(g_server_encryption_enabled);
 }
-TEST_CASE("server_main_contract/discovery_request_preserves_security_policy_and_falls_back_when_mapping_expires", "[server_main_contract]") {
+TEST_CASE("server_main_contract/discovery_request_preserves_security_policy_and_falls_back_when_mapping_expires", "[server_main_contract] [contract]") {
   options_t *v = server_options();
   v->webrtc = false;
   v->max_clients = 3;
@@ -335,7 +334,7 @@ TEST_CASE("server_main_contract/discovery_request_preserves_security_policy_and_
   REQUIRE(!(params.has_password));
   REQUIRE(std::memcmp((params.identity_pubkey), (((uint8_t[32]){0})), (32)) == 0);
 }
-TEST_CASE("server_main_contract/turn_server_list_requires_credentials_trims_entries_and_bounds_capacity", "[server_main_contract]") {
+TEST_CASE("server_main_contract/turn_server_list_requires_credentials_trims_entries_and_bounds_capacity", "[server_main_contract] [contract]") {
   turn_server_t servers[MAX_CONFIGURED_TURN_SERVERS] = {0};
   REQUIRE((server_configure_turn(servers, "", "secret")) == (0));
   REQUIRE((server_configure_turn(servers, "user", "")) == (0));
@@ -351,7 +350,7 @@ TEST_CASE("server_main_contract/turn_server_list_requires_credentials_trims_entr
     REQUIRE(std::strcmp((servers[i].credential), ("local-secret")) == 0);
   }
 }
-TEST_CASE("server_main_contract/resource_initializers_propagate_failure_and_shutdown_supersedes_startup_errors", "[server_main_contract]") {
+TEST_CASE("server_main_contract/resource_initializers_propagate_failure_and_shutdown_supersedes_startup_errors", "[server_main_contract] [contract]") {
   fail_resource = true;
   REQUIRE((server_init_rate_limiter()) == (ERROR_MEMORY));
   CLEAR_ERRNO_ALL();
@@ -382,7 +381,7 @@ TEST_CASE("server_main_contract/resource_initializers_propagate_failure_and_shut
   REQUIRE((g_h265_server) != nullptr);
 }
 
-TEST_CASE("server_main_contract/discovery_keepalive_replies_only_while_transport_is_available", "[server_main_contract]") {
+TEST_CASE("server_main_contract/discovery_keepalive_replies_only_while_transport_is_available", "[server_main_contract] [contract]") {
   on_acds_ping(NULL);
   REQUIRE((contract_sends) == (0));
   g_acds_transport = &contract_transport;
@@ -396,7 +395,7 @@ TEST_CASE("server_main_contract/discovery_keepalive_replies_only_while_transport
   on_acds_ping(NULL);
   REQUIRE((contract_sends) == (1));
 }
-TEST_CASE("server_main_contract/per_connection_statistics_include_only_ready_clients_and_preserve_dimensions", "[server_main_contract]") {
+TEST_CASE("server_main_contract/per_connection_statistics_include_only_ready_clients_and_preserve_dimensions", "[server_main_contract] [contract]") {
   acip_transport_t *transport = SAFE_CALLOC(1, sizeof(*transport), acip_transport_t *);
   transport->methods = &contract_methods;
   network_connection_t *connection = NULL;
@@ -448,7 +447,7 @@ TEST_CASE("server_main_contract/per_connection_statistics_include_only_ready_cli
   server_status_fn(NULL, &status);
 }
 
-TEST_CASE("server_main_contract/incoming_signaling_requires_a_peer_manager_and_complete_payload_before_forwarding", "[server_main_contract]") {
+TEST_CASE("server_main_contract/incoming_signaling_requires_a_peer_manager_and_complete_payload_before_forwarding", "[server_main_contract] [contract]") {
   struct {
     acip_webrtc_sdp_t header;
     char body[4];
@@ -494,7 +493,7 @@ static acip_transport_t *channel(void) {
   transport->methods = &methods;
   return transport;
 }
-TEST_CASE("server_main_contract/ready_channels_transfer_ownership_only_after_authenticated_adoption", "[server_main_contract]") {
+TEST_CASE("server_main_contract/ready_channels_transfer_ownership_only_after_authenticated_adoption", "[server_main_contract] [contract]") {
   uint8_t peer[16];
   for (unsigned i = 0; i < 16; ++i)
     peer[i] = i;
@@ -519,7 +518,7 @@ TEST_CASE("server_main_contract/ready_channels_transfer_ownership_only_after_aut
   REQUIRE((destroyed_channels) == (4));
 }
 
-TEST_CASE("server_main_contract/lan_advertisements_preserve_session_identity_port_and_encryption_policy", "[server_main_contract]") {
+TEST_CASE("server_main_contract/lan_advertisements_preserve_session_identity_port_and_encryption_policy", "[server_main_contract] [contract]") {
   advertise_mdns_with_session("river-cloud-tree", 27001);
   REQUIRE((advertisement_calls) == (0));
   unsigned opaque = 0;
@@ -542,7 +541,7 @@ TEST_CASE("server_main_contract/lan_advertisements_preserve_session_identity_por
   REQUIRE(g_server_encryption_enabled);
   advertisement_context = NULL;
 }
-TEST_CASE("server_main_contract/public_disclosure_requires_confirmation_and_authenticated_discovery_stays_private", "[server_main_contract]") {
+TEST_CASE("server_main_contract/public_disclosure_requires_confirmation_and_authenticated_discovery_stays_private", "[server_main_contract] [contract]") {
   can_prompt = true;
   server_discovery_policy_t policy = {.explicit_expose = true};
   REQUIRE(!(server_allow_discovery(&policy)));

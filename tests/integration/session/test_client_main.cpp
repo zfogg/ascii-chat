@@ -4,7 +4,6 @@
 
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/common.h>
-#include <catch2/catch_all.hpp>
 #include <stdlib.h>
 
 #include <stdbool.h>
@@ -15,7 +14,7 @@
 // Use shared binary path detection from tests/common.h
 #define get_binary_path test_get_binary_path
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("client_main/test_client_help", "[client_main]") {
+TEST_CASE("client_main/test_client_help", "[client_main] [integration]") {
   const char *argv[] = {get_binary_path(), "--help", NULL};
   platform_process_t *process = NULL;
   REQUIRE(platform_process_spawn(&process, get_binary_path(), argv, -1, -1, -1) == ASCIICHAT_OK);

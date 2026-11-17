@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/discovery/key_set.h>
 #include <ascii-chat/network/acip/acds_client.h>
@@ -63,7 +62,7 @@ static void expect_join(acip_session_join_t *req, bool success) {
     REQUIRE((network_error_from_acip(response.error_code)) == (ERROR_INVALID_SIGNATURE));
 }
 
-TEST_CASE("discovery_key_set/ordered_proofs_and_any_active_member_can_join", "[discovery_key_set]") {
+TEST_CASE("discovery_key_set/ordered_proofs_and_any_active_member_can_join", "[discovery_key_set] [unit]") {
   acds_create_key_set_t set = {0};
   bool complete;
   for (size_t i = 0; i < 2; ++i) {
@@ -101,7 +100,7 @@ TEST_CASE("discovery_key_set/ordered_proofs_and_any_active_member_can_join", "[d
   session_entry_destroy(entry);
 }
 
-TEST_CASE("discovery_key_set/malformed_sequences_clear_partial_state", "[discovery_key_set]") {
+TEST_CASE("discovery_key_set/malformed_sequences_clear_partial_state", "[discovery_key_set] [unit]") {
   for (int scenario = 0; scenario < 9; ++scenario) {
     acds_create_key_set_t set = {0};
     bool complete;
@@ -149,7 +148,7 @@ TEST_CASE("discovery_key_set/malformed_sequences_clear_partial_state", "[discove
   REQUIRE((acds_create_key_set_collect(&set, &req, false, &complete)) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("discovery_key_set/single_key_policy_and_required_identity_are_preserved", "[discovery_key_set]") {
+TEST_CASE("discovery_key_set/single_key_policy_and_required_identity_are_preserved", "[discovery_key_set] [unit]") {
   for (uint8_t total = 0; total <= 1; ++total) {
     acds_create_key_set_t set = {0};
     acip_session_create_t req = create_request(0, total);
@@ -170,7 +169,7 @@ TEST_CASE("discovery_key_set/single_key_policy_and_required_identity_are_preserv
   }
 }
 
-TEST_CASE("discovery_key_set/invalid_key_sets_and_storage_failures_leave_no_partial_session", "[discovery_key_set]") {
+TEST_CASE("discovery_key_set/invalid_key_sets_and_storage_failures_leave_no_partial_session", "[discovery_key_set] [unit]") {
   acip_session_create_t req = create_request(0, 2);
   acip_session_created_t session;
   uint8_t duplicate[2][32];
@@ -192,7 +191,7 @@ TEST_CASE("discovery_key_set/invalid_key_sets_and_storage_failures_leave_no_part
   REQUIRE((session.session_string_len) == (0));
 }
 
-TEST_CASE("discovery_key_set/migration_retains_old_sessions_keys_revocations_and_admission_on_reopen", "[discovery_key_set]") {
+TEST_CASE("discovery_key_set/migration_retains_old_sessions_keys_revocations_and_admission_on_reopen", "[discovery_key_set] [unit]") {
   int fd;
   REQUIRE((platform_create_temp_file(db_path, sizeof(db_path), "acds-key-migration", &fd)) == (0));
   if (fd >= 0)
@@ -249,7 +248,7 @@ TEST_CASE("discovery_key_set/migration_retains_old_sessions_keys_revocations_and
   session_entry_destroy(entry);
 }
 
-TEST_CASE("discovery_key_set/malformed_join_names_are_rejected_before_authentication", "[discovery_key_set]") {
+TEST_CASE("discovery_key_set/malformed_join_names_are_rejected_before_authentication", "[discovery_key_set] [unit]") {
   acip_session_join_t req = {0};
   acip_session_joined_t resp;
   req.session_string_len = 255;
@@ -258,7 +257,7 @@ TEST_CASE("discovery_key_set/malformed_join_names_are_rejected_before_authentica
   REQUIRE((database_session_join(db, &req, &config, &resp)) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("discovery_key_set/restricted_sessions_still_require_passwords_and_typed_storage", "[discovery_key_set]") {
+TEST_CASE("discovery_key_set/restricted_sessions_still_require_passwords_and_typed_storage", "[discovery_key_set] [unit]") {
   acip_session_create_t req = create_request(0, 2);
   req.has_password = 1;
   REQUIRE((crypto_pwhash_str((char *)req.password_hash, "secret", 6, crypto_pwhash_OPSLIMIT_MIN, crypto_pwhash_MEMLIMIT_MIN)) == (0));
@@ -298,7 +297,7 @@ static void count_create_callback(const acip_session_create_t *req, acip_transpo
   (void)ip;
   ++*(size_t *)ctx;
 }
-TEST_CASE("discovery_key_set/malformed_wire_fields_never_reach_create_callback", "[discovery_key_set]") {
+TEST_CASE("discovery_key_set/malformed_wire_fields_never_reach_create_callback", "[discovery_key_set] [unit]") {
   size_t callbacks_called = 0;
   acip_acds_callbacks_t callbacks = {.on_session_create = count_create_callback, .app_ctx = &callbacks_called};
   acip_session_create_t req = create_request(0, 0);
@@ -316,7 +315,7 @@ TEST_CASE("discovery_key_set/malformed_wire_fields_never_reach_create_callback",
   REQUIRE((callbacks_called) == (1));
 }
 
-TEST_CASE("discovery_key_set/host_only_legacy_database_is_backfilled_and_new_restrictions_survive_reopen", "[discovery_key_set]") {
+TEST_CASE("discovery_key_set/host_only_legacy_database_is_backfilled_and_new_restrictions_survive_reopen", "[discovery_key_set] [unit]") {
   int fd;
   REQUIRE((platform_create_temp_file(db_path, sizeof(db_path), "acds-host-migration", &fd)) == (0));
   if (fd >= 0)
@@ -342,7 +341,7 @@ TEST_CASE("discovery_key_set/host_only_legacy_database_is_backfilled_and_new_res
   REQUIRE(!(database_session_verify_key(db, restricted.session_string, keys[1])));
 }
 
-TEST_CASE("discovery_key_set/fresh_databases_do_not_create_superseded_key_tables_or_indexes", "[discovery_key_set]") {
+TEST_CASE("discovery_key_set/fresh_databases_do_not_create_superseded_key_tables_or_indexes", "[discovery_key_set] [unit]") {
   sqlite3_stmt *stmt;
   REQUIRE((sqlite3_prepare_v2(db,
                               "SELECT COUNT(*) FROM sqlite_master WHERE name IN "
@@ -353,7 +352,7 @@ TEST_CASE("discovery_key_set/fresh_databases_do_not_create_superseded_key_tables
   sqlite3_finalize(stmt);
 }
 
-TEST_CASE("discovery_key_set/maximum_create_sequence_round_trips_storage", "[discovery_key_set]") {
+TEST_CASE("discovery_key_set/maximum_create_sequence_round_trips_storage", "[discovery_key_set] [unit]") {
   acds_create_key_set_t set = {0};
   bool complete = false;
   for (size_t i = 0; i < MAX_SESSION_KEYS; ++i) {

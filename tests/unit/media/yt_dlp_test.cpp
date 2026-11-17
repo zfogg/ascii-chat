@@ -4,7 +4,6 @@
  * @brief Unit tests for yt_dlp module
  */
 
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/media/yt_dlp.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/log/log.h>
@@ -14,7 +13,7 @@
  * Basic API Tests
  * ============================================================================ */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("yt_dlp/is_available_returns_bool", "[yt_dlp]") {
+TEST_CASE("yt_dlp/is_available_returns_bool", "[yt_dlp] [unit]") {
   // Test that yt_dlp_is_available returns a boolean value
   // (The actual result depends on whether yt-dlp is installed on the system)
   bool available = yt_dlp_is_available();
@@ -25,7 +24,7 @@ TEST_CASE("yt_dlp/is_available_returns_bool", "[yt_dlp]") {
  * Parameter Validation Tests
  * ============================================================================ */
 
-TEST_CASE("yt_dlp/extract_rejects_null_url", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_rejects_null_url", "[yt_dlp] [unit]") {
   char output[256] = {0};
 
   asciichat_error_t err = yt_dlp_extract_stream_url(NULL, NULL, output, sizeof(output));
@@ -33,13 +32,13 @@ TEST_CASE("yt_dlp/extract_rejects_null_url", "[yt_dlp]") {
   REQUIRE((err) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("yt_dlp/extract_rejects_null_output_buffer", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_rejects_null_output_buffer", "[yt_dlp] [unit]") {
   asciichat_error_t err = yt_dlp_extract_stream_url("http://example.com/video.mp4", NULL, NULL, 256);
   REQUIRE((err) != (ASCIICHAT_OK));
   REQUIRE((err) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("yt_dlp/extract_rejects_output_buffer_too_small", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_rejects_output_buffer_too_small", "[yt_dlp] [unit]") {
   char small_buf[10] = {0};
 
   asciichat_error_t err = yt_dlp_extract_stream_url("http://example.com/video.mp4", NULL, small_buf, 10);
@@ -47,7 +46,7 @@ TEST_CASE("yt_dlp/extract_rejects_output_buffer_too_small", "[yt_dlp]") {
   REQUIRE((err) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("yt_dlp/extract_rejects_empty_url", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_rejects_empty_url", "[yt_dlp] [unit]") {
   char output[256] = {0};
 
   asciichat_error_t err = yt_dlp_extract_stream_url("", NULL, output, sizeof(output));
@@ -58,7 +57,7 @@ TEST_CASE("yt_dlp/extract_rejects_empty_url", "[yt_dlp]") {
  * Error Handling Tests
  * ============================================================================ */
 
-TEST_CASE("yt_dlp/extract_handles_invalid_url", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_handles_invalid_url", "[yt_dlp] [unit]") {
   char output[8192] = {0};
 
   // Use an invalid URL that yt-dlp cannot handle
@@ -69,7 +68,7 @@ TEST_CASE("yt_dlp/extract_handles_invalid_url", "[yt_dlp]") {
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("yt_dlp/extract_output_buffer_populated_or_clear", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_output_buffer_populated_or_clear", "[yt_dlp] [unit]") {
   char output[8192] = {0};
 
   // Test that output buffer is properly initialized
@@ -89,7 +88,7 @@ TEST_CASE("yt_dlp/extract_output_buffer_populated_or_clear", "[yt_dlp]") {
  * Options Handling Tests
  * ============================================================================ */
 
-TEST_CASE("yt_dlp/extract_accepts_null_options", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_accepts_null_options", "[yt_dlp] [unit]") {
   char output[8192] = {0};
 
   // Test that NULL options are handled gracefully
@@ -98,7 +97,7 @@ TEST_CASE("yt_dlp/extract_accepts_null_options", "[yt_dlp]") {
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("yt_dlp/extract_accepts_empty_options", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_accepts_empty_options", "[yt_dlp] [unit]") {
   char output[8192] = {0};
 
   // Test that empty string options are handled gracefully
@@ -107,7 +106,7 @@ TEST_CASE("yt_dlp/extract_accepts_empty_options", "[yt_dlp]") {
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("yt_dlp/extract_accepts_custom_options", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_accepts_custom_options", "[yt_dlp] [unit]") {
   char output[8192] = {0};
 
   // Test that custom options are accepted (may fail if yt-dlp not available or URL invalid)
@@ -120,7 +119,7 @@ TEST_CASE("yt_dlp/extract_accepts_custom_options", "[yt_dlp]") {
  * Output Validation Tests
  * ============================================================================ */
 
-TEST_CASE("yt_dlp/extract_null_terminates_output", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_null_terminates_output", "[yt_dlp] [unit]") {
   char output[8192] = {0};
 
   // Fill entire buffer with non-null characters
@@ -133,7 +132,7 @@ TEST_CASE("yt_dlp/extract_null_terminates_output", "[yt_dlp]") {
   REQUIRE((memchr(output, '\0', sizeof(output))) != nullptr);
 }
 
-TEST_CASE("yt_dlp/extract_respects_buffer_size", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_respects_buffer_size", "[yt_dlp] [unit]") {
   char small_buffer[100] = {0};
   char large_buffer[8192] = {0};
 
@@ -152,7 +151,7 @@ TEST_CASE("yt_dlp/extract_respects_buffer_size", "[yt_dlp]") {
  * Cache Behavior Tests
  * ============================================================================ */
 
-TEST_CASE("yt_dlp/extract_cache_same_url_twice", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_cache_same_url_twice", "[yt_dlp] [unit]") {
   char output1[8192] = {0};
   char output2[8192] = {0};
 
@@ -168,7 +167,7 @@ TEST_CASE("yt_dlp/extract_cache_same_url_twice", "[yt_dlp]") {
   }
 }
 
-TEST_CASE("yt_dlp/extract_cache_different_url", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_cache_different_url", "[yt_dlp] [unit]") {
   char output1[8192] = {0};
   char output2[8192] = {0};
 
@@ -181,7 +180,7 @@ TEST_CASE("yt_dlp/extract_cache_different_url", "[yt_dlp]") {
   REQUIRE((err2 == ASCIICHAT_OK || err2 != ASCIICHAT_OK));
 }
 
-TEST_CASE("yt_dlp/extract_cache_different_options", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_cache_different_options", "[yt_dlp] [unit]") {
   char output1[8192] = {0};
   char output2[8192] = {0};
 
@@ -198,7 +197,7 @@ TEST_CASE("yt_dlp/extract_cache_different_options", "[yt_dlp]") {
  * Integration-Style Tests (require yt-dlp)
  * ============================================================================ */
 
-TEST_CASE("yt_dlp/extract_with_yt_dlp_if_available", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_with_yt_dlp_if_available", "[yt_dlp] [unit]") {
   // Skip this test if yt-dlp is not available
   if (!yt_dlp_is_available()) {
     SKIP("test skipped");
@@ -217,7 +216,7 @@ TEST_CASE("yt_dlp/extract_with_yt_dlp_if_available", "[yt_dlp]") {
  * Stress Tests
  * ============================================================================ */
 
-TEST_CASE("yt_dlp/extract_long_url", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_long_url", "[yt_dlp] [unit]") {
   char output[8192] = {0};
   char long_url[2048];
 
@@ -238,7 +237,7 @@ TEST_CASE("yt_dlp/extract_long_url", "[yt_dlp]") {
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("yt_dlp/extract_long_options", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_long_options", "[yt_dlp] [unit]") {
   char output[8192] = {0};
   char long_options[512];
 
@@ -252,7 +251,7 @@ TEST_CASE("yt_dlp/extract_long_options", "[yt_dlp]") {
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("yt_dlp/extract_special_characters_in_url", "[yt_dlp]") {
+TEST_CASE("yt_dlp/extract_special_characters_in_url", "[yt_dlp] [unit]") {
   char output[8192] = {0};
 
   // Test URL with special characters

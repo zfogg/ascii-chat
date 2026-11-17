@@ -4,7 +4,6 @@
  * @brief Server multi-client integration tests
  */
 
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -14,14 +13,14 @@
 // Video Frame Buffer Creation Tests
 // =============================================================================
 
-TEST_CASE("server_multiclient/create_frame_buffer", "[server_multiclient]") {
+TEST_CASE("server_multiclient/create_frame_buffer", "[server_multiclient] [integration]") {
   video_frame_buffer_t *vfb = video_frame_buffer_create("client_1");
   REQUIRE((vfb) != nullptr);
 
   video_frame_buffer_destroy(vfb);
 }
 
-TEST_CASE("server_multiclient/create_multiple_frame_buffers", "[server_multiclient]") {
+TEST_CASE("server_multiclient/create_multiple_frame_buffers", "[server_multiclient] [integration]") {
   int num_clients = 4;
   video_frame_buffer_t *buffers[num_clients];
 
@@ -37,7 +36,7 @@ TEST_CASE("server_multiclient/create_multiple_frame_buffers", "[server_multiclie
   }
 }
 
-TEST_CASE("server_multiclient/destroy_null_buffer", "[server_multiclient]") {
+TEST_CASE("server_multiclient/destroy_null_buffer", "[server_multiclient] [integration]") {
   video_frame_buffer_destroy(NULL);
   REQUIRE(true);
 }
@@ -46,7 +45,7 @@ TEST_CASE("server_multiclient/destroy_null_buffer", "[server_multiclient]") {
 // Frame Writing Tests
 // =============================================================================
 
-TEST_CASE("server_multiclient/begin_write_and_commit", "[server_multiclient]") {
+TEST_CASE("server_multiclient/begin_write_and_commit", "[server_multiclient] [integration]") {
   video_frame_buffer_t *vfb = video_frame_buffer_create("client_1");
 
   video_frame_t *frame = video_frame_begin_write(vfb);
@@ -62,7 +61,7 @@ TEST_CASE("server_multiclient/begin_write_and_commit", "[server_multiclient]") {
   video_frame_buffer_destroy(vfb);
 }
 
-TEST_CASE("server_multiclient/multiple_writes", "[server_multiclient]") {
+TEST_CASE("server_multiclient/multiple_writes", "[server_multiclient] [integration]") {
   video_frame_buffer_t *vfb = video_frame_buffer_create("client_1");
 
   // Write multiple frames
@@ -85,7 +84,7 @@ TEST_CASE("server_multiclient/multiple_writes", "[server_multiclient]") {
 // Frame Reading Tests
 // =============================================================================
 
-TEST_CASE("server_multiclient/get_latest_frame", "[server_multiclient]") {
+TEST_CASE("server_multiclient/get_latest_frame", "[server_multiclient] [integration]") {
   video_frame_buffer_t *vfb = video_frame_buffer_create("client_1");
 
   // Write a frame
@@ -104,7 +103,7 @@ TEST_CASE("server_multiclient/get_latest_frame", "[server_multiclient]") {
   video_frame_buffer_destroy(vfb);
 }
 
-TEST_CASE("server_multiclient/no_frame_initially", "[server_multiclient]") {
+TEST_CASE("server_multiclient/no_frame_initially", "[server_multiclient] [integration]") {
   video_frame_buffer_t *vfb = video_frame_buffer_create("client_1");
 
   // No write yet, should return NULL
@@ -114,7 +113,7 @@ TEST_CASE("server_multiclient/no_frame_initially", "[server_multiclient]") {
   video_frame_buffer_destroy(vfb);
 }
 
-TEST_CASE("server_multiclient/latest_frame_wins", "[server_multiclient]") {
+TEST_CASE("server_multiclient/latest_frame_wins", "[server_multiclient] [integration]") {
   video_frame_buffer_t *vfb = video_frame_buffer_create("client_1");
 
   // Write first frame
@@ -139,7 +138,7 @@ TEST_CASE("server_multiclient/latest_frame_wins", "[server_multiclient]") {
 // Frame Statistics Tests
 // =============================================================================
 
-TEST_CASE("server_multiclient/get_frame_stats", "[server_multiclient]") {
+TEST_CASE("server_multiclient/get_frame_stats", "[server_multiclient] [integration]") {
   video_frame_buffer_t *vfb = video_frame_buffer_create("client_1");
 
   // Write frames
@@ -160,7 +159,7 @@ TEST_CASE("server_multiclient/get_frame_stats", "[server_multiclient]") {
   video_frame_buffer_destroy(vfb);
 }
 
-TEST_CASE("server_multiclient/stats_initially_zero", "[server_multiclient]") {
+TEST_CASE("server_multiclient/stats_initially_zero", "[server_multiclient] [integration]") {
   video_frame_buffer_t *vfb = video_frame_buffer_create("client_1");
 
   video_frame_stats_t stats;
@@ -176,14 +175,14 @@ TEST_CASE("server_multiclient/stats_initially_zero", "[server_multiclient]") {
 // Simple Frame Swap Tests
 // =============================================================================
 
-TEST_CASE("server_multiclient/create_simple_frame_swap", "[server_multiclient]") {
+TEST_CASE("server_multiclient/create_simple_frame_swap", "[server_multiclient] [integration]") {
   simple_frame_swap_t *sfs = simple_frame_swap_create();
   REQUIRE((sfs) != nullptr);
 
   simple_frame_swap_destroy(sfs);
 }
 
-TEST_CASE("server_multiclient/simple_frame_swap_update", "[server_multiclient]") {
+TEST_CASE("server_multiclient/simple_frame_swap_update", "[server_multiclient] [integration]") {
   simple_frame_swap_t *sfs = simple_frame_swap_create();
 
   uint8_t data[1024];
@@ -198,7 +197,7 @@ TEST_CASE("server_multiclient/simple_frame_swap_update", "[server_multiclient]")
   simple_frame_swap_destroy(sfs);
 }
 
-TEST_CASE("server_multiclient/simple_frame_swap_null_initially", "[server_multiclient]") {
+TEST_CASE("server_multiclient/simple_frame_swap_null_initially", "[server_multiclient] [integration]") {
   simple_frame_swap_t *sfs = simple_frame_swap_create();
 
   const video_frame_t *frame = simple_frame_swap_get(sfs);
@@ -207,7 +206,7 @@ TEST_CASE("server_multiclient/simple_frame_swap_null_initially", "[server_multic
   simple_frame_swap_destroy(sfs);
 }
 
-TEST_CASE("server_multiclient/simple_frame_swap_multiple_updates", "[server_multiclient]") {
+TEST_CASE("server_multiclient/simple_frame_swap_multiple_updates", "[server_multiclient] [integration]") {
   simple_frame_swap_t *sfs = simple_frame_swap_create();
 
   // Alternate between two buffers
@@ -235,7 +234,7 @@ TEST_CASE("server_multiclient/simple_frame_swap_multiple_updates", "[server_mult
 // Multi-Client Scenario Tests
 // =============================================================================
 
-TEST_CASE("server_multiclient/multiclient_concurrent_writes", "[server_multiclient]") {
+TEST_CASE("server_multiclient/multiclient_concurrent_writes", "[server_multiclient] [integration]") {
   int num_clients = 4;
   video_frame_buffer_t *buffers[num_clients];
 
@@ -273,7 +272,7 @@ TEST_CASE("server_multiclient/multiclient_concurrent_writes", "[server_multiclie
   }
 }
 
-TEST_CASE("server_multiclient/multiclient_stats_aggregation", "[server_multiclient]") {
+TEST_CASE("server_multiclient/multiclient_stats_aggregation", "[server_multiclient] [integration]") {
   int num_clients = 3;
   video_frame_buffer_t *buffers[num_clients];
 

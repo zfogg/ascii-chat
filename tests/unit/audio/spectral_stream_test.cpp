@@ -1,10 +1,10 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/audio/spectral.h>
 #include <ascii-chat/tests/logging.h>
 #include <math.h>
 #include <string.h>
-TEST_CASE("spectral_stream/bypass_preserves_signal_latency_and_arbitrary_block_boundaries", "[spectral_stream]") {
+TEST_CASE("spectral_stream/bypass_preserves_signal_latency_and_arbitrary_block_boundaries", "[spectral_stream] [unit]") {
   const int sizes[] = {512, 1024, 2048};
   for (size_t v = 0; v < 3; ++v) {
     int n = sizes[v], count = n * 8;
@@ -47,7 +47,7 @@ TEST_CASE("spectral_stream/bypass_preserves_signal_latency_and_arbitrary_block_b
   }
 }
 
-TEST_CASE("spectral_stream/processing_detects_pitch_and_keeps_all_effects_finite", "[spectral_stream]") {
+TEST_CASE("spectral_stream/processing_detects_pitch_and_keeps_all_effects_finite", "[spectral_stream] [unit]") {
   spectral_config_t config = spectral_default_config(48000);
   config.fft_size = 2048;
   config.compressor = config.adaptive_eq = config.pitch_correct = config.auto_gain = true;
@@ -79,7 +79,7 @@ TEST_CASE("spectral_stream/processing_detects_pitch_and_keeps_all_effects_finite
   spectral_destroy(processor);
 }
 
-TEST_CASE("spectral_stream/invalid_configuration_and_buffers_are_rejected", "[spectral_stream]") {
+TEST_CASE("spectral_stream/invalid_configuration_and_buffers_are_rejected", "[spectral_stream] [unit]") {
   spectral_config_t good = spectral_default_config(48000);
   for (int i = 0; i < 7; ++i) {
     spectral_config_t config = good;

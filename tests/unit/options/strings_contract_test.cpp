@@ -1,11 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/strings.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <string.h>
 
-TEST_CASE("option_strings/explicit_modes_round_trip_and_aliases_remain_unambiguous", "[option_strings]") {
+TEST_CASE("option_strings/explicit_modes_round_trip_and_aliases_remain_unambiguous", "[option_strings] [unit]") {
   const struct {
     asciichat_mode_t mode;
     const char *name;
@@ -33,7 +32,7 @@ TEST_CASE("option_strings/explicit_modes_round_trip_and_aliases_remain_unambiguo
       REQUIRE(std::strcmp((names[i]), (names[j])) != 0);
   }
 }
-TEST_CASE("option_strings/display_enum_names_and_unknown_values_are_stable", "[option_strings]") {
+TEST_CASE("option_strings/display_enum_names_and_unknown_values_are_stable", "[option_strings] [unit]") {
   const struct {
     terminal_color_mode_t value;
     const char *name;
@@ -49,7 +48,7 @@ TEST_CASE("option_strings/display_enum_names_and_unknown_values_are_stable", "[o
   REQUIRE(std::strcmp((color_mode_to_string((terminal_color_mode_t)99)), ("unknown")) == 0);
   REQUIRE(std::strcmp((palette_type_to_string((palette_type_t)99)), ("unknown")) == 0);
 }
-TEST_CASE("option_strings/typo_suggestions_are_bounded_and_handle_missing_options", "[option_strings]") {
+TEST_CASE("option_strings/typo_suggestions_are_bounded_and_handle_missing_options", "[option_strings] [unit]") {
   REQUIRE(std::strcmp((asciichat_suggest_mode("servre")), ("server")) == 0);
   REQUIRE(std::strcmp((asciichat_suggest_mode("miror")), ("mirror")) == 0);
   REQUIRE((asciichat_suggest_mode(NULL)) == nullptr);

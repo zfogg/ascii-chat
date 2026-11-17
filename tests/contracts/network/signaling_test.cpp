@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "client/webrtc.h"
 #include "discovery/webrtc.h"
 #include <ascii-chat/common.h>
@@ -57,7 +56,7 @@ static const uint8_t *payload(packet_type_t type, size_t length) {
   return data;
 }
 
-TEST_CASE("signaling/sdp_offer_and_answer_preserve_identity_payload_and_network_byte_order", "[signaling]") {
+TEST_CASE("signaling/sdp_offer_and_answer_preserve_identity_payload_and_network_byte_order", "[signaling] [contract]") {
   const char sdp[] = "v=0\r\no=- 123 1 IN IP4 127.0.0.1\r\ns=fixture\r\n";
   for (unsigned direct = 0; direct < 2; ++direct) {
     webrtc_signaling_callbacks_t cb = callbacks(direct);
@@ -77,7 +76,7 @@ TEST_CASE("signaling/sdp_offer_and_answer_preserve_identity_payload_and_network_
   }
 }
 
-TEST_CASE("signaling/ice_candidate_and_mid_have_separate_terminators_and_candidate_only_length", "[signaling]") {
+TEST_CASE("signaling/ice_candidate_and_mid_have_separate_terminators_and_candidate_only_length", "[signaling] [contract]") {
   const char candidate[] = "candidate:1 1 UDP 2122260223 127.0.0.1 5000 typ host";
   const char mid[] = "data";
   for (unsigned direct = 0; direct < 2; ++direct) {
@@ -94,7 +93,7 @@ TEST_CASE("signaling/ice_candidate_and_mid_have_separate_terminators_and_candida
   }
 }
 
-TEST_CASE("signaling/disconnected_and_unconfigured_signaling_cannot_send", "[signaling]") {
+TEST_CASE("signaling/disconnected_and_unconfigured_signaling_cannot_send", "[signaling] [contract]") {
   webrtc_signaling_callbacks_t cb = webrtc_get_signaling_callbacks();
   REQUIRE((cb.send_sdp(session, remote, "offer", "v=0", cb.user_data)) == (ERROR_INVALID_STATE));
   REQUIRE((cb.send_ice(session, remote, "candidate", "data", cb.user_data)) == (ERROR_INVALID_STATE));
@@ -110,7 +109,7 @@ TEST_CASE("signaling/disconnected_and_unconfigured_signaling_cannot_send", "[sig
   REQUIRE((sends) == (0));
 }
 
-TEST_CASE("signaling/invalid_or_oversized_payloads_are_rejected_and_transport_errors_propagate", "[signaling]") {
+TEST_CASE("signaling/invalid_or_oversized_payloads_are_rejected_and_transport_errors_propagate", "[signaling] [contract]") {
   char too_large[8193];
   memset(too_large, 'a', sizeof(too_large) - 1);
   too_large[sizeof(too_large) - 1] = '\0';
@@ -131,7 +130,7 @@ TEST_CASE("signaling/invalid_or_oversized_payloads_are_rejected_and_transport_er
   }
 }
 
-TEST_CASE("signaling/data_channel_cleanup_does_not_release_the_borrowed_transport", "[signaling]") {
+TEST_CASE("signaling/data_channel_cleanup_does_not_release_the_borrowed_transport", "[signaling] [contract]") {
   REQUIRE((webrtc_get_transport()) == nullptr);
   webrtc_cleanup_transport();
   webrtc_set_transport(&transport);

@@ -1,10 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
 #include <ascii-chat/util/string.h>
-TEST_CASE("grep_patterns/context_and_inverse_patterns_select_expected_lines", "[grep_patterns]") {
+TEST_CASE("grep_patterns/context_and_inverse_patterns_select_expected_lines", "[grep_patterns] [unit]") {
   REQUIRE((grep_init("/error/iA1")) == (ASCIICHAT_OK));
   size_t start = 99, length = 99;
   REQUIRE(!(grep_should_output("ordinary line", &start, &length)));
@@ -19,7 +18,7 @@ TEST_CASE("grep_patterns/context_and_inverse_patterns_select_expected_lines", "[
   REQUIRE(grep_should_output("public", &start, &length));
 }
 
-TEST_CASE("grep_patterns/saved_pattern_set_restores_case_and_fixed_string_semantics", "[grep_patterns]") {
+TEST_CASE("grep_patterns/saved_pattern_set_restores_case_and_fixed_string_semantics", "[grep_patterns] [unit]") {
   REQUIRE((grep_init("/[a.b]/iF")) == (ASCIICHAT_OK));
   REQUIRE((grep_init("second")) == (ASCIICHAT_OK));
   REQUIRE((grep_get_pattern_count()) == (2));
@@ -36,7 +35,7 @@ TEST_CASE("grep_patterns/saved_pattern_set_restores_case_and_fixed_string_semant
   REQUIRE(grep_should_output("second", &start, &length));
 }
 
-TEST_CASE("grep_patterns/global_highlighting_preserves_text_and_existing_foreground_colors", "[grep_patterns]") {
+TEST_CASE("grep_patterns/global_highlighting_preserves_text_and_existing_foreground_colors", "[grep_patterns] [unit]") {
   const char *patterns[] = {"/foo/ig", "/foo/igF"};
   for (size_t i = 0; i < 2; ++i) {
     grep_clear_patterns();
@@ -56,7 +55,7 @@ TEST_CASE("grep_patterns/global_highlighting_preserves_text_and_existing_foregro
   }
 }
 
-TEST_CASE("grep_patterns/flag_parser_and_invalid_regex_fail_without_losing_existing_filters", "[grep_patterns]") {
+TEST_CASE("grep_patterns/flag_parser_and_invalid_regex_fail_without_losing_existing_filters", "[grep_patterns] [unit]") {
   grep_parse_result_t parsed = grep_parse_pattern("/one.*two/imsxgIC3B2A4");
   REQUIRE(parsed.valid);
   REQUIRE(parsed.case_insensitive);
@@ -71,7 +70,7 @@ TEST_CASE("grep_patterns/flag_parser_and_invalid_regex_fail_without_losing_exist
   REQUIRE((grep_get_pattern_count()) == (1));
 }
 
-TEST_CASE("grep_patterns/dense_global_fixed_matches_preserve_long_lines_without_overflow", "[grep_patterns]") {
+TEST_CASE("grep_patterns/dense_global_fixed_matches_preserve_long_lines_without_overflow", "[grep_patterns] [unit]") {
   char line[6001];
   memset(line, 'X', sizeof(line) - 1);
   line[sizeof(line) - 1] = 0;
@@ -82,7 +81,7 @@ TEST_CASE("grep_patterns/dense_global_fixed_matches_preserve_long_lines_without_
   SAFE_FREE(highlighted);
 }
 
-TEST_CASE("grep_patterns/plain_global_and_single_highlights_preserve_all_original_text", "[grep_patterns]") {
+TEST_CASE("grep_patterns/plain_global_and_single_highlights_preserve_all_original_text", "[grep_patterns] [unit]") {
   const char *line = "prefix foo middle FOO suffix";
   REQUIRE((grep_init("/foo/ig")) == (ASCIICHAT_OK));
   const char *highlighted = grep_highlight(line, 7, 3);
@@ -106,7 +105,7 @@ TEST_CASE("grep_patterns/plain_global_and_single_highlights_preserve_all_origina
   strip_ansi_codes(highlighted, plain, sizeof(plain));
   REQUIRE(std::strcmp((plain), ("foo")) == 0);
 }
-TEST_CASE("grep_patterns/saving_again_replaces_previous_snapshot_and_empty_restore_disables_filtering", "[grep_patterns]") {
+TEST_CASE("grep_patterns/saving_again_replaces_previous_snapshot_and_empty_restore_disables_filtering", "[grep_patterns] [unit]") {
   REQUIRE((grep_init("first")) == (ASCIICHAT_OK));
   REQUIRE((grep_save_patterns()) == (ASCIICHAT_OK));
   REQUIRE((grep_init("/second/iF")) == (ASCIICHAT_OK));
@@ -127,12 +126,12 @@ TEST_CASE("grep_patterns/saving_again_replaces_previous_snapshot_and_empty_resto
   REQUIRE(grep_should_output("unfiltered", &start, &length));
 }
 
-TEST_CASE("grep_patterns/single_plain_match_resets_background_before_suffix", "[grep_patterns]") {
+TEST_CASE("grep_patterns/single_plain_match_resets_background_before_suffix", "[grep_patterns] [unit]") {
   const char *result = grep_highlight("[WARN] warning details", 1, 4);
   REQUIRE((strstr(result, "WARN\033[49m] warning details")) != nullptr);
 }
 
-TEST_CASE("grep_patterns/colored_utf8_match_uses_plain_byte_offsets", "[grep_patterns]") {
+TEST_CASE("grep_patterns/colored_utf8_match_uses_plain_byte_offsets", "[grep_patterns] [unit]") {
   const char *plain = "é [WARN] detail";
   const char *colored = "\033[33mé [WARN] detail\033[0m";
   const char *result = grep_highlight_colored(colored, plain, strlen("é ["), 4);

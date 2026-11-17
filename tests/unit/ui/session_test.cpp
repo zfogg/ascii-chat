@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/tui/session.h>
@@ -23,7 +23,7 @@ typedef struct {
   const char *text;
 } view_fixture_t;
 
-TEST_CASE("session_ui/shared_dividers_have_matching_utf8_and_ascii_widths", "[session_ui]") {
+TEST_CASE("session_ui/shared_dividers_have_matching_utf8_and_ascii_widths", "[session_ui] [unit]") {
   frame_buffer_t *buffer = frame_buffer_create(2, 20);
   REQUIRE((buffer) != nullptr);
   frame_buffer_render_divider(buffer, 5, true, false);
@@ -34,7 +34,7 @@ TEST_CASE("session_ui/shared_dividers_have_matching_utf8_and_ascii_widths", "[se
   frame_buffer_destroy(buffer);
 }
 
-TEST_CASE("session_ui/two_media_sessions_present_every_jittered_60fps_frame", "[session_ui]") {
+TEST_CASE("session_ui/two_media_sessions_present_every_jittered_60fps_frame", "[session_ui] [unit]") {
   ui_session_t *sessions[] = {ui_session_create(), ui_session_create()};
   for (unsigned client = 0; client < 2; client++) {
     REQUIRE((sessions[client]) != nullptr);
@@ -57,7 +57,7 @@ TEST_CASE("session_ui/two_media_sessions_present_every_jittered_60fps_frame", "[
     ui_session_destroy(sessions[client]);
 }
 
-TEST_CASE("session_ui/identical_media_frames_are_presented_once_per_submission", "[session_ui]") {
+TEST_CASE("session_ui/identical_media_frames_are_presented_once_per_submission", "[session_ui] [unit]") {
   ui_session_t *session = ui_session_create();
   REQUIRE((session) != nullptr);
   ui_session_resize(session, 80, 30);
@@ -81,7 +81,7 @@ static void draw(frame_buffer_t *output, terminal_size_t size, const animation_s
   frame_buffer_append(output, fixture->text, strlen(fixture->text));
 }
 
-TEST_CASE("session_ui/shared_priority_order", "[session_ui]") {
+TEST_CASE("session_ui/shared_priority_order", "[session_ui] [unit]") {
   REQUIRE((ui_session_select_screen(0)) == (-1));
   uint32_t visible = 0;
   for (int screen = 0; screen < UI_SCREEN_COUNT; ++screen) {
@@ -90,7 +90,7 @@ TEST_CASE("session_ui/shared_priority_order", "[session_ui]") {
   }
 }
 
-TEST_CASE("session_ui/native_view_resize_and_paused_recovery", "[session_ui]") {
+TEST_CASE("session_ui/native_view_resize_and_paused_recovery", "[session_ui] [unit]") {
   ui_session_t *session = ui_session_create();
   REQUIRE((session) != nullptr);
   view_fixture_t fixture = {.text = "retained media"};
@@ -112,7 +112,7 @@ TEST_CASE("session_ui/native_view_resize_and_paused_recovery", "[session_ui]") {
   ui_session_destroy(session);
 }
 
-TEST_CASE("session_ui/covered_splash_clock_pauses_even_without_host_ticks", "[session_ui]") {
+TEST_CASE("session_ui/covered_splash_clock_pauses_even_without_host_ticks", "[session_ui] [unit]") {
   ui_session_t *session = ui_session_create();
   view_fixture_t fixture = {.text = "splash"};
   ui_session_view_t view = {.screen = UI_SCREEN_SPLASH, .minimum = {.cols = 20, .rows = 10}, .draw = draw, .context = &fixture};
@@ -129,7 +129,7 @@ TEST_CASE("session_ui/covered_splash_clock_pauses_even_without_host_ticks", "[se
   ui_session_destroy(session);
 }
 
-TEST_CASE("session_ui/progress_refresh_is_throttled_but_dirty_snapshots_are_immediate", "[session_ui]") {
+TEST_CASE("session_ui/progress_refresh_is_throttled_but_dirty_snapshots_are_immediate", "[session_ui] [unit]") {
   ui_session_t *session = ui_session_create();
   view_fixture_t fixture = {.text = "progress"};
   ui_session_view_t view = {.screen = UI_SCREEN_RENDER_PROGRESS, .minimum = {.cols = 1, .rows = 1}, .refresh_ns = 125000000, .draw = draw, .context = &fixture};
@@ -142,7 +142,7 @@ TEST_CASE("session_ui/progress_refresh_is_throttled_but_dirty_snapshots_are_imme
   ui_session_destroy(session);
 }
 
-TEST_CASE("session_ui/log_history_returns_latest_entries_after_wrap", "[session_ui]") {
+TEST_CASE("session_ui/log_history_returns_latest_entries_after_wrap", "[session_ui] [unit]") {
   session_log_buffer_t *logs = session_log_buffer_create();
   REQUIRE((logs) != nullptr);
   for (unsigned i = 0; i < SESSION_LOG_BUFFER_SIZE + 10; ++i)
@@ -159,7 +159,7 @@ TEST_CASE("session_ui/log_history_returns_latest_entries_after_wrap", "[session_
   session_log_buffer_destroy(logs);
 }
 
-TEST_CASE("session_ui/media_toggle_action_and_shared_help", "[session_ui]") {
+TEST_CASE("session_ui/media_toggle_action_and_shared_help", "[session_ui] [unit]") {
   double volume = 1.0;
   REQUIRE((ui_session_key((keyboard_key_t)'[', &volume)) == (UI_ACTION_TOGGLE_MEDIA));
   REQUIRE((ui_session_key((keyboard_key_t)'q', &volume)) == (UI_ACTION_QUIT));
@@ -178,7 +178,7 @@ TEST_CASE("session_ui/media_toggle_action_and_shared_help", "[session_ui]") {
   SAFE_FREE(help);
 }
 
-TEST_CASE("session_ui/embedded_log_help_uses_the_session_viewport", "[session_ui]") {
+TEST_CASE("session_ui/embedded_log_help_uses_the_session_viewport", "[session_ui] [unit]") {
   terminal_screen_logs_reset();
   ui_session_t *session = ui_session_create();
   REQUIRE((session) != nullptr);

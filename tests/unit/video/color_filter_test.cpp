@@ -5,7 +5,6 @@
  * @ingroup test
  */
 
-#include <catch2/catch_all.hpp>
 #include <stdint.h>
 #include <string.h>
 #include <ascii-chat/common.h>
@@ -17,7 +16,7 @@
  * @brief Test grayscale conversion accuracy
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("color_filter/rgb_to_grayscale_primary_colors", "[color_filter]") {
+TEST_CASE("color_filter/rgb_to_grayscale_primary_colors", "[color_filter] [unit]") {
   // Pure red: should be ~77
   uint8_t red_gray = rgb_to_grayscale(255, 0, 0);
   REQUIRE((red_gray >= 75 && red_gray <= 79));
@@ -34,7 +33,7 @@ TEST_CASE("color_filter/rgb_to_grayscale_primary_colors", "[color_filter]") {
 /**
  * @brief Test grayscale conversion for neutral colors
  */
-TEST_CASE("color_filter/rgb_to_grayscale_neutral", "[color_filter]") {
+TEST_CASE("color_filter/rgb_to_grayscale_neutral", "[color_filter] [unit]") {
   // Pure white: should be 255
   uint8_t white_gray = rgb_to_grayscale(255, 255, 255);
   REQUIRE((white_gray) == (255));
@@ -51,7 +50,7 @@ TEST_CASE("color_filter/rgb_to_grayscale_neutral", "[color_filter]") {
 /**
  * @brief Test color filter metadata retrieval
  */
-TEST_CASE("color_filter/get_metadata", "[color_filter]") {
+TEST_CASE("color_filter/get_metadata", "[color_filter] [unit]") {
   // Test valid filter
   const color_filter_def_t *meta = color_filter_get_metadata(COLOR_FILTER_GREEN);
   REQUIRE((meta) != nullptr);
@@ -72,7 +71,7 @@ TEST_CASE("color_filter/get_metadata", "[color_filter]") {
 /**
  * @brief Test CLI name to enum conversion
  */
-TEST_CASE("color_filter/from_cli_name", "[color_filter]") {
+TEST_CASE("color_filter/from_cli_name", "[color_filter] [unit]") {
   REQUIRE((color_filter_from_cli_name("green")) == (COLOR_FILTER_GREEN));
   REQUIRE((color_filter_from_cli_name("cyan")) == (COLOR_FILTER_CYAN));
   REQUIRE((color_filter_from_cli_name("black")) == (COLOR_FILTER_BLACK));
@@ -87,7 +86,7 @@ TEST_CASE("color_filter/from_cli_name", "[color_filter]") {
 /**
  * @brief Test white-on-color colorization (most filters)
  */
-TEST_CASE("color_filter/colorize_white_on_color", "[color_filter]") {
+TEST_CASE("color_filter/colorize_white_on_color", "[color_filter] [unit]") {
   // Create a small test image: 2x2 pixels
   uint8_t pixels[2 * 2 * 3] = {
       // Row 1: black pixel, white pixel
@@ -125,7 +124,7 @@ TEST_CASE("color_filter/colorize_white_on_color", "[color_filter]") {
 /**
  * @brief Test black-on-white colorization
  */
-TEST_CASE("color_filter/colorize_black_on_white", "[color_filter]") {
+TEST_CASE("color_filter/colorize_black_on_white", "[color_filter] [unit]") {
   // Create test image: black and white pixels
   uint8_t pixels[2 * 1 * 3] = {
       0,   0,   0,   // Black (should stay dark)
@@ -149,7 +148,7 @@ TEST_CASE("color_filter/colorize_black_on_white", "[color_filter]") {
 /**
  * @brief Test apply_color_filter with NONE filter (should be no-op)
  */
-TEST_CASE("color_filter/apply_none_filter", "[color_filter]") {
+TEST_CASE("color_filter/apply_none_filter", "[color_filter] [unit]") {
   uint8_t pixels[3 * 3] = {100, 150, 200, 50, 100, 150, 200, 50, 100};
   uint8_t original[3 * 3];
   memcpy(original, pixels, sizeof(pixels));
@@ -162,7 +161,7 @@ TEST_CASE("color_filter/apply_none_filter", "[color_filter]") {
 /**
  * @brief Test apply_color_filter with invalid parameters
  */
-TEST_CASE("color_filter/apply_invalid_params", "[color_filter]") {
+TEST_CASE("color_filter/apply_invalid_params", "[color_filter] [unit]") {
   uint8_t pixels[3] = {255, 255, 255};
 
   // NULL pixels
@@ -189,7 +188,7 @@ TEST_CASE("color_filter/apply_invalid_params", "[color_filter]") {
 /**
  * @brief Test all filter color values are correct
  */
-TEST_CASE("color_filter/metadata_colors", "[color_filter]") {
+TEST_CASE("color_filter/metadata_colors", "[color_filter] [unit]") {
   // Test each filter's RGB values match expected colors
   struct {
     color_filter_t filter;
@@ -210,7 +209,7 @@ TEST_CASE("color_filter/metadata_colors", "[color_filter]") {
   }
 }
 
-TEST_CASE("color_filter/rainbow_ansi_terminates_and_preserves_malformed_suffix", "[color_filter]") {
+TEST_CASE("color_filter/rainbow_ansi_terminates_and_preserves_malformed_suffix", "[color_filter] [unit]") {
   const char *prefix = "\033[38;2;1;2;3m";
   char *frame = rainbow_render_ansi_at(prefix, 0.0f);
   REQUIRE((frame) != nullptr);

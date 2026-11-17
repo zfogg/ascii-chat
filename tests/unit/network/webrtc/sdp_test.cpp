@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/webrtc/sdp.h>
 #include <ascii-chat/tests/logging.h>
 #include <libplatform/system.h>
@@ -21,7 +20,7 @@ static terminal_capability_t capability(acip_codec_t codec) {
                                  .format = {.width = 100, .height = 40, .renderer = sdp_renderer_braille, .charset = sdp_charset_utf8, .compression = sdp_compression_zstd, .csi_rep_support = true}};
 }
 
-TEST_CASE("sdp/offers_round_trip_audio_rendering_and_codec_capabilities", "[sdp]") {
+TEST_CASE("sdp/offers_round_trip_audio_rendering_and_codec_capabilities", "[sdp] [unit]") {
   terminal_capability_t caps[4];
   for (int i = 0; i < 4; ++i)
     caps[i] = capability((acip_codec_t)(96 + i));
@@ -49,7 +48,7 @@ TEST_CASE("sdp/offers_round_trip_audio_rendering_and_codec_capabilities", "[sdp]
   sdp_session_destroy(&offer);
 }
 
-TEST_CASE("sdp/answer_obeys_server_preference_and_format_constraints", "[sdp]") {
+TEST_CASE("sdp/answer_obeys_server_preference_and_format_constraints", "[sdp] [unit]") {
   terminal_capability_t offered[] = {capability(ACIP_CODEC_TRUECOLOR), capability(ACIP_CODEC_256COLOR), capability(ACIP_CODEC_MONO)};
   terminal_capability_t supported[] = {capability(ACIP_CODEC_256COLOR), capability(ACIP_CODEC_TRUECOLOR)};
   opus_config_t audio = audio_config();
@@ -71,7 +70,7 @@ TEST_CASE("sdp/answer_obeys_server_preference_and_format_constraints", "[sdp]") 
   sdp_session_destroy(&offer);
 }
 
-TEST_CASE("sdp/absent_media_and_invalid_arguments_are_reported", "[sdp]") {
+TEST_CASE("sdp/absent_media_and_invalid_arguments_are_reported", "[sdp] [unit]") {
   sdp_session_t session = {0};
   acip_codec_t codec;
   terminal_format_params_t format;
@@ -93,7 +92,7 @@ TEST_CASE("sdp/absent_media_and_invalid_arguments_are_reported", "[sdp]") {
   REQUIRE(std::strcmp((sdp_renderer_name(-1)), ("unknown")) == 0);
 }
 
-TEST_CASE("sdp/terminal_detection_honors_depth_utf8_and_output_capacity", "[sdp]") {
+TEST_CASE("sdp/terminal_detection_honors_depth_utf8_and_output_capacity", "[sdp] [unit]") {
   const struct {
     const char *term, *color, *lang;
     acip_codec_t preferred;

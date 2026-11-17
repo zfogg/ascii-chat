@@ -1,8 +1,8 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/ui/fps_counter.h>
 
-TEST_CASE("fps_counter/startup_and_rates", "[fps_counter]") {
+TEST_CASE("fps_counter/startup_and_rates", "[fps_counter] [unit]") {
   fps_counter_t *counter = fps_counter_create();
   REQUIRE((counter) != nullptr);
   REQUIRE((fps_counter_get_at(counter, 0)) == (0));
@@ -17,7 +17,7 @@ TEST_CASE("fps_counter/startup_and_rates", "[fps_counter]") {
   fps_counter_destroy(counter);
 }
 
-TEST_CASE("fps_counter/inactivity_and_clock_reset", "[fps_counter]") {
+TEST_CASE("fps_counter/inactivity_and_clock_reset", "[fps_counter] [unit]") {
   fps_counter_t *counter = fps_counter_create();
   fps_counter_tick_at(counter, 0);
   fps_counter_tick_at(counter, 10000000);
@@ -37,7 +37,7 @@ TEST_CASE("fps_counter/inactivity_and_clock_reset", "[fps_counter]") {
   fps_counter_destroy(counter);
 }
 
-TEST_CASE("fps_counter/presentation_counts_only_complete_frames", "[fps_counter]") {
+TEST_CASE("fps_counter/presentation_counts_only_complete_frames", "[fps_counter] [unit]") {
   fps_counter_t *counter = fps_counter_create();
   // Two writes are one presentation, and a failed second write invalidates it.
   for (unsigned i = 0; i < 5; i++) {
@@ -63,7 +63,7 @@ TEST_CASE("fps_counter/presentation_counts_only_complete_frames", "[fps_counter]
   fps_counter_destroy(counter);
 }
 
-TEST_CASE("fps_counter/acquired_frame_ids_exclude_redraws_and_failed_presentations", "[fps_counter]") {
+TEST_CASE("fps_counter/acquired_frame_ids_exclude_redraws_and_failed_presentations", "[fps_counter] [unit]") {
   fps_counter_t *counter = fps_counter_create();
   for (unsigned i = 0; i < 3; ++i) {
     REQUIRE(fps_counter_frame_begin_id(counter, i + 1));

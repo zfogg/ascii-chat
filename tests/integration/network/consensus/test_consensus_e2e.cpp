@@ -13,7 +13,6 @@
  */
 
 #include <ascii-chat/tests/common.h>
-#include <catch2/catch_all.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -193,7 +192,7 @@ __attribute__((unused)) static int parse_election_host(const char *buf, uint8_t 
  * Test: Server can be started
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("consensus_e2e/server_startup", "[consensus_e2e]") {
+TEST_CASE("consensus_e2e/server_startup", "[consensus_e2e] [integration]") {
   // Disabled: Server requires TTY for display
   // Enable when TTY-less server mode is added
   start_server();
@@ -203,7 +202,7 @@ TEST_CASE("consensus_e2e/server_startup", "[consensus_e2e]") {
 /**
  * Test: Clients can connect to server
  */
-TEST_CASE("consensus_e2e/client_connection", "[consensus_e2e]") {
+TEST_CASE("consensus_e2e/client_connection", "[consensus_e2e] [integration]") {
   // Disabled: Server requires TTY for display
   // This test demonstrates client connection works when server is available
   start_server();
@@ -221,7 +220,7 @@ TEST_CASE("consensus_e2e/client_connection", "[consensus_e2e]") {
 /**
  * Test: Multiple clients can connect and consensus forms a ring
  */
-TEST_CASE("consensus_e2e/consensus_ring_formation", "[consensus_e2e]") {
+TEST_CASE("consensus_e2e/consensus_ring_formation", "[consensus_e2e] [integration]") {
   start_server();
 
   // Connect 3 clients to form a multi-participant session
@@ -250,7 +249,7 @@ TEST_CASE("consensus_e2e/consensus_ring_formation", "[consensus_e2e]") {
 /**
  * Test: Consensus protocol logs show up during session
  */
-TEST_CASE("consensus_e2e/consensus_protocol_execution", "[consensus_e2e]") {
+TEST_CASE("consensus_e2e/consensus_protocol_execution", "[consensus_e2e] [integration]") {
   start_server();
 
   // Connect 2 clients

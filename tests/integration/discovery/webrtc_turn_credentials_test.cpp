@@ -15,7 +15,6 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/webrtc/turn_credentials.h>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -42,7 +41,7 @@ static void cleanup_test_db(const char *path) {
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("acds_webrtc_turn/join_generates_turn_credentials", "[acds_webrtc_turn]") {
+TEST_CASE("acds_webrtc_turn/join_generates_turn_credentials", "[acds_webrtc_turn] [integration]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path), "gen_creds");
 
@@ -118,7 +117,7 @@ TEST_CASE("acds_webrtc_turn/join_generates_turn_credentials", "[acds_webrtc_turn
 /**
  * @brief Test that TURN credentials are NOT generated for TCP sessions
  */
-TEST_CASE("acds_webrtc_turn/tcp_session_no_turn_credentials", "[acds_webrtc_turn]") {
+TEST_CASE("acds_webrtc_turn/tcp_session_no_turn_credentials", "[acds_webrtc_turn] [integration]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path), "tcp_no_creds");
 
@@ -168,7 +167,7 @@ TEST_CASE("acds_webrtc_turn/tcp_session_no_turn_credentials", "[acds_webrtc_turn
 /**
  * @brief Test that TURN credentials are NOT generated without turn_secret
  */
-TEST_CASE("acds_webrtc_turn/no_credentials_without_secret", "[acds_webrtc_turn]") {
+TEST_CASE("acds_webrtc_turn/no_credentials_without_secret", "[acds_webrtc_turn] [integration]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path), "no_secret");
 
@@ -217,7 +216,7 @@ TEST_CASE("acds_webrtc_turn/no_credentials_without_secret", "[acds_webrtc_turn]"
 /**
  * @brief Test TURN credentials are regenerated for each join
  */
-TEST_CASE("acds_webrtc_turn/credentials_unique_per_join", "[acds_webrtc_turn]") {
+TEST_CASE("acds_webrtc_turn/credentials_unique_per_join", "[acds_webrtc_turn] [integration]") {
   char db_path[256];
   get_temp_db_path(db_path, sizeof(db_path), "unique");
 

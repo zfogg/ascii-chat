@@ -7,7 +7,6 @@
  * and full PGP armored key block parsing.
  */
 
-#include <catch2/catch_all.hpp>
 #include <string.h>
 
 #include <ascii-chat/crypto/gpg/openpgp.h>
@@ -75,7 +74,7 @@ static const uint8_t EXPECTED_NEW_FORMAT_KEY[32] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00
 // Packet Header Parsing Tests
 // =============================================================================
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("openpgp/parse_old_format_packet_header", "[openpgp]") {
+TEST_CASE("openpgp/parse_old_format_packet_header", "[openpgp] [unit]") {
   openpgp_packet_header_t header;
   asciichat_error_t result = openpgp_parse_packet_header(OLD_FORMAT_PUBKEY_PACKET, sizeof(OLD_FORMAT_PUBKEY_PACKET), &header);
 
@@ -86,7 +85,7 @@ TEST_CASE("openpgp/parse_old_format_packet_header", "[openpgp]") {
   REQUIRE((header.header_len) == (2));
 }
 
-TEST_CASE("openpgp/parse_new_format_packet_header", "[openpgp]") {
+TEST_CASE("openpgp/parse_new_format_packet_header", "[openpgp] [unit]") {
   openpgp_packet_header_t header;
   asciichat_error_t result = openpgp_parse_packet_header(NEW_FORMAT_PUBKEY_PACKET, sizeof(NEW_FORMAT_PUBKEY_PACKET), &header);
 
@@ -97,7 +96,7 @@ TEST_CASE("openpgp/parse_new_format_packet_header", "[openpgp]") {
   REQUIRE((header.header_len) == (2));
 }
 
-TEST_CASE("openpgp/parse_new_format_two_octet_length", "[openpgp]") {
+TEST_CASE("openpgp/parse_new_format_two_octet_length", "[openpgp] [unit]") {
   // New format packet with two-octet length encoding (192-8383 bytes)
   // ctb=0xC6 (tag 6), len1=0xC0 (192), len2=0x00 → length = 192
   const uint8_t packet[] = {0xC6, 0xC0, 0x00};
@@ -112,7 +111,7 @@ TEST_CASE("openpgp/parse_new_format_two_octet_length", "[openpgp]") {
   REQUIRE((header.header_len) == (3));
 }
 
-TEST_CASE("openpgp/parse_new_format_five_octet_length", "[openpgp]") {
+TEST_CASE("openpgp/parse_new_format_five_octet_length", "[openpgp] [unit]") {
   // New format packet with five-octet length encoding (>8383 bytes)
   // ctb=0xC6 (tag 6), len=0xFF, followed by 4 bytes: 0x00001000 = 4096
   const uint8_t packet[] = {0xC6, 0xFF, 0x00, 0x00, 0x10, 0x00};
@@ -127,7 +126,7 @@ TEST_CASE("openpgp/parse_new_format_five_octet_length", "[openpgp]") {
   REQUIRE((header.header_len) == (6));
 }
 
-TEST_CASE("openpgp/parse_old_format_two_octet_length", "[openpgp]") {
+TEST_CASE("openpgp/parse_old_format_two_octet_length", "[openpgp] [unit]") {
   // Old format packet: ctb=0x99 (tag 6, length type 1), length=0x0100 = 256
   const uint8_t packet[] = {0x99, 0x01, 0x00};
   openpgp_packet_header_t header;
@@ -141,7 +140,7 @@ TEST_CASE("openpgp/parse_old_format_two_octet_length", "[openpgp]") {
   REQUIRE((header.header_len) == (3));
 }
 
-TEST_CASE("openpgp/parse_old_format_four_octet_length", "[openpgp]") {
+TEST_CASE("openpgp/parse_old_format_four_octet_length", "[openpgp] [unit]") {
   // Old format packet: ctb=0x9A (tag 6, length type 2), length=0x00010000 = 65536
   const uint8_t packet[] = {0x9A, 0x00, 0x01, 0x00, 0x00};
   openpgp_packet_header_t header;
@@ -155,7 +154,7 @@ TEST_CASE("openpgp/parse_old_format_four_octet_length", "[openpgp]") {
   REQUIRE((header.header_len) == (5));
 }
 
-TEST_CASE("openpgp/reject_invalid_packet_bit7_not_set", "[openpgp]") {
+TEST_CASE("openpgp/reject_invalid_packet_bit7_not_set", "[openpgp] [unit]") {
   // Invalid packet: bit 7 not set (0x40 instead of 0xC0)
   const uint8_t packet[] = {0x40, 0x00};
   openpgp_packet_header_t header;
@@ -169,7 +168,7 @@ TEST_CASE("openpgp/reject_invalid_packet_bit7_not_set", "[openpgp]") {
 // Public Key Packet Parsing Tests
 // =============================================================================
 
-TEST_CASE("openpgp/parse_old_format_pubkey_packet", "[openpgp]") {
+TEST_CASE("openpgp/parse_old_format_pubkey_packet", "[openpgp] [unit]") {
   // Skip 2-byte header to get packet body
   const uint8_t *packet_body = OLD_FORMAT_PUBKEY_PACKET + 2;
   size_t body_len = 51;
@@ -183,7 +182,7 @@ TEST_CASE("openpgp/parse_old_format_pubkey_packet", "[openpgp]") {
   REQUIRE(memcmp(pubkey.pubkey, EXPECTED_OLD_FORMAT_KEY, 32) == 0);
 }
 
-TEST_CASE("openpgp/parse_new_format_pubkey_packet", "[openpgp]") {
+TEST_CASE("openpgp/parse_new_format_pubkey_packet", "[openpgp] [unit]") {
   // Skip 2-byte header to get packet body
   const uint8_t *packet_body = NEW_FORMAT_PUBKEY_PACKET + 2;
   size_t body_len = 51;
@@ -197,7 +196,7 @@ TEST_CASE("openpgp/parse_new_format_pubkey_packet", "[openpgp]") {
   REQUIRE(memcmp(pubkey.pubkey, EXPECTED_NEW_FORMAT_KEY, 32) == 0);
 }
 
-TEST_CASE("openpgp/reject_non_eddsa_algorithm", "[openpgp]") {
+TEST_CASE("openpgp/reject_non_eddsa_algorithm", "[openpgp] [unit]") {
   // Create packet with RSA algorithm (1) instead of EdDSA (22)
   uint8_t packet_body[49]; // 51 byte packet - 2 byte header
   memcpy(packet_body, OLD_FORMAT_PUBKEY_PACKET + 2, 49);
@@ -209,7 +208,7 @@ TEST_CASE("openpgp/reject_non_eddsa_algorithm", "[openpgp]") {
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("openpgp/reject_missing_0x40_prefix", "[openpgp]") {
+TEST_CASE("openpgp/reject_missing_0x40_prefix", "[openpgp] [unit]") {
   // Create packet without 0x40 prefix
   uint8_t packet_body[49]; // 51 byte packet - 2 byte header
   memcpy(packet_body, OLD_FORMAT_PUBKEY_PACKET + 2, 49);
@@ -230,7 +229,7 @@ TEST_CASE("openpgp/reject_missing_0x40_prefix", "[openpgp]") {
 // Base64 Decoding Tests
 // =============================================================================
 
-TEST_CASE("openpgp/decode_base64_with_newlines", "[openpgp]") {
+TEST_CASE("openpgp/decode_base64_with_newlines", "[openpgp] [unit]") {
   // Valid base64 with newlines (PGP armor format)
   const char *base64_with_newlines = "U29tZSB0ZXN0IGJpbmFyeSBkYXRhIHRoYXQg\n"
                                      "d2Ugd2lsbCBlbmNvZGUgYXMgYmFzZTY0\n";
@@ -246,7 +245,7 @@ TEST_CASE("openpgp/decode_base64_with_newlines", "[openpgp]") {
   SAFE_FREE(binary_out);
 }
 
-TEST_CASE("openpgp/reject_invalid_base64", "[openpgp]") {
+TEST_CASE("openpgp/reject_invalid_base64", "[openpgp] [unit]") {
   // Invalid base64: contains non-base64 characters (spaces, special chars outside base64 alphabet)
   const char *invalid_base64 = "This is definitely not base64@#$%^&*()";
 
@@ -261,7 +260,7 @@ TEST_CASE("openpgp/reject_invalid_base64", "[openpgp]") {
 // Full Armored Key Parsing Test
 // =============================================================================
 
-TEST_CASE("openpgp/parse_full_armored_key_old_format", "[openpgp]") {
+TEST_CASE("openpgp/parse_full_armored_key_old_format", "[openpgp] [unit]") {
   // Minimal PGP armored key with old format packet
   const char *armored_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
                             "\n"
@@ -287,7 +286,7 @@ TEST_CASE("openpgp/parse_full_armored_key_old_format", "[openpgp]") {
   REQUIRE(memcmp(ed25519_pk, EXPECTED_OLD_FORMAT_KEY, 32) == 0);
 }
 
-TEST_CASE("openpgp/reject_missing_begin_marker", "[openpgp]") {
+TEST_CASE("openpgp/reject_missing_begin_marker", "[openpgp] [unit]") {
   const char *armored_key = "mDMEaWxCORYJKwYBBAHaRw8BAQdAOaykIMyaQi8CBTNiF9o/Nbm6L5DwR9h1maS3\n"
                             "-----END PGP PUBLIC KEY BLOCK-----\n";
 
@@ -297,7 +296,7 @@ TEST_CASE("openpgp/reject_missing_begin_marker", "[openpgp]") {
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("openpgp/reject_missing_end_marker", "[openpgp]") {
+TEST_CASE("openpgp/reject_missing_end_marker", "[openpgp] [unit]") {
   const char *armored_key = "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
                             "mDMEaWxCORYJKwYBBAHaRw8BAQdAOaykIMyaQi8CBTNiF9o/Nbm6L5DwR9h1maS3\n";
 

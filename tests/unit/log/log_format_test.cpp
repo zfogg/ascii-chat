@@ -4,7 +4,6 @@
  * @brief Unit tests for log format parser and time formatting utilities
  */
 
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
@@ -31,7 +30,7 @@ void teardown_test_logging(void) {
   log_set_terminal_output(true);
   log_set_level(LOG_DEBUG);
 }
-TEST_CASE("log_format/nested_color_fields_respect_the_callers_policy", "[log_format]") {
+TEST_CASE("log_format/nested_color_fields_respect_the_callers_policy", "[log_format] [unit]") {
   bool saved_passed = g_color_flag_passed, saved_value = g_color_flag_value;
   g_color_flag_passed = g_color_flag_value = true;
   log_template_t *format = log_template_parse("%color(INFO,%message)", false);
@@ -46,14 +45,14 @@ TEST_CASE("log_format/nested_color_fields_respect_the_callers_policy", "[log_for
   g_color_flag_value = saved_value;
 }
 
-TEST_CASE("log_format/semantic_colorization_accepts_an_explicit_policy_without_a_tty", "[log_format]") {
+TEST_CASE("log_format/semantic_colorization_accepts_an_explicit_policy_without_a_tty", "[log_format] [unit]") {
   const char *message = "value 123 ms";
   REQUIRE((colorize_log_message_with_color(message, false)) == (message));
   REQUIRE((strstr(colorize_log_message_with_color(message, true), "\033[")) != nullptr);
   REQUIRE((colorize_log_message_with_color(NULL, true)) == nullptr);
 }
 
-TEST_CASE("log_format/explicit_monochrome_and_palette_modes_survive_caller_color_policy", "[log_format]") {
+TEST_CASE("log_format/explicit_monochrome_and_palette_modes_survive_caller_color_policy", "[log_format] [unit]") {
   options_t *options = SAFE_MALLOC(sizeof(*options), options_t *);
   *options = *options_get();
   options->color_mode = TERM_COLOR_NONE;
@@ -70,13 +69,13 @@ TEST_CASE("log_format/explicit_monochrome_and_palette_modes_survive_caller_color
  * Time Format Validation Tests
  * ============================================================================ */
 
-TEST_CASE("log_format/time_format_valid_basic", "[log_format]") {
+TEST_CASE("log_format/time_format_valid_basic", "[log_format] [unit]") {
   REQUIRE(time_format_is_valid_strftime("%H:%M:%S"));
   REQUIRE(time_format_is_valid_strftime("%Y-%m-%d"));
   REQUIRE(time_format_is_valid_strftime("%F %T"));
 }
 
-TEST_CASE("log_format/time_format_valid_all_specifiers", "[log_format]") {
+TEST_CASE("log_format/time_format_valid_all_specifiers", "[log_format] [unit]") {
   REQUIRE(time_format_is_valid_strftime("%Y")); /* Year 4-digit */
   REQUIRE(time_format_is_valid_strftime("%m")); /* Month */
   REQUIRE(time_format_is_valid_strftime("%d")); /* Day */
@@ -89,25 +88,25 @@ TEST_CASE("log_format/time_format_valid_all_specifiers", "[log_format]") {
   REQUIRE(time_format_is_valid_strftime("%B")); /* Full month */
 }
 
-TEST_CASE("log_format/time_format_invalid_null", "[log_format]") {
+TEST_CASE("log_format/time_format_invalid_null", "[log_format] [unit]") {
   REQUIRE(!(time_format_is_valid_strftime(NULL)));
 }
 
-TEST_CASE("log_format/time_format_invalid_specifier", "[log_format]") {
+TEST_CASE("log_format/time_format_invalid_specifier", "[log_format] [unit]") {
   REQUIRE(!(time_format_is_valid_strftime("%Q"))); /* Invalid */
   REQUIRE(!(time_format_is_valid_strftime("%@"))); /* Invalid */
 }
 
-TEST_CASE("log_format/time_format_invalid_unterminated", "[log_format]") {
+TEST_CASE("log_format/time_format_invalid_unterminated", "[log_format] [unit]") {
   REQUIRE(!(time_format_is_valid_strftime("Test %"))); /* Unterminated % */
 }
 
-TEST_CASE("log_format/time_format_escaped_percent", "[log_format]") {
+TEST_CASE("log_format/time_format_escaped_percent", "[log_format] [unit]") {
   REQUIRE(time_format_is_valid_strftime("%%"));    /* Escaped % */
   REQUIRE(time_format_is_valid_strftime("100%%")); /* Percent literal */
 }
 
-TEST_CASE("log_format/time_format_with_width", "[log_format]") {
+TEST_CASE("log_format/time_format_with_width", "[log_format] [unit]") {
   REQUIRE(time_format_is_valid_strftime("%10Y")); /* Width specifier */
 }
 
@@ -115,7 +114,7 @@ TEST_CASE("log_format/time_format_with_width", "[log_format]") {
  * Time Formatting Tests
  * ============================================================================ */
 
-TEST_CASE("log_format/time_format_now_basic", "[log_format]") {
+TEST_CASE("log_format/time_format_now_basic", "[log_format] [unit]") {
   char buf[64] = {0};
   int len = time_format_now("%H:%M:%S", buf, sizeof(buf));
   REQUIRE((len) > (0));
@@ -124,7 +123,7 @@ TEST_CASE("log_format/time_format_now_basic", "[log_format]") {
   REQUIRE((len) == (8));
 }
 
-TEST_CASE("log_format/time_format_now_with_microseconds", "[log_format]") {
+TEST_CASE("log_format/time_format_now_with_microseconds", "[log_format] [unit]") {
   char buf[64] = {0};
   int len = time_format_now("%H:%M:%S", buf, sizeof(buf));
   REQUIRE((len) > (0));
@@ -133,7 +132,7 @@ TEST_CASE("log_format/time_format_now_with_microseconds", "[log_format]") {
   REQUIRE((strchr(buf, '.')) == nullptr);
 }
 
-TEST_CASE("log_format/time_format_now_date", "[log_format]") {
+TEST_CASE("log_format/time_format_now_date", "[log_format] [unit]") {
   char buf[64] = {0};
   int len = time_format_now("%Y-%m-%d", buf, sizeof(buf));
   REQUIRE((len) > (0));
@@ -143,24 +142,24 @@ TEST_CASE("log_format/time_format_now_date", "[log_format]") {
   REQUIRE((buf[7]) == ('-'));
 }
 
-TEST_CASE("log_format/time_format_now_buffer_small", "[log_format]") {
+TEST_CASE("log_format/time_format_now_buffer_small", "[log_format] [unit]") {
   char buf[4] = {0};
   int len = time_format_now("%Y-%m-%d", buf, sizeof(buf));
   REQUIRE((len) == (0));
 }
 
-TEST_CASE("log_format/time_format_now_null_format", "[log_format]") {
+TEST_CASE("log_format/time_format_now_null_format", "[log_format] [unit]") {
   char buf[64] = {0};
   int len = time_format_now(NULL, buf, sizeof(buf));
   REQUIRE((len) == (0));
 }
 
-TEST_CASE("log_format/time_format_now_null_buf", "[log_format]") {
+TEST_CASE("log_format/time_format_now_null_buf", "[log_format] [unit]") {
   int len = time_format_now("%H:%M:%S", NULL, 64);
   REQUIRE((len) == (0));
 }
 
-TEST_CASE("log_format/time_format_safe_valid", "[log_format]") {
+TEST_CASE("log_format/time_format_safe_valid", "[log_format] [unit]") {
   char buf[64] = {0};
   asciichat_error_t err = time_format_safe("%H:%M:%S", buf, sizeof(buf));
   REQUIRE((err) == (ASCIICHAT_OK));
@@ -168,13 +167,13 @@ TEST_CASE("log_format/time_format_safe_valid", "[log_format]") {
   REQUIRE((strchr(buf, '.')) == nullptr);
 }
 
-TEST_CASE("log_format/time_format_safe_invalid_format", "[log_format]") {
+TEST_CASE("log_format/time_format_safe_invalid_format", "[log_format] [unit]") {
   char buf[64] = {0};
   asciichat_error_t err = time_format_safe("%Q", buf, sizeof(buf));
   REQUIRE((err) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("log_format/time_format_safe_buffer_too_small", "[log_format]") {
+TEST_CASE("log_format/time_format_safe_buffer_too_small", "[log_format] [unit]") {
   char buf[10] = {0};
   asciichat_error_t err = time_format_safe("%Y-%m-%d", buf, sizeof(buf));
   REQUIRE((err) != (ASCIICHAT_OK));
@@ -184,7 +183,7 @@ TEST_CASE("log_format/time_format_safe_buffer_too_small", "[log_format]") {
  * Format Parser - Basic Parsing Tests
  * ============================================================================ */
 
-TEST_CASE("log_format/parse_literal_only", "[log_format]") {
+TEST_CASE("log_format/parse_literal_only", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("Hello World", false);
   REQUIRE((fmt) != nullptr);
   REQUIRE((fmt->spec_count) == (1));
@@ -193,7 +192,7 @@ TEST_CASE("log_format/parse_literal_only", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/parse_level_specifier", "[log_format]") {
+TEST_CASE("log_format/parse_level_specifier", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%level]", false);
   REQUIRE((fmt) != nullptr);
   REQUIRE((fmt->spec_count) == (3)); /* [ + level + ] */
@@ -203,14 +202,14 @@ TEST_CASE("log_format/parse_level_specifier", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/parse_level_aligned", "[log_format]") {
+TEST_CASE("log_format/parse_level_aligned", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%level_aligned]", false);
   REQUIRE((fmt) != nullptr);
   REQUIRE((fmt->specs[1].type) == (LOG_FORMAT_LEVEL_ALIGNED));
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/parse_time_specifier", "[log_format]") {
+TEST_CASE("log_format/parse_time_specifier", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("%time(%H:%M:%S)", false);
   REQUIRE((fmt) != nullptr);
   REQUIRE((fmt->spec_count) == (1));
@@ -219,7 +218,7 @@ TEST_CASE("log_format/parse_time_specifier", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/parse_file_line_func", "[log_format]") {
+TEST_CASE("log_format/parse_file_line_func", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("%file:%line in %func()", false);
   REQUIRE((fmt) != nullptr);
   REQUIRE((fmt->specs[0].type) == (LOG_FORMAT_FILE));
@@ -228,7 +227,7 @@ TEST_CASE("log_format/parse_file_line_func", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/parse_message", "[log_format]") {
+TEST_CASE("log_format/parse_message", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("%message", false);
   REQUIRE((fmt) != nullptr);
   REQUIRE((fmt->spec_count) == (1));
@@ -236,7 +235,7 @@ TEST_CASE("log_format/parse_message", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/parse_tid", "[log_format]") {
+TEST_CASE("log_format/parse_tid", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[tid:%tid]", false);
   REQUIRE((fmt) != nullptr);
   REQUIRE((fmt->specs[1].type) == (LOG_FORMAT_TID));
@@ -247,7 +246,7 @@ TEST_CASE("log_format/parse_tid", "[log_format]") {
  * Format Parser - Escaping Tests
  * ============================================================================ */
 
-TEST_CASE("log_format/parse_escaped_percent", "[log_format]") {
+TEST_CASE("log_format/parse_escaped_percent", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("100%%", false);
   REQUIRE((fmt) != nullptr);
   REQUIRE((fmt->spec_count) == (2)); /* "100" + "%" */
@@ -256,7 +255,7 @@ TEST_CASE("log_format/parse_escaped_percent", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/parse_escaped_backslash", "[log_format]") {
+TEST_CASE("log_format/parse_escaped_backslash", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("path\\\\file", false);
   REQUIRE((fmt) != nullptr);
   /* Should have: "path" + "\" + "file" */
@@ -267,14 +266,14 @@ TEST_CASE("log_format/parse_escaped_backslash", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/parse_newline", "[log_format]") {
+TEST_CASE("log_format/parse_newline", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("line1\\nline2", false);
   REQUIRE((fmt) != nullptr);
   REQUIRE((fmt->specs[1].type) == (LOG_FORMAT_NEWLINE));
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/parse_complex_with_escapes", "[log_format]") {
+TEST_CASE("log_format/parse_complex_with_escapes", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%level] %message\\n(100%% complete)", false);
   REQUIRE((fmt) != nullptr);
   REQUIRE((fmt->spec_count) > (3));
@@ -285,7 +284,7 @@ TEST_CASE("log_format/parse_complex_with_escapes", "[log_format]") {
  * Format Parser - UTF-8 Support Tests
  * ============================================================================ */
 
-TEST_CASE("log_format/parse_utf8_literals", "[log_format]") {
+TEST_CASE("log_format/parse_utf8_literals", "[log_format] [unit]") {
   /* UTF-8 format string with non-ASCII characters */
   log_template_t *fmt = log_template_parse("[时间:%time(%H:%M:%S)] [%level] %message", false);
   REQUIRE((fmt) != nullptr);
@@ -293,7 +292,7 @@ TEST_CASE("log_format/parse_utf8_literals", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/parse_invalid_utf8", "[log_format]") {
+TEST_CASE("log_format/parse_invalid_utf8", "[log_format] [unit]") {
   /* Invalid UTF-8 sequence */
   const unsigned char invalid_utf8[] = "[%level] \xFF\xFE message";
   log_template_t *fmt = log_template_parse((const char *)invalid_utf8, false);
@@ -304,12 +303,12 @@ TEST_CASE("log_format/parse_invalid_utf8", "[log_format]") {
  * Format Parser - Error Cases
  * ============================================================================ */
 
-TEST_CASE("log_format/parse_null_format", "[log_format]") {
+TEST_CASE("log_format/parse_null_format", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse(NULL, false);
   REQUIRE((fmt) == nullptr);
 }
 
-TEST_CASE("log_format/parse_unknown_specifier", "[log_format]") {
+TEST_CASE("log_format/parse_unknown_specifier", "[log_format] [unit]") {
   /* Unknown specifiers are now treated as strftime format codes
      and validation is deferred to strftime at format time */
   log_template_t *fmt = log_template_parse("%unknown", false);
@@ -319,7 +318,7 @@ TEST_CASE("log_format/parse_unknown_specifier", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_strftime_codes", "[log_format]") {
+TEST_CASE("log_format/apply_strftime_codes", "[log_format] [unit]") {
   /* Test that strftime codes work end-to-end */
   log_template_t *fmt = log_template_parse("[%H:%M:%S] %message", false);
   REQUIRE((fmt) != nullptr);
@@ -336,12 +335,12 @@ TEST_CASE("log_format/apply_strftime_codes", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/parse_unterminated_time_format", "[log_format]") {
+TEST_CASE("log_format/parse_unterminated_time_format", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("%time(%H:%M:%S", false);
   REQUIRE((fmt) == nullptr);
 }
 
-TEST_CASE("log_format/parse_console_only_flag", "[log_format]") {
+TEST_CASE("log_format/parse_console_only_flag", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%level] %message", true);
   REQUIRE((fmt) != nullptr);
   REQUIRE((fmt->console_only) == (true));
@@ -352,7 +351,7 @@ TEST_CASE("log_format/parse_console_only_flag", "[log_format]") {
  * Format Application Tests
  * ============================================================================ */
 
-TEST_CASE("log_format/apply_literal_only", "[log_format]") {
+TEST_CASE("log_format/apply_literal_only", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("Static text", false);
   REQUIRE((fmt) != nullptr);
 
@@ -363,7 +362,7 @@ TEST_CASE("log_format/apply_literal_only", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_level", "[log_format]") {
+TEST_CASE("log_format/apply_level", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%level]", false);
   REQUIRE((fmt) != nullptr);
 
@@ -374,7 +373,7 @@ TEST_CASE("log_format/apply_level", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_level_aligned", "[log_format]") {
+TEST_CASE("log_format/apply_level_aligned", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%level_aligned]", false);
   REQUIRE((fmt) != nullptr);
 
@@ -384,7 +383,7 @@ TEST_CASE("log_format/apply_level_aligned", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_file_and_line", "[log_format]") {
+TEST_CASE("log_format/apply_file_and_line", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("%file:%line", false);
   REQUIRE((fmt) != nullptr);
 
@@ -395,7 +394,7 @@ TEST_CASE("log_format/apply_file_and_line", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_func", "[log_format]") {
+TEST_CASE("log_format/apply_func", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("in %func()", false);
   REQUIRE((fmt) != nullptr);
 
@@ -406,7 +405,7 @@ TEST_CASE("log_format/apply_func", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_tid", "[log_format]") {
+TEST_CASE("log_format/apply_tid", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("tid:%tid", false);
   REQUIRE((fmt) != nullptr);
 
@@ -417,7 +416,7 @@ TEST_CASE("log_format/apply_tid", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_message", "[log_format]") {
+TEST_CASE("log_format/apply_message", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("Message: %message", false);
   REQUIRE((fmt) != nullptr);
 
@@ -428,7 +427,7 @@ TEST_CASE("log_format/apply_message", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_complex_format", "[log_format]") {
+TEST_CASE("log_format/apply_complex_format", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%level_aligned] %file:%line - %message", false);
   REQUIRE((fmt) != nullptr);
 
@@ -439,7 +438,7 @@ TEST_CASE("log_format/apply_complex_format", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_with_utf8_message", "[log_format]") {
+TEST_CASE("log_format/apply_with_utf8_message", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%level] %message", false);
   REQUIRE((fmt) != nullptr);
 
@@ -450,7 +449,7 @@ TEST_CASE("log_format/apply_with_utf8_message", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_null_optionals", "[log_format]") {
+TEST_CASE("log_format/apply_null_optionals", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%file] [%func]", false);
   REQUIRE((fmt) != nullptr);
 
@@ -461,7 +460,7 @@ TEST_CASE("log_format/apply_null_optionals", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_buffer_overflow", "[log_format]") {
+TEST_CASE("log_format/apply_buffer_overflow", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%level] %message", false);
   REQUIRE((fmt) != nullptr);
 
@@ -475,7 +474,7 @@ TEST_CASE("log_format/apply_buffer_overflow", "[log_format]") {
  * File Relative Path Tests
  * ============================================================================ */
 
-TEST_CASE("log_format/parse_file_relative", "[log_format]") {
+TEST_CASE("log_format/parse_file_relative", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("%file_relative", false);
   REQUIRE((fmt) != nullptr);
   REQUIRE((fmt->spec_count) == (1));
@@ -483,7 +482,7 @@ TEST_CASE("log_format/parse_file_relative", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/parse_file_relative_in_context", "[log_format]") {
+TEST_CASE("log_format/parse_file_relative_in_context", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%file_relative:%line]", false);
   REQUIRE((fmt) != nullptr);
   REQUIRE((fmt->specs[0].type) == (LOG_FORMAT_LITERAL)); /* [ */
@@ -492,7 +491,7 @@ TEST_CASE("log_format/parse_file_relative_in_context", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/parse_file_relative_before_file", "[log_format]") {
+TEST_CASE("log_format/parse_file_relative_before_file", "[log_format] [unit]") {
   /* %file_relative should be checked before %file since it's longer */
   log_template_t *fmt = log_template_parse("%file_relative:%file", false);
   REQUIRE((fmt) != nullptr);
@@ -501,7 +500,7 @@ TEST_CASE("log_format/parse_file_relative_before_file", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_file_relative", "[log_format]") {
+TEST_CASE("log_format/apply_file_relative", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("%file_relative:%line", false);
   REQUIRE((fmt) != nullptr);
 
@@ -517,7 +516,7 @@ TEST_CASE("log_format/apply_file_relative", "[log_format]") {
  * Strftime Format Tests - Various Time Formats
  * ============================================================================ */
 
-TEST_CASE("log_format/apply_time_format_iso8601", "[log_format]") {
+TEST_CASE("log_format/apply_time_format_iso8601", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("%time(%Y-%m-%d %H:%M:%S)", false);
   REQUIRE((fmt) != nullptr);
 
@@ -530,7 +529,7 @@ TEST_CASE("log_format/apply_time_format_iso8601", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_time_format_with_weekday", "[log_format]") {
+TEST_CASE("log_format/apply_time_format_with_weekday", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("%time(%A, %B %d, %Y)", false);
   REQUIRE((fmt) != nullptr);
 
@@ -542,7 +541,7 @@ TEST_CASE("log_format/apply_time_format_with_weekday", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_time_format_short_date", "[log_format]") {
+TEST_CASE("log_format/apply_time_format_short_date", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("%time(%a %b %d %H:%M)", false);
   REQUIRE((fmt) != nullptr);
 
@@ -554,7 +553,7 @@ TEST_CASE("log_format/apply_time_format_short_date", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_time_format_with_percent", "[log_format]") {
+TEST_CASE("log_format/apply_time_format_with_percent", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("%time(%%Y-%%m-%%d)", false);
   REQUIRE((fmt) != nullptr);
 
@@ -570,7 +569,7 @@ TEST_CASE("log_format/apply_time_format_with_percent", "[log_format]") {
  * Newline and Multi-Line Output Tests
  * ============================================================================ */
 
-TEST_CASE("log_format/apply_newline_in_format", "[log_format]") {
+TEST_CASE("log_format/apply_newline_in_format", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%level]\\n%message", false);
   REQUIRE((fmt) != nullptr);
 
@@ -582,7 +581,7 @@ TEST_CASE("log_format/apply_newline_in_format", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_multiple_newlines", "[log_format]") {
+TEST_CASE("log_format/apply_multiple_newlines", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%level]\\n%file:%line\\n%message", false);
   REQUIRE((fmt) != nullptr);
 
@@ -599,7 +598,7 @@ TEST_CASE("log_format/apply_multiple_newlines", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_message_first_then_newline_then_header", "[log_format]") {
+TEST_CASE("log_format/apply_message_first_then_newline_then_header", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("%message\\n[%level_aligned] %file:%line in %func", false);
   REQUIRE((fmt) != nullptr);
 
@@ -616,7 +615,7 @@ TEST_CASE("log_format/apply_message_first_then_newline_then_header", "[log_forma
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_newline_at_end", "[log_format]") {
+TEST_CASE("log_format/apply_newline_at_end", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%level] %message\\n", false);
   REQUIRE((fmt) != nullptr);
 
@@ -631,7 +630,7 @@ TEST_CASE("log_format/apply_newline_at_end", "[log_format]") {
  * Different Specifier Order Tests
  * ============================================================================ */
 
-TEST_CASE("log_format/apply_specifiers_reverse_order", "[log_format]") {
+TEST_CASE("log_format/apply_specifiers_reverse_order", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("%message - %func() at %file:%line", false);
   REQUIRE((fmt) != nullptr);
 
@@ -643,7 +642,7 @@ TEST_CASE("log_format/apply_specifiers_reverse_order", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_message_in_middle", "[log_format]") {
+TEST_CASE("log_format/apply_message_in_middle", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%time(%H:%M:%S)] %message [%level_aligned]", false);
   REQUIRE((fmt) != nullptr);
 
@@ -657,7 +656,7 @@ TEST_CASE("log_format/apply_message_in_middle", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_duplicate_specifiers", "[log_format]") {
+TEST_CASE("log_format/apply_duplicate_specifiers", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%level] [%level] %message", false);
   REQUIRE((fmt) != nullptr);
 
@@ -672,7 +671,7 @@ TEST_CASE("log_format/apply_duplicate_specifiers", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_all_specifiers_together", "[log_format]") {
+TEST_CASE("log_format/apply_all_specifiers_together", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%time(%H:%M:%S)] [%level_aligned] [%file_relative:%line] {%func} <tid:%tid> %message", false);
   REQUIRE((fmt) != nullptr);
 
@@ -691,7 +690,7 @@ TEST_CASE("log_format/apply_all_specifiers_together", "[log_format]") {
  * Edge Cases and Robustness Tests
  * ============================================================================ */
 
-TEST_CASE("log_format/apply_empty_message", "[log_format]") {
+TEST_CASE("log_format/apply_empty_message", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%level] %message", false);
   REQUIRE((fmt) != nullptr);
 
@@ -702,7 +701,7 @@ TEST_CASE("log_format/apply_empty_message", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_very_long_message", "[log_format]") {
+TEST_CASE("log_format/apply_very_long_message", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%level] %message", false);
   REQUIRE((fmt) != nullptr);
 
@@ -717,7 +716,7 @@ TEST_CASE("log_format/apply_very_long_message", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_special_characters_in_message", "[log_format]") {
+TEST_CASE("log_format/apply_special_characters_in_message", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("%message", false);
   REQUIRE((fmt) != nullptr);
 
@@ -729,7 +728,7 @@ TEST_CASE("log_format/apply_special_characters_in_message", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_large_thread_id", "[log_format]") {
+TEST_CASE("log_format/apply_large_thread_id", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("tid=%tid", false);
   REQUIRE((fmt) != nullptr);
 
@@ -741,7 +740,7 @@ TEST_CASE("log_format/apply_large_thread_id", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_all_log_levels", "[log_format]") {
+TEST_CASE("log_format/apply_all_log_levels", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("[%level_aligned]", false);
   REQUIRE((fmt) != nullptr);
 
@@ -758,7 +757,7 @@ TEST_CASE("log_format/apply_all_log_levels", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_zero_line_number", "[log_format]") {
+TEST_CASE("log_format/apply_zero_line_number", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("line=%line", false);
   REQUIRE((fmt) != nullptr);
 
@@ -770,7 +769,7 @@ TEST_CASE("log_format/apply_zero_line_number", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_negative_line_number", "[log_format]") {
+TEST_CASE("log_format/apply_negative_line_number", "[log_format] [unit]") {
   log_template_t *fmt = log_template_parse("line=%line", false);
   REQUIRE((fmt) != nullptr);
 
@@ -786,7 +785,7 @@ TEST_CASE("log_format/apply_negative_line_number", "[log_format]") {
  * Format Consistency Tests
  * ============================================================================ */
 
-TEST_CASE("log_format/apply_consistent_output", "[log_format]") {
+TEST_CASE("log_format/apply_consistent_output", "[log_format] [unit]") {
   /* Use format without %time since time changes between calls */
   log_template_t *fmt = log_template_parse("[%level] %message", false);
   REQUIRE((fmt) != nullptr);
@@ -802,7 +801,7 @@ TEST_CASE("log_format/apply_consistent_output", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/apply_time_consistency_multiple_calls", "[log_format]") {
+TEST_CASE("log_format/apply_time_consistency_multiple_calls", "[log_format] [unit]") {
   /* Test that time formatting works consistently across multiple calls */
   log_template_t *fmt = log_template_parse("%time(%Y-%m-%d)", false);
   REQUIRE((fmt) != nullptr);
@@ -827,7 +826,7 @@ TEST_CASE("log_format/apply_time_consistency_multiple_calls", "[log_format]") {
  * Color Format Tests (Validate ANSI codes are actually present)
  * ============================================================================ */
 
-TEST_CASE("log_format/color_with_use_colors_true", "[log_format]") {
+TEST_CASE("log_format/color_with_use_colors_true", "[log_format] [unit]") {
   /* Test that %color() produces ANSI codes with correct color from enum when use_colors=true */
   log_template_t *fmt = log_template_parse("%color(INFO, %message)", false);
   REQUIRE((fmt) != nullptr);
@@ -863,7 +862,7 @@ TEST_CASE("log_format/color_with_use_colors_true", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/color_with_use_colors_false", "[log_format]") {
+TEST_CASE("log_format/color_with_use_colors_false", "[log_format] [unit]") {
   /* Test that %color() produces plain text when use_colors=false */
   log_template_t *fmt = log_template_parse("%color(INFO, %message)", false);
   REQUIRE((fmt) != nullptr);
@@ -884,7 +883,7 @@ TEST_CASE("log_format/color_with_use_colors_false", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/colored_message_with_colorize", "[log_format]") {
+TEST_CASE("log_format/colored_message_with_colorize", "[log_format] [unit]") {
   /* Test that %colored_message applies colorize_log_message() rendering
    * Note: In test environment, colorize_log_message might not apply colors due to TTY detection,
    * but we still verify the format specifier is correctly rendered */
@@ -904,7 +903,7 @@ TEST_CASE("log_format/colored_message_with_colorize", "[log_format]") {
   log_template_free(fmt);
 }
 
-TEST_CASE("log_format/color_different_levels", "[log_format]") {
+TEST_CASE("log_format/color_different_levels", "[log_format] [unit]") {
   /* Test that %color(*,...) uses different color codes for different log levels */
   log_template_t *fmt = log_template_parse("%color(*, %message)", false);
   REQUIRE((fmt) != nullptr);

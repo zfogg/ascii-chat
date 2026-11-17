@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/tui/input.h>
 #include <libplatform/keyboard.h>
 #include <string.h>
@@ -21,7 +20,7 @@ static keyboard_key_t read_keys(tui_input_events_t *s, const keyboard_key_t *inp
   return tui_input_events_read(s, next_key, path);
 }
 
-TEST_CASE("input_events/bracketed_paste_preserves_unicode_and_shortcuts_as_text", "[input_events]") {
+TEST_CASE("input_events/bracketed_paste_preserves_unicode_and_shortcuts_as_text", "[input_events] [unit]") {
   tui_input_events_t state = {0};
   const keyboard_key_t start[] = {KEY_PASTE_BEGIN, static_cast<keyboard_key_t>('/'), static_cast<keyboard_key_t>(0xc3)};
   REQUIRE((read_keys(&state, start, 3)) == (KEY_NONE));
@@ -39,7 +38,7 @@ TEST_CASE("input_events/bracketed_paste_preserves_unicode_and_shortcuts_as_text"
   REQUIRE((tui_input_events_read(&state, next_key, path)) == ('q'));
 }
 
-TEST_CASE("input_events/rejected_paste_is_drained_before_next_shortcut", "[input_events]") {
+TEST_CASE("input_events/rejected_paste_is_drained_before_next_shortcut", "[input_events] [unit]") {
   tui_input_events_t state = {0};
   const keyboard_key_t input[] = {
       KEY_PASTE_END, KEY_PASTE_BEGIN, static_cast<keyboard_key_t>('a'), KEY_UP, KEY_ESCAPE, static_cast<keyboard_key_t>(127), KEY_PASTE_END, static_cast<keyboard_key_t>('q')};
@@ -53,7 +52,7 @@ TEST_CASE("input_events/rejected_paste_is_drained_before_next_shortcut", "[input
   REQUIRE(std::strcmp((state.paste), ("b")) == 0);
 }
 
-TEST_CASE("input_events/text_bursts_round_trip_without_casting_unicode_to_bytes", "[input_events]") {
+TEST_CASE("input_events/text_bursts_round_trip_without_casting_unicode_to_bytes", "[input_events] [unit]") {
   tui_input_events_t state = {0};
   const keyboard_key_t input[] = {static_cast<keyboard_key_t>('a'), static_cast<keyboard_key_t>(0x754c), KEY_LEFT, static_cast<keyboard_key_t>('b')};
   REQUIRE((read_keys(&state, input, 4)) == ('a'));
@@ -63,7 +62,7 @@ TEST_CASE("input_events/text_bursts_round_trip_without_casting_unicode_to_bytes"
   REQUIRE((tui_input_events_read(&state, next_key, path)) == (KEY_NONE));
 }
 
-TEST_CASE("input_events/application_classifies_unicode_path_bursts", "[input_events]") {
+TEST_CASE("input_events/application_classifies_unicode_path_bursts", "[input_events] [unit]") {
   tui_input_events_t state = {0};
   const keyboard_key_t input[] = {static_cast<keyboard_key_t>('/'), static_cast<keyboard_key_t>(0x754c), static_cast<keyboard_key_t>('.'),  static_cast<keyboard_key_t>('m'),
                                   static_cast<keyboard_key_t>('p'), static_cast<keyboard_key_t>('4'),    static_cast<keyboard_key_t>('\r'), static_cast<keyboard_key_t>('\n')};
@@ -77,7 +76,7 @@ TEST_CASE("input_events/application_classifies_unicode_path_bursts", "[input_eve
   REQUIRE((tui_input_events_read(&state, next_key, NULL)) == (0x754c));
 }
 
-TEST_CASE("input_events/a_boundary_in_a_burst_does_not_reorder_events", "[input_events]") {
+TEST_CASE("input_events/a_boundary_in_a_burst_does_not_reorder_events", "[input_events] [unit]") {
   tui_input_events_t state = {0};
   const keyboard_key_t input[] = {static_cast<keyboard_key_t>('x'), KEY_PASTE_BEGIN, static_cast<keyboard_key_t>('?'), KEY_PASTE_END, KEY_LEFT};
   REQUIRE((read_keys(&state, input, 5)) == ('x'));
@@ -87,7 +86,7 @@ TEST_CASE("input_events/a_boundary_in_a_burst_does_not_reorder_events", "[input_
   REQUIRE((tui_input_events_read(&state, next_key, path)) == (KEY_LEFT));
 }
 
-TEST_CASE("input_events/full_payload_is_drained_and_never_overflows", "[input_events]") {
+TEST_CASE("input_events/full_payload_is_drained_and_never_overflows", "[input_events] [unit]") {
   tui_input_events_t state = {0};
   keyboard_key_t input[9003];
   input[0] = KEY_PASTE_BEGIN;
@@ -109,7 +108,7 @@ TEST_CASE("input_events/full_payload_is_drained_and_never_overflows", "[input_ev
   REQUIRE((tui_input_events_read(&state, next_key, path)) == ('q'));
 }
 
-TEST_CASE("input_events/classified_path_keeps_the_following_bracketed_paste_framed", "[input_events]") {
+TEST_CASE("input_events/classified_path_keeps_the_following_bracketed_paste_framed", "[input_events] [unit]") {
   tui_input_events_t state = {0};
   const keyboard_key_t input[] = {static_cast<keyboard_key_t>('/'),
                                   static_cast<keyboard_key_t>('x'),
@@ -131,7 +130,7 @@ TEST_CASE("input_events/classified_path_keeps_the_following_bracketed_paste_fram
   REQUIRE((tui_input_events_read(&state, next_key, path)) == (KEY_LEFT));
 }
 
-TEST_CASE("input_events/classified_path_preserves_a_stray_end_boundary_without_losing_the_next_key", "[input_events]") {
+TEST_CASE("input_events/classified_path_preserves_a_stray_end_boundary_without_losing_the_next_key", "[input_events] [unit]") {
   tui_input_events_t state = {0};
   const keyboard_key_t input[] = {static_cast<keyboard_key_t>('/'), static_cast<keyboard_key_t>('x'), KEY_PASTE_END, static_cast<keyboard_key_t>('q')};
   REQUIRE((read_keys(&state, input, 4)) == (KEY_PASTE));

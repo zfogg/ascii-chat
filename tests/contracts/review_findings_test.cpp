@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/network/consensus/handoff.h>
@@ -87,7 +86,7 @@ static void teardown(void) {
   options_state_destroy();
   log_destroy();
 }
-TEST_CASE("review_regressions/first_frame_framing", "[review_regressions]") {
+TEST_CASE("review_regressions/first_frame_framing", "[review_regressions] [contract]") {
   face_follow_state_t face;
   face_follow_init(&face);
   face_follow_detection_t detection = {{0.2f, 0.3f, 0.12f, 0.2f}, 0.95f};
@@ -96,14 +95,14 @@ TEST_CASE("review_regressions/first_frame_framing", "[review_regressions]") {
   REQUIRE(face.crop.w < 0.75f);
 }
 
-TEST_CASE("review_regressions/unmeasured_host_loss", "[review_regressions]") {
+TEST_CASE("review_regressions/unmeasured_host_loss", "[review_regressions] [contract]") {
   test_handoff_unmeasured_host();
 }
 
-TEST_CASE("review_regressions/mixer_high_slot_self_exclusion", "[review_regressions]") {
+TEST_CASE("review_regressions/mixer_high_slot_self_exclusion", "[review_regressions] [contract]") {
   test_mixer_high_slot();
 }
 
-TEST_CASE("review_regressions/audio_rms_dc_reset", "[review_regressions]") {
+TEST_CASE("review_regressions/audio_rms_dc_reset", "[review_regressions] [contract]") {
   test_audio_analysis_levels();
 }

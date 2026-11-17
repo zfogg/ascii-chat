@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/manpage.h>
@@ -37,7 +36,7 @@ static char *read_stream(FILE *stream) {
   return text;
 }
 
-TEST_CASE("option_documentation/mode_help_exposes_relevant_options_at_narrow_and_wide_widths", "[option_documentation]") {
+TEST_CASE("option_documentation/mode_help_exposes_relevant_options_at_narrow_and_wide_widths", "[option_documentation] [unit]") {
   options_config_t *config = documentation_config();
   const asciichat_mode_t modes[] = {MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE};
   const char *widths[] = {"45", "120"};
@@ -60,7 +59,7 @@ TEST_CASE("option_documentation/mode_help_exposes_relevant_options_at_narrow_and
   options_config_destroy(config);
 }
 
-TEST_CASE("option_documentation/usage_and_option_sections_can_be_composed_independently", "[option_documentation]") {
+TEST_CASE("option_documentation/usage_and_option_sections_can_be_composed_independently", "[option_documentation] [unit]") {
   options_config_t *config = documentation_config();
   FILE *stream = tmpfile();
   REQUIRE((stream) != nullptr);
@@ -80,7 +79,7 @@ TEST_CASE("option_documentation/usage_and_option_sections_can_be_composed_indepe
   options_config_destroy(config);
 }
 
-TEST_CASE("option_documentation/templates_and_merged_manpages_contain_generated_options_and_manual_sections", "[option_documentation]") {
+TEST_CASE("option_documentation/templates_and_merged_manpages_contain_generated_options_and_manual_sections", "[option_documentation] [unit]") {
   options_config_t *config = documentation_config();
   char path[1024];
   int fd;
@@ -116,7 +115,7 @@ TEST_CASE("option_documentation/templates_and_merged_manpages_contain_generated_
   options_config_destroy(config);
 }
 
-TEST_CASE("option_documentation/parser_preserves_manual_merge_and_unmarked_section_content", "[option_documentation]") {
+TEST_CASE("option_documentation/parser_preserves_manual_merge_and_unmarked_section_content", "[option_documentation] [unit]") {
   const char *input = ".TH TEST 1\n.\\\" AUTO-START: OPTIONS\n.SH OPTIONS\nGenerated options\n.\\\" AUTO-END: OPTIONS\n"
                       ".\\\" MANUAL-START: DESCRIPTION\n.SH \"DESCRIPTION\"\nKeep this prose\n.\\\" MANUAL-END: DESCRIPTION\n"
                       ".\" MERGE-START: ENVIRONMENT\n.SH ENVIRONMENT\nCUSTOM_ENV\n.\" MERGE-END: ENVIRONMENT\n.SH NOTES\nUnmarked "
@@ -143,7 +142,7 @@ TEST_CASE("option_documentation/parser_preserves_manual_merge_and_unmarked_secti
   manpage_parser_free_sections(NULL, 0);
 }
 
-TEST_CASE("option_documentation/mode_names_and_groff_escaping_are_stable", "[option_documentation]") {
+TEST_CASE("option_documentation/mode_names_and_groff_escaping_are_stable", "[option_documentation] [unit]") {
   REQUIRE((strstr(format_mode_names(static_cast<option_mode_bitmask_t>(OPTION_MODE_SERVER | OPTION_MODE_CLIENT)), "server")) != nullptr);
   REQUIRE((strstr(format_mode_names(static_cast<option_mode_bitmask_t>(OPTION_MODE_BINARY | OPTION_MODE_MIRROR)), "global")) != nullptr);
   REQUIRE((strstr(format_mode_names(OPTION_MODE_DISCOVERY_SVC), "discovery-service")) != nullptr);

@@ -1,7 +1,7 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
 #include <ascii-chat/buffer.h>
-#include <catch2/catch_all.hpp>
 #include <libplatform/socket.h>
 #include <string.h>
 #include <stdint.h>
@@ -150,7 +150,7 @@ static auto compression_roundtrip_property_catch2_data = {
     1, 16, 64, 256, 512, 1024, 4096, 8192,
 };
 
-TEST_CASE("compression/compression_roundtrip_property", "[compression]") {
+TEST_CASE("compression/compression_roundtrip_property", "[compression] [unit]") {
   size_t data_size = GENERATE(Catch::Generators::from_range(std::begin(compression_roundtrip_property_catch2_data), std::end(compression_roundtrip_property_catch2_data)));
   if (!(data_size > 0 && data_size <= 8192))
     SKIP("assumption not satisfied");
@@ -194,7 +194,7 @@ static auto compressible_data_property_catch2_data = {
     4096,
 };
 
-TEST_CASE("compression/compressible_data_property", "[compression]") {
+TEST_CASE("compression/compressible_data_property", "[compression] [unit]") {
   size_t data_size = GENERATE(Catch::Generators::from_range(std::begin(compressible_data_property_catch2_data), std::end(compressible_data_property_catch2_data)));
   if (!(data_size > 0 && data_size <= 4096))
     SKIP("assumption not satisfied");
@@ -234,7 +234,7 @@ static auto compression_threshold_property_catch2_data = {
     2000,
 };
 
-TEST_CASE("compression/compression_threshold_property", "[compression]") {
+TEST_CASE("compression/compression_threshold_property", "[compression] [unit]") {
   size_t original_size = GENERATE(Catch::Generators::from_range(std::begin(compression_threshold_property_catch2_data), std::end(compression_threshold_property_catch2_data)));
   if (!(original_size > 0 && original_size <= 2000))
     SKIP("assumption not satisfied");
@@ -255,7 +255,7 @@ TEST_CASE("compression/compression_threshold_property", "[compression]") {
  * ASCII Frame Packet Tests
  * ============================================================================ */
 
-TEST_CASE("compression/send_ascii_frame_packet_basic", "[compression]") {
+TEST_CASE("compression/send_ascii_frame_packet_basic", "[compression] [unit]") {
   reset_mock_state();
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
@@ -284,7 +284,7 @@ TEST_CASE("compression/send_ascii_frame_packet_basic", "[compression]") {
   socket_close(sockfd);
 }
 
-TEST_CASE("compression/send_ascii_frame_packet_invalid_params", "[compression]") {
+TEST_CASE("compression/send_ascii_frame_packet_invalid_params", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -303,7 +303,7 @@ TEST_CASE("compression/send_ascii_frame_packet_invalid_params", "[compression]")
   close(sockfd);
 }
 
-TEST_CASE("compression/send_ascii_frame_packet_oversized_frame", "[compression]") {
+TEST_CASE("compression/send_ascii_frame_packet_oversized_frame", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -319,7 +319,7 @@ TEST_CASE("compression/send_ascii_frame_packet_oversized_frame", "[compression]"
   close(sockfd);
 }
 
-TEST_CASE("compression/send_ascii_frame_packet_compressible_data", "[compression]") {
+TEST_CASE("compression/send_ascii_frame_packet_compressible_data", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -342,7 +342,7 @@ TEST_CASE("compression/send_ascii_frame_packet_compressible_data", "[compression
   close(sockfd);
 }
 
-TEST_CASE("compression/send_ascii_frame_packet_uncompressible_data", "[compression]") {
+TEST_CASE("compression/send_ascii_frame_packet_uncompressible_data", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -365,7 +365,7 @@ TEST_CASE("compression/send_ascii_frame_packet_uncompressible_data", "[compressi
   close(sockfd);
 }
 
-TEST_CASE("compression/send_ascii_frame_packet_send_failure", "[compression]") {
+TEST_CASE("compression/send_ascii_frame_packet_send_failure", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -387,7 +387,7 @@ TEST_CASE("compression/send_ascii_frame_packet_send_failure", "[compression]") {
   close(sockfd);
 }
 
-TEST_CASE("compression/send_ascii_frame_packet_memory_allocation_failure", "[compression]") {
+TEST_CASE("compression/send_ascii_frame_packet_memory_allocation_failure", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -410,7 +410,7 @@ TEST_CASE("compression/send_ascii_frame_packet_memory_allocation_failure", "[com
  * Image Frame Packet Tests
  * ============================================================================ */
 
-TEST_CASE("compression/send_image_frame_packet_basic", "[compression]") {
+TEST_CASE("compression/send_image_frame_packet_basic", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -433,7 +433,7 @@ TEST_CASE("compression/send_image_frame_packet_basic", "[compression]") {
   close(sockfd);
 }
 
-TEST_CASE("compression/send_image_frame_packet_invalid_params", "[compression]") {
+TEST_CASE("compression/send_image_frame_packet_invalid_params", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -452,7 +452,7 @@ TEST_CASE("compression/send_image_frame_packet_invalid_params", "[compression]")
   close(sockfd);
 }
 
-TEST_CASE("compression/send_image_frame_packet_send_failure", "[compression]") {
+TEST_CASE("compression/send_image_frame_packet_send_failure", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -474,7 +474,7 @@ TEST_CASE("compression/send_image_frame_packet_send_failure", "[compression]") {
   close(sockfd);
 }
 
-TEST_CASE("compression/send_image_frame_packet_memory_allocation_failure", "[compression]") {
+TEST_CASE("compression/send_image_frame_packet_memory_allocation_failure", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -495,7 +495,7 @@ TEST_CASE("compression/send_image_frame_packet_memory_allocation_failure", "[com
  * Legacy Function Tests
  * ============================================================================ */
 
-TEST_CASE("compression/send_compressed_frame_legacy", "[compression]") {
+TEST_CASE("compression/send_compressed_frame_legacy", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -521,7 +521,7 @@ TEST_CASE("compression/send_compressed_frame_legacy", "[compression]") {
   close(sockfd);
 }
 
-TEST_CASE("compression/send_compressed_frame_legacy_invalid_params", "[compression]") {
+TEST_CASE("compression/send_compressed_frame_legacy_invalid_params", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -544,7 +544,7 @@ TEST_CASE("compression/send_compressed_frame_legacy_invalid_params", "[compressi
  * Compression Ratio Tests
  * ============================================================================ */
 
-TEST_CASE("compression/compression_ratio_threshold", "[compression]") {
+TEST_CASE("compression/compression_ratio_threshold", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -568,7 +568,7 @@ TEST_CASE("compression/compression_ratio_threshold", "[compression]") {
   close(sockfd);
 }
 
-TEST_CASE("compression/no_compression_when_ineffective", "[compression]") {
+TEST_CASE("compression/no_compression_when_ineffective", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -595,7 +595,7 @@ TEST_CASE("compression/no_compression_when_ineffective", "[compression]") {
  * Edge Cases and Stress Tests
  * ============================================================================ */
 
-TEST_CASE("compression/very_small_frame", "[compression]") {
+TEST_CASE("compression/very_small_frame", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -617,7 +617,7 @@ TEST_CASE("compression/very_small_frame", "[compression]") {
   close(sockfd);
 }
 
-TEST_CASE("compression/large_frame", "[compression]") {
+TEST_CASE("compression/large_frame", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -641,7 +641,7 @@ TEST_CASE("compression/large_frame", "[compression]") {
   close(sockfd);
 }
 
-TEST_CASE("compression/multiple_frames", "[compression]") {
+TEST_CASE("compression/multiple_frames", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -669,7 +669,7 @@ TEST_CASE("compression/multiple_frames", "[compression]") {
   close(sockfd);
 }
 
-TEST_CASE("compression/different_image_formats", "[compression]") {
+TEST_CASE("compression/different_image_formats", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -698,7 +698,7 @@ TEST_CASE("compression/different_image_formats", "[compression]") {
   close(sockfd);
 }
 
-TEST_CASE("compression/zero_dimensions", "[compression]") {
+TEST_CASE("compression/zero_dimensions", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -719,7 +719,7 @@ TEST_CASE("compression/zero_dimensions", "[compression]") {
   close(sockfd);
 }
 
-TEST_CASE("compression/negative_dimensions", "[compression]") {
+TEST_CASE("compression/negative_dimensions", "[compression] [unit]") {
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
 
@@ -760,7 +760,7 @@ static compression_data_test_case_t compression_data_cases[] = {{"Highly compres
                                                                 {"Large compressible data", 10000, 'C', true, "large_repeating"},
                                                                 {"Mixed pattern data", 500, 'D', true, "mixed"}};
 
-TEST_CASE("compression/data_patterns", "[compression]") {
+TEST_CASE("compression/data_patterns", "[compression] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(compression_data_cases), std::end(compression_data_cases)));
   auto *tc = &generated_case;
   int sockfd = create_test_socket();
@@ -797,7 +797,7 @@ typedef struct {
 static compression_frame_test_case_t compression_frame_cases[] = {{1, 1, 1, "Tiny frame"},          {100, 10, 10, "Small frame"},           {1000, 32, 32, "Medium frame"},
                                                                   {10000, 100, 100, "Large frame"}, {100000, 320, 240, "Very large frame"}, {1000000, 640, 480, "Huge frame"}};
 
-TEST_CASE("compression/frame_sizes", "[compression]") {
+TEST_CASE("compression/frame_sizes", "[compression] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(compression_frame_cases), std::end(compression_frame_cases)));
   auto *tc = &generated_case;
   int sockfd = create_test_socket();
@@ -822,7 +822,7 @@ typedef struct {
 static compression_image_format_test_case_t compression_image_format_cases[] = {{0x12345678, "Standard RGB format"}, {0x87654321, "Reversed format"},    {0x00000000, "Zero format"},
                                                                                 {0xFFFFFFFF, "Max format"},          {0xDEADBEEF, "Hex pattern format"}, {0xCAFEBABE, "Another hex pattern"}};
 
-TEST_CASE("compression/image_formats", "[compression]") {
+TEST_CASE("compression/image_formats", "[compression] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(compression_image_format_cases), std::end(compression_image_format_cases)));
   auto *tc = &generated_case;
   int sockfd = create_test_socket();
@@ -850,7 +850,7 @@ typedef struct {
 static compression_error_test_case_t compression_error_cases[] = {
     {"NULL frame data", true, false, false, false}, {"Zero frame size", false, true, false, false}, {"Invalid socket", false, false, true, false}, {"Negative dimensions", false, false, false, true}};
 
-TEST_CASE("compression/error_conditions", "[compression]") {
+TEST_CASE("compression/error_conditions", "[compression] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(compression_error_cases), std::end(compression_error_cases)));
   auto *tc = &generated_case;
   int sockfd = create_test_socket();
@@ -883,7 +883,7 @@ typedef struct {
 
 static compression_stress_test_case_t compression_stress_cases[] = {{5, "Light stress test"}, {20, "Medium stress test"}, {50, "Heavy stress test"}, {100, "Intensive stress test"}};
 
-TEST_CASE("compression/stress_tests", "[compression]") {
+TEST_CASE("compression/stress_tests", "[compression] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(compression_stress_cases), std::end(compression_stress_cases)));
   auto *tc = &generated_case;
   int sockfd = create_test_socket();

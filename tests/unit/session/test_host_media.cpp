@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "common/session/host.h"
 #include "common/session/frame_validation.h"
 #include <ascii-chat/options/rcu.h>
@@ -75,7 +74,7 @@ static void tick(void) {
   time_sleep_ns(20 * NS_PER_MS_INT);
   REQUIRE((session_host_render_video(host)) == (ASCIICHAT_OK));
 }
-TEST_CASE("session_host_media/memory_admission_reuses_capacity_and_callbacks_can_query_the_host", "[session_host_media]") {
+TEST_CASE("session_host_media/memory_admission_reuses_capacity_and_callbacks_can_query_the_host", "[session_host_media] [unit]") {
   uint32_t ids[3];
   ids[0] = session_host_add_memory_participant(host);
   REQUIRE((ids[0]) != (0));
@@ -101,7 +100,7 @@ TEST_CASE("session_host_media/memory_admission_reuses_capacity_and_callbacks_can
   REQUIRE((session_host_get_client_count(host)) == (3));
   REQUIRE((joins) == (4));
 }
-TEST_CASE("session_host_media/injected_image_is_owned_and_backend_rejection_preserves_the_last_frame", "[session_host_media]") {
+TEST_CASE("session_host_media/injected_image_is_owned_and_backend_rejection_preserves_the_last_frame", "[session_host_media] [unit]") {
   uint32_t id = session_host_add_memory_participant(host);
   REQUIRE((id) != (0));
   image_t *image = image_new(2, 2);
@@ -122,7 +121,7 @@ TEST_CASE("session_host_media/injected_image_is_owned_and_backend_rejection_pres
   REQUIRE((renders) == (before + 1));
   REQUIRE((strstr(rendered, ";2;20;90;180m")) != nullptr);
 }
-TEST_CASE("session_host_media/rgb_bgr_rgba_and_bgra_packets_render_the_same_colors_and_bad_frames_do_not_replace_them", "[session_host_media]") {
+TEST_CASE("session_host_media/rgb_bgr_rgba_and_bgra_packets_render_the_same_colors_and_bad_frames_do_not_replace_them", "[session_host_media] [unit]") {
   uint32_t id = session_host_add_client(host, &transport, ACIP_TRANSPORT_BORROWED, "127.0.0.1", 1234);
   REQUIRE((id) != (0));
   REQUIRE((session_host_receive_packet(host, id, PACKET_TYPE_STREAM_START, NULL, 0)) == (ASCIICHAT_OK));
@@ -155,7 +154,7 @@ TEST_CASE("session_host_media/rgb_bgr_rgba_and_bgra_packets_render_the_same_colo
   REQUIRE((session_host_find_client(host, id, &info)) == (ASCIICHAT_OK));
   REQUIRE((!(info.video_active || info.audio_active)));
 }
-TEST_CASE("session_host_media/mixed_memory_audio_is_encoded_and_delivered_to_a_network_participant", "[session_host_media]") {
+TEST_CASE("session_host_media/mixed_memory_audio_is_encoded_and_delivered_to_a_network_participant", "[session_host_media] [unit]") {
   uint32_t source = session_host_add_memory_participant(host);
   uint32_t listener = session_host_add_client(host, &transport, ACIP_TRANSPORT_BORROWED, "127.0.0.1", 1234);
   REQUIRE((source && listener));

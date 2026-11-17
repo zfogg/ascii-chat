@@ -1,6 +1,6 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <ascii-chat/video/anim/test_pattern.h>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/video/anim/controller.h>
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/common.h>
@@ -11,7 +11,7 @@ static animation_config_t config(animation_type_t type) {
   return (animation_config_t){.type = type, .fps = 10, .speed = 1, .hidden_policy = ANIMATION_HIDDEN_PAUSE};
 }
 
-TEST_CASE("animation/clock_pause_visibility_speed_and_reset", "[animation]") {
+TEST_CASE("animation/clock_pause_visibility_speed_and_reset", "[animation] [unit]") {
   animation_t a;
   animation_sample_t s;
   REQUIRE((animation_init(&a, "test_animation", config(ANIMATION_SPLASH_RAINBOW))) == (ASCIICHAT_OK));
@@ -41,7 +41,7 @@ TEST_CASE("animation/clock_pause_visibility_speed_and_reset", "[animation]") {
   animation_destroy(&a);
 }
 
-TEST_CASE("animation/independent_clocks_and_hidden_continue", "[animation]") {
+TEST_CASE("animation/independent_clocks_and_hidden_continue", "[animation] [unit]") {
   animation_t a, b;
   animation_sample_t sa, sb;
   animation_config_t c = config(ANIMATION_RAINBOW_FILTER);
@@ -60,7 +60,7 @@ TEST_CASE("animation/independent_clocks_and_hidden_continue", "[animation]") {
   animation_destroy(&b);
 }
 
-TEST_CASE("animation/deterministic_color_and_invalid_targets", "[animation]") {
+TEST_CASE("animation/deterministic_color_and_invalid_targets", "[animation] [unit]") {
   animation_sample_t s;
   rgb_pixel_t first, later;
   animation_target_t t = {.type = ANIMATION_TARGET_COLOR, .color = {.out = &first}};
@@ -80,7 +80,7 @@ TEST_CASE("animation/deterministic_color_and_invalid_targets", "[animation]") {
   REQUIRE((animation_sample_at(config(ANIMATION_RAINBOW_FILTER), NAN, &s)) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("animation/shared_test_patterns_are_deterministic_and_animated", "[animation]") {
+TEST_CASE("animation/shared_test_patterns_are_deterministic_and_animated", "[animation] [unit]") {
   test_pattern_t *pattern = NULL;
   REQUIRE((test_pattern_create(80, 60, &pattern)) == (ASCIICHAT_OK));
   rgb_pixel_t previous[80 * 60], repeat[80 * 60];
@@ -100,7 +100,7 @@ TEST_CASE("animation/shared_test_patterns_are_deterministic_and_animated", "[ani
   test_pattern_destroy(pattern);
 }
 
-TEST_CASE("animation/rain_clock_reset_and_rainbow_composition", "[animation]") {
+TEST_CASE("animation/rain_clock_reset_and_rainbow_composition", "[animation] [unit]") {
   digital_rain_t *rain = digital_rain_init(4, 1);
   REQUIRE((rain) != nullptr);
   const char *input = "\033[38;2;255;0;0mABCD\033[0m";

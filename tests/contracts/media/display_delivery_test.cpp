@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "session/display.h"
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/options/rcu.h>
@@ -94,7 +94,7 @@ static void create(bool snapshot) {
   display = session_display_create(&config);
   REQUIRE((display) != nullptr);
 }
-TEST_CASE("display_delivery/piped_frames_are_delimited_and_failed_output_is_latched_once", "[display_delivery]") {
+TEST_CASE("display_delivery/piped_frames_are_delimited_and_failed_output_is_latched_once", "[display_delivery] [contract]") {
   create(false);
   display->has_tty = false;
   delivery_interactive = false;
@@ -112,7 +112,7 @@ TEST_CASE("display_delivery/piped_frames_are_delimited_and_failed_output_is_latc
   REQUIRE((delivery_writes) == (2));
   REQUIRE((delivery_exits) == (1));
 }
-TEST_CASE("display_delivery/interactive_pipe_preserves_newline_and_latches_broken_output", "[display_delivery]") {
+TEST_CASE("display_delivery/interactive_pipe_preserves_newline_and_latches_broken_output", "[display_delivery] [contract]") {
   create(true);
   display->has_tty = false;
   delivery_interactive = true;
@@ -123,7 +123,7 @@ TEST_CASE("display_delivery/interactive_pipe_preserves_newline_and_latches_broke
   REQUIRE((delivery_exits) == (1));
   REQUIRE(atomic_load_bool(&display->output_failed));
 }
-TEST_CASE("display_delivery/tty_frames_use_cursor_prefix_reuse_storage_and_distinguish_retained_submissions", "[display_delivery]") {
+TEST_CASE("display_delivery/tty_frames_use_cursor_prefix_reuse_storage_and_distinguish_retained_submissions", "[display_delivery] [contract]") {
   create(false);
   display->has_tty = true;
   display->tty_info.fd = -1;
@@ -148,7 +148,7 @@ TEST_CASE("display_delivery/tty_frames_use_cursor_prefix_reuse_storage_and_disti
   REQUIRE((session_display_get_tty_fd(display)) == (-1));
   display->has_tty = false;
 }
-TEST_CASE("display_delivery/ansi_stripping_expands_rep_before_discarding_color_sequences", "[display_delivery]") {
+TEST_CASE("display_delivery/ansi_stripping_expands_rep_before_discarding_color_sequences", "[display_delivery] [contract]") {
   create(false);
   display->has_tty = false;
   REQUIRE((options_set_bool("strip_ansi", true)) == (ASCIICHAT_OK));
@@ -156,7 +156,7 @@ TEST_CASE("display_delivery/ansi_stripping_expands_rep_before_discarding_color_s
   REQUIRE(std::strcmp((delivery_bytes), ("####\n")) == 0);
   REQUIRE((delivery_length) == (5));
 }
-TEST_CASE("display_delivery/local_audio_playback_uses_the_borrowed_ring_without_network_jitter", "[display_delivery]") {
+TEST_CASE("display_delivery/local_audio_playback_uses_the_borrowed_ring_without_network_jitter", "[display_delivery] [contract]") {
   REQUIRE((audio_init(&local_audio)) == (ASCIICHAT_OK));
   audio_ring_buffer_destroy(local_audio.playback_buffer);
   local_audio.playback_buffer = audio_ring_buffer_create_for_capture();
@@ -190,7 +190,7 @@ TEST_CASE("display_delivery/local_audio_playback_uses_the_borrowed_ring_without_
   display = NULL;
   REQUIRE(local_audio.initialized);
 }
-TEST_CASE("display_delivery/constructor_rejects_incompatible_unicode_policy_and_cancellation_before_allocating", "[display_delivery]") {
+TEST_CASE("display_delivery/constructor_rejects_incompatible_unicode_policy_and_cancellation_before_allocating", "[display_delivery] [contract]") {
   options_t *v = SAFE_MALLOC(sizeof(*v), options_t *);
   *v = *options_get();
   v->zalgo = 1;
@@ -213,7 +213,7 @@ TEST_CASE("display_delivery/constructor_rejects_incompatible_unicode_policy_and_
   REQUIRE(std::strcmp((session_display_get_palette_chars(display)), (" .#")) == 0);
 }
 
-TEST_CASE("display_delivery/raw_delivery_preserves_bytes_and_selects_the_owned_terminal_descriptor", "[display_delivery]") {
+TEST_CASE("display_delivery/raw_delivery_preserves_bytes_and_selects_the_owned_terminal_descriptor", "[display_delivery] [contract]") {
   create(false);
   display->has_tty = false;
   const char bytes[] = {'a', 0, 'b'};
@@ -229,7 +229,7 @@ TEST_CASE("display_delivery/raw_delivery_preserves_bytes_and_selects_the_owned_t
   display->has_tty = false;
   display->tty_info.fd = -1;
 }
-TEST_CASE("display_delivery/rain_and_zalgo_effects_are_owned_by_the_display_and_work_for_received_text", "[display_delivery]") {
+TEST_CASE("display_delivery/rain_and_zalgo_effects_are_owned_by_the_display_and_work_for_received_text", "[display_delivery] [contract]") {
   REQUIRE((options_set_bool("matrix_rain", true)) == (ASCIICHAT_OK));
   create(false);
   REQUIRE((display->digital_rain) != nullptr);
@@ -245,7 +245,7 @@ TEST_CASE("display_delivery/rain_and_zalgo_effects_are_owned_by_the_display_and_
   REQUIRE((delivery_length) > (5));
   REQUIRE((delivery_bytes[delivery_length - 1]) == ('\n'));
 }
-TEST_CASE("display_delivery/global_help_cancel_is_consumed_once_and_snapshot_tty_submission_starts_the_clock", "[display_delivery]") {
+TEST_CASE("display_delivery/global_help_cancel_is_consumed_once_and_snapshot_tty_submission_starts_the_clock", "[display_delivery] [contract]") {
   create(true);
   session_display_set_global_context(display);
   REQUIRE((session_display_get_global_context()) == (display));
@@ -267,7 +267,7 @@ TEST_CASE("display_delivery/global_help_cancel_is_consumed_once_and_snapshot_tty
   REQUIRE((g_snapshot_first_frame_rendered_ns) > (0));
   display->has_tty = false;
 }
-TEST_CASE("display_delivery/invalid_conversion_and_recording_inputs_preserve_existing_display_state", "[display_delivery]") {
+TEST_CASE("display_delivery/invalid_conversion_and_recording_inputs_preserve_existing_display_state", "[display_delivery] [contract]") {
   create(false);
   image_t *image = image_new(4, 4);
   REQUIRE((image) != nullptr);
@@ -300,7 +300,7 @@ static void encoder_options(int fps) {
   REQUIRE((options_state_set(v)) == (ASCIICHAT_OK));
   SAFE_FREE(v);
 }
-TEST_CASE("display_delivery/encoder_start_failure_rolls_back_constructor_and_preserves_the_cause", "[display_delivery]") {
+TEST_CASE("display_delivery/encoder_start_failure_rolls_back_constructor_and_preserves_the_cause", "[display_delivery] [contract]") {
   encoder_options(30);
   fail_encoder = true;
   REQUIRE((session_display_create(NULL)) == nullptr);
@@ -311,7 +311,7 @@ TEST_CASE("display_delivery/encoder_start_failure_rolls_back_constructor_and_pre
   REQUIRE((encoder_calls) == (1));
   REQUIRE((encoder_fps) == (30));
 }
-TEST_CASE("display_delivery/deferred_encoder_selects_media_then_option_then_default_fps_and_remains_retryable", "[display_delivery]") {
+TEST_CASE("display_delivery/deferred_encoder_selects_media_then_option_then_default_fps_and_remains_retryable", "[display_delivery] [contract]") {
   encoder_options(0);
   fail_encoder = true;
   session_display_config_t config = {.snapshot_mode = true, .palette_type = PALETTE_STANDARD, .color_mode = TERM_COLOR_NONE, .defer_render_file = true};

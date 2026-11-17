@@ -1,6 +1,7 @@
+#include <catch2/generators/catch_generators_all.hpp>
+#include <catch2/catch_approx.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <time.h>
 #include <math.h>
 #include <ascii-chat/util/aspect_ratio.h>
@@ -10,7 +11,7 @@
  * Basic Aspect Ratio Function Tests
  * ============================================================================ */
 
-TEST_CASE("aspect_ratio/basic_functionality", "[aspect_ratio]") {
+TEST_CASE("aspect_ratio/basic_functionality", "[aspect_ratio] [unit]") {
   ssize_t out_width, out_height;
 
   // Test basic aspect ratio calculation
@@ -26,7 +27,7 @@ TEST_CASE("aspect_ratio/basic_functionality", "[aspect_ratio]") {
   REQUIRE((out_height) <= (24));
 }
 
-TEST_CASE("aspect_ratio/stretch_mode", "[aspect_ratio]") {
+TEST_CASE("aspect_ratio/stretch_mode", "[aspect_ratio] [unit]") {
   ssize_t out_width, out_height;
 
   // Test stretch mode - should use full terminal dimensions
@@ -36,7 +37,7 @@ TEST_CASE("aspect_ratio/stretch_mode", "[aspect_ratio]") {
   REQUIRE((out_height) == (24));
 }
 
-TEST_CASE("aspect_ratio/square_image", "[aspect_ratio]") {
+TEST_CASE("aspect_ratio/square_image", "[aspect_ratio] [unit]") {
   ssize_t out_width, out_height;
 
   // Test square image (1:1 aspect ratio)
@@ -49,7 +50,7 @@ TEST_CASE("aspect_ratio/square_image", "[aspect_ratio]") {
   REQUIRE((out_height) <= (24));
 }
 
-TEST_CASE("aspect_ratio/tall_image", "[aspect_ratio]") {
+TEST_CASE("aspect_ratio/tall_image", "[aspect_ratio] [unit]") {
   ssize_t out_width, out_height;
 
   // Test tall image (portrait)
@@ -61,7 +62,7 @@ TEST_CASE("aspect_ratio/tall_image", "[aspect_ratio]") {
   REQUIRE((out_height) <= (24));
 }
 
-TEST_CASE("aspect_ratio/wide_image", "[aspect_ratio]") {
+TEST_CASE("aspect_ratio/wide_image", "[aspect_ratio] [unit]") {
   ssize_t out_width, out_height;
 
   // Test wide image (landscape)
@@ -73,7 +74,7 @@ TEST_CASE("aspect_ratio/wide_image", "[aspect_ratio]") {
   REQUIRE((out_height) <= (24));
 }
 
-TEST_CASE("aspect_ratio/null_output_pointers", "[aspect_ratio]") {
+TEST_CASE("aspect_ratio/null_output_pointers", "[aspect_ratio] [unit]") {
   // Test with NULL output pointers - should not crash
   aspect_ratio(1920, 1080, 80, 24, false, NULL, NULL);
   aspect_ratio(1920, 1080, 80, 24, false, NULL, NULL);
@@ -116,7 +117,7 @@ static invalid_dimensions_test_case_t invalid_dimensions_cases[] = {// aspect_ra
                                                                     {-1920, 1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: negative image width"},
                                                                     {1920, -1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: negative image height"}};
 
-TEST_CASE("aspect_ratio/invalid_dimensions_parameterized", "[aspect_ratio]") {
+TEST_CASE("aspect_ratio/invalid_dimensions_parameterized", "[aspect_ratio] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(invalid_dimensions_cases), std::end(invalid_dimensions_cases)));
   auto *test_case = &generated_case;
   ssize_t out_width, out_height;
@@ -137,7 +138,7 @@ TEST_CASE("aspect_ratio/invalid_dimensions_parameterized", "[aspect_ratio]") {
   REQUIRE((out_height) == (test_case->expected_h));
 }
 
-TEST_CASE("aspect_ratio/very_small_image", "[aspect_ratio]") {
+TEST_CASE("aspect_ratio/very_small_image", "[aspect_ratio] [unit]") {
   ssize_t out_width, out_height;
 
   // Test with very small image
@@ -149,7 +150,7 @@ TEST_CASE("aspect_ratio/very_small_image", "[aspect_ratio]") {
   REQUIRE((out_height) <= (24));
 }
 
-TEST_CASE("aspect_ratio/very_large_image", "[aspect_ratio]") {
+TEST_CASE("aspect_ratio/very_large_image", "[aspect_ratio] [unit]") {
   ssize_t out_width, out_height;
 
   // Test with very large image
@@ -165,7 +166,7 @@ TEST_CASE("aspect_ratio/very_large_image", "[aspect_ratio]") {
  * aspect_ratio2 Function Tests
  * ============================================================================ */
 
-TEST_CASE("aspect_ratio2/basic_functionality", "[aspect_ratio2]") {
+TEST_CASE("aspect_ratio2/basic_functionality", "[aspect_ratio2] [unit]") {
   ssize_t out_width, out_height;
 
   // Test basic aspect ratio calculation without terminal character correction
@@ -178,14 +179,14 @@ TEST_CASE("aspect_ratio2/basic_functionality", "[aspect_ratio2]") {
   REQUIRE((out_height) <= (24));
 }
 
-TEST_CASE("aspect_ratio2/null_output_pointers", "[aspect_ratio2]") {
+TEST_CASE("aspect_ratio2/null_output_pointers", "[aspect_ratio2] [unit]") {
   // Test with NULL output pointers - should not crash
   aspect_ratio2(1920, 1080, 80, 24, NULL, NULL);
   // If we get here without crashing, the test passes
   REQUIRE(true);
 }
 
-TEST_CASE("aspect_ratio2/square_image", "[aspect_ratio2]") {
+TEST_CASE("aspect_ratio2/square_image", "[aspect_ratio2] [unit]") {
   ssize_t out_width, out_height;
 
   // Test square image
@@ -198,7 +199,7 @@ TEST_CASE("aspect_ratio2/square_image", "[aspect_ratio2]") {
   REQUIRE((out_height) <= (24));
 }
 
-TEST_CASE("aspect_ratio2/tall_image", "[aspect_ratio2]") {
+TEST_CASE("aspect_ratio2/tall_image", "[aspect_ratio2] [unit]") {
   ssize_t out_width, out_height;
 
   // Test tall image (portrait)
@@ -210,7 +211,7 @@ TEST_CASE("aspect_ratio2/tall_image", "[aspect_ratio2]") {
   REQUIRE((out_height) <= (24));
 }
 
-TEST_CASE("aspect_ratio2/wide_image", "[aspect_ratio2]") {
+TEST_CASE("aspect_ratio2/wide_image", "[aspect_ratio2] [unit]") {
   ssize_t out_width, out_height;
 
   // Test wide image (landscape)
@@ -226,7 +227,7 @@ TEST_CASE("aspect_ratio2/wide_image", "[aspect_ratio2]") {
  * calculate_fit_dimensions_pixel Function Tests
  * ============================================================================ */
 
-TEST_CASE("calculate_fit_dimensions_pixel/basic_functionality", "[calculate_fit_dimensions_pixel]") {
+TEST_CASE("calculate_fit_dimensions_pixel/basic_functionality", "[calculate_fit_dimensions_pixel] [unit]") {
   int out_width, out_height;
 
   // Test basic functionality
@@ -238,14 +239,14 @@ TEST_CASE("calculate_fit_dimensions_pixel/basic_functionality", "[calculate_fit_
   REQUIRE((out_height) <= (24));
 }
 
-TEST_CASE("calculate_fit_dimensions_pixel/null_output_pointers", "[calculate_fit_dimensions_pixel]") {
+TEST_CASE("calculate_fit_dimensions_pixel/null_output_pointers", "[calculate_fit_dimensions_pixel] [unit]") {
   // Test with NULL output pointers - should not crash
   calculate_fit_dimensions_pixel(1920, 1080, 80, 24, NULL, NULL);
   // If we get here without crashing, the test passes
   REQUIRE(true);
 }
 
-TEST_CASE("calculate_fit_dimensions_pixel/square_image", "[calculate_fit_dimensions_pixel]") {
+TEST_CASE("calculate_fit_dimensions_pixel/square_image", "[calculate_fit_dimensions_pixel] [unit]") {
   int out_width, out_height;
 
   // Test square image
@@ -258,7 +259,7 @@ TEST_CASE("calculate_fit_dimensions_pixel/square_image", "[calculate_fit_dimensi
   REQUIRE((out_height) <= (24));
 }
 
-TEST_CASE("calculate_fit_dimensions_pixel/tall_image", "[calculate_fit_dimensions_pixel]") {
+TEST_CASE("calculate_fit_dimensions_pixel/tall_image", "[calculate_fit_dimensions_pixel] [unit]") {
   int out_width, out_height;
 
   // Test tall image (portrait)
@@ -270,7 +271,7 @@ TEST_CASE("calculate_fit_dimensions_pixel/tall_image", "[calculate_fit_dimension
   REQUIRE((out_height) <= (24));
 }
 
-TEST_CASE("calculate_fit_dimensions_pixel/wide_image", "[calculate_fit_dimensions_pixel]") {
+TEST_CASE("calculate_fit_dimensions_pixel/wide_image", "[calculate_fit_dimensions_pixel] [unit]") {
   int out_width, out_height;
 
   // Test wide image (landscape)
@@ -282,7 +283,7 @@ TEST_CASE("calculate_fit_dimensions_pixel/wide_image", "[calculate_fit_dimension
   REQUIRE((out_height) <= (24));
 }
 
-TEST_CASE("calculate_fit_dimensions_pixel/exact_fit", "[calculate_fit_dimensions_pixel]") {
+TEST_CASE("calculate_fit_dimensions_pixel/exact_fit", "[calculate_fit_dimensions_pixel] [unit]") {
   int out_width, out_height;
 
   // Test image that exactly fits the target dimensions
@@ -292,7 +293,7 @@ TEST_CASE("calculate_fit_dimensions_pixel/exact_fit", "[calculate_fit_dimensions
   REQUIRE((out_height) == (24));
 }
 
-TEST_CASE("calculate_fit_dimensions_pixel/very_small_target", "[calculate_fit_dimensions_pixel]") {
+TEST_CASE("calculate_fit_dimensions_pixel/very_small_target", "[calculate_fit_dimensions_pixel] [unit]") {
   int out_width, out_height;
 
   // Test with very small target dimensions
@@ -302,7 +303,7 @@ TEST_CASE("calculate_fit_dimensions_pixel/very_small_target", "[calculate_fit_di
   REQUIRE((out_height) == (1));
 }
 
-TEST_CASE("calculate_fit_dimensions_pixel/very_large_image", "[calculate_fit_dimensions_pixel]") {
+TEST_CASE("calculate_fit_dimensions_pixel/very_large_image", "[calculate_fit_dimensions_pixel] [unit]") {
   int out_width, out_height;
 
   // Test with very large image
@@ -318,7 +319,7 @@ TEST_CASE("calculate_fit_dimensions_pixel/very_large_image", "[calculate_fit_dim
  * Comprehensive Random Value Tests
  * ============================================================================ */
 
-TEST_CASE("aspect_ratio/random_values_comprehensive", "[aspect_ratio]") {
+TEST_CASE("aspect_ratio/random_values_comprehensive", "[aspect_ratio] [unit]") {
   srand((unsigned int)time(NULL));
   ssize_t out_width, out_height;
 
@@ -345,7 +346,7 @@ TEST_CASE("aspect_ratio/random_values_comprehensive", "[aspect_ratio]") {
   }
 }
 
-TEST_CASE("aspect_ratio2/random_values_comprehensive", "[aspect_ratio2]") {
+TEST_CASE("aspect_ratio2/random_values_comprehensive", "[aspect_ratio2] [unit]") {
   srand((unsigned int)time(NULL));
   ssize_t out_width, out_height;
 
@@ -365,7 +366,7 @@ TEST_CASE("aspect_ratio2/random_values_comprehensive", "[aspect_ratio2]") {
   }
 }
 
-TEST_CASE("calculate_fit_dimensions_pixel/random_values_comprehensive", "[calculate_fit_dimensions_pixel]") {
+TEST_CASE("calculate_fit_dimensions_pixel/random_values_comprehensive", "[calculate_fit_dimensions_pixel] [unit]") {
   srand((unsigned int)time(NULL));
   int out_width, out_height;
 
@@ -389,7 +390,7 @@ TEST_CASE("calculate_fit_dimensions_pixel/random_values_comprehensive", "[calcul
  * Edge Cases and Boundary Tests
  * ============================================================================ */
 
-TEST_CASE("aspect_ratio/boundary_values", "[aspect_ratio]") {
+TEST_CASE("aspect_ratio/boundary_values", "[aspect_ratio] [unit]") {
   ssize_t out_width, out_height;
 
   // Test with minimum valid dimensions
@@ -418,7 +419,7 @@ TEST_CASE("aspect_ratio/boundary_values", "[aspect_ratio]") {
   REQUIRE((out_height) <= (100));
 }
 
-TEST_CASE("aspect_ratio2/boundary_values", "[aspect_ratio2]") {
+TEST_CASE("aspect_ratio2/boundary_values", "[aspect_ratio2] [unit]") {
   ssize_t out_width, out_height;
 
   // Test with minimum valid dimensions
@@ -447,7 +448,7 @@ TEST_CASE("aspect_ratio2/boundary_values", "[aspect_ratio2]") {
   REQUIRE((out_height) <= (100));
 }
 
-TEST_CASE("calculate_fit_dimensions_pixel/boundary_values", "[calculate_fit_dimensions_pixel]") {
+TEST_CASE("calculate_fit_dimensions_pixel/boundary_values", "[calculate_fit_dimensions_pixel] [unit]") {
   int out_width, out_height;
 
   // Test with minimum valid dimensions
@@ -488,7 +489,7 @@ static constexpr ssize_t aspect_ratio_image_heights[] = {1080, 768, 600, 512, 20
 static constexpr ssize_t aspect_ratio_target_widths[] = {80, 120, 160, 200, 40, 1000};
 static constexpr ssize_t aspect_ratio_target_heights[] = {24, 40, 60, 80, 20, 500};
 
-TEST_CASE("aspect_ratio/aspect_ratio_preservation_property", "[aspect_ratio]") {
+TEST_CASE("aspect_ratio/aspect_ratio_preservation_property", "[aspect_ratio] [unit]") {
   const size_t index = GENERATE(Catch::Generators::range<size_t>(0, sizeof(aspect_ratio_image_widths) / sizeof(*aspect_ratio_image_widths)));
   const ssize_t img_w = aspect_ratio_image_widths[index];
   const ssize_t img_h = aspect_ratio_image_heights[index];
@@ -550,7 +551,7 @@ TEST_CASE("aspect_ratio/aspect_ratio_preservation_property", "[aspect_ratio]") {
 }
 
 // Keep one simple precision test for aspect_ratio with CHAR_ASPECT correction
-TEST_CASE("aspect_ratio/char_aspect_correction", "[aspect_ratio]") {
+TEST_CASE("aspect_ratio/char_aspect_correction", "[aspect_ratio] [unit]") {
   ssize_t out_width, out_height;
 
   // Test that CHAR_ASPECT correction is applied
@@ -565,7 +566,7 @@ TEST_CASE("aspect_ratio/char_aspect_correction", "[aspect_ratio]") {
  * Stress Tests with Large Values
  * ============================================================================ */
 
-TEST_CASE("aspect_ratio/stress_test_large_values", "[aspect_ratio]") {
+TEST_CASE("aspect_ratio/stress_test_large_values", "[aspect_ratio] [unit]") {
   ssize_t out_width, out_height;
 
   // Test with very large image dimensions
@@ -583,7 +584,7 @@ TEST_CASE("aspect_ratio/stress_test_large_values", "[aspect_ratio]") {
   REQUIRE((out_height) <= (100000));
 }
 
-TEST_CASE("aspect_ratio2/stress_test_large_values", "[aspect_ratio2]") {
+TEST_CASE("aspect_ratio2/stress_test_large_values", "[aspect_ratio2] [unit]") {
   ssize_t out_width, out_height;
 
   // Test with very large image dimensions
@@ -601,7 +602,7 @@ TEST_CASE("aspect_ratio2/stress_test_large_values", "[aspect_ratio2]") {
   REQUIRE((out_height) <= (100000));
 }
 
-TEST_CASE("calculate_fit_dimensions_pixel/stress_test_large_values", "[calculate_fit_dimensions_pixel]") {
+TEST_CASE("calculate_fit_dimensions_pixel/stress_test_large_values", "[calculate_fit_dimensions_pixel] [unit]") {
   int out_width, out_height;
 
   // Test with very large image dimensions

@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/memory.h>
 #include <libplatform/thread.h>
@@ -24,7 +23,7 @@ static void memory_report_cleanup(void) {
     platform_rmdir_recursive(report_directory);
   debug_memory_set_quiet_mode(true);
 }
-TEST_CASE("memory_concurrency/aligned_ownership_and_reallocation_are_reflected_in_live_reports", "[memory_concurrency]") {
+TEST_CASE("memory_concurrency/aligned_ownership_and_reallocation_are_reflected_in_live_reports", "[memory_concurrency] [unit]") {
   REQUIRE((platform_mkdtemp(report_directory, sizeof(report_directory), "memory-report")) == (ASCIICHAT_OK));
   char path[PLATFORM_MAX_PATH_LENGTH];
   safe_snprintf(path, sizeof(path), "%s/report.txt", report_directory);
@@ -98,7 +97,7 @@ static void *allocate_concurrently(void *argument) {
   return NULL;
 }
 
-TEST_CASE("memory_concurrency/allocation_tracking_is_serialized_across_threads", "[memory_concurrency]") {
+TEST_CASE("memory_concurrency/allocation_tracking_is_serialized_across_threads", "[memory_concurrency] [unit]") {
   allocation_worker_t workers[8];
   platform_thread_t threads[8];
   for (int i = 0; i < 8; i++) {

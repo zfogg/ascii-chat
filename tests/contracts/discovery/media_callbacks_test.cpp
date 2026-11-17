@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/util/time.h>
 #include "../../../src/discovery/session.h"
 #include "session/client_like.h"
@@ -153,7 +152,7 @@ static void teardown(void) {
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-TEST_CASE("discovery_media/joins_preserve_worker_flags_until_each_handle_has_been_joined", "[discovery_media]") {
+TEST_CASE("discovery_media/joins_preserve_worker_flags_until_each_handle_has_been_joined", "[discovery_media] [contract]") {
   discovery_video_receiver_t receiver = {.receiver_started = true, .audio_started = true};
   join_failures = 1;
   REQUIRE((discovery_media_join(&receiver)) == (ERROR_THREAD));
@@ -179,7 +178,7 @@ TEST_CASE("discovery_media/joins_preserve_worker_flags_until_each_handle_has_bee
   REQUIRE(!(host.started));
   REQUIRE(!(atomic_load_bool(&host.running)));
 }
-TEST_CASE("discovery_media/remote_pcm_is_chunked_and_failed_submission_does_not_advance_observations", "[discovery_media]") {
+TEST_CASE("discovery_media/remote_pcm_is_chunked_and_failed_submission_does_not_advance_observations", "[discovery_media] [contract]") {
   audio_context_t audio = {0};
   discovery_video_receiver_t receiver = {.audio = &audio};
   size_t count = AUDIO_OPUS_MAX_DECODE_SAMPLES * AUDIO_CHANNELS + 18;
@@ -209,7 +208,7 @@ TEST_CASE("discovery_media/remote_pcm_is_chunked_and_failed_submission_does_not_
   REQUIRE((writes) == (4));
   SAFE_FREE(samples);
 }
-TEST_CASE("discovery_media/opus_decode_rejects_invalid_frames_and_preserves_the_disabled_audio_contract", "[discovery_media]") {
+TEST_CASE("discovery_media/opus_decode_rejects_invalid_frames_and_preserves_the_disabled_audio_contract", "[discovery_media] [contract]") {
   discovery_video_receiver_t receiver = {0};
   float samples[OPUS_FRAME_SAMPLES];
   size_t decoded = 99;
@@ -224,7 +223,7 @@ TEST_CASE("discovery_media/opus_decode_rejects_invalid_frames_and_preserves_the_
   REQUIRE((decoded) == (0));
   client_audio_pipeline_destroy(receiver.audio_pipeline);
 }
-TEST_CASE("discovery_media/error_callback_retains_a_bounded_message_and_requests_exit", "[discovery_media]") {
+TEST_CASE("discovery_media/error_callback_retains_a_bounded_message_and_requests_exit", "[discovery_media] [contract]") {
   discovery_ui_state_t ui = {0};
   REQUIRE((mutex_init(&ui.mutex, "error-test")) == (ASCIICHAT_OK));
   on_discovery_error(ERROR_NETWORK, NULL, &ui);
@@ -239,7 +238,7 @@ TEST_CASE("discovery_media/error_callback_retains_a_bounded_message_and_requests
   REQUIRE((ui.error_code) == (ERROR_AUDIO));
   mutex_destroy(&ui.mutex);
 }
-TEST_CASE("discovery_media/state_notifications_accept_all_roles_and_invalid_values", "[discovery_media]") {
+TEST_CASE("discovery_media/state_notifications_accept_all_roles_and_invalid_values", "[discovery_media] [contract]") {
   for (int i = DISCOVERY_STATE_INIT; i <= DISCOVERY_STATE_ENDED; ++i)
     on_discovery_state_change((discovery_state_t)i, NULL);
   on_discovery_state_change((discovery_state_t)-1, NULL);
@@ -259,7 +258,7 @@ static void create_session(void) {
   g_discovery = discovery_session_create(&config);
   REQUIRE((g_discovery) != nullptr);
 }
-TEST_CASE("discovery_media/role_negotiation_propagates_handoff_and_process_failures_and_honors_cancellation", "[discovery_media]") {
+TEST_CASE("discovery_media/role_negotiation_propagates_handoff_and_process_failures_and_honors_cancellation", "[discovery_media] [contract]") {
   create_session();
   handoff_result = ERROR_MEMORY;
   REQUIRE((discovery_run(NULL, NULL, NULL)) == (ERROR_MEMORY));
@@ -277,7 +276,7 @@ TEST_CASE("discovery_media/role_negotiation_propagates_handoff_and_process_failu
   exit_on_process = true;
   REQUIRE((discovery_run(NULL, NULL, NULL)) == (ASCIICHAT_OK));
 }
-TEST_CASE("discovery_media/active_roles_require_their_committed_host_or_participant_transport", "[discovery_media]") {
+TEST_CASE("discovery_media/active_roles_require_their_committed_host_or_participant_transport", "[discovery_media] [contract]") {
   create_session();
   activate = true;
   g_discovery->is_host = true;
@@ -292,7 +291,7 @@ TEST_CASE("discovery_media/active_roles_require_their_committed_host_or_particip
   REQUIRE((discovery_run(NULL, NULL, NULL)) == (ERROR_THREAD));
   REQUIRE((g_discovery->host_ctx) != nullptr);
 }
-TEST_CASE("discovery_media/entrypoint_cleans_up_the_owned_session_and_preserves_framework_errors", "[discovery_media]") {
+TEST_CASE("discovery_media/entrypoint_cleans_up_the_owned_session_and_preserves_framework_errors", "[discovery_media] [contract]") {
   REQUIRE((discovery_main()) == (0));
   REQUIRE((g_discovery) == nullptr);
   REQUIRE((stops) == (1));
@@ -301,21 +300,21 @@ TEST_CASE("discovery_media/entrypoint_cleans_up_the_owned_session_and_preserves_
   REQUIRE((g_discovery) == nullptr);
   REQUIRE((stops) == (2));
 }
-TEST_CASE("discovery_media/entrypoint_reports_callback_errors_even_when_framework_returns_success", "[discovery_media]") {
+TEST_CASE("discovery_media/entrypoint_reports_callback_errors_even_when_framework_returns_success", "[discovery_media] [contract]") {
   report_error = true;
   REQUIRE((discovery_main()) == (ERROR_NETWORK));
   REQUIRE((g_discovery) == nullptr);
   REQUIRE((stops) == (1));
   REQUIRE((exits) == (1));
 }
-TEST_CASE("discovery_media/constructor_failure_does_not_enter_the_shared_media_framework", "[discovery_media]") {
+TEST_CASE("discovery_media/constructor_failure_does_not_enter_the_shared_media_framework", "[discovery_media] [contract]") {
   fail_create = true;
   REQUIRE((discovery_main()) == (ERROR_MEMORY));
   REQUIRE((stops) == (0));
   REQUIRE((g_discovery) == nullptr);
 }
 
-TEST_CASE("discovery_media/host_audio_startup_failures_leave_session_ownership_with_the_discovery_owner", "[discovery_media]") {
+TEST_CASE("discovery_media/host_audio_startup_failures_leave_session_ownership_with_the_discovery_owner", "[discovery_media] [contract]") {
   create_session();
   activate = true;
   g_discovery->is_host = true;
@@ -336,7 +335,7 @@ TEST_CASE("discovery_media/host_audio_startup_failures_leave_session_ownership_w
     CLEAR_ERRNO_ALL();
   }
 }
-TEST_CASE("discovery_media/host_capture_errors_are_propagated_after_render_cleanup", "[discovery_media]") {
+TEST_CASE("discovery_media/host_capture_errors_are_propagated_after_render_cleanup", "[discovery_media] [contract]") {
   create_session();
   activate = true;
   g_discovery->is_host = true;
@@ -351,7 +350,7 @@ TEST_CASE("discovery_media/host_capture_errors_are_propagated_after_render_clean
   session_capture_destroy(capture);
   REQUIRE((g_discovery->host_ctx) != nullptr);
 }
-TEST_CASE("discovery_media/host_delivers_a_real_synthetic_frame_and_preserves_signaling_failure", "[discovery_media]") {
+TEST_CASE("discovery_media/host_delivers_a_real_synthetic_frame_and_preserves_signaling_failure", "[discovery_media] [contract]") {
   create_session();
   activate = true;
   end_after_frame = true;

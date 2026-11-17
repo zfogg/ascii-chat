@@ -163,7 +163,7 @@ static void decode(const char *text, terminal_cell_t *cells, int width, int heig
   REQUIRE((bg) == (-1));
 }
 
-TEST_CASE("ascii_emission/all_backends_terminal_cells", "[ascii_emission]") {
+TEST_CASE("ascii_emission/all_backends_terminal_cells", "[ascii_emission] [unit]") {
   const int widths[] = {1, 2, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65, 127, 129, 257};
   const char *palettes[] = {" .:+#@", " \xc2\xb7\xe2\x96\x91\xe2\x96\x88", "@"};
   uint32_t features = platform_cpu_features();
@@ -236,7 +236,7 @@ TEST_CASE("ascii_emission/all_backends_terminal_cells", "[ascii_emission]") {
   }
 }
 
-TEST_CASE("ascii_emission/simd_pixel_stages_and_tails", "[ascii_emission]") {
+TEST_CASE("ascii_emission/simd_pixel_stages_and_tails", "[ascii_emission] [unit]") {
   uint8_t rgb[3 * 258 + 1], luma[258];
   uint32_t packed[258], expected[258], actual[260], table[64], fg[258], bg[258];
   for (size_t i = 0; i < sizeof(rgb); ++i)
@@ -305,7 +305,7 @@ TEST_CASE("ascii_emission/simd_pixel_stages_and_tails", "[ascii_emission]") {
   }
 }
 
-TEST_CASE("ascii_emission/all_simd_halfblock_modes", "[ascii_emission]") {
+TEST_CASE("ascii_emission/all_simd_halfblock_modes", "[ascii_emission] [unit]") {
   const int widths[] = {1, 2, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65, 127, 129, 257};
   for (size_t wi = 0; wi < sizeof(widths) / sizeof(widths[0]); ++wi) {
     int width = widths[wi], stride = width * 3 + 7;
@@ -368,7 +368,7 @@ TEST_CASE("ascii_emission/all_simd_halfblock_modes", "[ascii_emission]") {
   }
 }
 
-TEST_CASE("ascii_emission/unicode_run_and_row_contract", "[ascii_emission]") {
+TEST_CASE("ascii_emission/unicode_run_and_row_contract", "[ascii_emission] [unit]") {
   outbuf_t out = {.cap = 1, .buf = SAFE_MALLOC(1, char *)};
   emit_glyph_run(&out, "\xe2\x96\x88", 3, 4);
   emit_row_end(&out, true, true);
@@ -379,7 +379,7 @@ TEST_CASE("ascii_emission/unicode_run_and_row_contract", "[ascii_emission]") {
   SAFE_FREE(out.buf);
 }
 
-TEST_CASE("ascii_emission/halfblock_odd_height_padding_and_colors", "[ascii_emission]") {
+TEST_CASE("ascii_emission/halfblock_odd_height_padding_and_colors", "[ascii_emission] [unit]") {
   uint8_t rgb[] = {255, 0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 0, 0, 255, 0, 0, 0, 0};
   char *result = rgb_to_truecolor_halfblocks_scalar(rgb, 2, 3, 6);
   terminal_cell_t cells[4] = {0};
@@ -401,7 +401,7 @@ TEST_CASE("ascii_emission/halfblock_odd_height_padding_and_colors", "[ascii_emis
   SAFE_FREE(result);
 }
 
-TEST_CASE("ascii_emission/sgr_encoders_and_compatibility", "[ascii_emission]") {
+TEST_CASE("ascii_emission/sgr_encoders_and_compatibility", "[ascii_emission] [unit]") {
   const uint8_t values[] = {0, 1, 9, 10, 99, 100, 255};
   for (size_t r = 0; r < sizeof(values); ++r) {
     for (size_t g = 0; g < sizeof(values); ++g) {
@@ -428,7 +428,7 @@ TEST_CASE("ascii_emission/sgr_encoders_and_compatibility", "[ascii_emission]") {
   }
 }
 
-TEST_CASE("ascii_emission/capability_dispatch_preserves_background", "[ascii_emission]") {
+TEST_CASE("ascii_emission/capability_dispatch_preserves_background", "[ascii_emission] [unit]") {
   rgb_pixel_t pixels[2] = {{240, 50, 20}, {20, 50, 240}};
   image_t image = {.pixels = pixels, .w = 2, .h = 1};
   const terminal_color_mode_t modes[] = {TERM_COLOR_16, TERM_COLOR_256, TERM_COLOR_TRUECOLOR};
@@ -446,7 +446,7 @@ TEST_CASE("ascii_emission/capability_dispatch_preserves_background", "[ascii_emi
   }
 }
 
-TEST_CASE("ascii_emission/temporal_history_tracks_motion_and_configuration", "[ascii_emission]") {
+TEST_CASE("ascii_emission/temporal_history_tracks_motion_and_configuration", "[ascii_emission] [unit]") {
   ascii_stabilizer_t state = {0}, other = {0};
   uint8_t samples[16];
   memset(samples, 100, sizeof(samples));
@@ -481,7 +481,7 @@ TEST_CASE("ascii_emission/temporal_history_tracks_motion_and_configuration", "[a
   ascii_stabilizer_reset(&other);
 }
 
-TEST_CASE("ascii_emission/temporal_stabilization_reduces_threshold_flicker", "[ascii_emission]") {
+TEST_CASE("ascii_emission/temporal_stabilization_reduces_threshold_flicker", "[ascii_emission] [unit]") {
   for (int glyph = 0; glyph < 2; ++glyph) {
     rgb_pixel_t pixels[64];
     image_t image = {.w = glyph ? 8 : 1, .h = glyph ? 8 : 1, .pixels = pixels};
@@ -525,7 +525,7 @@ TEST_CASE("ascii_emission/temporal_stabilization_reduces_threshold_flicker", "[a
   }
 }
 
-TEST_CASE("ascii_emission/temporal_background_and_halfblock_modes", "[ascii_emission]") {
+TEST_CASE("ascii_emission/temporal_background_and_halfblock_modes", "[ascii_emission] [unit]") {
   const ascii_color_t modes[] = {ASCII_COLOR_NONE, ASCII_COLOR_16, ASCII_COLOR_256, ASCII_COLOR_TRUE};
   for (size_t b = 0; b < sizeof(backends) / sizeof(backends[0]); ++b) {
     if ((platform_cpu_features() & backends[b].feature) != backends[b].feature)
@@ -600,7 +600,7 @@ TEST_CASE("ascii_emission/temporal_background_and_halfblock_modes", "[ascii_emis
   }
 }
 
-TEST_CASE("ascii_emission/temporal_halfblock_reduces_monochrome_flicker", "[ascii_emission]") {
+TEST_CASE("ascii_emission/temporal_halfblock_reduces_monochrome_flicker", "[ascii_emission] [unit]") {
   for (size_t b = 0; b < sizeof(backends) / sizeof(backends[0]); ++b) {
     if ((platform_cpu_features() & backends[b].feature) != backends[b].feature)
       continue;
@@ -641,7 +641,7 @@ TEST_CASE("ascii_emission/temporal_halfblock_reduces_monochrome_flicker", "[asci
 }
 
 #ifndef ASCII_EMISSION_STANDALONE
-TEST_CASE("ascii_emission/capability_conversion_rejects_unsupported_explicit_glyph_palette", "[ascii_emission]") {
+TEST_CASE("ascii_emission/capability_conversion_rejects_unsupported_explicit_glyph_palette", "[ascii_emission] [unit]") {
   rgb_pixel_t pixel = {100, 100, 100};
   image_t image = {.w = 1, .h = 1, .pixels = &pixel};
   terminal_capabilities_t caps = {.text_renderer = ASCII_RENDERER_GLYPH, .render_mode = RENDER_MODE_FOREGROUND, .palette_explicit = true};
@@ -653,7 +653,7 @@ TEST_CASE("ascii_emission/capability_conversion_rejects_unsupported_explicit_gly
   CLEAR_ERRNO();
 }
 
-TEST_CASE("ascii_emission/capability_conversion_stabilizes_all_render_modes", "[ascii_emission]") {
+TEST_CASE("ascii_emission/capability_conversion_stabilizes_all_render_modes", "[ascii_emission] [unit]") {
   rgb_pixel_t pixels[4];
   image_t image = {.w = 2, .h = 2, .pixels = pixels};
   terminal_capabilities_t caps = {.color_level = TERM_COLOR_TRUECOLOR};
@@ -691,7 +691,7 @@ TEST_CASE("ascii_emission/capability_conversion_stabilizes_all_render_modes", "[
 }
 #endif
 
-TEST_CASE("ascii_emission/optimized_glyph_scoring_matches_reference", "[ascii_emission]") {
+TEST_CASE("ascii_emission/optimized_glyph_scoring_matches_reference", "[ascii_emission] [unit]") {
   rgb_pixel_t pixels[64];
   image_t image = {.w = 8, .h = 8, .pixels = pixels};
   uint32_t rng = 1234567;
@@ -740,7 +740,7 @@ TEST_CASE("ascii_emission/optimized_glyph_scoring_matches_reference", "[ascii_em
   }
 }
 
-TEST_CASE("ascii_emission/optimized_luminance_matches_generic_hysteresis", "[ascii_emission]") {
+TEST_CASE("ascii_emission/optimized_luminance_matches_generic_hysteresis", "[ascii_emission] [unit]") {
   rgb_pixel_t pixel = {0};
   image_t image = {.w = 1, .h = 1, .pixels = &pixel};
   ascii_frame_t frame;
@@ -782,7 +782,7 @@ TEST_CASE("ascii_emission/optimized_luminance_matches_generic_hysteresis", "[asc
   ascii_stabilizer_reset(&state);
 }
 
-TEST_CASE("ascii_emission/temporal_first_frame_preserves_dithered_colors", "[ascii_emission]") {
+TEST_CASE("ascii_emission/temporal_first_frame_preserves_dithered_colors", "[ascii_emission] [unit]") {
   rgb_pixel_t pixels[16];
   for (int i = 0; i < 16; ++i)
     pixels[i] = (rgb_pixel_t){(uint8_t)(50 + i * 10), (uint8_t)(80 + i * 5), (uint8_t)(110 + i * 3)};
@@ -802,7 +802,7 @@ TEST_CASE("ascii_emission/temporal_first_frame_preserves_dithered_colors", "[asc
   ascii_stabilizer_reset(&state);
 }
 
-TEST_CASE("ascii_emission/rejects_invalid_input", "[ascii_emission]") {
+TEST_CASE("ascii_emission/rejects_invalid_input", "[ascii_emission] [unit]") {
   rgb_pixel_t pixel = {0};
   image_t image = {.pixels = &pixel, .w = -1, .h = 1};
   REQUIRE((ascii_render(&image, "@", ASCII_COLOR_TRUE, false, false, &simd_cells_scalar)) == nullptr);
@@ -814,7 +814,7 @@ TEST_CASE("ascii_emission/rejects_invalid_input", "[ascii_emission]") {
   REQUIRE((ascii_render(&image, "@", ASCII_COLOR_TRUE, false, false, NULL)) == nullptr);
 }
 
-TEST_CASE("ascii_emission/glyph_matching_uses_shape_and_rejects_invalid_sizes", "[ascii_emission]") {
+TEST_CASE("ascii_emission/glyph_matching_uses_shape_and_rejects_invalid_sizes", "[ascii_emission] [unit]") {
 #if SIMD_SUPPORT_SVE
   if (simd_backend()->required_features == CPU_FEATURE_SVE)
     REQUIRE(simd_cells_backend()->glyph_shape_correlation == glyph_shape_correlation_sve);

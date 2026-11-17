@@ -20,7 +20,6 @@
  * @date April 2026
  */
 
-#include <catch2/catch_all.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -108,7 +107,7 @@ static void *mock_tcp_handler(void *arg __attribute__((unused))) {
  * event loop thread does NOT start until mode init completes (step 9).
  * This prevents clients from arriving before mode state is ready.
  */
-TEST_CASE("server_like_lifecycle/websocket_thread_starts_after_init", "[server_like_lifecycle]") {
+TEST_CASE("server_like_lifecycle/websocket_thread_starts_after_init", "[server_like_lifecycle] [unit]") {
   memset(&g_test_state, 0, sizeof(g_test_state));
 
   REQUIRE(g_test_state.init_called == false);
@@ -133,7 +132,7 @@ TEST_CASE("server_like_lifecycle/websocket_thread_starts_after_init", "[server_l
  * This prevents regressions from commit 6f79aa6e1 which fixed
  * discovery-service SIGTERM responsiveness during startup.
  */
-TEST_CASE("server_like_lifecycle/early_sigterm_during_init_handled", "[server_like_lifecycle]") {
+TEST_CASE("server_like_lifecycle/early_sigterm_during_init_handled", "[server_like_lifecycle] [unit]") {
   memset(&g_test_state, 0, sizeof(g_test_state));
 
   // Verify initial state
@@ -152,7 +151,7 @@ TEST_CASE("server_like_lifecycle/early_sigterm_during_init_handled", "[server_li
  * This prevents the undefined behavior bug where function pointers
  * with mismatched signatures were being cast.
  */
-TEST_CASE("server_like_lifecycle/signal_handler_signature_correct", "[server_like_lifecycle]") {
+TEST_CASE("server_like_lifecycle/signal_handler_signature_correct", "[server_like_lifecycle] [unit]") {
   // This test is compile-time validated: if the signature is wrong,
   // the assignment will fail type checking.
   //
@@ -172,7 +171,7 @@ TEST_CASE("server_like_lifecycle/signal_handler_signature_correct", "[server_lik
  *
  * Example: if init_fn fails before rwlock_init, cleanup still works.
  */
-TEST_CASE("server_like_lifecycle/partial_init_cleanup_safe", "[server_like_lifecycle]") {
+TEST_CASE("server_like_lifecycle/partial_init_cleanup_safe", "[server_like_lifecycle] [unit]") {
   // This test would require a more sophisticated mock that can:
   // 1. Fail at specific initialization points
   // 2. Verify that only initialized resources are cleaned up
@@ -194,7 +193,7 @@ TEST_CASE("server_like_lifecycle/partial_init_cleanup_safe", "[server_like_lifec
  * The shutdown flag is atomic and set by the signal handler,
  * allowing clean shutdown detection during early initialization stages.
  */
-TEST_CASE("server_like_lifecycle/shutdown_flag_persistence", "[server_like_lifecycle]") {
+TEST_CASE("server_like_lifecycle/shutdown_flag_persistence", "[server_like_lifecycle] [unit]") {
   // The shutdown flag g_shutdown_requested in server_like.c is atomic
   // and persists from signal handler through mode init completion.
   // Modes can check session_server_like_shutdown_requested() at any point.

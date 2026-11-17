@@ -4,7 +4,6 @@
  * @brief SIMD vs scalar performance comparison tests
  */
 
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdio.h>
 
@@ -13,14 +12,14 @@
 // Video Frame Tests
 // =============================================================================
 
-TEST_CASE("simd_scalar_comparison/frame_buffer_creation", "[simd_scalar_comparison]") {
+TEST_CASE("simd_scalar_comparison/frame_buffer_creation", "[simd_scalar_comparison] [unit]") {
   video_frame_buffer_t *vfb = video_frame_buffer_create("test_client");
   REQUIRE((vfb) != nullptr);
 
   video_frame_buffer_destroy(vfb);
 }
 
-TEST_CASE("simd_scalar_comparison/frame_buffer_write_commit", "[simd_scalar_comparison]") {
+TEST_CASE("simd_scalar_comparison/frame_buffer_write_commit", "[simd_scalar_comparison] [unit]") {
   video_frame_buffer_t *vfb = video_frame_buffer_create("test_client");
 
   video_frame_t *frame = video_frame_begin_write(vfb);
@@ -38,7 +37,7 @@ TEST_CASE("simd_scalar_comparison/frame_buffer_write_commit", "[simd_scalar_comp
   video_frame_buffer_destroy(vfb);
 }
 
-TEST_CASE("simd_scalar_comparison/frame_buffer_multiple_writes", "[simd_scalar_comparison]") {
+TEST_CASE("simd_scalar_comparison/frame_buffer_multiple_writes", "[simd_scalar_comparison] [unit]") {
   video_frame_buffer_t *vfb = video_frame_buffer_create("test_client");
 
   for (int i = 0; i < 5; i++) {
@@ -54,14 +53,14 @@ TEST_CASE("simd_scalar_comparison/frame_buffer_multiple_writes", "[simd_scalar_c
   video_frame_buffer_destroy(vfb);
 }
 
-TEST_CASE("simd_scalar_comparison/simple_frame_swap_creation", "[simd_scalar_comparison]") {
+TEST_CASE("simd_scalar_comparison/simple_frame_swap_creation", "[simd_scalar_comparison] [unit]") {
   simple_frame_swap_t *sfs = simple_frame_swap_create();
   REQUIRE((sfs) != nullptr);
 
   simple_frame_swap_destroy(sfs);
 }
 
-TEST_CASE("simd_scalar_comparison/simple_frame_swap_update", "[simd_scalar_comparison]") {
+TEST_CASE("simd_scalar_comparison/simple_frame_swap_update", "[simd_scalar_comparison] [unit]") {
   simple_frame_swap_t *sfs = simple_frame_swap_create();
 
   uint8_t data[1024];
@@ -75,7 +74,7 @@ TEST_CASE("simd_scalar_comparison/simple_frame_swap_update", "[simd_scalar_compa
   simple_frame_swap_destroy(sfs);
 }
 
-TEST_CASE("simd_scalar_comparison/simple_frame_swap_multiple_updates", "[simd_scalar_comparison]") {
+TEST_CASE("simd_scalar_comparison/simple_frame_swap_multiple_updates", "[simd_scalar_comparison] [unit]") {
   simple_frame_swap_t *sfs = simple_frame_swap_create();
 
   uint8_t buffer_a[512];
@@ -99,7 +98,7 @@ TEST_CASE("simd_scalar_comparison/simple_frame_swap_multiple_updates", "[simd_sc
 // Comparative Performance Tests
 // =============================================================================
 
-TEST_CASE("simd_scalar_comparison/buffer_vs_frame_swap", "[simd_scalar_comparison]") {
+TEST_CASE("simd_scalar_comparison/buffer_vs_frame_swap", "[simd_scalar_comparison] [unit]") {
   video_frame_buffer_t *vfb = video_frame_buffer_create("buffer_test");
   simple_frame_swap_t *sfs = simple_frame_swap_create();
 
@@ -121,7 +120,7 @@ TEST_CASE("simd_scalar_comparison/buffer_vs_frame_swap", "[simd_scalar_compariso
   simple_frame_swap_destroy(sfs);
 }
 
-TEST_CASE("simd_scalar_comparison/concurrent_buffers", "[simd_scalar_comparison]") {
+TEST_CASE("simd_scalar_comparison/concurrent_buffers", "[simd_scalar_comparison] [unit]") {
   int num_buffers = 4;
   video_frame_buffer_t *buffers[num_buffers];
 

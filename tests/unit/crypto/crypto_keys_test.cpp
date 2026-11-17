@@ -1,3 +1,4 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
 /**
@@ -5,7 +6,6 @@
  * @brief Unit tests for lib/crypto/keys.c - Tests the intended final crypto implementation
  */
 
-#include <catch2/catch_all.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -89,7 +89,7 @@ static hex_decode_test_case_t hex_decode_cases[] = {
     {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde", .expected_len = 32, .expected_result = -1, .description = "too short (63 chars)"},
     {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", .expected_len = 16, .expected_result = -1, .description = "wrong expected length"}};
 
-TEST_CASE("crypto_keys/hex_decode_tests", "[crypto_keys]") {
+TEST_CASE("crypto_keys/hex_decode_tests", "[crypto_keys] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(hex_decode_cases), std::end(hex_decode_cases)));
   auto *tc = &generated_case;
   log_debug("Test start: tc=%p", (void *)tc);
@@ -193,7 +193,7 @@ static parse_public_key_test_case_t parse_public_key_cases[] = {
     {.input = "", .expected_type = KEY_TYPE_UNKNOWN, .expected_result = -1, .description = "empty input", .input_is_null = false, .requires_network = false},
     {.input = "", .expected_type = KEY_TYPE_UNKNOWN, .expected_result = -1, .description = "NULL input", .input_is_null = true, .requires_network = false}};
 
-TEST_CASE("crypto_keys/parse_public_key_tests", "[crypto_keys]") {
+TEST_CASE("crypto_keys/parse_public_key_tests", "[crypto_keys] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(parse_public_key_cases), std::end(parse_public_key_cases)));
   auto *tc = &generated_case;
   public_key_t key;
@@ -227,7 +227,7 @@ TEST_CASE("crypto_keys/parse_public_key_tests", "[crypto_keys]") {
 // Private Key Parsing Tests
 // =============================================================================
 
-TEST_CASE("crypto_keys/parse_private_key_ed25519_file", "[crypto_keys]") {
+TEST_CASE("crypto_keys/parse_private_key_ed25519_file", "[crypto_keys] [unit]") {
   private_key_t key;
   env_restore_t restore = {0};
   set_dummy_ssh_passphrase(&restore);
@@ -246,7 +246,7 @@ TEST_CASE("crypto_keys/parse_private_key_ed25519_file", "[crypto_keys]") {
   restore_ssh_passphrase(&restore);
 }
 
-TEST_CASE("crypto_keys/parse_private_key_nonexistent", "[crypto_keys]") {
+TEST_CASE("crypto_keys/parse_private_key_nonexistent", "[crypto_keys] [unit]") {
   private_key_t key;
   env_restore_t restore = {0};
   set_dummy_ssh_passphrase(&restore);
@@ -258,7 +258,7 @@ TEST_CASE("crypto_keys/parse_private_key_nonexistent", "[crypto_keys]") {
   restore_ssh_passphrase(&restore);
 }
 
-TEST_CASE("crypto_keys/parse_private_key_null_path", "[crypto_keys]") {
+TEST_CASE("crypto_keys/parse_private_key_null_path", "[crypto_keys] [unit]") {
   private_key_t key;
   env_restore_t restore = {0};
   set_dummy_ssh_passphrase(&restore);
@@ -274,7 +274,7 @@ TEST_CASE("crypto_keys/parse_private_key_null_path", "[crypto_keys]") {
 // Key Conversion Tests
 // =============================================================================
 
-TEST_CASE("crypto_keys/public_key_to_x25519_ed25519", "[crypto_keys]") {
+TEST_CASE("crypto_keys/public_key_to_x25519_ed25519", "[crypto_keys] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_ED25519;
@@ -301,7 +301,7 @@ TEST_CASE("crypto_keys/public_key_to_x25519_ed25519", "[crypto_keys]") {
   REQUIRE(!(all_zero));
 }
 
-TEST_CASE("crypto_keys/public_key_to_x25519_x25519_passthrough", "[crypto_keys]") {
+TEST_CASE("crypto_keys/public_key_to_x25519_x25519_passthrough", "[crypto_keys] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_X25519;
@@ -314,7 +314,7 @@ TEST_CASE("crypto_keys/public_key_to_x25519_x25519_passthrough", "[crypto_keys]"
   REQUIRE((memcmp(key.key, x25519_key, 32)) == (0));
 }
 
-TEST_CASE("crypto_keys/public_key_to_x25519_gpg", "[crypto_keys]") {
+TEST_CASE("crypto_keys/public_key_to_x25519_gpg", "[crypto_keys] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_GPG;
@@ -326,7 +326,7 @@ TEST_CASE("crypto_keys/public_key_to_x25519_gpg", "[crypto_keys]") {
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_keys/public_key_to_x25519_unknown_type", "[crypto_keys]") {
+TEST_CASE("crypto_keys/public_key_to_x25519_unknown_type", "[crypto_keys] [unit]") {
   public_key_t key;
   memset(&key, 0, sizeof(key));
   key.type = KEY_TYPE_UNKNOWN;
@@ -337,7 +337,7 @@ TEST_CASE("crypto_keys/public_key_to_x25519_unknown_type", "[crypto_keys]") {
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_keys/private_key_to_x25519_ed25519", "[crypto_keys]") {
+TEST_CASE("crypto_keys/private_key_to_x25519_ed25519", "[crypto_keys] [unit]") {
   private_key_t key;
   memset(&key, 0, sizeof(key)); // Initialize entire struct including use_ssh_agent=false
   key.type = KEY_TYPE_ED25519;
@@ -357,7 +357,7 @@ TEST_CASE("crypto_keys/private_key_to_x25519_ed25519", "[crypto_keys]") {
   REQUIRE((result) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("crypto_keys/private_key_to_x25519_x25519_passthrough", "[crypto_keys]") {
+TEST_CASE("crypto_keys/private_key_to_x25519_x25519_passthrough", "[crypto_keys] [unit]") {
   private_key_t key;
   memset(&key, 0, sizeof(key)); // Initialize entire struct including use_ssh_agent=false
   key.type = KEY_TYPE_X25519;
@@ -374,7 +374,7 @@ TEST_CASE("crypto_keys/private_key_to_x25519_x25519_passthrough", "[crypto_keys]
 // Remote Key Fetching Tests
 // =============================================================================
 
-TEST_CASE("crypto_keys/fetch_github_keys_valid_user", "[crypto_keys]") {
+TEST_CASE("crypto_keys/fetch_github_keys_valid_user", "[crypto_keys] [unit]") {
   if (!network_tests_enabled()) {
     SKIP("test skipped");
   }
@@ -399,7 +399,7 @@ TEST_CASE("crypto_keys/fetch_github_keys_valid_user", "[crypto_keys]") {
   }
 }
 
-TEST_CASE("crypto_keys/fetch_github_keys_invalid_user", "[crypto_keys]") {
+TEST_CASE("crypto_keys/fetch_github_keys_invalid_user", "[crypto_keys] [unit]") {
   if (!network_tests_enabled()) {
     SKIP("test skipped");
   }
@@ -414,7 +414,7 @@ TEST_CASE("crypto_keys/fetch_github_keys_invalid_user", "[crypto_keys]") {
   REQUIRE((num_keys) == (0));
 }
 
-TEST_CASE("crypto_keys/fetch_gitlab_keys_valid_user", "[crypto_keys]") {
+TEST_CASE("crypto_keys/fetch_gitlab_keys_valid_user", "[crypto_keys] [unit]") {
   if (!network_tests_enabled()) {
     SKIP("test skipped");
   }
@@ -439,7 +439,7 @@ TEST_CASE("crypto_keys/fetch_gitlab_keys_valid_user", "[crypto_keys]") {
   }
 }
 
-TEST_CASE("crypto_keys/fetch_github_gpg_keys", "[crypto_keys]") {
+TEST_CASE("crypto_keys/fetch_github_gpg_keys", "[crypto_keys] [unit]") {
   if (!network_tests_enabled()) {
     SKIP("test skipped");
   }
@@ -465,7 +465,7 @@ TEST_CASE("crypto_keys/fetch_github_gpg_keys", "[crypto_keys]") {
 // Authorized Keys Parsing Tests
 // =============================================================================
 
-TEST_CASE("crypto_keys/parse_keys_from_file_nonexistent", "[crypto_keys]") {
+TEST_CASE("crypto_keys/parse_keys_from_file_nonexistent", "[crypto_keys] [unit]") {
   public_key_t keys[10];
   size_t num_keys = 0;
 
@@ -475,7 +475,7 @@ TEST_CASE("crypto_keys/parse_keys_from_file_nonexistent", "[crypto_keys]") {
   REQUIRE((num_keys) == (0));
 }
 
-TEST_CASE("crypto_keys/parse_keys_from_file_null_path", "[crypto_keys]") {
+TEST_CASE("crypto_keys/parse_keys_from_file_null_path", "[crypto_keys] [unit]") {
   public_key_t keys[10];
   size_t num_keys = 0;
 
@@ -488,7 +488,7 @@ TEST_CASE("crypto_keys/parse_keys_from_file_null_path", "[crypto_keys]") {
 // Public Key Formatting Tests
 // =============================================================================
 
-TEST_CASE("crypto_keys/format_public_key_ed25519", "[crypto_keys]") {
+TEST_CASE("crypto_keys/format_public_key_ed25519", "[crypto_keys] [unit]") {
   public_key_t key;
   key.type = KEY_TYPE_ED25519;
   memset(key.key, 0x42, 32);
@@ -501,7 +501,7 @@ TEST_CASE("crypto_keys/format_public_key_ed25519", "[crypto_keys]") {
   REQUIRE((strstr(output, "test-key")) != nullptr);
 }
 
-TEST_CASE("crypto_keys/format_public_key_x25519", "[crypto_keys]") {
+TEST_CASE("crypto_keys/format_public_key_x25519", "[crypto_keys] [unit]") {
   public_key_t key;
   key.type = KEY_TYPE_X25519;
   memset(key.key, 0x42, 32);
@@ -513,7 +513,7 @@ TEST_CASE("crypto_keys/format_public_key_x25519", "[crypto_keys]") {
   REQUIRE((strstr(output, "x25519")) != nullptr);
 }
 
-TEST_CASE("crypto_keys/format_public_key_gpg", "[crypto_keys]") {
+TEST_CASE("crypto_keys/format_public_key_gpg", "[crypto_keys] [unit]") {
   public_key_t key;
   key.type = KEY_TYPE_GPG;
   memset(key.key, 0x42, 32);
@@ -529,7 +529,7 @@ TEST_CASE("crypto_keys/format_public_key_gpg", "[crypto_keys]") {
 // Theory Tests for Key Type Validation
 // =============================================================================
 
-TEST_CASE("crypto_keys/key_type_validation", "[crypto_keys]") {
+TEST_CASE("crypto_keys/key_type_validation", "[crypto_keys] [unit]") {
   key_type_t key_type = GENERATE(KEY_TYPE_UNKNOWN, KEY_TYPE_ED25519, KEY_TYPE_X25519, KEY_TYPE_GPG);
   if (!(key_type >= KEY_TYPE_UNKNOWN && key_type <= KEY_TYPE_GPG))
     SKIP("assumption not satisfied");
@@ -567,7 +567,7 @@ TEST_CASE("crypto_keys/key_type_validation", "[crypto_keys]") {
 // Comma-Separated Key Specifiers Tests
 // =============================================================================
 
-TEST_CASE("crypto_keys/parse_public_keys_comma_separated_hex_keys", "[crypto_keys]") {
+TEST_CASE("crypto_keys/parse_public_keys_comma_separated_hex_keys", "[crypto_keys] [unit]") {
   // Test parsing comma-separated raw hex keys
   char hex1[65] = "0000000000000000000000000000000000000000000000000000000000000001";
   char hex2[65] = "0000000000000000000000000000000000000000000000000000000000000002";
@@ -590,7 +590,7 @@ TEST_CASE("crypto_keys/parse_public_keys_comma_separated_hex_keys", "[crypto_key
   }
 }
 
-TEST_CASE("crypto_keys/parse_public_keys_comma_separated_with_whitespace", "[crypto_keys]") {
+TEST_CASE("crypto_keys/parse_public_keys_comma_separated_with_whitespace", "[crypto_keys] [unit]") {
   // Test parsing with whitespace around commas
   char hex1[65] = "0000000000000000000000000000000000000000000000000000000000000001";
   char hex2[65] = "0000000000000000000000000000000000000000000000000000000000000002";
@@ -607,7 +607,7 @@ TEST_CASE("crypto_keys/parse_public_keys_comma_separated_with_whitespace", "[cry
   REQUIRE((num_keys) == (2));
 }
 
-TEST_CASE("crypto_keys/parse_public_keys_single_key_no_comma", "[crypto_keys]") {
+TEST_CASE("crypto_keys/parse_public_keys_single_key_no_comma", "[crypto_keys] [unit]") {
   // Test that single keys without comma still work
   char hex1[65] = "0000000000000000000000000000000000000000000000000000000000000001";
 

@@ -52,7 +52,7 @@ static void run_ascii_conversion_batch(image_t *image, const ssize_t width, cons
   REQUIRE(total_output > 0);
 }
 
-TEST_CASE("ASCII renderer correctness", "[benchmark][renderer]") {
+TEST_CASE("ASCII renderer correctness", "[renderer] [benchmark]") {
   const int width = 320;
   const int height = 180;
 
@@ -70,7 +70,7 @@ TEST_CASE("ASCII renderer correctness", "[benchmark][renderer]") {
   image_destroy(image);
 }
 
-TEST_CASE("ASCII renderer benchmark", "[benchmark][renderer]") {
+TEST_CASE("ASCII renderer benchmark", "[renderer] [benchmark]") {
   const int width = 320;
   const int height = 180;
 

@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "../worker_assert.h"
 #define CHECK_WORKER ASCIICHAT_WORKER_ASSERT
-#include <catch2/catch_all.hpp>
 #define CHECK(...) REQUIRE(__VA_ARGS__)
 #include "../../standalone/network/vectored_fixture.h"
 
@@ -20,78 +19,78 @@ static void teardown(void) {
   REQUIRE((buffer_process_reserved()) == (0));
   log_destroy();
 }
-TEST_CASE("vectored/crc_vectors", "[vectored]") {
+TEST_CASE("vectored/crc_vectors", "[vectored] [contract]") {
   crc_vectors();
 }
 
-TEST_CASE("vectored/deadline_and_validation", "[vectored]") {
+TEST_CASE("vectored/deadline_and_validation", "[vectored] [contract]") {
   deadline_and_validation();
 }
 
-TEST_CASE("vectored/message_fallback", "[vectored]") {
+TEST_CASE("vectored/message_fallback", "[vectored] [contract]") {
   message_fallback();
 }
 
-TEST_CASE("vectored/media_wire_compatibility", "[vectored]") {
+TEST_CASE("vectored/media_wire_compatibility", "[vectored] [contract]") {
   media_wire_compatibility();
 }
 
-TEST_CASE("vectored/malformed_and_disconnect", "[vectored]") {
+TEST_CASE("vectored/malformed_and_disconnect", "[vectored] [contract]") {
   malformed_and_disconnect();
 }
 
-TEST_CASE("vectored/concurrent_senders", "[vectored]") {
+TEST_CASE("vectored/concurrent_senders", "[vectored] [contract]") {
   concurrent_senders();
 }
 
-TEST_CASE("vectored/full_duplex", "[vectored]") {
+TEST_CASE("vectored/full_duplex", "[vectored] [contract]") {
   full_duplex();
 }
 
-TEST_CASE("vectored/zerocopy_cancellation", "[vectored]") {
+TEST_CASE("vectored/zerocopy_cancellation", "[vectored] [contract]") {
   zerocopy_cancellation();
 }
 
-TEST_CASE("vectored/plain_0", "[vectored]") {
+TEST_CASE("vectored/plain_0", "[vectored] [contract]") {
   roundtrip(0, false, 3, false);
 }
 
-TEST_CASE("vectored/encrypted_0", "[vectored]") {
+TEST_CASE("vectored/encrypted_0", "[vectored] [contract]") {
   roundtrip(0, true, 3, false);
 }
 
-TEST_CASE("vectored/plain_256", "[vectored]") {
+TEST_CASE("vectored/plain_256", "[vectored] [contract]") {
   roundtrip(256, false, 3, false);
 }
 
-TEST_CASE("vectored/encrypted_256", "[vectored]") {
+TEST_CASE("vectored/encrypted_256", "[vectored] [contract]") {
   roundtrip(256, true, 3, false);
 }
 
-TEST_CASE("vectored/plain_4096", "[vectored]") {
+TEST_CASE("vectored/plain_4096", "[vectored] [contract]") {
   roundtrip(4096, false, 3, false);
 }
 
-TEST_CASE("vectored/encrypted_4096", "[vectored]") {
+TEST_CASE("vectored/encrypted_4096", "[vectored] [contract]") {
   roundtrip(4096, true, 3, false);
 }
 
-TEST_CASE("vectored/plain_65536", "[vectored]") {
+TEST_CASE("vectored/plain_65536", "[vectored] [contract]") {
   roundtrip(65536, false, 3, false);
 }
 
-TEST_CASE("vectored/encrypted_65536", "[vectored]") {
+TEST_CASE("vectored/encrypted_65536", "[vectored] [contract]") {
   roundtrip(65536, true, 3, false);
 }
 
-TEST_CASE("vectored/plain_maximum_plaintext", "[vectored]") {
+TEST_CASE("vectored/plain_maximum_plaintext", "[vectored] [contract]") {
   roundtrip(CRYPTO_MAX_PLAINTEXT_SIZE - sizeof(packet_header_t), false, 3, false);
 }
 
-TEST_CASE("vectored/encrypted_maximum_plaintext", "[vectored]") {
+TEST_CASE("vectored/encrypted_maximum_plaintext", "[vectored] [contract]") {
   roundtrip(CRYPTO_MAX_PLAINTEXT_SIZE - 24 - sizeof(packet_header_t), true, 3, false);
 }
 
-TEST_CASE("vectored/maximum_packet", "[vectored]") {
+TEST_CASE("vectored/maximum_packet", "[vectored] [contract]") {
   roundtrip(MAX_PACKET_SIZE, false, 2, false);
 }

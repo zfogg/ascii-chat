@@ -1,11 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/colorscheme.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
-TEST_CASE("colorscheme_files/exported_builtin_preserves_colors_and_compiles_both_backgrounds", "[colorscheme_files]") {
+TEST_CASE("colorscheme_files/exported_builtin_preserves_colors_and_compiles_both_backgrounds", "[colorscheme_files] [unit]") {
   char path[1024];
   int fd;
   REQUIRE((platform_create_temp_file(path, sizeof(path), "ascii-colors", &fd)) == (0));
@@ -43,7 +42,7 @@ TEST_CASE("colorscheme_files/exported_builtin_preserves_colors_and_compiles_both
   REQUIRE((platform_delete_temp_file(path)) == (0));
 }
 
-TEST_CASE("colorscheme_files/custom_file_assigns_named_levels_and_light_variant", "[colorscheme_files]") {
+TEST_CASE("colorscheme_files/custom_file_assigns_named_levels_and_light_variant", "[colorscheme_files] [unit]") {
   char path[1024];
   int fd;
   REQUIRE((platform_create_temp_file(path, sizeof(path), "ascii-colors", &fd)) == (0));
@@ -71,7 +70,7 @@ TEST_CASE("colorscheme_files/custom_file_assigns_named_levels_and_light_variant"
   colorscheme_cleanup_compiled(NULL);
 }
 
-TEST_CASE("colorscheme_files/hex_colors_require_six_valid_digits", "[colorscheme_files]") {
+TEST_CASE("colorscheme_files/hex_colors_require_six_valid_digits", "[colorscheme_files] [unit]") {
   uint8_t r = 0, g = 0, b = 0;
   REQUIRE((parse_hex_color("#12aBfF", &r, &g, &b)) == (ASCIICHAT_OK));
   REQUIRE((r) == (0x12));
@@ -83,7 +82,7 @@ TEST_CASE("colorscheme_files/hex_colors_require_six_valid_digits", "[colorscheme
   REQUIRE((parse_hex_color(NULL, &r, &g, &b)) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("colorscheme_files/live_background_palette_uses_custom_logging_colors_at_every_depth", "[colorscheme_files]") {
+TEST_CASE("colorscheme_files/live_background_palette_uses_custom_logging_colors_at_every_depth", "[colorscheme_files] [unit]") {
   color_scheme_t previous = *colorscheme_get_active_scheme();
   color_scheme_t custom = previous;
   custom.log_colors_dark[2] = custom.log_colors_light[2] = (rgb_pixel_t){1, 240, 3};

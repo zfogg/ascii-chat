@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "common/session/consensus.h"
 #include <ascii-chat/network/consensus/state.h>
 #include <ascii-chat/options/rcu.h>
@@ -95,33 +94,33 @@ static void expect_hosts(const uint8_t *expected_host, const uint8_t *expected_b
   REQUIRE(session_consensus_is_ready(consensus));
 }
 
-TEST_CASE("session_consensus_rounds/custom_election_receives_all_metrics_and_publishes_its_selected_hosts", "[session_consensus_rounds]") {
+TEST_CASE("session_consensus_rounds/custom_election_receives_all_metrics_and_publishes_its_selected_hosts", "[session_consensus_rounds] [unit]") {
   create(true);
   collect();
   REQUIRE((elections) == (1));
   expect_hosts(members[1], members[2]);
 }
-TEST_CASE("session_consensus_rounds/default_election_prefers_the_better_observed_network", "[session_consensus_rounds]") {
+TEST_CASE("session_consensus_rounds/default_election_prefers_the_better_observed_network", "[session_consensus_rounds] [unit]") {
   create(false);
   collect();
   expect_hosts(members[0], members[1]);
   REQUIRE((elections) == (0));
 }
-TEST_CASE("session_consensus_rounds/invalid_custom_result_does_not_publish_a_host", "[session_consensus_rounds]") {
+TEST_CASE("session_consensus_rounds/invalid_custom_result_does_not_publish_a_host", "[session_consensus_rounds] [unit]") {
   create(true);
   invalid_choice = true;
   collect();
   REQUIRE((elections) == (1));
   REQUIRE(!(session_consensus_is_ready(consensus)));
 }
-TEST_CASE("session_consensus_rounds/election_notification_propagates_callback_errors_and_retains_host_identity", "[session_consensus_rounds]") {
+TEST_CASE("session_consensus_rounds/election_notification_propagates_callback_errors_and_retains_host_identity", "[session_consensus_rounds] [unit]") {
   create(false);
   reject_election = true;
   REQUIRE((session_consensus_on_election_result(consensus, members[1], "127.0.0.2", 27002, members[2], "127.0.0.3", 27003)) == (ERROR_NETWORK));
   REQUIRE((notifications) == (1));
   expect_hosts(members[1], members[2]);
 }
-TEST_CASE("session_consensus_rounds/topology_replacement_rejects_missing_local_identity_without_losing_the_old_ring", "[session_consensus_rounds]") {
+TEST_CASE("session_consensus_rounds/topology_replacement_rejects_missing_local_identity_without_losing_the_old_ring", "[session_consensus_rounds] [unit]") {
   create(true);
   uint8_t invalid[MAX_SESSION_PARTICIPANTS][SESSION_ID_SIZE] = {{99}};
   REQUIRE((session_consensus_set_topology(consensus, invalid, 1)) != (ASCIICHAT_OK));
@@ -129,7 +128,7 @@ TEST_CASE("session_consensus_rounds/topology_replacement_rejects_missing_local_i
   collect();
   expect_hosts(members[1], members[2]);
 }
-TEST_CASE("session_consensus_rounds/topology_change_during_collection_discards_old_metrics_and_accepts_a_new_round", "[session_consensus_rounds]") {
+TEST_CASE("session_consensus_rounds/topology_change_during_collection_discards_old_metrics_and_accepts_a_new_round", "[session_consensus_rounds] [unit]") {
   create(true);
   REQUIRE((session_consensus_on_collection_start(consensus, 1, time_get_ns() + NS_PER_SEC_INT)) == (ASCIICHAT_OK));
   REQUIRE((session_consensus_get_metrics_count(consensus)) == (1));

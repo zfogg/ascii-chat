@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/ssh/ssh_agent.h>
 #include <ascii-chat/crypto/ssh/ssh_keys.h>
 #include <ascii-chat/crypto/keys.h>
@@ -95,7 +94,7 @@ static void make_key(private_key_t *secret, public_key_t *public_key, uint8_t se
   sodium_memzero(seed, sizeof(seed));
 }
 
-TEST_CASE("ssh_agent_live/empty_agent_then_add_list_and_sign_with_independent_verification", "[ssh_agent_live]") {
+TEST_CASE("ssh_agent_live/empty_agent_then_add_list_and_sign_with_independent_verification", "[ssh_agent_live] [unit]") {
   private_key_t secret;
   public_key_t public_key;
   make_key(&secret, &public_key, 7);
@@ -115,7 +114,7 @@ TEST_CASE("ssh_agent_live/empty_agent_then_add_list_and_sign_with_independent_ve
   sodium_memzero(&secret, sizeof(secret));
 }
 
-TEST_CASE("ssh_agent_live/signing_selects_the_requested_key_and_supports_agent_backed_private_keys", "[ssh_agent_live]") {
+TEST_CASE("ssh_agent_live/signing_selects_the_requested_key_and_supports_agent_backed_private_keys", "[ssh_agent_live] [unit]") {
   private_key_t first, second;
   public_key_t first_public, second_public;
   make_key(&first, &first_public, 10);
@@ -137,7 +136,7 @@ TEST_CASE("ssh_agent_live/signing_selects_the_requested_key_and_supports_agent_b
   sodium_memzero(&second, sizeof(second));
 }
 
-TEST_CASE("ssh_agent_live/missing_key_refusal_does_not_publish_a_signature", "[ssh_agent_live]") {
+TEST_CASE("ssh_agent_live/missing_key_refusal_does_not_publish_a_signature", "[ssh_agent_live] [unit]") {
   private_key_t secret;
   public_key_t public_key;
   make_key(&secret, &public_key, 30);
@@ -157,7 +156,7 @@ TEST_CASE("ssh_agent_live/missing_key_refusal_does_not_publish_a_signature", "[s
   sodium_memzero(&secret, sizeof(secret));
 }
 
-TEST_CASE("ssh_agent_live/openssh_generated_plain_and_encrypted_keys_sign_the_matching_public_key", "[ssh_agent_live]") {
+TEST_CASE("ssh_agent_live/openssh_generated_plain_and_encrypted_keys_sign_the_matching_public_key", "[ssh_agent_live] [unit]") {
   const char *ciphers[] = {"none", "aes256-ctr", "aes256-cbc"};
   for (size_t index = 0; index < sizeof(ciphers) / sizeof(ciphers[0]); ++index) {
     char private_path[PLATFORM_MAX_PATH_LENGTH], public_path[PLATFORM_MAX_PATH_LENGTH];
@@ -236,7 +235,7 @@ static size_t read_blob(const char *path, uint8_t *blob, size_t capacity) {
   return length;
 }
 
-TEST_CASE("ssh_agent_live/encrypted_openssh_truncations_are_rejected_before_decryption_reads", "[ssh_agent_live]") {
+TEST_CASE("ssh_agent_live/encrypted_openssh_truncations_are_rejected_before_decryption_reads", "[ssh_agent_live] [unit]") {
   char path[PLATFORM_MAX_PATH_LENGTH], malformed[PLATFORM_MAX_PATH_LENGTH];
   safe_snprintf(path, sizeof(path), "%s/encrypted-source", directory);
   safe_snprintf(malformed, sizeof(malformed), "%s/encrypted-malformed", directory);
@@ -257,7 +256,7 @@ TEST_CASE("ssh_agent_live/encrypted_openssh_truncations_are_rejected_before_decr
   sodium_memzero(blob, sizeof(blob));
 }
 
-TEST_CASE("ssh_agent_live/truncated_and_oversized_openssh_fields_are_rejected", "[ssh_agent_live]") {
+TEST_CASE("ssh_agent_live/truncated_and_oversized_openssh_fields_are_rejected", "[ssh_agent_live] [unit]") {
   char path[PLATFORM_MAX_PATH_LENGTH], malformed[PLATFORM_MAX_PATH_LENGTH];
   safe_snprintf(path, sizeof(path), "%s/source", directory);
   safe_snprintf(malformed, sizeof(malformed), "%s/malformed", directory);

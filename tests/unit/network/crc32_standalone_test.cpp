@@ -1,4 +1,4 @@
-#include <catch2/catch_all.hpp>
+#include <catch2/catch_test_macros.hpp>
 #include <ascii-chat/network/crc32.h>
 #include <array>
 #include <cstdint>
@@ -14,7 +14,7 @@ static uint32_t crc32_reference(const uint8_t *data, size_t length) {
   return ~crc;
 }
 
-TEST_CASE("crc32/standalone_vectors_and_software_dispatch_agree", "[crc32][standalone]") {
+TEST_CASE("crc32/standalone_vectors_and_software_dispatch_agree", "[crc32][standalone] [unit]") {
   REQUIRE(asciichat_crc32(nullptr, 0) == 0);
   REQUIRE(asciichat_crc32_sw(nullptr, 0) == 0);
 
@@ -34,6 +34,6 @@ TEST_CASE("crc32/standalone_vectors_and_software_dispatch_agree", "[crc32][stand
   }
 }
 
-TEST_CASE("crc32/dispatch_reports_hardware_availability_consistently", "[crc32][standalone]") {
+TEST_CASE("crc32/dispatch_reports_hardware_availability_consistently", "[crc32][standalone] [unit]") {
   REQUIRE((crc32_hw_is_available() == true || crc32_hw_is_available() == false));
 }

@@ -1,9 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/frame_validator.h>
 #include <string.h>
 
-TEST_CASE("frame_validation/legacy_lengths_and_overflow_boundaries", "[frame_validation]") {
+TEST_CASE("frame_validation/legacy_lengths_and_overflow_boundaries", "[frame_validation] [unit]") {
   REQUIRE((frame_validate_legacy(20, 12)) == (ASCIICHAT_OK));
   REQUIRE((frame_validate_legacy(7, 12)) == (ERROR_INVALID_FRAME));
   REQUIRE((frame_validate_legacy(19, 12)) == (ERROR_INVALID_FRAME));
@@ -15,7 +14,7 @@ TEST_CASE("frame_validation/legacy_lengths_and_overflow_boundaries", "[frame_val
   REQUIRE((frame_check_size_overflow(8, SIZE_MAX - 7)) == (ERROR_BUFFER_OVERFLOW));
 }
 
-TEST_CASE("frame_validation/network_order_fields_work_with_unaligned_headers", "[frame_validation]") {
+TEST_CASE("frame_validation/network_order_fields_work_with_unaligned_headers", "[frame_validation] [unit]") {
   // A four-pixel RGB row: width=4, height=1, uncompressed, twelve payload bytes.
   const uint8_t wire[] = {0, 0, 0, 4, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 12, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255};
   uint8_t unaligned[sizeof(wire) + 1];
@@ -39,7 +38,7 @@ TEST_CASE("frame_validation/network_order_fields_work_with_unaligned_headers", "
   REQUIRE((frame_validate_new(unaligned + 1, sizeof(wire), NULL, NULL)) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("frame_validation/rejects_truncated_oversized_and_inconsistent_payloads_without_publishing_outputs", "[frame_validation]") {
+TEST_CASE("frame_validation/rejects_truncated_oversized_and_inconsistent_payloads_without_publishing_outputs", "[frame_validation] [unit]") {
   uint8_t header[16] = {0, 0, 0, 4, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 12};
   bool compressed = false;
   uint32_t size = 987;

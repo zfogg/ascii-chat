@@ -5,14 +5,13 @@
  * @ingroup tests
  */
 
-#include <catch2/catch_all.hpp>
 #include <string.h>
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/paths.h>
 #include <libplatform/filesystem.h>
 #include <ascii-chat/util/string.h>
-TEST_CASE("platform_filesystem/data_directories_are_platform_specific", "[platform_filesystem]") {
+TEST_CASE("platform_filesystem/data_directories_are_platform_specific", "[platform_filesystem] [unit]") {
   platform_directory_list_t list = {0};
   REQUIRE((platform_get_data_dir_candidates(ASCIICHAT_INSTALL_PREFIX, &list)) == (ASCIICHAT_OK));
 

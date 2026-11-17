@@ -1,11 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/media/kitty/image.h>
 #include <ascii-chat/util/stdout_writer.h>
 #include <limits.h>
 #include <string.h>
 
-TEST_CASE("kitty_image/known_pixel_and_padding", "[kitty_image]") {
+TEST_CASE("kitty_image/known_pixel_and_padding", "[kitty_image] [unit]") {
   FILE *stream = tmpfile();
   REQUIRE((stream) != nullptr);
   const uint8_t pixels[] = {255, 0, 0, 255, 17, 18, 19};
@@ -19,7 +18,7 @@ TEST_CASE("kitty_image/known_pixel_and_padding", "[kitty_image]") {
   fclose(stream);
 }
 
-TEST_CASE("kitty_image/rejects_invalid_buffers_without_output", "[kitty_image]") {
+TEST_CASE("kitty_image/rejects_invalid_buffers_without_output", "[kitty_image] [unit]") {
   FILE *stream = tmpfile();
   REQUIRE((stream) != nullptr);
   uint8_t pixel[4] = {0};
@@ -33,7 +32,7 @@ TEST_CASE("kitty_image/rejects_invalid_buffers_without_output", "[kitty_image]")
   fclose(stream);
 }
 
-TEST_CASE("kitty_image/shared_writer_preserves_binary_nuls_and_stream_ownership", "[kitty_image]") {
+TEST_CASE("kitty_image/shared_writer_preserves_binary_nuls_and_stream_ownership", "[kitty_image] [unit]") {
   FILE *stream = tmpfile();
   REQUIRE((stream) != nullptr);
   const uint8_t data[] = {0, 255, '\n', '\r', 0};

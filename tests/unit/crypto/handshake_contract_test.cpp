@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/util/endian.h>
@@ -24,7 +23,7 @@ static void teardown(void) {
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-TEST_CASE("handshake_contract/packet_lengths_enforce_negotiated_boundaries_and_reject_unknown_types", "[handshake_contract]") {
+TEST_CASE("handshake_contract/packet_lengths_enforce_negotiated_boundaries_and_reject_unknown_types", "[handshake_contract] [unit]") {
   first.crypto_ctx.public_key_size = first.crypto_ctx.auth_public_key_size = 32;
   first.crypto_ctx.signature_size = 64;
   first.crypto_ctx.hmac_size = first.crypto_ctx.auth_challenge_size = 32;
@@ -53,7 +52,7 @@ TEST_CASE("handshake_contract/packet_lengths_enforce_negotiated_boundaries_and_r
   REQUIRE((crypto_handshake_validate_packet_size(NULL, 0, 0)) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("handshake_contract/negotiated_sizes_use_host_order_for_server_and_network_order_for_client", "[handshake_contract]") {
+TEST_CASE("handshake_contract/negotiated_sizes_use_host_order_for_server_and_network_order_for_client", "[handshake_contract] [unit]") {
   for (unsigned server = 0; server < 2; ++server) {
     first.is_server = server;
     crypto_parameters_packet_t parameters = {.selected_cipher = CIPHER_ALGO_NONE, .verification_enabled = 1, .nonce_size = 24, .mac_size = 16, .hmac_size = 32};
@@ -78,7 +77,7 @@ TEST_CASE("handshake_contract/negotiated_sizes_use_host_order_for_server_and_net
   REQUIRE((crypto_handshake_set_parameters(&first, NULL)) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("handshake_contract/exposes_crypto_only_after_handshake_completion", "[handshake_contract]") {
+TEST_CASE("handshake_contract/exposes_crypto_only_after_handshake_completion", "[handshake_contract] [unit]") {
   REQUIRE(crypto_handshake_is_ready(&first));
   REQUIRE((crypto_handshake_get_context(&first)) == (&first.crypto_ctx));
   REQUIRE((crypto_handshake_get_context(NULL)) == nullptr);

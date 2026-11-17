@@ -4,7 +4,6 @@
  * @brief Integration tests for GPG authentication
  */
 
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdlib.h>
 #include <ascii-chat/crypto/gpg/gpg.h>
@@ -22,7 +21,7 @@ static const char *get_test_gpg_key_id(void) {
   return key_id;
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("gpg_authentication/sign_message_with_gpg_key", "[gpg_authentication]") {
+TEST_CASE("gpg_authentication/sign_message_with_gpg_key", "[gpg_authentication] [integration]") {
   const char *test_key_id = get_test_gpg_key_id();
   if (!test_key_id) {
     SKIP("test skipped");
@@ -42,7 +41,7 @@ TEST_CASE("gpg_authentication/sign_message_with_gpg_key", "[gpg_authentication]"
   INFO("Signature created: %zu bytes");
 }
 
-TEST_CASE("gpg_authentication/verify_valid_signature", "[gpg_authentication]") {
+TEST_CASE("gpg_authentication/verify_valid_signature", "[gpg_authentication] [integration]") {
   const char *test_key_id = get_test_gpg_key_id();
   if (!test_key_id) {
     SKIP("test skipped");
@@ -62,7 +61,7 @@ TEST_CASE("gpg_authentication/verify_valid_signature", "[gpg_authentication]") {
   REQUIRE((verify_result) == (0));
 }
 
-TEST_CASE("gpg_authentication/reject_tampered_message", "[gpg_authentication]") {
+TEST_CASE("gpg_authentication/reject_tampered_message", "[gpg_authentication] [integration]") {
   const char *test_key_id = get_test_gpg_key_id();
   if (!test_key_id) {
     SKIP("test skipped");
@@ -83,7 +82,7 @@ TEST_CASE("gpg_authentication/reject_tampered_message", "[gpg_authentication]") 
   REQUIRE((verify_result) != (0));
 }
 
-TEST_CASE("gpg_authentication/parse_gpg_public_key", "[gpg_authentication]") {
+TEST_CASE("gpg_authentication/parse_gpg_public_key", "[gpg_authentication] [integration]") {
   const char *test_key_id = get_test_gpg_key_id();
   if (!test_key_id) {
     SKIP("test skipped");
@@ -111,7 +110,7 @@ TEST_CASE("gpg_authentication/parse_gpg_public_key", "[gpg_authentication]") {
   REQUIRE((all_zeros) == (false));
 }
 
-TEST_CASE("gpg_authentication/parse_gpg_private_key", "[gpg_authentication]") {
+TEST_CASE("gpg_authentication/parse_gpg_private_key", "[gpg_authentication] [integration]") {
   const char *test_key_id = get_test_gpg_key_id();
   if (!test_key_id) {
     SKIP("test skipped");
@@ -132,7 +131,7 @@ TEST_CASE("gpg_authentication/parse_gpg_private_key", "[gpg_authentication]") {
   INFO("Keygrip: %s");
 }
 
-TEST_CASE("gpg_authentication/get_public_key_from_keyring", "[gpg_authentication]") {
+TEST_CASE("gpg_authentication/get_public_key_from_keyring", "[gpg_authentication] [integration]") {
   const char *test_key_id = get_test_gpg_key_id();
   if (!test_key_id) {
     SKIP("test skipped");

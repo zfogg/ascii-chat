@@ -1,9 +1,9 @@
+#include <catch2/matchers/catch_matchers_all.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
-TEST_CASE("ip_boundaries/cidr_network_edges_and_address_families", "[ip_boundaries]") {
+TEST_CASE("ip_boundaries/cidr_network_edges_and_address_families", "[ip_boundaries] [unit]") {
   const struct {
     const char *ip, *network;
     int contains;
@@ -25,7 +25,7 @@ TEST_CASE("ip_boundaries/cidr_network_edges_and_address_families", "[ip_boundari
     REQUIRE((ip_in_cidr(cases[i].ip, cases[i].network)) == (cases[i].contains));
 }
 
-TEST_CASE("ip_boundaries/rejects_malformed_cidr_and_short_buffers", "[ip_boundaries]") {
+TEST_CASE("ip_boundaries/rejects_malformed_cidr_and_short_buffers", "[ip_boundaries] [unit]") {
   const char *invalid[] = {"", "/24", "10.0.0.1", "bad/24", "10.0.0.0/", "10.0.0.0/-1", "10.0.0.0/33", "::/129", "::/x", "::/64junk", "::/9999999999999999999999999999999"};
   char output[128];
   int prefix;
@@ -42,7 +42,7 @@ TEST_CASE("ip_boundaries/rejects_malformed_cidr_and_short_buffers", "[ip_boundar
   REQUIRE((ip_in_cidr_parsed("::1", "::", 129)) == (0));
 }
 
-TEST_CASE("ip_boundaries/canonical_addresses_and_mapped_ipv4_round_trip", "[ip_boundaries]") {
+TEST_CASE("ip_boundaries/canonical_addresses_and_mapped_ipv4_round_trip", "[ip_boundaries] [unit]") {
   char mapped[128], v4[32], expanded[128], compact[128];
   const char *addresses[] = {"0.0.0.0", "192.0.2.42", "255.255.255.255"};
   for (size_t i = 0; i < sizeof(addresses) / sizeof(*addresses); ++i) {
@@ -65,7 +65,7 @@ TEST_CASE("ip_boundaries/canonical_addresses_and_mapped_ipv4_round_trip", "[ip_b
   REQUIRE(!(is_ipv4_mapped_ipv6(NULL)));
 }
 
-TEST_CASE("ip_boundaries/numeric_sorting_normalization_and_invalid_addresses", "[ip_boundaries]") {
+TEST_CASE("ip_boundaries/numeric_sorting_normalization_and_invalid_addresses", "[ip_boundaries] [unit]") {
   REQUIRE(ip_equals("[::1]", "0:0:0:0:0:0:0:1"));
   REQUIRE(!(ip_equals("127.0.0.1", "::1")));
   REQUIRE(!(ip_equals(NULL, "::1")));
@@ -82,7 +82,7 @@ TEST_CASE("ip_boundaries/numeric_sorting_normalization_and_invalid_addresses", "
   REQUIRE((compare_ip_port_strings("[::1]:42", "[0:0:0:0:0:0:0:1]:42")) == (1));
 }
 
-TEST_CASE("ip_boundaries/classify_private_loopback_link_local_and_public_addresses", "[ip_boundaries]") {
+TEST_CASE("ip_boundaries/classify_private_loopback_link_local_and_public_addresses", "[ip_boundaries] [unit]") {
   const struct {
     const char *address;
     int lan, loopback, link, multicast, internet;
@@ -114,7 +114,7 @@ TEST_CASE("ip_boundaries/classify_private_loopback_link_local_and_public_address
   REQUIRE(!(is_lan_ipv6(NULL)));
 }
 
-TEST_CASE("ip_boundaries/optional_ports_parse_hostnames_ipv4_and_unambiguous_ipv6", "[ip_boundaries]") {
+TEST_CASE("ip_boundaries/optional_ports_parse_hostnames_ipv4_and_unambiguous_ipv6", "[ip_boundaries] [unit]") {
   const struct {
     const char *input, *address;
     uint16_t port;
@@ -138,7 +138,7 @@ TEST_CASE("ip_boundaries/optional_ports_parse_hostnames_ipv4_and_unambiguous_ipv
     REQUIRE((parse_address_with_optional_port(cases[i].input, output, strlen(cases[i].address) + 1, &port, 27224)) == (0));
   }
 }
-TEST_CASE("ip_boundaries/optional_port_parser_rejects_malformed_addresses_and_port_overflows", "[ip_boundaries]") {
+TEST_CASE("ip_boundaries/optional_port_parser_rejects_malformed_addresses_and_port_overflows", "[ip_boundaries] [unit]") {
   const char *invalid[] = {"",
                            "[]",
                            "[::1",
@@ -174,7 +174,7 @@ TEST_CASE("ip_boundaries/optional_port_parser_rejects_malformed_addresses_and_po
   oversized[sizeof(oversized) - 1] = 0;
   REQUIRE((parse_address_with_optional_port(oversized, output, sizeof(output), &port, 1)) == (-1));
 }
-TEST_CASE("ip_boundaries/hostname_label_and_total_length_limits_are_enforced_without_dns", "[ip_boundaries]") {
+TEST_CASE("ip_boundaries/hostname_label_and_total_length_limits_are_enforced_without_dns", "[ip_boundaries] [unit]") {
   char hostname[260], output[260];
   uint16_t port;
   memset(hostname, 'a', 63);
@@ -192,7 +192,7 @@ TEST_CASE("ip_boundaries/hostname_label_and_total_length_limits_are_enforced_wit
   hostname[254] = 0;
   REQUIRE((parse_address_with_optional_port(hostname, output, sizeof(output), &port, 42)) == (-1));
 }
-TEST_CASE("ip_boundaries/formatted_addresses_round_trip_and_reject_short_destinations", "[ip_boundaries]") {
+TEST_CASE("ip_boundaries/formatted_addresses_round_trip_and_reject_short_destinations", "[ip_boundaries] [unit]") {
   const char *addresses[] = {"192.0.2.1", "2001:db8::1"};
   for (size_t i = 0; i < 2; ++i) {
     char formatted[128], recovered[128];
@@ -212,7 +212,7 @@ TEST_CASE("ip_boundaries/formatted_addresses_round_trip_and_reject_short_destina
   REQUIRE((format_ip_with_port("::1", 1, out, 0)) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("ip_boundaries/hostname_and_label_byte_limits", "[ip_boundaries]") {
+TEST_CASE("ip_boundaries/hostname_and_label_byte_limits", "[ip_boundaries] [unit]") {
   char host[MAX_HOSTNAME_LENGTH + 2], parsed[HOSTNAME_BUFFER_SIZE];
   uint16_t port;
   memset(host, 'a', sizeof(host));
@@ -232,7 +232,7 @@ TEST_CASE("ip_boundaries/hostname_and_label_byte_limits", "[ip_boundaries]") {
   REQUIRE((parse_address_with_optional_port(host, parsed, sizeof(parsed), &port, 27224)) == (-1));
 }
 
-TEST_CASE("ip_boundaries/unicode_hostname_with_port_is_normalized", "[ip_boundaries]") {
+TEST_CASE("ip_boundaries/unicode_hostname_with_port_is_normalized", "[ip_boundaries] [unit]") {
   char output[HOSTNAME_BUFFER_SIZE];
   uint16_t port = 0;
   REQUIRE((parse_address_with_optional_port("bücher.de:443", output, sizeof(output), &port, 27224)) == (0));

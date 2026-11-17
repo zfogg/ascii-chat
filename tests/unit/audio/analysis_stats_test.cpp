@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/audio/analysis.h>
 #include <ascii-chat/log/log.h>
 #include <libplatform/filesystem.h>
@@ -7,7 +7,7 @@
 #include <ascii-chat/tests/logging.h>
 #include <math.h>
 #include <string.h>
-TEST_CASE("analysis_stats/known_samples_have_exact_peak_rms_mean_silence_and_clipping_counts", "[analysis_stats]") {
+TEST_CASE("analysis_stats/known_samples_have_exact_peak_rms_mean_silence_and_clipping_counts", "[analysis_stats] [unit]") {
   REQUIRE((audio_analysis_init()) == (0));
   const float samples[] = {0.0f, 0.5f, -0.5f, 1.5f, -1.5f};
   for (size_t i = 0; i < sizeof(samples) / sizeof(*samples); ++i) {
@@ -35,7 +35,7 @@ TEST_CASE("analysis_stats/known_samples_have_exact_peak_rms_mean_silence_and_cli
   REQUIRE((audio_analysis_get_received_stats()->total_samples) == (5));
 }
 
-TEST_CASE("analysis_stats/report_describes_silence_signal_and_echo_metrics", "[analysis_stats]") {
+TEST_CASE("analysis_stats/report_describes_silence_signal_and_echo_metrics", "[analysis_stats] [unit]") {
   char path[1024];
   int fd;
   REQUIRE((platform_create_temp_file(path, sizeof(path), "ascii-analysis", &fd)) == (0));

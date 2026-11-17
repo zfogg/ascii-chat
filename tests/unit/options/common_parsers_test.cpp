@@ -1,11 +1,11 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/levenshtein.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
-TEST_CASE("common_parsers/levenshtein_handles_utf8_and_invalid_inputs", "[common_parsers]") {
+TEST_CASE("common_parsers/levenshtein_handles_utf8_and_invalid_inputs", "[common_parsers] [unit]") {
   REQUIRE((levenshtein("kitten", "sitting")) == (3));
   REQUIRE((levenshtein("café", "cafe")) == (1));
   REQUIRE((levenshtein("界é", "界")) == (1));
@@ -14,7 +14,7 @@ TEST_CASE("common_parsers/levenshtein_handles_utf8_and_invalid_inputs", "[common
   REQUIRE((levenshtein("\xff", "abc")) == (SIZE_MAX));
 }
 
-TEST_CASE("common_parsers/display_aliases_and_rejected_values_preserve_previous_settings", "[common_parsers]") {
+TEST_CASE("common_parsers/display_aliases_and_rejected_values_preserve_previous_settings", "[common_parsers] [unit]") {
   options_t *options = SAFE_MALLOC(sizeof(*options), options_t *);
   *options = options_t_new();
   const struct {
@@ -55,7 +55,7 @@ TEST_CASE("common_parsers/display_aliases_and_rejected_values_preserve_previous_
   SAFE_FREE(options);
 }
 
-TEST_CASE("common_parsers/numeric_options_enforce_ranges_and_do_not_commit_rejected_values", "[common_parsers]") {
+TEST_CASE("common_parsers/numeric_options_enforce_ranges_and_do_not_commit_rejected_values", "[common_parsers] [unit]") {
   options_t *options = SAFE_MALLOC(sizeof(*options), options_t *);
   *options = options_t_new();
   REQUIRE((parse_width_option("80", options)) == (ASCIICHAT_OK));
@@ -89,7 +89,7 @@ TEST_CASE("common_parsers/numeric_options_enforce_ranges_and_do_not_commit_rejec
   SAFE_FREE(options);
 }
 
-TEST_CASE("common_parsers/suggestions_explain_mode_restrictions_and_reject_unrelated_names", "[common_parsers]") {
+TEST_CASE("common_parsers/suggestions_explain_mode_restrictions_and_reject_unrelated_names", "[common_parsers] [unit]") {
   option_descriptor_t descriptors[] = {{.long_name = "width", .mode_bitmask = static_cast<option_mode_bitmask_t>(OPTION_MODE_CLIENT | OPTION_MODE_MIRROR)},
                                        {.long_name = "max-clients", .mode_bitmask = static_cast<option_mode_bitmask_t>(OPTION_MODE_SERVER)}};
   options_config_t config = {.descriptors = descriptors, .num_descriptors = 2};

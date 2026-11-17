@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <stdatomic.h>
 #include <ascii-chat/debug/mutex.h>
 #include <libplatform/thread.h>
@@ -19,7 +18,7 @@ extern int rwlock_format_state(const rwlock_t *lock, char *buffer, size_t size);
 extern int cond_format_state(const cond_t *condition, char *buffer, size_t size);
 }
 
-TEST_CASE("debug_mutex/formatted_mutex_state_tracks_acquisition_and_release", "[debug_mutex]") {
+TEST_CASE("debug_mutex/formatted_mutex_state_tracks_acquisition_and_release", "[debug_mutex] [unit]") {
   mutex_t mutex;
   char text[1024];
   REQUIRE((mutex_init(&mutex, "formatted-mutex")) == (0));
@@ -50,7 +49,7 @@ TEST_CASE("debug_mutex/formatted_mutex_state_tracks_acquisition_and_release", "[
   REQUIRE((mutex_destroy(&mutex)) == (0));
 }
 
-TEST_CASE("debug_mutex/formatted_rwlock_distinguishes_readers_writer_and_released_state", "[debug_mutex]") {
+TEST_CASE("debug_mutex/formatted_rwlock_distinguishes_readers_writer_and_released_state", "[debug_mutex] [unit]") {
   rwlock_t lock;
   char text[1024];
   REQUIRE((rwlock_init(&lock, "formatted-rwlock")) == (0));
@@ -75,7 +74,7 @@ TEST_CASE("debug_mutex/formatted_rwlock_distinguishes_readers_writer_and_release
   REQUIRE((rwlock_destroy(&lock)) == (0));
 }
 
-TEST_CASE("debug_mutex/formatted_condition_state_tracks_timeout_signal_and_broadcast", "[debug_mutex]") {
+TEST_CASE("debug_mutex/formatted_condition_state_tracks_timeout_signal_and_broadcast", "[debug_mutex] [unit]") {
   mutex_t mutex;
   cond_t condition;
   char text[1024];
@@ -112,7 +111,7 @@ static void *change_lock_stack(void *unused) {
   return NULL;
 }
 
-TEST_CASE("debug_mutex/concurrent_stack_snapshots", "[debug_mutex]") {
+TEST_CASE("debug_mutex/concurrent_stack_snapshots", "[debug_mutex] [unit]") {
   platform_thread_t writers[4];
   atomic_store(&stack_stress_running, true);
   for (int i = 0; i < 4; i++)
@@ -145,7 +144,7 @@ static void *inspect_conditions(void *unused) {
   return NULL;
 }
 
-TEST_CASE("debug_mutex/concurrent_condition_destruction", "[debug_mutex]") {
+TEST_CASE("debug_mutex/concurrent_condition_destruction", "[debug_mutex] [unit]") {
   // The monitor must not dereference a condition after unregistration frees it.
   NAMED_REGISTER_ATOMIC(&cond_stress_running, "cond_stress_running", NULL);
   atomic_store_bool(&cond_stress_running, true);

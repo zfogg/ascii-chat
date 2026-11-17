@@ -1,6 +1,6 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <float.h>
 #include <math.h>
 #include <float.h>
@@ -118,7 +118,7 @@ static void calculate_optimal_grid(int terminal_width, int terminal_height, int 
   *out_cell_height = terminal_height / best_rows;
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("grid_layout/single_client_full_terminal", "[grid_layout]") {
+TEST_CASE("grid_layout/single_client_full_terminal", "[grid_layout] [unit]") {
   int cols, rows, cell_width, cell_height;
 
   // Test various terminal sizes with single client
@@ -141,7 +141,7 @@ TEST_CASE("grid_layout/single_client_full_terminal", "[grid_layout]") {
   CHECK((rows * cell_height) == (40));
 }
 
-TEST_CASE("grid_layout/two_clients_horizontal_vs_vertical", "[grid_layout]") {
+TEST_CASE("grid_layout/two_clients_horizontal_vs_vertical", "[grid_layout] [unit]") {
   int cols, rows, cell_width, cell_height;
 
   // Wide terminal - should prefer 2x1 (side by side)
@@ -177,7 +177,7 @@ TEST_CASE("grid_layout/two_clients_horizontal_vs_vertical", "[grid_layout]") {
   CHECK((rows * cell_height) == (50));
 }
 
-TEST_CASE("grid_layout/three_clients_optimal", "[grid_layout]") {
+TEST_CASE("grid_layout/three_clients_optimal", "[grid_layout] [unit]") {
   int cols, rows, cell_width, cell_height;
 
   // Wide terminal with 3 clients - try 3x1
@@ -212,7 +212,7 @@ TEST_CASE("grid_layout/three_clients_optimal", "[grid_layout]") {
   CHECK((rows * cell_height) == (72));
 }
 
-TEST_CASE("grid_layout/four_clients_2x2", "[grid_layout]") {
+TEST_CASE("grid_layout/four_clients_2x2", "[grid_layout] [unit]") {
   int cols, rows, cell_width, cell_height;
 
   // Standard terminal with 4 clients - uses 3x2 for better aspect ratio
@@ -244,7 +244,7 @@ TEST_CASE("grid_layout/four_clients_2x2", "[grid_layout]") {
   CHECK((rows * cell_height) == (96));
 }
 
-TEST_CASE("grid_layout/five_to_six_clients", "[grid_layout]") {
+TEST_CASE("grid_layout/five_to_six_clients", "[grid_layout] [unit]") {
   int cols, rows, cell_width, cell_height;
 
   // 5 clients - uses 4x2 for better aspect ratio
@@ -273,7 +273,7 @@ TEST_CASE("grid_layout/five_to_six_clients", "[grid_layout]") {
   CHECK((rows * cell_height) == (48));
 }
 
-TEST_CASE("grid_layout/seven_to_nine_clients", "[grid_layout]") {
+TEST_CASE("grid_layout/seven_to_nine_clients", "[grid_layout] [unit]") {
   int cols, rows, cell_width, cell_height;
 
   // 7 clients - 3x3 with 2 empty
@@ -304,7 +304,7 @@ TEST_CASE("grid_layout/seven_to_nine_clients", "[grid_layout]") {
   CHECK((rows * cell_height) == (60));
 }
 
-TEST_CASE("grid_layout/edge_cases", "[grid_layout]") {
+TEST_CASE("grid_layout/edge_cases", "[grid_layout] [unit]") {
   int cols, rows, cell_width, cell_height;
 
   // Zero clients
@@ -328,7 +328,7 @@ TEST_CASE("grid_layout/edge_cases", "[grid_layout]") {
   CHECK((cols * rows >= 10) == (1));
 }
 
-TEST_CASE("grid_layout/aspect_ratio_preferences", "[grid_layout]") {
+TEST_CASE("grid_layout/aspect_ratio_preferences", "[grid_layout] [unit]") {
   int cols, rows, cell_width, cell_height;
 
   // Test that algorithm prefers ~2:1 aspect ratio for cells
@@ -377,7 +377,7 @@ static grid_test_case_t test_cases[] = {
     {150, 60, 9, 4, 3, 37, 20},  // 4x3 grid, total 148x60 (off by 2)
 };
 
-TEST_CASE("grid_layout/parameterized_comprehensive", "[grid_layout]") {
+TEST_CASE("grid_layout/parameterized_comprehensive", "[grid_layout] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(test_cases), std::end(test_cases)));
   auto *tc = &generated_case;
   int cols, rows, cell_width, cell_height;

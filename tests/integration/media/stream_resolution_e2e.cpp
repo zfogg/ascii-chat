@@ -12,7 +12,6 @@
  * - Media source creation with URL resolution
  */
 
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/media/yt_dlp.h>
@@ -67,7 +66,7 @@ __attribute__((unused)) static bool can_reach_url(const char *url) {
  * Direct Stream Detection Tests
  * ============================================================================ */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("stream_resolution_e2e/detect_mp4_direct_stream", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/detect_mp4_direct_stream", "[stream_resolution_e2e] [integration]") {
   // MP4 files should be detected as direct streams
   char output[8192] = {0};
 
@@ -83,7 +82,7 @@ TEST_CASE("stream_resolution_e2e/detect_mp4_direct_stream", "[stream_resolution_
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/detect_mkv_direct_stream", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/detect_mkv_direct_stream", "[stream_resolution_e2e] [integration]") {
   // MKV files should be detected as direct streams
   const char *mkv_url = "http://cdn.example.com/movie.mkv";
 
@@ -93,7 +92,7 @@ TEST_CASE("stream_resolution_e2e/detect_mkv_direct_stream", "[stream_resolution_
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/detect_webm_direct_stream", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/detect_webm_direct_stream", "[stream_resolution_e2e] [integration]") {
   // WebM files should be detected as direct streams
   const char *webm_url = "https://videos.example.com/clip.webm";
 
@@ -103,7 +102,7 @@ TEST_CASE("stream_resolution_e2e/detect_webm_direct_stream", "[stream_resolution
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/detect_hls_direct_stream", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/detect_hls_direct_stream", "[stream_resolution_e2e] [integration]") {
   // HLS playlists (.m3u8) should be detected as direct streams
   const char *hls_url = "https://stream.example.com/playlist.m3u8";
 
@@ -113,7 +112,7 @@ TEST_CASE("stream_resolution_e2e/detect_hls_direct_stream", "[stream_resolution_
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/detect_rtsp_direct_stream", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/detect_rtsp_direct_stream", "[stream_resolution_e2e] [integration]") {
   // RTSP streams should be detected as direct streams
   const char *rtsp_url = "rtsp://camera.local:554/stream";
 
@@ -124,7 +123,7 @@ TEST_CASE("stream_resolution_e2e/detect_rtsp_direct_stream", "[stream_resolution
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/detect_rtmp_direct_stream", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/detect_rtmp_direct_stream", "[stream_resolution_e2e] [integration]") {
   // RTMP streams should be detected as direct streams
   const char *rtmp_url = "rtmp://streaming.example.com/live/channel";
 
@@ -138,7 +137,7 @@ TEST_CASE("stream_resolution_e2e/detect_rtmp_direct_stream", "[stream_resolution
  * Complex Site Handling Tests
  * ============================================================================ */
 
-TEST_CASE("stream_resolution_e2e/handle_youtube_url_format", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/handle_youtube_url_format", "[stream_resolution_e2e] [integration]") {
   // YouTube URLs should trigger yt-dlp extraction
   const char *youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 
@@ -149,7 +148,7 @@ TEST_CASE("stream_resolution_e2e/handle_youtube_url_format", "[stream_resolution
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/handle_youtube_short_url", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/handle_youtube_short_url", "[stream_resolution_e2e] [integration]") {
   // Short YouTube URLs should also trigger yt-dlp extraction
   const char *short_url = "https://youtu.be/dQw4w9WgXcQ";
 
@@ -159,7 +158,7 @@ TEST_CASE("stream_resolution_e2e/handle_youtube_short_url", "[stream_resolution_
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/handle_twitch_url", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/handle_twitch_url", "[stream_resolution_e2e] [integration]") {
   // Twitch URLs should trigger yt-dlp extraction
   const char *twitch_url = "https://www.twitch.tv/videos/1234567890";
 
@@ -173,7 +172,7 @@ TEST_CASE("stream_resolution_e2e/handle_twitch_url", "[stream_resolution_e2e]") 
  * Options Handling in Integration
  * ============================================================================ */
 
-TEST_CASE("stream_resolution_e2e/yt_dlp_options_basic", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/yt_dlp_options_basic", "[stream_resolution_e2e] [integration]") {
   // Test passing basic yt-dlp options
   const char *url = "https://example.com/video";
   const char *options = "--no-warnings";
@@ -185,7 +184,7 @@ TEST_CASE("stream_resolution_e2e/yt_dlp_options_basic", "[stream_resolution_e2e]
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/yt_dlp_options_cookies", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/yt_dlp_options_cookies", "[stream_resolution_e2e] [integration]") {
   // Test passing cookie options
   const char *url = "https://example.com/video";
   const char *options = "--cookies-from-browser=chrome";
@@ -196,7 +195,7 @@ TEST_CASE("stream_resolution_e2e/yt_dlp_options_cookies", "[stream_resolution_e2
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/yt_dlp_options_proxy", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/yt_dlp_options_proxy", "[stream_resolution_e2e] [integration]") {
   // Test passing proxy options
   const char *url = "https://example.com/video";
   const char *options = "--proxy socks5://127.0.0.1:1080";
@@ -207,7 +206,7 @@ TEST_CASE("stream_resolution_e2e/yt_dlp_options_proxy", "[stream_resolution_e2e]
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/yt_dlp_options_multiple", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/yt_dlp_options_multiple", "[stream_resolution_e2e] [integration]") {
   // Test passing multiple options
   const char *url = "https://example.com/video";
   const char *options = "--no-warnings --quiet --no-cache-dir";
@@ -222,7 +221,7 @@ TEST_CASE("stream_resolution_e2e/yt_dlp_options_multiple", "[stream_resolution_e
  * Caching Integration Tests
  * ============================================================================ */
 
-TEST_CASE("stream_resolution_e2e/cache_different_urls_independently", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/cache_different_urls_independently", "[stream_resolution_e2e] [integration]") {
   // Different URLs should maintain separate cache entries
   char output1[8192] = {0};
   char output2[8192] = {0};
@@ -245,7 +244,7 @@ TEST_CASE("stream_resolution_e2e/cache_different_urls_independently", "[stream_r
   REQUIRE((err2 == ASCIICHAT_OK || err2 != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/cache_different_options_separately", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/cache_different_options_separately", "[stream_resolution_e2e] [integration]") {
   // Same URL with different options should create separate cache entries
   char output1[8192] = {0};
   char output2[8192] = {0};
@@ -262,7 +261,7 @@ TEST_CASE("stream_resolution_e2e/cache_different_options_separately", "[stream_r
   REQUIRE((err2 == ASCIICHAT_OK || err2 != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/cache_respects_30_second_ttl", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/cache_respects_30_second_ttl", "[stream_resolution_e2e] [integration]") {
   // Cache should be valid for 30 seconds (testing immediate cache hit)
   char output1[8192] = {0};
   char output2[8192] = {0};
@@ -287,7 +286,7 @@ TEST_CASE("stream_resolution_e2e/cache_respects_30_second_ttl", "[stream_resolut
  * Error Handling Integration
  * ============================================================================ */
 
-TEST_CASE("stream_resolution_e2e/handle_network_errors_gracefully", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/handle_network_errors_gracefully", "[stream_resolution_e2e] [integration]") {
   // Should handle network errors without crashing
   char output[8192] = {0};
 
@@ -299,7 +298,7 @@ TEST_CASE("stream_resolution_e2e/handle_network_errors_gracefully", "[stream_res
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/handle_malformed_urls", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/handle_malformed_urls", "[stream_resolution_e2e] [integration]") {
   // Should handle malformed URLs gracefully
   char output[8192] = {0};
 
@@ -316,7 +315,7 @@ TEST_CASE("stream_resolution_e2e/handle_malformed_urls", "[stream_resolution_e2e
   }
 }
 
-TEST_CASE("stream_resolution_e2e/handle_timeout_errors", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/handle_timeout_errors", "[stream_resolution_e2e] [integration]") {
   // Test handling of timeout scenarios (slow/unresponsive servers)
   char output[8192] = {0};
 
@@ -333,7 +332,7 @@ TEST_CASE("stream_resolution_e2e/handle_timeout_errors", "[stream_resolution_e2e
  * Media Source Integration Tests
  * ============================================================================ */
 
-TEST_CASE("stream_resolution_e2e/media_source_with_direct_stream", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/media_source_with_direct_stream", "[stream_resolution_e2e] [integration]") {
   // Test media source creation with a direct stream URL
   const char *direct_url = "http://example.com/video.mp4";
 
@@ -349,7 +348,7 @@ TEST_CASE("stream_resolution_e2e/media_source_with_direct_stream", "[stream_reso
   REQUIRE((source == NULL || source != NULL));
 }
 
-TEST_CASE("stream_resolution_e2e/media_source_with_complex_url", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/media_source_with_complex_url", "[stream_resolution_e2e] [integration]") {
   // Test media source creation with a complex URL
   const char *complex_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 
@@ -363,7 +362,7 @@ TEST_CASE("stream_resolution_e2e/media_source_with_complex_url", "[stream_resolu
   REQUIRE((source == NULL || source != NULL));
 }
 
-TEST_CASE("stream_resolution_e2e/media_source_rejects_invalid_url", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/media_source_rejects_invalid_url", "[stream_resolution_e2e] [integration]") {
   // Test that media source rejects completely invalid URLs
   const char *invalid_url = "not a url";
 
@@ -382,7 +381,7 @@ TEST_CASE("stream_resolution_e2e/media_source_rejects_invalid_url", "[stream_res
  * Fallback Mechanism Tests
  * ============================================================================ */
 
-TEST_CASE("stream_resolution_e2e/fallback_to_ffmpeg_when_yt_dlp_fails", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/fallback_to_ffmpeg_when_yt_dlp_fails", "[stream_resolution_e2e] [integration]") {
   // Test that FFmpeg fallback works when yt-dlp fails
   char output[8192] = {0};
 
@@ -395,7 +394,7 @@ TEST_CASE("stream_resolution_e2e/fallback_to_ffmpeg_when_yt_dlp_fails", "[stream
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/fallback_preserves_url_on_yt_dlp_failure", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/fallback_preserves_url_on_yt_dlp_failure", "[stream_resolution_e2e] [integration]") {
   // Test that URL is returned as-is if yt-dlp fails (for FFmpeg to try)
   char output[8192] = {0};
 
@@ -414,7 +413,7 @@ TEST_CASE("stream_resolution_e2e/fallback_preserves_url_on_yt_dlp_failure", "[st
  * Logging and Diagnostics Tests
  * ============================================================================ */
 
-TEST_CASE("stream_resolution_e2e/logs_resolution_steps", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/logs_resolution_steps", "[stream_resolution_e2e] [integration]") {
   // Test that resolution logs progress (verifiable via log capture)
   char output[8192] = {0};
 
@@ -427,7 +426,7 @@ TEST_CASE("stream_resolution_e2e/logs_resolution_steps", "[stream_resolution_e2e
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/logs_cache_hits", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/logs_cache_hits", "[stream_resolution_e2e] [integration]") {
   // Test that cache hits are logged
   char output1[8192] = {0};
   char output2[8192] = {0};
@@ -448,7 +447,7 @@ TEST_CASE("stream_resolution_e2e/logs_cache_hits", "[stream_resolution_e2e]") {
  * Cross-Platform URL Format Tests
  * ============================================================================ */
 
-TEST_CASE("stream_resolution_e2e/handle_file_protocol_urls", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/handle_file_protocol_urls", "[stream_resolution_e2e] [integration]") {
   // Test local file URLs (file://)
   char output[8192] = {0};
 
@@ -459,7 +458,7 @@ TEST_CASE("stream_resolution_e2e/handle_file_protocol_urls", "[stream_resolution
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/handle_urls_with_query_parameters", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/handle_urls_with_query_parameters", "[stream_resolution_e2e] [integration]") {
   // Test URLs with query parameters
   char output[8192] = {0};
 
@@ -470,7 +469,7 @@ TEST_CASE("stream_resolution_e2e/handle_urls_with_query_parameters", "[stream_re
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/handle_urls_with_fragments", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/handle_urls_with_fragments", "[stream_resolution_e2e] [integration]") {
   // Test URLs with fragments
   char output[8192] = {0};
 
@@ -481,7 +480,7 @@ TEST_CASE("stream_resolution_e2e/handle_urls_with_fragments", "[stream_resolutio
   REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
-TEST_CASE("stream_resolution_e2e/handle_urls_with_authentication", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/handle_urls_with_authentication", "[stream_resolution_e2e] [integration]") {
   // Test URLs with embedded authentication
   char output[8192] = {0};
 
@@ -496,7 +495,7 @@ TEST_CASE("stream_resolution_e2e/handle_urls_with_authentication", "[stream_reso
  * Performance and Scale Tests
  * ============================================================================ */
 
-TEST_CASE("stream_resolution_e2e/handle_rapid_sequential_requests", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/handle_rapid_sequential_requests", "[stream_resolution_e2e] [integration]") {
   // Test rapid sequential requests to same URL (cache performance)
   char output[8192] = {0};
   const char *url = "http://example.com/video.mp4";
@@ -511,7 +510,7 @@ TEST_CASE("stream_resolution_e2e/handle_rapid_sequential_requests", "[stream_res
   }
 }
 
-TEST_CASE("stream_resolution_e2e/handle_many_different_urls", "[stream_resolution_e2e]") {
+TEST_CASE("stream_resolution_e2e/handle_many_different_urls", "[stream_resolution_e2e] [integration]") {
   // Test handling of many different URLs
   const char *urls[] = {
       "http://example1.com/video.mp4",

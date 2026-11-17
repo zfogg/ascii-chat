@@ -13,7 +13,6 @@
  * They may be skipped or fail on systems without proper mDNS support.
  */
 
-#include <catch2/catch_all.hpp>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -52,7 +51,7 @@ static void lifecycle_callback(const asciichat_mdns_discovery_t *service, void *
     *found = *service;
 }
 
-TEST_CASE("mdns_integration/real_answers_survive_invalid_replacement_and_own_caller_records", "[mdns_integration]") {
+TEST_CASE("mdns_integration/real_answers_survive_invalid_replacement_and_own_caller_records", "[mdns_integration] [integration]") {
   asciichat_mdns_t *advertiser = asciichat_mdns_init();
   asciichat_mdns_t *query = asciichat_mdns_init();
   REQUIRE((advertiser) != nullptr);
@@ -119,7 +118,7 @@ TEST_CASE("mdns_integration/real_answers_survive_invalid_replacement_and_own_cal
   asciichat_mdns_destroy(query);
 }
 
-TEST_CASE("mdns_integration/initialization_cleanup_cycle", "[mdns_integration]") {
+TEST_CASE("mdns_integration/initialization_cleanup_cycle", "[mdns_integration] [integration]") {
   // Create and destroy multiple times to verify no resource leaks
   for (int i = 0; i < 3; i++) {
     asciichat_mdns_t *mdns = asciichat_mdns_init();
@@ -135,7 +134,7 @@ TEST_CASE("mdns_integration/initialization_cleanup_cycle", "[mdns_integration]")
 /**
  * @brief Test service advertisement registration
  */
-TEST_CASE("mdns_integration/service_advertisement_registration", "[mdns_integration]") {
+TEST_CASE("mdns_integration/service_advertisement_registration", "[mdns_integration] [integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -159,7 +158,7 @@ TEST_CASE("mdns_integration/service_advertisement_registration", "[mdns_integrat
 /**
  * @brief Test multiple services can be advertised
  */
-TEST_CASE("mdns_integration/multiple_services_advertisement", "[mdns_integration]") {
+TEST_CASE("mdns_integration/multiple_services_advertisement", "[mdns_integration] [integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -202,7 +201,7 @@ TEST_CASE("mdns_integration/multiple_services_advertisement", "[mdns_integration
 /**
  * @brief Test service unadvertisement
  */
-TEST_CASE("mdns_integration/service_unadvertisement", "[mdns_integration]") {
+TEST_CASE("mdns_integration/service_unadvertisement", "[mdns_integration] [integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -229,7 +228,7 @@ TEST_CASE("mdns_integration/service_unadvertisement", "[mdns_integration]") {
 /**
  * @brief Test query initialization without responses
  */
-TEST_CASE("mdns_integration/query_initialization", "[mdns_integration]") {
+TEST_CASE("mdns_integration/query_initialization", "[mdns_integration] [integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -247,7 +246,7 @@ TEST_CASE("mdns_integration/query_initialization", "[mdns_integration]") {
 /**
  * @brief Test update processing loop
  */
-TEST_CASE("mdns_integration/update_processing_loop", "[mdns_integration]") {
+TEST_CASE("mdns_integration/update_processing_loop", "[mdns_integration] [integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -269,7 +268,7 @@ TEST_CASE("mdns_integration/update_processing_loop", "[mdns_integration]") {
 /**
  * @brief Test service info with various port numbers
  */
-TEST_CASE("mdns_integration/service_with_various_ports", "[mdns_integration]") {
+TEST_CASE("mdns_integration/service_with_various_ports", "[mdns_integration] [integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -296,7 +295,7 @@ TEST_CASE("mdns_integration/service_with_various_ports", "[mdns_integration]") {
 /**
  * @brief Test service info with IPv6 hostname
  */
-TEST_CASE("mdns_integration/service_with_ipv6_hostname", "[mdns_integration]") {
+TEST_CASE("mdns_integration/service_with_ipv6_hostname", "[mdns_integration] [integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -318,7 +317,7 @@ TEST_CASE("mdns_integration/service_with_ipv6_hostname", "[mdns_integration]") {
 /**
  * @brief Test rapid advertise/unadvertise cycles
  */
-TEST_CASE("mdns_integration/rapid_advertise_unadvertise_cycles", "[mdns_integration]") {
+TEST_CASE("mdns_integration/rapid_advertise_unadvertise_cycles", "[mdns_integration] [integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 
@@ -346,7 +345,7 @@ TEST_CASE("mdns_integration/rapid_advertise_unadvertise_cycles", "[mdns_integrat
 /**
  * @brief Test error handling for invalid service types
  */
-TEST_CASE("mdns_integration/invalid_service_types", "[mdns_integration]") {
+TEST_CASE("mdns_integration/invalid_service_types", "[mdns_integration] [integration]") {
   asciichat_mdns_t *mdns = asciichat_mdns_init();
   REQUIRE((mdns) != nullptr);
 

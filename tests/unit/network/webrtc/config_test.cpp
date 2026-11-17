@@ -2,19 +2,18 @@
 #include <ascii-chat/network/webrtc/webrtc.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/tests/logging.h>
-#include <catch2/catch_all.hpp>
 
 static void setup(void) {
   REQUIRE((webrtc_init()) == (ASCIICHAT_OK));
 }
-TEST_CASE("webrtc_config/relay_requires_turn", "[webrtc_config]") {
+TEST_CASE("webrtc_config/relay_requires_turn", "[webrtc_config] [unit]") {
   webrtc_config_t config = {.relay_only = true};
   webrtc_peer_connection_t *pc = NULL;
   REQUIRE((webrtc_create_peer_connection(&config, &pc)) == (ERROR_INVALID_PARAM));
   REQUIRE((pc) == nullptr);
 }
 
-TEST_CASE("webrtc_config/turn_requires_complete_credentials", "[webrtc_config]") {
+TEST_CASE("webrtc_config/turn_requires_complete_credentials", "[webrtc_config] [unit]") {
   turn_server_t turn = {.url = "turn:127.0.0.1:3478", .username = "test"};
   webrtc_config_t config = {.turn_servers = &turn, .turn_count = 1};
   webrtc_peer_connection_t *pc = NULL;
@@ -22,7 +21,7 @@ TEST_CASE("webrtc_config/turn_requires_complete_credentials", "[webrtc_config]")
   REQUIRE((pc) == nullptr);
 }
 
-TEST_CASE("webrtc_config/rejects_invalid_turn_scheme", "[webrtc_config]") {
+TEST_CASE("webrtc_config/rejects_invalid_turn_scheme", "[webrtc_config] [unit]") {
   turn_server_t turn = {.url = "https://127.0.0.1:3478", .username = "test", .credential = "test"};
   webrtc_config_t config = {.turn_servers = &turn, .turn_count = 1};
   webrtc_peer_connection_t *pc = NULL;
@@ -30,7 +29,7 @@ TEST_CASE("webrtc_config/rejects_invalid_turn_scheme", "[webrtc_config]") {
   REQUIRE((pc) == nullptr);
 }
 
-TEST_CASE("webrtc_config/accepts_full_discovery_credentials_with_reserved_characters", "[webrtc_config]") {
+TEST_CASE("webrtc_config/accepts_full_discovery_credentials_with_reserved_characters", "[webrtc_config] [unit]") {
   turn_server_t turn = {.url = "turn:127.0.0.1:3478?transport=tcp"};
   webrtc_config_t config = {
       .turn_servers = &turn,

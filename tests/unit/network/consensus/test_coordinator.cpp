@@ -4,7 +4,6 @@
  * @brief Ring consensus coordinator unit tests
  */
 
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/consensus/coordinator.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/network/consensus/election.h>
@@ -71,7 +70,7 @@ static asciichat_error_t create_test_coordinator(const uint8_t id[16], const con
  * Basic Lifecycle Tests
  * ============================================================================ */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
-TEST_CASE("coordinator/create_and_destroy", "[coordinator]") {
+TEST_CASE("coordinator/create_and_destroy", "[coordinator] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -90,7 +89,7 @@ TEST_CASE("coordinator/create_and_destroy", "[coordinator]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("coordinator/create_invalid_params", "[coordinator]") {
+TEST_CASE("coordinator/create_invalid_params", "[coordinator] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -120,7 +119,7 @@ TEST_CASE("coordinator/create_invalid_params", "[coordinator]") {
  * Round Scheduling Tests
  * ============================================================================ */
 
-TEST_CASE("coordinator/round_scheduling_initial_interval", "[coordinator]") {
+TEST_CASE("coordinator/round_scheduling_initial_interval", "[coordinator] [unit]") {
   consensus_topology_t *topo = make_test_topology(2, 3); /* I'm the leader */
   uint8_t my_id[16];
   make_uuid(my_id, 3); /* Leader is at position 2 (0-indexed) */
@@ -140,7 +139,7 @@ TEST_CASE("coordinator/round_scheduling_initial_interval", "[coordinator]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("coordinator/process_does_not_start_round_if_not_leader", "[coordinator]") {
+TEST_CASE("coordinator/process_does_not_start_round_if_not_leader", "[coordinator] [unit]") {
   consensus_topology_t *topo = make_test_topology(0, 3); /* I'm not the leader */
   uint8_t my_id[16];
   make_uuid(my_id, 1);
@@ -164,7 +163,7 @@ TEST_CASE("coordinator/process_does_not_start_round_if_not_leader", "[coordinato
  * Leader Initiates Collection Tests
  * ============================================================================ */
 
-TEST_CASE("coordinator/leader_initiates_collection", "[coordinator]") {
+TEST_CASE("coordinator/leader_initiates_collection", "[coordinator] [unit]") {
   consensus_topology_t *topo = make_test_topology(2, 3); /* I'm the leader */
   uint8_t my_id[16];
   make_uuid(my_id, 3);
@@ -193,7 +192,7 @@ TEST_CASE("coordinator/leader_initiates_collection", "[coordinator]") {
  * Participant Relay Tests
  * ============================================================================ */
 
-TEST_CASE("coordinator/participant_receives_and_relays_metrics", "[coordinator]") {
+TEST_CASE("coordinator/participant_receives_and_relays_metrics", "[coordinator] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3); /* I'm not the leader */
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -230,7 +229,7 @@ TEST_CASE("coordinator/participant_receives_and_relays_metrics", "[coordinator]"
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("coordinator/stats_update_rejects_invalid_state", "[coordinator]") {
+TEST_CASE("coordinator/stats_update_rejects_invalid_state", "[coordinator] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -254,7 +253,7 @@ TEST_CASE("coordinator/stats_update_rejects_invalid_state", "[coordinator]") {
  * Election Result Storage Tests
  * ============================================================================ */
 
-TEST_CASE("coordinator/stores_election_result", "[coordinator]") {
+TEST_CASE("coordinator/stores_election_result", "[coordinator] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -283,7 +282,7 @@ TEST_CASE("coordinator/stores_election_result", "[coordinator]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("coordinator/get_current_host_uses_fallback", "[coordinator]") {
+TEST_CASE("coordinator/get_current_host_uses_fallback", "[coordinator] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -318,7 +317,7 @@ TEST_CASE("coordinator/get_current_host_uses_fallback", "[coordinator]") {
  * Timeout Handling Tests
  * ============================================================================ */
 
-TEST_CASE("coordinator/collection_completion_on_timeout", "[coordinator]") {
+TEST_CASE("coordinator/collection_completion_on_timeout", "[coordinator] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -347,7 +346,7 @@ TEST_CASE("coordinator/collection_completion_on_timeout", "[coordinator]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("coordinator/invalid_params_in_collection_start", "[coordinator]") {
+TEST_CASE("coordinator/invalid_params_in_collection_start", "[coordinator] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -367,7 +366,7 @@ TEST_CASE("coordinator/invalid_params_in_collection_start", "[coordinator]") {
  * Topology Update Tests
  * ============================================================================ */
 
-TEST_CASE("coordinator/on_ring_members_updates_topology", "[coordinator]") {
+TEST_CASE("coordinator/on_ring_members_updates_topology", "[coordinator] [unit]") {
   consensus_topology_t *topo1 = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -391,7 +390,7 @@ TEST_CASE("coordinator/on_ring_members_updates_topology", "[coordinator]") {
   consensus_topology_destroy(topo2);
 }
 
-TEST_CASE("coordinator/on_ring_members_resets_state_during_collection", "[coordinator]") {
+TEST_CASE("coordinator/on_ring_members_resets_state_during_collection", "[coordinator] [unit]") {
   consensus_topology_t *topo1 = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -426,7 +425,7 @@ TEST_CASE("coordinator/on_ring_members_resets_state_during_collection", "[coordi
  * Process Tests
  * ============================================================================ */
 
-TEST_CASE("coordinator/process_tolerates_null_timeout", "[coordinator]") {
+TEST_CASE("coordinator/process_tolerates_null_timeout", "[coordinator] [unit]") {
   consensus_topology_t *topo = make_test_topology(0, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 1);
@@ -448,17 +447,17 @@ TEST_CASE("coordinator/process_tolerates_null_timeout", "[coordinator]") {
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("coordinator/process_rejects_null_coordinator", "[coordinator]") {
+TEST_CASE("coordinator/process_rejects_null_coordinator", "[coordinator] [unit]") {
   asciichat_error_t err = consensus_coordinator_process(NULL, 100);
   REQUIRE((err) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("coordinator/get_state_of_null_coordinator", "[coordinator]") {
+TEST_CASE("coordinator/get_state_of_null_coordinator", "[coordinator] [unit]") {
   consensus_state_machine_t state = consensus_coordinator_get_state(NULL);
   REQUIRE((state) == (CONSENSUS_STATE_FAILED));
 }
 
-TEST_CASE("coordinator/time_until_next_round_with_null", "[coordinator]") {
+TEST_CASE("coordinator/time_until_next_round_with_null", "[coordinator] [unit]") {
   uint64_t time_until = consensus_coordinator_time_until_next_round(NULL);
   REQUIRE((time_until) == (0));
 }
@@ -467,7 +466,7 @@ TEST_CASE("coordinator/time_until_next_round_with_null", "[coordinator]") {
  * Election Result Fallback Tests
  * ============================================================================ */
 
-TEST_CASE("coordinator/election_result_persists_across_states", "[coordinator]") {
+TEST_CASE("coordinator/election_result_persists_across_states", "[coordinator] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);
@@ -498,7 +497,7 @@ TEST_CASE("coordinator/election_result_persists_across_states", "[coordinator]")
   consensus_topology_destroy(topo);
 }
 
-TEST_CASE("coordinator/metrics_count_increases_with_updates", "[coordinator]") {
+TEST_CASE("coordinator/metrics_count_increases_with_updates", "[coordinator] [unit]") {
   consensus_topology_t *topo = make_test_topology(1, 3);
   uint8_t my_id[16];
   make_uuid(my_id, 2);

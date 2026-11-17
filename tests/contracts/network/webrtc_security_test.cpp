@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
@@ -275,34 +274,34 @@ static void teardown(void) {
   socket_cleanup();
   log_destroy();
 }
-TEST_CASE("webrtc_security/plaintext", "[webrtc_security]") {
+TEST_CASE("webrtc_security/plaintext", "[webrtc_security] [contract]") {
   fixture(ACIP_CRYPTO_NONE, NULL, false, 0);
 }
 
-TEST_CASE("webrtc_security/encrypted", "[webrtc_security]") {
+TEST_CASE("webrtc_security/encrypted", "[webrtc_security] [contract]") {
   fixture(ACIP_CRYPTO_ENCRYPT, NULL, false, 0);
 }
 
-TEST_CASE("webrtc_security/password_full", "[webrtc_security]") {
+TEST_CASE("webrtc_security/password_full", "[webrtc_security] [contract]") {
   fixture(ACIP_CRYPTO_FULL, "peer-test-password", false, 0);
 }
 
-TEST_CASE("webrtc_security/password_auth", "[webrtc_security]") {
+TEST_CASE("webrtc_security/password_auth", "[webrtc_security] [contract]") {
   fixture(ACIP_CRYPTO_AUTH, "peer-test-password", false, 0);
 }
 
-TEST_CASE("webrtc_security/identity_auth", "[webrtc_security]") {
+TEST_CASE("webrtc_security/identity_auth", "[webrtc_security] [contract]") {
   fixture(ACIP_CRYPTO_AUTH, NULL, true, 0);
 }
 
-TEST_CASE("webrtc_security/reject_password", "[webrtc_security]") {
+TEST_CASE("webrtc_security/reject_password", "[webrtc_security] [contract]") {
   fixture(ACIP_CRYPTO_FULL, "peer-test-password", false, 1);
 }
 
-TEST_CASE("webrtc_security/reject_identity", "[webrtc_security]") {
+TEST_CASE("webrtc_security/reject_identity", "[webrtc_security] [contract]") {
   fixture(ACIP_CRYPTO_FULL, NULL, true, 2);
 }
 
-TEST_CASE("webrtc_security/reject_signature", "[webrtc_security]") {
+TEST_CASE("webrtc_security/reject_signature", "[webrtc_security] [contract]") {
   fixture(ACIP_CRYPTO_AUTH, NULL, true, 3);
 }

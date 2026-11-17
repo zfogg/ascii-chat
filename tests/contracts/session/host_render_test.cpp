@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <options/runtime.h>
 /* Capability packets must affect the frames delivered by the discovery host. */
 #include "session/host.h"
@@ -79,7 +78,7 @@ static void patch(session_host_t *host, uint32_t id, const char *json) {
   REQUIRE((session_host_receive_packet(host, id, PACKET_TYPE_ACIP_SETTINGS_SYNC, payload, length)) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("host_render/default_remote_fps_is_serialized_as_auto", "[host_render]") {
+TEST_CASE("host_render/default_remote_fps_is_serialized_as_auto", "[host_render] [contract]") {
   options_t values = {0};
   char *json = options_values_json(&values, true);
   REQUIRE(json);
@@ -400,7 +399,7 @@ static void teardown(void) {
   options_state_destroy();
   log_destroy();
 }
-TEST_CASE("host_render/recipient_settings_and_delivery", "[host_render]") {
+TEST_CASE("host_render/recipient_settings_and_delivery", "[host_render] [contract]") {
   session_host_config_t config = {.max_clients = 4};
   session_host_t *host = session_host_create(&config);
   REQUIRE(host);
@@ -528,27 +527,27 @@ TEST_CASE("host_render/recipient_settings_and_delivery", "[host_render]") {
   image_destroy(image);
 }
 
-TEST_CASE("host_render/audio_cadence", "[host_render]") {
+TEST_CASE("host_render/audio_cadence", "[host_render] [contract]") {
   test_audio_cadence();
 }
 
-TEST_CASE("host_render/reentry", "[host_render]") {
+TEST_CASE("host_render/reentry", "[host_render] [contract]") {
   test_host_reentry();
 }
 
-TEST_CASE("host_render/transport_ownership", "[host_render]") {
+TEST_CASE("host_render/transport_ownership", "[host_render] [contract]") {
   test_transport_ownership();
 }
 
-TEST_CASE("host_render/listener", "[host_render]") {
+TEST_CASE("host_render/listener", "[host_render] [contract]") {
   test_host_listener();
 }
 
-TEST_CASE("host_render/listener_interrupt", "[host_render]") {
+TEST_CASE("host_render/listener_interrupt", "[host_render] [contract]") {
   test_listener_interrupt();
 }
 
-TEST_CASE("host_render/tcp_delivery", "[host_render]") {
+TEST_CASE("host_render/tcp_delivery", "[host_render] [contract]") {
   image_t *image = image_new(8, 4);
   REQUIRE((image) != nullptr);
   for (int i = 0; i < image->w * image->h; ++i)
@@ -557,7 +556,7 @@ TEST_CASE("host_render/tcp_delivery", "[host_render]") {
   image_destroy(image);
 }
 
-TEST_CASE("host_render/ascii_only_display", "[host_render]") {
+TEST_CASE("host_render/ascii_only_display", "[host_render] [contract]") {
   image_t *image = image_new(8, 4);
   REQUIRE((image) != nullptr);
   for (int i = 0; i < image->w * image->h; ++i)
@@ -566,7 +565,7 @@ TEST_CASE("host_render/ascii_only_display", "[host_render]") {
   image_destroy(image);
 }
 
-TEST_CASE("host_render/mirror_output_validation", "[host_render]") {
+TEST_CASE("host_render/mirror_output_validation", "[host_render] [contract]") {
   REQUIRE((options_set_int("width", 40)) == (ASCIICHAT_OK));
   REQUIRE((options_set_int("height", 12)) == (ASCIICHAT_OK));
   options_edit_t edits[] = {
@@ -642,7 +641,7 @@ static asciichat_error_t broadcast_send(acip_transport_t *transport, const void 
   session_protocol_init(&protocol, transport, (session_protocol_media_t){.on_frame = broadcast_frame_received, .context = sink}, (acip_client_callbacks_t){0});
   return session_protocol_dispatch(&protocol, PACKET_TYPE_ASCII_FRAME, (const uint8_t *)data + sizeof(header), length - sizeof(header));
 }
-TEST_CASE("host_render/broadcast_and_targeted_frames_preserve_membership_when_one_recipient_fails", "[host_render]") {
+TEST_CASE("host_render/broadcast_and_targeted_frames_preserve_membership_when_one_recipient_fails", "[host_render] [contract]") {
   socket_init();
   session_host_config_t config = {.port = unused_port(), .ipv4_address = "127.0.0.1", .max_clients = 3};
   session_host_t *host = session_host_create(&config);
@@ -689,7 +688,7 @@ TEST_CASE("host_render/broadcast_and_targeted_frames_preserve_membership_when_on
   REQUIRE((session_host_destroy(host)) == (ASCIICHAT_OK));
   socket_cleanup();
 }
-TEST_CASE("host_render/rejected_transport_replacement_and_missing_members_leave_existing_client_intact", "[host_render]") {
+TEST_CASE("host_render/rejected_transport_replacement_and_missing_members_leave_existing_client_intact", "[host_render] [contract]") {
   session_host_config_t config = {.max_clients = 1};
   session_host_t *host = session_host_create(&config);
   REQUIRE((host) != nullptr);
@@ -710,7 +709,7 @@ TEST_CASE("host_render/rejected_transport_replacement_and_missing_members_leave_
   REQUIRE((session_host_destroy(host)) == (ASCIICHAT_OK));
 }
 
-TEST_CASE("host_render/native_display_backend_renders_borrowed_source_and_can_be_detached", "[host_render]") {
+TEST_CASE("host_render/native_display_backend_renders_borrowed_source_and_can_be_detached", "[host_render] [contract]") {
   REQUIRE((options_set_int("width", 40)) == (ASCIICHAT_OK));
   REQUIRE((options_set_int("height", 12)) == (ASCIICHAT_OK));
   FILE *output = platform_tmpfile();

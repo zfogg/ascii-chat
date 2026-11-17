@@ -1,6 +1,6 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -42,7 +42,7 @@ static image_new_test_case_t image_new_cases[] = {
     {IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT, true, "Maximum allowed dimensions"},
 };
 
-TEST_CASE("image/image_new_dimensions", "[image]") {
+TEST_CASE("image/image_new_dimensions", "[image] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(image_new_cases), std::end(image_new_cases)));
   auto *tc = &generated_case;
   image_t *img = image_new(tc->width, tc->height);
@@ -59,12 +59,12 @@ TEST_CASE("image/image_new_dimensions", "[image]") {
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("image/image_destroy_null", "[image]") {
+TEST_CASE("image/image_destroy_null", "[image] [unit]") {
   // Should not crash when destroying NULL image
   image_destroy(NULL);
 }
 
-TEST_CASE("image/image_destroy_multiple_times", "[image]") {
+TEST_CASE("image/image_destroy_multiple_times", "[image] [unit]") {
   image_t *img = image_new(10, 10);
   REQUIRE((img) != nullptr);
 
@@ -77,7 +77,7 @@ TEST_CASE("image/image_destroy_multiple_times", "[image]") {
  * Image Ownership Tests
  * ============================================================================ */
 
-TEST_CASE("image/image_new_basic", "[image]") {
+TEST_CASE("image/image_new_basic", "[image] [unit]") {
   image_t *img = image_new(10, 10);
   REQUIRE((img) != nullptr);
   REQUIRE((img->w) == (10));
@@ -87,7 +87,7 @@ TEST_CASE("image/image_new_basic", "[image]") {
   image_destroy(img);
 }
 
-TEST_CASE("image/image_new_zero_dimensions", "[image]") {
+TEST_CASE("image/image_new_zero_dimensions", "[image] [unit]") {
   image_t *img = image_new(0, 0);
   REQUIRE((img) == nullptr); // Should return NULL for zero dimensions
 }
@@ -96,7 +96,7 @@ TEST_CASE("image/image_new_zero_dimensions", "[image]") {
  * Image Clear Tests
  * ============================================================================ */
 
-TEST_CASE("image/image_clear_basic", "[image]") {
+TEST_CASE("image/image_clear_basic", "[image] [unit]") {
   image_t *img = image_new(10, 10);
   REQUIRE((img) != nullptr);
 
@@ -116,12 +116,12 @@ TEST_CASE("image/image_clear_basic", "[image]") {
   image_destroy(img);
 }
 
-TEST_CASE("image/image_clear_null", "[image]") {
+TEST_CASE("image/image_clear_null", "[image] [unit]") {
   // Note: image_clear doesn't check for NULL, so this test is removed
   // to avoid crashes. The function should be fixed to handle NULL gracefully.
 }
 
-TEST_CASE("image/image_clear_zero_dimensions", "[image]") {
+TEST_CASE("image/image_clear_zero_dimensions", "[image] [unit]") {
   // Zero dimensions are invalid - image_new will return NULL
   image_t *img = image_new(0, 0);
   REQUIRE((img) == nullptr);
@@ -140,7 +140,7 @@ TEST_CASE("image/image_clear_zero_dimensions", "[image]") {
  * Image Print Tests
  * ============================================================================ */
 
-TEST_CASE("image/image_print_basic", "[image]") {
+TEST_CASE("image/image_print_basic", "[image] [unit]") {
   image_t *img = image_new(2, 2);
   REQUIRE((img) != nullptr);
 
@@ -160,7 +160,7 @@ TEST_CASE("image/image_print_basic", "[image]") {
   image_destroy(img);
 }
 
-TEST_CASE("image/image_print_color_basic", "[image]") {
+TEST_CASE("image/image_print_color_basic", "[image] [unit]") {
   image_t *img = image_new(2, 2);
   REQUIRE((img) != nullptr);
 
@@ -180,13 +180,13 @@ TEST_CASE("image/image_print_color_basic", "[image]") {
   image_destroy(img);
 }
 
-TEST_CASE("image/image_print_null_image", "[image]") {
+TEST_CASE("image/image_print_null_image", "[image] [unit]") {
   const char *palette = "@#$%&*+=-:. ";
   char *result = image_print(NULL, palette);
   REQUIRE((result) == nullptr);
 }
 
-TEST_CASE("image/image_print_null_palette", "[image]") {
+TEST_CASE("image/image_print_null_palette", "[image] [unit]") {
   image_t *img = image_new(2, 2);
   REQUIRE((img) != nullptr);
 
@@ -196,7 +196,7 @@ TEST_CASE("image/image_print_null_palette", "[image]") {
   image_destroy(img);
 }
 
-TEST_CASE("image/image_print_empty_palette", "[image]") {
+TEST_CASE("image/image_print_empty_palette", "[image] [unit]") {
   image_t *img = image_new(2, 2);
   REQUIRE((img) != nullptr);
 
@@ -206,7 +206,7 @@ TEST_CASE("image/image_print_empty_palette", "[image]") {
   image_destroy(img);
 }
 
-TEST_CASE("image/image_print_zero_dimensions", "[image]") {
+TEST_CASE("image/image_print_zero_dimensions", "[image] [unit]") {
   // Zero dimensions are invalid - image_new will return NULL
   image_t *img = image_new(0, 0);
   REQUIRE((img) == nullptr);
@@ -231,7 +231,7 @@ TEST_CASE("image/image_print_zero_dimensions", "[image]") {
  * Image Resize Tests
  * ============================================================================ */
 
-TEST_CASE("image/image_resize_basic", "[image]") {
+TEST_CASE("image/image_resize_basic", "[image] [unit]") {
   image_t *source = image_new(4, 4);
   REQUIRE((source) != nullptr);
 
@@ -252,7 +252,7 @@ TEST_CASE("image/image_resize_basic", "[image]") {
   image_destroy(dest);
 }
 
-TEST_CASE("image/image_resize_null_source", "[image]") {
+TEST_CASE("image/image_resize_null_source", "[image] [unit]") {
   image_t *dest = image_new(2, 2);
   REQUIRE((dest) != nullptr);
 
@@ -262,7 +262,7 @@ TEST_CASE("image/image_resize_null_source", "[image]") {
   image_destroy(dest);
 }
 
-TEST_CASE("image/image_resize_null_dest", "[image]") {
+TEST_CASE("image/image_resize_null_dest", "[image] [unit]") {
   image_t *source = image_new(4, 4);
   REQUIRE((source) != nullptr);
 
@@ -272,7 +272,7 @@ TEST_CASE("image/image_resize_null_dest", "[image]") {
   image_destroy(source);
 }
 
-TEST_CASE("image/image_resize_same_size", "[image]") {
+TEST_CASE("image/image_resize_same_size", "[image] [unit]") {
   image_t *source = image_new(2, 2);
   REQUIRE((source) != nullptr);
 
@@ -295,7 +295,7 @@ TEST_CASE("image/image_resize_same_size", "[image]") {
   image_destroy(dest);
 }
 
-TEST_CASE("image/image_resize_interpolation_basic", "[image]") {
+TEST_CASE("image/image_resize_interpolation_basic", "[image] [unit]") {
   image_t *source = image_new(4, 4);
   REQUIRE((source) != nullptr);
 
@@ -316,7 +316,7 @@ TEST_CASE("image/image_resize_interpolation_basic", "[image]") {
   image_destroy(dest);
 }
 
-TEST_CASE("image/image_resize_interpolation_null_source", "[image]") {
+TEST_CASE("image/image_resize_interpolation_null_source", "[image] [unit]") {
   image_t *dest = image_new(2, 2);
   REQUIRE((dest) != nullptr);
 
@@ -326,7 +326,7 @@ TEST_CASE("image/image_resize_interpolation_null_source", "[image]") {
   image_destroy(dest);
 }
 
-TEST_CASE("image/image_resize_interpolation_null_dest", "[image]") {
+TEST_CASE("image/image_resize_interpolation_null_dest", "[image] [unit]") {
   image_t *source = image_new(4, 4);
   REQUIRE((source) != nullptr);
 
@@ -340,7 +340,7 @@ TEST_CASE("image/image_resize_interpolation_null_dest", "[image]") {
  * Color Quantization Tests
  * ============================================================================ */
 
-TEST_CASE("image/quantize_color_basic", "[image]") {
+TEST_CASE("image/quantize_color_basic", "[image] [unit]") {
   int r = 255, g = 128, b = 64;
   quantize_color(&r, &g, &b, 8);
 
@@ -353,17 +353,17 @@ TEST_CASE("image/quantize_color_basic", "[image]") {
   REQUIRE(b <= 255);
 }
 
-TEST_CASE("image/quantize_color_null_pointers", "[image]") {
+TEST_CASE("image/quantize_color_null_pointers", "[image] [unit]") {
   // Note: quantize_color doesn't check for NULL, so this test is removed
   // to avoid crashes. The function should be fixed to handle NULL gracefully.
 }
 
-TEST_CASE("image/quantize_color_zero_levels", "[image]") {
+TEST_CASE("image/quantize_color_zero_levels", "[image] [unit]") {
   // Note: quantize_color with zero levels causes division by zero
   // This test is removed to avoid crashes. The function should be fixed.
 }
 
-TEST_CASE("image/quantize_color_single_level", "[image]") {
+TEST_CASE("image/quantize_color_single_level", "[image] [unit]") {
   int r = 255, g = 128, b = 64;
   quantize_color(&r, &g, &b, 1);
 
@@ -372,7 +372,7 @@ TEST_CASE("image/quantize_color_single_level", "[image]") {
   REQUIRE(r <= 255);
 }
 
-TEST_CASE("image/quantize_color_256_levels", "[image]") {
+TEST_CASE("image/quantize_color_256_levels", "[image] [unit]") {
   int r = 255, g = 128, b = 64;
   quantize_color(&r, &g, &b, 256);
 
@@ -397,7 +397,7 @@ static rgb_color_test_case_t rgb_color_cases[] = {
     {0, 0, 0, "Black (0, 0, 0)"},   {255, 255, 255, "White (255, 255, 255)"}, {255, 128, 64, "Mid-range orange (255, 128, 64)"},
 };
 
-TEST_CASE("image/rgb_to_ansi_fg_variations", "[image]") {
+TEST_CASE("image/rgb_to_ansi_fg_variations", "[image] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(rgb_color_cases), std::end(rgb_color_cases)));
   auto *tc = &generated_case;
   char *result = rgb_to_ansi_fg(tc->r, tc->g, tc->b);
@@ -406,7 +406,7 @@ TEST_CASE("image/rgb_to_ansi_fg_variations", "[image]") {
   // Note: result points to static buffer, no need to free
 }
 
-TEST_CASE("image/rgb_to_ansi_bg_variations", "[image]") {
+TEST_CASE("image/rgb_to_ansi_bg_variations", "[image] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(rgb_color_cases), std::end(rgb_color_cases)));
   auto *tc = &generated_case;
   char *result = rgb_to_ansi_bg(tc->r, tc->g, tc->b);
@@ -415,7 +415,7 @@ TEST_CASE("image/rgb_to_ansi_bg_variations", "[image]") {
   // Note: result points to static buffer, no need to free
 }
 
-TEST_CASE("image/rgb_to_ansi_8bit_variations", "[image]") {
+TEST_CASE("image/rgb_to_ansi_8bit_variations", "[image] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(rgb_color_cases), std::end(rgb_color_cases)));
   auto *tc = &generated_case;
   int fg_code, bg_code;
@@ -427,7 +427,7 @@ TEST_CASE("image/rgb_to_ansi_8bit_variations", "[image]") {
   REQUIRE(bg_code <= 255);
 }
 
-TEST_CASE("image/rgb_to_ansi_8bit_null_pointers", "[image]") {
+TEST_CASE("image/rgb_to_ansi_8bit_null_pointers", "[image] [unit]") {
   // Note: rgb_to_ansi_8bit doesn't check for NULL, so this test is removed
   // to avoid crashes. The function should be fixed to handle NULL gracefully.
 }
@@ -450,7 +450,7 @@ static precalc_palette_test_case_t precalc_palette_cases[] = {
     {10.0f, 10.0f, 10.0f, "Large values (10.0)"},
 };
 
-TEST_CASE("image/precalc_rgb_palettes_variations", "[image]") {
+TEST_CASE("image/precalc_rgb_palettes_variations", "[image] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(precalc_palette_cases), std::end(precalc_palette_cases)));
   auto *tc = &generated_case;
   // Should not crash with any values
@@ -462,7 +462,7 @@ TEST_CASE("image/precalc_rgb_palettes_variations", "[image]") {
  * Edge Cases and Error Handling Tests
  * ============================================================================ */
 
-TEST_CASE("image/image_operations_with_null_image", "[image]") {
+TEST_CASE("image/image_operations_with_null_image", "[image] [unit]") {
   // Test operations that do handle NULL gracefully
   image_destroy(NULL);
   image_destroy(NULL);
@@ -489,7 +489,7 @@ TEST_CASE("image/image_operations_with_null_image", "[image]") {
   image_destroy(img);
 }
 
-TEST_CASE("image/image_operations_with_zero_dimensions", "[image]") {
+TEST_CASE("image/image_operations_with_zero_dimensions", "[image] [unit]") {
   // Zero dimensions are invalid - image_new will return NULL
   image_t *img = image_new(0, 0);
   REQUIRE((img) == nullptr);
@@ -510,7 +510,7 @@ TEST_CASE("image/image_operations_with_zero_dimensions", "[image]") {
   image_destroy(img);
 }
 
-TEST_CASE("image/image_memory_allocation_failure_simulation", "[image]") {
+TEST_CASE("image/image_memory_allocation_failure_simulation", "[image] [unit]") {
   // This is hard to test reliably, but we can test the error handling paths
   // by using very large dimensions that might cause allocation failure
   image_t *img = image_new(SIZE_MAX, SIZE_MAX);

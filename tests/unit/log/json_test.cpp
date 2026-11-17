@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/log/json.h>
 #include <libplatform/filesystem.h>
 #include <ascii-chat/common.h>
@@ -46,7 +45,7 @@ static yyjson_val *read_record(void) {
   return yyjson_doc_get_root(parsed);
 }
 
-TEST_CASE("json_log/structured_records_preserve_escaped_values_and_optional_metadata", "[json_log]") {
+TEST_CASE("json_log/structured_records_preserve_escaped_values_and_optional_metadata", "[json_log] [unit]") {
   const char message[] = "quote \" slash \\ newline\ncarriage\rtab\tcontrol\x01 unicode \xc3\xa9";
   const uint64_t timestamp = UINT64_C(1700000000123456789);
   log_json_write(fixture_fd, LOG_WARN, timestamp, "lib/log/json.c", 42, "test_json", message);
@@ -73,7 +72,7 @@ TEST_CASE("json_log/structured_records_preserve_escaped_values_and_optional_meta
   REQUIRE((fgetc(fixture_stream)) == (EOF));
 }
 
-TEST_CASE("json_log/async_records_escape_controls_and_remain_one_line", "[json_log]") {
+TEST_CASE("json_log/async_records_escape_controls_and_remain_one_line", "[json_log] [unit]") {
   const char message[] = "\"\\\n\r\t\x01 text";
   log_json_async_safe(fixture_fd, LOG_ERROR, "lib/quoted\"file.c", 9, "function\\name", message);
   log_json_async_safe(fixture_fd, LOG_FATAL, NULL, 0, NULL, "");
@@ -92,7 +91,7 @@ TEST_CASE("json_log/async_records_escape_controls_and_remain_one_line", "[json_l
   REQUIRE((fgetc(fixture_stream)) == (EOF));
 }
 
-TEST_CASE("json_log/async_truncation_does_not_split_escape_sequences", "[json_log]") {
+TEST_CASE("json_log/async_truncation_does_not_split_escape_sequences", "[json_log] [unit]") {
   char message[700];
   memset(message, 'x', sizeof(message));
   message[510] = '"';
@@ -106,7 +105,7 @@ TEST_CASE("json_log/async_truncation_does_not_split_escape_sequences", "[json_lo
   REQUIRE((memcmp(actual, message, 510)) == (0));
 }
 
-TEST_CASE("json_log/async_truncation_keeps_complete_utf8_characters", "[json_log]") {
+TEST_CASE("json_log/async_truncation_keeps_complete_utf8_characters", "[json_log] [unit]") {
   const char *characters[] = {"\xc3\xa9", "\xe2\x96\x91", "\xf0\x9f\x98\x80"};
   for (size_t i = 0; i < 3; ++i) {
     char message[520];
@@ -134,7 +133,7 @@ TEST_CASE("json_log/async_truncation_keeps_complete_utf8_characters", "[json_log
   }
 }
 
-TEST_CASE("json_log/level_names_and_invalid_inputs", "[json_log]") {
+TEST_CASE("json_log/level_names_and_invalid_inputs", "[json_log] [unit]") {
   const log_level_t levels[] = {LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL, (log_level_t)99};
   const char *names[] = {"DEBUG", "INFO", "WARN", "ERROR", "FATAL", "UNKNOWN"};
   log_json_write(-1, LOG_INFO, 0, NULL, 0, NULL, "ignored");

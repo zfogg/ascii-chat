@@ -1,12 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/policy.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/common/protocol_constants.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
 
-TEST_CASE("crypto_policy/resolves_supported_combinations", "[crypto_policy]") {
+TEST_CASE("crypto_policy/resolves_supported_combinations", "[crypto_policy] [contract]") {
   struct {
     crypto_policy_t input;
     uint8_t expected;
@@ -33,7 +32,7 @@ TEST_CASE("crypto_policy/resolves_supported_combinations", "[crypto_policy]") {
   }
 }
 
-TEST_CASE("crypto_policy/rejects_conflicts_without_changing_output", "[crypto_policy]") {
+TEST_CASE("crypto_policy/rejects_conflicts_without_changing_output", "[crypto_policy] [contract]") {
   crypto_policy_t invalid[] = {
       {.encrypt = true, .no_encrypt = true},
       {.no_auth = true, .has_identity = true},
@@ -48,7 +47,7 @@ TEST_CASE("crypto_policy/rejects_conflicts_without_changing_output", "[crypto_po
   }
 }
 
-TEST_CASE("crypto_policy/checks_all_mode_constraints", "[crypto_policy]") {
+TEST_CASE("crypto_policy/checks_all_mode_constraints", "[crypto_policy] [contract]") {
   for (unsigned secure = 0; secure < 2; ++secure) {
     for (unsigned encrypt = 0; encrypt < 2; ++encrypt) {
       for (unsigned no_encrypt = 0; no_encrypt < 2; ++no_encrypt) {
@@ -65,7 +64,7 @@ TEST_CASE("crypto_policy/checks_all_mode_constraints", "[crypto_policy]") {
   }
 }
 
-TEST_CASE("crypto_policy/rejects_missing_arguments_without_writing_output", "[crypto_policy]") {
+TEST_CASE("crypto_policy/rejects_missing_arguments_without_writing_output", "[crypto_policy] [contract]") {
   crypto_policy_t policy = {0};
   uint8_t mode = 0xa5;
   REQUIRE((crypto_policy_resolve(NULL, &mode)) == (ERROR_INVALID_PARAM));
@@ -75,14 +74,14 @@ TEST_CASE("crypto_policy/rejects_missing_arguments_without_writing_output", "[cr
   CLEAR_ERRNO();
 }
 
-TEST_CASE("crypto_policy/rejects_unknown_wire_modes", "[crypto_policy]") {
+TEST_CASE("crypto_policy/rejects_unknown_wire_modes", "[crypto_policy] [contract]") {
   for (unsigned mode = ACIP_CRYPTO_FULL + 1; mode <= UINT8_MAX; ++mode) {
     REQUIRE((crypto_policy_check_mode(true, false, false, false, (uint8_t)mode)) == (ERROR_CRYPTO));
     CLEAR_ERRNO();
   }
 }
 
-TEST_CASE("crypto_policy/protocol_version_packet_matches_authoritative_constants", "[crypto_policy]") {
+TEST_CASE("crypto_policy/protocol_version_packet_matches_authoritative_constants", "[crypto_policy] [contract]") {
   protocol_version_packet_t version;
   protocol_version_packet_init(&version, ACIP_CRYPTO_ENCRYPT);
   REQUIRE((NET_TO_HOST_U16(version.protocol_version)) == (PROTOCOL_VERSION_MAJOR));

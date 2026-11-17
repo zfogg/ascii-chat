@@ -19,7 +19,6 @@
 
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/common.h>
-#include <catch2/catch_all.hpp>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -278,7 +277,7 @@ static bool extract_session_string(const char *log_line, char *session_string, s
  */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]") {
+TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e] [integration]") {
   const char *binary_path = test_get_binary_path();
   int acds_port = get_unique_test_port();
   char port_str[16];

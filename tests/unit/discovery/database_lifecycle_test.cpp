@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/tests/logging.h>
 #include <libplatform/thread.h>
@@ -27,7 +26,7 @@ static void teardown(void) {
   database_close(db);
   db = NULL;
 }
-TEST_CASE("database_lifecycle/shared_connection_is_serialized", "[database_lifecycle]") {
+TEST_CASE("database_lifecycle/shared_connection_is_serialized", "[database_lifecycle] [unit]") {
   REQUIRE((sqlite3_db_mutex(db)) != nullptr);
 }
 
@@ -54,7 +53,7 @@ static void *concurrent_session_lookup(void *data) {
   return NULL;
 }
 
-TEST_CASE("database_lifecycle/shared_connection_handles_concurrent_session_lookups", "[database_lifecycle]") {
+TEST_CASE("database_lifecycle/shared_connection_handles_concurrent_session_lookups", "[database_lifecycle] [unit]") {
   enum { WORKERS = 4 };
   atomic_bool start = false;
   concurrent_lookup_t lookups[WORKERS] = {0};
@@ -74,7 +73,7 @@ TEST_CASE("database_lifecycle/shared_connection_handles_concurrent_session_looku
     REQUIRE(lookups[i].success);
 }
 
-TEST_CASE("database_lifecycle/key_rotation_is_ordered_bounded_and_revocation_cannot_be_undone_by_readding", "[database_lifecycle]") {
+TEST_CASE("database_lifecycle/key_rotation_is_ordered_bounded_and_revocation_cannot_be_undone_by_readding", "[database_lifecycle] [unit]") {
   uint8_t first[32] = {1}, second[32] = {2}, missing[32] = {3}, keys[3][32] = {{0}};
   const char *name = session.session_string;
   REQUIRE(!(database_session_verify_key(db, name, first)));
@@ -101,7 +100,7 @@ TEST_CASE("database_lifecycle/key_rotation_is_ordered_bounded_and_revocation_can
   REQUIRE(!(database_session_verify_key(NULL, name, first)));
 }
 
-TEST_CASE("database_lifecycle/host_migration_and_inactivity_cleanup_update_the_persisted_session", "[database_lifecycle]") {
+TEST_CASE("database_lifecycle/host_migration_and_inactivity_cleanup_update_the_persisted_session", "[database_lifecycle] [unit]") {
   uint8_t host[16] = {42};
   REQUIRE((database_session_update_host(db, session.session_id, host, "127.0.0.2", 30000, 0)) == (ASCIICHAT_OK));
   session_entry_t *entry = database_session_find_by_id(db, session.session_id);
@@ -129,7 +128,7 @@ TEST_CASE("database_lifecycle/host_migration_and_inactivity_cleanup_update_the_p
   REQUIRE((database_session_find_by_id(db, session.session_id)) == nullptr);
 }
 
-TEST_CASE("database_lifecycle/transport_endpoints_are_hidden_after_host_changes", "[database_lifecycle]") {
+TEST_CASE("database_lifecycle/transport_endpoints_are_hidden_after_host_changes", "[database_lifecycle] [unit]") {
   uint8_t metadata[10] = {'A', 'C', 'Q', 'T', 1}, output[10], new_host[16] = {42};
   size_t length = 0;
   REQUIRE((database_session_transport_set(db, session.session_id, metadata, sizeof(metadata))) == (ASCIICHAT_OK));
@@ -141,7 +140,7 @@ TEST_CASE("database_lifecycle/transport_endpoints_are_hidden_after_host_changes"
   REQUIRE((length) == (0));
 }
 
-TEST_CASE("database_lifecycle/transport_storage_failure_rolls_back_session_creation", "[database_lifecycle]") {
+TEST_CASE("database_lifecycle/transport_storage_failure_rolls_back_session_creation", "[database_lifecycle] [unit]") {
   REQUIRE(((sqlite3_exec(db,
                          "CREATE TRIGGER reject_transport BEFORE INSERT ON session_transports BEGIN SELECT "
                          "RAISE(FAIL, 'test rejection'); END;",
@@ -158,7 +157,7 @@ TEST_CASE("database_lifecycle/transport_storage_failure_rolls_back_session_creat
   sqlite3_finalize(statement);
 }
 
-TEST_CASE("database_lifecycle/successor_transports_follow_the_host_and_failed_refresh_rolls_back", "[database_lifecycle]") {
+TEST_CASE("database_lifecycle/successor_transports_follow_the_host_and_failed_refresh_rolls_back", "[database_lifecycle] [unit]") {
   uint8_t old_metadata[10] = {'A', 'C', 'Q', 'T', 1, 0, 0x75, 0x31, 0, 0};
   uint8_t fresh_metadata[10] = {'A', 'C', 'Q', 'T', 1, 0, 0x75, 0x32, 0, 0};
   uint8_t first[16] = {42}, second[16] = {43}, output[10];
@@ -191,7 +190,7 @@ TEST_CASE("database_lifecycle/successor_transports_follow_the_host_and_failed_re
   REQUIRE((length) == (0));
 }
 
-TEST_CASE("database_lifecycle/clearing_a_failed_host_cannot_republish_its_old_transport", "[database_lifecycle]") {
+TEST_CASE("database_lifecycle/clearing_a_failed_host_cannot_republish_its_old_transport", "[database_lifecycle] [unit]") {
   uint8_t metadata[10] = {'A', 'C', 'Q', 'T', 1}, host[16] = {42}, output[10];
   size_t length = 0;
   REQUIRE((database_session_update_host_with_transport(db, session.session_id, host, "127.0.0.2", 30000, 0, metadata, 10)) == (ASCIICHAT_OK));
@@ -248,7 +247,7 @@ static void *concurrent_session_creation(void *data) {
   return NULL;
 }
 
-TEST_CASE("database_lifecycle/failed_host_refresh_preserves_concurrent_session_creations", "[database_lifecycle]") {
+TEST_CASE("database_lifecycle/failed_host_refresh_preserves_concurrent_session_creations", "[database_lifecycle] [unit]") {
   REQUIRE(((sqlite3_exec(db,
                          "CREATE TRIGGER reject_host_refresh BEFORE INSERT ON session_transport_hosts "
                          "BEGIN SELECT RAISE(FAIL, 'test rejection'); END;",

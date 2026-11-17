@@ -1,10 +1,10 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/common.h>
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
-#include <catch2/catch_all.hpp>
 
 static void glyphs(const char *input, char *out) {
   while (*input) {
@@ -20,7 +20,7 @@ static void glyphs(const char *input, char *out) {
   *out = 0;
 }
 
-TEST_CASE("digital_rain/ansi_encoding_does_not_change_smoothing", "[digital_rain]") {
+TEST_CASE("digital_rain/ansi_encoding_does_not_change_smoothing", "[digital_rain] [unit]") {
   digital_rain_t *a = digital_rain_init(2, 1), *b = digital_rain_init(2, 1);
   for (int frame = 0; frame < 15; frame++) {
     char *x = digital_rain_apply(a, "\033[38;2;255;255;255mxx", 1.0f / 60);
@@ -36,7 +36,7 @@ TEST_CASE("digital_rain/ansi_encoding_does_not_change_smoothing", "[digital_rain
   digital_rain_destroy(b);
 }
 
-TEST_CASE("digital_rain/smoothing_tracks_elapsed_time", "[digital_rain]") {
+TEST_CASE("digital_rain/smoothing_tracks_elapsed_time", "[digital_rain] [unit]") {
   digital_rain_t *a = digital_rain_init(16, 1), *b = digital_rain_init(16, 1);
   a->fall_speed = b->fall_speed = 0;
   a->first_frame = b->first_frame = false;
@@ -53,7 +53,7 @@ TEST_CASE("digital_rain/smoothing_tracks_elapsed_time", "[digital_rain]") {
   digital_rain_destroy(b);
 }
 
-TEST_CASE("digital_rain/mutation_preserves_shading_spaces_and_unicode", "[digital_rain]") {
+TEST_CASE("digital_rain/mutation_preserves_shading_spaces_and_unicode", "[digital_rain] [unit]") {
   const char *input = ".:-/xoa# \n\xe2\x96\x88";
   digital_rain_t *rain = digital_rain_init(10, 2);
   char previous[128], current[128];
@@ -78,7 +78,7 @@ TEST_CASE("digital_rain/mutation_preserves_shading_spaces_and_unicode", "[digita
   digital_rain_destroy(rain);
 }
 
-TEST_CASE("digital_rain/source_luminance_and_colored_heads", "[digital_rain]") {
+TEST_CASE("digital_rain/source_luminance_and_colored_heads", "[digital_rain] [unit]") {
   digital_rain_t *rain = digital_rain_init(1, 1);
   rain->columns[0].time_offset = 0;
   rain->columns[0].phase_offset = 0;

@@ -1,6 +1,6 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <ascii-chat/video/face_follow.h>
-#include <catch2/catch_all.hpp>
 #include <math.h>
 
 static const face_follow_detection_t subject = {{0.2f, 0.3f, 0.12f, 0.2f}, 0.95f};
@@ -18,7 +18,7 @@ static void advance(face_follow_state_t *state, double from, double to, bool obs
   }
 }
 
-TEST_CASE("face_follow/no_face_stays_full_frame", "[face_follow]") {
+TEST_CASE("face_follow/no_face_stays_full_frame", "[face_follow] [unit]") {
   face_follow_state_t state;
   face_follow_init(&state);
   advance(&state, 0, 3, false, 60);
@@ -26,7 +26,7 @@ TEST_CASE("face_follow/no_face_stays_full_frame", "[face_follow]") {
   REQUIRE((state.crop.x) == Catch::Approx(0));
 }
 
-TEST_CASE("face_follow/typical_webcam_face_gets_a_visible_crop", "[face_follow]") {
+TEST_CASE("face_follow/typical_webcam_face_gets_a_visible_crop", "[face_follow] [unit]") {
   face_follow_state_t state;
   face_follow_init(&state);
   face_follow_detection_t webcam = {{0.35625f, 0.23333f, 0.221875f, 0.4125f}, 0.99f};
@@ -39,7 +39,7 @@ TEST_CASE("face_follow/typical_webcam_face_gets_a_visible_crop", "[face_follow]"
   REQUIRE((state.crop.x + state.crop.w * 0.5f) == Catch::Approx(webcam.box.x + webcam.box.w * 0.5f));
 }
 
-TEST_CASE("face_follow/short_loss_holds_then_smoothly_widens", "[face_follow]") {
+TEST_CASE("face_follow/short_loss_holds_then_smoothly_widens", "[face_follow] [unit]") {
   face_follow_state_t state;
   face_follow_init(&state);
   advance(&state, 0, 3, true, 60);
@@ -58,7 +58,7 @@ TEST_CASE("face_follow/short_loss_holds_then_smoothly_widens", "[face_follow]") 
   REQUIRE((state.crop.w) > (0.999));
 }
 
-TEST_CASE("face_follow/larger_bystander_does_not_steal_subject", "[face_follow]") {
+TEST_CASE("face_follow/larger_bystander_does_not_steal_subject", "[face_follow] [unit]") {
   face_follow_state_t state;
   face_follow_init(&state);
   advance(&state, 0, 2, true, 60);
@@ -74,7 +74,7 @@ TEST_CASE("face_follow/larger_bystander_does_not_steal_subject", "[face_follow]"
   REQUIRE((state.face.x) == Catch::Approx(faces[0].box.x));
 }
 
-TEST_CASE("face_follow/behavior_is_independent_of_render_fps", "[face_follow]") {
+TEST_CASE("face_follow/behavior_is_independent_of_render_fps", "[face_follow] [unit]") {
   face_follow_state_t slow, fast;
   face_follow_init(&slow);
   face_follow_init(&fast);
@@ -84,7 +84,7 @@ TEST_CASE("face_follow/behavior_is_independent_of_render_fps", "[face_follow]") 
   REQUIRE((slow.crop.w) == Catch::Approx(fast.crop.w));
 }
 
-TEST_CASE("face_follow/disabling_returns_to_full_frame", "[face_follow]") {
+TEST_CASE("face_follow/disabling_returns_to_full_frame", "[face_follow] [unit]") {
   face_follow_state_t state;
   face_follow_init(&state);
   advance(&state, 0, 2, true, 60);
@@ -107,7 +107,7 @@ static void settle_seated(face_follow_state_t *state) {
   }
 }
 
-TEST_CASE("face_follow/breathing_and_seated_shifts_do_not_move_the_view", "[face_follow]") {
+TEST_CASE("face_follow/breathing_and_seated_shifts_do_not_move_the_view", "[face_follow] [unit]") {
   face_follow_state_t state;
   settle_seated(&state);
   face_follow_rect_t crop = state.crop;
@@ -121,7 +121,7 @@ TEST_CASE("face_follow/breathing_and_seated_shifts_do_not_move_the_view", "[face
   }
 }
 
-TEST_CASE("face_follow/brief_lean_outside_quiet_zone_does_not_start_a_pan", "[face_follow]") {
+TEST_CASE("face_follow/brief_lean_outside_quiet_zone_does_not_start_a_pan", "[face_follow] [unit]") {
   face_follow_state_t state;
   settle_seated(&state);
   face_follow_rect_t crop = state.crop;
@@ -133,7 +133,7 @@ TEST_CASE("face_follow/brief_lean_outside_quiet_zone_does_not_start_a_pan", "[fa
   }
 }
 
-TEST_CASE("face_follow/sustained_deliberate_move_pans_after_grace_period", "[face_follow]") {
+TEST_CASE("face_follow/sustained_deliberate_move_pans_after_grace_period", "[face_follow] [unit]") {
   face_follow_state_t state;
   settle_seated(&state);
   face_follow_rect_t crop = state.crop;
@@ -150,7 +150,7 @@ TEST_CASE("face_follow/sustained_deliberate_move_pans_after_grace_period", "[fac
   REQUIRE((state.crop.x - crop.x) > (0.14));
 }
 
-TEST_CASE("face_follow/zoom_requires_a_sustained_size_change_and_keeps_the_anchor", "[face_follow]") {
+TEST_CASE("face_follow/zoom_requires_a_sustained_size_change_and_keeps_the_anchor", "[face_follow] [unit]") {
   face_follow_state_t state;
   settle_seated(&state);
   face_follow_rect_t crop = state.crop;
@@ -169,7 +169,7 @@ TEST_CASE("face_follow/zoom_requires_a_sustained_size_change_and_keeps_the_ancho
   REQUIRE((state.crop.y + state.crop.h / 2) == Catch::Approx(crop.y + crop.h / 2));
 }
 
-TEST_CASE("face_follow/reversing_box_noise_does_not_accumulate_a_direction_or_zoom", "[face_follow]") {
+TEST_CASE("face_follow/reversing_box_noise_does_not_accumulate_a_direction_or_zoom", "[face_follow] [unit]") {
   face_follow_state_t state;
   face_follow_init(&state);
   face_follow_detection_t face = {{0.3f, 0.23f, 0.4f, 0.4f}, 0.99f};
@@ -192,7 +192,7 @@ TEST_CASE("face_follow/reversing_box_noise_does_not_accumulate_a_direction_or_zo
   }
 }
 
-TEST_CASE("face_follow/first_detected_frame_is_cropped_for_zero_delay_snapshot", "[face_follow]") {
+TEST_CASE("face_follow/first_detected_frame_is_cropped_for_zero_delay_snapshot", "[face_follow] [unit]") {
   face_follow_state_t state;
   face_follow_init(&state);
   face_follow_observe(&state, &subject, 1, 0);

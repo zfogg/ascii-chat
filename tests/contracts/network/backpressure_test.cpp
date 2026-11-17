@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 #include "../worker_assert.h"
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/acip/backpressure.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/packet/packet.h>
@@ -109,7 +108,7 @@ static void await_submitted(acip_transport_t *transport, uint64_t expected) {
   }
 }
 
-TEST_CASE("transport_backpressure/plaintext_class_reaches_backend_and_unsupported_delivery_is_rejected", "[transport_backpressure]") {
+TEST_CASE("transport_backpressure/plaintext_class_reaches_backend_and_unsupported_delivery_is_rejected", "[transport_backpressure] [contract]") {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
   static const acip_transport_methods_t classified_methods = {.sendv_ex = backend_send_classified, .close = close_backend, .queued_bytes = queued};
@@ -142,7 +141,7 @@ TEST_CASE("transport_backpressure/plaintext_class_reaches_backend_and_unsupporte
   log_destroy();
 }
 
-TEST_CASE("transport_backpressure/destruction_serializes_backend_close_after_a_blocked_send_fails", "[transport_backpressure]") {
+TEST_CASE("transport_backpressure/destruction_serializes_backend_close_after_a_blocked_send_fails", "[transport_backpressure] [contract]") {
   static const acip_transport_methods_t shutdown_methods = {.send = blocked_shutdown_send, .close = close_shutdown_backend, .interrupt = interrupt_shutdown_backend};
   shutdown_backend_t backend = {0};
   acip_transport_t transport = {.methods = &shutdown_methods, .impl_data = &backend};
@@ -169,7 +168,7 @@ static void *produce(void *arg) {
   return NULL;
 }
 
-TEST_CASE("transport_backpressure/slow_peer_does_not_block_healthy_peer", "[transport_backpressure]") {
+TEST_CASE("transport_backpressure/slow_peer_does_not_block_healthy_peer", "[transport_backpressure] [contract]") {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
   acip_transport_t *slow = create(), *healthy = create();
@@ -199,7 +198,7 @@ TEST_CASE("transport_backpressure/slow_peer_does_not_block_healthy_peer", "[tran
   log_destroy();
 }
 
-TEST_CASE("transport_backpressure/codec_recovery_requires_keyframe", "[transport_backpressure]") {
+TEST_CASE("transport_backpressure/codec_recovery_requires_keyframe", "[transport_backpressure] [contract]") {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
   backend_t *backend;
@@ -226,7 +225,7 @@ TEST_CASE("transport_backpressure/codec_recovery_requires_keyframe", "[transport
   log_destroy();
 }
 
-TEST_CASE("transport_backpressure/concurrent_streams_obey_budget_and_keep_control", "[transport_backpressure]") {
+TEST_CASE("transport_backpressure/concurrent_streams_obey_budget_and_keep_control", "[transport_backpressure] [contract]") {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
   acip_outbound_stats_t stats;
@@ -318,11 +317,11 @@ static void check_stopped_control(bool interrupt) {
   log_destroy();
 }
 
-TEST_CASE("transport_backpressure/close_wakes_controls_waiting_behind_undrainable_backend_bytes", "[transport_backpressure]") {
+TEST_CASE("transport_backpressure/close_wakes_controls_waiting_behind_undrainable_backend_bytes", "[transport_backpressure] [contract]") {
   check_stopped_control(false);
 }
 
-TEST_CASE("transport_backpressure/interrupt_wakes_controls_even_without_a_backend_interrupt_method", "[transport_backpressure]") {
+TEST_CASE("transport_backpressure/interrupt_wakes_controls_even_without_a_backend_interrupt_method", "[transport_backpressure] [contract]") {
   check_stopped_control(true);
 }
 
@@ -385,23 +384,23 @@ static void check_backend_failure(asciichat_error_t code, bool omit_context, boo
   log_destroy();
 }
 
-TEST_CASE("transport_backpressure/unsupported_backend_preserves_failure_for_all_producers", "[transport_backpressure]") {
+TEST_CASE("transport_backpressure/unsupported_backend_preserves_failure_for_all_producers", "[transport_backpressure] [contract]") {
   check_backend_failure(ERROR_NOT_SUPPORTED, false, false);
 }
 
-TEST_CASE("transport_backpressure/fatal_backend_preserves_failure_for_all_producers", "[transport_backpressure]") {
+TEST_CASE("transport_backpressure/fatal_backend_preserves_failure_for_all_producers", "[transport_backpressure] [contract]") {
   check_backend_failure(ERROR_CRYPTO, false, false);
 }
 
-TEST_CASE("transport_backpressure/backend_status_cannot_inherit_unrelated_context", "[transport_backpressure]") {
+TEST_CASE("transport_backpressure/backend_status_cannot_inherit_unrelated_context", "[transport_backpressure] [contract]") {
   check_backend_failure(ERROR_NETWORK_TIMEOUT, true, false);
 }
 
-TEST_CASE("transport_backpressure/wrapped_backend_preserves_nested_system_error", "[transport_backpressure]") {
+TEST_CASE("transport_backpressure/wrapped_backend_preserves_nested_system_error", "[transport_backpressure] [contract]") {
   check_backend_failure(ERROR_NETWORK, false, true);
 }
 
-TEST_CASE("transport_backpressure/asynchronous_media_failure_reaches_next_producer", "[transport_backpressure]") {
+TEST_CASE("transport_backpressure/asynchronous_media_failure_reaches_next_producer", "[transport_backpressure] [contract]") {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
   acip_transport_t *transport = create();
@@ -427,7 +426,7 @@ TEST_CASE("transport_backpressure/asynchronous_media_failure_reaches_next_produc
   log_destroy();
 }
 
-TEST_CASE("transport_backpressure/expired_control_reports_timeout_without_backend_send", "[transport_backpressure]") {
+TEST_CASE("transport_backpressure/expired_control_reports_timeout_without_backend_send", "[transport_backpressure] [contract]") {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
   acip_transport_t *transport = create();
@@ -445,7 +444,7 @@ TEST_CASE("transport_backpressure/expired_control_reports_timeout_without_backen
   log_destroy();
 }
 
-TEST_CASE("transport_backpressure/congestion_recovers_without_terminal_error", "[transport_backpressure]") {
+TEST_CASE("transport_backpressure/congestion_recovers_without_terminal_error", "[transport_backpressure] [contract]") {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
   acip_transport_t *transport = create();
@@ -466,7 +465,7 @@ TEST_CASE("transport_backpressure/congestion_recovers_without_terminal_error", "
   log_destroy();
 }
 
-TEST_CASE("transport_backpressure/evicts_oldest_inactive_encoded_stream_state", "[transport_backpressure]") {
+TEST_CASE("transport_backpressure/evicts_oldest_inactive_encoded_stream_state", "[transport_backpressure] [contract]") {
   log_init(NULL, LOG_ERROR, false, false);
   errno_suppress(true);
   acip_transport_t *transport = create();

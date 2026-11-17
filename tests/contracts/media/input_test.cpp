@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/media/input.h>
 #include <ascii-chat/util/time.h>
 #include <libplatform/keyboard.h>
@@ -170,7 +169,7 @@ static void invalid(const char *input) {
   REQUIRE((media_input_normalize(input, output, sizeof(output))) != (ASCIICHAT_OK));
   CLEAR_ERRNO();
 }
-TEST_CASE("media_input/normalizes_paths_and_rejects_invalid_sources", "[media_input]") {
+TEST_CASE("media_input/normalizes_paths_and_rejects_invalid_sources", "[media_input] [contract]") {
   log_init(NULL, LOG_ERROR, false, false);
   normalize("  '/tmp/my video.mp4'  ", "/tmp/my video.mp4");
   normalize("/tmp/my\\ video.mp4", "/tmp/my video.mp4");
@@ -195,7 +194,7 @@ TEST_CASE("media_input/normalizes_paths_and_rejects_invalid_sources", "[media_in
   CLEAR_ERRNO();
 }
 
-TEST_CASE("media_input/keyboard_stream_and_media_editor", "[media_input]") {
+TEST_CASE("media_input/keyboard_stream_and_media_editor", "[media_input] [contract]") {
   log_init(NULL, LOG_ERROR, false, false);
   keyboard_stream_reset();
   feed("ab\033[A");
@@ -423,7 +422,7 @@ static session_capture_ctx_t *input_file_capture(char path[PLATFORM_MAX_PATH_LEN
   REQUIRE((first) != nullptr);
   return capture;
 }
-TEST_CASE("media_input/session_seek_pause_and_media_toggle_preserve_capture_and_flush_borrowed_audio", "[media_input]") {
+TEST_CASE("media_input/session_seek_pause_and_media_toggle_preserve_capture_and_flush_borrowed_audio", "[media_input] [contract]") {
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   REQUIRE((options_state_init()) == (ASCIICHAT_OK));
@@ -479,7 +478,7 @@ TEST_CASE("media_input/session_seek_pause_and_media_toggle_preserve_capture_and_
   CLEAR_ERRNO_ALL();
   log_destroy();
 }
-TEST_CASE("media_input/help_logs_volume_and_close_actions_route_to_the_owning_ui", "[media_input]") {
+TEST_CASE("media_input/help_logs_volume_and_close_actions_route_to_the_owning_ui", "[media_input] [contract]") {
   log_init(NULL, LOG_DEV, false, false);
   log_set_terminal_output(false);
   REQUIRE((options_state_init()) == (ASCIICHAT_OK));

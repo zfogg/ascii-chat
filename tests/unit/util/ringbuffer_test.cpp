@@ -1,6 +1,7 @@
+#include <catch2/generators/catch_generators_all.hpp>
+#include <catch2/catch_approx.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -17,7 +18,7 @@
  * Ring Buffer Tests
  * ============================================================================ */
 
-TEST_CASE("ringbuffer/create_and_destroy", "[ringbuffer]") {
+TEST_CASE("ringbuffer/create_and_destroy", "[ringbuffer] [unit]") {
   ringbuffer_t *rb = ringbuffer_create(sizeof(int), 8);
   REQUIRE((rb) != nullptr);
   REQUIRE((rb->element_size) == (sizeof(int)));
@@ -29,7 +30,7 @@ TEST_CASE("ringbuffer/create_and_destroy", "[ringbuffer]") {
   ringbuffer_destroy(rb);
 }
 
-TEST_CASE("ringbuffer/create_with_invalid_params", "[ringbuffer]") {
+TEST_CASE("ringbuffer/create_with_invalid_params", "[ringbuffer] [unit]") {
   // Test with zero element size
   ringbuffer_t *rb = ringbuffer_create(0, 8);
   REQUIRE((rb) == nullptr);
@@ -43,13 +44,13 @@ TEST_CASE("ringbuffer/create_with_invalid_params", "[ringbuffer]") {
   REQUIRE((rb) == nullptr);
 }
 
-TEST_CASE("ringbuffer/destroy_null", "[ringbuffer]") {
+TEST_CASE("ringbuffer/destroy_null", "[ringbuffer] [unit]") {
   // Should not crash when destroying NULL
   ringbuffer_destroy(NULL);
   REQUIRE(true);
 }
 
-TEST_CASE("ringbuffer/basic_write_read", "[ringbuffer]") {
+TEST_CASE("ringbuffer/basic_write_read", "[ringbuffer] [unit]") {
   ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
   REQUIRE((rb) != nullptr);
 
@@ -69,7 +70,7 @@ TEST_CASE("ringbuffer/basic_write_read", "[ringbuffer]") {
   ringbuffer_destroy(rb);
 }
 
-TEST_CASE("ringbuffer/write_read_multiple", "[ringbuffer]") {
+TEST_CASE("ringbuffer/write_read_multiple", "[ringbuffer] [unit]") {
   ringbuffer_t *rb = ringbuffer_create(sizeof(int), 8);
   REQUIRE((rb) != nullptr);
 
@@ -95,7 +96,7 @@ TEST_CASE("ringbuffer/write_read_multiple", "[ringbuffer]") {
   ringbuffer_destroy(rb);
 }
 
-TEST_CASE("ringbuffer/write_to_full_buffer", "[ringbuffer]") {
+TEST_CASE("ringbuffer/write_to_full_buffer", "[ringbuffer] [unit]") {
   ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
   REQUIRE((rb) != nullptr);
 
@@ -116,7 +117,7 @@ TEST_CASE("ringbuffer/write_to_full_buffer", "[ringbuffer]") {
   ringbuffer_destroy(rb);
 }
 
-TEST_CASE("ringbuffer/read_from_empty_buffer", "[ringbuffer]") {
+TEST_CASE("ringbuffer/read_from_empty_buffer", "[ringbuffer] [unit]") {
   ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
   REQUIRE((rb) != nullptr);
 
@@ -128,7 +129,7 @@ TEST_CASE("ringbuffer/read_from_empty_buffer", "[ringbuffer]") {
   ringbuffer_destroy(rb);
 }
 
-TEST_CASE("ringbuffer/peek_functionality", "[ringbuffer]") {
+TEST_CASE("ringbuffer/peek_functionality", "[ringbuffer] [unit]") {
   ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
   REQUIRE((rb) != nullptr);
 
@@ -152,7 +153,7 @@ TEST_CASE("ringbuffer/peek_functionality", "[ringbuffer]") {
   ringbuffer_destroy(rb);
 }
 
-TEST_CASE("ringbuffer/peek_empty_buffer", "[ringbuffer]") {
+TEST_CASE("ringbuffer/peek_empty_buffer", "[ringbuffer] [unit]") {
   ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
   REQUIRE((rb) != nullptr);
 
@@ -163,7 +164,7 @@ TEST_CASE("ringbuffer/peek_empty_buffer", "[ringbuffer]") {
   ringbuffer_destroy(rb);
 }
 
-TEST_CASE("ringbuffer/clear_functionality", "[ringbuffer]") {
+TEST_CASE("ringbuffer/clear_functionality", "[ringbuffer] [unit]") {
   ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
   REQUIRE((rb) != nullptr);
 
@@ -184,7 +185,7 @@ TEST_CASE("ringbuffer/clear_functionality", "[ringbuffer]") {
   ringbuffer_destroy(rb);
 }
 
-TEST_CASE("ringbuffer/null_parameters", "[ringbuffer]") {
+TEST_CASE("ringbuffer/null_parameters", "[ringbuffer] [unit]") {
   ringbuffer_t *rb = ringbuffer_create(sizeof(int), 4);
   REQUIRE((rb) != nullptr);
 
@@ -217,7 +218,7 @@ TEST_CASE("ringbuffer/null_parameters", "[ringbuffer]") {
   ringbuffer_destroy(rb);
 }
 
-TEST_CASE("ringbuffer/power_of_two_capacity", "[ringbuffer]") {
+TEST_CASE("ringbuffer/power_of_two_capacity", "[ringbuffer] [unit]") {
   // Test that capacity is rounded up to power of 2
   ringbuffer_t *rb = ringbuffer_create(sizeof(int), 5);
   REQUIRE((rb) != nullptr);
@@ -235,7 +236,7 @@ TEST_CASE("ringbuffer/power_of_two_capacity", "[ringbuffer]") {
   ringbuffer_destroy(rb);
 }
 
-TEST_CASE("ringbuffer/large_element_size", "[ringbuffer]") {
+TEST_CASE("ringbuffer/large_element_size", "[ringbuffer] [unit]") {
   // Test with large element size
   struct large_struct {
     char data[1024];
@@ -262,7 +263,7 @@ TEST_CASE("ringbuffer/large_element_size", "[ringbuffer]") {
  * Frame Buffer Tests
  * ============================================================================ */
 
-TEST_CASE("framebuffer/create_and_destroy", "[framebuffer]") {
+TEST_CASE("framebuffer/create_and_destroy", "[framebuffer] [unit]") {
   framebuffer_t *fb = framebuffer_create(4);
   REQUIRE((fb) != nullptr);
   REQUIRE((fb->rb) != nullptr);
@@ -270,18 +271,18 @@ TEST_CASE("framebuffer/create_and_destroy", "[framebuffer]") {
   framebuffer_destroy(fb);
 }
 
-TEST_CASE("framebuffer/create_with_invalid_capacity", "[framebuffer]") {
+TEST_CASE("framebuffer/create_with_invalid_capacity", "[framebuffer] [unit]") {
   framebuffer_t *fb = framebuffer_create(0);
   REQUIRE((fb) == nullptr);
 }
 
-TEST_CASE("framebuffer/destroy_null", "[framebuffer]") {
+TEST_CASE("framebuffer/destroy_null", "[framebuffer] [unit]") {
   // Should not crash when destroying NULL
   framebuffer_destroy(NULL);
   REQUIRE(true);
 }
 
-TEST_CASE("framebuffer/write_and_read_frame", "[framebuffer]") {
+TEST_CASE("framebuffer/write_and_read_frame", "[framebuffer] [unit]") {
   framebuffer_t *fb = framebuffer_create(4);
   REQUIRE((fb) != nullptr);
 
@@ -305,7 +306,7 @@ TEST_CASE("framebuffer/write_and_read_frame", "[framebuffer]") {
   framebuffer_destroy(fb);
 }
 
-TEST_CASE("framebuffer/write_invalid_frame", "[framebuffer]") {
+TEST_CASE("framebuffer/write_invalid_frame", "[framebuffer] [unit]") {
   framebuffer_t *fb = framebuffer_create(4);
   REQUIRE((fb) != nullptr);
 
@@ -324,7 +325,7 @@ TEST_CASE("framebuffer/write_invalid_frame", "[framebuffer]") {
   framebuffer_destroy(fb);
 }
 
-TEST_CASE("framebuffer/read_invalid_frame", "[framebuffer]") {
+TEST_CASE("framebuffer/read_invalid_frame", "[framebuffer] [unit]") {
   framebuffer_t *fb = framebuffer_create(4);
   REQUIRE((fb) != nullptr);
 
@@ -341,7 +342,7 @@ TEST_CASE("framebuffer/read_invalid_frame", "[framebuffer]") {
   framebuffer_destroy(fb);
 }
 
-TEST_CASE("framebuffer/buffer_overflow", "[framebuffer]") {
+TEST_CASE("framebuffer/buffer_overflow", "[framebuffer] [unit]") {
   framebuffer_t *fb = framebuffer_create(2);
   REQUIRE((fb) != nullptr);
 
@@ -372,7 +373,7 @@ TEST_CASE("framebuffer/buffer_overflow", "[framebuffer]") {
   framebuffer_destroy(fb);
 }
 
-TEST_CASE("framebuffer/clear_functionality", "[framebuffer]") {
+TEST_CASE("framebuffer/clear_functionality", "[framebuffer] [unit]") {
   framebuffer_t *fb = framebuffer_create(4);
   REQUIRE((fb) != nullptr);
 
@@ -391,7 +392,7 @@ TEST_CASE("framebuffer/clear_functionality", "[framebuffer]") {
   framebuffer_destroy(fb);
 }
 
-TEST_CASE("framebuffer/multi_source_create_and_destroy", "[framebuffer]") {
+TEST_CASE("framebuffer/multi_source_create_and_destroy", "[framebuffer] [unit]") {
   framebuffer_t *fb = framebuffer_create_multi(4);
   REQUIRE((fb) != nullptr);
   REQUIRE((fb->rb) != nullptr);
@@ -399,7 +400,7 @@ TEST_CASE("framebuffer/multi_source_create_and_destroy", "[framebuffer]") {
   framebuffer_destroy(fb);
 }
 
-TEST_CASE("framebuffer/multi_source_write_and_read", "[framebuffer]") {
+TEST_CASE("framebuffer/multi_source_write_and_read", "[framebuffer] [unit]") {
   framebuffer_t *fb = framebuffer_create_multi(4);
   REQUIRE((fb) != nullptr);
 
@@ -431,7 +432,7 @@ TEST_CASE("framebuffer/multi_source_write_and_read", "[framebuffer]") {
   framebuffer_destroy(fb);
 }
 
-TEST_CASE("framebuffer/multi_source_peek", "[framebuffer]") {
+TEST_CASE("framebuffer/multi_source_peek", "[framebuffer] [unit]") {
   framebuffer_t *fb = framebuffer_create_multi(4);
   REQUIRE((fb) != nullptr);
 
@@ -459,7 +460,7 @@ TEST_CASE("framebuffer/multi_source_peek", "[framebuffer]") {
   framebuffer_destroy(fb);
 }
 
-TEST_CASE("framebuffer/multi_source_invalid_params", "[framebuffer]") {
+TEST_CASE("framebuffer/multi_source_invalid_params", "[framebuffer] [unit]") {
   framebuffer_t *fb = framebuffer_create_multi(4);
   REQUIRE((fb) != nullptr);
 
@@ -493,20 +494,20 @@ TEST_CASE("framebuffer/multi_source_invalid_params", "[framebuffer]") {
  * Audio Ring Buffer Tests
  * ============================================================================ */
 
-TEST_CASE("audio_ring_buffer/create_and_destroy", "[audio_ring_buffer]") {
+TEST_CASE("audio_ring_buffer/create_and_destroy", "[audio_ring_buffer] [unit]") {
   audio_ring_buffer_t *arb = audio_ring_buffer_create();
   REQUIRE((arb) != nullptr);
 
   audio_ring_buffer_destroy(arb);
 }
 
-TEST_CASE("audio_ring_buffer/destroy_null", "[audio_ring_buffer]") {
+TEST_CASE("audio_ring_buffer/destroy_null", "[audio_ring_buffer] [unit]") {
   // Should not crash when destroying NULL
   audio_ring_buffer_destroy(NULL);
   REQUIRE(true);
 }
 
-TEST_CASE("audio_ring_buffer/basic_write_read", "[audio_ring_buffer]") {
+TEST_CASE("audio_ring_buffer/basic_write_read", "[audio_ring_buffer] [unit]") {
   // Use capture buffer which disables jitter buffering for basic read/write testing
   audio_ring_buffer_t *arb = audio_ring_buffer_create_for_capture();
   REQUIRE((arb) != nullptr);
@@ -541,7 +542,7 @@ TEST_CASE("audio_ring_buffer/basic_write_read", "[audio_ring_buffer]") {
   audio_ring_buffer_destroy(arb);
 }
 
-TEST_CASE("audio_ring_buffer/partial_read_write", "[audio_ring_buffer]") {
+TEST_CASE("audio_ring_buffer/partial_read_write", "[audio_ring_buffer] [unit]") {
   // Use capture buffer which disables jitter buffering for basic read/write testing
   audio_ring_buffer_t *arb = audio_ring_buffer_create_for_capture();
   REQUIRE((arb) != nullptr);
@@ -587,7 +588,7 @@ TEST_CASE("audio_ring_buffer/partial_read_write", "[audio_ring_buffer]") {
   audio_ring_buffer_destroy(arb);
 }
 
-TEST_CASE("audio_ring_buffer/buffer_overflow", "[audio_ring_buffer]") {
+TEST_CASE("audio_ring_buffer/buffer_overflow", "[audio_ring_buffer] [unit]") {
   // Use capture buffer which disables jitter buffering for overflow testing
   audio_ring_buffer_t *arb = audio_ring_buffer_create_for_capture();
   REQUIRE((arb) != nullptr);
@@ -641,7 +642,7 @@ TEST_CASE("audio_ring_buffer/buffer_overflow", "[audio_ring_buffer]") {
   audio_ring_buffer_destroy(arb);
 }
 
-TEST_CASE("audio_ring_buffer/read_from_empty", "[audio_ring_buffer]") {
+TEST_CASE("audio_ring_buffer/read_from_empty", "[audio_ring_buffer] [unit]") {
   audio_ring_buffer_t *arb = audio_ring_buffer_create();
   REQUIRE((arb) != nullptr);
 
@@ -652,7 +653,7 @@ TEST_CASE("audio_ring_buffer/read_from_empty", "[audio_ring_buffer]") {
   audio_ring_buffer_destroy(arb);
 }
 
-TEST_CASE("audio_ring_buffer/null_parameters", "[audio_ring_buffer]") {
+TEST_CASE("audio_ring_buffer/null_parameters", "[audio_ring_buffer] [unit]") {
   audio_ring_buffer_t *arb = audio_ring_buffer_create();
   REQUIRE((arb) != nullptr);
 
@@ -675,7 +676,7 @@ TEST_CASE("audio_ring_buffer/null_parameters", "[audio_ring_buffer]") {
   audio_ring_buffer_destroy(arb);
 }
 
-TEST_CASE("audio_ring_buffer/zero_samples", "[audio_ring_buffer]") {
+TEST_CASE("audio_ring_buffer/zero_samples", "[audio_ring_buffer] [unit]") {
   audio_ring_buffer_t *arb = audio_ring_buffer_create();
   REQUIRE((arb) != nullptr);
 
@@ -786,7 +787,7 @@ void *consumer_thread(void *arg) {
   return NULL;
 }
 
-TEST_CASE("ringbuffer/thread_safety", "[ringbuffer]") {
+TEST_CASE("ringbuffer/thread_safety", "[ringbuffer] [unit]") {
   ringbuffer_t *rb = ringbuffer_create(sizeof(int), 64); // Larger buffer to reduce contention
   REQUIRE((rb) != nullptr);
 
@@ -872,7 +873,7 @@ TEST_CASE("ringbuffer/thread_safety", "[ringbuffer]") {
 static constexpr size_t fifo_capacities[] = {2, 4, 8, 16, 32};
 static constexpr size_t fifo_operation_counts[] = {3, 5, 10, 20, 50};
 
-TEST_CASE("ringbuffer/fifo_ordering_property", "[ringbuffer]") {
+TEST_CASE("ringbuffer/fifo_ordering_property", "[ringbuffer] [unit]") {
   const size_t capacity = GENERATE(Catch::Generators::from_range(std::begin(fifo_capacities), std::end(fifo_capacities)));
   const size_t num_ops = GENERATE(Catch::Generators::from_range(std::begin(fifo_operation_counts), std::end(fifo_operation_counts)));
   // Skip combinations where num_ops > capacity (would require wraparound logic)

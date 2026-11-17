@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/session/session_log_buffer.h>
@@ -26,7 +25,7 @@ static void type_pattern(const char *pattern) {
   REQUIRE(log_search_is_active());
 }
 
-TEST_CASE("log_search_behavior/editing_cancel_and_signal_state", "[log_search_behavior]") {
+TEST_CASE("log_search_behavior/editing_cancel_and_signal_state", "[log_search_behavior] [unit]") {
   REQUIRE(!(log_search_is_entering()));
   REQUIRE(!(log_search_is_active()));
   REQUIRE(log_search_should_handle('/'));
@@ -47,7 +46,7 @@ TEST_CASE("log_search_behavior/editing_cancel_and_signal_state", "[log_search_be
   REQUIRE(!(log_search_is_active()));
 }
 
-TEST_CASE("log_search_behavior/regex_filters_ansi_messages_and_reports_match_offsets", "[log_search_behavior]") {
+TEST_CASE("log_search_behavior/regex_filters_ansi_messages_and_reports_match_offsets", "[log_search_behavior] [unit]") {
   session_log_buffer_t *buffer = session_log_buffer_create();
   REQUIRE((buffer) != nullptr);
   session_log_buffer_append(buffer, "ready");
@@ -71,7 +70,7 @@ TEST_CASE("log_search_behavior/regex_filters_ansi_messages_and_reports_match_off
   session_log_buffer_destroy(buffer);
 }
 
-TEST_CASE("log_search_behavior/fixed_case_insensitive_unicode_and_inversion", "[log_search_behavior]") {
+TEST_CASE("log_search_behavior/fixed_case_insensitive_unicode_and_inversion", "[log_search_behavior] [unit]") {
   session_log_buffer_t *buffer = session_log_buffer_create();
   REQUIRE((buffer) != nullptr);
   session_log_buffer_append(buffer, "prefix NEEDLE suffix");
@@ -101,7 +100,7 @@ static unsigned background_count(const char *text) {
     ++count;
   return count;
 }
-TEST_CASE("log_search_behavior/interactive_global_highlighting_preserves_colored_unicode_text", "[log_search_behavior]") {
+TEST_CASE("log_search_behavior/interactive_global_highlighting_preserves_colored_unicode_text", "[log_search_behavior] [unit]") {
   const char *patterns[] = {"/needle/ig", "/needle/igF"};
   const char *plain = "é NEEDLE middle needle end";
   const char *colored = "\033[31mé NEEDLE\033[0m middle \033[34mneedle end\033[0m";
@@ -122,7 +121,7 @@ TEST_CASE("log_search_behavior/interactive_global_highlighting_preserves_colored
     log_search_exit_mode(false);
   }
 }
-TEST_CASE("log_search_behavior/single_highlight_survives_embedded_reset_and_zero_width_matches_terminate", "[log_search_behavior]") {
+TEST_CASE("log_search_behavior/single_highlight_survives_embedded_reset_and_zero_width_matches_terminate", "[log_search_behavior] [unit]") {
   const char *plain = "before needle after";
   const char *colored = "before ne\033[0med\033[00mle after";
   char *result = grep_highlight_colored_copy(colored, plain, 7, 6);
@@ -140,7 +139,7 @@ TEST_CASE("log_search_behavior/single_highlight_survives_embedded_reset_and_zero
   SAFE_FREE(result);
 }
 
-TEST_CASE("log_search_behavior/unicode_typing_paste_and_word_deletion", "[log_search_behavior]") {
+TEST_CASE("log_search_behavior/unicode_typing_paste_and_word_deletion", "[log_search_behavior] [unit]") {
   REQUIRE((log_search_insert_text("x")) == (ERROR_INVALID_STATE));
   REQUIRE((log_search_insert_text(NULL)) == (ERROR_INVALID_PARAM));
   log_search_enter_mode();

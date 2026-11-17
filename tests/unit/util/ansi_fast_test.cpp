@@ -1,6 +1,6 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,7 +24,7 @@ void restore_test_logging_ansi_fast(void) {}
  * Initialization Tests
  * ============================================================================ */
 
-TEST_CASE("ansi_fast/initialization", "[ansi_fast]") {
+TEST_CASE("ansi_fast/initialization", "[ansi_fast] [unit]") {
   // Test that initialization functions work without crashing
   ansi_fast_init_256color();
   ansi_fast_init_16color();
@@ -32,7 +32,7 @@ TEST_CASE("ansi_fast/initialization", "[ansi_fast]") {
   REQUIRE(true);
 }
 
-TEST_CASE("ansi_fast/multiple_initialization_calls", "[ansi_fast]") {
+TEST_CASE("ansi_fast/multiple_initialization_calls", "[ansi_fast] [unit]") {
   // Test that multiple initialization calls are safe
   ansi_fast_init_256color();
   ansi_fast_init_256color(); // Should be safe to call multiple times
@@ -46,7 +46,7 @@ TEST_CASE("ansi_fast/multiple_initialization_calls", "[ansi_fast]") {
  * Truecolor ANSI Generation Tests
  * ============================================================================ */
 
-TEST_CASE("ansi_fast/append_truecolor_fg_basic", "[ansi_fast]") {
+TEST_CASE("ansi_fast/append_truecolor_fg_basic", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 
@@ -73,7 +73,7 @@ static truecolor_fg_test_case_t truecolor_fg_edge_cases[] = {
     {255, 0, 0, "\033[38;2;255;0;0m", "Pure red"},        {0, 255, 0, "\033[38;2;0;255;0m", "Pure green"}, {0, 0, 255, "\033[38;2;0;0;255m", "Pure blue"},
     {128, 128, 128, "\033[38;2;128;128;128m", "Mid gray"}};
 
-TEST_CASE("ansi_fast/truecolor_fg_edge_cases_param", "[ansi_fast]") {
+TEST_CASE("ansi_fast/truecolor_fg_edge_cases_param", "[ansi_fast] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(truecolor_fg_edge_cases), std::end(truecolor_fg_edge_cases)));
   auto *tc = &generated_case;
   char buffer[256];
@@ -82,7 +82,7 @@ TEST_CASE("ansi_fast/truecolor_fg_edge_cases_param", "[ansi_fast]") {
   REQUIRE(std::strcmp((buffer), (tc->expected_output)) == 0);
 }
 
-TEST_CASE("ansi_fast/append_truecolor_bg_basic", "[ansi_fast]") {
+TEST_CASE("ansi_fast/append_truecolor_bg_basic", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 
@@ -111,7 +111,7 @@ static truecolor_bg_test_case_t truecolor_bg_edge_cases[] = {{0, 0, 0, "\033[48;
                                                              {0, 0, 255, "\033[48;2;0;0;255m", "Pure blue background"},
                                                              {128, 128, 128, "\033[48;2;128;128;128m", "Mid gray background"}};
 
-TEST_CASE("ansi_fast/truecolor_bg_edge_cases_param", "[ansi_fast]") {
+TEST_CASE("ansi_fast/truecolor_bg_edge_cases_param", "[ansi_fast] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(truecolor_bg_edge_cases), std::end(truecolor_bg_edge_cases)));
   auto *tc = &generated_case;
   char buffer[256];
@@ -120,7 +120,7 @@ TEST_CASE("ansi_fast/truecolor_bg_edge_cases_param", "[ansi_fast]") {
   REQUIRE(std::strcmp((buffer), (tc->expected_output)) == 0);
 }
 
-TEST_CASE("ansi_fast/append_truecolor_fg_bg_combined", "[ansi_fast]") {
+TEST_CASE("ansi_fast/append_truecolor_fg_bg_combined", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 
@@ -134,7 +134,7 @@ TEST_CASE("ansi_fast/append_truecolor_fg_bg_combined", "[ansi_fast]") {
   REQUIRE((result - buffer) == (28));
 }
 
-TEST_CASE("ansi_fast/append_truecolor_fg_bg_edge_cases", "[ansi_fast]") {
+TEST_CASE("ansi_fast/append_truecolor_fg_bg_edge_cases", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 
@@ -152,7 +152,7 @@ TEST_CASE("ansi_fast/append_truecolor_fg_bg_edge_cases", "[ansi_fast]") {
  * Run-Length Encoding Tests
  * ============================================================================ */
 
-TEST_CASE("ansi_fast/ansi_rle_init", "[ansi_fast]") {
+TEST_CASE("ansi_fast/ansi_rle_init", "[ansi_fast] [unit]") {
   char buffer[256];
   ansi_rle_context_t ctx;
 
@@ -169,7 +169,7 @@ TEST_CASE("ansi_fast/ansi_rle_init", "[ansi_fast]") {
   REQUIRE((ctx.last_b) == (0xFF));
 }
 
-TEST_CASE("ansi_fast/ansi_rle_add_pixel_first", "[ansi_fast]") {
+TEST_CASE("ansi_fast/ansi_rle_add_pixel_first", "[ansi_fast] [unit]") {
   char buffer[256];
   ansi_rle_context_t ctx;
 
@@ -188,7 +188,7 @@ TEST_CASE("ansi_fast/ansi_rle_add_pixel_first", "[ansi_fast]") {
   REQUIRE((buffer[ctx.length - 1]) == ('A'));
 }
 
-TEST_CASE("ansi_fast/ansi_rle_add_pixel_same_color", "[ansi_fast]") {
+TEST_CASE("ansi_fast/ansi_rle_add_pixel_same_color", "[ansi_fast] [unit]") {
   char buffer[256];
   ansi_rle_context_t ctx;
 
@@ -206,7 +206,7 @@ TEST_CASE("ansi_fast/ansi_rle_add_pixel_same_color", "[ansi_fast]") {
   REQUIRE((buffer[ctx.length - 1]) == ('B'));
 }
 
-TEST_CASE("ansi_fast/ansi_rle_add_pixel_different_color", "[ansi_fast]") {
+TEST_CASE("ansi_fast/ansi_rle_add_pixel_different_color", "[ansi_fast] [unit]") {
   char buffer[256];
   ansi_rle_context_t ctx;
 
@@ -226,7 +226,7 @@ TEST_CASE("ansi_fast/ansi_rle_add_pixel_different_color", "[ansi_fast]") {
   REQUIRE((ctx.last_b) == (50));
 }
 
-TEST_CASE("ansi_fast/ansi_rle_finish", "[ansi_fast]") {
+TEST_CASE("ansi_fast/ansi_rle_finish", "[ansi_fast] [unit]") {
   char buffer[256];
   ansi_rle_context_t ctx;
 
@@ -244,7 +244,7 @@ TEST_CASE("ansi_fast/ansi_rle_finish", "[ansi_fast]") {
   REQUIRE(strstr(buffer, "\033[0m") != NULL);
 }
 
-TEST_CASE("ansi_fast/ansi_rle_different_modes", "[ansi_fast]") {
+TEST_CASE("ansi_fast/ansi_rle_different_modes", "[ansi_fast] [unit]") {
   char buffer[256];
   ansi_rle_context_t ctx;
 
@@ -274,7 +274,7 @@ TEST_CASE("ansi_fast/ansi_rle_different_modes", "[ansi_fast]") {
  * 256-Color Mode Tests
  * ============================================================================ */
 
-TEST_CASE("ansi_fast/append_256color_fg_basic", "[ansi_fast]") {
+TEST_CASE("ansi_fast/append_256color_fg_basic", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 
@@ -288,7 +288,7 @@ TEST_CASE("ansi_fast/append_256color_fg_basic", "[ansi_fast]") {
   REQUIRE(std::strcmp((buffer), ("\033[38;5;123m")) == 0);
 }
 
-TEST_CASE("ansi_fast/append_256color_fg_edge_cases", "[ansi_fast]") {
+TEST_CASE("ansi_fast/append_256color_fg_edge_cases", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 
@@ -304,7 +304,7 @@ TEST_CASE("ansi_fast/append_256color_fg_edge_cases", "[ansi_fast]") {
   REQUIRE(std::strcmp((buffer), ("\033[38;5;255m")) == 0);
 }
 
-TEST_CASE("ansi_fast/rgb_to_256color_basic", "[ansi_fast]") {
+TEST_CASE("ansi_fast/rgb_to_256color_basic", "[ansi_fast] [unit]") {
   uint8_t result;
 
   // Test basic RGB to 256-color conversion
@@ -321,7 +321,7 @@ TEST_CASE("ansi_fast/rgb_to_256color_basic", "[ansi_fast]") {
   REQUIRE(result <= 231);
 }
 
-TEST_CASE("ansi_fast/rgb_to_256color_grayscale", "[ansi_fast]") {
+TEST_CASE("ansi_fast/rgb_to_256color_grayscale", "[ansi_fast] [unit]") {
   uint8_t result;
 
   // Test grayscale conversion
@@ -336,7 +336,7 @@ TEST_CASE("ansi_fast/rgb_to_256color_grayscale", "[ansi_fast]") {
   REQUIRE(result <= 255);
 }
 
-TEST_CASE("ansi_fast/rgb_to_256color_edge_cases", "[ansi_fast]") {
+TEST_CASE("ansi_fast/rgb_to_256color_edge_cases", "[ansi_fast] [unit]") {
   uint8_t result;
 
   // Test edge cases
@@ -355,7 +355,7 @@ TEST_CASE("ansi_fast/rgb_to_256color_edge_cases", "[ansi_fast]") {
  * 16-Color Mode Tests
  * ============================================================================ */
 
-TEST_CASE("ansi_fast/append_16color_fg_basic", "[ansi_fast]") {
+TEST_CASE("ansi_fast/append_16color_fg_basic", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 
@@ -373,7 +373,7 @@ TEST_CASE("ansi_fast/append_16color_fg_basic", "[ansi_fast]") {
   REQUIRE(std::strcmp((buffer), ("\033[32m")) == 0);
 }
 
-TEST_CASE("ansi_fast/append_16color_fg_edge_cases", "[ansi_fast]") {
+TEST_CASE("ansi_fast/append_16color_fg_edge_cases", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 
@@ -398,7 +398,7 @@ TEST_CASE("ansi_fast/append_16color_fg_edge_cases", "[ansi_fast]") {
   REQUIRE(std::strcmp((buffer), ("\033[37m")) == 0);
 }
 
-TEST_CASE("ansi_fast/append_16color_bg_basic", "[ansi_fast]") {
+TEST_CASE("ansi_fast/append_16color_bg_basic", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 
@@ -416,7 +416,7 @@ TEST_CASE("ansi_fast/append_16color_bg_basic", "[ansi_fast]") {
   REQUIRE(std::strcmp((buffer), ("\033[42m")) == 0);
 }
 
-TEST_CASE("ansi_fast/append_16color_bg_edge_cases", "[ansi_fast]") {
+TEST_CASE("ansi_fast/append_16color_bg_edge_cases", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 
@@ -441,7 +441,7 @@ TEST_CASE("ansi_fast/append_16color_bg_edge_cases", "[ansi_fast]") {
   REQUIRE(std::strcmp((buffer), ("\033[40m")) == 0);
 }
 
-TEST_CASE("ansi_fast/rgb_to_16color_basic", "[ansi_fast]") {
+TEST_CASE("ansi_fast/rgb_to_16color_basic", "[ansi_fast] [unit]") {
   uint8_t result;
 
   // Test basic RGB to 16-color conversion
@@ -461,7 +461,7 @@ TEST_CASE("ansi_fast/rgb_to_16color_basic", "[ansi_fast]") {
   REQUIRE((result) == (15));
 }
 
-TEST_CASE("ansi_fast/rgb_to_16color_approximations", "[ansi_fast]") {
+TEST_CASE("ansi_fast/rgb_to_16color_approximations", "[ansi_fast] [unit]") {
   uint8_t result;
 
   // Test color approximations
@@ -478,7 +478,7 @@ TEST_CASE("ansi_fast/rgb_to_16color_approximations", "[ansi_fast]") {
   REQUIRE((result) == (7));
 }
 
-TEST_CASE("ansi_fast/get_16color_rgb_basic", "[ansi_fast]") {
+TEST_CASE("ansi_fast/get_16color_rgb_basic", "[ansi_fast] [unit]") {
   uint8_t r, g, b;
 
   // Test getting RGB values for 16-color indices
@@ -503,7 +503,7 @@ TEST_CASE("ansi_fast/get_16color_rgb_basic", "[ansi_fast]") {
   REQUIRE((b) == (255));
 }
 
-TEST_CASE("ansi_fast/get_16color_rgb_edge_cases", "[ansi_fast]") {
+TEST_CASE("ansi_fast/get_16color_rgb_edge_cases", "[ansi_fast] [unit]") {
   uint8_t r, g, b;
 
   // Test invalid color index
@@ -517,7 +517,7 @@ TEST_CASE("ansi_fast/get_16color_rgb_edge_cases", "[ansi_fast]") {
  * Dithering Tests
  * ============================================================================ */
 
-TEST_CASE("ansi_fast/rgb_to_16color_dithered_basic", "[ansi_fast]") {
+TEST_CASE("ansi_fast/rgb_to_16color_dithered_basic", "[ansi_fast] [unit]") {
   rgb_error_t error_buffer[100]; // 10x10 buffer
   uint8_t result;
 
@@ -533,7 +533,7 @@ TEST_CASE("ansi_fast/rgb_to_16color_dithered_basic", "[ansi_fast]") {
   // Note: Error distribution depends on the actual color mapping
 }
 
-TEST_CASE("ansi_fast/rgb_to_16color_dithered_no_error_buffer", "[ansi_fast]") {
+TEST_CASE("ansi_fast/rgb_to_16color_dithered_no_error_buffer", "[ansi_fast] [unit]") {
   uint8_t result;
 
   // Test dithering without error buffer
@@ -541,7 +541,7 @@ TEST_CASE("ansi_fast/rgb_to_16color_dithered_no_error_buffer", "[ansi_fast]") {
   REQUIRE((result) == (9));
 }
 
-TEST_CASE("ansi_fast/rgb_to_16color_dithered_edge_cases", "[ansi_fast]") {
+TEST_CASE("ansi_fast/rgb_to_16color_dithered_edge_cases", "[ansi_fast] [unit]") {
   rgb_error_t error_buffer[100];
   uint8_t result;
 
@@ -558,7 +558,7 @@ TEST_CASE("ansi_fast/rgb_to_16color_dithered_edge_cases", "[ansi_fast]") {
   REQUIRE((result) == (9));
 }
 
-TEST_CASE("ansi_fast/rgb_to_16color_dithered_clamping", "[ansi_fast]") {
+TEST_CASE("ansi_fast/rgb_to_16color_dithered_clamping", "[ansi_fast] [unit]") {
   rgb_error_t error_buffer[100];
   uint8_t result;
 
@@ -580,7 +580,7 @@ TEST_CASE("ansi_fast/rgb_to_16color_dithered_clamping", "[ansi_fast]") {
  * Mode-Aware Color Function Tests
  * ============================================================================ */
 
-TEST_CASE("ansi_fast/append_color_fg_for_mode_truecolor", "[ansi_fast]") {
+TEST_CASE("ansi_fast/append_color_fg_for_mode_truecolor", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 
@@ -590,7 +590,7 @@ TEST_CASE("ansi_fast/append_color_fg_for_mode_truecolor", "[ansi_fast]") {
   REQUIRE(std::strcmp((buffer), ("\033[38;2;255;128;64m")) == 0);
 }
 
-TEST_CASE("ansi_fast/append_color_fg_for_mode_256color", "[ansi_fast]") {
+TEST_CASE("ansi_fast/append_color_fg_for_mode_256color", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 
@@ -602,7 +602,7 @@ TEST_CASE("ansi_fast/append_color_fg_for_mode_256color", "[ansi_fast]") {
   REQUIRE(strstr(buffer, "\033[38;5;") != NULL);
 }
 
-TEST_CASE("ansi_fast/append_color_fg_for_mode_16color", "[ansi_fast]") {
+TEST_CASE("ansi_fast/append_color_fg_for_mode_16color", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 
@@ -614,7 +614,7 @@ TEST_CASE("ansi_fast/append_color_fg_for_mode_16color", "[ansi_fast]") {
   REQUIRE(strstr(buffer, "\033[") != NULL);
 }
 
-TEST_CASE("ansi_fast/append_color_fg_for_mode_none", "[ansi_fast]") {
+TEST_CASE("ansi_fast/append_color_fg_for_mode_none", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 
@@ -624,7 +624,7 @@ TEST_CASE("ansi_fast/append_color_fg_for_mode_none", "[ansi_fast]") {
   REQUIRE((result) == (buffer));
 }
 
-TEST_CASE("ansi_fast/append_color_fg_for_mode_auto", "[ansi_fast]") {
+TEST_CASE("ansi_fast/append_color_fg_for_mode_auto", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 
@@ -634,7 +634,7 @@ TEST_CASE("ansi_fast/append_color_fg_for_mode_auto", "[ansi_fast]") {
   REQUIRE((result) == (buffer));
 }
 
-TEST_CASE("ansi_fast/append_color_fg_for_mode_invalid", "[ansi_fast]") {
+TEST_CASE("ansi_fast/append_color_fg_for_mode_invalid", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 
@@ -648,7 +648,7 @@ TEST_CASE("ansi_fast/append_color_fg_for_mode_invalid", "[ansi_fast]") {
  * Performance and Stress Tests
  * ============================================================================ */
 
-TEST_CASE("ansi_fast/performance_truecolor_generation", "[ansi_fast]") {
+TEST_CASE("ansi_fast/performance_truecolor_generation", "[ansi_fast] [unit]") {
   char buffer[4096];
   char *pos = buffer;
 
@@ -661,7 +661,7 @@ TEST_CASE("ansi_fast/performance_truecolor_generation", "[ansi_fast]") {
   REQUIRE((pos - buffer) > (0));
 }
 
-TEST_CASE("ansi_fast/performance_rle_generation", "[ansi_fast]") {
+TEST_CASE("ansi_fast/performance_rle_generation", "[ansi_fast] [unit]") {
   char buffer[4096];
   ansi_rle_context_t ctx;
 
@@ -679,7 +679,7 @@ TEST_CASE("ansi_fast/performance_rle_generation", "[ansi_fast]") {
   REQUIRE((buffer[ctx.length]) == ('\0'));
 }
 
-TEST_CASE("ansi_fast/performance_color_conversion", "[ansi_fast]") {
+TEST_CASE("ansi_fast/performance_color_conversion", "[ansi_fast] [unit]") {
   uint8_t result;
 
   // Test many color conversions
@@ -698,7 +698,7 @@ TEST_CASE("ansi_fast/performance_color_conversion", "[ansi_fast]") {
  * Buffer Overflow Protection Tests
  * ============================================================================ */
 
-TEST_CASE("ansi_fast/buffer_overflow_protection_rle", "[ansi_fast]") {
+TEST_CASE("ansi_fast/buffer_overflow_protection_rle", "[ansi_fast] [unit]") {
   char buffer[10]; // Very small buffer
   ansi_rle_context_t ctx;
 
@@ -712,7 +712,7 @@ TEST_CASE("ansi_fast/buffer_overflow_protection_rle", "[ansi_fast]") {
   REQUIRE(ctx.length <= sizeof(buffer));
 }
 
-TEST_CASE("ansi_fast/buffer_overflow_protection_finish", "[ansi_fast]") {
+TEST_CASE("ansi_fast/buffer_overflow_protection_finish", "[ansi_fast] [unit]") {
   char buffer[5]; // Very small buffer
   ansi_rle_context_t ctx;
 
@@ -729,7 +729,7 @@ TEST_CASE("ansi_fast/buffer_overflow_protection_finish", "[ansi_fast]") {
  * Integration Tests
  * ============================================================================ */
 
-TEST_CASE("ansi_fast/integration_full_workflow", "[ansi_fast]") {
+TEST_CASE("ansi_fast/integration_full_workflow", "[ansi_fast] [unit]") {
   char buffer[1024];
   ansi_rle_context_t ctx;
 
@@ -761,7 +761,7 @@ TEST_CASE("ansi_fast/integration_full_workflow", "[ansi_fast]") {
   REQUIRE(strstr(buffer, "B") != NULL);
 }
 
-TEST_CASE("ansi_fast/integration_color_mode_switching", "[ansi_fast]") {
+TEST_CASE("ansi_fast/integration_color_mode_switching", "[ansi_fast] [unit]") {
   char buffer[256];
   char *result;
 

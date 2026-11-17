@@ -1,9 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/tui/invitation.h>
 #include <string.h>
 
-TEST_CASE("invitation_contract/hosting_joining_and_pending_have_distinct_instructions", "[invitation_contract]") {
+TEST_CASE("invitation_contract/hosting_joining_and_pending_have_distinct_instructions", "[invitation_contract] [unit]") {
   frame_buffer_t *buffer = frame_buffer_create(24, 80);
   REQUIRE((buffer) != nullptr);
   terminal_size_t size = {.cols = 80, .rows = 24};
@@ -34,7 +33,7 @@ TEST_CASE("invitation_contract/hosting_joining_and_pending_have_distinct_instruc
   frame_buffer_destroy(buffer);
 }
 
-TEST_CASE("invitation_contract/short_and_narrow_terminals_preserve_session_within_bounds", "[invitation_contract]") {
+TEST_CASE("invitation_contract/short_and_narrow_terminals_preserve_session_within_bounds", "[invitation_contract] [unit]") {
   frame_buffer_t *buffer = frame_buffer_create(0, 0);
   REQUIRE((buffer) != nullptr);
   const terminal_size_t sizes[] = {{.cols = 80, .rows = 2}, {.cols = 20, .rows = 10}, {.cols = 2, .rows = 2}, {.cols = 52, .rows = 6}};
@@ -77,7 +76,7 @@ TEST_CASE("invitation_contract/short_and_narrow_terminals_preserve_session_withi
   frame_buffer_destroy(buffer);
 }
 
-TEST_CASE("invitation_contract/compact_logo_is_clipped_centered_and_animated", "[invitation_contract]") {
+TEST_CASE("invitation_contract/compact_logo_is_clipped_centered_and_animated", "[invitation_contract] [unit]") {
   frame_buffer_t *buffer = frame_buffer_create(0, 0);
   REQUIRE((buffer) != nullptr);
   invitation_render_logo(buffer, 20, 0, false, true);

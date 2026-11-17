@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/options/rcu.h>
 #include <libplatform/filesystem.h>
@@ -63,7 +63,7 @@ static void teardown(void) {
   options_state_destroy();
   log_destroy();
 }
-TEST_CASE("source_audio_contract/local_path_url_probe_preserves_preexisting_errors_without_adding_one", "[source_audio_contract]") {
+TEST_CASE("source_audio_contract/local_path_url_probe_preserves_preexisting_errors_without_adding_one", "[source_audio_contract] [unit]") {
   CLEAR_ERRNO_ALL();
   SET_ERRNO(ERROR_NETWORK, "Earlier caller error");
   asciichat_errno_scope_t before_open = errno_checkpoint();
@@ -87,7 +87,7 @@ static void read_samples(float expected) {
   for (size_t i = 0; i < 128; ++i)
     REQUIRE((samples[i]) == Catch::Approx(expected));
 }
-TEST_CASE("source_audio_contract/paused_audio_is_silent_and_does_not_advance_the_source", "[source_audio_contract]") {
+TEST_CASE("source_audio_contract/paused_audio_is_silent_and_does_not_advance_the_source", "[source_audio_contract] [unit]") {
   REQUIRE((media_source_get_type(source)) == (MEDIA_SOURCE_FILE));
   REQUIRE(media_source_has_audio(source));
   REQUIRE(!(media_source_uses_webcam(source)));
@@ -106,7 +106,7 @@ TEST_CASE("source_audio_contract/paused_audio_is_silent_and_does_not_advance_the
   media_source_toggle_pause(source);
   REQUIRE(!(media_source_is_paused(source)));
 }
-TEST_CASE("source_audio_contract/seeking_clears_stale_playback_audio_and_rewind_recovers_first_samples", "[source_audio_contract]") {
+TEST_CASE("source_audio_contract/seeking_clears_stale_playback_audio_and_rewind_recovers_first_samples", "[source_audio_contract] [unit]") {
   audio.playback_buffer = audio_ring_buffer_create_for_capture();
   REQUIRE((audio.playback_buffer) != nullptr);
   float old[16];
@@ -121,7 +121,7 @@ TEST_CASE("source_audio_contract/seeking_clears_stale_playback_audio_and_rewind_
   read_samples(.25f);
   REQUIRE((media_source_seek(source, -1)) == (ERROR_INVALID_PARAM));
 }
-TEST_CASE("source_audio_contract/eof_and_looping_deliver_the_original_audio_again", "[source_audio_contract]") {
+TEST_CASE("source_audio_contract/eof_and_looping_deliver_the_original_audio_again", "[source_audio_contract] [unit]") {
   size_t total = 0;
   float samples[1024];
   for (unsigned attempt = 0; attempt < 100; ++attempt) {
@@ -144,7 +144,7 @@ static bool cancel_open(void *context) {
   ++*(unsigned *)context;
   return true;
 }
-TEST_CASE("source_audio_contract/cancelled_and_invalid_source_creation_fail_without_disturbing_playback", "[source_audio_contract]") {
+TEST_CASE("source_audio_contract/cancelled_and_invalid_source_creation_fail_without_disturbing_playback", "[source_audio_contract] [unit]") {
   unsigned calls = 0;
   media_source_t *cancelled = media_source_create_interruptible(MEDIA_SOURCE_FILE, path, cancel_open, &calls);
   REQUIRE((cancelled) == nullptr);
@@ -164,7 +164,7 @@ TEST_CASE("source_audio_contract/cancelled_and_invalid_source_creation_fail_with
   REQUIRE((media_source_read_audio(NULL, NULL, 0)) == (0));
 }
 
-TEST_CASE("source_audio_contract/audio_visualizations_do_not_require_a_webcam", "[source_audio_contract]") {
+TEST_CASE("source_audio_contract/audio_visualizations_do_not_require_a_webcam", "[source_audio_contract] [unit]") {
   REQUIRE((options_set_bool("test_pattern", false)) == (ASCIICHAT_OK));
   const char *visualizations[] = {"waveform", "fft"};
   for (size_t i = 0; i < 2; ++i) {
@@ -177,7 +177,7 @@ TEST_CASE("source_audio_contract/audio_visualizations_do_not_require_a_webcam", 
   }
 }
 
-TEST_CASE("source_audio_contract/live_audio_visualizations_create_frames_without_opening_a_camera", "[source_audio_contract]") {
+TEST_CASE("source_audio_contract/live_audio_visualizations_create_frames_without_opening_a_camera", "[source_audio_contract] [unit]") {
   REQUIRE((options_set_bool("test_pattern", false)) == (ASCIICHAT_OK));
   const char *visualizations[] = {"waveform", "fft"};
   for (size_t i = 0; i < 2; ++i) {

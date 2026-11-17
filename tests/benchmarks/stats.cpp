@@ -3,7 +3,7 @@
 
 #include <ascii-chat/stats/stats.h>
 
-TEST_CASE("stats operations benchmark", "[benchmark][stats]") {
+TEST_CASE("stats operations benchmark", "[stats] [benchmark]") {
   stats_capabilities_t caps = {};
   caps.counters[STATS_COUNTER_FRAMES_CAPTURED] = true;
   caps.durations[STATS_DURATION_CAPTURE] = true;

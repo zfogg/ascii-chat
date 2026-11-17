@@ -1,6 +1,6 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/ascii/rle.h>
@@ -33,7 +33,7 @@ void ascii_test_fini(void) {
  * ============================================================================ */
 
 // Theory: Image size property - ascii_convert should work for various dimensions
-TEST_CASE("ascii/image_size_property", "[ascii]") {
+TEST_CASE("ascii/image_size_property", "[ascii] [unit]") {
   int width = GENERATE(1, 2, 4, 8, 16, 32, 64);
   int height = GENERATE(1, 2, 4, 8, 16, 32, 64);
   if (!(width > 0 && width <= 64))
@@ -66,7 +66,7 @@ TEST_CASE("ascii/image_size_property", "[ascii]") {
   image_destroy(img);
 }
 
-TEST_CASE("ascii/ascii_convert_basic", "[ascii]") {
+TEST_CASE("ascii/ascii_convert_basic", "[ascii] [unit]") {
   image_t *img = image_new(4, 4);
   REQUIRE((img) != nullptr);
 
@@ -90,7 +90,7 @@ TEST_CASE("ascii/ascii_convert_basic", "[ascii]") {
   image_destroy(img);
 }
 
-TEST_CASE("ascii/ascii_convert_color", "[ascii]") {
+TEST_CASE("ascii/ascii_convert_color", "[ascii] [unit]") {
   image_t *img = image_new(4, 4);
   REQUIRE((img) != nullptr);
 
@@ -115,7 +115,7 @@ TEST_CASE("ascii/ascii_convert_color", "[ascii]") {
   image_destroy(img);
 }
 
-TEST_CASE("ascii/ascii_convert_null_image", "[ascii]") {
+TEST_CASE("ascii/ascii_convert_null_image", "[ascii] [unit]") {
   const char *palette = "@#$%&*+=-:. ";
   char luminance_palette[257]; // Extra byte for null terminator
   for (int i = 0; i < 256; i++) {
@@ -127,7 +127,7 @@ TEST_CASE("ascii/ascii_convert_null_image", "[ascii]") {
   REQUIRE((result) == nullptr);
 }
 
-TEST_CASE("ascii/ascii_convert_null_palette", "[ascii]") {
+TEST_CASE("ascii/ascii_convert_null_palette", "[ascii] [unit]") {
   image_t *img = image_new(4, 4);
   REQUIRE((img) != nullptr);
 
@@ -143,7 +143,7 @@ TEST_CASE("ascii/ascii_convert_null_palette", "[ascii]") {
   image_destroy(img);
 }
 
-TEST_CASE("ascii/ascii_convert_null_luminance_palette", "[ascii]") {
+TEST_CASE("ascii/ascii_convert_null_luminance_palette", "[ascii] [unit]") {
   image_t *img = image_new(4, 4);
   REQUIRE((img) != nullptr);
 
@@ -155,7 +155,7 @@ TEST_CASE("ascii/ascii_convert_null_luminance_palette", "[ascii]") {
   image_destroy(img);
 }
 
-TEST_CASE("ascii/ascii_convert_zero_dimensions", "[ascii]") {
+TEST_CASE("ascii/ascii_convert_zero_dimensions", "[ascii] [unit]") {
   // image_new(0, 0) correctly returns NULL for invalid dimensions
   image_t *img = image_new(0, 0);
 
@@ -179,7 +179,7 @@ TEST_CASE("ascii/ascii_convert_zero_dimensions", "[ascii]") {
   image_destroy(img);
 }
 
-TEST_CASE("ascii/ascii_convert_different_sizes", "[ascii]") {
+TEST_CASE("ascii/ascii_convert_different_sizes", "[ascii] [unit]") {
   image_t *img = image_new(8, 8);
   REQUIRE((img) != nullptr);
 
@@ -211,7 +211,7 @@ TEST_CASE("ascii/ascii_convert_different_sizes", "[ascii]") {
   image_destroy(img);
 }
 
-TEST_CASE("ascii/ascii_convert_with_aspect_ratio", "[ascii]") {
+TEST_CASE("ascii/ascii_convert_with_aspect_ratio", "[ascii] [unit]") {
   image_t *img = image_new(8, 4);
   REQUIRE((img) != nullptr);
 
@@ -235,7 +235,7 @@ TEST_CASE("ascii/ascii_convert_with_aspect_ratio", "[ascii]") {
   image_destroy(img);
 }
 
-TEST_CASE("ascii/ascii_convert_with_stretch", "[ascii]") {
+TEST_CASE("ascii/ascii_convert_with_stretch", "[ascii] [unit]") {
   image_t *img = image_new(4, 8);
   REQUIRE((img) != nullptr);
 
@@ -263,7 +263,7 @@ TEST_CASE("ascii/ascii_convert_with_stretch", "[ascii]") {
  * ASCII Convert with Capabilities Tests
  * ============================================================================ */
 
-TEST_CASE("ascii/ascii_convert_with_capabilities_basic", "[ascii]") {
+TEST_CASE("ascii/ascii_convert_with_capabilities_basic", "[ascii] [unit]") {
   image_t *img = image_new(4, 4);
   REQUIRE((img) != nullptr);
 
@@ -298,7 +298,7 @@ TEST_CASE("ascii/ascii_convert_with_capabilities_basic", "[ascii]") {
   image_destroy(img);
 }
 
-TEST_CASE("ascii/ascii_convert_with_capabilities_null_image", "[ascii]") {
+TEST_CASE("ascii/ascii_convert_with_capabilities_null_image", "[ascii] [unit]") {
   terminal_capabilities_t caps = {.capabilities = TERM_CAP_COLOR_256 | TERM_CAP_UTF8,
                                   .color_level = TERM_COLOR_256,
                                   .color_count = 256,
@@ -321,7 +321,7 @@ TEST_CASE("ascii/ascii_convert_with_capabilities_null_image", "[ascii]") {
   REQUIRE((result) == nullptr);
 }
 
-TEST_CASE("ascii/ascii_convert_with_capabilities_null_caps", "[ascii]") {
+TEST_CASE("ascii/ascii_convert_with_capabilities_null_caps", "[ascii] [unit]") {
   image_t *img = image_new(4, 4);
   REQUIRE((img) != nullptr);
 
@@ -338,7 +338,7 @@ TEST_CASE("ascii/ascii_convert_with_capabilities_null_caps", "[ascii]") {
   image_destroy(img);
 }
 
-TEST_CASE("ascii/ascii_convert_with_capabilities_different_color_support", "[ascii]") {
+TEST_CASE("ascii/ascii_convert_with_capabilities_different_color_support", "[ascii] [unit]") {
   image_t *img = image_new(4, 4);
   REQUIRE((img) != nullptr);
 
@@ -408,7 +408,7 @@ TEST_CASE("ascii/ascii_convert_with_capabilities_different_color_support", "[asc
  * ============================================================================ */
 
 // Theory: Width padding property - padding should preserve content and add correct spacing
-TEST_CASE("ascii/width_padding_property", "[ascii]") {
+TEST_CASE("ascii/width_padding_property", "[ascii] [unit]") {
   int pad_width = GENERATE(0, 1, 3, 5, 10, 20);
   if (!(pad_width >= 0 && pad_width <= 20))
     SKIP("assumption not satisfied");
@@ -429,7 +429,7 @@ TEST_CASE("ascii/width_padding_property", "[ascii]") {
 }
 
 // Theory: Height padding property - padding should preserve content and add correct spacing
-TEST_CASE("ascii/height_padding_property", "[ascii]") {
+TEST_CASE("ascii/height_padding_property", "[ascii] [unit]") {
   int pad_height = GENERATE(0, 1, 2, 5, 10);
   if (!(pad_height >= 0 && pad_height <= 10))
     SKIP("assumption not satisfied");
@@ -449,7 +449,7 @@ TEST_CASE("ascii/height_padding_property", "[ascii]") {
   SAFE_FREE(result);
 }
 
-TEST_CASE("ascii/ascii_pad_frame_width_basic", "[ascii]") {
+TEST_CASE("ascii/ascii_pad_frame_width_basic", "[ascii] [unit]") {
   const char *frame = "Hello\nWorld\nTest";
   char *result = ascii_pad_frame_width(frame, 5);
 
@@ -459,7 +459,7 @@ TEST_CASE("ascii/ascii_pad_frame_width_basic", "[ascii]") {
   SAFE_FREE(result);
 }
 
-TEST_CASE("ascii/ascii_pad_frame_width_zero_pad", "[ascii]") {
+TEST_CASE("ascii/ascii_pad_frame_width_zero_pad", "[ascii] [unit]") {
   const char *frame = "Hello\nWorld\nTest";
   char *result = ascii_pad_frame_width(frame, 0);
 
@@ -470,12 +470,12 @@ TEST_CASE("ascii/ascii_pad_frame_width_zero_pad", "[ascii]") {
   SAFE_FREE(result);
 }
 
-TEST_CASE("ascii/ascii_pad_frame_width_null_frame", "[ascii]") {
+TEST_CASE("ascii/ascii_pad_frame_width_null_frame", "[ascii] [unit]") {
   char *result = ascii_pad_frame_width(NULL, 5);
   REQUIRE((result) == nullptr);
 }
 
-TEST_CASE("ascii/ascii_pad_frame_width_empty_frame", "[ascii]") {
+TEST_CASE("ascii/ascii_pad_frame_width_empty_frame", "[ascii] [unit]") {
   const char *frame = "";
   char *result = ascii_pad_frame_width(frame, 5);
 
@@ -485,7 +485,7 @@ TEST_CASE("ascii/ascii_pad_frame_width_empty_frame", "[ascii]") {
   SAFE_FREE(result);
 }
 
-TEST_CASE("ascii/ascii_pad_frame_width_single_line", "[ascii]") {
+TEST_CASE("ascii/ascii_pad_frame_width_single_line", "[ascii] [unit]") {
   const char *frame = "Hello";
   char *result = ascii_pad_frame_width(frame, 3);
 
@@ -495,7 +495,7 @@ TEST_CASE("ascii/ascii_pad_frame_width_single_line", "[ascii]") {
   SAFE_FREE(result);
 }
 
-TEST_CASE("ascii/ascii_pad_frame_height_basic", "[ascii]") {
+TEST_CASE("ascii/ascii_pad_frame_height_basic", "[ascii] [unit]") {
   const char *frame = "Hello\nWorld\nTest";
   char *result = ascii_pad_frame_height(frame, 2);
 
@@ -505,7 +505,7 @@ TEST_CASE("ascii/ascii_pad_frame_height_basic", "[ascii]") {
   SAFE_FREE(result);
 }
 
-TEST_CASE("ascii/ascii_pad_frame_height_zero_pad", "[ascii]") {
+TEST_CASE("ascii/ascii_pad_frame_height_zero_pad", "[ascii] [unit]") {
   const char *frame = "Hello\nWorld\nTest";
   char *result = ascii_pad_frame_height(frame, 0);
 
@@ -516,12 +516,12 @@ TEST_CASE("ascii/ascii_pad_frame_height_zero_pad", "[ascii]") {
   SAFE_FREE(result);
 }
 
-TEST_CASE("ascii/ascii_pad_frame_height_null_frame", "[ascii]") {
+TEST_CASE("ascii/ascii_pad_frame_height_null_frame", "[ascii] [unit]") {
   char *result = ascii_pad_frame_height(NULL, 2);
   REQUIRE((result) == nullptr);
 }
 
-TEST_CASE("ascii/ascii_pad_frame_height_empty_frame", "[ascii]") {
+TEST_CASE("ascii/ascii_pad_frame_height_empty_frame", "[ascii] [unit]") {
   const char *frame = "";
   char *result = ascii_pad_frame_height(frame, 2);
 
@@ -531,7 +531,7 @@ TEST_CASE("ascii/ascii_pad_frame_height_empty_frame", "[ascii]") {
   SAFE_FREE(result);
 }
 
-TEST_CASE("ascii/ascii_pad_frame_height_single_line", "[ascii]") {
+TEST_CASE("ascii/ascii_pad_frame_height_single_line", "[ascii] [unit]") {
   const char *frame = "Hello";
   char *result = ascii_pad_frame_height(frame, 1);
 
@@ -545,7 +545,7 @@ TEST_CASE("ascii/ascii_pad_frame_height_single_line", "[ascii]") {
  * ASCII Grid Creation Tests
  * ============================================================================ */
 
-TEST_CASE("ascii/ascii_create_grid_basic", "[ascii]") {
+TEST_CASE("ascii/ascii_create_grid_basic", "[ascii] [unit]") {
   ascii_frame_source_t sources[2];
   sources[0].frame_data = "Hello\nWorld";
   sources[0].frame_size = strlen(sources[0].frame_data);
@@ -562,7 +562,7 @@ TEST_CASE("ascii/ascii_create_grid_basic", "[ascii]") {
   SAFE_FREE(result);
 }
 
-TEST_CASE("ascii/ascii_create_grid_single_source", "[ascii]") {
+TEST_CASE("ascii/ascii_create_grid_single_source", "[ascii] [unit]") {
   ascii_frame_source_t sources[1];
   sources[0].frame_data = "Hello\nWorld";
   sources[0].frame_size = strlen(sources[0].frame_data);
@@ -576,13 +576,13 @@ TEST_CASE("ascii/ascii_create_grid_single_source", "[ascii]") {
   SAFE_FREE(result);
 }
 
-TEST_CASE("ascii/ascii_create_grid_null_sources", "[ascii]") {
+TEST_CASE("ascii/ascii_create_grid_null_sources", "[ascii] [unit]") {
   size_t out_size;
   char *result = ascii_create_grid(NULL, 2, 2, 1, &out_size);
   REQUIRE((result) == nullptr);
 }
 
-TEST_CASE("ascii/ascii_create_grid_zero_count", "[ascii]") {
+TEST_CASE("ascii/ascii_create_grid_zero_count", "[ascii] [unit]") {
   ascii_frame_source_t sources[2];
   sources[0].frame_data = "Hello\nWorld";
   sources[0].frame_size = strlen(sources[0].frame_data);
@@ -592,7 +592,7 @@ TEST_CASE("ascii/ascii_create_grid_zero_count", "[ascii]") {
   REQUIRE((result) == nullptr);
 }
 
-TEST_CASE("ascii/ascii_create_grid_null_out_size", "[ascii]") {
+TEST_CASE("ascii/ascii_create_grid_null_out_size", "[ascii] [unit]") {
   ascii_frame_source_t sources[2];
   sources[0].frame_data = "Hello\nWorld";
   sources[0].frame_size = strlen(sources[0].frame_data);
@@ -603,7 +603,7 @@ TEST_CASE("ascii/ascii_create_grid_null_out_size", "[ascii]") {
   REQUIRE((result) == nullptr);
 }
 
-TEST_CASE("ascii/ascii_create_grid_zero_dimensions", "[ascii]") {
+TEST_CASE("ascii/ascii_create_grid_zero_dimensions", "[ascii] [unit]") {
   ascii_frame_source_t sources[2];
   sources[0].frame_data = "Hello\nWorld";
   sources[0].frame_size = strlen(sources[0].frame_data);
@@ -615,7 +615,7 @@ TEST_CASE("ascii/ascii_create_grid_zero_dimensions", "[ascii]") {
   REQUIRE((result) == nullptr);
 }
 
-TEST_CASE("ascii/ascii_create_grid_empty_frames", "[ascii]") {
+TEST_CASE("ascii/ascii_create_grid_empty_frames", "[ascii] [unit]") {
   ascii_frame_source_t sources[2];
   sources[0].frame_data = "";
   sources[0].frame_size = 0;
@@ -631,7 +631,7 @@ TEST_CASE("ascii/ascii_create_grid_empty_frames", "[ascii]") {
   SAFE_FREE(result);
 }
 
-TEST_CASE("ascii/ascii_create_grid_null_frame_data", "[ascii]") {
+TEST_CASE("ascii/ascii_create_grid_null_frame_data", "[ascii] [unit]") {
   ascii_frame_source_t sources[2];
   sources[0].frame_data = NULL;
   sources[0].frame_size = 0;
@@ -653,7 +653,7 @@ TEST_CASE("ascii/ascii_create_grid_null_frame_data", "[ascii]") {
  * ASCII Write Tests
  * ============================================================================ */
 
-TEST_CASE("ascii/ascii_write_basic", "[ascii]") {
+TEST_CASE("ascii/ascii_write_basic", "[ascii] [unit]") {
   const char *data = "Hello World\n";
   asciichat_error_t result = ascii_write(data);
 
@@ -661,13 +661,13 @@ TEST_CASE("ascii/ascii_write_basic", "[ascii]") {
   REQUIRE((result == ASCIICHAT_OK || result < 0));
 }
 
-TEST_CASE("ascii/ascii_write_null_data", "[ascii]") {
+TEST_CASE("ascii/ascii_write_null_data", "[ascii] [unit]") {
   asciichat_error_t result = ascii_write(NULL);
   // Should return an error code (non-zero asciichat_error_t value)
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("ascii/ascii_write_empty_data", "[ascii]") {
+TEST_CASE("ascii/ascii_write_empty_data", "[ascii] [unit]") {
   const char *data = "";
   asciichat_error_t result = ascii_write(data);
 
@@ -679,7 +679,7 @@ TEST_CASE("ascii/ascii_write_empty_data", "[ascii]") {
  * ASCII Initialization Tests
  * ============================================================================ */
 
-TEST_CASE("ascii/ascii_write_init_basic", "[ascii]") {
+TEST_CASE("ascii/ascii_write_init_basic", "[ascii] [unit]") {
   // Test with stdout
   bool reset_terminal = getenv("CI") != NULL;
   asciichat_error_t result = ascii_write_init(STDOUT_FILENO, reset_terminal);
@@ -690,7 +690,7 @@ TEST_CASE("ascii/ascii_write_init_basic", "[ascii]") {
   ascii_write_destroy(STDOUT_FILENO, reset_terminal);
 }
 
-TEST_CASE("ascii/ascii_write_init_invalid_fd", "[ascii]") {
+TEST_CASE("ascii/ascii_write_init_invalid_fd", "[ascii] [unit]") {
   bool reset_terminal = getenv("CI") != NULL;
   asciichat_error_t result = ascii_write_init(-1, reset_terminal);
 
@@ -711,7 +711,7 @@ TEST_CASE("ascii/ascii_write_init_invalid_fd", "[ascii]") {
  * Edge Cases and Error Handling Tests
  * ============================================================================ */
 
-TEST_CASE("ascii/ascii_operations_with_invalid_parameters", "[ascii]") {
+TEST_CASE("ascii/ascii_operations_with_invalid_parameters", "[ascii] [unit]") {
   // Test all functions with invalid parameters
   char *result;
 
@@ -737,7 +737,7 @@ TEST_CASE("ascii/ascii_operations_with_invalid_parameters", "[ascii]") {
   REQUIRE((result) == nullptr);
 }
 
-TEST_CASE("ascii/ascii_operations_with_extreme_values", "[ascii]") {
+TEST_CASE("ascii/ascii_operations_with_extreme_values", "[ascii] [unit]") {
   image_t *img = image_new(1, 1);
   REQUIRE((img) != nullptr);
 
@@ -779,7 +779,7 @@ static ascii_palette_test_case_t ascii_palette_cases[] = {{true, "@#$%&*+=-:. ",
                                                           {true, "0123456789", "Numeric palette"},
                                                           {false, "", "Empty palette"}};
 
-TEST_CASE("ascii/palette_tests", "[ascii]") {
+TEST_CASE("ascii/palette_tests", "[ascii] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ascii_palette_cases), std::end(ascii_palette_cases)));
   auto *tc = &generated_case;
   image_t *img = image_new(4, 4);
@@ -824,7 +824,7 @@ typedef struct {
 static ascii_size_test_case_t ascii_size_cases[] = {// Skip 1x1 - causes SIMD buffer overflow
                                                     {2, 2, "2x2 image"}, {4, 4, "4x4 image"}, {8, 8, "8x8 image"}, {16, 16, "16x16 image"}, {32, 32, "32x32 image"}, {64, 64, "64x64 image"}};
 
-TEST_CASE("ascii/size_tests", "[ascii]") {
+TEST_CASE("ascii/size_tests", "[ascii] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ascii_size_cases), std::end(ascii_size_cases)));
   auto *tc = &generated_case;
   image_t *img = image_new(tc->width, tc->height);
@@ -884,7 +884,7 @@ static ascii_option_test_case_t ascii_option_cases[] = {{false, false, false, "N
                                                         {false, false, true, "Italic only"},    {true, true, false, "Color and bold"}, {true, false, true, "Color and italic"},
                                                         {false, true, true, "Bold and italic"}, {true, true, true, "All options"}};
 
-TEST_CASE("ascii/option_tests", "[ascii]") {
+TEST_CASE("ascii/option_tests", "[ascii] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ascii_option_cases), std::end(ascii_option_cases)));
   auto *tc = &generated_case;
   image_t *img = image_new(4, 4);
@@ -918,7 +918,7 @@ typedef struct {
 
 static ascii_stress_test_case_t ascii_stress_cases[] = {{10, "Light stress test"}, {50, "Medium stress test"}, {100, "Heavy stress test"}, {500, "Intensive stress test"}};
 
-TEST_CASE("ascii/stress_tests", "[ascii]") {
+TEST_CASE("ascii/stress_tests", "[ascii] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ascii_stress_cases), std::end(ascii_stress_cases)));
   auto *tc = &generated_case;
   const char *palette = "@#$%&*+=-:. ";
@@ -946,7 +946,7 @@ TEST_CASE("ascii/stress_tests", "[ascii]") {
   }
 }
 
-TEST_CASE("ascii/halfblock_cover_uses_cell_geometry", "[ascii]") {
+TEST_CASE("ascii/halfblock_cover_uses_cell_geometry", "[ascii] [unit]") {
   image_t *img = image_new(8, 4);
   REQUIRE((img) != nullptr);
   for (int y = 0; y < 4; ++y) {
@@ -994,7 +994,7 @@ TEST_CASE("ascii/halfblock_cover_uses_cell_geometry", "[ascii]") {
   image_destroy(img);
 }
 
-TEST_CASE("ascii/ascii_create_grid_colored_single_source", "[ascii]") {
+TEST_CASE("ascii/ascii_create_grid_colored_single_source", "[ascii] [unit]") {
   const char *frame = "\033[38;2;255;0;0mABCDEF\033[0m\n";
   ascii_frame_source_t source = {.frame_data = frame, .frame_size = strlen(frame)};
   size_t size = 0;
@@ -1008,7 +1008,7 @@ TEST_CASE("ascii/ascii_create_grid_colored_single_source", "[ascii]") {
   SAFE_FREE(grid);
 }
 
-TEST_CASE("ascii/ascii_create_grid_colored_rows_do_not_overlap", "[ascii]") {
+TEST_CASE("ascii/ascii_create_grid_colored_rows_do_not_overlap", "[ascii] [unit]") {
   const char *left = "\033[38;2;255;0;0mAAAAAAAAAA\033[0m\n";
   const char *right = "\033[38;2;0;255;0mBBBBBBBBBB\033[0m\n";
   char left_frame[256] = "", right_frame[256] = "";
@@ -1030,7 +1030,7 @@ TEST_CASE("ascii/ascii_create_grid_colored_rows_do_not_overlap", "[ascii]") {
   SAFE_FREE(grid);
 }
 
-TEST_CASE("ascii/ascii_create_grid_unicode_centering", "[ascii]") {
+TEST_CASE("ascii/ascii_create_grid_unicode_centering", "[ascii] [unit]") {
   const char *frame = "\033[31mé中😀\033[0m";
   ascii_frame_source_t source = {.frame_data = frame, .frame_size = strlen(frame)};
   size_t size;
@@ -1040,7 +1040,7 @@ TEST_CASE("ascii/ascii_create_grid_unicode_centering", "[ascii]") {
   SAFE_FREE(grid);
 }
 
-TEST_CASE("ascii/ascii_create_grid_unicode_clipping", "[ascii]") {
+TEST_CASE("ascii/ascii_create_grid_unicode_clipping", "[ascii] [unit]") {
   const char *frame = "\033[31mé中😀x\033[0m";
   ascii_frame_source_t source = {.frame_data = frame, .frame_size = strlen(frame)};
   size_t size;
@@ -1050,7 +1050,7 @@ TEST_CASE("ascii/ascii_create_grid_unicode_clipping", "[ascii]") {
   SAFE_FREE(grid);
 }
 
-TEST_CASE("ascii/ascii_create_grid_unicode_separators", "[ascii]") {
+TEST_CASE("ascii/ascii_create_grid_unicode_separators", "[ascii] [unit]") {
   const char *left = "\033[31mé中😀ABCDEextra\033[0m\n";
   const char *right = "\033[32m中é😀12345extra\033[0m\n";
   char left_frame[512] = "", right_frame[512] = "";
@@ -1076,7 +1076,7 @@ TEST_CASE("ascii/ascii_create_grid_unicode_separators", "[ascii]") {
   SAFE_FREE(grid);
 }
 
-TEST_CASE("ascii/grid_layout_sizes_source_tiles_to_viewport", "[ascii]") {
+TEST_CASE("ascii/grid_layout_sizes_source_tiles_to_viewport", "[ascii] [unit]") {
   const int sizes[][2] = {{154, 52}, {186, 52}, {100, 40}};
   for (size_t viewport = 0; viewport < sizeof(sizes) / sizeof(sizes[0]); ++viewport) {
     for (int count = 1; count <= 6; ++count) {

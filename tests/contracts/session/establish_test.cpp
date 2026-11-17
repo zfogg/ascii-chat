@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "session/connection.h"
 #include <ascii-chat/network/negotiation.h>
 #include <ascii-chat/options/rcu.h>
@@ -131,7 +130,7 @@ static asciichat_error_t establish(network_connection_t **owner) {
   char password[PASSWORD_BUFFER_SIZE] = "initial";
   return fixture_establish("fixture", "input", 0, NULL, owner, password, sizeof(password), prepare, detach, &handshake);
 }
-TEST_CASE("session_establishment/retries_password_on_a_fresh_owner", "[session_establishment]") {
+TEST_CASE("session_establishment/retries_password_on_a_fresh_owner", "[session_establishment] [contract]") {
   challenge = true;
   network_connection_t *owner = NULL;
   REQUIRE((establish(&owner)) == (ASCIICHAT_OK));
@@ -140,7 +139,7 @@ TEST_CASE("session_establishment/retries_password_on_a_fresh_owner", "[session_e
   REQUIRE((destroys) == (1));
   REQUIRE((prompts) == (1));
 }
-TEST_CASE("session_establishment/retains_failed_prepare_for_caller_cleanup", "[session_establishment]") {
+TEST_CASE("session_establishment/retains_failed_prepare_for_caller_cleanup", "[session_establishment] [contract]") {
   prepare_result = ERROR_CRYPTO_AUTH;
   network_connection_t *owner = NULL;
   REQUIRE((establish(&owner)) == (ERROR_CRYPTO_AUTH));
@@ -148,7 +147,7 @@ TEST_CASE("session_establishment/retains_failed_prepare_for_caller_cleanup", "[s
   REQUIRE((negotiations) == (0));
   REQUIRE((destroys) == (0));
 }
-TEST_CASE("session_establishment/does_not_retry_protocol_failure", "[session_establishment]") {
+TEST_CASE("session_establishment/does_not_retry_protocol_failure", "[session_establishment] [contract]") {
   negotiate_result = ERROR_NETWORK_PROTOCOL;
   network_connection_t *owner = NULL;
   REQUIRE((establish(&owner)) == (ERROR_NETWORK_PROTOCOL));
@@ -173,7 +172,7 @@ static asciichat_error_t establish_quic(network_connection_t **owner) {
   return fixture_establish("fixture", "quic://127.0.0.1:1234", 0, NULL, owner, password, sizeof(password), prepare, detach, &handshake);
 }
 
-TEST_CASE("session_establishment/falls_back_only_after_quic_open_timeout", "[session_establishment]") {
+TEST_CASE("session_establishment/falls_back_only_after_quic_open_timeout", "[session_establishment] [contract]") {
   configure_fallback();
   fallback_test = true;
   first_dial_result = ERROR_NETWORK_TIMEOUT;
@@ -185,7 +184,7 @@ TEST_CASE("session_establishment/falls_back_only_after_quic_open_timeout", "[ses
   REQUIRE(!(errno_has_code(ERROR_NETWORK_TIMEOUT)));
 }
 
-TEST_CASE("session_establishment/never_falls_back_after_negotiation_timeout", "[session_establishment]") {
+TEST_CASE("session_establishment/never_falls_back_after_negotiation_timeout", "[session_establishment] [contract]") {
   configure_fallback();
   negotiate_result = ERROR_NETWORK_TIMEOUT;
   network_connection_t *owner = NULL;
@@ -194,7 +193,7 @@ TEST_CASE("session_establishment/never_falls_back_after_negotiation_timeout", "[
   REQUIRE((owner) == (sentinel));
 }
 
-TEST_CASE("session_establishment/never_falls_back_after_tls_failure_or_cancellation", "[session_establishment]") {
+TEST_CASE("session_establishment/never_falls_back_after_tls_failure_or_cancellation", "[session_establishment] [contract]") {
   configure_fallback();
   network_connection_t *owner = NULL;
   first_dial_result = ERROR_CRYPTO;
@@ -205,7 +204,7 @@ TEST_CASE("session_establishment/never_falls_back_after_tls_failure_or_cancellat
   REQUIRE((establish_quic(&owner)) == (ERROR_NETWORK_CONNECT));
   REQUIRE((opens) == (1));
 }
-TEST_CASE("session_establishment/password_retry_dismisses_only_negotiation_errors", "[session_establishment]") {
+TEST_CASE("session_establishment/password_retry_dismisses_only_negotiation_errors", "[session_establishment] [contract]") {
   SET_ERRNO(ERROR_INVALID_STATE, "earlier operation");
   asciichat_error_context_t earlier, remaining;
   REQUIRE(HAS_ERRNO(&earlier));
@@ -217,7 +216,7 @@ TEST_CASE("session_establishment/password_retry_dismisses_only_negotiation_error
   REQUIRE(!(errno_has_code(ERROR_CRYPTO)));
   REQUIRE(!(errno_has_code(ERROR_CRYPTO_AUTH)));
 }
-TEST_CASE("session_establishment/password_retry_without_recorded_errors_preserves_earlier_error", "[session_establishment]") {
+TEST_CASE("session_establishment/password_retry_without_recorded_errors_preserves_earlier_error", "[session_establishment] [contract]") {
   SET_ERRNO(ERROR_INVALID_STATE, "earlier operation");
   asciichat_error_context_t earlier, remaining;
   REQUIRE(HAS_ERRNO(&earlier));
@@ -228,7 +227,7 @@ TEST_CASE("session_establishment/password_retry_without_recorded_errors_preserve
   REQUIRE(HAS_ERRNO(&remaining));
   REQUIRE((remaining.error_id) == (earlier.error_id));
 }
-TEST_CASE("session_establishment/password_retry_preserves_cleanup_errors", "[session_establishment]") {
+TEST_CASE("session_establishment/password_retry_preserves_cleanup_errors", "[session_establishment] [contract]") {
   challenge = true;
   record_cleanup_error = true;
   network_connection_t *owner = NULL;
@@ -239,7 +238,7 @@ TEST_CASE("session_establishment/password_retry_preserves_cleanup_errors", "[ses
   REQUIRE(std::strcmp((cause.context_message), ("cleanup cause")) == 0);
   REQUIRE(!(errno_has_code(ERROR_CRYPTO_AUTH)));
 }
-TEST_CASE("session_establishment/prompt_cancellation_has_no_live_owner", "[session_establishment]") {
+TEST_CASE("session_establishment/prompt_cancellation_has_no_live_owner", "[session_establishment] [contract]") {
   challenge = true;
   prompt_result = ERROR_NETWORK;
   network_connection_t *owner = NULL;
@@ -248,7 +247,7 @@ TEST_CASE("session_establishment/prompt_cancellation_has_no_live_owner", "[sessi
   REQUIRE((destroys) == (1));
   REQUIRE((opens) == (1));
 }
-TEST_CASE("session_establishment/dial_failure_preserves_cause", "[session_establishment]") {
+TEST_CASE("session_establishment/dial_failure_preserves_cause", "[session_establishment] [contract]") {
   dial_result = ERROR_NETWORK_CONNECT;
   network_connection_t *owner = NULL;
   REQUIRE((establish(&owner)) == (ERROR_NETWORK_CONNECT));
@@ -257,13 +256,13 @@ TEST_CASE("session_establishment/dial_failure_preserves_cause", "[session_establ
   REQUIRE(HAS_ERRNO(&cause));
   REQUIRE(std::strcmp((cause.context_message), ("dial cause")) == 0);
 }
-TEST_CASE("session_establishment/rejects_overwriting_an_existing_owner", "[session_establishment]") {
+TEST_CASE("session_establishment/rejects_overwriting_an_existing_owner", "[session_establishment] [contract]") {
   network_connection_t *owner = sentinel;
   REQUIRE((establish(&owner)) == (ERROR_INVALID_PARAM));
   REQUIRE((owner) == (sentinel));
   REQUIRE((opens) == (0));
 }
-TEST_CASE("session_establishment/network_attempt_reports_challenge_without_prompting_or_disposing", "[session_establishment]") {
+TEST_CASE("session_establishment/network_attempt_reports_challenge_without_prompting_or_disposing", "[session_establishment] [contract]") {
   network_establish_config_t config = {
       .name = "fixture", .address = "input", .password = "initial", .protocol = NETWORK_PROTOCOL_MEDIA, .authenticate = true, .prepare = prepare, .context = &handshake};
   network_connection_t *owner = NULL;
@@ -278,7 +277,7 @@ TEST_CASE("session_establishment/network_attempt_reports_challenge_without_promp
   REQUIRE((destroys) == (0));
   REQUIRE(errno_has_code(ERROR_CRYPTO_AUTH));
 }
-TEST_CASE("session_establishment/network_attempt_uses_explicit_protocol_and_authentication_policy", "[session_establishment]") {
+TEST_CASE("session_establishment/network_attempt_uses_explicit_protocol_and_authentication_policy", "[session_establishment] [contract]") {
   network_establish_config_t config = {
       .name = "fixture", .address = "input", .password = "initial", .protocol = NETWORK_PROTOCOL_DISCOVERY, .authenticate = false, .prepare = prepare, .context = &handshake};
   network_connection_t *owner = NULL;

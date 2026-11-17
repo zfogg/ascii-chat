@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/pcre2.h>
 #include <libplatform/filesystem.h>
@@ -43,7 +42,7 @@ static void teardown(void) {
   log_destroy();
 }
 #ifndef NDEBUG
-TEST_CASE("path_contract/debug_default_log_directory_is_allowed_from_another_working_directory", "[path_contract]") {
+TEST_CASE("path_contract/debug_default_log_directory_is_allowed_from_another_working_directory", "[path_contract] [unit]") {
   char previous[PLATFORM_MAX_PATH_LENGTH];
   char path[PLATFORM_MAX_PATH_LENGTH];
   char *normalized = NULL;
@@ -58,7 +57,7 @@ TEST_CASE("path_contract/debug_default_log_directory_is_allowed_from_another_wor
 }
 #endif
 
-TEST_CASE("path_contract/xdg_paths_override_home_and_empty_environment_falls_back_without_allocating_garbage", "[path_contract]") {
+TEST_CASE("path_contract/xdg_paths_override_home_and_empty_environment_falls_back_without_allocating_garbage", "[path_contract] [unit]") {
   char expected[PLATFORM_MAX_PATH_LENGTH];
   safe_snprintf(expected, sizeof(expected), "%s/ascii-chat/", directory);
   char *config = get_config_dir(), *data = get_data_dir();
@@ -91,7 +90,7 @@ TEST_CASE("path_contract/xdg_paths_override_home_and_empty_environment_falls_bac
   SAFE_FREE(expanded);
 }
 
-TEST_CASE("path_contract/role_specific_rejections_clear_output_for_invalid_protected_and_outside_paths", "[path_contract]") {
+TEST_CASE("path_contract/role_specific_rejections_clear_output_for_invalid_protected_and_outside_paths", "[path_contract] [unit]") {
   const path_role_t roles[] = {PATH_ROLE_CONFIG_FILE, PATH_ROLE_LOG_FILE, PATH_ROLE_KEY_PRIVATE, PATH_ROLE_KEY_PUBLIC, PATH_ROLE_CLIENT_KEYS};
   const asciichat_error_t errors[] = {ERROR_CONFIG, ERROR_LOGGING_INIT, ERROR_CRYPTO_KEY, ERROR_CRYPTO_KEY, ERROR_CRYPTO_KEY};
   for (size_t i = 0; i < 5; ++i) {
@@ -107,7 +106,7 @@ TEST_CASE("path_contract/role_specific_rejections_clear_output_for_invalid_prote
   }
 }
 
-TEST_CASE("path_contract/existing_colored_application_log_is_accepted_without_changing_its_bytes", "[path_contract]") {
+TEST_CASE("path_contract/existing_colored_application_log_is_accepted_without_changing_its_bytes", "[path_contract] [unit]") {
   char path[PLATFORM_MAX_PATH_LENGTH];
   safe_snprintf(path, sizeof(path), "%s/existing.log", directory);
   const char contents[] = "\033[32m[12:34:56.123456] [INFO] prior application log\033[0m\n";
@@ -127,7 +126,7 @@ TEST_CASE("path_contract/existing_colored_application_log_is_accepted_without_ch
   REQUIRE(std::memcmp((readback), (contents), (sizeof(contents))) == 0);
 }
 
-TEST_CASE("path_contract/log_directory_uses_the_platform_temp_directory_in_release_and_source_root_in_debug", "[path_contract]") {
+TEST_CASE("path_contract/log_directory_uses_the_platform_temp_directory_in_release_and_source_root_in_debug", "[path_contract] [unit]") {
   char *logs = get_log_dir();
   REQUIRE((logs) != nullptr);
 #ifdef NDEBUG
@@ -141,7 +140,7 @@ TEST_CASE("path_contract/log_directory_uses_the_platform_temp_directory_in_relea
 #endif
   SAFE_FREE(logs);
 }
-TEST_CASE("path_contract/root_containment_and_component_boundaries_do_not_confuse_sibling_paths", "[path_contract]") {
+TEST_CASE("path_contract/root_containment_and_component_boundaries_do_not_confuse_sibling_paths", "[path_contract] [unit]") {
   REQUIRE(path_is_within_base("/tmp/child", "/"));
   REQUIRE(path_is_within_base("/", "/"));
   REQUIRE(!(path_is_within_base("relative", "/")));

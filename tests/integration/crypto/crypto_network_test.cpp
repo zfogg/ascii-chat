@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 
 #include <ascii-chat/crypto/crypto.h>
@@ -20,7 +19,7 @@ void restore_crypto_network_logging(void) {
 // End-to-End Crypto Integration Tests
 // =============================================================================
 
-TEST_CASE("crypto_network_integration/full_handshake_simulation", "[crypto_network_integration]") {
+TEST_CASE("crypto_network_integration/full_handshake_simulation", "[crypto_network_integration] [integration]") {
   crypto_context_t client_ctx, server_ctx;
 
   // Initialize both contexts (simulating client and server startup)
@@ -62,7 +61,7 @@ TEST_CASE("crypto_network_integration/full_handshake_simulation", "[crypto_netwo
   crypto_destroy(&server_ctx);
 }
 
-TEST_CASE("crypto_network_integration/bidirectional_encrypted_communication", "[crypto_network_integration]") {
+TEST_CASE("crypto_network_integration/bidirectional_encrypted_communication", "[crypto_network_integration] [integration]") {
   crypto_context_t alice_ctx, bob_ctx;
 
   // Set up key exchange (Alice and Bob)
@@ -116,7 +115,7 @@ TEST_CASE("crypto_network_integration/bidirectional_encrypted_communication", "[
   crypto_destroy(&bob_ctx);
 }
 
-TEST_CASE("crypto_network_integration/password_vs_key_exchange_priority", "[crypto_network_integration]") {
+TEST_CASE("crypto_network_integration/password_vs_key_exchange_priority", "[crypto_network_integration] [integration]") {
   crypto_context_t ctx;
 
   // Initialize with password first
@@ -163,7 +162,7 @@ TEST_CASE("crypto_network_integration/password_vs_key_exchange_priority", "[cryp
   crypto_destroy(&peer_ctx);
 }
 
-TEST_CASE("crypto_network_integration/multiple_messages_same_session", "[crypto_network_integration]") {
+TEST_CASE("crypto_network_integration/multiple_messages_same_session", "[crypto_network_integration] [integration]") {
   crypto_context_t client_ctx, server_ctx;
 
   // Set up session
@@ -210,7 +209,7 @@ TEST_CASE("crypto_network_integration/multiple_messages_same_session", "[crypto_
   crypto_destroy(&server_ctx);
 }
 
-TEST_CASE("crypto_network_integration/large_message_handling", "[crypto_network_integration]") {
+TEST_CASE("crypto_network_integration/large_message_handling", "[crypto_network_integration] [integration]") {
   crypto_context_t ctx1, ctx2;
 
   // Set up key exchange
@@ -261,7 +260,7 @@ TEST_CASE("crypto_network_integration/large_message_handling", "[crypto_network_
   crypto_destroy(&ctx2);
 }
 
-TEST_CASE("crypto_network_integration/error_handling_integration", "[crypto_network_integration]") {
+TEST_CASE("crypto_network_integration/error_handling_integration", "[crypto_network_integration] [integration]") {
   crypto_context_t ctx1, ctx2;
 
   crypto_init(&ctx1);
@@ -302,7 +301,7 @@ TEST_CASE("crypto_network_integration/error_handling_integration", "[crypto_netw
   crypto_destroy(&ctx2);
 }
 
-TEST_CASE("crypto_network_integration/session_cleanup_and_restart", "[crypto_network_integration]") {
+TEST_CASE("crypto_network_integration/session_cleanup_and_restart", "[crypto_network_integration] [integration]") {
   crypto_context_t ctx1, ctx2;
 
   // First session

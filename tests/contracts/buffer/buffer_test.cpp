@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 #include "../worker_assert.h"
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/common.h>
 #include <libplatform/thread.h>
@@ -509,46 +508,46 @@ static void teardown(void) {
   REQUIRE((buffer_process_reserved()) == (0));
   log_destroy();
 }
-TEST_CASE("buffer_ownership/allocation_contracts", "[buffer_ownership]") {
+TEST_CASE("buffer_ownership/allocation_contracts", "[buffer_ownership] [contract]") {
   allocation_contracts();
 }
 
-TEST_CASE("buffer_ownership/workspace_contracts", "[buffer_ownership]") {
+TEST_CASE("buffer_ownership/workspace_contracts", "[buffer_ownership] [contract]") {
   workspace_contracts();
 }
 
-TEST_CASE("buffer_ownership/queue_contracts", "[buffer_ownership]") {
+TEST_CASE("buffer_ownership/queue_contracts", "[buffer_ownership] [contract]") {
   queue_contracts();
 }
 
-TEST_CASE("buffer_ownership/concurrent_contracts", "[buffer_ownership]") {
+TEST_CASE("buffer_ownership/concurrent_contracts", "[buffer_ownership] [contract]") {
   concurrent_contracts();
 }
 
-TEST_CASE("buffer_ownership/concurrent_queue_contracts", "[buffer_ownership]") {
+TEST_CASE("buffer_ownership/concurrent_queue_contracts", "[buffer_ownership] [contract]") {
   concurrent_queue_contracts();
 }
 
-TEST_CASE("buffer_ownership/concurrent_references", "[buffer_ownership]") {
+TEST_CASE("buffer_ownership/concurrent_references", "[buffer_ownership] [contract]") {
   concurrent_references();
 }
 
-TEST_CASE("buffer_ownership/process_budget_contracts", "[buffer_ownership]") {
+TEST_CASE("buffer_ownership/process_budget_contracts", "[buffer_ownership] [contract]") {
   process_budget_contracts();
 }
 
-TEST_CASE("buffer_ownership/media_contracts", "[buffer_ownership]") {
+TEST_CASE("buffer_ownership/media_contracts", "[buffer_ownership] [contract]") {
   media_contracts();
 }
 
-TEST_CASE("buffer_ownership/client_admission_respects_process_budget", "[buffer_ownership]") {
+TEST_CASE("buffer_ownership/client_admission_respects_process_budget", "[buffer_ownership] [contract]") {
   client_admission_respects_process_budget();
 }
 
-TEST_CASE("buffer_ownership/websocket_control_reserve_contract", "[buffer_ownership]") {
+TEST_CASE("buffer_ownership/websocket_control_reserve_contract", "[buffer_ownership] [contract]") {
   websocket_control_reserve_contract();
 }
 
-TEST_CASE("buffer_ownership/concurrent_cold_start", "[buffer_ownership]") {
+TEST_CASE("buffer_ownership/concurrent_cold_start", "[buffer_ownership] [contract]") {
   concurrent_cold_start();
 }

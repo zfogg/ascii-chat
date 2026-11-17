@@ -1,5 +1,5 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include "server/main.h"
 #include "server/render.h"
 #include "server/protocol.h"
@@ -116,7 +116,7 @@ static client_info_t *admit(void) {
 static void dispatch(client_info_t *client, packet_type_t type, const void *data, size_t length) {
   REQUIRE((server_dispatch_packet(client, type, data, length)) == (ASCIICHAT_OK));
 }
-TEST_CASE("server_client/admission_limit_lookup_and_removal_reuse_the_slot_without_reusing_identity", "[server_client]") {
+TEST_CASE("server_client/admission_limit_lookup_and_removal_reuse_the_slot_without_reusing_identity", "[server_client] [contract]") {
   client_info_t *first = admit();
   char id[MAX_CLIENT_ID_LEN];
   SAFE_STRNCPY(id, first->client_id, sizeof(id));
@@ -140,7 +140,7 @@ TEST_CASE("server_client/admission_limit_lookup_and_removal_reuse_the_slot_witho
   REQUIRE((find_client_by_id(NULL)) == nullptr);
   REQUIRE((find_client_by_id("")) == nullptr);
 }
-TEST_CASE("server_client/worker_readiness_sends_state_before_start_and_counts_active_publishers", "[server_client]") {
+TEST_CASE("server_client/worker_readiness_sends_state_before_start_and_counts_active_publishers", "[server_client] [contract]") {
   client_info_t *client = admit();
   char id[MAX_CLIENT_ID_LEN];
   SAFE_STRNCPY(id, client->client_id, sizeof(id));
@@ -162,7 +162,7 @@ TEST_CASE("server_client/worker_readiness_sends_state_before_start_and_counts_ac
   REQUIRE((start_transport_client_threads(&server, "missing")) == (-1));
   REQUIRE((start_transport_client_threads(NULL, id)) == (-1));
 }
-TEST_CASE("server_client/raw_callback_owns_pixels_and_tracks_latest_frame_and_sequence", "[server_client]") {
+TEST_CASE("server_client/raw_callback_owns_pixels_and_tracks_latest_frame_and_sequence", "[server_client] [contract]") {
   client_info_t *client = admit();
   struct {
     image_frame_packet_t header;
@@ -184,7 +184,7 @@ TEST_CASE("server_client/raw_callback_owns_pixels_and_tracks_latest_frame_and_se
   REQUIRE((frame->sequence_number) == (2));
   REQUIRE((client->frames_received) == (2));
 }
-TEST_CASE("server_client/audio_callbacks_ignore_unannounced_samples_then_deliver_to_capture_ring", "[server_client]") {
+TEST_CASE("server_client/audio_callbacks_ignore_unannounced_samples_then_deliver_to_capture_ring", "[server_client] [contract]") {
   client_info_t *client = admit();
   float samples[8] = {0.125f, -0.25f, 0.5f, -0.75f};
   struct {
@@ -207,7 +207,7 @@ TEST_CASE("server_client/audio_callbacks_ignore_unannounced_samples_then_deliver
   for (size_t i = 0; i < ARRAY_SIZE(actual); ++i)
     REQUIRE((actual[i]) == Catch::Approx(samples[i / AUDIO_CHANNELS]));
 }
-TEST_CASE("server_client/ping_is_serialized_and_shutdown_suppresses_the_reply", "[server_client]") {
+TEST_CASE("server_client/ping_is_serialized_and_shutdown_suppresses_the_reply", "[server_client] [contract]") {
   client_info_t *client = admit();
   sends = 0;
   dispatch(client, PACKET_TYPE_PING, NULL, 0);
@@ -223,7 +223,7 @@ TEST_CASE("server_client/ping_is_serialized_and_shutdown_suppresses_the_reply", 
   atomic_store_bool(&client->shutting_down, false);
 }
 
-TEST_CASE("server_client/encoded_uploads_reuse_the_decoder_and_switch_between_hevc_and_h264", "[server_client]") {
+TEST_CASE("server_client/encoded_uploads_reuse_the_decoder_and_switch_between_hevc_and_h264", "[server_client] [contract]") {
   client_info_t *client = admit();
   client->codec_capabilities_video = VIDEO_CODEC_CAP_H265 | VIDEO_CODEC_CAP_H264;
   uint8_t rgb[64 * 32 * 3];
@@ -264,7 +264,7 @@ TEST_CASE("server_client/encoded_uploads_reuse_the_decoder_and_switch_between_he
   cleanup_client_media_buffers(client);
 }
 
-TEST_CASE("server_client/unadvertised_encoded_upload_disconnects_without_creating_a_decoder", "[server_client]") {
+TEST_CASE("server_client/unadvertised_encoded_upload_disconnects_without_creating_a_decoder", "[server_client] [contract]") {
   client_info_t *client = admit();
   client->codec_capabilities_video = VIDEO_CODEC_CAP_RGBA;
   uint8_t rgb[64 * 32 * 3] = {0}, packet[65536];
@@ -292,7 +292,7 @@ static void expect_rejected(client_info_t *client) {
   REQUIRE(atomic_load_bool(&client->protocol_disconnect_requested));
   REQUIRE(!(atomic_load_bool(&client->active)));
 }
-TEST_CASE("server_client/compatibility_ping_serializes_failures_and_shutdown_without_dropping_transport", "[server_client]") {
+TEST_CASE("server_client/compatibility_ping_serializes_failures_and_shutdown_without_dropping_transport", "[server_client] [contract]") {
   client_info_t *client = admit();
   handle_ping_packet(client, NULL, 0);
   REQUIRE((last_type) == (PACKET_TYPE_PONG));
@@ -311,7 +311,7 @@ TEST_CASE("server_client/compatibility_ping_serializes_failures_and_shutdown_wit
   client->transport = &transport;
   handle_pong_packet(client, NULL, 0);
 }
-TEST_CASE("server_client/remote_logs_validate_direction_and_preserve_client_media", "[server_client]") {
+TEST_CASE("server_client/remote_logs_validate_direction_and_preserve_client_media", "[server_client] [contract]") {
   client_info_t *client = admit();
   struct {
     remote_log_packet_t header;
@@ -331,7 +331,7 @@ TEST_CASE("server_client/remote_logs_validate_direction_and_preserve_client_medi
   expect_rejected(client);
   handle_remote_log_packet_from_client(NULL, NULL, 0);
 }
-TEST_CASE("server_client/legacy_raw_frames_validate_dimensions_length_and_own_successful_pixels", "[server_client]") {
+TEST_CASE("server_client/legacy_raw_frames_validate_dimensions_length_and_own_successful_pixels", "[server_client] [contract]") {
   client_info_t *client = admit();
   client->codec_capabilities_video = VIDEO_CODEC_CAP_RGBA;
   struct {
@@ -369,7 +369,7 @@ TEST_CASE("server_client/legacy_raw_frames_validate_dimensions_length_and_own_su
   handle_image_frame_packet(client, &packet, sizeof(packet));
   expect_rejected(client);
 }
-TEST_CASE("server_client/legacy_pcm_validates_stream_alignment_limits_and_recovers_with_a_valid_batch", "[server_client]") {
+TEST_CASE("server_client/legacy_pcm_validates_stream_alignment_limits_and_recovers_with_a_valid_batch", "[server_client] [contract]") {
   client_info_t *client = admit();
   float samples[AUDIO_SAMPLES_PER_PACKET + 1] = {0.25f, -0.5f};
   const size_t bad_sizes[] = {1, 0, sizeof(samples)};
@@ -393,7 +393,7 @@ TEST_CASE("server_client/legacy_pcm_validates_stream_alignment_limits_and_recove
   for (size_t i = 0; i < ARRAY_SIZE(actual); ++i)
     REQUIRE((actual[i]) == Catch::Approx(samples[i / AUDIO_CHANNELS]));
 }
-TEST_CASE("server_client/legacy_pcm_batch_rejects_bad_headers_and_counts_without_publishing_samples", "[server_client]") {
+TEST_CASE("server_client/legacy_pcm_batch_rejects_bad_headers_and_counts_without_publishing_samples", "[server_client] [contract]") {
   client_info_t *client = admit();
   struct {
     audio_batch_packet_t header;
@@ -420,7 +420,7 @@ TEST_CASE("server_client/legacy_pcm_batch_rejects_bad_headers_and_counts_without
   REQUIRE((audio_ring_buffer_read(client->incoming_audio_buffer, actual, ARRAY_SIZE(actual))) == (ARRAY_SIZE(actual)));
   REQUIRE((actual[0]) == Catch::Approx(0.5));
 }
-TEST_CASE("server_client/single_opus_compatibility_rejects_bad_metadata_and_decodes_real_audio", "[server_client]") {
+TEST_CASE("server_client/single_opus_compatibility_rejects_bad_metadata_and_decodes_real_audio", "[server_client] [contract]") {
   client_info_t *client = admit();
   uint8_t packet[4096] = {0};
   client->opus_decoder = opus_codec_create_decoder(AUDIO_SAMPLE_RATE);
@@ -461,7 +461,7 @@ TEST_CASE("server_client/single_opus_compatibility_rejects_bad_metadata_and_deco
   opus_codec_destroy(encoder);
 }
 
-TEST_CASE("server_client/decrypted_dispatch_routes_controls_and_rejects_unknown_packets", "[server_client]") {
+TEST_CASE("server_client/decrypted_dispatch_routes_controls_and_rejects_unknown_packets", "[server_client] [contract]") {
   client_info_t *client = admit();
   client_info_packet_t join = {.capabilities = HOST_TO_NET_U32(CLIENT_CAP_AUDIO | CLIENT_CAP_VIDEO)};
   SAFE_STRNCPY(join.display_name, "Decrypted", sizeof(join.display_name));
@@ -482,7 +482,7 @@ TEST_CASE("server_client/decrypted_dispatch_routes_controls_and_rejects_unknown_
   process_decrypted_packet(client, (packet_type_t)65000, NULL, 0);
   expect_rejected(client);
 }
-TEST_CASE("server_client/decrypted_dispatch_enforces_real_rate_limits_and_reports_backend_failure", "[server_client]") {
+TEST_CASE("server_client/decrypted_dispatch_enforces_real_rate_limits_and_reports_backend_failure", "[server_client] [contract]") {
   client_info_t *client = admit();
   g_rate_limiter = rate_limiter_create_memory();
   REQUIRE((g_rate_limiter) != nullptr);
@@ -507,7 +507,7 @@ TEST_CASE("server_client/decrypted_dispatch_enforces_real_rate_limits_and_report
   rate_limiter_destroy(g_rate_limiter);
   g_rate_limiter = NULL;
 }
-TEST_CASE("server_client/callback_dispatch_delivers_join_capabilities_keepalive_and_leave", "[server_client]") {
+TEST_CASE("server_client/callback_dispatch_delivers_join_capabilities_keepalive_and_leave", "[server_client] [contract]") {
   client_info_t *client = admit();
   client_info_packet_t join = {.capabilities = HOST_TO_NET_U32(CLIENT_CAP_AUDIO | CLIENT_CAP_VIDEO)};
   SAFE_STRNCPY(join.display_name, "Callback", sizeof(join.display_name));
@@ -522,7 +522,7 @@ TEST_CASE("server_client/callback_dispatch_delivers_join_capabilities_keepalive_
   REQUIRE(!(atomic_load_bool(&client->active)));
 }
 
-TEST_CASE("server_client/admission_rolls_back_partial_buffers_and_sync_before_a_successful_retry", "[server_client]") {
+TEST_CASE("server_client/admission_rolls_back_partial_buffers_and_sync_before_a_successful_retry", "[server_client] [contract]") {
   for (unsigned failure = 1; failure <= 4; ++failure) {
     allocation_failure = failure;
     REQUIRE((add_transport_client(&server, &transport, "127.0.0.1")) == nullptr);
@@ -543,7 +543,7 @@ TEST_CASE("server_client/admission_rolls_back_partial_buffers_and_sync_before_a_
   REQUIRE((remove_client(&server, "missing")) == (-1));
   REQUIRE((g_client_manager.client_count) == (1));
 }
-TEST_CASE("server_client/concurrent_removal_is_idempotent_and_failed_state_send_does_not_skip_worker_start", "[server_client]") {
+TEST_CASE("server_client/concurrent_removal_is_idempotent_and_failed_state_send_does_not_skip_worker_start", "[server_client] [contract]") {
   client_info_t *client = admit();
   send_result = ERROR_NETWORK;
   REQUIRE((start_transport_client_threads(&server, client->client_id)) == (0));
@@ -553,7 +553,7 @@ TEST_CASE("server_client/concurrent_removal_is_idempotent_and_failed_state_send_
   REQUIRE((g_client_manager.client_count) == (1));
   atomic_store_bool(&client->shutting_down, false);
 }
-TEST_CASE("server_client/single_opus_callback_wraps_real_audio_and_ignores_incompatible_metadata", "[server_client]") {
+TEST_CASE("server_client/single_opus_callback_wraps_real_audio_and_ignores_incompatible_metadata", "[server_client] [contract]") {
   client_info_t *client = admit();
   resume_client(client);
   client->opus_decoder = opus_codec_create_decoder(48000);
@@ -578,7 +578,7 @@ TEST_CASE("server_client/single_opus_callback_wraps_real_audio_and_ignores_incom
   REQUIRE(atomic_load_bool(&client->active));
   opus_codec_destroy(encoder);
 }
-TEST_CASE("server_client/compatibility_callbacks_validate_protocol_audio_and_remote_log_before_mutating_client", "[server_client]") {
+TEST_CASE("server_client/compatibility_callbacks_validate_protocol_audio_and_remote_log_before_mutating_client", "[server_client] [contract]") {
   client_info_t *client = admit();
   protocol_version_packet_t version = {.protocol_version = HOST_TO_NET_U16(PROTOCOL_VERSION_MAJOR)};
   acip_server_on_protocol_version(&version, client, NULL);
@@ -600,7 +600,7 @@ TEST_CASE("server_client/compatibility_callbacks_validate_protocol_audio_and_rem
   acip_server_on_remote_log(&header, "hello", client, NULL);
   expect_rejected(client);
 }
-TEST_CASE("server_client/image_callback_rejects_invalid_dimensions_and_handles_an_absent_video_buffer", "[server_client]") {
+TEST_CASE("server_client/image_callback_rejects_invalid_dimensions_and_handles_an_absent_video_buffer", "[server_client] [contract]") {
   client_info_t *client = admit();
   image_frame_packet_t header = {.width = 2, .height = 2};
   uint8_t pixels[12] = {0};

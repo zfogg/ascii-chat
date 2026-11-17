@@ -1,6 +1,6 @@
+#include <catch2/generators/catch_generators_all.hpp>
 #include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,7 +10,7 @@
 #include <ascii-chat/tests/logging.h>
 
 // Use quiet logging for tests
-TEST_CASE("ip_utils/mapped_addresses_round_trip_and_ipv6_formatting_rejects_invalid_inputs", "[ip_utils]") {
+TEST_CASE("ip_utils/mapped_addresses_round_trip_and_ipv6_formatting_rejects_invalid_inputs", "[ip_utils] [unit]") {
   char mapped[64], ipv4[16], expanded[64], compact[64];
   const char *addresses[] = {"0.0.0.0", "127.0.0.1", "192.0.2.17", "255.255.255.255"};
   for (size_t i = 0; i < sizeof(addresses) / sizeof(addresses[0]); ++i) {
@@ -37,7 +37,7 @@ TEST_CASE("ip_utils/mapped_addresses_round_trip_and_ipv6_formatting_rejects_inva
   }
 }
 
-TEST_CASE("ip_utils/discovery_rejects_special_use_addresses_as_public_endpoints", "[ip_utils]") {
+TEST_CASE("ip_utils/discovery_rejects_special_use_addresses_as_public_endpoints", "[ip_utils] [unit]") {
   const char *non_public_v4[] = {"10.0.0.1",        "172.31.255.255", "192.168.1.1", "127.0.0.2",  "169.254.1.2",    "255.255.255.255", "224.0.0.1",   "0.1.2.3",   "100.64.0.1",
                                  "100.127.255.255", "192.0.0.1",      "192.0.2.1",   "198.18.0.1", "198.19.255.255", "198.51.100.1",    "203.0.113.1", "240.0.0.1", "invalid"};
   for (size_t i = 0; i < sizeof(non_public_v4) / sizeof(non_public_v4[0]); ++i) {
@@ -55,7 +55,7 @@ TEST_CASE("ip_utils/discovery_rejects_special_use_addresses_as_public_endpoints"
   REQUIRE(is_internet_ipv6("[2606:4700:4700::1111]"));
 }
 
-TEST_CASE("ip_utils/endpoint_identity_normalizes_ipv6_but_preserves_port_and_family", "[ip_utils]") {
+TEST_CASE("ip_utils/endpoint_identity_normalizes_ipv6_but_preserves_port_and_family", "[ip_utils] [unit]") {
   REQUIRE(compare_ip_port_strings("[2001:4860::1]:27224", "[2001:4860:0:0:0:0:0:1]:27224"));
   REQUIRE(compare_ip_port_strings("8.8.8.8:27224", "8.8.8.8:27224"));
   REQUIRE(!(compare_ip_port_strings("[2001:4860::1]:27224", "[2001:4860::1]:27225")));
@@ -120,7 +120,7 @@ static ipv4_test_case_t ipv4_cases[] = {
     {"2001:db8::1", 0, "IPv6 address with colons"},
 };
 
-TEST_CASE("ip_utils/ipv4_validation", "[ip_utils]") {
+TEST_CASE("ip_utils/ipv4_validation", "[ip_utils] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ipv4_cases), std::end(ipv4_cases)));
   auto *tc = &generated_case;
   int result = is_valid_ipv4(tc->ip);
@@ -169,7 +169,7 @@ static ipv6_test_case_t ipv6_cases[] = {
     {"hello world", 0, "random text"},
 };
 
-TEST_CASE("ip_utils/ipv6_validation", "[ip_utils]") {
+TEST_CASE("ip_utils/ipv6_validation", "[ip_utils] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ipv6_cases), std::end(ipv6_cases)));
   auto *tc = &generated_case;
   int result = is_valid_ipv6(tc->ip);
@@ -205,7 +205,7 @@ static ipv6_parse_test_case_t ipv6_parse_cases[] = {
     {"[[::1]]", "", -1, "double brackets"},
 };
 
-TEST_CASE("ip_utils/ipv6_parsing", "[ip_utils]") {
+TEST_CASE("ip_utils/ipv6_parsing", "[ip_utils] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ipv6_parse_cases), std::end(ipv6_parse_cases)));
   auto *tc = &generated_case;
   char output[256];
@@ -220,13 +220,13 @@ TEST_CASE("ip_utils/ipv6_parsing", "[ip_utils]") {
   }
 }
 
-TEST_CASE("ip_utils/ipv6_parsing_buffer_too_small", "[ip_utils]") {
+TEST_CASE("ip_utils/ipv6_parsing_buffer_too_small", "[ip_utils] [unit]") {
   char small_output[3]; // Too small for "::1" (3 chars) + null terminator
   int result = parse_ipv6_address("[::1]", small_output, sizeof(small_output));
   REQUIRE((result) == (-1));
 }
 
-TEST_CASE("ip_utils/ipv6_parsing_null_output", "[ip_utils]") {
+TEST_CASE("ip_utils/ipv6_parsing_null_output", "[ip_utils] [unit]") {
   int result = parse_ipv6_address("[::1]", NULL, 256);
   REQUIRE((result) == (-1));
 }
@@ -259,7 +259,7 @@ static format_ip_port_test_case_t format_cases[] = {
     {"2001:db8:85a3::8a2e:370:7334", 22, "[2001:db8:85a3::8a2e:370:7334]:22", 0, "IPv6 long address"},
 };
 
-TEST_CASE("ip_utils/format_ip_with_port", "[ip_utils]") {
+TEST_CASE("ip_utils/format_ip_with_port", "[ip_utils] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(format_cases), std::end(format_cases)));
   auto *tc = &generated_case;
   char output[512];
@@ -274,18 +274,18 @@ TEST_CASE("ip_utils/format_ip_with_port", "[ip_utils]") {
   }
 }
 
-TEST_CASE("ip_utils/format_ip_with_port_buffer_too_small", "[ip_utils]") {
+TEST_CASE("ip_utils/format_ip_with_port_buffer_too_small", "[ip_utils] [unit]") {
   char small_output[10];
   asciichat_error_t result = format_ip_with_port("192.168.1.1", 8080, small_output, sizeof(small_output));
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("ip_utils/format_ip_with_port_null_output", "[ip_utils]") {
+TEST_CASE("ip_utils/format_ip_with_port_null_output", "[ip_utils] [unit]") {
   asciichat_error_t result = format_ip_with_port("192.168.1.1", 8080, NULL, 512);
   REQUIRE((result) != (ASCIICHAT_OK));
 }
 
-TEST_CASE("ip_utils/format_ip_with_port_zero_size", "[ip_utils]") {
+TEST_CASE("ip_utils/format_ip_with_port_zero_size", "[ip_utils] [unit]") {
   char output[512];
   asciichat_error_t result = format_ip_with_port("192.168.1.1", 8080, output, 0);
   REQUIRE((result) != (ASCIICHAT_OK));
@@ -332,7 +332,7 @@ static parse_ip_port_test_case_t parse_cases[] = {
     {"::1]:8080", "", 0, -1, "IPv6 missing opening bracket"},
 };
 
-TEST_CASE("ip_utils/parse_ip_with_port", "[ip_utils]") {
+TEST_CASE("ip_utils/parse_ip_with_port", "[ip_utils] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(parse_cases), std::end(parse_cases)));
   auto *tc = &generated_case;
   char ip_output[256];
@@ -349,20 +349,20 @@ TEST_CASE("ip_utils/parse_ip_with_port", "[ip_utils]") {
   }
 }
 
-TEST_CASE("ip_utils/parse_ip_with_port_buffer_too_small", "[ip_utils]") {
+TEST_CASE("ip_utils/parse_ip_with_port_buffer_too_small", "[ip_utils] [unit]") {
   char small_output[5];
   uint16_t port = 0;
   int result = parse_ip_with_port("192.168.1.1:8080", small_output, sizeof(small_output), &port);
   REQUIRE((result) == (-1));
 }
 
-TEST_CASE("ip_utils/parse_ip_with_port_null_output", "[ip_utils]") {
+TEST_CASE("ip_utils/parse_ip_with_port_null_output", "[ip_utils] [unit]") {
   uint16_t port = 0;
   int result = parse_ip_with_port("192.168.1.1:8080", NULL, 256, &port);
   REQUIRE((result) == (-1));
 }
 
-TEST_CASE("ip_utils/parse_ip_with_port_null_port", "[ip_utils]") {
+TEST_CASE("ip_utils/parse_ip_with_port_null_port", "[ip_utils] [unit]") {
   char ip_output[256];
   int result = parse_ip_with_port("192.168.1.1:8080", ip_output, sizeof(ip_output), NULL);
   REQUIRE((result) == (-1));
@@ -383,7 +383,7 @@ static roundtrip_test_case_t roundtrip_cases[] = {
     {"fe80::1", 8080, "IPv6 link-local"},  {"::ffff:192.0.2.1", 8080, "IPv6 IPv4-mapped"},
 };
 
-TEST_CASE("ip_utils/format_parse_roundtrip", "[ip_utils]") {
+TEST_CASE("ip_utils/format_parse_roundtrip", "[ip_utils] [unit]") {
   auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(roundtrip_cases), std::end(roundtrip_cases)));
   auto *tc = &generated_case;
   char formatted[512];
@@ -407,7 +407,7 @@ TEST_CASE("ip_utils/format_parse_roundtrip", "[ip_utils]") {
 // Edge Case Tests
 // =============================================================================
 
-TEST_CASE("ip_utils/format_ipv6_very_long_address", "[ip_utils]") {
+TEST_CASE("ip_utils/format_ipv6_very_long_address", "[ip_utils] [unit]") {
   // Test longest possible IPv6 address
   const char *long_ipv6 = "2001:0db8:0000:0000:0000:ff00:0042:8329";
   char output[512];
@@ -416,7 +416,7 @@ TEST_CASE("ip_utils/format_ipv6_very_long_address", "[ip_utils]") {
   REQUIRE(std::strcmp((output), ("[2001:0db8:0000:0000:0000:ff00:0042:8329]:8080")) == 0);
 }
 
-TEST_CASE("ip_utils/parse_ipv6_very_long_formatted", "[ip_utils]") {
+TEST_CASE("ip_utils/parse_ipv6_very_long_formatted", "[ip_utils] [unit]") {
   const char *long_formatted = "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8080";
   char ip_output[256];
   uint16_t port = 0;
@@ -426,7 +426,7 @@ TEST_CASE("ip_utils/parse_ipv6_very_long_formatted", "[ip_utils]") {
   REQUIRE((port) == (8080));
 }
 
-TEST_CASE("ip_utils/ipv4_validation_boundary_cases", "[ip_utils]") {
+TEST_CASE("ip_utils/ipv4_validation_boundary_cases", "[ip_utils] [unit]") {
   // Test boundary values
   REQUIRE((is_valid_ipv4("0.0.0.0")) == (1));
   REQUIRE((is_valid_ipv4("255.255.255.255")) == (1));
@@ -436,7 +436,7 @@ TEST_CASE("ip_utils/ipv4_validation_boundary_cases", "[ip_utils]") {
   REQUIRE((is_valid_ipv4("0.0.0.256")) == (0));
 }
 
-TEST_CASE("ip_utils/ipv6_special_addresses", "[ip_utils]") {
+TEST_CASE("ip_utils/ipv6_special_addresses", "[ip_utils] [unit]") {
   // Test special IPv6 addresses
   REQUIRE((is_valid_ipv6("::")) == (1));
   REQUIRE((is_valid_ipv6("::1")) == (1));

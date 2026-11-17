@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 #include "../worker_assert.h"
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/os/event.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/network/packet/decoder.h>
@@ -246,50 +245,50 @@ static void teardown(void) {
   socket_cleanup();
   log_destroy();
 }
-TEST_CASE("network_events/accepted_start_failure", "[network_events]") {
+TEST_CASE("network_events/accepted_start_failure", "[network_events] [contract]") {
   accepted_start_failure_test();
 }
 
-TEST_CASE("network_events/decoder_fragmentation_and_reuse", "[network_events]") {
+TEST_CASE("network_events/decoder_fragmentation_and_reuse", "[network_events] [contract]") {
   decoder_tests();
 }
 
-TEST_CASE("network_events/echo", "[network_events]") {
+TEST_CASE("network_events/echo", "[network_events] [contract]") {
   event_test(false, false, false, false, false);
 }
 
-TEST_CASE("network_events/deadline", "[network_events]") {
+TEST_CASE("network_events/deadline", "[network_events] [contract]") {
   event_test(true, false, false, false, false);
 }
 
-TEST_CASE("network_events/cancel_echo", "[network_events]") {
+TEST_CASE("network_events/cancel_echo", "[network_events] [contract]") {
   event_test(false, true, false, false, false);
 }
 
-TEST_CASE("network_events/push", "[network_events]") {
+TEST_CASE("network_events/push", "[network_events] [contract]") {
   event_test(false, false, true, false, false);
 }
 
-TEST_CASE("network_events/zerocopy_push", "[network_events]") {
+TEST_CASE("network_events/zerocopy_push", "[network_events] [contract]") {
   event_test(false, false, true, true, false);
 }
 
-TEST_CASE("network_events/cancel_zerocopy", "[network_events]") {
+TEST_CASE("network_events/cancel_zerocopy", "[network_events] [contract]") {
   event_test(false, true, false, true, false);
 }
 
-TEST_CASE("network_events/expire_push", "[network_events]") {
+TEST_CASE("network_events/expire_push", "[network_events] [contract]") {
   event_test(true, false, true, false, false);
 }
 
-TEST_CASE("network_events/expire_zerocopy", "[network_events]") {
+TEST_CASE("network_events/expire_zerocopy", "[network_events] [contract]") {
   event_test(true, false, true, true, false);
 }
 
-TEST_CASE("network_events/drain_push", "[network_events]") {
+TEST_CASE("network_events/drain_push", "[network_events] [contract]") {
   event_test(false, false, true, false, true);
 }
 
-TEST_CASE("network_events/drain_zerocopy", "[network_events]") {
+TEST_CASE("network_events/drain_zerocopy", "[network_events] [contract]") {
   event_test(false, false, true, true, true);
 }

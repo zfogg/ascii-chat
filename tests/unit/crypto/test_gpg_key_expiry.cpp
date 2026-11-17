@@ -4,7 +4,6 @@
  * @brief Unit tests for GPG key expiry checking
  */
 
-#include <catch2/catch_all.hpp>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -87,7 +86,7 @@ static void teardown_expired_key(void) {
 }
 // Use verbose logging with debug level enabled and stdout/stderr not disabled
 
-TEST_CASE("gpg_key_expiry/check_valid_key_not_expired", "[gpg_key_expiry]") {
+TEST_CASE("gpg_key_expiry/check_valid_key_not_expired", "[gpg_key_expiry] [unit]") {
   bool is_expired = true; // Start with true to ensure it gets set
 
   // Test with full 40-character fingerprint
@@ -97,7 +96,7 @@ TEST_CASE("gpg_key_expiry/check_valid_key_not_expired", "[gpg_key_expiry]") {
   REQUIRE((is_expired) == (false));
 }
 
-TEST_CASE("gpg_key_expiry/check_with_16_char_key_id", "[gpg_key_expiry]") {
+TEST_CASE("gpg_key_expiry/check_with_16_char_key_id", "[gpg_key_expiry] [unit]") {
   bool is_expired = true;
 
   // Test with 16-character long key ID
@@ -107,7 +106,7 @@ TEST_CASE("gpg_key_expiry/check_with_16_char_key_id", "[gpg_key_expiry]") {
   REQUIRE((is_expired) == (false));
 }
 
-TEST_CASE("gpg_key_expiry/check_with_8_char_key_id", "[gpg_key_expiry]") {
+TEST_CASE("gpg_key_expiry/check_with_8_char_key_id", "[gpg_key_expiry] [unit]") {
   bool is_expired = true;
 
   // Test with 8-character short key ID
@@ -117,7 +116,7 @@ TEST_CASE("gpg_key_expiry/check_with_8_char_key_id", "[gpg_key_expiry]") {
   // Note: 8-char key IDs are ambiguous and may not find the right key
 }
 
-TEST_CASE("gpg_key_expiry/invalid_null_parameters", "[gpg_key_expiry]") {
+TEST_CASE("gpg_key_expiry/invalid_null_parameters", "[gpg_key_expiry] [unit]") {
   bool is_expired = false;
 
   // Test NULL key_text
@@ -129,7 +128,7 @@ TEST_CASE("gpg_key_expiry/invalid_null_parameters", "[gpg_key_expiry]") {
   REQUIRE((result) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("gpg_key_expiry/invalid_key_format_non_hex", "[gpg_key_expiry]") {
+TEST_CASE("gpg_key_expiry/invalid_key_format_non_hex", "[gpg_key_expiry] [unit]") {
   bool is_expired = true;
 
   // Test with non-hex characters
@@ -140,7 +139,7 @@ TEST_CASE("gpg_key_expiry/invalid_key_format_non_hex", "[gpg_key_expiry]") {
   REQUIRE((is_expired) == (false));
 }
 
-TEST_CASE("gpg_key_expiry/invalid_key_format_wrong_length", "[gpg_key_expiry]") {
+TEST_CASE("gpg_key_expiry/invalid_key_format_wrong_length", "[gpg_key_expiry] [unit]") {
   bool is_expired = true;
 
   // Test with wrong length (not 8, 16, or 40)
@@ -154,7 +153,7 @@ TEST_CASE("gpg_key_expiry/invalid_key_format_wrong_length", "[gpg_key_expiry]") 
   REQUIRE((is_expired) == (false));
 }
 
-TEST_CASE("gpg_key_expiry/nonexistent_key", "[gpg_key_expiry]") {
+TEST_CASE("gpg_key_expiry/nonexistent_key", "[gpg_key_expiry] [unit]") {
   bool is_expired = true;
 
   // Test with a key that doesn't exist in keyring
@@ -164,7 +163,7 @@ TEST_CASE("gpg_key_expiry/nonexistent_key", "[gpg_key_expiry]") {
   REQUIRE((is_expired) == (false));
 }
 
-TEST_CASE("gpg_key_expiry/check_expired_key_detected", "[gpg_key_expiry]") {
+TEST_CASE("gpg_key_expiry/check_expired_key_detected", "[gpg_key_expiry] [unit]") {
   bool is_expired = false; // Start with false to ensure it gets set to true
 
   REQUIRE((expired_key_id) != nullptr);

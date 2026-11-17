@@ -4,7 +4,6 @@
  * @brief Integration tests for end-to-end crypto handshake via ACIP transport
  */
 
-#include <catch2/catch_all.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -273,7 +272,7 @@ static void *handshake_client_thread(void *arg) {
 // Tests
 // =============================================================================
 
-TEST_CASE("crypto_handshake_integration/complete_handshake_flow", "[crypto_handshake_integration]") {
+TEST_CASE("crypto_handshake_integration/complete_handshake_flow", "[crypto_handshake_integration] [integration]") {
   setup_test_network();
 
   crypto_handshake_context_t server_ctx, client_ctx;
@@ -326,7 +325,7 @@ TEST_CASE("crypto_handshake_integration/complete_handshake_flow", "[crypto_hands
   teardown_test_network();
 }
 
-TEST_CASE("crypto_handshake_integration/key_type_parsing", "[crypto_handshake_integration]") {
+TEST_CASE("crypto_handshake_integration/key_type_parsing", "[crypto_handshake_integration] [integration]") {
   struct {
     const char *key_data;
     key_type_t expected_type;
@@ -346,7 +345,7 @@ TEST_CASE("crypto_handshake_integration/key_type_parsing", "[crypto_handshake_in
   }
 }
 
-TEST_CASE("crypto_handshake_integration/encryption_after_handshake", "[crypto_handshake_integration]") {
+TEST_CASE("crypto_handshake_integration/encryption_after_handshake", "[crypto_handshake_integration] [integration]") {
   setup_test_network();
 
   crypto_handshake_context_t server_ctx, client_ctx;

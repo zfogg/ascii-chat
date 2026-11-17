@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 #include "../worker_assert.h"
-#include <catch2/catch_all.hpp>
 #include <options/runtime.h>
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/network/acip/settings.h>
@@ -191,14 +190,14 @@ static void teardown(void) {
   REQUIRE((options_retired_snapshot_count()) == (0));
   log_destroy();
 }
-TEST_CASE("runtime_settings/flip_defaults", "[runtime_settings]") {
+TEST_CASE("runtime_settings/flip_defaults", "[runtime_settings] [contract]") {
   test_flip_defaults();
 }
 
-TEST_CASE("runtime_settings/transactions", "[runtime_settings]") {
+TEST_CASE("runtime_settings/transactions", "[runtime_settings] [contract]") {
   test_transactions();
 }
 
-TEST_CASE("runtime_settings/remote", "[runtime_settings]") {
+TEST_CASE("runtime_settings/remote", "[runtime_settings] [contract]") {
   test_remote();
 }

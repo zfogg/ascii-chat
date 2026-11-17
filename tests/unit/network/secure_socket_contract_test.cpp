@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/security.h>
 #include <ascii-chat/crypto/session.h>
@@ -68,7 +67,7 @@ static size_t read_secure(packet_type_t expected, bool encrypted, void *output, 
   return length;
 }
 
-TEST_CASE("secure_socket_contract/encrypted_sender_protects_an_entire_network_order_header_and_payload", "[secure_socket_contract]") {
+TEST_CASE("secure_socket_contract/encrypted_sender_protects_an_entire_network_order_header_and_payload", "[secure_socket_contract] [unit]") {
   uint8_t payload[2048];
   for (size_t i = 0; i < sizeof(payload); ++i)
     payload[i] = (uint8_t)(i * 17);
@@ -100,7 +99,7 @@ TEST_CASE("secure_socket_contract/encrypted_sender_protects_an_entire_network_or
   }
 }
 
-TEST_CASE("secure_socket_contract/handshake_and_explicit_plaintext_bypass_encryption_but_ready_data_roundtrips", "[secure_socket_contract]") {
+TEST_CASE("secure_socket_contract/handshake_and_explicit_plaintext_bypass_encryption_but_ready_data_roundtrips", "[secure_socket_contract] [unit]") {
   const uint8_t payload[] = {0, 0xff, 'x'};
   uint8_t output[8];
   REQUIRE((send_packet_secure(sender_fd, PACKET_TYPE_CRYPTO_CLIENT_HELLO, payload, sizeof(payload), &sender)) == (ASCIICHAT_OK));
@@ -120,7 +119,7 @@ TEST_CASE("secure_socket_contract/handshake_and_explicit_plaintext_bypass_encryp
   REQUIRE((send_packet_secure(sender_fd, PACKET_TYPE_PING, payload, MAX_PACKET_SIZE + 1ULL, &sender)) == (ERROR_NETWORK_SIZE));
 }
 
-TEST_CASE("secure_socket_contract/authenticated_malformed_inner_packets_are_rejected_and_the_next_valid_packet_survives", "[secure_socket_contract]") {
+TEST_CASE("secure_socket_contract/authenticated_malformed_inner_packets_are_rejected_and_the_next_valid_packet_survives", "[secure_socket_contract] [unit]") {
   for (unsigned scenario = 0; scenario < 6; ++scenario) {
     uint8_t plaintext[sizeof(packet_header_t) + 4], ciphertext[256];
     const uint8_t payload[] = {'d', 'a', 't', 'a'};
@@ -155,7 +154,7 @@ TEST_CASE("secure_socket_contract/authenticated_malformed_inner_packets_are_reje
   }
 }
 
-TEST_CASE("secure_socket_contract/remote_log_sender_preserves_fields_and_marks_only_truncated_messages", "[secure_socket_contract]") {
+TEST_CASE("secure_socket_contract/remote_log_sender_preserves_fields_and_marks_only_truncated_messages", "[secure_socket_contract] [unit]") {
   char message[MAX_REMOTE_LOG_MESSAGE_LENGTH + 8], exact[MAX_REMOTE_LOG_MESSAGE_LENGTH + 1];
   char decoded[MAX_REMOTE_LOG_MESSAGE_LENGTH + 1];
   uint8_t payload[MAX_REMOTE_LOG_MESSAGE_LENGTH + sizeof(remote_log_packet_t)];
@@ -186,7 +185,7 @@ TEST_CASE("secure_socket_contract/remote_log_sender_preserves_fields_and_marks_o
   REQUIRE((packet_send_remote_log(INVALID_SOCKET_VALUE, NULL, LOG_INFO, REMOTE_LOG_DIRECTION_UNKNOWN, 0, "bad")) == (ERROR_INVALID_PARAM));
 }
 
-TEST_CASE("secure_socket_contract/opus_batch_and_rgb_image_senders_use_network_order_with_exact_payloads", "[secure_socket_contract]") {
+TEST_CASE("secure_socket_contract/opus_batch_and_rgb_image_senders_use_network_order_with_exact_payloads", "[secure_socket_contract] [unit]") {
   const uint8_t opus[] = {1, 2, 3, 4, 5, 6};
   const uint16_t sizes[] = {1, 5};
   uint8_t output[128];

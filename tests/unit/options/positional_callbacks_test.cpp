@@ -1,12 +1,12 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/parsers.h>
 #include <options/options.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/system.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>
-TEST_CASE("positional_callbacks/client_addresses_preserve_host_port_and_transport_semantics", "[positional_callbacks]") {
+TEST_CASE("positional_callbacks/client_addresses_preserve_host_port_and_transport_semantics", "[positional_callbacks] [unit]") {
   const struct {
     const char *input, *address;
     int port;
@@ -42,7 +42,7 @@ TEST_CASE("positional_callbacks/client_addresses_preserve_host_port_and_transpor
   SAFE_FREE(options);
 }
 
-TEST_CASE("positional_callbacks/server_accepts_dual_stack_and_rejects_duplicate_family", "[positional_callbacks]") {
+TEST_CASE("positional_callbacks/server_accepts_dual_stack_and_rejects_duplicate_family", "[positional_callbacks] [unit]") {
   options_t *options = SAFE_CALLOC(1, sizeof(*options), options_t *);
   char *second[] = {"2001:db8::1"};
   REQUIRE((parse_server_bind_address("192.168.1.2", options, second, 1, NULL)) == (2));
@@ -69,7 +69,7 @@ TEST_CASE("positional_callbacks/server_accepts_dual_stack_and_rejects_duplicate_
   SAFE_FREE(options);
 }
 
-TEST_CASE("positional_callbacks/mirror_prefers_readable_files_and_enforces_exclusive_input", "[positional_callbacks]") {
+TEST_CASE("positional_callbacks/mirror_prefers_readable_files_and_enforces_exclusive_input", "[positional_callbacks] [unit]") {
   char path[1024];
   int fd;
   REQUIRE((platform_create_temp_file(path, sizeof(path), "ascii-media", &fd)) == (0));
@@ -93,7 +93,7 @@ TEST_CASE("positional_callbacks/mirror_prefers_readable_files_and_enforces_exclu
   REQUIRE((platform_delete_temp_file(path)) == (0));
 }
 
-TEST_CASE("positional_callbacks/timestamp_formats_and_volume_boundaries", "[positional_callbacks]") {
+TEST_CASE("positional_callbacks/timestamp_formats_and_volume_boundaries", "[positional_callbacks] [unit]") {
   const struct {
     const char *text;
     double seconds;
