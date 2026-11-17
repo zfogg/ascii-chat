@@ -425,7 +425,7 @@ if(USE_MUSL)
 
     # Link internal modules directly (OBJECT libraries avoid shared library dependency)
     # These are the same modules that make up ascii-chat-shared
-    # Note: Session files are part of ascii-chat-core, not a separate module
+    # Session files are compiled by the dedicated ascii-chat-session module.
     target_link_libraries(ascii-chat PRIVATE ascii-chat-runtime-objects)
 
     # Link external dependencies (LTO + dead code elimination removes unused code)

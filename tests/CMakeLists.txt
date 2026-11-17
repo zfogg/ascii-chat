@@ -231,9 +231,19 @@ if(BUILD_TESTS AND CATCH2_FOUND)
     # object target. Give that object compilation the same test-mode contract
     # as the Catch2 driver so native option tests cannot load host config or
     # retain orientation state from the bootstrap snapshot.
-    if(TARGET ascii-chat-core)
-        target_compile_definitions(ascii-chat-core PRIVATE TESTING=1)
-    endif()
+    foreach(_test_module IN ITEMS
+        ascii-chat-runtime
+        ascii-chat-logging
+        ascii-chat-options
+        ascii-chat-terminal
+        ascii-chat-ui
+        ascii-chat-session
+        ascii-chat-discovery
+    )
+        if(TARGET ${_test_module})
+            target_compile_definitions(${_test_module} PRIVATE TESTING=1)
+        endif()
+    endforeach()
     # Build test LDFLAGS systematically (matches Makefile complex setup)
     set(TEST_LDFLAGS Catch2::Catch2WithMain)
     list(APPEND TEST_LDFLAGS ${ASCIICHAT_NGHTTP2_TARGET})
@@ -488,7 +498,13 @@ target_link_libraries(unit_tests PRIVATE
     $<TARGET_OBJECTS:ascii-chat-video>
     $<TARGET_OBJECTS:ascii-chat-audio>
     $<TARGET_OBJECTS:ascii-chat-network>
-    $<TARGET_OBJECTS:ascii-chat-core>
+    $<TARGET_OBJECTS:ascii-chat-runtime>
+    $<TARGET_OBJECTS:ascii-chat-logging>
+    $<TARGET_OBJECTS:ascii-chat-options>
+    $<TARGET_OBJECTS:ascii-chat-terminal>
+    $<TARGET_OBJECTS:ascii-chat-ui>
+    $<TARGET_OBJECTS:ascii-chat-session>
+    $<TARGET_OBJECTS:ascii-chat-discovery>
     $<TARGET_OBJECTS:ascii-chat-panic>)
 if(WIN32)
     target_link_libraries(unit_tests PRIVATE winmm)
@@ -571,7 +587,13 @@ target_link_libraries(benchmarks PRIVATE
     $<TARGET_OBJECTS:ascii-chat-video>
     $<TARGET_OBJECTS:ascii-chat-audio>
     $<TARGET_OBJECTS:ascii-chat-network>
-    $<TARGET_OBJECTS:ascii-chat-core>
+    $<TARGET_OBJECTS:ascii-chat-runtime>
+    $<TARGET_OBJECTS:ascii-chat-logging>
+    $<TARGET_OBJECTS:ascii-chat-options>
+    $<TARGET_OBJECTS:ascii-chat-terminal>
+    $<TARGET_OBJECTS:ascii-chat-ui>
+    $<TARGET_OBJECTS:ascii-chat-session>
+    $<TARGET_OBJECTS:ascii-chat-discovery>
     $<TARGET_OBJECTS:ascii-chat-panic>)
 if(WIN32)
     target_link_libraries(benchmarks PRIVATE winmm)
@@ -705,7 +727,7 @@ endif()
         # Link against shared library which contains all code
         target_link_libraries(${test_exe_name}
             ${_ascii_tests_library}
-            ascii-chat-platform
+            ascii-chat-runtime
             libflags::flags
             ${TEST_LDFLAGS}
         )
@@ -2735,7 +2757,7 @@ if(BUILD_TESTS AND TARGET gotel)
     target_sources(test-otel-contract PRIVATE ${_ascii_gotel_contract_testing_sources})
     # The Debug ascii-chat-static facade selects the shared library. This
     # white-box host must share one link image with the exercised production code.
-    target_link_libraries(test-otel-contract PRIVATE ascii-chat-static-lib ascii-chat-platform libflags::flags ${_ascii_gotel_contract_testing_target} ${MIMALLOC_LIBRARIES})
+    target_link_libraries(test-otel-contract PRIVATE ascii-chat-static-lib ascii-chat-runtime libflags::flags ${_ascii_gotel_contract_testing_target} ${MIMALLOC_LIBRARIES})
     target_include_directories(test-otel-contract PRIVATE ${CMAKE_BINARY_DIR}/generated)
     apply_sanitizers_to_target(test-otel-contract)
     set_target_properties(test-otel-contract PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
