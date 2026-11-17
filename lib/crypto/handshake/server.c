@@ -421,7 +421,7 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
 asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *ctx, acip_transport_t *transport, packet_type_t packet_type, const uint8_t *payload, size_t payload_len) {
   ASCII_OTEL_SCOPE(CRYPTO_HANDSHAKE_SERVER_COMPLETE);
   if (!ctx || ctx->state != CRYPTO_HANDSHAKE_AUTHENTICATING) {
-      return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", ctx, ctx ? (int)ctx->state : -1);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", ctx, ctx ? (int)ctx->state : -1);
   }
   if (!transport) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "transport is NULL");

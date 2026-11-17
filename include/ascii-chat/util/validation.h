@@ -193,8 +193,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
  * Validate packet payload pointer is not NULL.
  * Returns true if validation failed (data is NULL), false if valid.
  */
-#define VALIDATE_PACKET_NOT_NULL(client, data, packet_name)                     \
-  ((data) ? 0 : (disconnect_client_for_bad_data((client), packet_name " payload missing"), 1))
+#define VALIDATE_PACKET_NOT_NULL(client, data, packet_name) ((data) ? 0 : (disconnect_client_for_bad_data((client), packet_name " payload missing"), 1))
 
 /** @} */
 

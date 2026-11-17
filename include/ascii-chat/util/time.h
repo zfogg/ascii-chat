@@ -412,8 +412,7 @@ bool timer_is_initialized(void);
  * @return Elapsed time in nanoseconds, or -1.0 if timer not found
  * @ingroup module_utilities
  */
-#define STOP_TIMER(name_fmt, ...)                                                                                                           \
-  timer_stop_formatted(name_fmt, ##__VA_ARGS__)
+#define STOP_TIMER(name_fmt, ...) timer_stop_formatted(name_fmt, ##__VA_ARGS__)
 
 // ============================================================================
 // Time Formatting API

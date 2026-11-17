@@ -445,19 +445,19 @@ static void quic_destroy_impl(acip_transport_t *transport) {
     cond_destroy(&quic->security_changed);
 }
 static acip_transport_methods_t quic_methods = {.send = quic_send,
-                                                      .sendv_ex = quic_sendv_ex,
-                                                      .recv = quic_recv,
-                                                      .close = quic_close,
-                                                      .interrupt = quic_interrupt,
-                                                      .get_type = quic_type,
-                                                      .get_socket = quic_socket,
-                                                      .is_connected = quic_connected,
-                                                      .has_pending_data = quic_pending,
-                                                      .queued_bytes = quic_queued,
-                                                      .get_capabilities = quic_capabilities,
-                                                      .consume_keyframe_request = quic_consume_keyframe_request,
-                                                      .validate_send_options = quic_validate_options,
-                                                      .destroy_impl = quic_destroy_impl};
+                                                .sendv_ex = quic_sendv_ex,
+                                                .recv = quic_recv,
+                                                .close = quic_close,
+                                                .interrupt = quic_interrupt,
+                                                .get_type = quic_type,
+                                                .get_socket = quic_socket,
+                                                .is_connected = quic_connected,
+                                                .has_pending_data = quic_pending,
+                                                .queued_bytes = quic_queued,
+                                                .get_capabilities = quic_capabilities,
+                                                .consume_keyframe_request = quic_consume_keyframe_request,
+                                                .validate_send_options = quic_validate_options,
+                                                .destroy_impl = quic_destroy_impl};
 
 static asciichat_error_t attach_transport(quic_connection_t *connection, crypto_context_t *crypto, mutex_t *lane, bool lane_held, void (*wake)(void *), void *wake_context,
                                           void (*on_destroy)(acip_transport_t *, void *), void *destroy_context, acip_transport_t **out) {

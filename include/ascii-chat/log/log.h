@@ -563,10 +563,10 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
  *
  * @ingroup logging
  */
-#define log_only(bitmask, level, ...)       \
-  do {                                     \
+#define log_only(bitmask, level, ...)         \
+  do {                                        \
     if (log_only_enabled((bitmask), (level))) \
-      log_as(level, __VA_ARGS__);          \
+      log_as(level, __VA_ARGS__);             \
   } while (asciichat_macro_block_continue())
 
 /**

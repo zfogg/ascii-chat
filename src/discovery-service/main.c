@@ -312,7 +312,8 @@ static void acds_status_fn(void *user_data, ui_status_t *status) {
   (void)user_data;
   network_server_t *tcp = session_server_like_get_network_server();
   if (tcp)
-    ui_status_gather(tcp, NULL, network_server_config(tcp)->ipv4_address, network_server_config(tcp)->ipv6_address, (uint16_t)GET_OPTION(port), g_server.stats.start_time, "Discovery Service", false, status);
+    ui_status_gather(tcp, NULL, network_server_config(tcp)->ipv4_address, network_server_config(tcp)->ipv6_address, (uint16_t)GET_OPTION(port), g_server.stats.start_time, "Discovery Service", false,
+                     status);
 }
 
 int acds_main(void) {

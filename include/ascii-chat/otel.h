@@ -73,8 +73,8 @@ int ascii_otel_sqlite_prepare(sqlite3 *db, const char *sql, sqlite3_stmt **state
 #define ASCII_OTEL_SCOPE(id)                                                          \
   ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0}; \
   ascii_otel_scope_begin(&otel_scope, ASCII_OTEL_##id)
-#define ASCII_OTEL_SCOPE_AS(variable, id)                                             \
-  ascii_otel_scope_t variable __attribute__((cleanup(ascii_otel_scope_end))) = {0};  \
+#define ASCII_OTEL_SCOPE_AS(variable, id)                                           \
+  ascii_otel_scope_t variable __attribute__((cleanup(ascii_otel_scope_end))) = {0}; \
   ascii_otel_scope_begin(&variable, ASCII_OTEL_##id)
 #else
 #define ASCII_OTEL_ATTR_STRING(key, value) ((void)(key), (void)(value))

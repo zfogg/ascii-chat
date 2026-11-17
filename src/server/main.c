@@ -1231,8 +1231,8 @@ static void server_status_fn(void *user_data, ui_status_t *out_status) {
     return;
   }
 
-  ui_status_gather(tcp, g_session_string, network_server_config(tcp)->ipv4_address, network_server_config(tcp)->ipv6_address, (uint16_t)GET_OPTION(port), g_server_start_time, "Server", g_session_is_mdns_only,
-                   out_status);
+  ui_status_gather(tcp, g_session_string, network_server_config(tcp)->ipv4_address, network_server_config(tcp)->ipv6_address, (uint16_t)GET_OPTION(port), g_server_start_time, "Server",
+                   g_session_is_mdns_only, out_status);
 }
 
 /* ============================================================================

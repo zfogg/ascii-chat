@@ -12,7 +12,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static inline bool app_callback_macro_continue(void) { return false; }
+static inline bool app_callback_macro_continue(void) {
+  return false;
+}
 
 typedef void (*app_debug_write_fn)(const char *text, void *context);
 

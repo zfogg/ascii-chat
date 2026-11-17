@@ -240,7 +240,11 @@ static void append_volume(frame_buffer_t *buffer, terminal_size_t size) {
   terminal_capabilities_t caps = volume_capabilities();
   bool color = caps.color_level != TERM_COLOR_NONE && GET_OPTION(color) != COLOR_SETTING_FALSE;
   bool utf8 = terminal_should_use_utf8(GET_OPTION(force_utf8));
-  frame_buffer_append(buffer, "\033" "7" "\033[0m", 6);
+  frame_buffer_append(buffer,
+                      "\033"
+                      "7"
+                      "\033[0m",
+                      6);
   for (int row = 0; row < height; ++row) {
     int level = height - row;
     bool lit = level <= filled;
@@ -256,7 +260,11 @@ static void append_volume(frame_buffer_t *buffer, terminal_size_t size) {
     frame_buffer_append(buffer, "MUTE", 4);
   else
     frame_buffer_printf(buffer, "%3d%%", (int)(volume * 100.0 + 0.5));
-  frame_buffer_append(buffer, "\033[0m" "\033" "8", 6);
+  frame_buffer_append(buffer,
+                      "\033[0m"
+                      "\033"
+                      "8",
+                      6);
 }
 
 int ui_controller_current_screen(void) {
