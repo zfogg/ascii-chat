@@ -1610,7 +1610,7 @@ if(BUILD_TESTS AND CATCH2_FOUND)
 if(BUILD_TESTS AND CATCH2_FOUND)
         add_test(NAME bench-acip-prepare
             COMMAND bench-acip-prepare --reporter junit::out=${TEST_XML_DIR}/bench-acip-prepare.xml)
-        set_tests_properties(bench-acip-prepare PROPERTIES LABELS "benchmark;acip_prepare" RUN_SERIAL TRUE)
+        set_tests_properties(bench-acip-prepare PROPERTIES LABELS "benchmarks;acip_prepare" RUN_SERIAL TRUE)
         if(TARGET tests)
             add_dependencies(tests bench-acip-prepare)
         endif()
