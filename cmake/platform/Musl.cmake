@@ -365,13 +365,40 @@ function(configure_musl_post_project)
     endif()
 
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        execute_process(
-            COMMAND "${CMAKE_CXX_COMPILER}" -print-file-name=libstdc++.a
-            OUTPUT_VARIABLE MUSL_LIBSTDCPP_PATH
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-            COMMAND_ERROR_IS_FATAL ANY)
-        if(NOT EXISTS "${MUSL_LIBSTDCPP_PATH}")
-            message(FATAL_ERROR "GCC libstdc++ archive was not found: ${MUSL_LIBSTDCPP_PATH}")
+        set(_alpine_libstdcxx_dir "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libstdcxx")
+        set(_alpine_libstdcxx_version "14.2.0-r4")
+        set(_alpine_libstdcxx_base "https://dl-cdn.alpinelinux.org/alpine/v3.21/main/x86_64")
+        set(_alpine_libstdcxx_apk "${_alpine_libstdcxx_dir}/libstdc++-dev-${_alpine_libstdcxx_version}.apk")
+        set(_alpine_libstdcxx_archive "${_alpine_libstdcxx_dir}/usr/lib/libstdc++.a")
+        if(NOT EXISTS "${_alpine_libstdcxx_archive}")
+            file(MAKE_DIRECTORY "${_alpine_libstdcxx_dir}")
+            file(DOWNLOAD
+                "${_alpine_libstdcxx_base}/libstdc++-dev-${_alpine_libstdcxx_version}.apk"
+                "${_alpine_libstdcxx_apk}"
+                STATUS _alpine_libstdcxx_download
+                TLS_VERIFY ON)
+            list(GET _alpine_libstdcxx_download 0 _alpine_libstdcxx_download_code)
+            if(NOT _alpine_libstdcxx_download_code EQUAL 0)
+                message(FATAL_ERROR "Failed to download Alpine musl libstdc++: ${_alpine_libstdcxx_download}")
+            endif()
+            execute_process(
+                COMMAND "${CMAKE_COMMAND}" -E tar xzf "${_alpine_libstdcxx_apk}"
+                WORKING_DIRECTORY "${_alpine_libstdcxx_dir}"
+                RESULT_VARIABLE _alpine_libstdcxx_extract_code
+                COMMAND_ERROR_IS_FATAL ANY)
+        endif()
+        set(MUSL_LIBSTDCPP_PATH "${_alpine_libstdcxx_archive}" CACHE FILEPATH
+            "musl-compatible GCC libstdc++ archive" FORCE)
+        set(MUSL_LIBSUPCXX_PATH "${_alpine_libstdcxx_dir}/usr/lib/libsupc++.a" CACHE FILEPATH
+            "musl-compatible GCC libsupc++ archive" FORCE)
+        set(MUSL_LIBSTDCPP_INCLUDE_DIR "${_alpine_libstdcxx_dir}/usr/include/c++/14.2.0" CACHE PATH
+            "musl-compatible GCC C++ headers" FORCE)
+        set(MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR
+            "${MUSL_LIBSTDCPP_INCLUDE_DIR}/x86_64-alpine-linux-musl" CACHE PATH
+            "musl-compatible GCC target C++ headers" FORCE)
+        if(NOT EXISTS "${MUSL_LIBSUPCXX_PATH}" OR
+           NOT EXISTS "${MUSL_LIBSTDCPP_INCLUDE_DIR}/string")
+            message(FATAL_ERROR "Alpine musl libstdc++ package is incomplete in ${_alpine_libstdcxx_dir}")
         endif()
     endif()
 
@@ -383,6 +410,7 @@ function(configure_musl_post_project)
         if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
             target_link_libraries(${TARGET_NAME} PRIVATE
                 "${MUSL_LIBSTDCPP_PATH}"
+                "${MUSL_LIBSUPCXX_PATH}"
                 "${MUSL_LIBGCC_PATH}"
             )
             return()

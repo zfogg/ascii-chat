@@ -61,15 +61,7 @@ elseif(USE_MUSL OR PLATFORM_IOS)
             string(APPEND _icu_ldflags " -nostdlib++")
         endif()
         if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-            execute_process(
-                COMMAND "${CMAKE_CXX_COMPILER}" -print-file-name=libstdc++.a
-                OUTPUT_VARIABLE _icu_libstdcpp
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                COMMAND_ERROR_IS_FATAL ANY)
-            if(NOT EXISTS "${_icu_libstdcpp}")
-                message(FATAL_ERROR "GCC libstdc++ archive was not found for ICU: ${_icu_libstdcpp}")
-            endif()
-            set(_icu_libs "${_icu_libstdcpp} ${MUSL_LIBGCC_PATH} -lc -lm ${MUSL_LIBDIR}/crtn.o")
+            set(_icu_libs "${MUSL_LIBSTDCPP_PATH} ${MUSL_LIBSUPCXX_PATH} ${MUSL_LIBGCC_PATH} -lc -lm ${MUSL_LIBDIR}/crtn.o")
         else()
             set(_icu_libs "${ALPINE_LIBCXX_STATIC} ${ALPINE_LIBCXXABI_STATIC} ${ALPINE_LIBUNWIND_STATIC} ${MUSL_LIBGCC_PATH} -lc -lm ${MUSL_LIBDIR}/crtn.o")
         endif()
