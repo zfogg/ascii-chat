@@ -21,6 +21,16 @@ if(CMAKE_C_COMPILER MATCHES "(^|/)(gcc|g(cc)?-[0-9]+)$")
     set(_asciichat_gxx "${CMAKE_CURRENT_LIST_DIR}/musl-g++-wrapper.sh")
     set(CMAKE_C_COMPILER "${_asciichat_musl_gcc}" CACHE FILEPATH "GCC musl C compiler" FORCE)
     set(CMAKE_CXX_COMPILER "${_asciichat_gxx}" CACHE FILEPATH "GCC C++ compiler" FORCE)
+    set(MUSL_GCC_RUNTIME_DIR
+        "${CMAKE_SOURCE_DIR}/.deps-cache/wsl/Arch/${CMAKE_BUILD_TYPE}/alpine-gcc/usr/lib"
+        CACHE PATH "Cached Alpine GCC runtime libraries" FORCE)
+    set(_asciichat_ssp_nonshared "${MUSL_GCC_RUNTIME_DIR}/libssp_nonshared.a")
+    if(NOT EXISTS "${_asciichat_ssp_nonshared}")
+        find_program(_asciichat_ar NAMES ar llvm-ar REQUIRED)
+        file(MAKE_DIRECTORY "${MUSL_GCC_RUNTIME_DIR}")
+        execute_process(COMMAND "${_asciichat_ar}" rcs "${_asciichat_ssp_nonshared}"
+            COMMAND_ERROR_IS_FATAL ANY)
+    endif()
 else()
     find_program(CMAKE_C_COMPILER NAMES clang REQUIRED)
     find_program(CMAKE_CXX_COMPILER NAMES clang++ REQUIRED)
@@ -47,7 +57,7 @@ string(APPEND CMAKE_C_FLAGS_INIT " ${_musl_c_flags}")
 string(APPEND CMAKE_CXX_FLAGS_INIT " ${_musl_cxx_flags}")
 
 if(CMAKE_C_COMPILER MATCHES "musl-gcc|(^|/)(gcc|g(cc)?-[0-9]+)$")
-    set(_musl_exe_link "-static-pie -nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o")
+    set(_musl_exe_link "-static-pie -nostdlib -L${MUSL_GCC_RUNTIME_DIR} -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o")
     set(_musl_shared_link "-nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/crti.o")
     execute_process(COMMAND "${CMAKE_C_COMPILER}" -print-libgcc-file-name
         OUTPUT_VARIABLE _musl_libgcc OUTPUT_STRIP_TRAILING_WHITESPACE
