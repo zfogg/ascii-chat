@@ -23,6 +23,12 @@ set(LIBFLAGS_YYJSON_LIBRARIES "${YYJSON_LIBRARIES}" CACHE STRING
     "yyjson target shared with ascii-chat" FORCE)
 set(LIBFLAGS_TOMLC17_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17" CACHE PATH
     "tomlc17 source shared with ascii-chat" FORCE)
+# Reuse ascii-chat's already-configured utf8proc target. The libflags main
+# branch supports this embedding point; do not create a second copy.
+set(LIBFLAGS_UTF8PROC_TARGET utf8proc CACHE STRING
+    "utf8proc target supplied by ascii-chat" FORCE)
+set(LIBFLAGS_UTF8PROC_SOURCE_DIR "" CACHE PATH
+    "Disable libflags' standalone utf8proc source when embedded" FORCE)
 # libplatform is configured before libflags, so pass through its real utf8proc
 # target instead of creating a second copy in the embedded dependency.
 set(LIBPLATFORM_UTF8PROC_TARGET utf8proc CACHE STRING
