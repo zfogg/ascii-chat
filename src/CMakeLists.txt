@@ -131,7 +131,7 @@ if(NOT _use_shared_lib AND NOT USE_MUSL AND APPLE)
     # macOS Release executables statically link the project archive and its
     # dependencies. Keep ascii-chat-shared as a separate development artifact.
     add_dependencies(ascii-chat build-ascii-chat-static-lib generate_version)
-    target_link_libraries(ascii-chat PRIVATE ascii-chat-static-lib OpenSSL::SSL)
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-static OpenSSL::SSL)
     set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
 elseif(NOT _use_shared_lib AND NOT USE_MUSL)
     # Static release linking: link object libraries directly into executable
