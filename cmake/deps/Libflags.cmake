@@ -35,6 +35,23 @@ FetchContent_Declare(libflags
 set(_ascii_chat_saved_build_shared_libs "${BUILD_SHARED_LIBS}")
 set(BUILD_SHARED_LIBS OFF)
 FetchContent_MakeAvailable(libflags)
+if(USE_MUSL AND TARGET flags)
+    # libflags needs libplatform at link time, but its public dependency edge
+    # also propagates libplatform's host pkg-config include roots (notably
+    # /usr/include) into this musl target. Keep those dependencies link-only.
+    get_target_property(_libflags_interface_links flags INTERFACE_LINK_LIBRARIES)
+    if(_libflags_interface_links)
+        string(REPLACE "libplatform::libplatform"
+            "$<LINK_ONLY:libplatform::libplatform>"
+            _libflags_interface_links "${_libflags_interface_links}")
+        string(REPLACE "libflags-tomlc17"
+            "$<LINK_ONLY:libflags-tomlc17>"
+            _libflags_interface_links "${_libflags_interface_links}")
+        set_property(TARGET flags PROPERTY INTERFACE_LINK_LIBRARIES
+            "${_libflags_interface_links}")
+    endif()
+    unset(_libflags_interface_links)
+endif()
 if(TARGET libflags::flags)
     get_target_property(_libflags_real_target libflags::flags ALIASED_TARGET)
     if(_libflags_real_target)
