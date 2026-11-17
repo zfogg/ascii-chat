@@ -4,14 +4,7 @@
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
-#ifdef __EMSCRIPTEN__
-#include <assert.h>
-#define Test(suite, name) static void test_##name(void)
-#define REQUIRE(condition) assert(condition)
-#define REQUIRE((a) == Catch::Approx(b)) assert(fabsf((a) - (b)) <= (epsilon))
-#else
 #include <catch2/catch_all.hpp>
-#endif
 
 static void glyphs(const char *input, char *out) {
   while (*input) {

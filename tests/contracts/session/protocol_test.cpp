@@ -109,17 +109,17 @@ static void test_dimensions(void) {
 }
 
 static void test_initial_renderer_capabilities(void) {
-  cr_assert_eq(options_state_init(), ASCIICHAT_OK);
-  cr_assert_eq(options_set_int("renderer", ASCII_RENDERER_GLYPH), ASCIICHAT_OK);
-  cr_assert_eq(options_set_bool("stabilize", true), ASCIICHAT_OK);
+  REQUIRE(options_state_init() == ASCIICHAT_OK);
+  REQUIRE(options_set_int("renderer", ASCII_RENDERER_GLYPH) == ASCIICHAT_OK);
+  REQUIRE(options_set_bool("stabilize", true) == ASCIICHAT_OK);
   terminal_capabilities_packet_t packet;
   session_protocol_build_capabilities(80, 24, &packet);
   acip_render_settings_t remote = {0};
-  cr_assert_eq(acip_render_settings_capabilities(&remote, &packet), ASCIICHAT_OK);
-  cr_assert_eq(remote.caps.text_renderer, ASCII_RENDERER_GLYPH);
-  cr_assert(remote.caps.stabilize);
-  cr_assert(!remote.caps.palette_explicit);
-  cr_assert_str_eq(remote.palette, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~");
+  REQUIRE(acip_render_settings_capabilities(&remote, &packet) == ASCIICHAT_OK);
+  REQUIRE(remote.caps.text_renderer == ASCII_RENDERER_GLYPH);
+  REQUIRE(remote.caps.stabilize);
+  REQUIRE(!remote.caps.palette_explicit);
+  REQUIRE(std::strcmp(remote.palette, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~") == 0);
   options_state_destroy();
 }
 
