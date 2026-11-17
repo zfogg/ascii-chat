@@ -392,6 +392,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       nasm \
       libx264-devel libx265-devel \
       mimalloc-devel libzstd-devel zlib-devel libsodium-devel portaudio-devel opus-devel fftw-devel \
+      systemd-devel \
       libffi-devel sqlite-devel \
       openssl-devel \
       miniupnpc-devel \
@@ -427,6 +428,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       cmake ninja make go \
       musl mimalloc \
       zstd zlib libsodium portaudio opus fftw sqlite libdatachannel miniupnpc ffmpeg \
+      systemd-libs \
       x264 x265 \
       openssl \
       abseil-cpp \
@@ -452,11 +454,17 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo >&2 "  - libsodium (library and development headers)"
     echo >&2 "  - portaudio (library and development headers)"
     echo >&2 "  - opus (library and development headers, for audio codec)"
+    echo >&2 "  - libsystemd (library, development headers, and pkg-config metadata for keepawake)"
     echo >&2 "  - sqlite3 (library and development headers, for discovery service database)"
     echo >&2 "  - ffmpeg (library and development headers, for media file streaming)"
     echo >&2 "  - Catch2 v3 (testing framework, provided by vcpkg or CMake FetchContent)"
     echo >&2 "  - libffi (foreign function interface)"
     echo >&2 "  - yt-dlp (for YouTube URL support)"
+    exit 1
+  fi
+
+  if ! pkg-config --exists libsystemd; then
+    echo >&2 "ERROR: pkg-config could not find libsystemd after installing Linux dependencies"
     exit 1
   fi
 
