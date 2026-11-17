@@ -29,7 +29,7 @@ static void allocation_contracts(void) {
     for (size_t i = 0; i < sizeof(sizes) / sizeof(sizes[0]); i++) {
       void *data = NULL;
       REQUIRE((buffer_acquire(domain, sizes[i], alignment, &data)) == (ASCIICHAT_OK));
-      REQUIRE(data && (uintptr_t)data % alignment == 0);
+      REQUIRE((data && (uintptr_t)data % alignment == 0));
       REQUIRE(buffer_capacity(data) >= sizes[i]);
       REQUIRE((buffer_size(data)) == (sizes[i]));
       memset(data, 0xab, sizes[i]);
@@ -38,16 +38,16 @@ static void allocation_contracts(void) {
     }
   }
   void *bad = NULL;
-  REQUIRE(buffer_acquire(domain, SIZE_MAX, 64, &bad) != ASCIICHAT_OK && !bad);
-  REQUIRE(buffer_acquire(domain, 100, 3, &bad) != ASCIICHAT_OK && !bad);
-  REQUIRE(buffer_acquire(domain, 2 * 1024 * 1024, 64, &bad) != ASCIICHAT_OK && !bad);
+  REQUIRE((buffer_acquire(domain, SIZE_MAX, 64, &bad) != ASCIICHAT_OK && !bad));
+  REQUIRE((buffer_acquire(domain, 100, 3, &bad) != ASCIICHAT_OK && !bad));
+  REQUIRE((buffer_acquire(domain, 2 * 1024 * 1024, 64, &bad) != ASCIICHAT_OK && !bad));
   buffer_domain_trim(domain);
   buffer_stats_t stats;
   buffer_domain_stats(domain, &stats);
-  REQUIRE(stats.reserved_bytes == 0 && stats.outstanding == 0);
+  REQUIRE((stats.reserved_bytes == 0 && stats.outstanding == 0));
   void *large = buffer_alloc(domain, 32768);
   void *small = buffer_alloc(domain, 64);
-  REQUIRE(large && small);
+  REQUIRE((large && small));
   void *address = large;
   buffer_release(large);
   buffer_release(small);
@@ -84,10 +84,10 @@ static void workspace_contracts(void) {
   REQUIRE((strcmp(workspace.data, "retained")) == (0));
   original = workspace.data;
   REQUIRE((buffer_workspace_reserve(&workspace, domain, 8192)) != (ASCIICHAT_OK));
-  REQUIRE(workspace.data == original && workspace.length == 9);
+  REQUIRE((workspace.data == original && workspace.length == 9));
   buffer_domain_close(&domain);
   buffer_workspace_destroy(&workspace);
-  REQUIRE(!workspace.data && !workspace.length);
+  REQUIRE((!workspace.data && !workspace.length));
 }
 
 static void queue_contracts(void) {
@@ -106,7 +106,7 @@ static void queue_contracts(void) {
   REQUIRE(data); /* Byte limit rejects without consuming ownership. */
   buffer_release(data);
   queued_packet_t *packet = packet_queue_try_dequeue(queue);
-  REQUIRE(packet && packet->data == original && packet->data_len == 80);
+  REQUIRE((packet && packet->data == original && packet->data_len == 80));
   REQUIRE((packet_queue_push_copy(queue, PACKET_TYPE_PING, "copy", 5, 3)) == (ASCIICHAT_OK));
   packet_queue_stop(queue);
   REQUIRE(!packet_queue_try_dequeue(queue));
@@ -125,9 +125,9 @@ static void queue_contracts(void) {
     REQUIRE((packet_queue_push_copy(queue, PACKET_TYPE_IMAGE_FRAME, &i, sizeof(i), i)) == (ASCIICHAT_OK));
   uint64_t enqueued = 0, dropped = 0;
   packet_queue_get_stats(queue, &enqueued, NULL, &dropped);
-  REQUIRE(enqueued == 10 && dropped == 8 && packet_queue_size(queue) == 2);
+  REQUIRE((enqueued == 10 && dropped == 8 && packet_queue_size(queue) == 2));
   packet = packet_queue_dequeue(queue);
-  REQUIRE(packet && NET_TO_HOST_U32(packet->header.client_id) == 8);
+  REQUIRE((packet && NET_TO_HOST_U32(packet->header.client_id) == 8));
   packet_queue_free_packet(packet);
   packet_queue_destroy(queue);
 
@@ -138,11 +138,11 @@ static void queue_contracts(void) {
   REQUIRE((packet_queue_push_shared(queue, PACKET_TYPE_PING, data, 4, 0)) == (ASCIICHAT_OK));
   buffer_release(data);
   packet = packet_queue_dequeue(queue);
-  REQUIRE(packet && strcmp(packet->data, "abc") == 0);
+  REQUIRE((packet && strcmp(packet->data, "abc") == 0));
   packet_queue_free_packet(packet);
   REQUIRE((packet_queue_push_copy(queue, PACKET_TYPE_PING, NULL, 0, 0)) == (ASCIICHAT_OK));
   packet = packet_queue_dequeue(queue);
-  REQUIRE(packet && !packet->data && packet->data_len == 0);
+  REQUIRE((packet && !packet->data && packet->data_len == 0));
   packet_queue_free_packet(packet);
   packet_queue_destroy(queue);
 }
@@ -190,7 +190,7 @@ static void concurrent_contracts(void) {
   REQUIRE((thread_join(&trimmer, NULL)) == (0));
   buffer_stats_t stats;
   buffer_domain_stats(stress.domain, &stats);
-  REQUIRE(!stats.outstanding && !stats.live_bytes && !stats.requested_bytes);
+  REQUIRE((!stats.outstanding && !stats.live_bytes && !stats.requested_bytes));
   buffer_domain_close(&stress.domain);
   REQUIRE((buffer_process_reserved()) == (baseline));
 }
@@ -267,11 +267,11 @@ static void process_budget_contracts(void) {
   buffer_budget_t lease = {0};
   REQUIRE((buffer_budget_reserve(&lease, 4096)) == (ASCIICHAT_OK));
   REQUIRE((buffer_process_reserved()) == (baseline + 4096));
-  REQUIRE(buffer_budget_reserve(&lease, 1) != ASCIICHAT_OK && lease.bytes == 4096);
+  REQUIRE((buffer_budget_reserve(&lease, 1) != ASCIICHAT_OK && lease.bytes == 4096));
   buffer_budget_release(&lease);
   buffer_budget_release(&lease);
-  REQUIRE(!lease.bytes && buffer_process_reserved() == baseline);
-  REQUIRE(buffer_budget_reserve(&lease, BUFFER_PROCESS_LIMIT) != ASCIICHAT_OK && !lease.bytes);
+  REQUIRE((!lease.bytes && buffer_process_reserved() == baseline));
+  REQUIRE((buffer_budget_reserve(&lease, BUFFER_PROCESS_LIMIT) != ASCIICHAT_OK && !lease.bytes));
   buffer_domain_t *media = NULL, *control = NULL;
   buffer_domain_config_t config = {BUFFER_PROCESS_LIMIT, 0, 0, false};
   REQUIRE((buffer_domain_create(&config, &media)) == (ASCIICHAT_OK));
@@ -281,10 +281,10 @@ static void process_budget_contracts(void) {
   size_t count = 0;
   while (count < 512 && (blocks[count] = buffer_alloc(media, 1024 * 1024)))
     count++;
-  REQUIRE(count > 0 && count < 512);
+  REQUIRE((count > 0 && count < 512));
   REQUIRE(buffer_process_reserved() <= BUFFER_PROCESS_LIMIT - BUFFER_CONTROL_RESERVE);
   void *message = buffer_alloc(control, BUFFER_CONTROL_RESERVE / 2);
-  REQUIRE(message && buffer_process_reserved() <= BUFFER_PROCESS_LIMIT);
+  REQUIRE((message && buffer_process_reserved() <= BUFFER_PROCESS_LIMIT));
   buffer_domain_close(&media);
   buffer_domain_close(&control);
   for (size_t i = 0; i < count; i++)
@@ -295,7 +295,7 @@ static void process_budget_contracts(void) {
 
 static void media_contracts(void) {
   image_t *image = image_new(641, 479);
-  REQUIRE(image && (uintptr_t)image->pixels % 64 == 0);
+  REQUIRE((image && (uintptr_t)image->pixels % 64 == 0));
   memset(image->pixels, 42, (size_t)image->w * image->h * sizeof(rgb_pixel_t));
   image_destroy(image);
   char input[8192];
@@ -314,12 +314,12 @@ static void media_contracts(void) {
   for (int i = 0; i < 100; i++) {
     input[i] = (char)i;
     REQUIRE((compress_workspace(&workspace, input, sizeof(input), 1)) == (ASCIICHAT_OK));
-    REQUIRE(workspace.output.data == storage && workspace.codec == codec);
+    REQUIRE((workspace.output.data == storage && workspace.codec == codec));
     REQUIRE((decompress_data(workspace.output.data, workspace.output.length, output, sizeof(output))) == (ASCIICHAT_OK));
     REQUIRE((memcmp(input, output, sizeof(input))) == (0));
   }
   compression_workspace_destroy(&workspace);
-  REQUIRE(!workspace.codec && !workspace.output.data);
+  REQUIRE((!workspace.codec && !workspace.output.data));
 }
 
 static void client_admission_respects_process_budget(void) {
@@ -374,7 +374,7 @@ static void websocket_control_reserve_contract(void) {
   REQUIRE((mutex_init(&ws.send_mutex, "reserve-send")) == (0));
   REQUIRE((mutex_init(&ws.state_mutex, "reserve-state")) == (0));
   crypto_context_t crypto, peer;
-  REQUIRE(crypto_init(&crypto) == CRYPTO_OK && crypto_init(&peer) == CRYPTO_OK);
+  REQUIRE((crypto_init(&crypto) == CRYPTO_OK && crypto_init(&peer) == CRYPTO_OK));
   REQUIRE((crypto_set_peer_public_key(&crypto, peer.public_key)) == (CRYPTO_OK));
   crypto.handshake_complete = peer.handshake_complete = true;
   acip_transport_t transport = {.impl_data = &ws};

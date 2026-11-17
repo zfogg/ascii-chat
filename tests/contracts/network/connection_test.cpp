@@ -197,7 +197,7 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
   } else {
     open_result = network_connection_open("connection_test", endpoint, tcp, NULL, &client, NULL);
   }
-  REQUIRE(open_result == ASCIICHAT_OK || (reject && open_result == ERROR_NETWORK_CONNECT));
+  REQUIRE((open_result == ASCIICHAT_OK || (reject && open_result == ERROR_NETWORK_CONNECT)));
   if (backend >= 3)
     REQUIRE(std::strcmp((network_connection_peer(client)), ("localhost")) == 0);
   wait_count(&f.opened, 1);
@@ -240,7 +240,7 @@ static void scenario(int backend, bool reject, bool stall, int corrupt, bool ret
       void *data = NULL, *allocation = NULL;
       size_t length = 0;
       REQUIRE((packet_receive_via_transport(transport, &type, &data, &length, &allocation)) == (ASCIICHAT_OK));
-      REQUIRE(type == PACKET_TYPE_PONG && length == sizeof(payload) && !memcmp(data, &payload, length));
+      REQUIRE((type == PACKET_TYPE_PONG && length == sizeof(payload) && !memcmp(data, &payload, length)));
       buffer_release(allocation);
       network_server_foreach(f.server, stop_visit, &f);
     }
@@ -309,11 +309,10 @@ static void establishment_controls(void) {
   network_connect_config_t config = {.timeout_ms = 120, .should_exit_callback = cancel_connect, .callback_data = &cancel};
   network_connection_t *connection = NULL;
   REQUIRE((network_connection_open("cancelled", "tcp://127.0.0.1", 1, &config, &connection, NULL)) != (ASCIICHAT_OK));
-  REQUIRE(cancel.calls == 1 && !connection);
+  REQUIRE((cancel.calls == 1 && !connection));
   cancel.calls = 0;
   REQUIRE((network_connection_open("cancelled", "ws://127.0.0.1:1", 1, &config, &connection, NULL)) != (ASCIICHAT_OK));
-  REQUIRE(cancel.calls == 1 && !connection);
-
+  REQUIRE((cancel.calls == 1 && !connection));
   acds_client_config_t discovery;
   acds_client_config_init_defaults(&discovery);
   discovery.timeout_ms = config.timeout_ms;
@@ -322,7 +321,7 @@ static void establishment_controls(void) {
   acds_client_t client;
   cancel.calls = 0;
   REQUIRE((acds_client_connect(&client, &discovery)) != (ASCIICHAT_OK));
-  REQUIRE(cancel.calls == 1 && !client.connected && !client.connection && !client.transport);
+  REQUIRE((cancel.calls == 1 && !client.connected && !client.connection && !client.transport));
 }
 
 static void stalled_upgrade_deadline(void) {
@@ -343,7 +342,7 @@ static void stalled_upgrade_deadline(void) {
   uint64_t start = time_get_ns();
   REQUIRE((network_connection_open("deadline", endpoint, 1, &config, &connection, NULL)) != (ASCIICHAT_OK));
   uint64_t elapsed = time_get_ns() - start;
-  REQUIRE(elapsed >= 100 * NS_PER_MS_INT && elapsed < 2 * NS_PER_SEC_INT && !connection);
+  REQUIRE((elapsed >= 100 * NS_PER_MS_INT && elapsed < 2 * NS_PER_SEC_INT && !connection));
   socket_close(listener);
 }
 
@@ -365,7 +364,7 @@ static void cancelled_upgrade(void) {
   config.should_exit_callback = cancel_connect;
   uint64_t start = time_get_ns();
   REQUIRE((network_connection_open("cancel_upgrade", endpoint, 1, &config, &connection, NULL)) != (ASCIICHAT_OK));
-  REQUIRE(cancel.calls >= 4 && time_get_ns() - start < 2 * NS_PER_SEC_INT && !connection);
+  REQUIRE((cancel.calls >= 4 && time_get_ns() - start < 2 * NS_PER_SEC_INT && !connection));
   socket_close(listener);
 }
 

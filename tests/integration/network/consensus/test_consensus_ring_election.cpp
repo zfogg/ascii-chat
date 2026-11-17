@@ -82,7 +82,7 @@ static asciichat_error_t test_election_callback(void *context, consensus_state_t
   }
 
   // Allocate space for metrics
-  metrics = malloc(sizeof(participant_metrics_t) * metrics_count);
+  metrics = (participant_metrics_t *)malloc(sizeof(participant_metrics_t) * metrics_count);
 
   // Get all collected metrics by iterating
   for (int i = 0; i < metrics_count; i++) {
@@ -389,7 +389,7 @@ TEST_CASE("consensus_integration/multiple_election_rounds", "[consensus_integrat
   int best_idx_1, backup_idx_1;
   asciichat_error_t err = consensus_election_choose_hosts(metrics, 3, &best_idx_1, &backup_idx_1);
   REQUIRE((err) == (ASCIICHAT_OK));
-  REQUIRE(best_idx_1 == 0 || best_idx_1 == 1);
+  REQUIRE((best_idx_1 == 0 || best_idx_1 == 1));
   REQUIRE((backup_idx_1) == ((best_idx_1 == 0) ? 1 : 0));
 
   // Modify metrics - make participant 1 significantly better

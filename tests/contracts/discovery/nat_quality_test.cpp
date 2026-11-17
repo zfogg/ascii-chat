@@ -133,8 +133,8 @@ TEST_CASE("nat_quality/real_stun_probe_records_only_supported_observations_and_r
     REQUIRE(!(errno_notifications_pending()));
     REQUIRE(!(HAS_ERRNO(NULL)));
     REQUIRE((thread_join(&thread, NULL)) == (0));
-    REQUIRE(quality.detection_complete && quality.has_host_candidates);
-    REQUIRE(!(quality.has_public_ip || quality.upnp_available));
+    REQUIRE((quality.detection_complete && quality.has_host_candidates));
+    REQUIRE((!(quality.has_public_ip || quality.upnp_available)));
     REQUIRE((quality.nat_type) == (ACIP_NAT_TYPE_SYMMETRIC));
     REQUIRE((quality.has_srflx_candidates) == (mode == 0 || mode == 4));
     if (mode == 0 || mode == 4) {
@@ -150,6 +150,6 @@ TEST_CASE("nat_quality/real_stun_probe_records_only_supported_observations_and_r
   REQUIRE((options_set_string("turn_servers", "turn:127.0.0.1:3478")) == (ASCIICHAT_OK));
   nat_quality_t quality;
   REQUIRE((nat_detect_quality(&quality, "", 0)) == (ASCIICHAT_OK));
-  REQUIRE(quality.has_relay_candidates && quality.has_host_candidates);
+  REQUIRE((quality.has_relay_candidates && quality.has_host_candidates));
   REQUIRE(!(quality.has_srflx_candidates));
 }

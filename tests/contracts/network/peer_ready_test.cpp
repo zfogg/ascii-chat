@@ -13,8 +13,8 @@ static void destroy_transport(acip_transport_t *transport) {
 }
 static const acip_transport_methods_t methods = {.destroy_impl = destroy_transport};
 static void ready(acip_transport_t *transport, const uint8_t id[16], void *context) {
-  REQUIRE(context && thread_equal(controlling_thread, thread_self()));
-  REQUIRE(id[0] == 1 || id[0] == 2);
+  REQUIRE((context && thread_equal(controlling_thread, thread_self())));
+  REQUIRE((id[0] == 1 || id[0] == 2));
   callbacks++;
   acip_transport_destroy(transport);
 }
@@ -67,21 +67,21 @@ TEST_CASE("peer_ready/dispatches_on_owner_and_releases_once", "[peer_ready]") {
   REQUIRE((thread_join(&worker, NULL)) == (ASCIICHAT_OK));
   REQUIRE((platform_thread_create(&worker, "dispatch_foreign", dispatch_foreign, manager)) == (ASCIICHAT_OK));
   REQUIRE((thread_join(&worker, NULL)) == (ASCIICHAT_OK));
-  REQUIRE(callbacks == 0 && atomic_ptr_load(&first->pending_transport));
+  REQUIRE((callbacks == 0 && atomic_ptr_load(&first->pending_transport)));
   REQUIRE((webrtc_peer_manager_dispatch_ready(manager)) == (ASCIICHAT_OK));
-  REQUIRE(callbacks == 1 && released == 1 && !atomic_ptr_load(&first->pending_transport));
-  REQUIRE(!second->is_connected && atomic_ptr_load(&second->pending_transport));
+  REQUIRE((callbacks == 1 && released == 1 && !atomic_ptr_load(&first->pending_transport)));
+  REQUIRE((!second->is_connected && atomic_ptr_load(&second->pending_transport)));
   REQUIRE((platform_thread_create(&worker, "publish_ready", publish_ready, second)) == (ASCIICHAT_OK));
   REQUIRE((thread_join(&worker, NULL)) == (ASCIICHAT_OK));
   REQUIRE((webrtc_peer_manager_dispatch_ready(manager)) == (ASCIICHAT_OK));
   REQUIRE((webrtc_peer_manager_dispatch_ready(manager)) == (ASCIICHAT_OK));
-  REQUIRE(callbacks == 2 && released == 2);
+  REQUIRE((callbacks == 2 && released == 2));
   remove_peer_locked(manager, first);
   remove_peer_locked(manager, second);
   // A session destroyed before dispatch still owns its pending transport.
   first = add_peer(manager, 1);
   publish_ready(first);
   webrtc_peer_manager_destroy(manager);
-  REQUIRE(callbacks == 2 && released == 3);
+  REQUIRE((callbacks == 2 && released == 3));
   log_destroy();
 }

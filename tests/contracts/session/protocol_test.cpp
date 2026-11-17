@@ -18,7 +18,7 @@ typedef struct {
 
 static asciichat_error_t frame(const ascii_frame_packet_t *header, const char *text, void *context) {
   sink_t *sink = context;
-  REQUIRE(header->width == 4 && header->height == 1);
+  REQUIRE((header->width == 4 && header->height == 1));
   REQUIRE((strcmp(text, "abcd")) == (0));
   sink->frames++;
   return ASCIICHAT_OK;
@@ -41,7 +41,7 @@ static asciichat_error_t samples(const float *data, size_t count, void *context)
     for (size_t i = 0; i < count; ++i)
       REQUIRE((data[i]) == Catch::Approx(i / AUDIO_CHANNELS == 0 ? 1.0f : -1.0f));
   } else {
-    REQUIRE(count == 2 && data[0] > 0.99f && data[1] < -0.99f);
+    REQUIRE((count == 2 && data[0] > 0.99f && data[1] < -0.99f));
   }
   sink->samples += count;
   return ASCIICHAT_OK;
@@ -49,7 +49,7 @@ static asciichat_error_t samples(const float *data, size_t count, void *context)
 
 static asciichat_error_t decode(const void *data, size_t length, float *out, size_t capacity, size_t *count, void *context) {
   sink_t *sink = context;
-  REQUIRE(length == 1 && *(const uint8_t *)data == 42 && capacity >= 2);
+  REQUIRE((length == 1 && *(const uint8_t *)data == 42 && capacity >= 2));
   out[0] = 1.0f;
   out[1] = -1.0f;
   *count = 2;
@@ -62,10 +62,10 @@ static void pong(void *context) {
 }
 
 static asciichat_error_t send_vectors(acip_transport_t *transport, const socket_buffer_t *buffers, size_t count) {
-  REQUIRE(count == 2 && buffers[0].len == sizeof(packet_header_t));
+  REQUIRE((count == 2 && buffers[0].len == sizeof(packet_header_t)));
   packet_header_t header;
   memcpy(&header, buffers[0].data, sizeof(header));
-  REQUIRE(NET_TO_HOST_U16(header.type) == PACKET_TYPE_PONG && NET_TO_HOST_U32(header.length) == 0);
+  REQUIRE((NET_TO_HOST_U16(header.type) == PACKET_TYPE_PONG && NET_TO_HOST_U32(header.length) == 0));
   ((sink_t *)transport->impl_data)->pongs++;
   return ASCIICHAT_OK;
 }
@@ -91,8 +91,8 @@ static void test_dimensions(void) {
   dimensions_sink_t sinks[2] = {0};
   REQUIRE((session_protocol_update_settings(&client, &revisions[0], send_dimensions, &sinks[0])) == (ASCIICHAT_OK));
   REQUIRE((session_protocol_update_settings(&discovery, &revisions[1], send_dimensions, &sinks[1])) == (ASCIICHAT_OK));
-  REQUIRE(sinks[0].calls == 1 && sinks[1].calls == 1);
-  REQUIRE(sinks[1].values.width == 80 && sinks[1].values.height == 24);
+  REQUIRE((sinks[0].calls == 1 && sinks[1].calls == 1));
+  REQUIRE((sinks[1].values.width == 80 && sinks[1].values.height == 24));
   REQUIRE((session_protocol_update_settings(&client, &revisions[0], send_dimensions, &sinks[0])) == (ASCIICHAT_OK));
   REQUIRE((sinks[0].calls) == (1));
   REQUIRE((options_set_int("width", 100)) == (ASCIICHAT_OK));
@@ -100,11 +100,11 @@ static void test_dimensions(void) {
   REQUIRE((session_protocol_update_settings(&client, &revisions[0], send_dimensions, &sinks[0])) == (ERROR_NETWORK));
   REQUIRE((client.cols) == (80));
   REQUIRE((session_protocol_update_settings(&discovery, &revisions[1], send_dimensions, &sinks[1])) == (ASCIICHAT_OK));
-  REQUIRE(discovery.cols == 100 && client.cols == 80);
-  REQUIRE(sinks[1].values.width == 100 && sinks[1].values.height == 24);
+  REQUIRE((discovery.cols == 100 && client.cols == 80));
+  REQUIRE((sinks[1].values.width == 100 && sinks[1].values.height == 24));
   sinks[0].fail = false;
   REQUIRE((session_protocol_update_settings(&client, &revisions[0], send_dimensions, &sinks[0])) == (ASCIICHAT_OK));
-  REQUIRE(client.cols == 100 && sinks[0].calls == 3);
+  REQUIRE((client.cols == 100 && sinks[0].calls == 3));
   options_state_destroy();
 }
 
@@ -152,7 +152,7 @@ static void settings_changed(session_participant_t *participant, const session_s
   session_settings_t readback;
   // Calling a reader from the callback verifies that notifications run unlocked.
   REQUIRE((session_participant_get_settings(participant, &readback)) == (ASCIICHAT_OK));
-  REQUIRE(readback.version == effective->version && readback.width == effective->width);
+  REQUIRE((readback.version == effective->version && readback.width == effective->width));
   test->callbacks++;
 }
 
@@ -168,7 +168,7 @@ static void test_participant_settings(void) {
   CLEAR_ERRNO();
   REQUIRE((session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED)) == (ASCIICHAT_OK));
   REQUIRE((session_participant_request_settings(participant, &requested)) == (ASCIICHAT_OK));
-  REQUIRE(test.host.width == 80 && test.callbacks == 0);
+  REQUIRE((test.host.width == 80 && test.callbacks == 0));
   test.fail_send = true;
   REQUIRE((session_participant_request_settings(participant, &requested)) == (ERROR_NETWORK));
   test.fail_send = false;
@@ -179,14 +179,14 @@ static void test_participant_settings(void) {
   SAFE_STRNCPY(requested.palette_custom, " .+#", sizeof(requested.palette_custom));
   REQUIRE((session_participant_request_settings(participant, &requested)) == (ASCIICHAT_OK));
   REQUIRE((session_participant_receive_settings(participant, test.reply, test.reply_length)) == (ASCIICHAT_OK));
-  REQUIRE(test.host.width == 55 && test.callbacks == 2 && !strcmp(test.host.palette, " .+#"));
+  REQUIRE((test.host.width == 55 && test.callbacks == 2 && !strcmp(test.host.palette, " .+#")));
   REQUIRE((session_participant_set_transport(participant, NULL, ACIP_TRANSPORT_BORROWED)) == (ASCIICHAT_OK));
   memset(&test.host, 0, sizeof(test.host));
   REQUIRE((session_participant_set_transport(participant, &transport, ACIP_TRANSPORT_BORROWED)) == (ASCIICHAT_OK));
   requested.width = 70;
   REQUIRE((session_participant_request_settings(participant, &requested)) == (ASCIICHAT_OK));
   REQUIRE((session_participant_receive_settings(participant, test.reply, test.reply_length)) == (ASCIICHAT_OK));
-  REQUIRE(test.callbacks == 3 && test.host.width == 70);
+  REQUIRE((test.callbacks == 3 && test.host.width == 70));
   REQUIRE((session_participant_set_transport(participant, NULL, ACIP_TRANSPORT_BORROWED)) == (ASCIICHAT_OK));
   session_participant_destroy(participant);
 
@@ -210,7 +210,7 @@ static void test_participant_settings(void) {
   REQUIRE((session_participant_receive_settings(participant, test.reply, test.reply_length)) == (ASCIICHAT_OK));
   session_settings_t effective;
   REQUIRE((session_participant_get_settings(participant, &effective)) == (ASCIICHAT_OK));
-  REQUIRE(effective.color_mode == expected_color && effective.fps == 60 && test.callbacks == 4);
+  REQUIRE((effective.color_mode == expected_color && effective.fps == 60 && test.callbacks == 4));
   REQUIRE((session_participant_set_transport(participant, NULL, ACIP_TRANSPORT_BORROWED)) == (ASCIICHAT_OK));
   session_participant_destroy(participant);
   options_state_destroy();
@@ -321,7 +321,7 @@ static void test_rendered_frame_validation(void) {
   acip_render_settings_t decoded;
   REQUIRE((frame_render_contract_encode(&rendering, 0, metadata, &metadata_size)) == (ASCIICHAT_OK));
   REQUIRE((frame_render_contract_decode(metadata, metadata_size, &decoded, &effects, &consumed)) == (ASCIICHAT_OK));
-  REQUIRE(consumed == metadata_size && decoded.revision == 2 && !strcmp(decoded.palette, "."));
+  REQUIRE((consumed == metadata_size && decoded.revision == 2 && !strcmp(decoded.palette, ".")));
   for (size_t n = 0; n < metadata_size; ++n) {
     REQUIRE((frame_render_contract_decode(metadata, n, &decoded, &effects, &consumed)) == (ERROR_INVALID_FRAME));
     CLEAR_ERRNO();
@@ -376,7 +376,7 @@ static void test_rendered_frame_validation(void) {
       bytes[i] = (char)(random >> 24);
     }
     asciichat_error_t result = session_frame_validate(bytes, n, 4, 1);
-    REQUIRE(result == ASCIICHAT_OK || result == ERROR_INVALID_FRAME);
+    REQUIRE((result == ASCIICHAT_OK || result == ERROR_INVALID_FRAME));
     CLEAR_ERRNO();
     REQUIRE((session_frame_validate("    ", 4, 4, 1)) == (ASCIICHAT_OK));
   }
@@ -403,8 +403,8 @@ void test_session_protocol(void) {
   memcpy(payload, &header, sizeof(header));
   memcpy(payload + sizeof(header), "abcd", 4);
   REQUIRE((session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + 4)) == (ASCIICHAT_OK));
-  REQUIRE(sinks[0].frames == 1 && sinks[1].frames == 0);
-  REQUIRE(protocols[0].frames_received == 1 && protocols[1].frames_received == 0);
+  REQUIRE((sinks[0].frames == 1 && sinks[1].frames == 0));
+  REQUIRE((protocols[0].frames_received == 1 && protocols[1].frames_received == 0));
   // Even a checksum-valid hostile frame must never reach presentation. A
   // rejected frame does not commit snapshot/FPS/UI state or poison recovery.
   const char hostile[] = "a\033]52;c;AAAA\a";
@@ -480,7 +480,7 @@ void test_session_protocol(void) {
   for (unsigned i = 0; i < 100; ++i)
     REQUIRE((session_protocol_dispatch(&protocols[0], PACKET_TYPE_ASCII_FRAME, payload, sizeof(header) + compressed)) == (ASCIICHAT_OK));
   buffer_domain_stats(buffer_default_domain(), &after);
-  REQUIRE(before.allocations == after.allocations && before.hits == after.hits);
+  REQUIRE((before.allocations == after.allocations && before.hits == after.hits));
   // A short successful zstd decode must fail before CRC reads stale workspace
   // bytes. Check both reusable and allocation fallback receive paths.
   header.original_size = HOST_TO_NET_U32(5);
@@ -505,7 +505,7 @@ void test_session_protocol(void) {
   uint32_t quantized[2] = {HOST_TO_NET_U32(2147483647U), HOST_TO_NET_U32((uint32_t)-2147483647)};
   memcpy(payload + sizeof(audio), quantized, sizeof(quantized));
   REQUIRE((session_protocol_dispatch(&protocols[0], PACKET_TYPE_AUDIO_BATCH, payload, sizeof(audio) + sizeof(quantized))) == (ASCIICHAT_OK));
-  REQUIRE(sinks[0].samples == 2 * AUDIO_CHANNELS && sinks[1].samples == 0);
+  REQUIRE((sinks[0].samples == 2 * AUDIO_CHANNELS && sinks[1].samples == 0));
   sinks[0].fail_audio = true;
   REQUIRE((session_protocol_dispatch(&protocols[0], PACKET_TYPE_AUDIO_BATCH, payload, sizeof(audio) + sizeof(quantized))) == (ERROR_AUDIO));
   CLEAR_ERRNO();
@@ -519,19 +519,19 @@ void test_session_protocol(void) {
   memcpy(opus + 16, sizes, sizeof(sizes));
   opus[20] = opus[21] = 42;
   REQUIRE((session_protocol_dispatch(&protocols[1], PACKET_TYPE_AUDIO_OPUS_BATCH, opus, 22)) == (ASCIICHAT_OK));
-  REQUIRE(sinks[1].decodes == 2 && sinks[1].samples == 4);
+  REQUIRE((sinks[1].decodes == 2 && sinks[1].samples == 4));
   REQUIRE((session_protocol_dispatch(&protocols[1], PACKET_TYPE_AUDIO_OPUS_BATCH, opus, 21)) == (ERROR_NETWORK_PROTOCOL));
   REQUIRE((sinks[1].decodes) == (2)); // Malformed batches deliver no partial audio.
   CLEAR_ERRNO();
 
   server_state_packet_t state = {.active_client_count = HOST_TO_NET_U32(3)};
   REQUIRE((session_protocol_dispatch(&protocols[1], PACKET_TYPE_SERVER_STATE, &state, sizeof(state))) == (ASCIICHAT_OK));
-  REQUIRE(protocols[1].active_client_count == 3 && protocols[1].layout_changed);
-  REQUIRE(!protocols[0].server_state_initialized && !protocols[0].layout_changed);
+  REQUIRE((protocols[1].active_client_count == 3 && protocols[1].layout_changed));
+  REQUIRE((!protocols[0].server_state_initialized && !protocols[0].layout_changed));
   REQUIRE((session_protocol_dispatch(&protocols[0], PACKET_TYPE_PING, NULL, 0)) == (ASCIICHAT_OK));
-  REQUIRE(sinks[0].pongs == 1 && sinks[1].pongs == 0);
+  REQUIRE((sinks[0].pongs == 1 && sinks[1].pongs == 0));
   REQUIRE((session_protocol_dispatch(&protocols[1], PACKET_TYPE_PONG, NULL, 0)) == (ASCIICHAT_OK));
-  REQUIRE(sinks[1].controls == 1 && sinks[0].controls == 0);
+  REQUIRE((sinks[1].controls == 1 && sinks[0].controls == 0));
   buffer_workspace_destroy(&ascii_workspace);
   log_info("PASS: shared participant protocol, compressed frames, CRC, PCM, Opus bounds, error propagation and owner "
            "isolation");

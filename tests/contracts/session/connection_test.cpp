@@ -65,7 +65,7 @@ static asciichat_error_t join_owner(void *context) {
 }
 static void release_owner(void *context) {
   owner_t *owner = context;
-  REQUIRE(owner->joined && !owner->started);
+  REQUIRE((owner->joined && !owner->started));
   acip_transport_destroy(owner->transport);
   owner->transport = NULL;
   owner->socket = INVALID_SOCKET_VALUE;
@@ -252,9 +252,9 @@ TEST_CASE("session_connections/retains_owners_until_workers_join", "[session_con
   acip_transport_t dispatch[2] = {{.methods = &dispatch_methods, .impl_data = &interrupted[0]}, {.methods = &dispatch_methods, .impl_data = &interrupted[1]}};
   acip_transport_interrupt(NULL);
   session_connection_interrupt_transport(&dispatch[0]);
-  REQUIRE(interrupted[0] == 1 && interrupted[1] == 0);
+  REQUIRE((interrupted[0] == 1 && interrupted[1] == 0));
   acip_transport_interrupt(&dispatch[1]);
-  REQUIRE(interrupted[0] == 1 && interrupted[1] == 1);
+  REQUIRE((interrupted[0] == 1 && interrupted[1] == 1));
   const acip_transport_methods_t no_interrupt = {0};
   acip_transport_t unsupported = {.methods = &no_interrupt};
   acip_transport_interrupt(&unsupported);
@@ -276,7 +276,7 @@ TEST_CASE("session_connections/retains_owners_until_workers_join", "[session_con
   }
   owners[0].fail_join = true;
   REQUIRE((session_connection_stop(&owners[0].connection)) == (ERROR_THREAD));
-  REQUIRE(owners[0].transport && owners[0].releases == 0);
+  REQUIRE((owners[0].transport && owners[0].releases == 0));
   REQUIRE((atomic_load_int(&owners[1].connection.state)) == (SESSION_CONNECTION_RUNNING));
   progress(&owners[1], peers[1]);
   owners[0].fail_join = false;
@@ -287,7 +287,7 @@ TEST_CASE("session_connections/retains_owners_until_workers_join", "[session_con
   platform_thread_t stopper;
   REQUIRE((platform_thread_create(&stopper, "foreign_stop", foreign_stop, &owners[1])) == (ASCIICHAT_OK));
   REQUIRE((thread_join(&stopper, NULL)) == (ASCIICHAT_OK));
-  REQUIRE(owners[1].releases == 0 && owners[1].transport);
+  REQUIRE((owners[1].releases == 0 && owners[1].transport));
   REQUIRE((session_connection_stop(&owners[1].connection)) == (ASCIICHAT_OK));
   REQUIRE((owners[1].releases) == (1));
   for (int i = 0; i < 2; i++)

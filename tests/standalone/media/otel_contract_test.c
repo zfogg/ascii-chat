@@ -118,12 +118,12 @@ static void sqlite_prepare_contract(void) {
   sqlite3_stmt *statement = NULL;
   CHECK(ascii_otel_sqlite_prepare(db, queries[0].sql, &statement) == SQLITE_OK);
   otlp_exporter_stats_t stats = {0};
-  CHECK(gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 0);
+  CHECK((gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 0));
   CHECK(sqlite3_bind_text(statement, 1, "fixture-bound-secret", -1, SQLITE_STATIC) == SQLITE_OK);
   CHECK(sqlite3_step(statement) == SQLITE_ROW);
   CHECK(strcmp((const char *)sqlite3_column_text(statement, 0), "fixture-bound-secret") == 0);
   CHECK(sqlite3_finalize(statement) == SQLITE_OK);
-  CHECK(gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 1);
+  CHECK((gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 1));
   CHECK(ascii_otel_sqlite_prepare(db, queries[2].sql, &statement) == SQLITE_OK);
   CHECK(sqlite3_step(statement) == SQLITE_ROW);
   CHECK(sqlite3_column_int(statement, 0) == 17);
@@ -131,8 +131,8 @@ static void sqlite_prepare_contract(void) {
   CHECK(sqlite3_finalize(statement) == SQLITE_OK);
   statement = NULL;
   CHECK(ascii_otel_sqlite_prepare(db, queries[1].sql, &statement) == SQLITE_ERROR);
-  CHECK(statement == NULL && sqlite3_errcode(db) == SQLITE_ERROR);
-  CHECK(gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 3);
+  CHECK((statement == NULL && sqlite3_errcode(db) == SQLITE_ERROR));
+  CHECK((gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 3));
   CHECK(sqlite3_close(db) == SQLITE_OK);
   finish(h);
 }
@@ -144,11 +144,11 @@ static void retained_budget(void) {
   for (unsigned i = 0; i < 105; ++i)
     ascii_otel_error_code(ERROR_NETWORK_PROTOCOL, "protocol fixture");
   otlp_exporter_stats_t stats = {0};
-  CHECK(gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 100);
-  CHECK(!operation.scope.context.sampled && operation.scope.span == NULL);
+  CHECK((gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 100));
+  CHECK((!operation.scope.context.sampled && operation.scope.span == NULL));
   CHECK(gotel_test_clock_advance(NS_PER_SEC_INT) == OTLP_OK);
   ascii_otel_error_code(ERROR_NETWORK_PROTOCOL, "protocol fixture");
-  CHECK(gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 101);
+  CHECK((gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 101));
   ascii_otel_scope_end(&operation);
   finish(h);
 }
@@ -187,7 +187,7 @@ static void catalog_contract(void) {
     CHECK(statement != NULL);
     for (int parameter = 1; parameter <= sqlite3_bind_parameter_count(statement); ++parameter) {
       const char *name = sqlite3_bind_parameter_name(statement, parameter);
-      CHECK(name != NULL && name[0] == ':');
+      CHECK((name != NULL && name[0] == ':'));
       int index = sqlite3_bind_parameter_index(statement, name);
       CHECK(index == parameter);
       CHECK(sqlite3_bind_null(statement, index) == SQLITE_OK);
@@ -229,7 +229,7 @@ static void catalog_contract(void) {
   CHECK(database_session_update_host(db, joined.session_id, joined.participant_id, oversized, 1234, 1) != ASCIICHAT_OK);
   sqlite3_limit(db, SQLITE_LIMIT_LENGTH, previous_limit);
   session_entry_t *session = database_session_find_by_id(db, joined.session_id);
-  CHECK(session != NULL && !session->host_established);
+  CHECK((session != NULL && !session->host_established));
   session_entry_destroy(session);
   CHECK(database_session_leave(db, joined.session_id, joined.participant_id) == ASCIICHAT_OK);
 
@@ -256,7 +256,7 @@ static void catalog_contract(void) {
 }
 
 int main(int argc, char **argv) {
-  CHECK(argc == 1 || argc == 2);
+  CHECK((argc == 1 || argc == 2));
   log_init(NULL, LOG_ERROR, false, false);
   if (argc == 2) {
     capture = gotel_test_capture_create(OTEL_CONTRACT_CAPTURE_MAX_BYTES);
@@ -270,7 +270,7 @@ int main(int argc, char **argv) {
   if (capture) {
     const uint8_t *data = NULL;
     size_t bytes = 0;
-    CHECK(gotel_test_capture_read(capture, &data, &bytes) == OTLP_OK && bytes > 0);
+    CHECK((gotel_test_capture_read(capture, &data, &bytes) == OTLP_OK && bytes > 0));
     FILE *output = NULL;
 #ifdef _WIN32
     CHECK(fopen_s(&output, argv[1], "wb") == 0);

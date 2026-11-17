@@ -84,12 +84,12 @@ TEST_CASE("server_protocol/join_capabilities_update_state_and_reject_invalid_fla
   SAFE_STRNCPY(joined.display_name, "Alice", sizeof(joined.display_name));
   handle_client_join_packet(client, &joined, sizeof(joined));
   REQUIRE(std::strcmp((client->display_name), ("Alice")) == 0);
-  REQUIRE(client->can_send_audio && client->can_send_video && client->wants_stretch);
+  REQUIRE((client->can_send_audio && client->can_send_video && client->wants_stretch));
   REQUIRE(atomic_load_bool(&client->active));
   joined.capabilities = HOST_TO_NET_U32(CLIENT_CAP_AUDIO);
   handle_client_join_packet(client, &joined, sizeof(joined));
   REQUIRE(client->can_send_audio);
-  REQUIRE(!(client->can_send_video || client->wants_stretch));
+  REQUIRE((!(client->can_send_video || client->wants_stretch)));
   const uint32_t invalid[] = {0, CLIENT_CAP_AUDIO | 0x80000000u};
   for (size_t i = 0; i < 2; ++i) {
     reset_disconnect();

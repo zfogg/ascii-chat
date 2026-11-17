@@ -291,7 +291,7 @@ static void mock_deallocate(DNSServiceRef ref) {
 static int mock_poll(struct pollfd *fds, nfds_t count, int64_t timeout) {
   int ready = 0;
   for (nfds_t i = 0; i < count; ++i) {
-    REQUIRE(fds[i].fd >= 10 && fds[i].fd < 13);
+    REQUIRE((fds[i].fd >= 10 && fds[i].fd < 13));
     fds[i].revents = dns_refs[fds[i].fd - 10].ready ? (fault == 8 ? POLLHUP : fault == 9 ? POLLNVAL : POLLIN) : 0;
     ready += fds[i].revents != 0;
   }

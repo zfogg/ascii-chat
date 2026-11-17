@@ -31,20 +31,20 @@ static void prepare(crypto_context_t *crypto, const socket_buffer_t *slices, siz
   if (!crypto) {
     if (!legacy) {
       acip_packet_plan_t plan;
-      CHECK(acip_packet_plan(NULL, slices, count, &plan) == ASCIICHAT_OK && !plan.encrypt);
+      CHECK((acip_packet_plan(NULL, slices, count, &plan) == ASCIICHAT_OK && !plan.encrypt));
     }
     return;
   }
   packet_header_t outer;
   size_t capacity = size + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE, length = 0;
-  uint8_t *storage = buffer_alloc(NULL, capacity + (transport == 1 ? 0 : sizeof(outer)));
+  uint8_t *storage = (uint8_t *)buffer_alloc(NULL, capacity + (transport == 1 ? 0 : sizeof(outer)));
   CHECK(storage);
   uint8_t *ciphertext = storage + (transport == 1 ? 0 : sizeof(outer));
   if (legacy) {
     uint8_t *gathered = NULL;
-    const uint8_t *plain = slices[0].data;
+    const uint8_t *plain = (const uint8_t *)slices[0].data;
     if (transport == 1 || count > 1) {
-      gathered = buffer_alloc(NULL, size);
+      gathered = (uint8_t *)buffer_alloc(NULL, size);
       CHECK(gathered);
       size_t offset = 0;
       for (size_t i = 0; i < count; ++i) {
@@ -62,7 +62,7 @@ static void prepare(crypto_context_t *crypto, const socket_buffer_t *slices, siz
                               .crc32 = HOST_TO_NET_U32(asciichat_crc32(ciphertext, length)),
                               .client_id = 0};
     if (transport == 2) {
-      uint8_t *wire = buffer_alloc(NULL, sizeof(outer) + length);
+      uint8_t *wire = (uint8_t *)buffer_alloc(NULL, sizeof(outer) + length);
       CHECK(wire);
       memcpy(wire, &outer, sizeof(outer));
       memcpy(wire + sizeof(outer), ciphertext, length);
@@ -72,7 +72,7 @@ static void prepare(crypto_context_t *crypto, const socket_buffer_t *slices, siz
     }
   } else {
     acip_packet_plan_t plan;
-    CHECK(acip_packet_plan(crypto, slices, count, &plan) == ASCIICHAT_OK && plan.encrypt);
+    CHECK((acip_packet_plan(crypto, slices, count, &plan) == ASCIICHAT_OK && plan.encrypt));
     CHECK(acip_packet_encrypt(crypto, &plan, NULL, ciphertext, capacity, &outer, &length) == ASCIICHAT_OK);
     if (transport != 1)
       memcpy(storage, &outer, sizeof(outer));
@@ -87,7 +87,7 @@ TEST_CASE("acip_prepare/legacy_and_planned_paths", "[benchmark][acip_prepare]") 
   CHECK(crypto_init(&crypto) == CRYPTO_OK);
   crypto.key_exchange_complete = true;
   const size_t size = 65536, iterations = 2000;
-  uint8_t *packet = buffer_alloc(NULL, size);
+  uint8_t *packet = (uint8_t *)buffer_alloc(NULL, size);
   CHECK(packet);
   memset(packet, 0x5a, size);
   packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME)};

@@ -1281,6 +1281,7 @@ add_library(ascii-chat-shared SHARED
     # which don't automatically bring in their module dependencies
     target_link_libraries(ascii-chat-shared PRIVATE
         asciichat-icu
+        libflags::flags
         ${ASCIICHAT_NGHTTP2_TARGET}
         ${LIBSODIUM_LIBRARIES}
         zstd::libzstd

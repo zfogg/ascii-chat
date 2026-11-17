@@ -176,7 +176,7 @@ TEST_CASE("server_render/failed_worker_creation_rolls_back_flags_and_preserves_j
   REQUIRE((create_client_render_threads(&server, &client)) == (-1));
   REQUIRE(!(atomic_load_bool(&client.video_render_thread_running)));
   REQUIRE(!(atomic_load_bool(&client.audio_render_thread_running)));
-  REQUIRE(!(handles[0] || handles[1]));
+  REQUIRE((!(handles[0] || handles[1])));
   starts = 0;
   fail_start = 2;
   REQUIRE((create_client_render_threads(&server, &client)) == (-1));
@@ -192,14 +192,14 @@ TEST_CASE("server_render/join_failures_retain_handles_until_successful_retry_and
   REQUIRE((create_client_render_threads(&server, &client)) == (0));
   fail_join = 1;
   REQUIRE((stop_client_render_threads(&client)) == (ERROR_THREAD));
-  REQUIRE(handles[0] && handles[1]);
+  REQUIRE((handles[0] && handles[1]));
   fail_join = 3;
   REQUIRE((stop_client_render_threads(&client)) == (ERROR_THREAD));
   REQUIRE(!(handles[0]));
   REQUIRE(handles[1]);
   fail_join = 0;
   REQUIRE((stop_client_render_threads(&client)) == (ASCIICHAT_OK));
-  REQUIRE(!(handles[0] || handles[1]));
+  REQUIRE((!(handles[0] || handles[1])));
   unsigned before = joins;
   REQUIRE((stop_client_render_threads(&client)) == (ASCIICHAT_OK));
   REQUIRE((joins) == (before));

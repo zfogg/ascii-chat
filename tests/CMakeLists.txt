@@ -215,6 +215,18 @@ endfunction()
 
 # Catch2 test framework setup
 if(BUILD_TESTS AND CATCH2_FOUND)
+    # Catch2 is third-party code. On Windows, keep its locally built static
+    # libraries out of the project's sanitizer instrumentation so Catch2's
+    # intentional unsigned hash arithmetic does not turn every skipped test
+    # into a failed CTest process.
+    if(WIN32 AND NOT ASCIICHAT_CATCH2_FROM_SOURCE)
+        foreach(_catch2_target Catch2 Catch2Main)
+            if(TARGET ${_catch2_target})
+                target_compile_options(${_catch2_target} PRIVATE -fno-sanitize=all)
+                target_link_options(${_catch2_target} PRIVATE -fno-sanitize=all)
+            endif()
+        endforeach()
+    endif()
     # The options/RCU implementation is linked from the shared production
     # object target. Give that object compilation the same test-mode contract
     # as the Catch2 driver so native option tests cannot load host config or
@@ -509,7 +521,8 @@ target_link_libraries(unit_tests PRIVATE
         # Catch2 filters; passing a semicolon list here makes CatchAddTests
         # emit malformed CTest property pairs.
         PROPERTIES LABELS "unit" TIMEOUT ${CTEST_TEST_TIMEOUT}
-                   ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}")
+                   ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
+                   SKIP_RETURN_CODE 4)
 
     # Benchmarks are a single, explicitly serialized Catch2 executable. They
     # are never scheduled alongside correctness cases because timing results
@@ -682,6 +695,8 @@ target_link_libraries(benchmarks PRIVATE
         # Link against shared library which contains all code
         target_link_libraries(${test_exe_name}
             ${_ascii_tests_library}
+            ascii-chat-platform
+            libflags::flags
             ${TEST_LDFLAGS}
         )
 
@@ -751,12 +766,14 @@ target_link_libraries(benchmarks PRIVATE
             ${OPUS_LIBRARIES}
             ${SQLITE3_LIBRARIES}
             ${LIBWEBSOCKETS_LIBRARIES}
-            z  # zlib needed for libwebsockets compression support
+            ZLIB::ZLIB  # zlib needed for libwebsockets compression support
             libdatachannel
             OpenSSL::Crypto
-            -lc++  # C++ stdlib needed for libdatachannel
             ${FFMPEG_LIBRARIES}
         )
+        if(UNIX AND NOT APPLE)
+            target_link_libraries(${test_exe_name} PRIVATE c++)
+        endif()
         if(APPLE)
             target_link_libraries(${test_exe_name}
                 ${PORTAUDIO_LIBRARIES}
@@ -790,8 +807,13 @@ target_link_libraries(benchmarks PRIVATE
             target_link_libraries(${test_exe_name} ascii-query-runtime)
         endif()
 
-        # Apply sanitizers to test binaries (needed when loading sanitized shared library)
-        apply_sanitizers_to_target(${test_exe_name})
+        # Catch2's prebuilt Windows libraries are intentionally unsanitized;
+        # sanitizing the driver also reports Catch2's intentional unsigned
+        # wraparound as failures. The production shared library remains
+        # sanitizer-built and is still exercised by these tests.
+        if(NOT WIN32 OR ASCIICHAT_CATCH2_FROM_SOURCE)
+            apply_sanitizers_to_target(${test_exe_name})
+        endif()
 
         # For musl static builds, allow undefined boxfort references (they won't be called)
         if(USE_MUSL)
@@ -900,6 +922,7 @@ target_link_libraries(benchmarks PRIVATE
                     ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
                     TIMEOUT ${_test_ctest_timeout}
                     LABELS "${test_category}"
+                    SKIP_RETURN_CODE 4
                     RUN_SERIAL TRUE
                 )
             endforeach()
@@ -915,6 +938,7 @@ target_link_libraries(benchmarks PRIVATE
                 ENVIRONMENT "TESTING=1;BUILD_DIR=${CMAKE_BINARY_DIR}"
                 TIMEOUT ${_test_ctest_timeout}
                 LABELS "${test_category}"
+                SKIP_RETURN_CODE 4
             )
             if(test_category STREQUAL "integration")
                 # Process fixtures share listening ports and temporary resources.
@@ -2701,7 +2725,7 @@ if(BUILD_TESTS AND TARGET gotel)
     target_sources(test-otel-contract PRIVATE ${_ascii_gotel_contract_testing_sources})
     # The Debug ascii-chat-static facade selects the shared library. This
     # white-box host must share one link image with the exercised production code.
-    target_link_libraries(test-otel-contract PRIVATE ascii-chat-static-lib ${_ascii_gotel_contract_testing_target} ${MIMALLOC_LIBRARIES})
+    target_link_libraries(test-otel-contract PRIVATE ascii-chat-static-lib ascii-chat-platform libflags::flags ${_ascii_gotel_contract_testing_target} ${MIMALLOC_LIBRARIES})
     target_include_directories(test-otel-contract PRIVATE ${CMAKE_BINARY_DIR}/generated)
     apply_sanitizers_to_target(test-otel-contract)
     set_target_properties(test-otel-contract PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")

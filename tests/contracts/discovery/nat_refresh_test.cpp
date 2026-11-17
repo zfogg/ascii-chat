@@ -126,7 +126,7 @@ TEST_CASE("nat_refresh/stale_result_refreshes_without_overlap_or_cache_loss", "[
   REQUIRE((joins) == (0));
   REQUIRE(pending_worker);
   pending_worker(pending_arg);
-  REQUIRE(session.nat_detection_completed && session.nat_quality_cached);
+  REQUIRE((session.nat_detection_completed && session.nat_quality_cached));
   uint64_t measured = session.nat_quality_measured_ms;
   clock_ms += 5000;
   start_nat_detection(&session);
@@ -140,7 +140,7 @@ TEST_CASE("nat_refresh/stale_result_refreshes_without_overlap_or_cache_loss", "[
   start_nat_detection(&session);
   REQUIRE((launches) == (2));
   REQUIRE(!session.nat_detection_completed);
-  REQUIRE(session.nat_quality_cached && session.cached_nat_quality.has_public_ip);
+  REQUIRE((session.nat_quality_cached && session.cached_nat_quality.has_public_ip));
   REQUIRE((session.nat_quality_measured_ms) == (measured));
   unsigned int previous_joins = joins;
   start_nat_detection(&session);
@@ -159,7 +159,7 @@ TEST_CASE("nat_refresh/failed_probe_and_failed_start_are_throttled_and_retryable
   probe_result = ERROR_NETWORK;
   pending_worker(pending_arg);
   REQUIRE((session.nat_quality_measured_ms) == (measured));
-  REQUIRE(session.nat_quality_cached && session.nat_detection_completed);
+  REQUIRE((session.nat_quality_cached && session.nat_detection_completed));
   start_nat_detection(&session);
   REQUIRE((launches) == (2));
   clock_ms += CONSENSUS_HANDOFF_FRESH_MS + 1;

@@ -29,7 +29,7 @@ typedef struct {
 
 static asciichat_error_t receive_frame(const ascii_frame_packet_t *header, const char *text, void *context) {
   sink_t *sink = context;
-  REQUIRE(header->width == 40 && header->height == 12);
+  REQUIRE((header->width == 40 && header->height == 12));
   SAFE_FREE(sink->frame);
   SAFE_STRDUP(sink->frame, text);
   sink->frames++;
@@ -182,7 +182,7 @@ static void test_ascii_only_display(const image_t *image) {
   session_host_t *host = session_host_create(&config);
   REQUIRE(host);
   uint32_t source = session_host_add_memory_participant(host);
-  REQUIRE(source && session_host_inject_frame(host, source, image) == ASCIICHAT_OK);
+  REQUIRE((source && session_host_inject_frame(host, source, image) == ASCIICHAT_OK));
   display_t display = {.config = {.width = 40, .height = 12, .caps = {.color_level = TERM_COLOR_NONE, .render_mode = RENDER_MODE_HALF_BLOCK}, .palette = get_builtin_palette(PALETTE_BLOCKS)->chars}};
   session_host_render_target_t target = {.get_config = display_config, .render_frame = display_frame, .context = &display};
   REQUIRE((session_host_set_render_target(host, &target)) == (ASCIICHAT_OK));
@@ -198,12 +198,12 @@ static void test_tcp_delivery(const image_t *image) {
   REQUIRE((socket_init()) == (ASCIICHAT_OK));
   session_host_config_t config = {.port = unused_port(), .ipv4_address = "127.0.0.1", .max_clients = 2};
   session_host_t *host = session_host_create(&config);
-  REQUIRE(host && session_host_start(host) == ASCIICHAT_OK);
+  REQUIRE((host && session_host_start(host) == ASCIICHAT_OK));
   network_connection_t *owner = connect_host(config.port);
   uint32_t client = 0;
-  REQUIRE(session_host_get_client_ids(host, &client, 1) == 1 && client);
+  REQUIRE((session_host_get_client_ids(host, &client, 1) == 1 && client));
   uint32_t source = session_host_add_memory_participant(host);
-  REQUIRE(source && session_host_inject_frame(host, source, image) == ASCIICHAT_OK);
+  REQUIRE((source && session_host_inject_frame(host, source, image) == ASCIICHAT_OK));
   sink_t sink = {0};
   session_protocol_init(&sink.protocol, network_connection_transport(owner), (session_protocol_media_t){.on_frame = receive_frame, .context = &sink}, (acip_client_callbacks_t){0});
   terminal_capabilities_packet_t caps = capabilities(TERM_COLOR_NONE, PALETTE_CUSTOM, "TT");
@@ -258,11 +258,11 @@ static void test_transport_ownership(void) {
   candidate->methods = &bad;
   candidate->user_data = &destroyed;
   REQUIRE((session_host_set_client_transport(host, id, candidate, ACIP_TRANSPORT_OWNED)) == (ERROR_NETWORK));
-  REQUIRE(session_host_get_client_transport(host, id) == original && destroyed == 0);
+  REQUIRE((session_host_get_client_transport(host, id) == original && destroyed == 0));
   acip_transport_destroy(candidate);
   REQUIRE((destroyed) == (1));
   REQUIRE((session_host_set_client_transport(host, id, NULL, ACIP_TRANSPORT_BORROWED)) == (ASCIICHAT_OK));
-  REQUIRE(!session_host_get_client_transport(host, id) && destroyed == 2);
+  REQUIRE((!session_host_get_client_transport(host, id) && destroyed == 2));
   session_host_destroy(host);
   REQUIRE((destroyed) == (2));
 }
@@ -285,7 +285,7 @@ static void test_listener_interrupt(void) {
   REQUIRE((socket_init()) == (ASCIICHAT_OK));
   session_host_config_t config = {.port = unused_port(), .ipv4_address = "127.0.0.1", .max_clients = 1};
   session_host_t *host = session_host_create(&config);
-  REQUIRE(host && session_host_start(host) == ASCIICHAT_OK);
+  REQUIRE((host && session_host_start(host) == ASCIICHAT_OK));
   network_connection_t *peer = connect_host(config.port);
   acip_transport_t *transport = network_connection_transport(peer);
   transport->receive_timeout_ns = 5 * NS_PER_SEC_INT;
@@ -296,7 +296,7 @@ static void test_listener_interrupt(void) {
     platform_sleep_ms(1);
   acip_transport_interrupt(transport);
   REQUIRE((thread_join_timeout(&thread, NULL, NS_PER_SEC_INT)) == (ASCIICHAT_OK));
-  REQUIRE(wait.result != ASCIICHAT_OK && !acip_transport_is_connected(transport));
+  REQUIRE((wait.result != ASCIICHAT_OK && !acip_transport_is_connected(transport)));
   REQUIRE((session_host_stop(host)) == (ASCIICHAT_OK));
   REQUIRE((session_host_stop(host)) == (ASCIICHAT_OK));
   network_connection_destroy(&peer);
@@ -308,12 +308,12 @@ static void test_host_listener(void) {
   REQUIRE((socket_init()) == (ASCIICHAT_OK));
   session_host_config_t invalid = {.port = UINT16_MAX + 1};
   session_host_t *invalid_host = session_host_create(&invalid);
-  REQUIRE(invalid_host && session_host_start(invalid_host) == ERROR_INVALID_PARAM);
+  REQUIRE((invalid_host && session_host_start(invalid_host) == ERROR_INVALID_PARAM));
   session_host_destroy(invalid_host);
   uint16_t port = unused_port();
   session_host_config_t config = {.port = port, .ipv4_address = "127.0.0.1", .max_clients = 1};
   session_host_t *host = session_host_create(&config);
-  REQUIRE(host && session_host_start(host) == ASCIICHAT_OK);
+  REQUIRE((host && session_host_start(host) == ASCIICHAT_OK));
   network_connection_t *peer_owner = connect_host(port);
   acip_transport_t *peer = network_connection_transport(peer_owner);
   uint32_t id = 0;
@@ -326,7 +326,7 @@ static void test_host_listener(void) {
   void *payload = NULL, *allocation = NULL;
   size_t length = 0;
   REQUIRE((packet_receive_via_transport(peer, &type, &payload, &length, &allocation)) == (ASCIICHAT_OK));
-  REQUIRE(type == PACKET_TYPE_PONG && length == 0);
+  REQUIRE((type == PACKET_TYPE_PONG && length == 0));
   buffer_release(allocation);
   // An over-capacity peer is rejected through transport cleanup on the library loop.
   network_connection_t *excess_owner = NULL;
@@ -353,7 +353,7 @@ static void test_host_reentry(void) {
   uint16_t port = unused_port();
   session_host_config_t config = {.port = port, .ipv4_address = "127.0.0.1", .max_clients = 1};
   session_host_t *host = session_host_create(&config);
-  REQUIRE(host && session_host_start(host) == ASCIICHAT_OK);
+  REQUIRE((host && session_host_start(host) == ASCIICHAT_OK));
   for (int reentry = 0; reentry < 3; ++reentry) {
     uint32_t source = session_host_add_memory_participant(host);
     REQUIRE(source);
@@ -484,8 +484,7 @@ TEST_CASE("host_render/recipient_settings_and_delivery", "[host_render]") {
   caps[2].color_level = HOST_TO_NET_U32(TERM_COLOR_NONE);
   update(host, ids[2], &caps[2]);
   REQUIRE((render_tick(host)) == (ASCIICHAT_OK));
-  REQUIRE(strstr(sinks[2].frame, "░") || strstr(sinks[2].frame, "▒") || strstr(sinks[2].frame, "▓") || strstr(sinks[2].frame, "█"));
-
+  REQUIRE((strstr(sinks[2].frame, "░") || strstr(sinks[2].frame, "▒") || strstr(sinks[2].frame, "▓") || strstr(sinks[2].frame, "█")));
   // Invalid runtime transactions leave all recipients' last committed values intact.
   for (int i = 0; i < 3; ++i) {
     caps[i] = capabilities(TERM_COLOR_NONE, PALETTE_STANDARD, NULL);

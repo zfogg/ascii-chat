@@ -23,10 +23,10 @@ static void *writer(void *argument) {
 }
 
 static void test_flip_defaults(void) {
-  REQUIRE(GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit));
+  REQUIRE((GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit)));
   for (int i = 0; i < 3; ++i) {
     REQUIRE((options_set_bool("media_input", true)) == (ASCIICHAT_OK));
-    REQUIRE(!GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit));
+    REQUIRE((!GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit)));
     REQUIRE((options_set_bool("media_input", false)) == (ASCIICHAT_OK));
     REQUIRE(GET_OPTION(flip_x));
     REQUIRE((options_set_bool("waveform", true)) == (ASCIICHAT_OK));
@@ -40,7 +40,7 @@ static void test_flip_defaults(void) {
   options_patch_t patch = {.edits = invalid, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
   REQUIRE((options_apply_patch(&patch, NULL)) != (ASCIICHAT_OK));
   CLEAR_ERRNO();
-  REQUIRE(GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit));
+  REQUIRE((GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit)));
   // An explicit assignment of the current value still selects an orientation.
   REQUIRE((options_set_bool("flip_x", true)) == (ASCIICHAT_OK));
   REQUIRE(GET_OPTION(flip_x_explicit));
@@ -56,10 +56,10 @@ static void test_flip_defaults(void) {
   REQUIRE(GET_OPTION(flip_x_explicit));
   options_t defaults = options_t_new();
   REQUIRE((options_state_set(&defaults)) == (ASCIICHAT_OK));
-  REQUIRE(!GET_OPTION(flip_x) && GET_OPTION(flip_x_explicit));
+  REQUIRE((!GET_OPTION(flip_x) && GET_OPTION(flip_x_explicit)));
   options_state_destroy();
   REQUIRE((options_state_init()) == (ASCIICHAT_OK));
-  REQUIRE(GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit));
+  REQUIRE((GET_OPTION(flip_x) && !GET_OPTION(flip_x_explicit)));
 }
 
 static void test_transactions(void) {
@@ -85,14 +85,14 @@ static void test_transactions(void) {
   options_edit_t edits[] = {{.name = "width", .type = OPTIONS_VALUE_INT, .value.integer = 120}, {.name = "fps", .type = OPTIONS_VALUE_INT, .value.integer = -1}};
   options_patch_t patch = {.edits = edits, .count = 2, .expected_revision = OPTIONS_REVISION_ANY};
   REQUIRE((options_apply_patch(&patch, NULL)) != (ASCIICHAT_OK));
-  REQUIRE(GET_OPTION(width) == 80 && options_revision() == before);
+  REQUIRE((GET_OPTION(width) == 80 && options_revision() == before));
   CLEAR_ERRNO();
   edits[1].value.integer = 30;
   options_patch_result_t result;
-  REQUIRE(options_apply_patch(&patch, &result) == ASCIICHAT_OK && result.changed && result.revision == before + 1);
+  REQUIRE((options_apply_patch(&patch, &result) == ASCIICHAT_OK && result.changed && result.revision == before + 1));
   patch.expected_revision = before;
   edits[0].value.integer = 90;
-  REQUIRE(options_apply_patch(&patch, NULL) == ERROR_INVALID_STATE && GET_OPTION(width) == 120);
+  REQUIRE((options_apply_patch(&patch, NULL) == ERROR_INVALID_STATE && GET_OPTION(width) == 120));
   CLEAR_ERRNO();
   REQUIRE((options_set_double("speakers_volume", NAN)) != (ASCIICHAT_OK));
   CLEAR_ERRNO();
@@ -113,20 +113,20 @@ static void test_transactions(void) {
   atomic_store_int(&start, 1);
   for (int i = 0; i < 4; ++i)
     REQUIRE((thread_join(&threads[i], NULL)) == (ASCIICHAT_OK));
-  REQUIRE(!GET_OPTION(flip_x) && !GET_OPTION(flip_y));
+  REQUIRE((!GET_OPTION(flip_x) && !GET_OPTION(flip_y)));
   REQUIRE((options_revision()) == (before + 2004));
   REQUIRE((borrowed->width) == (80));
   REQUIRE((options_set_bool("matrix_rain", true)) == (ASCIICHAT_OK));
   REQUIRE((options_set_bool("fft", true)) == (ASCIICHAT_OK));
-  REQUIRE(GET_OPTION(fft) && !GET_OPTION(matrix_rain) && !GET_OPTION(waveform));
+  REQUIRE((GET_OPTION(fft) && !GET_OPTION(matrix_rain) && !GET_OPTION(waveform)));
   options_snapshot_t *snapshot = SAFE_MALLOC(sizeof(*snapshot), options_snapshot_t *);
-  REQUIRE(options_read_snapshot(snapshot) == ASCIICHAT_OK && snapshot->revision == options_revision());
-  REQUIRE(options_set_bool("fft", true) == ASCIICHAT_OK && snapshot->revision == options_revision());
+  REQUIRE((options_read_snapshot(snapshot) == ASCIICHAT_OK && snapshot->revision == options_revision()));
+  REQUIRE((options_set_bool("fft", true) == ASCIICHAT_OK && snapshot->revision == options_revision()));
   SAFE_FREE(snapshot);
   before = options_revision();
   REQUIRE(options_retired_snapshot_count() > 0);
   options_state_destroy();
-  REQUIRE(options_state_init() == ASCIICHAT_OK && options_revision() > before);
+  REQUIRE((options_state_init() == ASCIICHAT_OK && options_revision() > before));
   patch.expected_revision = before;
   REQUIRE((options_apply_patch(&patch, NULL)) == (ERROR_INVALID_STATE));
   CLEAR_ERRNO();
@@ -141,7 +141,7 @@ static acip_settings_header_t request(acip_render_settings_t *state, const char 
   const char *effective;
   size_t effective_length;
   REQUIRE((acip_settings_decode(output, output_length, &header, &effective, &effective_length)) == (ASCIICHAT_OK));
-  REQUIRE(header.request == 17 && effective_length > 0);
+  REQUIRE((header.request == 17 && effective_length > 0));
   return header;
 }
 
@@ -158,14 +158,14 @@ static void test_remote(void) {
     REQUIRE((acip_render_settings_prepare(&clients[i], values)) == (ASCIICHAT_OK));
   uint64_t local_revision = options_revision();
   REQUIRE((request(&clients[0], "{\"width\":55,\"color_filter\":3,\"render_mode\":2,\"palette_type\":6,\"palette_custom\":\" .+#\"}", UINT32_MAX).status) == (0));
-  REQUIRE(clients[0].width == 55 && clients[0].caps.palette_type == PALETTE_CUSTOM && !strcmp(clients[0].palette, " .+#"));
-  REQUIRE(clients[1].width == 80 && clients[1].caps.palette_type == PALETTE_STANDARD);
+  REQUIRE((clients[0].width == 55 && clients[0].caps.palette_type == PALETTE_CUSTOM && !strcmp(clients[0].palette, " .+#")));
+  REQUIRE((clients[1].width == 80 && clients[1].caps.palette_type == PALETTE_STANDARD));
   REQUIRE((request(&clients[1], "{\"renderer\":1,\"palette_explicit\":false}", UINT32_MAX).status) == (0));
   REQUIRE((clients[1].caps.text_renderer) == (ASCII_RENDERER_GLYPH));
   REQUIRE((clients[1].palette_length) == (95));
   REQUIRE((clients[0].caps.text_renderer) == (ASCII_RENDERER_LUMINANCE));
   REQUIRE((request(&clients[1], "{\"renderer\":1,\"palette_type\":6,\"palette_custom\":\"@#\"}", UINT32_MAX).status) == (0));
-  REQUIRE(clients[1].caps.palette_explicit && !strcmp(clients[1].palette, "@#"));
+  REQUIRE((clients[1].caps.palette_explicit && !strcmp(clients[1].palette, "@#")));
   acip_render_settings_t glyph_previous = clients[1];
   REQUIRE((request(&clients[1], "{\"palette_custom\":\"\\u2603\"}", UINT32_MAX).status) != (0));
   REQUIRE(!memcmp(&glyph_previous, &clients[1], sizeof(glyph_previous)));

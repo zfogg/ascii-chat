@@ -40,7 +40,7 @@ static void decoder_tests(void) {
   for (unsigned i = 0; i < 100; ++i)
     REQUIRE((packet_decoder_feed(&decoder, wire, sizeof(wire), count_packet, NULL)) == (ASCIICHAT_OK));
   buffer_domain_stats(buffer_default_domain(), &after);
-  REQUIRE(before.allocations == after.allocations && before.hits == after.hits);
+  REQUIRE((before.allocations == after.allocations && before.hits == after.hits));
   uint8_t batch[sizeof(wire) * 2];
   memcpy(batch, wire, sizeof(wire));
   memcpy(batch + sizeof(wire), wire, sizeof(wire));

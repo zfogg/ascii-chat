@@ -32,7 +32,7 @@ TEST_CASE("session_h265_client/neutral_rgb_frame_encodes_and_decodes_with_correc
   REQUIRE((decoded_size) == (sizeof(output)));
   // RGB(128,128,128) becomes limited-range Y=126 before HEVC coding.
   for (size_t i = 0; i < decoded_size; ++i)
-    REQUIRE(output[i] >= 122 && output[i] <= 130);
+    REQUIRE((output[i] >= 122 && output[i] <= 130));
   h265_decoder_destroy(decoder);
   uint64_t frames = 0, keyframes = 0;
   uint32_t bitrate = 0;

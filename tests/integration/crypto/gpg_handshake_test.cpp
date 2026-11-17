@@ -12,8 +12,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#include <unistd.h>
-#include <sys/socket.h>
+#include <libplatform/socket.h>
+#include <libplatform/system.h>
 #include <errno.h>
 
 #include <ascii-chat/crypto/handshake/common.h>
@@ -33,20 +33,61 @@ static const char *get_test_gpg_key_id(void) {
 }
 
 typedef struct {
-  int server_fd;
-  int client_fd;
+  socket_t server_fd;
+  socket_t client_fd;
   acip_transport_t *server_transport;
   acip_transport_t *client_transport;
 } test_network_t;
 
 static test_network_t g_network = {0};
 
+static bool make_loopback_pair(socket_t pair[2]) {
+  socket_init();
+  socket_t listener = socket_create("gpg-test-listener", AF_INET, SOCK_STREAM, 0);
+  if (!socket_is_valid(listener))
+    return false;
+
+  struct sockaddr_in address = {0};
+  address.sin_family = AF_INET;
+  address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  address.sin_port = htons(0);
+  if (socket_bind(listener, (const struct sockaddr *)&address, sizeof(address)) != 0 || socket_listen(listener, 1) != 0) {
+    socket_close(listener);
+    return false;
+  }
+
+  socklen_t address_len = sizeof(address);
+  if (socket_getsockname(listener, (struct sockaddr *)&address, &address_len) != 0) {
+    socket_close(listener);
+    return false;
+  }
+
+  socket_t client = socket_create("gpg-test-client", AF_INET, SOCK_STREAM, 0);
+  if (!socket_is_valid(client) || socket_connect(client, (const struct sockaddr *)&address, sizeof(address)) != 0) {
+    if (socket_is_valid(client))
+      socket_close(client);
+    socket_close(listener);
+    return false;
+  }
+  socket_t server = socket_accept(listener, NULL, NULL, "gpg-test-server");
+  socket_close(listener);
+  if (!socket_is_valid(server)) {
+    socket_close(client);
+    return false;
+  }
+  pair[0] = server;
+  pair[1] = client;
+  return true;
+}
+
 static void setup_gpg_test_network(void) {
   memset(&g_network, 0, sizeof(g_network));
+  g_network.server_fd = INVALID_SOCKET_VALUE;
+  g_network.client_fd = INVALID_SOCKET_VALUE;
   buffer_system_init();
 
-  int sv[2];
-  if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0) {
+  socket_t sv[2];
+  if (!make_loopback_pair(sv)) {
     REQUIRE(false);
     return;
   }
@@ -54,7 +95,7 @@ static void setup_gpg_test_network(void) {
   g_network.client_fd = sv[1];
   g_network.server_transport = acip_tcp_transport_create("gpg-test-server", sv[0], NULL);
   g_network.client_transport = acip_tcp_transport_create("gpg-test-client", sv[1], NULL);
-  setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1", 1);
+  platform_setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1");
 }
 
 static void teardown_gpg_test_network(void) {
@@ -62,18 +103,20 @@ static void teardown_gpg_test_network(void) {
     acip_transport_destroy(g_network.server_transport);
   if (g_network.client_transport)
     acip_transport_destroy(g_network.client_transport);
-  if (g_network.server_fd > 0)
-    close(g_network.server_fd);
-  if (g_network.client_fd > 0)
-    close(g_network.client_fd);
+  if (socket_is_valid(g_network.server_fd))
+    socket_close(g_network.server_fd);
+  if (socket_is_valid(g_network.client_fd))
+    socket_close(g_network.client_fd);
   memset(&g_network, 0, sizeof(g_network));
+  g_network.server_fd = INVALID_SOCKET_VALUE;
+  g_network.client_fd = INVALID_SOCKET_VALUE;
 }
 
 // =============================================================================
 // Protocol Negotiation Helpers
 // =============================================================================
 
-static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t *server_ctx) {
+static int server_protocol_negotiation(socket_t server_fd, crypto_handshake_context_t *server_ctx) {
   packet_type_t pkt_type;
   void *payload = NULL;
   size_t payload_len = 0;
@@ -123,7 +166,7 @@ static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t
   return crypto_handshake_set_parameters(server_ctx, &server_params);
 }
 
-static int client_protocol_negotiation(int client_fd, crypto_handshake_context_t *client_ctx) {
+static int client_protocol_negotiation(socket_t client_fd, crypto_handshake_context_t *client_ctx) {
   packet_type_t pkt_type;
   void *payload = NULL;
   size_t payload_len = 0;
@@ -173,7 +216,7 @@ static int client_protocol_negotiation(int client_fd, crypto_handshake_context_t
 // =============================================================================
 
 typedef struct {
-  int client_fd;
+  socket_t client_fd;
   acip_transport_t *transport;
   crypto_handshake_context_t *ctx;
   int result;
@@ -193,7 +236,7 @@ static void *client_handshake_thread(void *arg) {
   // Receive server's KEY_EXCHANGE_INIT
   if (receive_packet(args->client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK)
     return NULL;
-  if (crypto_handshake_client_key_exchange(args->ctx, args->transport, pkt_type, payload, payload_len) != ASCIICHAT_OK) {
+  if (crypto_handshake_client_key_exchange(args->ctx, args->transport, pkt_type, (const uint8_t *)payload, payload_len) != ASCIICHAT_OK) {
     buffer_release(payload);
     return NULL;
   }
@@ -203,7 +246,7 @@ static void *client_handshake_thread(void *arg) {
   payload = NULL;
   if (receive_packet(args->client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK)
     return NULL;
-  if (crypto_handshake_client_auth_response(args->ctx, args->transport, pkt_type, payload, payload_len) != ASCIICHAT_OK) {
+  if (crypto_handshake_client_auth_response(args->ctx, args->transport, pkt_type, (const uint8_t *)payload, payload_len) != ASCIICHAT_OK) {
     buffer_release(payload);
     return NULL;
   }
@@ -214,7 +257,7 @@ static void *client_handshake_thread(void *arg) {
     payload = NULL;
     if (receive_packet(args->client_fd, &pkt_type, &payload, &payload_len) != ASCIICHAT_OK)
       return NULL;
-    if (crypto_handshake_client_complete(args->ctx, args->transport, pkt_type, payload, payload_len) != ASCIICHAT_OK) {
+    if (crypto_handshake_client_complete(args->ctx, args->transport, pkt_type, (const uint8_t *)payload, payload_len) != ASCIICHAT_OK) {
       buffer_release(payload);
       return NULL;
     }
@@ -270,13 +313,13 @@ TEST_CASE("gpg_handshake/complete_gpg_handshake_with_authentication", "[gpg_hand
   void *payload = NULL;
   size_t payload_len = 0;
   REQUIRE((receive_packet(g_network.server_fd, &pkt_type, &payload, &payload_len)) == (ASCIICHAT_OK));
-  REQUIRE((crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len)) == (ASCIICHAT_OK));
+  REQUIRE((crypto_handshake_server_auth_challenge(&server_ctx, g_network.server_transport, pkt_type, (const uint8_t *)payload, payload_len)) == (ASCIICHAT_OK));
   buffer_release(payload);
 
   if (server_ctx.state == CRYPTO_HANDSHAKE_AUTHENTICATING) {
     payload = NULL;
     REQUIRE((receive_packet(g_network.server_fd, &pkt_type, &payload, &payload_len)) == (ASCIICHAT_OK));
-    REQUIRE((crypto_handshake_server_complete(&server_ctx, g_network.server_transport, pkt_type, payload, payload_len)) == (ASCIICHAT_OK));
+    REQUIRE((crypto_handshake_server_complete(&server_ctx, g_network.server_transport, pkt_type, (const uint8_t *)payload, payload_len)) == (ASCIICHAT_OK));
     buffer_release(payload);
   }
 

@@ -70,7 +70,7 @@ static image_t *video_read(session_capture_ctx_t *capture) {
 static asciichat_error_t video_encoded(client_connection_t *connection, const void *pixels, uint32_t width, uint32_t height, video_codec_t codec, bool *encoding_failed) {
   (void)connection;
   (void)pixels;
-  REQUIRE(codec == VIDEO_CODEC_H264 || codec == VIDEO_CODEC_H265);
+  REQUIRE((codec == VIDEO_CODEC_H264 || codec == VIDEO_CODEC_H265));
   REQUIRE((width) > (0));
   REQUIRE((height) > (0));
   ++encoded_calls;

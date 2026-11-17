@@ -184,14 +184,14 @@ TEST_CASE("transport_backpressure/slow_peer_does_not_block_healthy_peer", "[tran
   REQUIRE((atomic_load_u64(&backend->sent)) == (0));
   acip_outbound_stats_t stats;
   REQUIRE((acip_outbound_snapshot(slow, &stats)) == (ASCIICHAT_OK));
-  REQUIRE(stats.dropped == 99 && stats.application_bytes > 0);
+  REQUIRE((stats.dropped == 99 && stats.application_bytes > 0));
   platform_sleep_ms(120);
   REQUIRE((submit(slow, PACKET_TYPE_IMAGE_FRAME, 0, 10000, false)) == (ACIP_ADMISSION_ACCEPTED));
-  REQUIRE(acip_outbound_snapshot(slow, &stats) == ASCIICHAT_OK && stats.dropped == 100);
+  REQUIRE((acip_outbound_snapshot(slow, &stats) == ASCIICHAT_OK && stats.dropped == 100));
   for (uint32_t stream = 1; stream < 100; ++stream)
     submit(slow, PACKET_TYPE_IMAGE_FRAME, stream, 100000, false);
   REQUIRE((acip_outbound_snapshot(slow, &stats)) == (ASCIICHAT_OK));
-  REQUIRE(stats.congestion > 0 && stats.application_bytes + stats.backend_bytes <= ACIP_OUTBOUND_BUDGET);
+  REQUIRE((stats.congestion > 0 && stats.application_bytes + stats.backend_bytes <= ACIP_OUTBOUND_BUDGET));
   acip_transport_destroy(slow); // Teardown releases queued owners without a writable callback.
   acip_transport_destroy(healthy);
 
@@ -219,7 +219,7 @@ TEST_CASE("transport_backpressure/codec_recovery_requires_keyframe", "[transport
     atomic_store_u64(&backend->bytes, 0);
     await_submitted(transport, 1);
     REQUIRE((acip_outbound_snapshot(transport, &stats)) == (ASCIICHAT_OK));
-    REQUIRE(stats.recovery_frames == 1 && stats.dropped == 4);
+    REQUIRE((stats.recovery_frames == 1 && stats.dropped == 4));
     acip_transport_destroy(transport);
   }
   buffer_system_cleanup();
@@ -242,7 +242,7 @@ TEST_CASE("transport_backpressure/concurrent_streams_obey_budget_and_keep_contro
     REQUIRE((thread_join(&threads[i], NULL)) == (ASCIICHAT_OK));
   REQUIRE((submit(concurrent, PACKET_TYPE_PING, 0, 1, false)) == (ACIP_ADMISSION_ACCEPTED));
   REQUIRE((acip_outbound_snapshot(concurrent, &stats)) == (ASCIICHAT_OK));
-  REQUIRE(stats.accepted == 1001 && stats.dropped >= 996);
+  REQUIRE((stats.accepted == 1001 && stats.dropped >= 996));
   REQUIRE(stats.application_bytes + stats.backend_bytes <= ACIP_OUTBOUND_BUDGET);
   REQUIRE((submit(concurrent, PACKET_TYPE_IMAGE_FRAME, 42, 3 * 1024 * 1024, false)) == (ACIP_ADMISSION_CONGESTED));
   acip_transport_destroy(concurrent);

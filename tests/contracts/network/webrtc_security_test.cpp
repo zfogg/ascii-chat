@@ -221,7 +221,7 @@ static void fixture(uint8_t mode, const char *password, bool identity, int rejec
     uint64_t start = time_get_ns();
     while (acip_transport_is_connected(client.transport) && acip_transport_is_connected(server.transport) && time_elapsed_ns(start, time_get_ns()) < 10 * NS_PER_SEC_INT)
       platform_sleep_ms(5);
-    REQUIRE(!acip_transport_is_connected(client.transport) || !acip_transport_is_connected(server.transport));
+    REQUIRE((!acip_transport_is_connected(client.transport) || !acip_transport_is_connected(server.transport)));
     REQUIRE(!atomic_load_bool(&client.ready));
     REQUIRE(!atomic_load_bool(&server.ready));
     REQUIRE(!acip_transport_has_pending_data(client.transport));

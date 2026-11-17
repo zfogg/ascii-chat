@@ -124,7 +124,7 @@ TEST_CASE("source_paths/log_headers_and_memory_reports_preserve_locations", "[so
   void *windows = debug_malloc(29, ASCIICHAT_SOURCE_ROOT "\\src\\windows_fixture.c", 654);
   // Outside the root, the drive colon must survive parsing of :line:tid.
   void *external = debug_malloc(23, "Z:\\external\\path_fixture.c", 789);
-  REQUIRE(src && lib && windows && external);
+  REQUIRE((src && lib && windows && external));
   debug_memory_set_quiet_mode(false);
   debug_memory_report(true);
   debug_free(src, __FILE__, __LINE__);

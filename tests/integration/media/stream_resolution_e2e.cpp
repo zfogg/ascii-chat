@@ -80,7 +80,7 @@ TEST_CASE("stream_resolution_e2e/detect_mp4_direct_stream", "[stream_resolution_
   asciichat_error_t err = yt_dlp_extract_stream_url(mp4_url, NULL, output, sizeof(output));
 
   // Should return either OK (if direct handling worked) or an error
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/detect_mkv_direct_stream", "[stream_resolution_e2e]") {
@@ -90,7 +90,7 @@ TEST_CASE("stream_resolution_e2e/detect_mkv_direct_stream", "[stream_resolution_
   char output[8192] = {0};
   asciichat_error_t err = yt_dlp_extract_stream_url(mkv_url, NULL, output, sizeof(output));
 
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/detect_webm_direct_stream", "[stream_resolution_e2e]") {
@@ -100,7 +100,7 @@ TEST_CASE("stream_resolution_e2e/detect_webm_direct_stream", "[stream_resolution
   char output[8192] = {0};
   asciichat_error_t err = yt_dlp_extract_stream_url(webm_url, NULL, output, sizeof(output));
 
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/detect_hls_direct_stream", "[stream_resolution_e2e]") {
@@ -110,7 +110,7 @@ TEST_CASE("stream_resolution_e2e/detect_hls_direct_stream", "[stream_resolution_
   char output[8192] = {0};
   asciichat_error_t err = yt_dlp_extract_stream_url(hls_url, NULL, output, sizeof(output));
 
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/detect_rtsp_direct_stream", "[stream_resolution_e2e]") {
@@ -121,7 +121,7 @@ TEST_CASE("stream_resolution_e2e/detect_rtsp_direct_stream", "[stream_resolution
   asciichat_error_t err = yt_dlp_extract_stream_url(rtsp_url, NULL, output, sizeof(output));
 
   // RTSP URLs might not be extractable by yt-dlp, but FFmpeg should handle them
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/detect_rtmp_direct_stream", "[stream_resolution_e2e]") {
@@ -131,7 +131,7 @@ TEST_CASE("stream_resolution_e2e/detect_rtmp_direct_stream", "[stream_resolution
   char output[8192] = {0};
   asciichat_error_t err = yt_dlp_extract_stream_url(rtmp_url, NULL, output, sizeof(output));
 
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 /* ============================================================================
@@ -146,7 +146,7 @@ TEST_CASE("stream_resolution_e2e/handle_youtube_url_format", "[stream_resolution
   asciichat_error_t err = yt_dlp_extract_stream_url(youtube_url, NULL, output, sizeof(output));
 
   // Might fail if yt-dlp not available or URL invalid, but should process it
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/handle_youtube_short_url", "[stream_resolution_e2e]") {
@@ -156,7 +156,7 @@ TEST_CASE("stream_resolution_e2e/handle_youtube_short_url", "[stream_resolution_
   char output[8192] = {0};
   asciichat_error_t err = yt_dlp_extract_stream_url(short_url, NULL, output, sizeof(output));
 
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/handle_twitch_url", "[stream_resolution_e2e]") {
@@ -166,7 +166,7 @@ TEST_CASE("stream_resolution_e2e/handle_twitch_url", "[stream_resolution_e2e]") 
   char output[8192] = {0};
   asciichat_error_t err = yt_dlp_extract_stream_url(twitch_url, NULL, output, sizeof(output));
 
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 /* ============================================================================
@@ -182,7 +182,7 @@ TEST_CASE("stream_resolution_e2e/yt_dlp_options_basic", "[stream_resolution_e2e]
   asciichat_error_t err = yt_dlp_extract_stream_url(url, options, output, sizeof(output));
 
   // Should accept options without crashing
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/yt_dlp_options_cookies", "[stream_resolution_e2e]") {
@@ -193,7 +193,7 @@ TEST_CASE("stream_resolution_e2e/yt_dlp_options_cookies", "[stream_resolution_e2
   char output[8192] = {0};
   asciichat_error_t err = yt_dlp_extract_stream_url(url, options, output, sizeof(output));
 
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/yt_dlp_options_proxy", "[stream_resolution_e2e]") {
@@ -204,7 +204,7 @@ TEST_CASE("stream_resolution_e2e/yt_dlp_options_proxy", "[stream_resolution_e2e]
   char output[8192] = {0};
   asciichat_error_t err = yt_dlp_extract_stream_url(url, options, output, sizeof(output));
 
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/yt_dlp_options_multiple", "[stream_resolution_e2e]") {
@@ -215,7 +215,7 @@ TEST_CASE("stream_resolution_e2e/yt_dlp_options_multiple", "[stream_resolution_e
   char output[8192] = {0};
   asciichat_error_t err = yt_dlp_extract_stream_url(url, options, output, sizeof(output));
 
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 /* ============================================================================
@@ -241,8 +241,8 @@ TEST_CASE("stream_resolution_e2e/cache_different_urls_independently", "[stream_r
   REQUIRE((err1) == (err3));
 
   // Different URLs should be handled independently
-  REQUIRE(err1 == ASCIICHAT_OK || err1 != ASCIICHAT_OK);
-  REQUIRE(err2 == ASCIICHAT_OK || err2 != ASCIICHAT_OK);
+  REQUIRE((err1 == ASCIICHAT_OK || err1 != ASCIICHAT_OK));
+  REQUIRE((err2 == ASCIICHAT_OK || err2 != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/cache_different_options_separately", "[stream_resolution_e2e]") {
@@ -258,8 +258,8 @@ TEST_CASE("stream_resolution_e2e/cache_different_options_separately", "[stream_r
   asciichat_error_t err2 = yt_dlp_extract_stream_url(url, options2, output2, sizeof(output2));
 
   // Both should process (may get same or different results based on options)
-  REQUIRE(err1 == ASCIICHAT_OK || err1 != ASCIICHAT_OK);
-  REQUIRE(err2 == ASCIICHAT_OK || err2 != ASCIICHAT_OK);
+  REQUIRE((err1 == ASCIICHAT_OK || err1 != ASCIICHAT_OK));
+  REQUIRE((err2 == ASCIICHAT_OK || err2 != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/cache_respects_30_second_ttl", "[stream_resolution_e2e]") {
@@ -296,7 +296,7 @@ TEST_CASE("stream_resolution_e2e/handle_network_errors_gracefully", "[stream_res
   asciichat_error_t err = yt_dlp_extract_stream_url(unreachable_url, NULL, output, sizeof(output));
 
   // Should return an error code (not crash)
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/handle_malformed_urls", "[stream_resolution_e2e]") {
@@ -312,7 +312,7 @@ TEST_CASE("stream_resolution_e2e/handle_malformed_urls", "[stream_resolution_e2e
     asciichat_error_t err = yt_dlp_extract_stream_url(malformed_urls[i], NULL, output, sizeof(output));
 
     // Should not crash, return valid error code
-    REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+    REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
   }
 }
 
@@ -326,7 +326,7 @@ TEST_CASE("stream_resolution_e2e/handle_timeout_errors", "[stream_resolution_e2e
   asciichat_error_t err = yt_dlp_extract_stream_url(timeout_url, NULL, output, sizeof(output));
 
   // Should handle timeout gracefully
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 /* ============================================================================
@@ -346,7 +346,7 @@ TEST_CASE("stream_resolution_e2e/media_source_with_direct_stream", "[stream_reso
     media_source_destroy(source);
   }
 
-  REQUIRE(source == NULL || source != NULL);
+  REQUIRE((source == NULL || source != NULL));
 }
 
 TEST_CASE("stream_resolution_e2e/media_source_with_complex_url", "[stream_resolution_e2e]") {
@@ -360,7 +360,7 @@ TEST_CASE("stream_resolution_e2e/media_source_with_complex_url", "[stream_resolu
     media_source_destroy(source);
   }
 
-  REQUIRE(source == NULL || source != NULL);
+  REQUIRE((source == NULL || source != NULL));
 }
 
 TEST_CASE("stream_resolution_e2e/media_source_rejects_invalid_url", "[stream_resolution_e2e]") {
@@ -375,7 +375,7 @@ TEST_CASE("stream_resolution_e2e/media_source_rejects_invalid_url", "[stream_res
   }
 
   // Either returns NULL or successfully created (depending on fallback behavior)
-  REQUIRE(source == NULL || source != NULL);
+  REQUIRE((source == NULL || source != NULL));
 }
 
 /* ============================================================================
@@ -392,7 +392,7 @@ TEST_CASE("stream_resolution_e2e/fallback_to_ffmpeg_when_yt_dlp_fails", "[stream
   asciichat_error_t err = yt_dlp_extract_stream_url(unusual_url, NULL, output, sizeof(output));
 
   // Should attempt extraction and either succeed or fail gracefully
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/fallback_preserves_url_on_yt_dlp_failure", "[stream_resolution_e2e]") {
@@ -424,7 +424,7 @@ TEST_CASE("stream_resolution_e2e/logs_resolution_steps", "[stream_resolution_e2e
   asciichat_error_t err = yt_dlp_extract_stream_url(url, NULL, output, sizeof(output));
 
   // Should log without crashing
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/logs_cache_hits", "[stream_resolution_e2e]") {
@@ -456,7 +456,7 @@ TEST_CASE("stream_resolution_e2e/handle_file_protocol_urls", "[stream_resolution
 
   asciichat_error_t err = yt_dlp_extract_stream_url(file_url, NULL, output, sizeof(output));
 
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/handle_urls_with_query_parameters", "[stream_resolution_e2e]") {
@@ -467,7 +467,7 @@ TEST_CASE("stream_resolution_e2e/handle_urls_with_query_parameters", "[stream_re
 
   asciichat_error_t err = yt_dlp_extract_stream_url(url_with_params, NULL, output, sizeof(output));
 
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/handle_urls_with_fragments", "[stream_resolution_e2e]") {
@@ -478,7 +478,7 @@ TEST_CASE("stream_resolution_e2e/handle_urls_with_fragments", "[stream_resolutio
 
   asciichat_error_t err = yt_dlp_extract_stream_url(url_with_fragment, NULL, output, sizeof(output));
 
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 TEST_CASE("stream_resolution_e2e/handle_urls_with_authentication", "[stream_resolution_e2e]") {
@@ -489,7 +489,7 @@ TEST_CASE("stream_resolution_e2e/handle_urls_with_authentication", "[stream_reso
 
   asciichat_error_t err = yt_dlp_extract_stream_url(url_with_auth, NULL, output, sizeof(output));
 
-  REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+  REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
 }
 
 /* ============================================================================
@@ -507,7 +507,7 @@ TEST_CASE("stream_resolution_e2e/handle_rapid_sequential_requests", "[stream_res
     asciichat_error_t err = yt_dlp_extract_stream_url(url, NULL, output, sizeof(output));
 
     // Should handle rapid requests
-    REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+    REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
   }
 }
 
@@ -531,6 +531,6 @@ TEST_CASE("stream_resolution_e2e/handle_many_different_urls", "[stream_resolutio
     char output[8192] = {0};
     asciichat_error_t err = yt_dlp_extract_stream_url(urls[i], NULL, output, sizeof(output));
 
-    REQUIRE(err == ASCIICHAT_OK || err != ASCIICHAT_OK);
+    REQUIRE((err == ASCIICHAT_OK || err != ASCIICHAT_OK));
   }
 }

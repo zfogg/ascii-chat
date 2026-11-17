@@ -104,7 +104,7 @@ TEST_CASE("crypto_http_client/fetch_github_ssh_keys_zfogg", "[crypto_http_client
   for (size_t i = 0; i < num_keys; i++) {
     REQUIRE((keys[i]) != nullptr);
     // Check for valid SSH key prefix (ssh-rsa, ssh-ed25519, ecdsa-sha2-*, etc.)
-    REQUIRE(strstr(keys[i], "ssh-") != NULL || strstr(keys[i], "ecdsa-") != NULL);
+    REQUIRE((strstr(keys[i], "ssh-") != NULL || strstr(keys[i], "ecdsa-") != NULL));
     log_info("GitHub SSH Key %zu: %.80s...", i, keys[i]);
     SAFE_FREE(keys[i]);
   }

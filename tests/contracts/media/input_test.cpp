@@ -307,7 +307,7 @@ TEST_CASE("media_input/keyboard_stream_and_media_editor", "[media_input]") {
   test_covered = true;
   feed("discarded\r");
   REQUIRE((ui_input_read_key(UI_SCREEN_MEDIA)) == (KEY_NONE));
-  REQUIRE(g_media_editor.active && !g_media_editor.submitted);
+  REQUIRE((g_media_editor.active && !g_media_editor.submitted));
   test_covered = false;
   REQUIRE((ui_input_read_key(UI_SCREEN_MEDIA)) == (KEY_NONE));
   feed("\033[D\177");
@@ -324,7 +324,7 @@ TEST_CASE("media_input/keyboard_stream_and_media_editor", "[media_input]") {
   REQUIRE((ui_input_read_key(UI_SCREEN_MEDIA)) == (KEY_NONE));
   platform_sleep_ns(60 * NS_PER_MS_INT);
   REQUIRE((ui_input_read_key(UI_SCREEN_MEDIA)) == (KEY_NONE));
-  REQUIRE(!g_media_editor.active && !g_media_editor.submitted);
+  REQUIRE((!g_media_editor.active && !g_media_editor.submitted));
   REQUIRE((ui_input_media_begin("old.mp4")) == (ASCIICHAT_OK));
   g_media_editor.deadline = 0;
   REQUIRE((ui_input_read_key(UI_SCREEN_MEDIA)) == (KEY_NONE));
@@ -333,7 +333,7 @@ TEST_CASE("media_input/keyboard_stream_and_media_editor", "[media_input]") {
   g_media_editor.deadline = 0;
   feed("\033[200~late.mp4\033[201~");
   REQUIRE((ui_input_read_key(UI_SCREEN_MEDIA)) == (KEY_NONE));
-  REQUIRE(!g_media_editor.active && !g_events.ready);
+  REQUIRE((!g_media_editor.active && !g_events.ready));
   feed("o");
   REQUIRE((ui_input_read_key(UI_SCREEN_MEDIA)) == ('o'));
   REQUIRE((ui_input_media_begin("")) == (ASCIICHAT_OK));
@@ -366,7 +366,7 @@ TEST_CASE("media_input/keyboard_stream_and_media_editor", "[media_input]") {
   REQUIRE((ui_input_read_key(UI_SCREEN_MEDIA)) == (KEY_MEDIA_SUBMIT));
   REQUIRE((ui_input_media_take(pasted, sizeof(pasted))) == (ASCIICHAT_OK));
   media_playlist_t dropped = {0};
-  REQUIRE(media_playlist_parse(pasted, &dropped) == ASCIICHAT_OK && dropped.count == 2);
+  REQUIRE((media_playlist_parse(pasted, &dropped) == ASCIICHAT_OK && dropped.count == 2));
   /* Search input, including media shortcut letters and Escape, belongs to the logs screen. */
   search_entering = true;
   test_screen = UI_SCREEN_LOGS;

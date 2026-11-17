@@ -81,7 +81,7 @@ static asciichat_error_t negotiate(acip_transport_t *t, crypto_handshake_context
 }
 static asciichat_error_t prompt(const char *target, char *password, size_t capacity, bool incorrect) {
   REQUIRE(std::strcmp((target), ("resolved-host:1234")) == 0);
-  REQUIRE(incorrect && capacity >= PASSWORD_BUFFER_SIZE);
+  REQUIRE((incorrect && capacity >= PASSWORD_BUFFER_SIZE));
   prompts++;
   strcpy(password, "replacement");
   return prompt_result;
@@ -103,7 +103,7 @@ static asciichat_error_t prepare(network_connection_t *owner, const connection_e
   REQUIRE((owner) == (sentinel));
   REQUIRE((context) == (&handshake));
   REQUIRE(std::strcmp((endpoint->host), ("resolved-host")) == 0);
-  REQUIRE(std::strcmp((password), (opens == 1 || fallback_test ? "initial" : "replacement")) == 0);
+  REQUIRE((std::strcmp((password), (opens == 1 || fallback_test ? "initial" : "replacement")) == 0));
   return prepare_result;
 }
 static void setup(void) {

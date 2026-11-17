@@ -28,44 +28,36 @@
 #include <ascii-chat/log/log.h>
 #include <libplatform/compiler.h>
 #include <libplatform/system.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/process.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/terminal/ansi.h>
 
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/wait.h>
-#include <unistd.h>
 
 // Test fixture
 // Process tracking
-static pid_t g_acds_pid = -1;
-static pid_t g_server_pid = -1;
+static platform_process_t *g_acds_process = NULL;
+static platform_process_t *g_server_process = NULL;
 
 // Test output paths
-#define ACDS_LOG_PATH "/tmp/acds_test.log"
-#define ACDS_DB_PATH "/tmp/acds_test.db"
-#define SERVER_LOG_PATH "/tmp/server_test.log"
-#define CLIENT_OUTPUT_PATH "/tmp/client_snapshot.txt"
-#define CLIENT_LOG_PATH "/tmp/client_test.log"
+static char g_acds_log_path[512];
+static char g_acds_db_path[512];
+static char g_server_log_path[512];
+static char g_client_output_path[512];
+static char g_client_log_path[512];
 
 /**
  * @brief Kill a process and wait for it to exit
  */
-static void kill_and_wait(pid_t pid, const char *name) {
-  if (pid > 0) {
-    log_debug("Killing %s (PID %d)", name, pid);
-    // The test launches each service through `timeout`; terminate the whole
-    // process group so the wrapped ascii-chat child cannot survive the test.
-    (void)kill(-pid, SIGTERM);
-    kill(pid, SIGTERM);
-    sleep(1);
-    int status;
-    waitpid(pid, &status, WNOHANG);
-    (void)kill(-pid, SIGKILL);
-    kill(pid, SIGKILL); // Force kill if still alive
-    waitpid(pid, &status, 0);
+static void kill_and_wait(platform_process_t *process, const char *name) {
+  if (process) {
+    log_debug("Killing %s", name);
+    platform_process_kill(process);
+    platform_process_wait(process, 2000, NULL);
+    platform_process_destroy(process);
   }
 }
 
@@ -73,15 +65,16 @@ static void kill_and_wait(pid_t pid, const char *name) {
  * @brief Cleanup function to kill spawned processes
  */
 static void cleanup_processes(void) {
-  kill_and_wait(g_server_pid, "server");
-  kill_and_wait(g_acds_pid, "acds");
-  g_acds_pid = -1;
-  g_server_pid = -1;
+  kill_and_wait(g_server_process, "server");
+  kill_and_wait(g_acds_process, "acds");
+  g_acds_process = NULL;
+  g_server_process = NULL;
 
   // Clean up database and SQLite WAL files only
-  unlink(ACDS_DB_PATH);
-  unlink(ACDS_DB_PATH "-shm"); // SQLite shared memory file
-  unlink(ACDS_DB_PATH "-wal"); // SQLite write-ahead log
+  platform_unlink(g_acds_db_path);
+  char db_sidecar[544];
+  snprintf(db_sidecar, sizeof(db_sidecar), "%s-shm", g_acds_db_path); platform_unlink(db_sidecar);
+  snprintf(db_sidecar, sizeof(db_sidecar), "%s-wal", g_acds_db_path); platform_unlink(db_sidecar);
   // Preserve all log files and client output for inspection:
   // - ACDS_LOG_PATH (/tmp/acds_test.log)
   // - SERVER_LOG_PATH (/tmp/server_test.log)
@@ -272,14 +265,31 @@ static int validate_ascii_frame(const char *output) {
  * @brief Test setup - clean up any leftover files
  */
 static void setup_test(void) {
+  char temp_dir[256];
+  REQUIRE(platform_get_temp_dir(temp_dir, sizeof(temp_dir)));
+  snprintf(g_acds_log_path, sizeof(g_acds_log_path), "%s/acds_test.log", temp_dir);
+  snprintf(g_acds_db_path, sizeof(g_acds_db_path), "%s/acds_test.db", temp_dir);
+  snprintf(g_server_log_path, sizeof(g_server_log_path), "%s/server_test.log", temp_dir);
+  snprintf(g_client_output_path, sizeof(g_client_output_path), "%s/client_snapshot.txt", temp_dir);
+  snprintf(g_client_log_path, sizeof(g_client_log_path), "%s/client_test.log", temp_dir);
   // Clean up any leftover files from previous runs
-  unlink(ACDS_LOG_PATH);
-  unlink(ACDS_DB_PATH);
-  unlink(ACDS_DB_PATH "-shm"); // SQLite shared memory file
-  unlink(ACDS_DB_PATH "-wal"); // SQLite write-ahead log
-  unlink(SERVER_LOG_PATH);
-  unlink(CLIENT_OUTPUT_PATH);
-  setenv("ASCII_CHAT_AUDIO", "false", 1);
+  platform_unlink(g_acds_log_path);
+  platform_unlink(g_acds_db_path);
+  char db_sidecar[544];
+  snprintf(db_sidecar, sizeof(db_sidecar), "%s-shm", g_acds_db_path); platform_unlink(db_sidecar);
+  snprintf(db_sidecar, sizeof(db_sidecar), "%s-wal", g_acds_db_path); platform_unlink(db_sidecar);
+  platform_unlink(g_server_log_path);
+  platform_unlink(g_client_output_path);
+  platform_setenv("ASCII_CHAT_AUDIO", "false");
+}
+
+static platform_process_t *spawn_logged(const char *binary_path, const char *const *argv, const char *log_path) {
+  int fd = platform_open("webrtc-frame-log", log_path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC | PLATFORM_O_BINARY, 0600);
+  if (fd < 0) return NULL;
+  platform_process_t *process = NULL;
+  int result = platform_process_spawn(&process, binary_path, argv, -1, fd, fd);
+  platform_close(fd);
+  return result == ASCIICHAT_OK ? process : NULL;
 }
 
 /**
@@ -298,25 +308,17 @@ TEST_CASE("webrtc_discovery/frame_capture_via_webrtc", "[webrtc_discovery]") {
   // Step 1: Start ACDS discovery service on port 27325
   // ========================================================================
   log_info("Starting ACDS discovery service...");
-  g_acds_pid = fork();
-  REQUIRE((g_acds_pid) != (-1));
-
-  if (g_acds_pid == 0) {
-    // Child: Start ACDS with fresh database (with 10 second timeout)
-    (void)setpgid(0, 0);
-    freopen(ACDS_LOG_PATH, "w", stdout);
-    dup2(STDOUT_FILENO, STDERR_FILENO);
-    execlp("timeout", "timeout", "45", binary_path, "--no-check-update", "discovery-service", "127.0.0.1", "::", "--port", "27325", "--database", ACDS_DB_PATH, "--status-screen=false", NULL);
-    exit(1); // Should not reach here
-  }
+  const char *acds_argv[] = {binary_path, "--no-check-update", "discovery-service", "127.0.0.1", "::", "--port", "27325", "--database", g_acds_db_path, "--status-screen=false", NULL};
+  g_acds_process = spawn_logged(binary_path, acds_argv, g_acds_log_path);
+  REQUIRE(g_acds_process != NULL);
 
   // Wait for ACDS to be ready (check for "Listening on" in log) with 10 second timeout
   sleep(1);
-  int acds_ready = wait_for_pattern(ACDS_LOG_PATH, "Listening on", 100);
+  int acds_ready = wait_for_pattern(g_acds_log_path, "Listening on", 100);
   if (!acds_ready) {
     log_error("ACDS failed to start within 10 seconds, killing process");
-    kill_and_wait(g_acds_pid, "acds");
-    g_acds_pid = -1;
+    kill_and_wait(g_acds_process, "acds");
+    g_acds_process = NULL;
   }
   REQUIRE(acds_ready);
 
@@ -324,28 +326,19 @@ TEST_CASE("webrtc_discovery/frame_capture_via_webrtc", "[webrtc_discovery]") {
   // Step 2: Start server with discovery registration
   // ========================================================================
   log_info("Starting server with discovery...");
-  g_server_pid = fork();
-  REQUIRE((g_server_pid) != (-1));
-
-  if (g_server_pid == 0) {
-    // Child: Start server (receives video from clients, doesn't capture)
-    (void)setpgid(0, 0);
-    freopen(SERVER_LOG_PATH, "w", stdout);
-    dup2(STDOUT_FILENO, STDERR_FILENO);
-    execlp("timeout", "timeout", "45", binary_path, "--no-check-update", "--log-level", "debug", "server", "0.0.0.0", "::", "--port", "27224", "--discovery", "--discovery-expose-ip",
-           "--discovery-service", "127.0.0.1", "--discovery-service-port", "27325", "--status-screen=false", NULL);
-    exit(1); // Should not reach here
-  }
+  const char *server_argv[] = {binary_path, "--no-check-update", "--log-level", "debug", "server", "0.0.0.0", "::", "--port", "27224", "--discovery", "--discovery-expose-ip", "--discovery-service", "127.0.0.1", "--discovery-service-port", "27325", "--status-screen=false", NULL};
+  g_server_process = spawn_logged(binary_path, server_argv, g_server_log_path);
+  REQUIRE(g_server_process != NULL);
 
   // Wait for server to register and get session string with 10 second timeout
   sleep(2);
-  int server_ready = wait_for_pattern(SERVER_LOG_PATH, "Session String:", 100);
+  int server_ready = wait_for_pattern(g_server_log_path, "Session String:", 100);
   if (!server_ready) {
     log_error("Server failed to register with ACDS within 10 seconds, killing processes");
-    kill_and_wait(g_server_pid, "server");
-    kill_and_wait(g_acds_pid, "acds");
-    g_server_pid = -1;
-    g_acds_pid = -1;
+    kill_and_wait(g_server_process, "server");
+    kill_and_wait(g_acds_process, "acds");
+    g_server_process = NULL;
+    g_acds_process = NULL;
   }
   REQUIRE(server_ready);
 
@@ -353,7 +346,7 @@ TEST_CASE("webrtc_discovery/frame_capture_via_webrtc", "[webrtc_discovery]") {
   // Step 3: Extract session string from server log
   // ========================================================================
   char session_string[64] = {0};
-  int session_found = extract_session_string(SERVER_LOG_PATH, session_string, sizeof(session_string));
+  int session_found = extract_session_string(g_server_log_path, session_string, sizeof(session_string));
   REQUIRE(session_found);
   REQUIRE((session_string[0]) != ('\0'));
   log_info("Extracted session string: %s", session_string);
@@ -367,22 +360,20 @@ TEST_CASE("webrtc_discovery/frame_capture_via_webrtc", "[webrtc_discovery]") {
   // A zero snapshot delay exits before WebRTC signaling and the first frame can
   // complete; give the peer several seconds to connect before taking the frame.
   // Route logs to a file so stdout remains available for the rendered frame.
-  char client_cmd[512];
-  snprintf(client_cmd, sizeof(client_cmd),
-           "timeout 20 %s --no-check-update --log-file /tmp/client_test.log \"%s\" --snapshot --snapshot-delay 5 "
-           "--test-pattern "
-           "--discovery-service 127.0.0.1 --discovery-service-port 27325 --prefer-webrtc --port 27234 > %s "
-           "2>/tmp/client_test_stderr.log",
-           binary_path, session_string, CLIENT_OUTPUT_PATH);
-
-  int client_result = system(client_cmd);
-  REQUIRE(client_result != -1 && WIFEXITED(client_result));
-  REQUIRE((WEXITSTATUS(client_result)) == (0));
+  const char *client_argv[] = {binary_path, "--no-check-update", "--log-file", g_client_log_path, session_string,
+                               "--snapshot", "--snapshot-delay", "5", "--test-pattern", "--discovery-service",
+                               "127.0.0.1", "--discovery-service-port", "27325", "--prefer-webrtc", "--port", "27234", NULL};
+  platform_process_t *client_process = spawn_logged(binary_path, client_argv, g_client_output_path);
+  REQUIRE(client_process != NULL);
+  int client_result = -1;
+  REQUIRE(platform_process_wait(client_process, 20000, &client_result) == ASCIICHAT_OK);
+  platform_process_destroy(client_process);
+  REQUIRE(client_result == 0);
 
   // Discovery participant mode intentionally does not render a terminal frame;
   // it hands the established WebRTC transport to the media session. Verify the
   // transport transition directly in the client log instead of stdout.
-  int media_active = wait_for_pattern(CLIENT_LOG_PATH, "WebRTC Media Channel ACTIVE", 1);
+  int media_active = wait_for_pattern(g_client_log_path, "WebRTC Media Channel ACTIVE", 1);
   REQUIRE(media_active);
 
   // Cleanup will be done automatically by .fini = cleanup_processes

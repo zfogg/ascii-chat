@@ -137,7 +137,7 @@ static int invoke(device_stream_t *stream, const float *input, float *output, un
 
 TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/duplex_callback_preserves_capture_scales_playback_and_silences_underrun_and_shutdown", "[audio_device]") {
   REQUIRE((audio_start_duplex(&context)) == (ASCIICHAT_OK));
-  REQUIRE(context.running && context.duplex_stream && !context.separate_streams);
+  REQUIRE((context.running && context.duplex_stream && !context.separate_streams));
   REQUIRE((opens) == (1));
   REQUIRE((starts) == (1));
   REQUIRE((initialized) == (1));
@@ -182,7 +182,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/separate_native_rate_callback
   input_info.defaultSampleRate = 24000;
   output_info.defaultSampleRate = 32000;
   REQUIRE((audio_start_duplex(&context)) == (ASCIICHAT_OK));
-  REQUIRE(context.separate_streams && context.input_stream && context.output_stream);
+  REQUIRE((context.separate_streams && context.input_stream && context.output_stream));
   REQUIRE((opens) == (2));
   REQUIRE((streams[0].rate) == (32000));
   REQUIRE((streams[1].rate) == (24000));
@@ -217,7 +217,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/separate_native_rate_callback
 TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/duplex_open_failure_falls_back_and_retires_all_partial_streams", "[audio_device]") {
   fail_duplex = true;
   REQUIRE((audio_start_duplex(&context)) == (ASCIICHAT_OK));
-  REQUIRE(context.separate_streams && context.input_stream && context.output_stream);
+  REQUIRE((context.separate_streams && context.input_stream && context.output_stream));
   REQUIRE((opens) == (3));
   REQUIRE(streams[0].closed);
   REQUIRE((audio_stop_duplex(&context)) == (ASCIICHAT_OK));
@@ -246,11 +246,11 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/start_failure_releases_both_s
   REQUIRE((context.input_stream) == nullptr);
   REQUIRE((context.output_stream) == nullptr);
   REQUIRE((context.render_buffer) == nullptr);
-  REQUIRE(!(context.running || context.worker_running));
+  REQUIRE((!(context.running || context.worker_running)));
   REQUIRE((closes) == (2));
   fail_start = 0;
   REQUIRE((audio_start_duplex(&context)) == (ASCIICHAT_OK));
-  REQUIRE(context.worker_running && context.running);
+  REQUIRE((context.worker_running && context.running));
   REQUIRE((audio_stop_duplex(&context)) == (ASCIICHAT_OK));
   REQUIRE((closes) == (opens));
 }
@@ -263,7 +263,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/absent_microphone_and_failed_
   no_input = false;
   fail_all = true;
   REQUIRE((audio_start_duplex(&context)) == (ERROR_AUDIO));
-  REQUIRE(!(context.running || context.worker_running));
+  REQUIRE((!(context.running || context.worker_running)));
   REQUIRE((context.input_stream) == nullptr);
   REQUIRE((context.output_stream) == nullptr);
   REQUIRE((context.render_buffer) == nullptr);
@@ -284,7 +284,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/real_worker_publishes_microph
   for (unsigned i = 0; i < 480 * AUDIO_CHANNELS; ++i)
     REQUIRE((captured[i]) == Catch::Approx(input[i] * 0.25f));
   REQUIRE((audio_stop_duplex(&context)) == (ASCIICHAT_OK));
-  REQUIRE(!(context.worker_running || context.running));
+  REQUIRE((!(context.worker_running || context.running)));
   REQUIRE((closes) == (opens));
 }
 
@@ -394,7 +394,7 @@ TEST_CASE_METHOD(AudioDeviceFixture, "audio_device/remote_only_capture_without_p
   REQUIRE((options_state_set(&options)) == (ASCIICHAT_OK));
   fail_all = true;
   REQUIRE((audio_start_duplex(&context)) == (ASCIICHAT_OK));
-  REQUIRE(context.running && context.worker_running);
+  REQUIRE((context.running && context.worker_running));
   REQUIRE((initialized) == (0));
   REQUIRE((opens) == (0));
   REQUIRE((context.input_stream) == nullptr);

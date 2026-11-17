@@ -2,7 +2,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/io.h>
 #include <options/options.h>
-#include <ascii-chat/os/question.h>
+#include <libplatform/question.h>
 #include <libplatform/keyboard.h>
 #include <ascii-chat/util/password.h>
 #include <ascii-chat/crypto/known_hosts.h>

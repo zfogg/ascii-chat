@@ -240,8 +240,7 @@ TEST_CASE("mdns_integration/query_initialization", "[mdns_integration]") {
 
   // Query may fail in some environments (e.g., restricted networks, containers)
   // Just verify it doesn't crash - both success and graceful failure are acceptable
-  REQUIRE(result == ASCIICHAT_OK || result == ERROR_NETWORK);
-
+  REQUIRE((result == ASCIICHAT_OK || result == ERROR_NETWORK));
   asciichat_mdns_destroy(mdns);
 }
 

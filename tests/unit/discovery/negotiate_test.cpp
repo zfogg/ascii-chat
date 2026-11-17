@@ -24,7 +24,7 @@ TEST_CASE("negotiate/initialization_copies_identity_and_discards_previous_electi
   REQUIRE((context.participant_id[0]) == (3));
   REQUIRE((context.state) == (NEGOTIATE_STATE_INIT));
   REQUIRE(context.is_initiator);
-  REQUIRE(!(context.we_are_host || context.peer_quality_received || context.our_quality.detection_complete));
+  REQUIRE((!(context.we_are_host || context.peer_quality_received || context.our_quality.detection_complete)));
   REQUIRE((context.host_address[0]) == (0));
   REQUIRE((context.host_port) == (0));
   negotiate_init(&context, NULL, NULL, false);

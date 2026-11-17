@@ -153,7 +153,7 @@ TEST_CASE("session_host_media/rgb_bgr_rgba_and_bgra_packets_render_the_same_colo
   REQUIRE((session_host_receive_packet(host, id, PACKET_TYPE_STREAM_STOP, NULL, 0)) == (ASCIICHAT_OK));
   session_host_client_info_t info;
   REQUIRE((session_host_find_client(host, id, &info)) == (ASCIICHAT_OK));
-  REQUIRE(!(info.video_active || info.audio_active));
+  REQUIRE((!(info.video_active || info.audio_active)));
 }
 TEST_CASE("session_host_media/mixed_memory_audio_is_encoded_and_delivered_to_a_network_participant", "[session_host_media]") {
   uint32_t source = session_host_add_memory_participant(host);

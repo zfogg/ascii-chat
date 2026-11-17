@@ -3,19 +3,15 @@
 #include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
-#include <errno.h>
-#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
 
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <libplatform/compiler.h>
+#include <libplatform/process.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 
@@ -29,7 +25,7 @@
 
 // Process management
 typedef struct {
-  pid_t pid;
+  platform_process_t *process;
   const char *name;
   int exit_code;
   bool running;
@@ -44,7 +40,8 @@ static int process_count = 0;
 static int get_unique_test_port(void) {
   static int port_offset = 0;
   // Use PID to create unique port base per process (each process gets 10 ports)
-  int pid_offset = (getpid() % 5000) * 10;
+  static int process_offset = 0;
+  int pid_offset = (process_offset++ % 5000) * 10;
   return TEST_PORT_BASE + pid_offset + (port_offset++ % 10);
 }
 
@@ -57,19 +54,20 @@ void setup_main_tests(void) {
   process_count = 0;
   memset(tracked_processes, 0, sizeof(tracked_processes));
   // Disable host identity check for tests since we don't have a TTY for prompts
-  setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1", 1);
-  setenv("ASCII_CHAT_AUDIO", "false", 1);
-  setenv("ASCII_CHAT_NO_CHECK_UPDATE", "true", 1);
+  platform_setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1");
+  platform_setenv("ASCII_CHAT_AUDIO", "false");
+  platform_setenv("ASCII_CHAT_NO_CHECK_UPDATE", "true");
 }
 
 void teardown_main_tests(void) {
   // Kill any remaining processes
   for (int i = 0; i < process_count; i++) {
-    if (tracked_processes[i].running && tracked_processes[i].pid > 0) {
-      kill(tracked_processes[i].pid, SIGTERM);
-      usleep(100000); // 100ms grace period
-      kill(tracked_processes[i].pid, SIGKILL);
-      waitpid(tracked_processes[i].pid, NULL, 0);
+    if (tracked_processes[i].running && tracked_processes[i].process) {
+      platform_process_kill(tracked_processes[i].process);
+      platform_sleep_ms(100);
+      platform_process_wait(tracked_processes[i].process, -1, NULL);
+      platform_process_destroy(tracked_processes[i].process);
+      tracked_processes[i].process = NULL;
     }
   }
   log_set_level(original_log_level);
@@ -82,84 +80,38 @@ void teardown_main_tests(void) {
 // Use shared binary path detection from tests/common.h
 #define get_binary_path test_get_binary_path
 
-static pid_t spawn_process(const char *path, char *const argv[], const char *name) {
-  pid_t pid = fork();
-  if (pid == 0) {
-    // Child: redirect output to log file
-    char log_path[256];
-    safe_snprintf(log_path, sizeof(log_path), "/tmp/ascii_chat_test_%s_%d.log", name, getpid());
-
-    FILE *log_file = fopen(log_path, "w");
-    if (log_file) {
-      dup2(fileno(log_file), STDOUT_FILENO);
-      dup2(fileno(log_file), STDERR_FILENO);
-      fclose(log_file);
-    }
-
-    execv(path, argv);
-    fprintf(stderr, "Failed to exec %s: %s\n", path, strerror(errno));
-    exit(127);
-  }
-
-  if (pid > 0 && process_count < MAX_PROCESSES) {
-    tracked_processes[process_count].pid = pid;
+static platform_process_t *spawn_process(const char *path, char *const argv[], const char *name) {
+  platform_process_t *process = NULL;
+  if (platform_process_spawn(&process, path, (const char *const *)argv, -1, -1, -1) != ASCIICHAT_OK)
+    return NULL;
+  if (process_count < MAX_PROCESSES) {
+    tracked_processes[process_count].process = process;
     tracked_processes[process_count].name = name;
     tracked_processes[process_count].running = true;
     process_count++;
   }
 
-  return pid;
+  return process;
 }
 
-static bool wait_for_process_exit(pid_t pid, int timeout_ms, int *exit_code) {
-  int elapsed_ms = 0;
-  const int poll_interval_ms = 10;
-
-  while (elapsed_ms < timeout_ms) {
-    int status;
-    pid_t result = waitpid(pid, &status, WNOHANG);
-
-    if (result == pid) {
-      if (WIFEXITED(status)) {
-        if (exit_code)
-          *exit_code = WEXITSTATUS(status);
-        return true;
-      }
-      if (WIFSIGNALED(status)) {
-        if (exit_code)
-          *exit_code = 128 + WTERMSIG(status);
-        return true;
-      }
-    } else if (result < 0) {
-      return false; // Error
-    }
-
-    usleep(poll_interval_ms * 1000);
-    elapsed_ms += poll_interval_ms;
-  }
-
-  return false; // Timeout
+static bool wait_for_process_exit(platform_process_t *process, int timeout_ms, int *exit_code) {
+  return process && platform_process_wait(process, timeout_ms, exit_code) == ASCIICHAT_OK;
 }
 
-static void terminate_process(pid_t pid, const char *name) {
+static void terminate_process(platform_process_t *process, const char *name) {
   UNUSED(name);
-  if (pid <= 0)
+  if (!process)
     return;
 
-  // Try graceful termination first
-  kill(pid, SIGTERM);
-
   int exit_code = -1;
-  if (!wait_for_process_exit(pid, PROCESS_CLEANUP_TIMEOUT_MS, &exit_code)) {
-    // Force kill if graceful shutdown failed
-    kill(pid, SIGKILL);
-    waitpid(pid, NULL, 0);
-    exit_code = -1; // Force killed
+  if (!wait_for_process_exit(process, PROCESS_CLEANUP_TIMEOUT_MS, &exit_code)) {
+    platform_process_kill(process);
+    platform_process_wait(process, -1, &exit_code);
   }
 
   // Mark as not running
   for (int i = 0; i < process_count; i++) {
-    if (tracked_processes[i].pid == pid) {
+    if (tracked_processes[i].process == process) {
       tracked_processes[i].running = false;
       tracked_processes[i].exit_code = exit_code;
       break;
@@ -195,11 +147,11 @@ static bool wait_for_tcp_port(int port, int timeout_ms) {
       // The probe is an actual accepted TCP connection. Give the server's
       // handler a moment to observe its close and release the temporary
       // client slot before the test starts the real client.
-      usleep(SERVER_STARTUP_DELAY_MS * 1000);
+      platform_sleep_ms(SERVER_STARTUP_DELAY_MS);
       return true;
     }
 
-    usleep(poll_interval_ms * 1000);
+    platform_sleep_ms(poll_interval_ms);
     elapsed_ms += poll_interval_ms;
   }
 
@@ -221,17 +173,15 @@ TEST_CASE("main_integration/server_main_starts_and_stops", "[main_integration]")
 
   char *argv[] = {"ascii-chat", "--log-file", "/tmp/test_server_main.log", "server", "--port", port_str, "--websocket-port", websocket_port_str, "--status-screen=false", NULL};
 
-  pid_t server_pid = spawn_process(get_binary_path(), argv, "server");
-  REQUIRE((server_pid) > (0));
+  platform_process_t *server_pid = spawn_process(get_binary_path(), argv, "server");
+  REQUIRE(server_pid != NULL);
 
   // Wait for server to start listening
   bool started = wait_for_tcp_port(port, 2000);
   REQUIRE(started);
 
   // Verify server is still running
-  int status;
-  pid_t result = waitpid(server_pid, &status, WNOHANG);
-  REQUIRE((result) == (0));
+  REQUIRE(platform_process_is_alive(server_pid));
 
   // Graceful shutdown
   terminate_process(server_pid, "server");
@@ -240,8 +190,8 @@ TEST_CASE("main_integration/server_main_starts_and_stops", "[main_integration]")
 TEST_CASE("main_integration/server_main_help_flag", "[main_integration]") {
   char *argv[] = {"ascii-chat", "server", "--help", NULL};
 
-  pid_t server_pid = spawn_process(get_binary_path(), argv, "server_help");
-  REQUIRE((server_pid) > (0));
+  platform_process_t *server_pid = spawn_process(get_binary_path(), argv, "server_help");
+  REQUIRE(server_pid != NULL);
 
   int exit_code;
   bool exited = wait_for_process_exit(server_pid, 1000, &exit_code);
@@ -253,8 +203,8 @@ TEST_CASE("main_integration/server_main_invalid_port", "[main_integration]") {
   char *argv[] = {"ascii-chat", "server", "--port", "99999", // Invalid port
                   NULL};
 
-  pid_t server_pid = spawn_process(get_binary_path(), argv, "server_bad_port");
-  REQUIRE((server_pid) > (0));
+  platform_process_t *server_pid = spawn_process(get_binary_path(), argv, "server_bad_port");
+  REQUIRE(server_pid != NULL);
 
   int exit_code;
   bool exited = wait_for_process_exit(server_pid, 2000, &exit_code);
@@ -269,8 +219,8 @@ TEST_CASE("main_integration/server_main_invalid_port", "[main_integration]") {
 TEST_CASE("main_integration/client_main_help_flag", "[main_integration]") {
   char *argv[] = {"ascii-chat", "client", "--help", NULL};
 
-  pid_t client_pid = spawn_process(get_binary_path(), argv, "client_help");
-  REQUIRE((client_pid) > (0));
+  platform_process_t *client_pid = spawn_process(get_binary_path(), argv, "client_help");
+  REQUIRE(client_pid != NULL);
 
   int exit_code;
   bool exited = wait_for_process_exit(client_pid, 1000, &exit_code);
@@ -286,16 +236,14 @@ TEST_CASE("main_integration/client_main_no_server", "[main_integration]") {
 
   char *argv[] = {"ascii-chat", "--no-check-update", "client", "127.0.0.1:27224", "--test-pattern", NULL};
 
-  pid_t client_pid = spawn_process(get_binary_path(), argv, "client_no_server");
-  REQUIRE((client_pid) > (0));
+  platform_process_t *client_pid = spawn_process(get_binary_path(), argv, "client_no_server");
+  REQUIRE(client_pid != NULL);
 
   // Wait 200ms - client should still be running (retrying connection)
-  usleep(200000);
+  platform_sleep_ms(200);
 
   // Verify client is still alive (waitpid with WNOHANG returns 0 if still running)
-  int status;
-  pid_t result = waitpid(client_pid, &status, WNOHANG);
-  REQUIRE((result) == (0));
+  REQUIRE(platform_process_is_alive(client_pid));
 
   // Clean up - terminate the client
   terminate_process(client_pid, "client_no_server");
@@ -319,8 +267,8 @@ TEST_CASE("main_integration/server_client_basic_connection", "[main_integration]
   char *server_argv[] = {"ascii-chat",       "--log-file",   "/tmp/test_server_client.log", "server", "--port", port_str, "--websocket-port",
                          websocket_port_str, "--no-encrypt", "--status-screen=false",       NULL};
 
-  pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
-  REQUIRE((server_pid) > (0));
+  platform_process_t *server_pid = spawn_process(get_binary_path(), server_argv, "server");
+  REQUIRE(server_pid != NULL);
 
   // Wait for server to be ready
   bool server_ready = wait_for_tcp_port(port, 2000);
@@ -342,8 +290,8 @@ TEST_CASE("main_integration/server_client_basic_connection", "[main_integration]
                          "3",
                          NULL};
 
-  pid_t client_pid = spawn_process(get_binary_path(), client_argv, "client");
-  REQUIRE((client_pid) > (0));
+  platform_process_t *client_pid = spawn_process(get_binary_path(), client_argv, "client");
+  REQUIRE(client_pid != NULL);
 
   // Wait for client to complete
   int client_exit_code;
@@ -367,8 +315,8 @@ TEST_CASE("main_integration/server_multiple_clients_sequential", "[main_integrat
   // Start server (no encryption for speed)
   char *server_argv[] = {"ascii-chat", "--log-file", "/tmp/test_multi_seq.log", "server", "--port", port_str, "--websocket-port", websocket_port_str, "--no-encrypt", "--status-screen=false", NULL};
 
-  pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
-  REQUIRE((server_pid) > (0));
+  platform_process_t *server_pid = spawn_process(get_binary_path(), server_argv, "server");
+  REQUIRE(server_pid != NULL);
 
   bool server_ready = wait_for_tcp_port(port, 2000);
   REQUIRE(server_ready);
@@ -382,15 +330,15 @@ TEST_CASE("main_integration/server_multiple_clients_sequential", "[main_integrat
 
     char *client_argv[] = {"ascii-chat", "--log-file", client_log_path, "--no-check-update", "client", client_address, "--no-encrypt", "--test-pattern", "--snapshot", "--snapshot-delay", "0", NULL};
 
-    pid_t client_pid = spawn_process(get_binary_path(), client_argv, client_name);
-    REQUIRE((client_pid) > (0));
+    platform_process_t *client_pid = spawn_process(get_binary_path(), client_argv, client_name);
+    REQUIRE(client_pid != NULL);
 
     int exit_code;
     bool exited = wait_for_process_exit(client_pid, CLIENT_CONNECT_TIMEOUT_MS, &exit_code);
     REQUIRE(exited);
     REQUIRE(exited);
     // Let the server finish removing the just-closed client before reusing it.
-    usleep(5000000);
+    platform_sleep_ms(5000);
   }
 
   terminate_process(server_pid, "server");
@@ -410,14 +358,14 @@ TEST_CASE("main_integration/server_multiple_clients_concurrent", "[main_integrat
   char *server_argv[] = {"ascii-chat",       "--log-file",   "/tmp/test_multi_concurrent.log", "server", "--port", port_str, "--websocket-port",
                          websocket_port_str, "--no-encrypt", "--status-screen=false",          NULL};
 
-  pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
-  REQUIRE((server_pid) > (0));
+  platform_process_t *server_pid = spawn_process(get_binary_path(), server_argv, "server");
+  REQUIRE(server_pid != NULL);
 
   bool server_ready = wait_for_tcp_port(port, 2000);
   REQUIRE(server_ready);
 
   // Start multiple clients concurrently with test pattern (no webcam needed)
-  pid_t client_pids[2];
+  platform_process_t *client_pids[2];
   for (int i = 0; i < 2; i++) {
     char client_name[32];
     char client_log_path[64];
@@ -432,8 +380,8 @@ TEST_CASE("main_integration/server_multiple_clients_concurrent", "[main_integrat
                            "--snapshot-delay",  "3",          NULL};
 
     client_pids[i] = spawn_process(get_binary_path(), client_argv, client_name);
-    REQUIRE((client_pids[i]) > (0));
-    usleep(250000); // Allow the server to finish accepting each client.
+    REQUIRE(client_pids[i] != NULL);
+    platform_sleep_ms(250); // Allow the server to finish accepting each client.
   }
 
   // Wait for all clients to complete
@@ -461,8 +409,8 @@ TEST_CASE("main_integration/server_client_with_options", "[main_integration]") {
   char *server_argv[] = {"ascii-chat",       "--log-file",   "/tmp/test_server_options.log", "server", "--port", port_str, "--websocket-port",
                          websocket_port_str, "--no-encrypt", "--status-screen=false",        NULL};
 
-  pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
-  REQUIRE((server_pid) > (0));
+  platform_process_t *server_pid = spawn_process(get_binary_path(), server_argv, "server");
+  REQUIRE(server_pid != NULL);
 
   bool server_ready = wait_for_tcp_port(port, 2000);
   REQUIRE(server_ready);
@@ -486,8 +434,8 @@ TEST_CASE("main_integration/server_client_with_options", "[main_integration]") {
                          "0",
                          NULL};
 
-  pid_t client_pid = spawn_process(get_binary_path(), client_argv, "client");
-  REQUIRE((client_pid) > (0));
+  platform_process_t *client_pid = spawn_process(get_binary_path(), client_argv, "client");
+  REQUIRE(client_pid != NULL);
 
   int client_exit_code;
   bool client_exited = wait_for_process_exit(client_pid, CLIENT_CONNECT_TIMEOUT_MS, &client_exit_code);
@@ -511,8 +459,8 @@ TEST_CASE("main_integration/server_survives_client_crash", "[main_integration]")
   char *server_argv[] = {"ascii-chat",       "--log-file",   "/tmp/test_server_survives.log", "server", "--port", port_str, "--websocket-port",
                          websocket_port_str, "--no-encrypt", "--status-screen=false",         NULL};
 
-  pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
-  REQUIRE((server_pid) > (0));
+  platform_process_t *server_pid = spawn_process(get_binary_path(), server_argv, "server");
+  REQUIRE(server_pid != NULL);
 
   bool server_ready = wait_for_tcp_port(port, 2000);
   REQUIRE(server_ready);
@@ -522,21 +470,19 @@ TEST_CASE("main_integration/server_survives_client_crash", "[main_integration]")
                          "--no-encrypt", // Skip crypto handshake for speed
                          "--test-pattern", NULL};
 
-  pid_t client_pid = spawn_process(get_binary_path(), client_argv, "client");
-  REQUIRE((client_pid) > (0));
+  platform_process_t *client_pid = spawn_process(get_binary_path(), client_argv, "client");
+  REQUIRE(client_pid != NULL);
 
-  usleep(100000); // 100ms - Let client connect (fast with --no-encrypt)
+  platform_sleep_ms(100); // 100ms - Let client connect (fast with --no-encrypt)
 
   // Kill client abruptly
-  kill(client_pid, SIGKILL);
-  waitpid(client_pid, NULL, 0);
+  platform_process_kill(client_pid);
+  platform_process_wait(client_pid, -1, NULL);
   // Let the server observe the abrupt disconnect and reclaim the client slot.
-  usleep(5000000);
+  platform_sleep_ms(5000);
 
   // Server should still be running
-  int status;
-  pid_t result = waitpid(server_pid, &status, WNOHANG);
-  REQUIRE((result) == (0));
+  REQUIRE(platform_process_is_alive(server_pid));
 
   // Try connecting another client to verify server is still functional
   char *client2_argv[] = {"ascii-chat",
@@ -552,8 +498,8 @@ TEST_CASE("main_integration/server_survives_client_crash", "[main_integration]")
                           "0",
                           NULL};
 
-  pid_t client2_pid = spawn_process(get_binary_path(), client2_argv, "client2");
-  REQUIRE((client2_pid) > (0));
+  platform_process_t *client2_pid = spawn_process(get_binary_path(), client2_argv, "client2");
+  REQUIRE(client2_pid != NULL);
 
   int exit_code;
   bool exited = wait_for_process_exit(client2_pid, CLIENT_CONNECT_TIMEOUT_MS, &exit_code);

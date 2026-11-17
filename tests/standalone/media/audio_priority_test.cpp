@@ -41,5 +41,4 @@ TEST_CASE("audio thread priority", "[standalone][platform][audio]") {
   ascii_otel_exit(0);
   ascii_otel_shutdown();
   options_state_destroy();
-  return 0;
 }

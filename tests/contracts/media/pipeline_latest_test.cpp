@@ -5,7 +5,7 @@
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/options/rcu.h>
-#include <ascii-chat/os/wakeup.h>
+#include <libplatform/wakeup.h>
 
 #define g_snapshot_first_frame_rendered test_pipeline_snapshot_first_frame_rendered
 bool g_snapshot_first_frame_rendered = false;
@@ -86,7 +86,7 @@ TEST_CASE("media_pipeline/slots_preserve_pixels_and_reuse_released_storage", "[m
   source = image_new(32, 8);
   memset(source->pixels, 90, 32 * 8 * sizeof(rgb_pixel_t));
   held[0] = make_frame_copy(source, slots);
-  REQUIRE(held[0]->w == 32 && held[0]->h == 8 && held[0]->pixels[767] == 90);
+  REQUIRE((held[0]->w == 32 && held[0]->h == 8 && held[0]->pixels[767] == 90));
   free_frame(held[0]);
   frame_slots_destroy(slots);
 
@@ -104,7 +104,7 @@ TEST_CASE("media_pipeline/reusable_render_matches_owned_output", "[media_pipelin
   for (size_t i = 0; i < sizeof(widths) / sizeof(widths[0]); ++i) {
     char *owned = ascii_convert_with_capabilities_fit(source, widths[i], 6, &caps, true, false, " .:#", false);
     char *reused = ascii_convert_with_capabilities_workspace(source, widths[i], 6, &caps, true, false, " .:#", false, &workspace);
-    REQUIRE(owned && reused && strcmp(owned, reused) == 0);
+    REQUIRE((owned && reused && strcmp(owned, reused) == 0));
     REQUIRE((workspace->w) == (widths[i]));
     SAFE_FREE(owned);
     SAFE_FREE(reused);
@@ -118,7 +118,7 @@ TEST_CASE("media_pipeline/reusable_render_matches_owned_output", "[media_pipelin
       for (size_t i = 0; i < sizeof(widths) / sizeof(widths[0]); ++i) {
         char *owned = ascii_convert_with_capabilities_fit(source, widths[i], 6, &caps, true, false, " .:#", false);
         char *borrowed = ascii_convert_with_buffers(source, widths[i], 6, &caps, true, false, " .:#", false, &workspace, &output);
-        REQUIRE(owned && borrowed && borrowed == output.buf && strcmp(owned, borrowed) == 0);
+        REQUIRE((owned && borrowed && borrowed == output.buf && strcmp(owned, borrowed) == 0));
         SAFE_FREE(owned);
       }
     }

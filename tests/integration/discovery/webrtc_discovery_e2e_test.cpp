@@ -22,19 +22,17 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <errno.h>
-#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
 #include <time.h>
 
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <libplatform/compiler.h>
+#include <libplatform/filesystem.h>
+#include <libplatform/process.h>
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/common.h>
@@ -51,7 +49,7 @@
 
 // Process management
 typedef struct {
-  pid_t pid;
+  platform_process_t *process;
   const char *name;
   char log_path[256];
   int exit_code;
@@ -72,7 +70,7 @@ static int get_unique_test_port(void) {
   static int port_offset = 0;
   // Use smaller range to avoid exceeding 65535
   // Range: 20000 + (0 to 4000) = 20000-24000
-  int pid_offset = (getpid() % 400) * 10;
+  int pid_offset = (platform_get_pid() % 400) * 10;
   return TEST_PORT_BASE + pid_offset + (port_offset++ % 10);
 }
 
@@ -86,35 +84,37 @@ void setup_webrtc_e2e_tests(void) {
   memset(tracked_processes, 0, sizeof(tracked_processes));
 
   // Generate unique database paths
-  snprintf(test_db_path, sizeof(test_db_path), "/tmp/acds_webrtc_e2e_%d.db", getpid());
+  char temp_dir[256];
+  REQUIRE(platform_get_temp_dir(temp_dir, sizeof(temp_dir)));
+  snprintf(test_db_path, sizeof(test_db_path), "%s/acds_webrtc_e2e_%d.db", temp_dir, platform_get_pid());
   snprintf(test_db_wal, sizeof(test_db_wal), "%s-wal", test_db_path);
   snprintf(test_db_shm, sizeof(test_db_shm), "%s-shm", test_db_path);
 
   // Clean up any leftover database files
-  unlink(test_db_path);
-  unlink(test_db_wal);
-  unlink(test_db_shm);
+  platform_unlink(test_db_path);
+  platform_unlink(test_db_wal);
+  platform_unlink(test_db_shm);
 
   // Disable host identity check for tests
-  setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1", 1);
-  setenv("ASCII_CHAT_AUDIO", "false", 1);
+  platform_setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1");
+  platform_setenv("ASCII_CHAT_AUDIO", "false");
 }
 
 void teardown_webrtc_e2e_tests(void) {
   // Kill any remaining processes
   for (int i = 0; i < process_count; i++) {
-    if (tracked_processes[i].running && tracked_processes[i].pid > 0) {
-      kill(tracked_processes[i].pid, SIGTERM);
-      usleep(100000); // 100ms grace period
-      kill(tracked_processes[i].pid, SIGKILL);
-      waitpid(tracked_processes[i].pid, NULL, 0);
+    if (tracked_processes[i].running && tracked_processes[i].process) {
+      platform_process_kill(tracked_processes[i].process);
+      platform_process_wait(tracked_processes[i].process, PROCESS_CLEANUP_TIMEOUT_MS, NULL);
+      platform_process_destroy(tracked_processes[i].process);
+      tracked_processes[i].process = NULL;
     }
   }
 
   // Clean up database files (logs are intentionally preserved)
-  unlink(test_db_path);
-  unlink(test_db_wal);
-  unlink(test_db_shm);
+  platform_unlink(test_db_path);
+  platform_unlink(test_db_wal);
+  platform_unlink(test_db_shm);
 
   log_set_level(LOG_DEBUG); // Restore logging
 }
@@ -122,82 +122,43 @@ void teardown_webrtc_e2e_tests(void) {
 // Process Management Utilities
 // =============================================================================
 
-static pid_t spawn_process_with_log(const char *binary_path, char *const argv[], const char *name, const char *log_path) {
-  pid_t pid = fork();
-  if (pid == 0) {
-    // Child: redirect output to log file
-    FILE *log_file = fopen(log_path, "w");
-    if (log_file) {
-      dup2(fileno(log_file), STDOUT_FILENO);
-      dup2(fileno(log_file), STDERR_FILENO);
-      fclose(log_file);
-    }
-
-    execv(binary_path, argv);
-    fprintf(stderr, "execv(%s) failed: %s\n", binary_path, strerror(errno));
-    exit(127);
-  }
-
-  if (pid > 0 && process_count < MAX_PROCESSES) {
-    tracked_processes[process_count].pid = pid;
+static platform_process_t *spawn_process_with_log(const char *binary_path, const char *const argv[], const char *name, const char *log_path) {
+  int log_fd = platform_open("webrtc-e2e-log", log_path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC | PLATFORM_O_BINARY, 0600);
+  if (log_fd < 0)
+    return NULL;
+  platform_process_t *process = NULL;
+  int result = platform_process_spawn(&process, binary_path, argv, -1, log_fd, log_fd);
+  platform_close(log_fd);
+  if (result == ASCIICHAT_OK && process && process_count < MAX_PROCESSES) {
+    tracked_processes[process_count].process = process;
     tracked_processes[process_count].name = name;
     SAFE_STRNCPY(tracked_processes[process_count].log_path, log_path, sizeof(tracked_processes[process_count].log_path));
     tracked_processes[process_count].running = true;
     process_count++;
   }
 
-  return pid;
+  return process;
 }
 
-static bool wait_for_process_exit(pid_t pid, int timeout_ms, int *exit_code) {
-  int elapsed_ms = 0;
-  const int poll_interval_ms = 10;
-
-  while (elapsed_ms < timeout_ms) {
-    int status;
-    pid_t result = waitpid(pid, &status, WNOHANG);
-
-    if (result == pid) {
-      if (WIFEXITED(status)) {
-        if (exit_code)
-          *exit_code = WEXITSTATUS(status);
-        return true;
-      }
-      if (WIFSIGNALED(status)) {
-        if (exit_code)
-          *exit_code = 128 + WTERMSIG(status);
-        return true;
-      }
-    } else if (result < 0) {
-      return false; // Error
-    }
-
-    usleep(poll_interval_ms * 1000);
-    elapsed_ms += poll_interval_ms;
-  }
-
-  return false; // Timeout
+static bool wait_for_process_exit(platform_process_t *process, int timeout_ms, int *exit_code) {
+  return platform_process_wait(process, timeout_ms, exit_code) == ASCIICHAT_OK;
 }
 
-static void terminate_process(pid_t pid) {
-  if (pid <= 0)
+static void terminate_process(platform_process_t *process) {
+  if (!process)
     return;
 
-  // Try graceful termination first
-  kill(pid, SIGTERM);
-
+  platform_process_kill(process);
   int exit_code = -1;
-  if (!wait_for_process_exit(pid, PROCESS_CLEANUP_TIMEOUT_MS, &exit_code)) {
-    // Force kill if graceful shutdown failed
-    kill(pid, SIGKILL);
-    waitpid(pid, NULL, 0);
-  }
+  wait_for_process_exit(process, PROCESS_CLEANUP_TIMEOUT_MS, &exit_code);
 
   // Mark as not running
   for (int i = 0; i < process_count; i++) {
-    if (tracked_processes[i].pid == pid) {
+    if (tracked_processes[i].process == process) {
       tracked_processes[i].running = false;
       tracked_processes[i].exit_code = exit_code;
+      platform_process_destroy(process);
+      tracked_processes[i].process = NULL;
       break;
     }
   }
@@ -243,7 +204,7 @@ static bool wait_for_log_pattern(const char *log_path, const char *pattern, int 
       fclose(log_file);
     }
 
-    usleep(LOG_POLL_INTERVAL_MS * 1000);
+    platform_sleep_ms(LOG_POLL_INTERVAL_MS);
     elapsed_ms += LOG_POLL_INTERVAL_MS;
   }
 
@@ -326,15 +287,17 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
 
   // Generate log file paths
   char acds_log[256], host_log[256], guest_log[256];
-  snprintf(acds_log, sizeof(acds_log), "/tmp/webrtc_e2e_acds_%d.log", getpid());
-  snprintf(host_log, sizeof(host_log), "/tmp/webrtc_e2e_host_%d.log", getpid());
-  snprintf(guest_log, sizeof(guest_log), "/tmp/webrtc_e2e_guest_%d.log", getpid());
+  char temp_dir[256];
+  REQUIRE(platform_get_temp_dir(temp_dir, sizeof(temp_dir)));
+  snprintf(acds_log, sizeof(acds_log), "%s/webrtc_e2e_acds_%d.log", temp_dir, platform_get_pid());
+  snprintf(host_log, sizeof(host_log), "%s/webrtc_e2e_host_%d.log", temp_dir, platform_get_pid());
+  snprintf(guest_log, sizeof(guest_log), "%s/webrtc_e2e_guest_%d.log", temp_dir, platform_get_pid());
 
   // ============================================================
   // Step 1: Start discovery-service
   // ============================================================
 
-  char *acds_argv[] = {(char *)binary_path,
+  const char *acds_argv[] = {binary_path,
                        "--no-check-update",
                        "--log-level",
                        "debug",
@@ -346,8 +309,8 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
                        "--status-screen=false", // Disable UI for clean log parsing
                        NULL};
 
-  pid_t acds_pid = spawn_process_with_log(binary_path, acds_argv, "acds", acds_log);
-  REQUIRE((acds_pid) > (0));
+  platform_process_t *acds_process = spawn_process_with_log(binary_path, acds_argv, "acds", acds_log);
+  REQUIRE(acds_process != NULL);
 
   // Wait for discovery service to be ready
   bool acds_ready = wait_for_log_pattern(acds_log, "Listening on", ACDS_STARTUP_TIMEOUT_MS, NULL, 0);
@@ -357,7 +320,7 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
   // Step 2: Start host to create session
   // ============================================================
 
-  char *host_argv[] = {(char *)binary_path, "--no-check-update", "--log-level", "debug",
+  const char *host_argv[] = {binary_path, "--no-check-update", "--log-level", "debug",
                        "server",        // Run as SERVER with --discovery flag
                        "0.0.0.0", "::", // Bind addresses
                        "--port", "27224",
@@ -370,8 +333,8 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
                        "--no-encrypt", // Simplify for testing
                        NULL};
 
-  pid_t host_pid = spawn_process_with_log(binary_path, host_argv, "host", host_log);
-  REQUIRE((host_pid) > (0));
+  platform_process_t *host_process = spawn_process_with_log(binary_path, host_argv, "host", host_log);
+  REQUIRE(host_process != NULL);
 
   // Wait for session string in host logs (server mode uses "Session String:")
   char session_line[MAX_LOG_LINE_LENGTH] = {0};
@@ -390,7 +353,7 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
   // Step 3: Start guest with session string and --prefer-webrtc
   // ============================================================
 
-  char *guest_argv[] = {(char *)binary_path,
+  const char *guest_argv[] = {binary_path,
                         "--no-check-update",
                         "--log-level",
                         "debug",
@@ -411,8 +374,8 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
                         "--no-encrypt",
                         NULL};
 
-  pid_t guest_pid = spawn_process_with_log(binary_path, guest_argv, "guest", guest_log);
-  REQUIRE((guest_pid) > (0));
+  platform_process_t *guest_process = spawn_process_with_log(binary_path, guest_argv, "guest", guest_log);
+  REQUIRE(guest_process != NULL);
 
   // ============================================================
   // Step 4: Verify WebRTC connection establishment
@@ -438,7 +401,7 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
 
   int guest_exit_code = -1;
   // Wait for guest to complete snapshot and exit
-  bool guest_exited = wait_for_process_exit(guest_pid, 15000, &guest_exit_code);
+  bool guest_exited = wait_for_process_exit(guest_process, 15000, &guest_exit_code);
 
   REQUIRE(guest_exited);
   REQUIRE((guest_exit_code) == (0));
@@ -447,18 +410,20 @@ TEST_CASE("webrtc_discovery_e2e/full_connection_flow", "[webrtc_discovery_e2e]")
   // Step 6: Clean shutdown (logs preserved for debugging)
   // ============================================================
 
-  terminate_process(acds_pid);
+  terminate_process(acds_process);
+  terminate_process(host_process);
+  terminate_process(guest_process);
 
   // Verify log files exist and are not empty
-  struct stat st;
-  REQUIRE((stat(acds_log, &st)) == (0));
-  REQUIRE((st.st_size) > (0));
+  platform_stat_t st;
+  REQUIRE(platform_stat(acds_log, &st) == ASCIICHAT_OK);
+  REQUIRE(st.size > 0);
 
-  REQUIRE((stat(host_log, &st)) == (0));
-  REQUIRE((st.st_size) > (0));
+  REQUIRE(platform_stat(host_log, &st) == ASCIICHAT_OK);
+  REQUIRE(st.size > 0);
 
-  REQUIRE((stat(guest_log, &st)) == (0));
-  REQUIRE((st.st_size) > (0));
+  REQUIRE(platform_stat(guest_log, &st) == ASCIICHAT_OK);
+  REQUIRE(st.size > 0);
 
   fprintf(stderr, "Test complete. Logs preserved:\n");
   fprintf(stderr, "  ACDS:  %s\n", acds_log);

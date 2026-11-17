@@ -121,7 +121,7 @@ TEST_CASE("server_client/admission_limit_lookup_and_removal_reuse_the_slot_witho
   char id[MAX_CLIENT_ID_LEN];
   SAFE_STRNCPY(id, first->client_id, sizeof(id));
   REQUIRE((find_client_by_id(id)) == (first));
-  REQUIRE(first->transport_encrypted && first->security_ready);
+  REQUIRE((first->transport_encrypted && first->security_ready));
   REQUIRE(!(first->has_terminal_caps));
   REQUIRE((first->incoming_video_buffer) != nullptr);
   REQUIRE((first->incoming_audio_buffer) != nullptr);
@@ -247,7 +247,7 @@ TEST_CASE("server_client/encoded_uploads_reuse_the_decoder_and_switch_between_he
       REQUIRE((frame->sequence_number) == (++received));
       const uint8_t *decoded = (const uint8_t *)frame->data + 8;
       for (size_t p = 0; p < sizeof(rgb); ++p)
-        REQUIRE(decoded[p] >= 123 && decoded[p] <= 133);
+        REQUIRE((decoded[p] >= 123 && decoded[p] <= 133));
       REQUIRE(!(atomic_load_bool(&client->protocol_disconnect_requested)));
     }
     h265_encoder_destroy(encoder);

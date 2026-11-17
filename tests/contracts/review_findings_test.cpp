@@ -72,8 +72,8 @@ static void test_audio_analysis_levels(void) {
   REQUIRE((audio_analysis_init()) == (0));
   sent = audio_analysis_get_sent_stats();
   received = audio_analysis_get_received_stats();
-  REQUIRE(sent->total_samples == 0 && sent->dc_offset == 0.0f && sent->rms_level == 0.0f);
-  REQUIRE(received->total_samples == 0 && received->dc_offset == 0.0f && received->rms_level == 0.0f);
+  REQUIRE((sent->total_samples == 0 && sent->dc_offset == 0.0f && sent->rms_level == 0.0f));
+  REQUIRE((received->total_samples == 0 && received->dc_offset == 0.0f && received->rms_level == 0.0f));
   audio_analysis_destroy();
 }
 

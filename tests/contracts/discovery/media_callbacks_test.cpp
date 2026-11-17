@@ -157,9 +157,9 @@ TEST_CASE("discovery_media/joins_preserve_worker_flags_until_each_handle_has_bee
   discovery_video_receiver_t receiver = {.receiver_started = true, .audio_started = true};
   join_failures = 1;
   REQUIRE((discovery_media_join(&receiver)) == (ERROR_THREAD));
-  REQUIRE(receiver.receiver_started && receiver.audio_started);
+  REQUIRE((receiver.receiver_started && receiver.audio_started));
   REQUIRE((discovery_media_join(&receiver)) == (ASCIICHAT_OK));
-  REQUIRE(!(receiver.receiver_started || receiver.audio_started));
+  REQUIRE((!(receiver.receiver_started || receiver.audio_started)));
   REQUIRE((joins) == (3));
   REQUIRE((discovery_media_join(&receiver)) == (ASCIICHAT_OK));
   REQUIRE((joins) == (3));
