@@ -33,8 +33,10 @@ if(CMAKE_C_COMPILER MATCHES "(^|/)(gcc|g(cc)?-[0-9]+)$")
     list(SORT _asciichat_libstdcpp_roots)
     list(GET _asciichat_libstdcpp_roots 0 MUSL_LIBSTDCPP_INCLUDE_DIR)
     if(MUSL_LIBSTDCPP_INCLUDE_DIR)
-        set(MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR
-            "${MUSL_LIBSTDCPP_INCLUDE_DIR}/${MUSL_TARGET}")
+        file(GLOB _asciichat_libstdcpp_target_roots LIST_DIRECTORIES true
+            "${MUSL_LIBSTDCPP_INCLUDE_DIR}/*-linux-musl")
+        list(SORT _asciichat_libstdcpp_target_roots)
+        list(GET _asciichat_libstdcpp_target_roots 0 MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
     endif()
     set(_asciichat_ssp_nonshared "${MUSL_GCC_RUNTIME_DIR}/libssp_nonshared.a")
     if(NOT EXISTS "${_asciichat_ssp_nonshared}")
