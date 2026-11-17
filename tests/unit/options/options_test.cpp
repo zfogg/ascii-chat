@@ -752,13 +752,23 @@ TEST_CASE("options::valid_palettes", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
-  char *valid_palettes[] = {"standard", "blocks", "digital", "minimal", "cool", "custom"};
-
-  for (int i = 0; i < 6; i++) {
-    char *argv[] = {"program", "client", "--palette", valid_palettes[i], NULL};
-    int result = test_options_init_with_fork(argv, 4, true);
+  const auto expect_valid = [](std::initializer_list<const char *> args) {
+    auto argv = make_argv(args);
+    const int result = test_options_init_with_fork(argv.data(), static_cast<int>(argv.size() - 1), true);
+    if (result != 0) {
+      asciichat_error_context_t error{};
+      if (HAS_ERRNO(&error))
+        INFO(error.context_message);
+    }
     REQUIRE(result == 0);
-  }
+  };
+
+  expect_valid({"--renderer", "luminance", "--palette", "standard", "client"});
+  expect_valid({"--renderer", "luminance", "--palette", "blocks", "--utf8", "true", "client"});
+  expect_valid({"--renderer", "luminance", "--palette", "digital", "--utf8", "true", "client"});
+  expect_valid({"--renderer", "luminance", "--palette", "minimal", "client"});
+  expect_valid({"--renderer", "luminance", "--palette", "cool", "--utf8", "true", "client"});
+  expect_valid({"--renderer", "luminance", "--palette", "custom", "--palette-chars", "@#", "client"});
 
   restore_options(&backup);
 }
