@@ -279,7 +279,9 @@ bool has_action_flag(void) {
  * @param out_takes_optional_arg OUTPUT: true if the option takes an optional argument
  * @return true if this is a binary-level option
  */
-static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_arg, bool *out_takes_optional_arg) {
+static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_arg, bool *out_takes_optional_arg,
+                                             void *user_data) {
+  (void)user_data;
   if (!arg) {
     SET_ERRNO(ERROR_INVALID_PARAM, "arg is null");
     return false;
