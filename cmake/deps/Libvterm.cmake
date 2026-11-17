@@ -43,7 +43,12 @@ if(EMSCRIPTEN OR WIN32 OR USE_MUSL OR PLATFORM_IOS OR ASCIICHAT_BUILD_DEPS_FROM_
             target_compile_options(asciichat-vterm PRIVATE -msimd128)
         endif()
         if(USE_MUSL)
-            target_compile_options(asciichat-vterm PRIVATE -nostdlibinc "--target=${MUSL_TARGET}")
+            # Clang needs an explicit target and its libc header-isolation flag;
+            # musl-gcc already selects the target and uses GCC's -nostdinc.
+            if(CMAKE_C_COMPILER_ID STREQUAL "Clang"
+               OR CMAKE_C_COMPILER MATCHES "(^|[/\\\\])clang(\\.exe)?$")
+                target_compile_options(asciichat-vterm PRIVATE -nostdlibinc "--target=${MUSL_TARGET}")
+            endif()
             target_include_directories(asciichat-vterm SYSTEM PRIVATE "${MUSL_INCLUDE_DIR}" "${KERNEL_HEADERS_DIR}")
         endif()
         set_target_properties(asciichat-vterm PROPERTIES C_STANDARD 99 POSITION_INDEPENDENT_CODE ON)
