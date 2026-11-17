@@ -1080,12 +1080,12 @@ GENERATE_OPTIONS_TEST(
 /* Converted looped palette test into specific GENERATE_OPTIONS_TEST cases above. */
 
 GENERATE_OPTIONS_TEST(
-    test_render_mode_fg_alias, ARGV_LIST("client", "--render-mode", "fg"), true, { cr_assert_eq(opts->render_mode, RENDER_MODE_FOREGROUND); },
-    { cr_assert_eq(exit_code, 0, "fg alias should not cause exit"); })
+    test_render_mode_fg_alias, ARGV_LIST("client", "--render-mode", "fg"), true, { REQUIRE(opts->render_mode == RENDER_MODE_FOREGROUND); },
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    test_render_mode_bg_alias, ARGV_LIST("client", "--render-mode", "bg"), true, { cr_assert_eq(opts->render_mode, RENDER_MODE_BACKGROUND); },
-    { cr_assert_eq(exit_code, 0, "bg alias should not cause exit"); })
+    test_render_mode_bg_alias, ARGV_LIST("client", "--render-mode", "bg"), true, { REQUIRE(opts->render_mode == RENDER_MODE_BACKGROUND); },
+    { REQUIRE(exit_code == 0); })
 
 // NOTE: --log-file is now a global option handled at binary level, not mode-specific
 // GENERATE_OPTIONS_TEST(
@@ -1096,18 +1096,18 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(
     test_webcam_index_only, ARGV_LIST("client", "-c", "5"), true,
     {
-      cr_assert_eq(opts->webcam_index, 5);
-      cr_assert_eq(opts->flip_x, true); // Should remain default
+      REQUIRE(opts->webcam_index == 5);
+      REQUIRE(opts->flip_x == true);
     },
-    { cr_assert_eq(exit_code, 0, "webcam index should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
     test_webcam_flip_only, ARGV_LIST("client", "--flip-x"), true,
     {
-      cr_assert_eq(opts->webcam_index, 0); // Should remain default
-      cr_assert_eq(opts->flip_x, true);
+      REQUIRE(opts->webcam_index == 0);
+      REQUIRE(opts->flip_x == true);
     },
-    { cr_assert_eq(exit_code, 0, "webcam flip should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 /* ============================================================================
  * Server-specific Tests
@@ -1116,15 +1116,15 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(
     test_server_basic_options, ARGV_LIST("client", "127.0.0.1:8080", "--width=110", "--height=70"), true,
     {
-      cr_assert_str_eq(opts->address, "127.0.0.1");
-      cr_assert_eq(opts->port, 8080);
+      REQUIRE(std::strcmp(opts->address, "127.0.0.1") == 0);
+      REQUIRE(opts->port == 8080);
       // Server should use default values for client-only options
-      cr_assert_eq(opts->width, 110);      // Should use default width
-      cr_assert_eq(opts->height, 70);      // Should use default height
-      cr_assert_eq(opts->webcam_index, 0); // Should use default
-      cr_assert_eq(opts->flip_x, true);    // Should use default
+      REQUIRE(opts->width == 110);
+      REQUIRE(opts->height == 70);
+      REQUIRE(opts->webcam_index == 0);
+      REQUIRE(opts->flip_x == true);
     },
-    { cr_assert_eq(exit_code, 0, "server basic options should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
     test_server_palette_options, ARGV_LIST("client", "--palette", "blocks", "--palette-chars", "0123456789"), true,
