@@ -953,7 +953,7 @@ GENERATE_OPTIONS_TEST(
     true,
     {
       // Verify ALL values
-      cr_assert_str_eq(opts->address, "10.0.0.1");
+      REQUIRE(std::strcmp(opts->address, "10.0.0.1") == 0);
       REQUIRE(opts->port == 9999);
       REQUIRE(opts->width == 200);
       REQUIRE(opts->height == 100);
@@ -966,10 +966,10 @@ GENERATE_OPTIONS_TEST(
       REQUIRE(opts->stretch == 1);
       // opts->quiet removed - now a global option
       REQUIRE(opts->snapshot_mode == 1);
-      cr_assert_float_eq(opts->snapshot_delay, 5.0f, 0.01);
+      REQUIRE(std::fabs(opts->snapshot_delay - 5.0f) <= 0.01f);
       // opts->log_file removed - now a global option
       REQUIRE(opts->encrypt_enabled == 1);
-      cr_assert_str_eq(opts->encrypt_key, "testkey123");
+      REQUIRE(std::strcmp(opts->encrypt_key, "testkey123") == 0);
       // Should be enabled by color-mode
       REQUIRE(opts->auto_width == 0);
       REQUIRE(opts->auto_height == 0);
@@ -983,7 +983,7 @@ GENERATE_OPTIONS_TEST(
     ARGV_LIST("server", "0.0.0.0", "--port=12345", "--encrypt"), false,
     {
       // Verify server values
-      cr_assert_str_eq(opts->address, "0.0.0.0");
+      REQUIRE(std::strcmp(opts->address, "0.0.0.0") == 0);
       REQUIRE(opts->port == 12345);
       // Note: --audio is not supported for server mode
       // opts->log_file removed - now a global option
