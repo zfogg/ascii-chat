@@ -66,8 +66,8 @@ foreach(_libplatform_target IN ITEMS libplatform libplatform-objects)
             "${_ascii_chat_repo_root}/deps/ascii-chat-deps/yyjson/src"
             "${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc"
             "${_ascii_chat_repo_root}/deps/ascii-chat-deps/gotel/c/include"
-            "${CMAKE_BINARY_DIR}/_deps/gotel/otlp_c-src/include"
-            "${CMAKE_BINARY_DIR}/_deps/gotel/sequel-src/include"
+            "${ASCIICHAT_DEPS_CACHE_DIR}/gotel/otlp_c-src/include"
+            "${ASCIICHAT_DEPS_CACHE_DIR}/gotel/sequel-src/include"
             ${SQLITE3_INCLUDE_DIRS})
         target_compile_definitions(${_libplatform_target} PRIVATE GOTEL_WITH_SQLITE=1)
         if(TARGET libsodium-musl)
