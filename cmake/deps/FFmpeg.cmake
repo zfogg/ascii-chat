@@ -136,9 +136,11 @@ if(USE_MUSL)
     set(_ffmpeg_libs "-lm ${_ffmpeg_runtime}/libc++.a ${_ffmpeg_runtime}/libc++abi.a ${_ffmpeg_runtime}/libunwind.a")
     set(_ffmpeg_ldflags "-L${X264_PREFIX}/lib")
     set(_ffmpeg_codec_flags --enable-encoder=libx264 --enable-libx264)
+    set(_ffmpeg_dependencies)
     if(X265_FOUND)
         string(APPEND _ffmpeg_ldflags " -L${X265_PREFIX}/lib")
         list(APPEND _ffmpeg_codec_flags --enable-encoder=libx265 --enable-libx265)
+        list(APPEND _ffmpeg_dependencies asciichat-x265-stage)
     endif()
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
         string(APPEND _ffmpeg_ldflags " -mno-outline-atomics -nodefaultlibs")
@@ -169,7 +171,7 @@ if(USE_MUSL)
         BUILD_COMMAND ${_ffmpeg_env} make -j8
         INSTALL_COMMAND ${_ffmpeg_env} make install
         INSTALL_BYPRODUCTS ${_ffmpeg_archives}
-        DEPENDS asciichat-x265-stage
+        DEPENDS ${_ffmpeg_dependencies}
         LOG_CONFIGURE TRUE LOG_BUILD TRUE LOG_INSTALL TRUE LOG_OUTPUT_ON_FAILURE TRUE)
     add_library(asciichat-ffmpeg INTERFACE IMPORTED GLOBAL)
     set_target_properties(asciichat-ffmpeg PROPERTIES
