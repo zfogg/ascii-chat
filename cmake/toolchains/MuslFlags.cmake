@@ -9,6 +9,17 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
         set(_asciichat_gcc_toolchain TRUE)
     endif()
     if(_asciichat_gcc_toolchain)
+        if(ASCIICHAT_DEPS_CACHE_DIR AND (NOT EXISTS "${MUSL_LIBSTDCPP_INCLUDE_DIR}/string"
+                OR NOT IS_DIRECTORY "${MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR}"))
+            file(GLOB _asciichat_gcc_stdcpp_roots LIST_DIRECTORIES true
+                "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libstdcxx/usr/include/c++/*")
+            list(SORT _asciichat_gcc_stdcpp_roots)
+            list(GET _asciichat_gcc_stdcpp_roots 0 MUSL_LIBSTDCPP_INCLUDE_DIR)
+            file(GLOB _asciichat_gcc_target_roots LIST_DIRECTORIES true
+                "${MUSL_LIBSTDCPP_INCLUDE_DIR}/*-linux-musl")
+            list(SORT _asciichat_gcc_target_roots)
+            list(GET _asciichat_gcc_target_roots 0 MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
+        endif()
         string(APPEND _c " -isystem ${MUSL_INCLUDE_DIR}")
     else()
         string(APPEND _c " -nostdlibinc -isystem ${MUSL_INCLUDE_DIR}")
