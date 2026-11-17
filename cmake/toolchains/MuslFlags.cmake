@@ -22,7 +22,7 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
     # after the C++ implementation headers instead.
     set(_cxx "-fno-lto -ftls-model=global-dynamic -fPIC -idirafter ${MUSL_INCLUDE_DIR}")
     if(_asciichat_gcc_toolchain AND MUSL_LIBSTDCPP_INCLUDE_DIR AND MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
-        string(APPEND _cxx " -isystem ${MUSL_INCLUDE_DIR}")
+        string(APPEND _cxx " -isystem ${MUSL_LIBSTDCPP_INCLUDE_DIR} -isystem ${MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR}")
     endif()
     if(KERNEL_HEADERS_DIR)
         string(APPEND _cxx " -idirafter ${KERNEL_HEADERS_DIR}")
