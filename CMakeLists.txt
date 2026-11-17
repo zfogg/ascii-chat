@@ -428,6 +428,11 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
   if(RECAST_HOST_CXX_INCLUDE_DIRS)
     target_include_directories(recast-objects BEFORE PRIVATE ${RECAST_HOST_CXX_INCLUDE_DIRS})
     target_include_directories(recast BEFORE PRIVATE ${RECAST_HOST_CXX_INCLUDE_DIRS})
+    foreach(_recast_llvm_target recast-llvm-support recast-libclang)
+      get_target_property(_recast_llvm_includes "${_recast_llvm_target}" INTERFACE_INCLUDE_DIRECTORIES)
+      set_property(TARGET "${_recast_llvm_target}" PROPERTY INTERFACE_INCLUDE_DIRECTORIES
+        "${RECAST_HOST_CXX_INCLUDE_DIRS};${_recast_llvm_includes}")
+    endforeach()
   endif()
   if(USE_MUSL)
     set(CMAKE_EXE_LINKER_FLAGS "${_asciichat_recast_exe_linker_flags}")
