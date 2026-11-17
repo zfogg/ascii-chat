@@ -402,10 +402,6 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
     set(_asciichat_recast_saved_cxx_flags "${CMAKE_CXX_FLAGS}")
     set(CMAKE_C_FLAGS "")
     set(CMAKE_CXX_FLAGS "")
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND MUSL_LIBSTDCPP_INCLUDE_DIR
-       AND MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
-      set(CMAKE_CXX_FLAGS "-isystem ${MUSL_LIBSTDCPP_INCLUDE_DIR} -isystem ${MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR}")
-    endif()
     set(CMAKE_EXE_LINKER_FLAGS "")
     set(CMAKE_SHARED_LINKER_FLAGS "")
     set(CMAKE_MODULE_LINKER_FLAGS "")
@@ -416,6 +412,15 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
     "${CMAKE_SOURCE_DIR}/deps/recast"
     "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build"
     EXCLUDE_FROM_ALL)
+  if(USE_MUSL AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+     AND MUSL_LIBSTDCPP_INCLUDE_DIR AND MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
+    # LLVM's imported target exposes /usr/include. Put the matching C++
+    # headers before it so libstdc++'s include_next reaches the host C headers.
+    target_include_directories(recast-objects BEFORE PRIVATE
+      "${MUSL_LIBSTDCPP_INCLUDE_DIR}" "${MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR}")
+    target_include_directories(recast BEFORE PRIVATE
+      "${MUSL_LIBSTDCPP_INCLUDE_DIR}" "${MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR}")
+  endif()
   if(USE_MUSL)
     set(CMAKE_EXE_LINKER_FLAGS "${_asciichat_recast_exe_linker_flags}")
     set(CMAKE_SHARED_LINKER_FLAGS "${_asciichat_recast_shared_linker_flags}")
