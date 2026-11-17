@@ -36,14 +36,16 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
     set(_cxx "-fno-lto -ftls-model=global-dynamic -fPIC")
     if(_asciichat_gcc_toolchain)
         string(APPEND _cxx " -nostdinc -nostdinc++")
-        string(APPEND _cxx " -isystem ${MUSL_INCLUDE_DIR}"
-            " -isystem ${MUSL_GCC_BUILTIN_INCLUDE_DIR}"
+        string(APPEND _cxx " -isystem ${MUSL_GCC_BUILTIN_INCLUDE_DIR}"
             " -isystem ${MUSL_GCC_FIXED_INCLUDE_DIR}")
     else()
         string(APPEND _cxx " -idirafter ${MUSL_INCLUDE_DIR}")
     endif()
     if(_asciichat_gcc_toolchain AND MUSL_LIBSTDCPP_INCLUDE_DIR AND MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
         string(APPEND _cxx " -isystem ${MUSL_LIBSTDCPP_INCLUDE_DIR} -isystem ${MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR}")
+    endif()
+    if(_asciichat_gcc_toolchain)
+        string(APPEND _cxx " -isystem ${MUSL_INCLUDE_DIR}")
     endif()
     if(KERNEL_HEADERS_DIR)
         string(APPEND _cxx " -idirafter ${KERNEL_HEADERS_DIR}")
