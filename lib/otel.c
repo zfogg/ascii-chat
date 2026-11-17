@@ -122,9 +122,15 @@ static _Thread_local ascii_otel_scope_t *current_scope;
 static uint64_t shutdown_timeout_ns;
 static atomic_uint_fast64_t exporter_retries, exporter_batches;
 static atomic_size_t exporter_queue_capacity;
-void ascii_otel_test_set_host(gotel_host_t *value) { atomic_ptr_store(&host, value); }
-unsigned ascii_otel_test_reader_count(void) { return atomic_load(&readers); }
-gotel_scope_t *ascii_otel_test_command_scope(void) { return &command_scope; }
+void ascii_otel_test_set_host(gotel_host_t *value) {
+  atomic_ptr_store(&host, value);
+}
+unsigned ascii_otel_test_reader_count(void) {
+  return atomic_load(&readers);
+}
+gotel_scope_t *ascii_otel_test_command_scope(void) {
+  return &command_scope;
+}
 
 static void exporter_event(void *context, const otlp_event_t *event) {
   (void)context;
