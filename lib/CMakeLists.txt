@@ -649,6 +649,8 @@ if(WIN32 AND NOT BUILD_SHARED_LIBS)
         "${FFMPEG_LIBRARIES}")
     string(REPLACE "debug;strmiids;" "debug;" FFMPEG_LIBRARIES
         "${FFMPEG_LIBRARIES}")
+    set(FFMPEG_LIBRARIES "${FFMPEG_LIBRARIES}" CACHE STRING
+        "FFmpeg libraries without redundant static Windows media GUID support" FORCE)
 endif()
 
 # Add WebRTC AEC3 include directories BEFORE creating the module
