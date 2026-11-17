@@ -214,6 +214,17 @@ if(TARGET gotel)
         "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/src")
 endif()
 
+# gotel's public SQL header includes sequel.h directly.  The sequel target's
+# include directory is not exposed by older gotel revisions, so propagate the
+# target-owned header directory to project consumers before recast compiles
+# sources that include gotel/gotel.h.
+if(TARGET sequel)
+    get_target_property(_asciichat_sequel_source_dir sequel SOURCE_DIR)
+    if(EXISTS "${_asciichat_sequel_source_dir}/include")
+        include_directories("${_asciichat_sequel_source_dir}/include")
+    endif()
+endif()
+
 if(USE_MUSL AND TARGET gotel_cxx AND ALPINE_LIBCXX_INCLUDE_DIR)
     target_include_directories(gotel_cxx SYSTEM PRIVATE "${ALPINE_LIBCXX_INCLUDE_DIR}")
 endif()

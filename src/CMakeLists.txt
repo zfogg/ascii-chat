@@ -68,6 +68,13 @@ endif()
 
 if(BUILD_EXECUTABLES)
 add_executable(ascii-chat ${APP_SRCS})
+
+# PortAudio's static WDM-KS backend and the Windows SDK strmiids library both
+# provide the same COM GUID constants. Keep strmiids because FFmpeg requires
+# IID_ICodecAPI, and let lld resolve the equivalent duplicate definitions.
+if(WIN32 AND NOT BUILD_SHARED_LIBS)
+    target_link_options(ascii-chat PRIVATE "LINKER:/force:multiple")
+endif()
 if(WIN32)
     target_link_libraries(ascii-chat PRIVATE shell32)
 endif()

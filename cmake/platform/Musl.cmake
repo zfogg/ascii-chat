@@ -19,17 +19,21 @@
 # This section must run before project() to set CMAKE_C_COMPILER
 # =============================================================================
 
+include(CMakeDependentOption)
+
 function(configure_musl_pre_project BUILD_TYPE_PARAM)
-    if(NOT CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
-        set(USE_MUSL OFF CACHE BOOL "musl is Linux-only" FORCE)
-        return()
-    endif()
     set(_default OFF)
     execute_process(COMMAND uname -m OUTPUT_VARIABLE _host_arch OUTPUT_STRIP_TRAILING_WHITESPACE)
     if(_host_arch STREQUAL "x86_64" AND BUILD_TYPE_PARAM MATCHES "^(Release|RelWithDebInfo)$")
         set(_default ON)
     endif()
-    option(USE_MUSL "Build against musl libc with Clang" ${_default})
+    cmake_dependent_option(
+        USE_MUSL
+        "Build against musl libc with Clang"
+        ${_default}
+        "CMAKE_HOST_SYSTEM_NAME STREQUAL Linux"
+        OFF
+    )
     if(USE_MUSL AND NOT CMAKE_TOOLCHAIN_FILE)
         get_filename_component(_musl_toolchain "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../toolchains/Musl.cmake" ABSOLUTE)
         set(CMAKE_TOOLCHAIN_FILE "${_musl_toolchain}" CACHE FILEPATH "Clang musl toolchain" FORCE)

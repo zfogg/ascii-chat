@@ -17,10 +17,7 @@ typedef enum {
 } ascii_otel_metric_t;
 #ifndef __EMSCRIPTEN__
 #include <gotel/gotel.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <gotel/sqlite.h>
 /**
  * @brief ascii otel scope is intentionally a small, concrete record. Fields such as `scope`, `retained`, `previous`
  * give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding
@@ -95,10 +92,6 @@ int ascii_otel_sqlite_prepare(sqlite3 *db, const char *sql, sqlite3_stmt **state
 #endif
 
 // Test executables may link the ordinary library; never initialize its exporter.
-#if !defined(ASCIICHAT_OTEL_IMPLEMENTATION) && defined(TESTING)
+#if !defined(ASCIICHAT_OTEL_IMPLEMENTATION) && (defined(TESTING) || defined(CRITERION_TEST) || defined(__CRITERION__))
 #define ascii_otel_init(mode, argc, argv) ((void)(mode), (void)(argc), (void)(argv), ASCIICHAT_OK)
-#endif
-
-#ifdef __cplusplus
-}
 #endif
