@@ -39,6 +39,14 @@ if(CMAKE_C_COMPILER MATCHES "(^|/)(gcc|g(cc)?-[0-9]+)$")
         list(GET _asciichat_libstdcpp_target_roots 0 MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
     endif()
     set(_asciichat_ssp_nonshared "${MUSL_GCC_RUNTIME_DIR}/libssp_nonshared.a")
+    execute_process(COMMAND "${_asciichat_musl_gcc}" -print-file-name=include
+        OUTPUT_VARIABLE MUSL_GCC_BUILTIN_INCLUDE_DIR OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY)
+    if(NOT IS_DIRECTORY "${MUSL_GCC_BUILTIN_INCLUDE_DIR}")
+        message(FATAL_ERROR "Cached GCC builtin include directory was not found: ${MUSL_GCC_BUILTIN_INCLUDE_DIR}")
+    endif()
+    set(MUSL_GCC_FIXED_INCLUDE_DIR
+        "${MUSL_GCC_BUILTIN_INCLUDE_DIR}/../include-fixed")
     if(NOT EXISTS "${_asciichat_ssp_nonshared}")
         find_program(_asciichat_ar NAMES ar llvm-ar REQUIRED)
         file(MAKE_DIRECTORY "${MUSL_GCC_RUNTIME_DIR}")
