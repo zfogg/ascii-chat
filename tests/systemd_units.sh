@@ -21,6 +21,9 @@ for unit in "${units[@]}"; do
   ! grep -Eq -- '--(color|splash-screen|no-check-update|otel-endpoint|log-file)' "$file"
   grep -Eq "^ExecStart=@ASCII_CHAT_EXECUTABLE@ ${expected_mode}( |$)" "$file"
 done
+mcp_unit="$root/share/systemd/ascii-chat-mcp-server.service"
+grep -Fxq 'ExecStart=@ASCII_CHAT_EXECUTABLE@ mcp-server --transport=http --address=127.0.0.1 --address6=::1' "$mcp_unit"
+grep -Fxq 'WantedBy=default.target' "$mcp_unit"
 test -x "$root/scripts/install-systemd-confs.sh"
 "$root/scripts/install-systemd-confs.sh" --help >/dev/null
 echo "systemd unit checks passed"
