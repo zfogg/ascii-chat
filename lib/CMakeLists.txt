@@ -545,6 +545,19 @@ create_ascii_chat_module(ascii-chat-simd "${SIMD_SRCS}")
 # FFmpeg headers are configured globally so library and application targets use
 # the same version as the linked libraries.
 
+# Static PortAudio provides the Windows media GUID definitions that static
+# FFmpeg's discovery module also reports through `strmiids`. Remove that
+# redundant system library before any target consumes the FFmpeg link set.
+if(WIN32 AND NOT BUILD_SHARED_LIBS)
+    list(REMOVE_ITEM FFMPEG_LIBRARIES strmiids strmiids.lib)
+    string(REPLACE "optimized;strmiids;" "optimized;" FFMPEG_LIBRARIES
+        "${FFMPEG_LIBRARIES}")
+    string(REPLACE "debug;strmiids;" "debug;" FFMPEG_LIBRARIES
+        "${FFMPEG_LIBRARIES}")
+    set(FFMPEG_LIBRARIES "${FFMPEG_LIBRARIES}" CACHE STRING
+        "FFmpeg libraries without redundant static Windows media GUID support" FORCE)
+endif()
+
 create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
 # The defer transformer parses video sources from the compilation database
 # before external FFmpeg headers are installed; keep this target's include
@@ -639,20 +652,6 @@ endif()
 
 # -----------------------------------------------------------------------------
 # Module 6: Audio Processing (depends on: util, platform, data-structures)
-# Static PortAudio already supplies the Windows media GUID definitions that
-# static FFmpeg's discovery module also reports through `strmiids`.  Keep the
-# FFmpeg codecs and system dependencies, but remove that duplicate library
-# before propagating FFmpeg's link set to the application targets.
-if(WIN32 AND NOT BUILD_SHARED_LIBS)
-    list(REMOVE_ITEM FFMPEG_LIBRARIES strmiids strmiids.lib)
-    string(REPLACE "optimized;strmiids;" "optimized;" FFMPEG_LIBRARIES
-        "${FFMPEG_LIBRARIES}")
-    string(REPLACE "debug;strmiids;" "debug;" FFMPEG_LIBRARIES
-        "${FFMPEG_LIBRARIES}")
-    set(FFMPEG_LIBRARIES "${FFMPEG_LIBRARIES}" CACHE STRING
-        "FFmpeg libraries without redundant static Windows media GUID support" FORCE)
-endif()
-
 # Add WebRTC AEC3 include directories BEFORE creating the module
 if(TARGET webrtc_audio_processing)
     get_target_property(WEBRTC_INCLUDES webrtc_audio_processing INTERFACE_INCLUDE_DIRECTORIES)
