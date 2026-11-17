@@ -388,10 +388,41 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
    (NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}"))
   set(BUILD_TESTING OFF CACHE BOOL "Disable Recast tests in ascii-chat" FORCE)
   set(RECAST_BUILD_DOCS OFF CACHE BOOL "Disable Recast docs in ascii-chat" FORCE)
+  # Recast is a host-side build tool. A musl application uses static-pie
+  # linker flags, but the installed LLVM/libclang used by Recast is a host
+  # shared library on Linux. Do not apply the application CRT/link policy to
+  # this executable; the final ascii-chat targets retain the musl settings.
+  if(USE_MUSL)
+    set(_asciichat_recast_exe_linker_flags "${CMAKE_EXE_LINKER_FLAGS}")
+    set(_asciichat_recast_shared_linker_flags "${CMAKE_SHARED_LINKER_FLAGS}")
+    set(_asciichat_recast_module_linker_flags "${CMAKE_MODULE_LINKER_FLAGS}")
+    set(_asciichat_recast_c_standard_libraries "${CMAKE_C_STANDARD_LIBRARIES}")
+    set(_asciichat_recast_cxx_standard_libraries "${CMAKE_CXX_STANDARD_LIBRARIES}")
+    string(REPLACE "-static-pie" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+    string(REPLACE "-nostdlib" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+    string(REPLACE "-static-pie" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
+    string(REPLACE "-nostdlib" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
+    string(REPLACE "-static-pie" "" CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS}")
+    string(REPLACE "-nostdlib" "" CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS}")
+    set(CMAKE_C_STANDARD_LIBRARIES "")
+    set(CMAKE_CXX_STANDARD_LIBRARIES "")
+  endif()
   add_subdirectory(
     "${CMAKE_SOURCE_DIR}/deps/recast"
     "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build"
     EXCLUDE_FROM_ALL)
+  if(USE_MUSL)
+    set(CMAKE_EXE_LINKER_FLAGS "${_asciichat_recast_exe_linker_flags}")
+    set(CMAKE_SHARED_LINKER_FLAGS "${_asciichat_recast_shared_linker_flags}")
+    set(CMAKE_MODULE_LINKER_FLAGS "${_asciichat_recast_module_linker_flags}")
+    set(CMAKE_C_STANDARD_LIBRARIES "${_asciichat_recast_c_standard_libraries}")
+    set(CMAKE_CXX_STANDARD_LIBRARIES "${_asciichat_recast_cxx_standard_libraries}")
+    unset(_asciichat_recast_exe_linker_flags)
+    unset(_asciichat_recast_shared_linker_flags)
+    unset(_asciichat_recast_module_linker_flags)
+    unset(_asciichat_recast_c_standard_libraries)
+    unset(_asciichat_recast_cxx_standard_libraries)
+  endif()
 endif()
 if(RECAST_BACKEND STREQUAL "NATIVE" AND TARGET recast)
   if(NOT TARGET recast-native)
