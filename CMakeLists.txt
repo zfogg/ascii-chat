@@ -425,11 +425,12 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
     "${CMAKE_SOURCE_DIR}/deps/recast"
     "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build"
     EXCLUDE_FROM_ALL)
-  if(RECAST_HOST_CXX_INCLUDE_DIRS)
+  if(DEFINED CACHE{RECAST_HOST_CXX_INCLUDE_DIRS})
+    set(_asciichat_recast_host_dirs "$CACHE{RECAST_HOST_CXX_INCLUDE_DIRS}")
     foreach(_recast_target recast-objects recast)
       get_target_property(_recast_include_dirs "${_recast_target}" INCLUDE_DIRECTORIES)
       set_property(TARGET "${_recast_target}" PROPERTY INCLUDE_DIRECTORIES
-        "${RECAST_HOST_CXX_INCLUDE_DIRS};${_recast_include_dirs}")
+        "${_asciichat_recast_host_dirs};${_recast_include_dirs}")
     endforeach()
     foreach(_recast_llvm_target recast-llvm-support recast-libclang)
       get_target_property(_recast_llvm_includes "${_recast_llvm_target}" INTERFACE_INCLUDE_DIRECTORIES)
