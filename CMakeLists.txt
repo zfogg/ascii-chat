@@ -427,10 +427,11 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
   if(MUSL_LIBSTDCPP_INCLUDE_DIR AND MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
     # LLVM's imported target exposes /usr/include. Put the matching C++
     # headers before it so libstdc++'s include_next reaches the host C headers.
-    target_include_directories(recast-objects BEFORE PRIVATE
-      "${MUSL_LIBSTDCPP_INCLUDE_DIR}" "${MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR}")
-    target_include_directories(recast BEFORE PRIVATE
-      "${MUSL_LIBSTDCPP_INCLUDE_DIR}" "${MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR}")
+    foreach(_recast_target recast-objects recast)
+      get_target_property(_recast_include_dirs "${_recast_target}" INCLUDE_DIRECTORIES)
+      set_property(TARGET "${_recast_target}" PROPERTY INCLUDE_DIRECTORIES
+        "${MUSL_LIBSTDCPP_INCLUDE_DIR};${MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR};${_recast_include_dirs}")
+    endforeach()
   endif()
   if(USE_MUSL)
     set(CMAKE_EXE_LINKER_FLAGS "${_asciichat_recast_exe_linker_flags}")
