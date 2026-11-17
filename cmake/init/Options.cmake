@@ -124,8 +124,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
     set(_asciichat_shared_deps_default ON)
 endif()
 if(NOT DEFINED BUILD_SHARED_LIBS)
-    set(BUILD_SHARED_LIBS ${_asciichat_shared_deps_default} CACHE BOOL
-        "Build and link shared libraries instead of static libraries")
+    option(BUILD_SHARED_LIBS "Build and link shared libraries instead of static libraries"
+        ${_asciichat_shared_deps_default})
 endif()
 unset(ASCIICHAT_SHARED_DEPS CACHE)
 unset(ASCIICHAT_STATIC_DEPS CACHE)
