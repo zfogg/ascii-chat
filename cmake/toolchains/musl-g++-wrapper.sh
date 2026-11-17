@@ -15,5 +15,5 @@ if [ -z "$gcc_root" ]; then
   exit 127
 fi
 
-export LD_LIBRARY_PATH="$gcc_root/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="$gcc_root/usr/lib:/usr/lib/musl/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 exec "$gcc_root/usr/bin/g++" "$@"
