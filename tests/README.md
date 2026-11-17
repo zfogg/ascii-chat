@@ -1,12 +1,14 @@
 # ascii-chat Test Scripts
 
-This directory contains test runner scripts for ascii-chat.
+This directory contains test runners and native test support for ascii-chat.
 
 ## Scripts
 
 ### `run-docker-tests.ps1` - Docker-Based Test Runner
 
-PowerShell script to run tests via Docker using ctest. This is the recommended way to run tests on Windows or when you need a consistent Linux test environment.
+PowerShell script to run tests via Docker using ctest. Native CTest is the
+preferred runner when the host build is available; Docker remains useful for a
+reproducible Linux environment.
 
 **Usage:**
 
@@ -17,7 +19,7 @@ PowerShell script to run tests via Docker using ctest. This is the recommended w
 # Run specific test category
 ./tests/tools/run-docker-tests.ps1 unit           # All unit tests
 ./tests/tools/run-docker-tests.ps1 integration    # All integration tests
-./tests/tools/run-docker-tests.ps1 performance    # All performance tests
+./tests/tools/run-docker-tests.ps1 benchmarks     # All benchmark tests
 
 # Run tests matching a pattern
 ./tests/tools/run-docker-tests.ps1 -Filter "buffer"
@@ -50,7 +52,7 @@ ctest --test-dir build --output-on-failure --parallel 0
 # Run specific category using labels
 ctest --test-dir build --label-regex "^unit$" --output-on-failure
 ctest --test-dir build --label-regex "^integration$" --output-on-failure
-ctest --test-dir build --label-regex "^performance$" --output-on-failure
+ctest --test-dir build --label-regex "^benchmarks$" --output-on-failure
 
 # Run specific test by name pattern
 ctest --test-dir build -R "buffer-ownership" --output-on-failure
@@ -63,7 +65,7 @@ ctest --test-dir build --output-on-failure --verbose
 
 - **`unit`** - Unit tests for individual components
 - **`integration`** - Multi-component integration tests
-- **`performance`** - Performance and stress tests
+- **`benchmarks`** - Catch2 benchmark cases and performance/stress tests
 
 ## Docker Testing
 
@@ -98,5 +100,5 @@ Tests are run automatically via GitHub Actions using CTest with Catch2 JUnit XML
 - **Name Filtering**: Use `-R` to filter by test name pattern
 - **XML Output**: Test adapters generate XML in `build/Testing/xml/`; CTest writes `Testing/ctest-results.xml`
 - **Catch2 Tags**: Run a focused suite directly with a Catch2 tag/spec, such as `unit_tests "[network]"`.
-- **Benchmarks**: Run benchmark labels separately and serially with `ctest --test-dir build -L benchmark --parallel 1`.
+- **Benchmarks**: Run benchmark labels separately and serially with `ctest --test-dir build -L benchmarks --parallel 1`.
 - **Docker Support**: Consistent test environment via Docker
