@@ -466,7 +466,7 @@ TEST_CASE("options::color_mode_validation", "[options][parameterized]") {
   // Test exit behavior with fork
   int exit_code = test_options_init_with_fork(argv, argc, true);
 
-  cr_assert_eq(exit_code, tc.expected_exit_code, "%s should %s", tc.description, tc.should_succeed ? "not cause exit" : "cause exit");
+  REQUIRE(exit_code == tc.expected_exit_code);
 
     restore_options(&backup);
   }
@@ -489,7 +489,7 @@ TEST_CASE("options::valid_render_modes", "[options]") {
   for (int i = 0; i < 5; i++) {
     char *argv[] = {"program", "client", "--render-mode", valid_modes[i], NULL};
     int result = test_options_init_with_fork(argv, 4, true);
-    cr_assert_eq(result, 0, "Valid render mode %s should not cause exit", valid_modes[i]);
+    REQUIRE(result == 0);
   }
 
   restore_options(&backup);
@@ -501,7 +501,7 @@ TEST_CASE("options::invalid_render_modes", "[options]") {
   for (int i = 0; i < 5; i++) {
     char *argv[] = {"program", "client", "--render-mode", invalid_modes[i], NULL};
     int result = test_options_init_with_fork(argv, 4, true);
-    cr_assert_eq(result, 1, "Invalid render mode %s should cause exit with code 1", invalid_modes[i]);
+    REQUIRE(result == 1);
   }
 }
 
@@ -518,7 +518,7 @@ TEST_CASE("options::valid_palettes", "[options]") {
   for (int i = 0; i < 6; i++) {
     char *argv[] = {"program", "client", "--palette", valid_palettes[i], NULL};
     int result = test_options_init_with_fork(argv, 4, true);
-    cr_assert_eq(result, 0, "Valid palette %s should not cause exit", valid_palettes[i]);
+    REQUIRE(result == 0);
   }
 
   restore_options(&backup);
@@ -530,7 +530,7 @@ TEST_CASE("options::invalid_palettes", "[options]") {
   for (int i = 0; i < 5; i++) {
     char *argv[] = {"program", "client", "--palette", invalid_palettes[i], NULL};
     int result = test_options_init_with_fork(argv, 4, true);
-    cr_assert_eq(result, 1, "Invalid palette %s should cause exit with code 1", invalid_palettes[i]);
+    REQUIRE(result == 1);
   }
 }
 
@@ -566,7 +566,7 @@ TEST_CASE("options::valid_snapshot_delays", "[options]") {
     // snapshot-delay requires --snapshot to be set
     char *argv[] = {"program", "client", "--snapshot", "--snapshot-delay", valid_delays[i], NULL};
     int result = test_options_init_with_fork(argv, 5, true);
-    cr_assert_eq(result, 0, "Valid snapshot delay %s should not cause exit", valid_delays[i]);
+    REQUIRE(result == 0);
   }
 
   restore_options(&backup);
@@ -585,7 +585,7 @@ TEST_CASE("options::invalid_snapshot_delays", "[options]") {
     // snapshot-delay requires --snapshot to be set
     char *argv[] = {"program", "client", "--snapshot", "--snapshot-delay", invalid_delays[i], NULL};
     int result = test_options_init_with_fork(argv, 5, true);
-    cr_assert_eq(result, 1, "Invalid snapshot delay %s should cause exit with code 1", invalid_delays[i]);
+    REQUIRE(result == 1);
   }
 
   restore_options(&backup);
