@@ -107,8 +107,8 @@ TEST_CASE("options::explicit_flip_values_survive_mode_parsing", "[options]") {
   char *argv[] = {"program", "mirror", "--test-pattern=0", "--flip-x=false", "--flip-y=true", NULL};
   cr_assert_eq(options_init(5, argv), ASCIICHAT_OK);
   const options_t *opts = options_get();
-  cr_assert_eq(opts->flip_x, false);
-  cr_assert_eq(opts->flip_y, true);
+  REQUIRE((opts->flip_x) == (false));
+  REQUIRE((opts->flip_y) == (true));
 }
 
 TEST_CASE("options::test_pattern_defaults_to_unflipped", "[options]") {
@@ -116,7 +116,7 @@ TEST_CASE("options::test_pattern_defaults_to_unflipped", "[options]") {
   cr_assert_eq(options_init(3, argv), ASCIICHAT_OK);
   const options_t *opts = options_get();
   cr_assert(opts->test_pattern);
-  cr_assert_not(opts->flip_x);
+  REQUIRE_FALSE(opts->flip_x);
 }
 
 TEST_CASE("options::test_pattern_respects_explicit_flip", "[options]") {
@@ -141,25 +141,25 @@ TEST_CASE("options::default_values", "[options]") {
   (void)opts; // Reserved for future validation
 
   // Test default values
-  cr_assert_eq(opts->width, 110);
-  cr_assert_eq(opts->height, 70);
-  cr_assert_eq(opts->auto_width, 1);
-  cr_assert_eq(opts->auto_height, 1);
-  cr_assert_str_eq(opts->address, "localhost");
-  cr_assert_eq(opts->port, 27224);
-  cr_assert_eq(opts->webcam_index, 0);
-  cr_assert_eq(opts->flip_x, true);
-  cr_assert_eq(opts->color_mode, COLOR_MODE_AUTO);
-  cr_assert_eq(opts->render_mode, RENDER_MODE_FOREGROUND);
-  cr_assert_eq(opts->show_capabilities, 0);
-  cr_assert_eq(opts->force_utf8, 0);
-  cr_assert_eq(opts->audio_enabled, 1); // Default changed to true in 8ec7a9f3
-  cr_assert_eq(opts->stretch, 0);
-  cr_assert_eq(opts->quiet, 0);
-  cr_assert_eq(opts->snapshot_mode, 0);
-  cr_assert_eq(opts->encrypt_enabled, 0);
-  cr_assert_eq(opts->palette_type, PALETTE_STANDARD);
-  cr_assert_eq(opts->palette_custom_set, false);
+  REQUIRE((opts->width) == (110));
+  REQUIRE((opts->height) == (70));
+  REQUIRE((opts->auto_width) == (1));
+  REQUIRE((opts->auto_height) == (1));
+  REQUIRE(std::strcmp((opts->address), ("localhost")) == 0);
+  REQUIRE((opts->port) == (27224));
+  REQUIRE((opts->webcam_index) == (0));
+  REQUIRE((opts->flip_x) == (true));
+  REQUIRE((opts->color_mode) == (COLOR_MODE_AUTO));
+  REQUIRE((opts->render_mode) == (RENDER_MODE_FOREGROUND));
+  REQUIRE((opts->show_capabilities) == (0));
+  REQUIRE((opts->force_utf8) == (0));
+  REQUIRE((opts->audio_enabled) == (1)); // Default changed to true in 8ec7a9f3
+  REQUIRE((opts->stretch) == (0));
+  REQUIRE((opts->quiet) == (0));
+  REQUIRE((opts->snapshot_mode) == (0));
+  REQUIRE((opts->encrypt_enabled) == (0));
+  REQUIRE((opts->palette_type) == (PALETTE_STANDARD));
+  REQUIRE((opts->palette_custom_set) == (false));
 
   restore_options(&backup);
 }
@@ -167,71 +167,71 @@ TEST_CASE("options::default_values", "[options]") {
 GENERATE_OPTIONS_TEST_IN_SUITE(
     options, basic_client_options, ARGV_LIST("client", "-x", "100", "-y", "50", "192.168.1.1:8080"), true,
     {
-      cr_assert_str_eq(opts->address, "192.168.1.1");
-      cr_assert_eq(opts->port, 8080);
-      cr_assert_eq(opts->width, 100);
-      cr_assert_eq(opts->height, 50);
-      cr_assert_eq(opts->auto_width, 0);
-      cr_assert_eq(opts->auto_height, 0);
+      REQUIRE(std::strcmp((opts->address), ("192.168.1.1")) == 0);
+      REQUIRE((opts->port) == (8080));
+      REQUIRE((opts->width) == (100));
+      REQUIRE((opts->height) == (50));
+      REQUIRE((opts->auto_width) == (0));
+      REQUIRE((opts->auto_height) == (0));
     },
-    { cr_assert_eq(exit_code, 0, "Basic client options should not exit"); })
+    { REQUIRE((exit_code) == (0)); })
 
 GENERATE_OPTIONS_TEST(
     basic_server_options, ARGV_LIST("server", "-p", "3000", "127.0.0.1"), false,
     {
-      cr_assert_str_eq(opts->address, "127.0.0.1");
-      cr_assert_eq(opts->port, 3000);
+      REQUIRE(std::strcmp((opts->address), ("127.0.0.1")) == 0);
+      REQUIRE((opts->port) == (3000));
       // Server should use default or terminal-detected values for dimensions
       // Since opts->auto_width/opts->auto_height are true by default, the code calls
       // update_dimensions_to_terminal_size() which uses get_terminal_size()
       // - If terminal detection succeeds: uses terminal dimensions
       // - If terminal detection fails: falls back to 80x24 (not OPT_WIDTH_DEFAULT)
       // Rather than hardcode specific values, just verify dimensions are reasonable
-      cr_assert_gt(opts->width, 0, "Width should be positive");
-      cr_assert_gt(opts->height, 0, "Height should be positive");
-      cr_assert_eq(opts->webcam_index, 0);
-      cr_assert_eq(opts->flip_x, true);
+      REQUIRE(opts->width > 0);
+      REQUIRE(opts->height > 0);
+      REQUIRE((opts->webcam_index) == (0));
+      REQUIRE((opts->flip_x) == (true));
     },
-    { cr_assert_eq(exit_code, 0, "Basic server options should not exit"); })
+    { REQUIRE((exit_code) == (0)); })
 
 /* ============================================================================
  * Address and Port Validation Tests
  * ============================================================================ */
 
 GENERATE_OPTIONS_TEST(
-    valid_ipv4_192_168_1_1, ARGV_LIST("client", "192.168.1.1"), true, { cr_assert_str_eq(opts->address, "192.168.1.1"); },
-    { cr_assert_eq(exit_code, 0, "Valid IP 192.168.1.1 should not cause exit"); })
+    valid_ipv4_192_168_1_1, ARGV_LIST("client", "192.168.1.1"), true, { REQUIRE(std::strcmp((opts->address), ("192.168.1.1")) == 0); },
+    { REQUIRE((exit_code) == (0)); })
 
 GENERATE_OPTIONS_TEST(
-    valid_ipv4_127_0_0_1, ARGV_LIST("client", "127.0.0.1"), true, { cr_assert_str_eq(opts->address, "127.0.0.1"); }, { cr_assert_eq(exit_code, 0, "Valid IP 127.0.0.1 should not cause exit"); })
+    valid_ipv4_127_0_0_1, ARGV_LIST("client", "127.0.0.1"), true, { REQUIRE(std::strcmp((opts->address), ("127.0.0.1")) == 0); }, { REQUIRE((exit_code) == (0)); })
 
 GENERATE_OPTIONS_TEST(
-    valid_ipv4_255_255_255_255, ARGV_LIST("client", "255.255.255.255"), true, { cr_assert_str_eq(opts->address, "255.255.255.255"); },
-    { cr_assert_eq(exit_code, 0, "Valid IP 255.255.255.255 should not cause exit"); })
+    valid_ipv4_255_255_255_255, ARGV_LIST("client", "255.255.255.255"), true, { REQUIRE(std::strcmp((opts->address), ("255.255.255.255")) == 0); },
+    { REQUIRE((exit_code) == (0)); })
 
 GENERATE_OPTIONS_TEST(
     invalid_ipv4_octet_too_large, ARGV_LIST("client", "256.1.1.1"), true,
     {
       // This should not be reached since options_init should exit
-      cr_fail("Should not reach this point - invalid IP should cause exit");
+      FAIL("test failure");
     },
-    { cr_assert_eq(exit_code, 1, "Invalid IP 256.1.1.1 should cause exit with code 1"); })
+    { REQUIRE((exit_code) == (1)); })
 
 GENERATE_OPTIONS_TEST(
     invalid_ipv4_too_few_octets, ARGV_LIST("client", "192.168.1"), true,
     {
       // This should not be reached since options_init should exit
-      cr_fail("Should not reach this point - invalid IP should cause exit");
+      FAIL("test failure");
     },
-    { cr_assert_eq(exit_code, 1, "Invalid IP 192.168.1 should cause exit with code 1"); })
+    { REQUIRE((exit_code) == (1)); })
 
 GENERATE_OPTIONS_TEST(
     invalid_ipv4_non_numeric, ARGV_LIST("client", "192.168.1.abc"), true,
     {
       // This should not be reached since options_init should exit
-      cr_fail("Should not reach this point - invalid IP should cause exit");
+      FAIL("test failure");
     },
-    { cr_assert_eq(exit_code, 1, "Invalid IP 192.168.1.abc should cause exit with code 1"); })
+    { REQUIRE((exit_code) == (1)); })
 
 // =============================================================================
 // IP Address Validation Tests - Parameterized (replaces 6 individual tests above)
@@ -261,12 +261,12 @@ TEST_CASE("options::ip_address_validation", "[options][parameterized]") {
 
   // Test option values in main process (only if no exit expected)
   if (tc.should_succeed) {
-    cr_assert_eq(exit_code, 0, "%s should not cause exit", tc.description);
+    REQUIRE(exit_code == 0);
     // Get options from RCU for assertions
     const options_t *opts = options_get();
-    cr_assert_str_eq(opts->address, tc.address, "%s should set address correctly", tc.description);
+    REQUIRE(std::strcmp(opts->address, tc.address) == 0);
   } else {
-    cr_assert_eq(exit_code, tc.expected_exit_code, "%s should cause exit with code %d", tc.description, tc.expected_exit_code);
+    REQUIRE(exit_code == tc.expected_exit_code);
   }
 
     options_state_destroy();
@@ -278,33 +278,33 @@ TEST_CASE("options::ip_address_validation", "[options][parameterized]") {
 // Port Validation Tests
 // =============================================================================
 
-GENERATE_OPTIONS_TEST(valid_port_80, ARGV_LIST("client", "-p", "80"), true, { cr_assert_eq(opts->port, 80); }, { cr_assert_eq(exit_code, 0, "Valid port 80 should not cause exit"); })
+GENERATE_OPTIONS_TEST(valid_port_80, ARGV_LIST("client", "-p", "80"), true, { REQUIRE((opts->port) == (80)); }, { REQUIRE((exit_code) == (0)); })
 
-GENERATE_OPTIONS_TEST(valid_port_65535, ARGV_LIST("client", "-p", "65535"), true, { cr_assert_eq(opts->port, 65535); }, { cr_assert_eq(exit_code, 0, "Valid port 65535 should not cause exit"); })
+GENERATE_OPTIONS_TEST(valid_port_65535, ARGV_LIST("client", "-p", "65535"), true, { REQUIRE((opts->port) == (65535)); }, { REQUIRE((exit_code) == (0)); })
 
 GENERATE_OPTIONS_TEST(
     invalid_port_too_low, ARGV_LIST("client", "-p", "0"), true,
     {
       // This should not be reached since options_init should exit
-      cr_fail("Should not reach this point - invalid port should cause exit");
+      FAIL("test failure");
     },
-    { cr_assert_eq(exit_code, 1, "Invalid port 0 should cause exit with code 1"); })
+    { REQUIRE((exit_code) == (1)); })
 
 GENERATE_OPTIONS_TEST(
     invalid_port_too_high, ARGV_LIST("client", "-p", "65536"), true,
     {
       // This should not be reached since options_init should exit
-      cr_fail("Should not reach this point - invalid port should cause exit");
+      FAIL("test failure");
     },
-    { cr_assert_eq(exit_code, 1, "Invalid port 65536 should cause exit with code 1"); })
+    { REQUIRE((exit_code) == (1)); })
 
 GENERATE_OPTIONS_TEST(
     invalid_port_non_numeric, ARGV_LIST("client", "-p", "abc"), true,
     {
       // This should not be reached since options_init should exit
-      cr_fail("Should not reach this point - invalid port should cause exit");
+      FAIL("test failure");
     },
-    { cr_assert_eq(exit_code, 1, "Invalid port abc should cause exit with code 1"); })
+    { REQUIRE((exit_code) == (1)); })
 
 // =============================================================================
 // Port Validation Tests - Parameterized (replaces 5 individual tests above)
@@ -355,16 +355,16 @@ TEST_CASE("options::port_validation", "[options][parameterized]") {
 
   // Test option values in main process (only if no exit expected)
   if (tc.should_succeed) {
-    cr_assert_eq(exit_code, 0, "%s should not cause exit", tc.description);
+    REQUIRE(exit_code == 0);
     // Reset getopt state before calling options_init again
     options_init(argc, argv);
     // Get options from RCU for assertions
     const options_t *opts = options_get();
     int expected_port = 0;
-    cr_assert(parse_int32(tc.port, &expected_port, 0, 65535) == ASCIICHAT_OK, "%s should contain a valid port", tc.description);
-    cr_assert_eq(opts->port, expected_port, "%s should set port correctly", tc->description);
+    REQUIRE(parse_int32(tc.port, &expected_port, 0, 65535) == ASCIICHAT_OK);
+    REQUIRE(opts->port == expected_port);
   } else {
-    cr_assert_eq(exit_code, tc.expected_exit_code, "%s should cause exit with code %d", tc.description, tc.expected_exit_code);
+    REQUIRE(exit_code == tc.expected_exit_code);
   }
 
     restore_options(&backup);
@@ -378,44 +378,44 @@ TEST_CASE("options::port_validation", "[options][parameterized]") {
 GENERATE_OPTIONS_TEST(
     valid_dimensions, ARGV_LIST("client", "-x", "100", "-y", "50"), true,
     {
-      cr_assert_eq(opts->width, 100);
-      cr_assert_eq(opts->height, 50);
-      cr_assert_eq(opts->auto_width, 0);
-      cr_assert_eq(opts->auto_height, 0);
+      REQUIRE(opts->width == 100);
+      REQUIRE(opts->height == 50);
+      REQUIRE(opts->auto_width == 0);
+      REQUIRE(opts->auto_height == 0);
     },
-    { cr_assert_eq(exit_code, 0, "Valid dimensions should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_dimension_zero, ARGV_LIST("client", "-x", "0"), true, { cr_fail("Should not reach this point - invalid dimension should cause exit"); },
-    { cr_assert_eq(exit_code, 1, "Invalid dimension 0 should cause exit with code 1"); })
+    invalid_dimension_zero, ARGV_LIST("client", "-x", "0"), true, { FAIL("test failure"); },
+    { REQUIRE(exit_code == 1); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_dimension_negative, ARGV_LIST("client", "-x", "-1"), true, { cr_fail("Should not reach this point - invalid dimension should cause exit"); },
-    { cr_assert_eq(exit_code, 1, "Invalid dimension -1 should cause exit with code 1"); })
+    invalid_dimension_negative, ARGV_LIST("client", "-x", "-1"), true, { FAIL("test failure"); },
+    { REQUIRE(exit_code == 1); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_dimension_non_numeric, ARGV_LIST("client", "-x", "abc"), true, { cr_fail("Should not reach this point - invalid dimension should cause exit"); },
-    { cr_assert_eq(exit_code, 1, "Invalid dimension abc should cause exit with code 1"); })
+    invalid_dimension_non_numeric, ARGV_LIST("client", "-x", "abc"), true, { FAIL("test failure"); },
+    { REQUIRE(exit_code == 1); })
 
 /* ============================================================================
  * Webcam Options Tests
  * ============================================================================ */
 
-GENERATE_OPTIONS_TEST(valid_webcam_index, ARGV_LIST("client", "-c", "2"), true, {/* no option assertions needed for success-only check */}, { cr_assert_eq(exit_code, 0); })
+GENERATE_OPTIONS_TEST(valid_webcam_index, ARGV_LIST("client", "-c", "2"), true, {/* no option assertions needed for success-only check */}, { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_webcam_index_neg1, ARGV_LIST("client", "-c", "-1"), true, { cr_fail("Should not reach this point - invalid webcam index should cause exit"); }, { cr_assert_eq(exit_code, 1); })
+    invalid_webcam_index_neg1, ARGV_LIST("client", "-c", "-1"), true, { FAIL("test failure"); }, { REQUIRE(exit_code == 1); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_webcam_index_abc, ARGV_LIST("client", "-c", "abc"), true, { cr_fail("Should not reach this point - invalid webcam index should cause exit"); }, { cr_assert_eq(exit_code, 1); })
+    invalid_webcam_index_abc, ARGV_LIST("client", "-c", "abc"), true, { FAIL("test failure"); }, { REQUIRE(exit_code == 1); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_webcam_index_decimal, ARGV_LIST("client", "-c", "2.5"), true, { cr_fail("Should not reach this point - invalid webcam index should cause exit"); }, { cr_assert_eq(exit_code, 1); })
+    invalid_webcam_index_decimal, ARGV_LIST("client", "-c", "2.5"), true, { FAIL("test failure"); }, { REQUIRE(exit_code == 1); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_webcam_index_empty, ARGV_LIST("client", "-c", ""), true, { cr_fail("Should not reach this point - invalid webcam index should cause exit"); }, { cr_assert_eq(exit_code, 1); })
+    invalid_webcam_index_empty, ARGV_LIST("client", "-c", ""), true, { FAIL("test failure"); }, { REQUIRE(exit_code == 1); })
 
-GENERATE_OPTIONS_TEST(valid_webcam_flip, ARGV_LIST("client", "--flip-x"), true, {/* flip flag only */}, { cr_assert_eq(exit_code, 0, "Webcam flip flag should not cause exit"); })
+GENERATE_OPTIONS_TEST(valid_webcam_flip, ARGV_LIST("client", "--flip-x"), true, {/* flip flag only */}, { REQUIRE(exit_code == 0); })
 
 /* ============================================================================
  * Color Mode Tests
