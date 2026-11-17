@@ -362,7 +362,7 @@ TEST_CASE("options::valid_port_65535", "[options]") {
 }
 
 TEST_CASE("options::invalid_port_too_low", "[options]") {
-  auto argv_storage = make_argv({"client", "-p", "0"});
+  auto argv_storage = make_argv({"client", "--port=0"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
   options_backup_t backup;
@@ -381,7 +381,7 @@ TEST_CASE("options::invalid_port_too_low", "[options]") {
 }
 
 TEST_CASE("options::invalid_port_too_high", "[options]") {
-  auto argv_storage = make_argv({"client", "-p", "65536"});
+  auto argv_storage = make_argv({"client", "--port=65536"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
   options_backup_t backup;
@@ -400,7 +400,7 @@ TEST_CASE("options::invalid_port_too_high", "[options]") {
 }
 
 TEST_CASE("options::invalid_port_non_numeric", "[options]") {
-  auto argv_storage = make_argv({"client", "-p", "abc"});
+  auto argv_storage = make_argv({"client", "--port=abc"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
   options_backup_t backup;
@@ -509,7 +509,7 @@ TEST_CASE("options::valid_dimensions", "[options]") {
 }
 
 TEST_CASE("options::invalid_dimension_zero", "[options]") {
-  auto argv_storage = make_argv({"client", "-x", "0"});
+  auto argv_storage = make_argv({"client", "--width=0"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
   options_backup_t backup;
@@ -525,7 +525,7 @@ TEST_CASE("options::invalid_dimension_zero", "[options]") {
 }
 
 TEST_CASE("options::invalid_dimension_negative", "[options]") {
-  auto argv_storage = make_argv({"client", "-x", "-1"});
+  auto argv_storage = make_argv({"client", "--width=-1"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
   options_backup_t backup;
@@ -577,7 +577,7 @@ TEST_CASE("options::valid_webcam_index", "[options]") {
 }
 
 TEST_CASE("options::invalid_webcam_index_neg1", "[options]") {
-  auto argv_storage = make_argv({"client", "-c", "-1"});
+  auto argv_storage = make_argv({"client", "--webcam-index=-1"});
   char **argv = argv_storage.data();
   int argc = static_cast<int>(argv_storage.size()) - 1;
   options_backup_t backup;
