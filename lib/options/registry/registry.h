@@ -231,8 +231,7 @@ extern "C" {
 asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder);
 
 /** Populate a libflags schema builder from the application option registry. */
-asciichat_error_t registry_add_all_to_flags_builder(flags_schema_builder_t *builder,
-                                                    option_mode_bitmask_t mode_mask);
+asciichat_error_t registry_add_all_to_flags_builder(flags_schema_builder_t *builder, option_mode_bitmask_t mode_mask);
 
 /**
  * @brief Get option descriptor by name
