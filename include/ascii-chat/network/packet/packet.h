@@ -884,7 +884,11 @@ typedef struct {
 } /** @cond */
 PACKED_ATTR /** @endcond */ protocol_version_packet_t;
 
+#ifdef __cplusplus
+static_assert(sizeof(protocol_version_packet_t) == 16, "protocol version packet wire size must remain 16 bytes");
+#else
 _Static_assert(sizeof(protocol_version_packet_t) == 16, "protocol version packet wire size must remain 16 bytes");
+#endif
 
 /**
  * @brief Initialize a protocol version packet with the current wire version.
