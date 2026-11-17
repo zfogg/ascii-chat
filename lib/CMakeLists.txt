@@ -654,6 +654,7 @@ target_include_directories(ascii-chat-audio PRIVATE
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/rnnoise/include
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/rnnoise/src
 )
+target_link_libraries(ascii-chat-audio PRIVATE ascii-chat-rnnoise)
 
 # Add library search directories for pkg-config found libraries
 if(PORTAUDIO_LIBRARY_DIRS)
@@ -992,7 +993,7 @@ add_library(ascii-chat-shared SHARED
     if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
     endif()
-    target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES} libflags::flags)
+    target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES} libflags::flags ascii-chat-rnnoise)
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
     endif()
@@ -1626,6 +1627,7 @@ add_dependencies(ascii-chat-static-lib build-ascii-chat-static-lib)
 # (IMPORTED libraries can't have INTERFACE_LINK_LIBRARIES in older CMake)
 add_library(ascii-chat-static-lib-deps INTERFACE)
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE libplatform::libplatform ${UTF8PROC_LIBRARIES} asciichat-icu)
+target_link_libraries(ascii-chat-static-lib-deps INTERFACE ascii-chat-rnnoise)
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-static-lib-deps INTERFACE asciichat-quic)
 endif()
