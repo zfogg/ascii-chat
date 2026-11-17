@@ -189,9 +189,8 @@ if(PLATFORM_IOS)
     return()
 endif()
 
-# Docker and distribution development builds can use the system library when
-# it is new enough.  Release packages continue to use the pinned source build
-# unless this option is explicitly enabled.
+# Native non-musl builds use the system OpenSSL. The system must provide the
+# QUIC TLS API required by ngtcp2; do not silently substitute a source build.
 if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
     # Prefer pkg-config when the distribution provides an OpenSSL module. Some
     # distributions, including Arch installations without the development
@@ -254,7 +253,9 @@ if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
             message(STATUS "Using system OpenSSL ${OPENSSL_VERSION} (pkg-config)")
             return()
         endif()
-        message(STATUS "System OpenSSL lacks SSL_set_quic_tls_cbs; using pinned source build")
+        message(FATAL_ERROR
+            "System OpenSSL ${OPENSSL_VERSION} lacks SSL_set_quic_tls_cbs. "
+            "Upgrade the system OpenSSL to 3.6.0 or newer before configuring ascii-chat.")
     endif()
     if(ASCIICHAT_SYSTEM_OPENSSL_FOUND AND ASCIICHAT_SYSTEM_OPENSSL_PREFIX)
         find_package(OpenSSL 3.0 QUIET COMPONENTS SSL Crypto
@@ -272,9 +273,13 @@ if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
             endif()
             return()
         endif()
-        message(STATUS "System OpenSSL lacks SSL_set_quic_tls_cbs; using pinned source build")
+        message(FATAL_ERROR
+            "System OpenSSL ${OPENSSL_VERSION} lacks SSL_set_quic_tls_cbs. "
+            "Upgrade the system OpenSSL to 3.6.0 or newer before configuring ascii-chat.")
     endif()
-    message(STATUS "System OpenSSL is missing or too old; using pinned source build")
+    message(FATAL_ERROR
+        "A system OpenSSL with SSL_set_quic_tls_cbs is required. "
+        "Install or upgrade to OpenSSL 3.6.0 or newer before configuring ascii-chat.")
 endif()
 
 # Handle musl builds - OpenSSL is built from source at configure time
