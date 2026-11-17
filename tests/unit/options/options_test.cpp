@@ -18,18 +18,6 @@
 #include <libflags/values.h>
 #include <ascii-chat/util/parsing.h>
 
-#define cr_assert(condition, ...) REQUIRE(condition)
-#define cr_assert_not(condition, ...) REQUIRE_FALSE(condition)
-#define cr_assert_eq(left, right, ...) REQUIRE((left) == (right))
-#define cr_assert_gt(left, right, ...) REQUIRE((left) > (right))
-#define cr_assert_str_eq(left, right, ...) REQUIRE(std::strcmp((left), (right)) == 0)
-#define cr_assert_str_empty(value, ...) REQUIRE((value) != nullptr); REQUIRE((value)[0] == '\0')
-#define cr_assert_not_null(value, ...) REQUIRE((value) != nullptr)
-#define cr_assert_null(value, ...) REQUIRE((value) == nullptr)
-#define cr_assert_neq(left, right, ...) REQUIRE((left) != (right))
-#define cr_assert_float_eq(left, right, epsilon, ...) REQUIRE(std::fabs((left) - (right)) <= (epsilon))
-#define cr_fail(...) FAIL("test failure")
-
 // Macro helpers for argv construction without brace-literals at call sites
 static std::vector<char *> make_argv(std::initializer_list<const char *> args) {
   std::vector<char *> result;
@@ -105,7 +93,7 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
 
 TEST_CASE("options::explicit_flip_values_survive_mode_parsing", "[options]") {
   char *argv[] = {"program", "mirror", "--test-pattern=0", "--flip-x=false", "--flip-y=true", NULL};
-  cr_assert_eq(options_init(5, argv), ASCIICHAT_OK);
+  REQUIRE(options_init(5, argv) == ASCIICHAT_OK);
   const options_t *opts = options_get();
   REQUIRE((opts->flip_x) == (false));
   REQUIRE((opts->flip_y) == (true));
@@ -113,18 +101,18 @@ TEST_CASE("options::explicit_flip_values_survive_mode_parsing", "[options]") {
 
 TEST_CASE("options::test_pattern_defaults_to_unflipped", "[options]") {
   char *argv[] = {"program", "mirror", "--test-pattern", NULL};
-  cr_assert_eq(options_init(3, argv), ASCIICHAT_OK);
+  REQUIRE(options_init(3, argv) == ASCIICHAT_OK);
   const options_t *opts = options_get();
-  cr_assert(opts->test_pattern);
+  REQUIRE(opts->test_pattern);
   REQUIRE_FALSE(opts->flip_x);
 }
 
 TEST_CASE("options::test_pattern_respects_explicit_flip", "[options]") {
   char *argv[] = {"program", "mirror", "--test-pattern", "--flip-x=true", NULL};
-  cr_assert_eq(options_init(4, argv), ASCIICHAT_OK);
+  REQUIRE(options_init(4, argv) == ASCIICHAT_OK);
   const options_t *opts = options_get();
-  cr_assert(opts->test_pattern);
-  cr_assert(opts->flip_x);
+  REQUIRE(opts->test_pattern);
+  REQUIRE(opts->flip_x);
 }
 
 TEST_CASE("options::default_values", "[options]") {
@@ -549,7 +537,7 @@ TEST_CASE("options::invalid_palette_chars", "[options]") {
   // Empty palette chars should fail
   char *argv[] = {"program", "client", "--palette-chars", "", NULL};
   int result = test_options_init_with_fork(argv, 4, true);
-  cr_assert_eq(result, 1);
+  REQUIRE(result == 1);
 }
 
 /* ============================================================================
@@ -836,7 +824,7 @@ TEST_CASE("options::minimum_values", "[options]") {
   int argc = 7;
 
   int result = test_options_init_with_fork(argv, argc, true);
-  cr_assert_eq(result, 0);
+  REQUIRE(result == 0);
 
   restore_options(&backup);
 }
@@ -963,10 +951,10 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(
     test_webcam_values, ARGV_LIST("client", "-c", "3", "--flip-x"), true,
     {
-      cr_assert_eq(opts->webcam_index, 3);
-      cr_assert_eq(opts->flip_x, true);
+      REQUIRE(opts->webcam_index == 3);
+      REQUIRE(opts->flip_x == true);
     },
-    { cr_assert_eq(exit_code, 0, "webcam values should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
     test_comprehensive_client_values,
@@ -977,27 +965,27 @@ GENERATE_OPTIONS_TEST(
     {
       // Verify ALL values
       cr_assert_str_eq(opts->address, "10.0.0.1");
-      cr_assert_eq(opts->port, 9999);
-      cr_assert_eq(opts->width, 200);
-      cr_assert_eq(opts->height, 100);
-      cr_assert_eq(opts->webcam_index, 2);
-      cr_assert_eq(opts->flip_x, true);
-      cr_assert_eq(opts->color_mode, COLOR_MODE_256_COLOR);
-      cr_assert_eq(opts->render_mode, RENDER_MODE_BACKGROUND);
-      cr_assert_eq(opts->palette_type, PALETTE_DIGITAL);
-      cr_assert_eq(opts->audio_enabled, 1);
-      cr_assert_eq(opts->stretch, 1);
+      REQUIRE(opts->port == 9999);
+      REQUIRE(opts->width == 200);
+      REQUIRE(opts->height == 100);
+      REQUIRE(opts->webcam_index == 2);
+      REQUIRE(opts->flip_x == true);
+      REQUIRE(opts->color_mode == COLOR_MODE_256_COLOR);
+      REQUIRE(opts->render_mode == RENDER_MODE_BACKGROUND);
+      REQUIRE(opts->palette_type == PALETTE_DIGITAL);
+      REQUIRE(opts->audio_enabled == 1);
+      REQUIRE(opts->stretch == 1);
       // opts->quiet removed - now a global option
-      cr_assert_eq(opts->snapshot_mode, 1);
+      REQUIRE(opts->snapshot_mode == 1);
       cr_assert_float_eq(opts->snapshot_delay, 5.0f, 0.01);
       // opts->log_file removed - now a global option
-      cr_assert_eq(opts->encrypt_enabled, 1);
+      REQUIRE(opts->encrypt_enabled == 1);
       cr_assert_str_eq(opts->encrypt_key, "testkey123");
       // Should be enabled by color-mode
-      cr_assert_eq(opts->auto_width, 0);  // Should be disabled when width is set
-      cr_assert_eq(opts->auto_height, 0); // Should be disabled when height is set
+      REQUIRE(opts->auto_width == 0);
+      REQUIRE(opts->auto_height == 0);
     },
-    { cr_assert_eq(exit_code, 0, "comprehensive client values should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
     test_server_values,
@@ -1007,13 +995,13 @@ GENERATE_OPTIONS_TEST(
     {
       // Verify server values
       cr_assert_str_eq(opts->address, "0.0.0.0");
-      cr_assert_eq(opts->port, 12345);
+      REQUIRE(opts->port == 12345);
       // Note: --audio is not supported for server mode
       // opts->log_file removed - now a global option
       // opts->palette_type removed - palette is client-only
-      cr_assert_eq(opts->encrypt_enabled, 1);
+      REQUIRE(opts->encrypt_enabled == 1);
     },
-    { cr_assert_eq(exit_code, 0, "server values should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 /* ============================================================================
  * Additional Test Scenarios with the Macro
@@ -1063,19 +1051,19 @@ GENERATE_OPTIONS_TEST(
     { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    test_truecolor_alias, ARGV_LIST("client", "--color-mode", "24bit"), true, { cr_assert_eq(opts->color_mode, COLOR_MODE_TRUECOLOR); },
-    { cr_assert_eq(exit_code, 0, "truecolor alias should not cause exit"); })
+    test_truecolor_alias, ARGV_LIST("client", "--color-mode", "24bit"), true, { REQUIRE(opts->color_mode == COLOR_MODE_TRUECOLOR); },
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    test_palette_digital, ARGV_LIST("client", "--palette", "digital"), true, { cr_assert_eq(opts->palette_type, PALETTE_DIGITAL); },
-    { cr_assert_eq(exit_code, 0, "digital palette should not cause exit"); })
+    test_palette_digital, ARGV_LIST("client", "--palette", "digital"), true, { REQUIRE(opts->palette_type == PALETTE_DIGITAL); },
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    test_palette_minimal, ARGV_LIST("client", "--palette", "minimal"), true, { cr_assert_eq(opts->palette_type, PALETTE_MINIMAL); },
-    { cr_assert_eq(exit_code, 0, "minimal palette should not cause exit"); })
+    test_palette_minimal, ARGV_LIST("client", "--palette", "minimal"), true, { REQUIRE(opts->palette_type == PALETTE_MINIMAL); },
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    test_palette_cool, ARGV_LIST("client", "--palette", "cool"), true, { cr_assert_eq(opts->palette_type, PALETTE_COOL); }, { cr_assert_eq(exit_code, 0, "cool palette should not cause exit"); })
+    test_palette_cool, ARGV_LIST("client", "--palette", "cool"), true, { REQUIRE(opts->palette_type == PALETTE_COOL); }, { REQUIRE(exit_code == 0); })
 
 /* Converted looped palette test into specific GENERATE_OPTIONS_TEST cases above. */
 
@@ -1129,11 +1117,11 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(
     test_server_palette_options, ARGV_LIST("client", "--palette", "blocks", "--palette-chars", "0123456789"), true,
     {
-      cr_assert_eq(opts->palette_type, PALETTE_CUSTOM); // --palette-chars overrides to custom
-      cr_assert_str_eq(opts->palette_custom, "0123456789");
-      cr_assert_eq(opts->palette_custom_set, true);
+      REQUIRE(opts->palette_type == PALETTE_CUSTOM);
+      REQUIRE(std::strcmp(opts->palette_custom, "0123456789") == 0);
+      REQUIRE(opts->palette_custom_set == true);
     },
-    { cr_assert_eq(exit_code, 0, "palette options with palette-chars should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 /* ============================================================================
  * Edge Cases and Error Conditions
@@ -1143,22 +1131,22 @@ GENERATE_OPTIONS_TEST(
     test_auto_dimensions, ARGV_LIST("client"), true,
     {
       // These should be set to auto (1) by default
-      cr_assert_eq(opts->auto_width, 1);
-      cr_assert_eq(opts->auto_height, 1);
+      REQUIRE(opts->auto_width == 1);
+      REQUIRE(opts->auto_height == 1);
       // The actual dimensions will be set by update_dimensions_to_terminal_size()
       // but we can't easily test that without mocking terminal detection
     },
-    { cr_assert_eq(exit_code, 0, "auto dimensions should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
     test_manual_dimensions_disable_auto, ARGV_LIST("client", "--width", "100", "--height", "50"), true,
     {
-      cr_assert_eq(opts->width, 100);
-      cr_assert_eq(opts->height, 50);
-      cr_assert_eq(opts->auto_width, 0);  // Should be disabled when manually set
-      cr_assert_eq(opts->auto_height, 0); // Should be disabled when manually set
+      REQUIRE(opts->width == 100);
+      REQUIRE(opts->height == 50);
+      REQUIRE(opts->auto_width == 0);
+      REQUIRE(opts->auto_height == 0);
     },
-    { cr_assert_eq(exit_code, 0, "manual dimensions should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
     test_encryption_auto_enable, ARGV_LIST("client", "--key", "mypassword"), true,
