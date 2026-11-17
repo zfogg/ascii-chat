@@ -62,7 +62,7 @@ endif()
 # For musl builds, exclude the shared library (it's not built by default and can't link against musl)
 set(_ascii_chat_exportable_targets)
 if(NOT USE_MUSL)
-    list(APPEND _ascii_chat_exportable_targets ascii-chat-shared)
+    list(APPEND _ascii_chat_exportable_targets ascii-chat-shared ascii-chat-rnnoise)
 endif()
 
 foreach(_ascii_target IN LISTS _ascii_chat_exportable_targets)

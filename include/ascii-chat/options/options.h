@@ -1106,6 +1106,7 @@ typedef struct options_state {
   bool audio_spectral;
   bool audio_spectral_mixer; ///< Explicit post-mix processing; disabled by default
   bool audio_spectral_gate;
+  bool reduce_noise; ///< Apply neural microphone noise reduction in client-like modes
   bool audio_multiband;
   bool audio_adaptive_eq;
   int audio_fft_size;
