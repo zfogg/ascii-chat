@@ -22,7 +22,7 @@ set(LIBFLAGS_UTF8PROC_TARGET utf8proc CACHE STRING
 # target instead of creating a second copy in the embedded dependency.
 set(LIBPLATFORM_UTF8PROC_TARGET utf8proc CACHE STRING
     "utf8proc target supplied by ascii-chat" FORCE)
-set(_ascii_chat_libflags_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src")
+set(_ascii_chat_libflags_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src-${CMAKE_BUILD_TYPE}")
 FetchContent_Declare(libflags
     GIT_REPOSITORY https://github.com/zfogg/libflags.git
     GIT_TAG 7c4335a
