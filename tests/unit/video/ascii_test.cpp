@@ -1,6 +1,5 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/video/ascii/ascii.h>
@@ -781,7 +780,7 @@ static ascii_palette_test_case_t ascii_palette_cases[] = {{true, "@#$%&*+=-:. ",
                                                           {false, "", "Empty palette"}};
 
 TEST_CASE("ascii/palette_tests", "[ascii]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(ascii_palette_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ascii_palette_cases), std::end(ascii_palette_cases)));
   auto *tc = &generated_case;
   image_t *img = image_new(4, 4);
   REQUIRE((img) != nullptr);
@@ -826,7 +825,7 @@ static ascii_size_test_case_t ascii_size_cases[] = {// Skip 1x1 - causes SIMD bu
                                                     {2, 2, "2x2 image"}, {4, 4, "4x4 image"}, {8, 8, "8x8 image"}, {16, 16, "16x16 image"}, {32, 32, "32x32 image"}, {64, 64, "64x64 image"}};
 
 TEST_CASE("ascii/size_tests", "[ascii]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(ascii_size_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ascii_size_cases), std::end(ascii_size_cases)));
   auto *tc = &generated_case;
   image_t *img = image_new(tc->width, tc->height);
   REQUIRE((img) != nullptr);
@@ -886,7 +885,7 @@ static ascii_option_test_case_t ascii_option_cases[] = {{false, false, false, "N
                                                         {false, true, true, "Bold and italic"}, {true, true, true, "All options"}};
 
 TEST_CASE("ascii/option_tests", "[ascii]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(ascii_option_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ascii_option_cases), std::end(ascii_option_cases)));
   auto *tc = &generated_case;
   image_t *img = image_new(4, 4);
   REQUIRE((img) != nullptr);
@@ -920,7 +919,7 @@ typedef struct {
 static ascii_stress_test_case_t ascii_stress_cases[] = {{10, "Light stress test"}, {50, "Medium stress test"}, {100, "Heavy stress test"}, {500, "Intensive stress test"}};
 
 TEST_CASE("ascii/stress_tests", "[ascii]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(ascii_stress_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ascii_stress_cases), std::end(ascii_stress_cases)));
   auto *tc = &generated_case;
   const char *palette = "@#$%&*+=-:. ";
   char luminance_palette[257];

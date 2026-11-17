@@ -1,7 +1,5 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
 #include <math.h>
@@ -120,7 +118,7 @@ static ringbuffer_operation_test_case_t ringbuffer_operation_cases[] = {{100, 50
                                                                         {0, 0, "Zero operations", true}};
 
 TEST_CASE("audio/ringbuffer_operations", "[audio]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(ringbuffer_operation_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ringbuffer_operation_cases), std::end(ringbuffer_operation_cases)));
   auto *tc = &generated_case;
   buffer_system_init(); // Initialize buffer domain for ring buffer allocation
 
@@ -186,7 +184,7 @@ static ringbuffer_capacity_test_case_t ringbuffer_capacity_cases[] = {
     {100, 10, 10, "Equal write/read cycles"}, {256, 2, 2, "Larger buffer, two cycles"},          {50, 20, 20, "Small buffer, many cycles"}};
 
 TEST_CASE("audio/ringbuffer_capacity_scenarios", "[audio]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(ringbuffer_capacity_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ringbuffer_capacity_cases), std::end(ringbuffer_capacity_cases)));
   auto *tc = &generated_case;
   buffer_system_init(); // Initialize buffer domain for ring buffer allocation
 
@@ -694,7 +692,7 @@ typedef struct {
 static audio_buffer_test_case_t audio_buffer_cases[] = {{64, "Small buffer"}, {256, "Medium buffer"}, {1024, "Large buffer"}, {4096, "Very large buffer"}};
 
 TEST_CASE("audio/buffer_sizes", "[audio]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(audio_buffer_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(audio_buffer_cases), std::end(audio_buffer_cases)));
   auto *tc = &generated_case;
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   REQUIRE((rb) != nullptr);
@@ -737,7 +735,7 @@ static audio_frequency_test_case_t audio_frequency_cases[] = {{440.0f, "A4 note"
                                                               {1000.0f, "1kHz tone"}, {100.0f, "Low frequency"}, {10000.0f, "High frequency"}};
 
 TEST_CASE("audio/frequency_tests", "[audio]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(audio_frequency_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(audio_frequency_cases), std::end(audio_frequency_cases)));
   auto *tc = &generated_case;
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   REQUIRE((rb) != nullptr);
@@ -775,7 +773,7 @@ typedef struct {
 static audio_stress_test_case_t audio_stress_cases[] = {{10, "Light stress test"}, {50, "Medium stress test"}, {100, "Heavy stress test"}, {500, "Intensive stress test"}};
 
 TEST_CASE("audio/stress_tests", "[audio]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(audio_stress_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(audio_stress_cases), std::end(audio_stress_cases)));
   auto *tc = &generated_case;
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   REQUIRE((rb) != nullptr);
@@ -819,7 +817,7 @@ static audio_edge_test_case_t audio_edge_cases[] = {{0, 0, "Zero size operations
                                                     {1000, 100, "Large write, small read"}, {100, 1000, "Small write, large read"}};
 
 TEST_CASE("audio/edge_cases", "[audio]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(audio_edge_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(audio_edge_cases), std::end(audio_edge_cases)));
   auto *tc = &generated_case;
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   REQUIRE((rb) != nullptr);

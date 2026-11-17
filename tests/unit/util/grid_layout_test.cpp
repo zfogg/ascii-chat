@@ -1,5 +1,5 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <float.h>
 #include <math.h>
@@ -378,7 +378,7 @@ static grid_test_case_t test_cases[] = {
 };
 
 TEST_CASE("grid_layout/parameterized_comprehensive", "[grid_layout]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(test_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(test_cases), std::end(test_cases)));
   auto *tc = &generated_case;
   int cols, rows, cell_width, cell_height;
 

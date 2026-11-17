@@ -1,7 +1,5 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
 #include <math.h>
@@ -143,7 +141,7 @@ static mixer_invalid_params_test_case_t mixer_invalid_params_cases[] = {
 };
 
 TEST_CASE("mixer/create_with_invalid_params", "[mixer]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(mixer_invalid_params_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(mixer_invalid_params_cases), std::end(mixer_invalid_params_cases)));
   auto *tc = &generated_case;
   mixer_t *mixer = mixer_create(tc->max_sources, tc->sample_rate);
   REQUIRE((mixer) == nullptr);
@@ -360,7 +358,7 @@ static db_to_linear_test_case_t db_to_linear_cases[] = {{0.0f, 1.0f, 1e-6f, "0 d
                                                         {-60.0f, 0.001f, 1e-4f, "-60 dB equals 0.001 gain"}, {6.0f, 2.0f, 0.01f, "+6 dB equals double gain"}};
 
 TEST_CASE("mixer_utils/db_to_linear_conversion_param", "[mixer_utils]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(db_to_linear_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(db_to_linear_cases), std::end(db_to_linear_cases)));
   auto *tc = &generated_case;
   float result = db_to_linear(tc->db_value);
   REQUIRE((result) == Catch::Approx(tc->expected_linear));
@@ -379,7 +377,7 @@ static linear_to_db_test_case_t linear_to_db_cases[] = {{1.0f, 0.0f, 1e-6f, "Uni
                                                         {0.001f, -60.0f, 1e-3f, "0.001 gain equals -60 dB"}, {2.0f, 6.0f, 0.1f, "Double gain equals +6 dB"}};
 
 TEST_CASE("mixer_utils/linear_to_db_conversion_param", "[mixer_utils]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(linear_to_db_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(linear_to_db_cases), std::end(linear_to_db_cases)));
   auto *tc = &generated_case;
   float result = linear_to_db(tc->linear_value);
   REQUIRE((result) == Catch::Approx(tc->expected_db));
@@ -400,7 +398,7 @@ static clamp_float_test_case_t clamp_float_cases[] = {{0.5f, 0.0f, 1.0f, 0.5f, "
                                                       {0.0f, 0.0f, 0.0f, 0.0f, "Degenerate range"}};
 
 TEST_CASE("mixer_utils/clamp_float_param", "[mixer_utils]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(clamp_float_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(clamp_float_cases), std::end(clamp_float_cases)));
   auto *tc = &generated_case;
   float result = clamp_float(tc->value, tc->min, tc->max);
   REQUIRE((result) == Catch::Approx(tc->expected));
@@ -765,7 +763,7 @@ TEST_CASE("mixer_integration/stress_test_multiple_sources", "[mixer_integration]
 static constexpr int audio_bounds_property_catch2_data[] = {1, 2, 3, 4, 8};
 
 TEST_CASE("mixer_integration/audio_bounds_property", "[mixer_integration]") {
-  size_t num_sources = GENERATE(Catch::Generators::from_range(audio_bounds_property_catch2_data));
+  size_t num_sources = GENERATE(Catch::Generators::from_range(std::begin(audio_bounds_property_catch2_data), std::end(audio_bounds_property_catch2_data)));
   float amplitude = GENERATE(0.1f, 0.5f, 1.0f, 1.5f, 2.0f);
   if (!(num_sources > 0 && num_sources <= MIXER_MAX_SOURCES))
     SKIP("assumption not satisfied");

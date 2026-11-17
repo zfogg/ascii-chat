@@ -1,7 +1,5 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <stdlib.h>
 #include <stdint.h>
@@ -106,7 +104,7 @@ static colorterm_test_case_t colorterm_cases[] = {
 };
 
 TEST_CASE("terminal_detect/colorterm_variable_detection_parameterized", "[terminal_detect]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(colorterm_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(colorterm_cases), std::end(colorterm_cases)));
   auto *tc = &generated_case;
   // Save original environment
   char *original_colorterm = getenv("COLORTERM");
@@ -169,7 +167,7 @@ static term_color_test_case_t term_color_cases[] = {
 };
 
 TEST_CASE("terminal_detect/term_variable_color_detection_parameterized", "[terminal_detect]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(term_color_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(term_color_cases), std::end(term_color_cases)));
   auto *tc = &generated_case;
   // Save original environment
   char *original_term = getenv("TERM");
@@ -222,7 +220,7 @@ static utf8_test_case_t utf8_cases[] = {
 };
 
 TEST_CASE("terminal_detect/utf8_support_detection_parameterized", "[terminal_detect]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(utf8_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(utf8_cases), std::end(utf8_cases)));
   auto *tc = &generated_case;
   // Save original environment
   char *original_lang = getenv("LANG");

@@ -5,8 +5,6 @@
  */
 
 #include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/crypto/keys_validation.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/crypto/keys.h>

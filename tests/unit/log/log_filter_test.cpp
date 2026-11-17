@@ -1,3 +1,4 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
 /**
  * @file log_filter_test.c
@@ -6,8 +7,6 @@
  * Tests all flag combinations, multiple patterns, context lines, and edge cases.
  */
 
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdbool.h>
@@ -139,7 +138,7 @@ static plain_regex_test_t plain_regex_cases[] = {
 };
 
 TEST_CASE("log_filter/plain_regex_format", "[log_filter]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(plain_regex_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(plain_regex_cases), std::end(plain_regex_cases)));
   auto *tc = &generated_case;
   asciichat_error_t result = grep_init(tc->pattern);
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -210,7 +209,7 @@ static basic_match_test_t basic_match_cases[] = {
 };
 
 TEST_CASE("log_filter/basic_regex_matching", "[log_filter]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(basic_match_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(basic_match_cases), std::end(basic_match_cases)));
   auto *tc = &generated_case;
   asciichat_error_t result = grep_init(tc->pattern);
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -244,7 +243,7 @@ static fixed_string_test_t fixed_string_cases[] = {
 };
 
 TEST_CASE("log_filter/fixed_string_matching", "[log_filter]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(fixed_string_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(fixed_string_cases), std::end(fixed_string_cases)));
   auto *tc = &generated_case;
   asciichat_error_t result = grep_init(tc->pattern);
   REQUIRE((result) == (ASCIICHAT_OK));
@@ -496,7 +495,7 @@ static flag_combo_test_t flag_combo_cases[] = {
 };
 
 TEST_CASE("log_filter/flag_combinations", "[log_filter]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(flag_combo_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(flag_combo_cases), std::end(flag_combo_cases)));
   auto *tc = &generated_case;
   asciichat_error_t result = grep_init(tc->pattern);
   REQUIRE((result) == (ASCIICHAT_OK));

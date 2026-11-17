@@ -11,9 +11,6 @@
  */
 
 #include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdlib.h>
 #include <zlib.h>

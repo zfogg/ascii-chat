@@ -1,12 +1,10 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
 /**
  * @file crypto_keys_test.c
  * @brief Unit tests for lib/crypto/keys.c - Tests the intended final crypto implementation
  */
 
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <stdio.h>
 #include <stdlib.h>
@@ -92,7 +90,7 @@ static hex_decode_test_case_t hex_decode_cases[] = {
     {.hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", .expected_len = 16, .expected_result = -1, .description = "wrong expected length"}};
 
 TEST_CASE("crypto_keys/hex_decode_tests", "[crypto_keys]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(hex_decode_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(hex_decode_cases), std::end(hex_decode_cases)));
   auto *tc = &generated_case;
   log_debug("Test start: tc=%p", (void *)tc);
   log_debug("Test hex=%s, expected_len=%zu", tc->hex, tc->expected_len);
@@ -196,7 +194,7 @@ static parse_public_key_test_case_t parse_public_key_cases[] = {
     {.input = "", .expected_type = KEY_TYPE_UNKNOWN, .expected_result = -1, .description = "NULL input", .input_is_null = true, .requires_network = false}};
 
 TEST_CASE("crypto_keys/parse_public_key_tests", "[crypto_keys]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(parse_public_key_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(parse_public_key_cases), std::end(parse_public_key_cases)));
   auto *tc = &generated_case;
   public_key_t key;
   const char *input_ptr = tc->input_is_null ? NULL : tc->input;

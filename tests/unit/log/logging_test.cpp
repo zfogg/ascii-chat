@@ -1,3 +1,4 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
@@ -52,7 +53,7 @@ static void init_long_message_case(log_message_test_case_t *tc) {
 }
 
 TEST_CASE("logging/log_message_variations", "[logging]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(log_message_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(log_message_cases), std::end(log_message_cases)));
   auto *tc = &generated_case;
   // Test all log levels with this message
   if (tc->use_format) {
@@ -90,7 +91,7 @@ static log_special_char_test_case_t log_special_char_cases[] = {
 };
 
 TEST_CASE("logging/log_special_characters", "[logging]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(log_special_char_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(log_special_char_cases), std::end(log_special_char_cases)));
   auto *tc = &generated_case;
   if (tc->use_format) {
     log_debug(tc->message, "test", 42, 3.14);
@@ -645,7 +646,7 @@ static log_init_test_case_t log_init_cases[] = {
 };
 
 TEST_CASE("logging/log_initialization_variations", "[logging]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(log_init_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(log_init_cases), std::end(log_init_cases)));
   auto *tc = &generated_case;
   log_init(NULL, tc->level, false, false);
 

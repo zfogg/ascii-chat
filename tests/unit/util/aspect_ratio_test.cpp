@@ -1,6 +1,5 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <time.h>
 #include <math.h>
@@ -118,7 +117,7 @@ static invalid_dimensions_test_case_t invalid_dimensions_cases[] = {// aspect_ra
                                                                     {1920, -1080, 80, 24, 80, 24, "calculate_fit_dimensions_pixel: negative image height"}};
 
 TEST_CASE("aspect_ratio/invalid_dimensions_parameterized", "[aspect_ratio]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(invalid_dimensions_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(invalid_dimensions_cases), std::end(invalid_dimensions_cases)));
   auto *test_case = &generated_case;
   ssize_t out_width, out_height;
 

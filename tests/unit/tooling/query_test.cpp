@@ -14,7 +14,6 @@
  */
 
 #include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <stdlib.h>
 
 #include <ascii-chat/tooling/query/query.h>

@@ -2,7 +2,6 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/network/crc32.h>

@@ -1,6 +1,5 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
 #include <pthread.h>
@@ -874,8 +873,8 @@ static constexpr size_t fifo_capacities[] = {2, 4, 8, 16, 32};
 static constexpr size_t fifo_operation_counts[] = {3, 5, 10, 20, 50};
 
 TEST_CASE("ringbuffer/fifo_ordering_property", "[ringbuffer]") {
-  const size_t capacity = GENERATE(Catch::Generators::from_range(fifo_capacities));
-  const size_t num_ops = GENERATE(Catch::Generators::from_range(fifo_operation_counts));
+  const size_t capacity = GENERATE(Catch::Generators::from_range(std::begin(fifo_capacities), std::end(fifo_capacities)));
+  const size_t num_ops = GENERATE(Catch::Generators::from_range(std::begin(fifo_operation_counts), std::end(fifo_operation_counts)));
   // Skip combinations where num_ops > capacity (would require wraparound logic)
   if (!(capacity >= 2))
     SKIP("assumption not satisfied");

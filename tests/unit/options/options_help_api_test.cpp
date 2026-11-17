@@ -8,7 +8,6 @@
  */
 
 #include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/tests/logging.h>
 #include <string.h>

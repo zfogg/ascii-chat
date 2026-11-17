@@ -20,7 +20,6 @@
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/common.h>
 #include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>

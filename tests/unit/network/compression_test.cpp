@@ -1,3 +1,4 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
 #include <ascii-chat/buffer.h>
 #include <catch2/catch_all.hpp>
@@ -150,7 +151,7 @@ static auto compression_roundtrip_property_catch2_data = {
 };
 
 TEST_CASE("compression/compression_roundtrip_property", "[compression]") {
-  size_t data_size = GENERATE(Catch::Generators::from_range(compression_roundtrip_property_catch2_data));
+  size_t data_size = GENERATE(Catch::Generators::from_range(std::begin(compression_roundtrip_property_catch2_data), std::end(compression_roundtrip_property_catch2_data)));
   if (!(data_size > 0 && data_size <= 8192))
     SKIP("assumption not satisfied");
 
@@ -194,7 +195,7 @@ static auto compressible_data_property_catch2_data = {
 };
 
 TEST_CASE("compression/compressible_data_property", "[compression]") {
-  size_t data_size = GENERATE(Catch::Generators::from_range(compressible_data_property_catch2_data));
+  size_t data_size = GENERATE(Catch::Generators::from_range(std::begin(compressible_data_property_catch2_data), std::end(compressible_data_property_catch2_data)));
   if (!(data_size > 0 && data_size <= 4096))
     SKIP("assumption not satisfied");
 
@@ -234,7 +235,7 @@ static auto compression_threshold_property_catch2_data = {
 };
 
 TEST_CASE("compression/compression_threshold_property", "[compression]") {
-  size_t original_size = GENERATE(Catch::Generators::from_range(compression_threshold_property_catch2_data));
+  size_t original_size = GENERATE(Catch::Generators::from_range(std::begin(compression_threshold_property_catch2_data), std::end(compression_threshold_property_catch2_data)));
   if (!(original_size > 0 && original_size <= 2000))
     SKIP("assumption not satisfied");
 
@@ -760,7 +761,7 @@ static compression_data_test_case_t compression_data_cases[] = {{"Highly compres
                                                                 {"Mixed pattern data", 500, 'D', true, "mixed"}};
 
 TEST_CASE("compression/data_patterns", "[compression]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(compression_data_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(compression_data_cases), std::end(compression_data_cases)));
   auto *tc = &generated_case;
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
@@ -797,7 +798,7 @@ static compression_frame_test_case_t compression_frame_cases[] = {{1, 1, 1, "Tin
                                                                   {10000, 100, 100, "Large frame"}, {100000, 320, 240, "Very large frame"}, {1000000, 640, 480, "Huge frame"}};
 
 TEST_CASE("compression/frame_sizes", "[compression]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(compression_frame_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(compression_frame_cases), std::end(compression_frame_cases)));
   auto *tc = &generated_case;
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
@@ -822,7 +823,7 @@ static compression_image_format_test_case_t compression_image_format_cases[] = {
                                                                                 {0xFFFFFFFF, "Max format"},          {0xDEADBEEF, "Hex pattern format"}, {0xCAFEBABE, "Another hex pattern"}};
 
 TEST_CASE("compression/image_formats", "[compression]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(compression_image_format_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(compression_image_format_cases), std::end(compression_image_format_cases)));
   auto *tc = &generated_case;
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
@@ -850,7 +851,7 @@ static compression_error_test_case_t compression_error_cases[] = {
     {"NULL frame data", true, false, false, false}, {"Zero frame size", false, true, false, false}, {"Invalid socket", false, false, true, false}, {"Negative dimensions", false, false, false, true}};
 
 TEST_CASE("compression/error_conditions", "[compression]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(compression_error_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(compression_error_cases), std::end(compression_error_cases)));
   auto *tc = &generated_case;
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));
@@ -883,7 +884,7 @@ typedef struct {
 static compression_stress_test_case_t compression_stress_cases[] = {{5, "Light stress test"}, {20, "Medium stress test"}, {50, "Heavy stress test"}, {100, "Intensive stress test"}};
 
 TEST_CASE("compression/stress_tests", "[compression]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(compression_stress_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(compression_stress_cases), std::end(compression_stress_cases)));
   auto *tc = &generated_case;
   int sockfd = create_test_socket();
   REQUIRE((sockfd) >= (0));

@@ -1,6 +1,5 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdio.h>
@@ -75,7 +74,7 @@ static truecolor_fg_test_case_t truecolor_fg_edge_cases[] = {
     {128, 128, 128, "\033[38;2;128;128;128m", "Mid gray"}};
 
 TEST_CASE("ansi_fast/truecolor_fg_edge_cases_param", "[ansi_fast]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(truecolor_fg_edge_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(truecolor_fg_edge_cases), std::end(truecolor_fg_edge_cases)));
   auto *tc = &generated_case;
   char buffer[256];
   char *result = append_truecolor_fg(buffer, tc->r, tc->g, tc->b);
@@ -113,7 +112,7 @@ static truecolor_bg_test_case_t truecolor_bg_edge_cases[] = {{0, 0, 0, "\033[48;
                                                              {128, 128, 128, "\033[48;2;128;128;128m", "Mid gray background"}};
 
 TEST_CASE("ansi_fast/truecolor_bg_edge_cases_param", "[ansi_fast]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(truecolor_bg_edge_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(truecolor_bg_edge_cases), std::end(truecolor_bg_edge_cases)));
   auto *tc = &generated_case;
   char buffer[256];
   char *result = append_truecolor_bg(buffer, tc->r, tc->g, tc->b);

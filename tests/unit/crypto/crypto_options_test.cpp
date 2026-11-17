@@ -1,12 +1,10 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
 /**
  * @file crypto_options_test.c
  * @brief Unit tests for crypto CLI options parsing - Tests the intended final crypto implementation
  */
 
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <stdio.h>
 #include <stdlib.h>
@@ -200,7 +198,7 @@ static crypto_options_test_case_t crypto_options_cases[] = {
 // clang-format on
 
 TEST_CASE("crypto_options/crypto_options_parsing_tests", "[crypto_options]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(crypto_options_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(crypto_options_cases), std::end(crypto_options_cases)));
   crypto_options_test_case_t *tc = &generated_case;
   // Reset globals before each parameterized test case
   reset_crypto_options();
@@ -415,7 +413,7 @@ TEST_CASE("crypto_options/option_combinations", "[crypto_options]") {
   static constexpr option_combination_t combinations[] = {
       {true, true, true}, {true, true, false}, {true, false, true}, {true, false, false}, {false, true, true}, {false, true, false}, {false, false, true}, {false, false, false},
   };
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(combinations));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(combinations), std::end(combinations)));
   const auto &combination = generated_case;
   const bool is_client = combination.is_client;
   const bool no_encrypt = combination.no_encrypt;

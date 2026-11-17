@@ -1,7 +1,6 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
 #include <ascii-chat/common.h>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdlib.h>
@@ -93,7 +92,7 @@ static error_code_test_case_t error_code_cases[] = {
 };
 
 TEST_CASE("common/error_code_definitions", "[common]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(error_code_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(error_code_cases), std::end(error_code_cases)));
   auto *tc = &generated_case;
   // Error codes should be defined
   REQUIRE(tc->error_code != -999999);
@@ -158,7 +157,7 @@ static min_max_test_case_t min_max_cases[] = {
 };
 
 TEST_CASE("common/min_max_macros", "[common]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(min_max_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(min_max_cases), std::end(min_max_cases)));
   auto *tc = &generated_case;
   int min_result = MIN(tc->a, tc->b);
   int max_result = MAX(tc->a, tc->b);

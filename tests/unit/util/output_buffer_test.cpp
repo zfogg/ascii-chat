@@ -1,6 +1,5 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdint.h>
@@ -151,7 +150,7 @@ static ob_u8_test_case_t ob_u8_cases[] = {
 };
 
 TEST_CASE("output_buffer/ob_u8_values", "[output_buffer]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(ob_u8_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ob_u8_cases), std::end(ob_u8_cases)));
   auto *tc = &generated_case;
   outbuf_t ob = {0};
 
@@ -184,7 +183,7 @@ static ob_u32_test_case_t ob_u32_cases[] = {
 };
 
 TEST_CASE("output_buffer/ob_u32_values", "[output_buffer]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(ob_u32_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ob_u32_cases), std::end(ob_u32_cases)));
   auto *tc = &generated_case;
   outbuf_t ob = {0};
 

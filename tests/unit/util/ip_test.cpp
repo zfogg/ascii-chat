@@ -1,6 +1,5 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdlib.h>
@@ -122,7 +121,7 @@ static ipv4_test_case_t ipv4_cases[] = {
 };
 
 TEST_CASE("ip_utils/ipv4_validation", "[ip_utils]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(ipv4_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ipv4_cases), std::end(ipv4_cases)));
   auto *tc = &generated_case;
   int result = is_valid_ipv4(tc->ip);
   REQUIRE((result) == (tc->expected_result));
@@ -171,7 +170,7 @@ static ipv6_test_case_t ipv6_cases[] = {
 };
 
 TEST_CASE("ip_utils/ipv6_validation", "[ip_utils]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(ipv6_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ipv6_cases), std::end(ipv6_cases)));
   auto *tc = &generated_case;
   int result = is_valid_ipv6(tc->ip);
   REQUIRE((result) == (tc->expected_result));
@@ -207,7 +206,7 @@ static ipv6_parse_test_case_t ipv6_parse_cases[] = {
 };
 
 TEST_CASE("ip_utils/ipv6_parsing", "[ip_utils]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(ipv6_parse_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(ipv6_parse_cases), std::end(ipv6_parse_cases)));
   auto *tc = &generated_case;
   char output[256];
   memset(output, 0xAA, sizeof(output)); // Fill with pattern to detect no-write
@@ -261,7 +260,7 @@ static format_ip_port_test_case_t format_cases[] = {
 };
 
 TEST_CASE("ip_utils/format_ip_with_port", "[ip_utils]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(format_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(format_cases), std::end(format_cases)));
   auto *tc = &generated_case;
   char output[512];
   memset(output, 0xAA, sizeof(output));
@@ -334,7 +333,7 @@ static parse_ip_port_test_case_t parse_cases[] = {
 };
 
 TEST_CASE("ip_utils/parse_ip_with_port", "[ip_utils]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(parse_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(parse_cases), std::end(parse_cases)));
   auto *tc = &generated_case;
   char ip_output[256];
   uint16_t port_output = 0;
@@ -385,7 +384,7 @@ static roundtrip_test_case_t roundtrip_cases[] = {
 };
 
 TEST_CASE("ip_utils/format_parse_roundtrip", "[ip_utils]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(roundtrip_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(roundtrip_cases), std::end(roundtrip_cases)));
   auto *tc = &generated_case;
   char formatted[512];
   char parsed_ip[256];

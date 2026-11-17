@@ -1,11 +1,10 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
 /**
  * @file crypto_known_hosts_test.c
  * @brief Unit tests for lib/crypto/known_hosts.c - Tests the intended final crypto implementation
  */
 
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <stdio.h>
 #include <stdlib.h>
@@ -115,7 +114,7 @@ static add_known_host_test_case_t add_known_host_cases[] = {
      "empty hostname should fail"}};
 
 TEST_CASE("crypto_known_hosts/add_known_host_tests", "[crypto_known_hosts]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(add_known_host_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(add_known_host_cases), std::end(add_known_host_cases)));
   auto *tc = &generated_case;
   // Validate the test case pointer is not NULL
   REQUIRE((tc) != nullptr);

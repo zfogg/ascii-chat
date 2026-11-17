@@ -13,7 +13,6 @@
  */
 
 #include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/tests/logging.h>

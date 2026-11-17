@@ -1,7 +1,5 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
 
@@ -502,7 +500,7 @@ static crypto_error_test_case_t crypto_error_cases[] = {{"NULL context", CRYPTO_
                                                         {"NULL length out", CRYPTO_ERROR_INVALID_PARAMS, false, false, false, false, true}};
 
 TEST_CASE("crypto/error_conditions", "[crypto]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(crypto_error_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(crypto_error_cases), std::end(crypto_error_cases)));
   auto *tc = &generated_case;
   crypto_context_t ctx;
   crypto_init_with_password(&ctx, "password");
@@ -544,7 +542,7 @@ static crypto_init_test_case_t crypto_init_cases[] = {{"Valid password", "test-p
                                                       {"Special chars password", "p@ssw0rd!@#$%", true, CRYPTO_OK}};
 
 TEST_CASE("crypto/init_conditions", "[crypto]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(crypto_init_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(crypto_init_cases), std::end(crypto_init_cases)));
   auto *tc = &generated_case;
   crypto_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
@@ -577,7 +575,7 @@ static crypto_verify_test_case_t crypto_verify_cases[] = {{true, "my-password", 
                                                           {false, "password", " password ", "Extra spaces"}};
 
 TEST_CASE("crypto/password_verification_comprehensive", "[crypto]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(crypto_verify_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(crypto_verify_cases), std::end(crypto_verify_cases)));
   auto *tc = &generated_case;
   crypto_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
@@ -608,7 +606,7 @@ static crypto_result_string_test_case_t crypto_result_string_cases[] = {{CRYPTO_
                                                                         {(crypto_result_t)999, "Unknown error", "Unknown result"}};
 
 TEST_CASE("crypto/result_strings", "[crypto]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(crypto_result_string_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(crypto_result_string_cases), std::end(crypto_result_string_cases)));
   auto *tc = &generated_case;
   const char *result_str = crypto_result_to_string(tc->result);
   REQUIRE(std::strcmp((result_str), (tc->expected_string)) == 0);

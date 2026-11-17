@@ -1,3 +1,4 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
@@ -94,7 +95,7 @@ static invalid_socket_test_case_t invalid_socket_cases[] = {
 };
 
 TEST_CASE("network/invalid_socket_operations", "[network]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(invalid_socket_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(invalid_socket_cases), std::end(invalid_socket_cases)));
   auto *tc = &generated_case;
   int result;
   ssize_t sresult;
@@ -241,7 +242,7 @@ static parse_size_message_test_case_t parse_size_message_cases[] = {
 };
 
 TEST_CASE("network/parse_size_message_variations", "[network]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(parse_size_message_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(parse_size_message_cases), std::end(parse_size_message_cases)));
   auto *tc = &generated_case;
   unsigned short width = 0, height = 0;
   int result;

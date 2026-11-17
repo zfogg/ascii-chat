@@ -5,7 +5,6 @@
  */
 
 #include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdlib.h>
 #include <ascii-chat/crypto/gpg/gpg.h>

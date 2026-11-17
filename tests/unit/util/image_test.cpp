@@ -1,7 +1,5 @@
+#include <iterator>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
-#include <catch2/catch_all.hpp>
 #include <catch2/catch_all.hpp>
 #include <string.h>
 #include <stdint.h>
@@ -45,7 +43,7 @@ static image_new_test_case_t image_new_cases[] = {
 };
 
 TEST_CASE("image/image_new_dimensions", "[image]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(image_new_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(image_new_cases), std::end(image_new_cases)));
   auto *tc = &generated_case;
   image_t *img = image_new(tc->width, tc->height);
 
@@ -400,7 +398,7 @@ static rgb_color_test_case_t rgb_color_cases[] = {
 };
 
 TEST_CASE("image/rgb_to_ansi_fg_variations", "[image]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(rgb_color_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(rgb_color_cases), std::end(rgb_color_cases)));
   auto *tc = &generated_case;
   char *result = rgb_to_ansi_fg(tc->r, tc->g, tc->b);
   REQUIRE((result) != nullptr);
@@ -409,7 +407,7 @@ TEST_CASE("image/rgb_to_ansi_fg_variations", "[image]") {
 }
 
 TEST_CASE("image/rgb_to_ansi_bg_variations", "[image]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(rgb_color_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(rgb_color_cases), std::end(rgb_color_cases)));
   auto *tc = &generated_case;
   char *result = rgb_to_ansi_bg(tc->r, tc->g, tc->b);
   REQUIRE((result) != nullptr);
@@ -418,7 +416,7 @@ TEST_CASE("image/rgb_to_ansi_bg_variations", "[image]") {
 }
 
 TEST_CASE("image/rgb_to_ansi_8bit_variations", "[image]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(rgb_color_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(rgb_color_cases), std::end(rgb_color_cases)));
   auto *tc = &generated_case;
   int fg_code, bg_code;
   rgb_to_ansi_8bit(tc->r, tc->g, tc->b, &fg_code, &bg_code);
@@ -453,7 +451,7 @@ static precalc_palette_test_case_t precalc_palette_cases[] = {
 };
 
 TEST_CASE("image/precalc_rgb_palettes_variations", "[image]") {
-  auto &&generated_case = GENERATE(Catch::Generators::from_range(precalc_palette_cases));
+  auto &&generated_case = GENERATE(Catch::Generators::from_range(std::begin(precalc_palette_cases), std::end(precalc_palette_cases)));
   auto *tc = &generated_case;
   // Should not crash with any values
   precalc_rgb_palettes(tc->r_factor, tc->g_factor, tc->b_factor);
