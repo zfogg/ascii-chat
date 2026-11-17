@@ -147,6 +147,8 @@ if(USE_MUSL AND NOT TARGET nghttp2_static)
     FetchContent_MakeAvailable(asciichat_nghttp2)
     if(TARGET nghttp2_static)
         set_target_properties(nghttp2_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+        set(GOTEL_NGHTTP2_TARGET nghttp2_static CACHE STRING
+            "Reuse the application nghttp2 target for gotel gRPC" FORCE)
     endif()
 endif()
 
