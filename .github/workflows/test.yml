@@ -725,7 +725,7 @@ jobs:
         with:
           pattern: "*test-results-*"
           path: coverage-reports
-      - name: Require all seven coverage reports
+      - name: Require all eleven coverage reports
         id: coverage
         run: uv run --frozen python .github/scripts/prepare-coverage-upload.py coverage-reports
       - name: Preserve complete coverage inputs and summary

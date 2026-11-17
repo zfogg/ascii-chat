@@ -15,10 +15,14 @@ EXPECTED_ARTIFACTS = (
     "test-results-Linux-debug",
     "test-results-Linux-release",
     "test-results-macOS-release",
+    "test-results-Windows-debug",
+    "test-results-Windows-release",
     "integration-test-results-Linux",
     "integration-test-results-macOS",
+    "integration-test-results-Windows",
     "benchmark-test-results-Linux",
     "benchmark-test-results-macOS",
+    "benchmark-test-results-Windows",
 )
 
 
@@ -81,7 +85,7 @@ def main():
             output.write("files=" + ",".join(report.as_posix() for report in reports) + "\n")
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as output:
-            output.write("## Complete coverage upload\n\nAll seven coverage shards are present.\n\n")
+            output.write("## Complete coverage upload\n\nAll eleven coverage shards are present.\n\n")
             for label in ("production", "application", "all"):
                 if label not in summary:
                     continue
