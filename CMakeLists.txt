@@ -406,7 +406,7 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
       EXCLUDE_FROM_ALL)
     add_executable(recast-native IMPORTED GLOBAL)
     set_target_properties(recast-native PROPERTIES
-      IMPORTED_LOCATION "${_asciichat_recast_build_dir}/recast${CMAKE_EXECUTABLE_SUFFIX}")
+      IMPORTED_LOCATION "${_asciichat_recast_build_dir}/bin/recast${CMAKE_EXECUTABLE_SUFFIX}")
     add_dependencies(recast-native asciichat-recast-host)
     set(RECAST_NATIVE_BINARY
         "${_asciichat_recast_build_dir}/bin/recast${CMAKE_EXECUTABLE_SUFFIX}"
