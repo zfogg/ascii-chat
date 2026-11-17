@@ -15,7 +15,12 @@ if(USE_MUSL)
 endif()
 set(LIBFLAGS_PCRE2_INCLUDE_DIRS "${_asciichat_libflags_pcre2_include_dirs}" CACHE STRING
     "PCRE2 headers shared with ascii-chat" FORCE)
-if(USE_MUSL AND TARGET pcre2-8-static)
+if(USE_MUSL)
+    set(LIBFLAGS_PCRE2_TARGET pcre2-8-static CACHE STRING
+        "PCRE2 target shared with ascii-chat" FORCE)
+    set(LIBFLAGS_PCRE2_INCLUDE_DIRS
+        "${CMAKE_BINARY_DIR}/_deps/asciichat_pcre2/interface"
+        CACHE STRING "PCRE2 headers shared with ascii-chat" FORCE)
     set(LIBFLAGS_PCRE2_LIBRARIES pcre2-8-static CACHE STRING
         "PCRE2 target shared with ascii-chat" FORCE)
 endif()
