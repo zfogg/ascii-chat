@@ -45,7 +45,7 @@ endif()
 
 # Keep Gotel and its fetched otlp-c/Sequel build trees in the persistent
 # dependency cache. This is separate from the main build directory.
-set(_asciichat_gotel_cache_dir "${CMAKE_BINARY_DIR}/_deps/gotel")
+set(_asciichat_gotel_cache_dir "${ASCIICHAT_DEPS_CACHE_DIR}/gotel")
 file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 
 set(_asciichat_parent_shared_libs ${BUILD_SHARED_LIBS})

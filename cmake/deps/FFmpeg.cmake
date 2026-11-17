@@ -126,7 +126,7 @@ endif()
 # FFmpeg has no upstream CMake build. Its build waits for the CMake codec targets.
 if(USE_MUSL)
     include(ExternalProject)
-    set(FFMPEG_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/_deps/installed/ffmpeg")
+    set(FFMPEG_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/installed/ffmpeg")
     set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include")
     file(MAKE_DIRECTORY "${FFMPEG_INCLUDE_DIRS}")
     # The defer parser consumes the compilation database before target-level
@@ -156,7 +156,7 @@ if(USE_MUSL)
     ExternalProject_Add(ffmpeg-musl
         URL "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
         URL_HASH "SHA256=${FFMPEG_HASH}" DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        PREFIX "${CMAKE_CURRENT_BINARY_DIR}/_deps/ffmpeg"
+        PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg"
         CONFIGURE_COMMAND ${_ffmpeg_env} <SOURCE_DIR>/configure
             --prefix=${FFMPEG_PREFIX} --cc=${MUSL_GCC}
             "--extra-cflags=${MUSL_KERNEL_CFLAGS} -I${X264_PREFIX}/include -I${X265_PREFIX}/include"

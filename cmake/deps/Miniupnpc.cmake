@@ -48,7 +48,7 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
         set(UPNPC_BUILD_TESTS OFF)
         set(UPNPC_BUILD_SAMPLE OFF)
         FetchContent_Declare(asciichat_miniupnpc
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_miniupnpc"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/asciichat_miniupnpc"
             EXCLUDE_FROM_ALL
             URL https://github.com/miniupnp/miniupnp/archive/refs/tags/miniupnpc_2_2_7.tar.gz
             SOURCE_SUBDIR miniupnpc DOWNLOAD_EXTRACT_TIMESTAMP TRUE)

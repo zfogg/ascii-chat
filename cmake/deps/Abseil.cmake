@@ -24,7 +24,7 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE
             set(ABSL_BUILD_MONOLITHIC_SHARED_LIBS ${BUILD_SHARED_LIBS})
         endif()
         FetchContent_Declare(asciichat_abseil
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_abseil"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/asciichat_abseil"
             EXCLUDE_FROM_ALL
             URL https://github.com/abseil/abseil-cpp/archive/refs/tags/20250814.1.tar.gz
             URL_HASH SHA256=1692f77d1739bacf3f94337188b78583cf09bab7e420d2dc6c5605a4f86785a1

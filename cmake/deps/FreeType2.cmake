@@ -46,7 +46,7 @@ endfunction()
 if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE OR ASCIICHAT_REQUIRE_HVF)
     function(asciichat_build_freetype)
         asciichat_dependency_defaults()
-        set(_prefix "${CMAKE_CURRENT_BINARY_DIR}/_deps/installed/freetype")
+        set(_prefix "${ASCIICHAT_DEPS_CACHE_DIR}/installed/freetype")
         if(USE_MUSL OR PLATFORM_IOS)
             set(CMAKE_INSTALL_PREFIX "${_prefix}")
         endif()
@@ -69,7 +69,7 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE OR ASCIICHAT_REQ
         set(HARFBUZZ_FOUND FALSE)
         set(BROTLIDEC_FOUND FALSE)
         FetchContent_Declare(asciichat_freetype
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_freetype"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/asciichat_freetype"
             EXCLUDE_FROM_ALL
             URL ${_freetype_url}
             URL_HASH SHA256=${_freetype_hash}

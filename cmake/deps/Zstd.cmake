@@ -35,7 +35,7 @@ if(EMSCRIPTEN OR PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             set(ZSTD_MULTITHREAD_SUPPORT OFF)
         endif()
         FetchContent_Declare(asciichat_zstd
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_zstd"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/asciichat_zstd"
             EXCLUDE_FROM_ALL
             URL https://github.com/meta/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
             URL_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3

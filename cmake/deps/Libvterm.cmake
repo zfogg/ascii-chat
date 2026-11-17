@@ -13,7 +13,7 @@ if(EMSCRIPTEN OR WIN32 OR USE_MUSL OR PLATFORM_IOS OR ASCIICHAT_BUILD_DEPS_FROM_
         find_package(Perl REQUIRED)
         FetchContent_MakeAvailable(libvterm-src)
         set(_vterm_source "${libvterm-src_SOURCE_DIR}")
-        set(_vterm_binary "${CMAKE_CURRENT_BINARY_DIR}/_deps/libvterm")
+        set(_vterm_binary "${ASCIICHAT_DEPS_CACHE_DIR}/libvterm")
         file(MAKE_DIRECTORY "${_vterm_binary}/encoding")
         file(GLOB _tables CONFIGURE_DEPENDS "${_vterm_source}/src/encoding/*.tbl")
         set(_generated)
