@@ -1022,45 +1022,45 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(
     test_equals_sign_syntax, ARGV_LIST("client", "192.168.1.100:8080", "--width=150", "--height=75"), true,
     {
-      cr_assert_str_eq(opts->address, "192.168.1.100");
-      cr_assert_eq(opts->port, 8080);
-      cr_assert_eq(opts->width, 150);
-      cr_assert_eq(opts->height, 75);
-      cr_assert_eq(opts->auto_width, 0);  // Should be disabled when width is set
-      cr_assert_eq(opts->auto_height, 0); // Should be disabled when height is set
+      REQUIRE(std::strcmp(opts->address, "192.168.1.100") == 0);
+      REQUIRE(opts->port == 8080);
+      REQUIRE(opts->width == 150);
+      REQUIRE(opts->height == 75);
+      REQUIRE(opts->auto_width == 0);
+      REQUIRE(opts->auto_height == 0);
     },
-    { cr_assert_eq(exit_code, 0, "equals sign syntax should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
     test_mixed_syntax, ARGV_LIST("client", "-x", "80", "--height=60", "10.0.0.1:3000"), true,
     {
-      cr_assert_str_eq(opts->address, "10.0.0.1");
-      cr_assert_eq(opts->port, 3000);
-      cr_assert_eq(opts->width, 80);
-      cr_assert_eq(opts->height, 60);
-      cr_assert_eq(opts->auto_width, 0);
-      cr_assert_eq(opts->auto_height, 0);
+      REQUIRE(std::strcmp(opts->address, "10.0.0.1") == 0);
+      REQUIRE(opts->port == 3000);
+      REQUIRE(opts->width == 80);
+      REQUIRE(opts->height == 60);
+      REQUIRE(opts->auto_width == 0);
+      REQUIRE(opts->auto_height == 0);
     },
-    { cr_assert_eq(exit_code, 0, "mixed syntax should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
     test_none_mode, ARGV_LIST("client", "--color-mode", "none"), true,
     {
-      cr_assert_eq(opts->color_mode, COLOR_MODE_NONE);
+      REQUIRE(opts->color_mode == COLOR_MODE_NONE);
       // Color output should be disabled for none mode
     },
-    { cr_assert_eq(exit_code, 0, "none mode should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    test_16color_mode, ARGV_LIST("client", "--color-mode", "16"), true, { cr_assert_eq(opts->color_mode, COLOR_MODE_16_COLOR); }, { cr_assert_eq(exit_code, 0, "16color mode should not cause exit"); })
+    test_16color_mode, ARGV_LIST("client", "--color-mode", "16"), true, { REQUIRE(opts->color_mode == COLOR_MODE_16_COLOR); }, { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    test_16color_alias, ARGV_LIST("client", "--color-mode", "16color"), true, { cr_assert_eq(opts->color_mode, COLOR_MODE_16_COLOR); },
-    { cr_assert_eq(exit_code, 0, "16color alias should not cause exit"); })
+    test_16color_alias, ARGV_LIST("client", "--color-mode", "16color"), true, { REQUIRE(opts->color_mode == COLOR_MODE_16_COLOR); },
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    test_256color_alias, ARGV_LIST("client", "--color-mode", "256color"), true, { cr_assert_eq(opts->color_mode, COLOR_MODE_256_COLOR); },
-    { cr_assert_eq(exit_code, 0, "256color alias should not cause exit"); })
+    test_256color_alias, ARGV_LIST("client", "--color-mode", "256color"), true, { REQUIRE(opts->color_mode == COLOR_MODE_256_COLOR); },
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
     test_truecolor_alias, ARGV_LIST("client", "--color-mode", "24bit"), true, { cr_assert_eq(opts->color_mode, COLOR_MODE_TRUECOLOR); },
