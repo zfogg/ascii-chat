@@ -87,22 +87,22 @@ set(CORE_SRCS
     # options/config/
     ${CMAKE_SOURCE_DIR}/lib/options/config.c
     # options/registry/
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_metadata.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_general.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_logging.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_configuration.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_terminal.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_webcam.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_display.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_network.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_security.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_media.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_audio.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_database.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_registry.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_core.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_public_api.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_mode_defaults.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry/metadata.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry/general.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry/logging.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry/configuration.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry/terminal.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry/webcam.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry/display.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry/network.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry/security.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry/media.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry/audio.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry/database.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry/registry.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry/core.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry/public_api.c
+    ${CMAKE_SOURCE_DIR}/lib/options/registry/mode_defaults.c
     # options/parsing/
     ${CMAKE_SOURCE_DIR}/lib/options/parsing_parsers.c
     ${CMAKE_SOURCE_DIR}/lib/options/parsing_validation.c
@@ -163,7 +163,7 @@ endif()
 list(APPEND CORE_SRCS
     ${LIB_DIR}/debug/stats.c
     ${LIB_DIR}/debug/errno.c
-        ${CMAKE_SOURCE_DIR}/lib/options/registry_debug.c
+        ${CMAKE_SOURCE_DIR}/lib/options/registry/debug.c
 )
 
 # Additional debug sources only in non-Release builds

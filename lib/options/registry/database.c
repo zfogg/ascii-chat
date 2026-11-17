@@ -9,7 +9,7 @@
  * @date January 2026
  */
 
-#include <options/registry_common.h>
+#include <options/registry/common.h>
 
 // ============================================================================
 // DATABASE CATEGORY - Discovery service database options

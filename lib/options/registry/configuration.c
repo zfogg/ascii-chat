@@ -10,8 +10,8 @@
  * @date January 2026
  */
 
-#include <options/registry_common.h>
-#include <options/registry_metadata.h>
+#include <options/registry/common.h>
+#include <options/registry/metadata.h>
 
 // ============================================================================
 // CONFIGURATION CATEGORY - Configuration file options

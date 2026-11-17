@@ -63,8 +63,8 @@
 #include <options/parsers.h>
 #include <options/validation.h>
 #include <options/actions.h>
-#include <options/registry_mode_defaults.h> // Mode-aware defaults
-#include <options/registry_core.h>
+#include <options/registry/mode_defaults.h> // Mode-aware defaults
+#include <options/registry/core.h>
 #include <options/registry.h>
 
 #include <options/config.h>

@@ -10,8 +10,8 @@
  * @date February 2026
  */
 
-#include <options/registry_mode_defaults.h>
-#include <options/registry_common.h>
+#include <options/registry/mode_defaults.h>
+#include <options/registry/common.h>
 #include <options/options.h>
 #include <libplatform/system.h>
 #include <string.h>

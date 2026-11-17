@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include <options/registry_common.h>
+#include <options/registry/common.h>
 
 // Category arrays - each file contains options from only ONE help group
 extern const registry_entry_t g_general_entries[];

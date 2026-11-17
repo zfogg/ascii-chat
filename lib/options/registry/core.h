@@ -15,7 +15,7 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define OPTIONS_REGISTRY_CAPACITY 2048
 
-#include <options/registry_common.h>
+#include <options/registry/common.h>
 #include <ascii-chat/common.h>
 #include <options/types.h>
 #include <stdbool.h>

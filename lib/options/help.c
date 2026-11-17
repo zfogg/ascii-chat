@@ -11,7 +11,7 @@
  */
 
 #include <options/options.h>
-#include <options/registry_core.h>
+#include <options/registry/core.h>
 #include <string.h>
 
 /**
