@@ -26,6 +26,13 @@ struct audio_processor {
   size_t level_samples;
   float gain, target_gain, max_gain, gain_attack, gain_release;
   DenoiseState *rnnoise;
+  float rnnoise_input[480];
+  float rnnoise_left[480];
+  float rnnoise_right[480];
+  float rnnoise_pending[960];
+  size_t rnnoise_fill;
+  size_t rnnoise_pending_pos;
+  size_t rnnoise_pending_count;
 };
 
 audio_processor_config_t audio_processor_default_config(int sample_rate) {
@@ -51,13 +58,18 @@ audio_processor_config_t audio_processor_default_config(int sample_rate) {
   };
 }
 
-void audio_processor_reset(audio_processor_t *p) {
+asciichat_error_t audio_processor_reset(audio_processor_t *p) {
   if (!p)
-    return;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Missing audio processor");
   if (p->rnnoise) {
     rnnoise_destroy(p->rnnoise);
     p->rnnoise = rnnoise_create(NULL);
+    if (!p->rnnoise)
+      return SET_ERRNO(ERROR_AUDIO, "Failed to reset embedded RNNoise model");
   }
+  p->rnnoise_fill = 0;
+  p->rnnoise_pending_pos = 0;
+  p->rnnoise_pending_count = 0;
   spectral_reset(p->spectral_left);
   spectral_reset(p->spectral_right);
   const audio_processor_config_t *c = &p->config;
@@ -72,6 +84,7 @@ void audio_processor_reset(audio_processor_t *p) {
   p->energy = 0;
   p->level_samples = 0;
   p->gain = p->target_gain = 1;
+  return ASCIICHAT_OK;
 }
 
 asciichat_error_t audio_processor_create(const audio_processor_config_t *c, audio_processor_t **out) {
@@ -114,6 +127,10 @@ asciichat_error_t audio_processor_create(const audio_processor_config_t *c, audi
       }
     }
   }
+  if (audio_processor_reset(p) != ASCIICHAT_OK) {
+    SAFE_FREE(p);
+    return SET_ERRNO(ERROR_AUDIO, "Failed to initialize audio processor state");
+  }
   if (p->config.rnnoise_enabled && p->config.sample_rate == 48000) {
     p->rnnoise = rnnoise_create(NULL);
     if (!p->rnnoise) {
@@ -123,7 +140,6 @@ asciichat_error_t audio_processor_create(const audio_processor_config_t *c, audi
       return SET_ERRNO(ERROR_AUDIO, "Failed to initialize embedded RNNoise model");
     }
   }
-  audio_processor_reset(p);
   *out = p;
   return ASCIICHAT_OK;
 }
@@ -138,34 +154,53 @@ asciichat_error_t audio_processor_process(audio_processor_t *p, const float *inp
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio processor buffers");
   if (!count)
     return ASCIICHAT_OK;
+  if (p->config.channels == 2 && count % 2)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Incomplete stereo PCM frame");
   if (p->rnnoise) {
-    const size_t frame = 480;
-    const size_t frames = p->config.channels == 2 ? count / 2 : count;
-    const size_t complete = frames - (frames % frame);
-    float mono[480], denoised[480];
-    for (size_t offset = 0; offset < complete; offset += frame) {
-      for (size_t i = 0; i < frame; ++i)
-        mono[i] = p->config.channels == 2 ? 0.5f * (input[(offset + i) * 2] + input[(offset + i) * 2 + 1]) : input[offset + i];
-      rnnoise_process_frame(p->rnnoise, denoised, mono);
-      for (size_t i = 0; i < frame; ++i) {
+    for (size_t offset = 0; offset < count; offset += (size_t)p->config.channels) {
+      float left = input[offset];
+      float right = p->config.channels == 2 ? input[offset + 1] : 0.0f;
+      if (p->rnnoise_pending_count) {
+        output[offset] = p->rnnoise_pending[p->rnnoise_pending_pos++];
+        if (p->config.channels == 2)
+          output[offset + 1] = p->rnnoise_pending[p->rnnoise_pending_pos++];
+        p->rnnoise_pending_count--;
+      } else {
+        output[offset] = 0.0f;
+        if (p->config.channels == 2)
+          output[offset + 1] = 0.0f;
+      }
+      p->rnnoise_input[p->rnnoise_fill] = (p->config.channels == 2 ? 0.5f * (left + right) : left) * 32768.0f;
+      p->rnnoise_left[p->rnnoise_fill] = left;
+      p->rnnoise_right[p->rnnoise_fill] = right;
+      if (++p->rnnoise_fill == 480) {
+        float denoised[480];
+        rnnoise_process_frame(p->rnnoise, denoised, p->rnnoise_input);
         if (p->config.channels == 2) {
-          float gain = fabsf(mono[i]) > 1e-6f ? denoised[i] / mono[i] : 0.0f;
-          gain = fminf(2.0f, fmaxf(0.0f, gain));
-          output[(offset + i) * 2] = input[(offset + i) * 2] * gain;
-          output[(offset + i) * 2 + 1] = input[(offset + i) * 2 + 1] * gain;
+          double input_energy = 0.0, output_energy = 0.0;
+          for (size_t i = 0; i < 480; ++i) {
+            input_energy += (double)p->rnnoise_input[i] * p->rnnoise_input[i];
+            output_energy += (double)denoised[i] * denoised[i];
+          }
+          float gain = input_energy > 1e-6 ? (float)sqrt(output_energy / input_energy) : 1.0f;
+          gain = fminf(1.0f, fmaxf(0.0f, gain));
+          for (size_t i = 0; i < 480; ++i) {
+            p->rnnoise_pending[i * 2] = p->rnnoise_left[i] * gain;
+            p->rnnoise_pending[i * 2 + 1] = p->rnnoise_right[i] * gain;
+          }
+          p->rnnoise_pending_count = 480;
         } else {
-          output[offset + i] = denoised[i];
+          for (size_t i = 0; i < 480; ++i)
+            p->rnnoise_pending[i] = denoised[i] / 32768.0f;
+          p->rnnoise_pending_count = 480;
         }
+        p->rnnoise_pending_pos = 0;
+        p->rnnoise_fill = 0;
       }
     }
-    const size_t processed = p->config.channels == 2 ? complete * 2 : complete;
-    if (processed < count)
-      memcpy(output + processed, input + processed, (count - processed) * sizeof(float));
     input = output;
   }
   if (p->config.channels == 2) {
-    if (count % 2)
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Incomplete stereo PCM frame");
     const audio_processor_config_t *c = &p->config;
     for (size_t base = 0; base < count;) {
       size_t frames = (count - base) / 2;

@@ -46,7 +46,7 @@ asciichat_error_t audio_processor_create(const audio_processor_config_t *config,
 /** Arbitrary block sizes, in-place buffers, and no allocations or locks. AEC precedes this operation. */
 asciichat_error_t audio_processor_process(audio_processor_t *processor, const float *input, float *output, size_t count);
 void audio_processor_set_flags(audio_processor_t *processor, audio_processor_flags_t flags);
-void audio_processor_reset(audio_processor_t *processor);
+asciichat_error_t audio_processor_reset(audio_processor_t *processor);
 void audio_processor_destroy(audio_processor_t *processor);
 
 #ifdef __cplusplus
