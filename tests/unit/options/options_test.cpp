@@ -540,7 +540,7 @@ TEST_CASE("options::valid_palette_chars", "[options]") {
 
   char *argv[] = {"program", "client", "--palette-chars", " .:-=+*#%@$", NULL};
   int result = test_options_init_with_fork(argv, 4, true);
-  cr_assert_eq(result, 0);
+  REQUIRE(result == 0);
 
   restore_options(&backup);
 }
@@ -714,7 +714,7 @@ TEST_CASE("options::complex_server_combination", "[options]") {
   int argc = 5;
 
   int result = test_options_init_with_fork(argv, argc, false);
-  cr_assert_eq(result, 0);
+  REQUIRE(result == 0);
 
   restore_options(&backup);
 }
@@ -810,7 +810,7 @@ TEST_CASE("options::very_long_arguments", "[options]") {
 
   char *argv[] = {"program", "client", long_address, NULL};
   int result = test_options_init_with_fork(argv, 3, true);
-  cr_assert_eq(result, 0);
+  REQUIRE(result == 0);
 
   restore_options(&backup);
 }
@@ -823,7 +823,7 @@ TEST_CASE("options::maximum_values", "[options]") {
   int argc = 7;
 
   int result = test_options_init_with_fork(argv, argc, true);
-  cr_assert_eq(result, 0);
+  REQUIRE(result == 0);
 
   restore_options(&backup);
 }
@@ -867,7 +867,7 @@ TEST_CASE("options::random_combinations", "[options]") {
     }
 
     int result = test_options_init_with_fork(argv, argc, true);
-    cr_assert_eq(result, 0, "Random combination %d should not cause exit", i);
+  REQUIRE(result == 0);
   }
 
   restore_options(&backup);
@@ -881,23 +881,23 @@ GENERATE_OPTIONS_TEST(
     actual_values_client, ARGV_LIST("client", "192.168.1.1:8080", "-x", "100", "-y", "50"), true,
     {
       // Test actual values were set
-      cr_assert_str_eq(opts->address, "192.168.1.1");
-      cr_assert_eq(opts->port, 8080);
-      cr_assert_eq(opts->width, 100);
-      cr_assert_eq(opts->height, 50);
-      cr_assert_eq(opts->auto_width, 0);
-      cr_assert_eq(opts->auto_height, 0);
+      REQUIRE(std::strcmp(opts->address, "192.168.1.1") == 0);
+      REQUIRE(opts->port == 8080);
+      REQUIRE(opts->width == 100);
+      REQUIRE(opts->height == 50);
+      REQUIRE(opts->auto_width == 0);
+      REQUIRE(opts->auto_height == 0);
     },
     {
       // Test that options_init doesn't exit with error
-      cr_assert_eq(exit_code, 0, "options_init should not exit with error");
+      REQUIRE(exit_code == 0);
     })
 
 GENERATE_OPTIONS_TEST(
-    color_mode_auto, ARGV_LIST("client", "--color-mode", "auto"), true, { cr_assert_eq(opts->color_mode, COLOR_MODE_AUTO); }, { cr_assert_eq(exit_code, 0, "auto color mode should not exit"); })
+    color_mode_auto, ARGV_LIST("client", "--color-mode", "auto"), true, { REQUIRE(opts->color_mode == COLOR_MODE_AUTO); }, { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    color_mode_256, ARGV_LIST("client", "--color-mode", "256"), true, { cr_assert_eq(opts->color_mode, COLOR_MODE_256_COLOR); }, { cr_assert_eq(exit_code, 0, "256 color mode should not exit"); })
+    color_mode_256, ARGV_LIST("client", "--color-mode", "256"), true, { REQUIRE(opts->color_mode == COLOR_MODE_256_COLOR); }, { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
     color_mode_truecolor, ARGV_LIST("client", "--color-mode", "truecolor"), true, { cr_assert_eq(opts->color_mode, COLOR_MODE_TRUECOLOR); },
