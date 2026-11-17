@@ -430,7 +430,7 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
     foreach(_recast_target recast-objects recast)
       foreach(_recast_host_dir IN LISTS _asciichat_recast_host_dirs)
         target_compile_options("${_recast_target}" BEFORE PRIVATE
-          "-isystem" "${_recast_host_dir}")
+          "-isystem${_recast_host_dir}")
       endforeach()
       target_compile_options("${_recast_target}" PRIVATE "-idirafter" "/usr/include")
     endforeach()
