@@ -32,8 +32,8 @@ class CompleteCoverageTests(unittest.TestCase):
         (xml / "example.xml").write_text('<testsuites><testsuite><testcase name="example"/></testsuite></testsuites>')
         return report
 
-    def test_single_performance_report_cannot_publish_one_percent_snapshot(self):
-        self.write_shard("performance-test-results-Linux")
+    def test_single_benchmark_report_cannot_publish_one_percent_snapshot(self):
+        self.write_shard("benchmark-test-results-Linux")
         with self.assertRaisesRegex(ValueError, "refusing partial upload"):
             upload.prepare(self.root)
 

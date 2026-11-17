@@ -17,8 +17,8 @@ EXPECTED_ARTIFACTS = (
     "test-results-macOS-release",
     "integration-test-results-Linux",
     "integration-test-results-macOS",
-    "performance-test-results-Linux",
-    "performance-test-results-macOS",
+    "benchmark-test-results-Linux",
+    "benchmark-test-results-macOS",
 )
 
 
