@@ -393,7 +393,8 @@ if(BUILD_TESTS AND CATCH2_FOUND)
     set(_ascii_tests_mimalloc_include "${MIMALLOC_INCLUDE_DIRS}")
 
     # Find test files (excluding problematic ones, matches Makefile)
-    file(GLOB_RECURSE TEST_SRCS_ALL ${CMAKE_CURRENT_SOURCE_DIR}/integration/*.cpp)
+    file(GLOB_RECURSE TEST_SRCS_ALL CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/*.cpp)
     file(GLOB_RECURSE BENCHMARK_SRCS CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/*.cpp)
     # GLOB_RECURSE returns absolute paths, so TEST_EXCLUDES must also be absolute
