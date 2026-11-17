@@ -18,8 +18,6 @@
 #include <libflags/values.h>
 #include <ascii-chat/util/parsing.h>
 
-#define TestSuite(name)
-#define Test(suite, name) TEST_CASE(#suite "::" #name, "[" #suite "]")
 #define cr_assert(condition, ...) REQUIRE(condition)
 #define cr_assert_not(condition, ...) REQUIRE_FALSE(condition)
 #define cr_assert_eq(left, right, ...) REQUIRE((left) == (right))
@@ -105,7 +103,7 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
  * Basic Functionality Tests
  * ============================================================================ */
 
-Test(options, explicit_flip_values_survive_mode_parsing) {
+TEST_CASE("options::explicit_flip_values_survive_mode_parsing", "[options]") {
   char *argv[] = {"program", "mirror", "--test-pattern=0", "--flip-x=false", "--flip-y=true", NULL};
   cr_assert_eq(options_init(5, argv), ASCIICHAT_OK);
   const options_t *opts = options_get();
@@ -113,7 +111,7 @@ Test(options, explicit_flip_values_survive_mode_parsing) {
   cr_assert_eq(opts->flip_y, true);
 }
 
-Test(options, test_pattern_defaults_to_unflipped) {
+TEST_CASE("options::test_pattern_defaults_to_unflipped", "[options]") {
   char *argv[] = {"program", "mirror", "--test-pattern", NULL};
   cr_assert_eq(options_init(3, argv), ASCIICHAT_OK);
   const options_t *opts = options_get();
@@ -121,7 +119,7 @@ Test(options, test_pattern_defaults_to_unflipped) {
   cr_assert_not(opts->flip_x);
 }
 
-Test(options, test_pattern_respects_explicit_flip) {
+TEST_CASE("options::test_pattern_respects_explicit_flip", "[options]") {
   char *argv[] = {"program", "mirror", "--test-pattern", "--flip-x=true", NULL};
   cr_assert_eq(options_init(4, argv), ASCIICHAT_OK);
   const options_t *opts = options_get();
@@ -129,7 +127,7 @@ Test(options, test_pattern_respects_explicit_flip) {
   cr_assert(opts->flip_x);
 }
 
-Test(options, default_values) {
+TEST_CASE("options::default_values", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -475,14 +473,14 @@ TEST_CASE("options::color_mode_validation", "[options][parameterized]") {
 }
 
 // Original loop-based tests replaced by parameterized version above
-// Test(options, valid_color_modes) { ... }
-// Test(options, invalid_color_modes) { ... }
+// TEST_CASE("options::valid_color_modes", "[options]") { ... }
+// TEST_CASE("options::invalid_color_modes", "[options]") { ... }
 
 /* ============================================================================
  * Render Mode Tests
  * ============================================================================ */
 
-Test(options, valid_render_modes) {
+TEST_CASE("options::valid_render_modes", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -497,7 +495,7 @@ Test(options, valid_render_modes) {
   restore_options(&backup);
 }
 
-Test(options, invalid_render_modes) {
+TEST_CASE("options::invalid_render_modes", "[options]") {
   char *invalid_modes[] = {"invalid", "full", "block", "text", ""};
 
   for (int i = 0; i < 5; i++) {
@@ -511,7 +509,7 @@ Test(options, invalid_render_modes) {
  * Palette Tests
  * ============================================================================ */
 
-Test(options, valid_palettes) {
+TEST_CASE("options::valid_palettes", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -526,7 +524,7 @@ Test(options, valid_palettes) {
   restore_options(&backup);
 }
 
-Test(options, invalid_palettes) {
+TEST_CASE("options::invalid_palettes", "[options]") {
   char *invalid_palettes[] = {"invalid", "ascii", "unicode", "color", ""};
 
   for (int i = 0; i < 5; i++) {
@@ -536,7 +534,7 @@ Test(options, invalid_palettes) {
   }
 }
 
-Test(options, valid_palette_chars) {
+TEST_CASE("options::valid_palette_chars", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -547,7 +545,7 @@ Test(options, valid_palette_chars) {
   restore_options(&backup);
 }
 
-Test(options, invalid_palette_chars) {
+TEST_CASE("options::invalid_palette_chars", "[options]") {
   // Empty palette chars should fail
   char *argv[] = {"program", "client", "--palette-chars", "", NULL};
   int result = test_options_init_with_fork(argv, 4, true);
@@ -558,7 +556,7 @@ Test(options, invalid_palette_chars) {
  * Snapshot Delay Tests
  * ============================================================================ */
 
-Test(options, valid_snapshot_delays) {
+TEST_CASE("options::valid_snapshot_delays", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -574,7 +572,7 @@ Test(options, valid_snapshot_delays) {
   restore_options(&backup);
 }
 
-Test(options, invalid_snapshot_delays) {
+TEST_CASE("options::invalid_snapshot_delays", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -624,7 +622,7 @@ GENERATE_OPTIONS_TEST(
  * Flag Options Tests
  * ============================================================================ */
 
-Test(options, flag_options) {
+TEST_CASE("options::flag_options", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -674,7 +672,7 @@ GENERATE_OPTIONS_TEST_IN_SUITE(
  * Equals Sign Handling Tests
  * ============================================================================ */
 
-Test(options, equals_sign_handling) {
+TEST_CASE("options::equals_sign_handling", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -689,7 +687,7 @@ Test(options, equals_sign_handling) {
  * Complex Combinations Tests
  * ============================================================================ */
 
-Test(options, complex_client_combination) {
+TEST_CASE("options::complex_client_combination", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -706,7 +704,7 @@ Test(options, complex_client_combination) {
   restore_options(&backup);
 }
 
-Test(options, complex_server_combination) {
+TEST_CASE("options::complex_server_combination", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -732,7 +730,7 @@ Test(options, complex_server_combination) {
  * Dimension Update Tests
  * ============================================================================ */
 
-Test(options, update_dimensions_for_full_height) {
+TEST_CASE("options::update_dimensions_for_full_height", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -763,7 +761,7 @@ Test(options, update_dimensions_for_full_height) {
   restore_options(&backup);
 }
 
-Test(options, update_dimensions_to_terminal_size) {
+TEST_CASE("options::update_dimensions_to_terminal_size", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -798,7 +796,7 @@ Test(options, update_dimensions_to_terminal_size) {
  * Edge Cases and Stress Tests
  * ============================================================================ */
 
-Test(options, very_long_arguments) {
+TEST_CASE("options::very_long_arguments", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -817,7 +815,7 @@ Test(options, very_long_arguments) {
   restore_options(&backup);
 }
 
-Test(options, maximum_values) {
+TEST_CASE("options::maximum_values", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -830,7 +828,7 @@ Test(options, maximum_values) {
   restore_options(&backup);
 }
 
-Test(options, minimum_values) {
+TEST_CASE("options::minimum_values", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -843,7 +841,7 @@ Test(options, minimum_values) {
   restore_options(&backup);
 }
 
-Test(options, random_combinations) {
+TEST_CASE("options::random_combinations", "[options]") {
   options_backup_t backup;
   save_options(&backup);
 
@@ -1210,7 +1208,7 @@ GENERATE_OPTIONS_TEST(
  * 5. Only the first action is remembered when multiple are deferred
  */
 
-Test(options, deferred_action_list_webcams) {
+TEST_CASE("options::deferred_action_list_webcams", "[options]") {
   // Defer the action
   action_list_webcams();
 
@@ -1219,7 +1217,7 @@ Test(options, deferred_action_list_webcams) {
   cr_assert_eq(action, ACTION_LIST_WEBCAMS, "action_list_webcams() should defer ACTION_LIST_WEBCAMS");
 }
 
-Test(options, deferred_action_list_microphones) {
+TEST_CASE("options::deferred_action_list_microphones", "[options]") {
   // Defer the action
   action_list_microphones();
 
@@ -1228,7 +1226,7 @@ Test(options, deferred_action_list_microphones) {
   cr_assert_eq(action, ACTION_LIST_MICROPHONES, "action_list_microphones() should defer ACTION_LIST_MICROPHONES");
 }
 
-Test(options, deferred_action_list_speakers) {
+TEST_CASE("options::deferred_action_list_speakers", "[options]") {
   // Defer the action
   action_list_speakers();
 
@@ -1237,7 +1235,7 @@ Test(options, deferred_action_list_speakers) {
   cr_assert_eq(action, ACTION_LIST_SPEAKERS, "action_list_speakers() should defer ACTION_LIST_SPEAKERS");
 }
 
-Test(options, deferred_action_show_capabilities) {
+TEST_CASE("options::deferred_action_show_capabilities", "[options]") {
   // Defer the action
   action_show_capabilities();
 
@@ -1246,7 +1244,7 @@ Test(options, deferred_action_show_capabilities) {
   cr_assert_eq(action, ACTION_SHOW_CAPABILITIES, "action_show_capabilities() should defer ACTION_SHOW_CAPABILITIES");
 }
 
-Test(options, deferred_action_first_wins) {
+TEST_CASE("options::deferred_action_first_wins", "[options]") {
   // Defer first action
   action_list_webcams();
   cr_assert_eq(actions_get_deferred(), ACTION_LIST_WEBCAMS, "First action should be deferred");
@@ -1260,7 +1258,7 @@ Test(options, deferred_action_first_wins) {
   cr_assert_eq(actions_get_deferred(), ACTION_LIST_WEBCAMS, "First action should still be deferred, third action should be ignored");
 }
 
-Test(options, deferred_action_arguments) {
+TEST_CASE("options::deferred_action_arguments", "[options]") {
   // Set action with arguments
   action_args_t args = {.output_path = "/tmp/test.txt", .shell_name = "bash"};
 
@@ -1273,7 +1271,7 @@ Test(options, deferred_action_arguments) {
   cr_assert_str_eq(retrieved_args->shell_name, "bash", "Shell name should be preserved");
 }
 
-Test(options, deferred_action_no_action_by_default) {
+TEST_CASE("options::deferred_action_no_action_by_default", "[options]") {
   deferred_action_t action = actions_get_deferred();
   cr_assert_eq(action, ACTION_NONE, "ACTION_NONE should be the default deferred action");
 
@@ -1281,7 +1279,7 @@ Test(options, deferred_action_no_action_by_default) {
   cr_assert_null(args, "Arguments should be NULL when action is ACTION_NONE");
 }
 
-Test(options, repeated_media_arguments_share_one_ordered_playlist) {
+TEST_CASE("options::repeated_media_arguments_share_one_ordered_playlist", "[options]") {
   char *argv[] = {"program", "mirror", "--file", "first.mp4", "--url", "https://example.com/second.webm", "--file=third.mp4", NULL};
   cr_assert_eq(options_init(7, argv), ASCIICHAT_OK);
   const options_t *opts = options_get();
@@ -1293,7 +1291,7 @@ Test(options, repeated_media_arguments_share_one_ordered_playlist) {
   cr_assert_str_empty(opts->media_url);
 }
 
-Test(options, url_first_playlist_does_not_gain_file_priority) {
+TEST_CASE("options::url_first_playlist_does_not_gain_file_priority", "[options]") {
   char *argv[] = {"program", "mirror", "--url=https://example.com/first.webm", "-f", "second.mp4", NULL};
   cr_assert_eq(options_init(5, argv), ASCIICHAT_OK);
   const options_t *opts = options_get();
@@ -1302,7 +1300,7 @@ Test(options, url_first_playlist_does_not_gain_file_priority) {
   cr_assert_str_empty(opts->media_file);
 }
 
-Test(options, rejected_glyph_palette_is_not_published) {
+TEST_CASE("options::rejected_glyph_palette_is_not_published", "[options]") {
   cr_assert_eq(options_state_init(), ASCIICHAT_OK);
   options_t *before = SAFE_MALLOC(sizeof(*before), options_t *);
   *before = *options_get();
