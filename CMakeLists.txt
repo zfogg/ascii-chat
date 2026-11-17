@@ -400,6 +400,18 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
     set(_asciichat_recast_cxx_standard_libraries "${CMAKE_CXX_STANDARD_LIBRARIES}")
     set(_asciichat_recast_saved_c_flags "${CMAKE_C_FLAGS}")
     set(_asciichat_recast_saved_cxx_flags "${CMAKE_CXX_FLAGS}")
+    if(EXISTS "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libstdcxx/usr/include/c++")
+      file(GLOB _asciichat_recast_stdcpp_roots LIST_DIRECTORIES true
+        "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libstdcxx/usr/include/c++/*")
+      list(SORT _asciichat_recast_stdcpp_roots)
+      list(GET _asciichat_recast_stdcpp_roots 0 _asciichat_recast_stdcpp_root)
+      file(GLOB _asciichat_recast_stdcpp_target_roots LIST_DIRECTORIES true
+        "${_asciichat_recast_stdcpp_root}/*-linux-musl")
+      list(SORT _asciichat_recast_stdcpp_target_roots)
+      list(GET _asciichat_recast_stdcpp_target_roots 0 _asciichat_recast_stdcpp_target_root)
+      set(RECAST_HOST_CXX_INCLUDE_DIRS
+        "${_asciichat_recast_stdcpp_root};${_asciichat_recast_stdcpp_target_root}")
+    endif()
     set(CMAKE_C_FLAGS "")
     set(CMAKE_CXX_FLAGS "")
     set(CMAKE_EXE_LINKER_FLAGS "")
@@ -412,27 +424,6 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
     "${CMAKE_SOURCE_DIR}/deps/recast"
     "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build"
     EXCLUDE_FROM_ALL)
-  if(ASCIICHAT_DEPS_CACHE_DIR)
-    if(NOT MUSL_LIBSTDCPP_INCLUDE_DIR OR NOT MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
-      file(GLOB _asciichat_recast_stdcpp_roots LIST_DIRECTORIES true
-        "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libstdcxx/usr/include/c++/*")
-      list(SORT _asciichat_recast_stdcpp_roots)
-      list(GET _asciichat_recast_stdcpp_roots 0 MUSL_LIBSTDCPP_INCLUDE_DIR)
-      file(GLOB _asciichat_recast_stdcpp_target_roots LIST_DIRECTORIES true
-        "${MUSL_LIBSTDCPP_INCLUDE_DIR}/*-linux-musl")
-      list(SORT _asciichat_recast_stdcpp_target_roots)
-      list(GET _asciichat_recast_stdcpp_target_roots 0 MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
-    endif()
-  endif()
-  if(MUSL_LIBSTDCPP_INCLUDE_DIR AND MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
-    # LLVM's imported target exposes /usr/include. Put the matching C++
-    # headers before it so libstdc++'s include_next reaches the host C headers.
-    foreach(_recast_target recast-objects recast)
-      get_target_property(_recast_include_dirs "${_recast_target}" INCLUDE_DIRECTORIES)
-      set_property(TARGET "${_recast_target}" PROPERTY INCLUDE_DIRECTORIES
-        "${MUSL_LIBSTDCPP_INCLUDE_DIR};${MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR};${_recast_include_dirs}")
-    endforeach()
-  endif()
   if(USE_MUSL)
     set(CMAKE_EXE_LINKER_FLAGS "${_asciichat_recast_exe_linker_flags}")
     set(CMAKE_SHARED_LINKER_FLAGS "${_asciichat_recast_shared_linker_flags}")
