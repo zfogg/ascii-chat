@@ -400,9 +400,12 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
     set(_asciichat_recast_cxx_standard_libraries "${CMAKE_CXX_STANDARD_LIBRARIES}")
     set(_asciichat_recast_saved_c_flags "${CMAKE_C_FLAGS}")
     set(_asciichat_recast_saved_cxx_flags "${CMAKE_CXX_FLAGS}")
-    asciichat_musl_compile_flags(_asciichat_recast_c_flags _asciichat_recast_cxx_flags)
-    string(APPEND CMAKE_C_FLAGS " ${_asciichat_recast_c_flags}")
-    string(APPEND CMAKE_CXX_FLAGS " ${_asciichat_recast_cxx_flags}")
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND MUSL_LIBSTDCPP_INCLUDE_DIR
+       AND MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
+      string(APPEND CMAKE_CXX_FLAGS
+        " -isystem ${MUSL_LIBSTDCPP_INCLUDE_DIR}"
+        " -isystem ${MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR}")
+    endif()
     set(CMAKE_EXE_LINKER_FLAGS "")
     set(CMAKE_SHARED_LINKER_FLAGS "")
     set(CMAKE_MODULE_LINKER_FLAGS "")
@@ -428,8 +431,6 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
     unset(_asciichat_recast_cxx_standard_libraries)
     unset(_asciichat_recast_saved_c_flags)
     unset(_asciichat_recast_saved_cxx_flags)
-    unset(_asciichat_recast_c_flags)
-    unset(_asciichat_recast_cxx_flags)
   endif()
 endif()
 if(RECAST_BACKEND STREQUAL "NATIVE" AND TARGET recast)
