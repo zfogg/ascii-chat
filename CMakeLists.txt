@@ -385,7 +385,7 @@ endforeach()
 
 include("${CMAKE_SOURCE_DIR}/deps/recast/Recast.cmake")
 if(RECAST_BACKEND STREQUAL "NATIVE" AND
-   (NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}"))
+   (USE_MUSL OR NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}"))
   set(BUILD_TESTING OFF CACHE BOOL "Disable Recast tests in ascii-chat" FORCE)
   set(RECAST_BUILD_DOCS OFF CACHE BOOL "Disable Recast docs in ascii-chat" FORCE)
   if(USE_MUSL)
