@@ -3,6 +3,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/time.h>
+#include <rnnoise.h>
 #include <math.h>
 #include <string.h>
 
@@ -24,6 +25,7 @@ struct audio_processor {
   double energy;
   size_t level_samples;
   float gain, target_gain, max_gain, gain_attack, gain_release;
+  DenoiseState *rnnoise;
 };
 
 audio_processor_config_t audio_processor_default_config(int sample_rate) {
@@ -31,6 +33,7 @@ audio_processor_config_t audio_processor_default_config(int sample_rate) {
       .sample_rate = sample_rate,
       .flags = {.agc = true, .compressor = true, .highpass = true},
       .spectral_enabled = true,
+      .rnnoise_enabled = true,
       .spectral = spectral_default_config(sample_rate),
       .agc_level = 16000,
       .agc_max_gain = 35,
@@ -51,6 +54,10 @@ audio_processor_config_t audio_processor_default_config(int sample_rate) {
 void audio_processor_reset(audio_processor_t *p) {
   if (!p)
     return;
+  if (p->rnnoise) {
+    rnnoise_destroy(p->rnnoise);
+    p->rnnoise = rnnoise_create(NULL);
+  }
   spectral_reset(p->spectral_left);
   spectral_reset(p->spectral_right);
   const audio_processor_config_t *c = &p->config;
@@ -107,6 +114,15 @@ asciichat_error_t audio_processor_create(const audio_processor_config_t *c, audi
       }
     }
   }
+  if (p->config.rnnoise_enabled && p->config.sample_rate == 48000) {
+    p->rnnoise = rnnoise_create(NULL);
+    if (!p->rnnoise) {
+      spectral_destroy(p->spectral_left);
+      spectral_destroy(p->spectral_right);
+      SAFE_FREE(p);
+      return SET_ERRNO(ERROR_AUDIO, "Failed to initialize embedded RNNoise model");
+    }
+  }
   audio_processor_reset(p);
   *out = p;
   return ASCIICHAT_OK;
@@ -122,6 +138,31 @@ asciichat_error_t audio_processor_process(audio_processor_t *p, const float *inp
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio processor buffers");
   if (!count)
     return ASCIICHAT_OK;
+  if (p->rnnoise) {
+    const size_t frame = 480;
+    const size_t frames = p->config.channels == 2 ? count / 2 : count;
+    const size_t complete = frames - (frames % frame);
+    float mono[480], denoised[480];
+    for (size_t offset = 0; offset < complete; offset += frame) {
+      for (size_t i = 0; i < frame; ++i)
+        mono[i] = p->config.channels == 2 ? 0.5f * (input[(offset + i) * 2] + input[(offset + i) * 2 + 1]) : input[offset + i];
+      rnnoise_process_frame(p->rnnoise, denoised, mono);
+      for (size_t i = 0; i < frame; ++i) {
+        if (p->config.channels == 2) {
+          float gain = fabsf(mono[i]) > 1e-6f ? denoised[i] / mono[i] : 0.0f;
+          gain = fminf(2.0f, fmaxf(0.0f, gain));
+          output[(offset + i) * 2] = input[(offset + i) * 2] * gain;
+          output[(offset + i) * 2 + 1] = input[(offset + i) * 2 + 1] * gain;
+        } else {
+          output[offset + i] = denoised[i];
+        }
+      }
+    }
+    const size_t processed = p->config.channels == 2 ? complete * 2 : complete;
+    if (processed < count)
+      memcpy(output + processed, input + processed, (count - processed) * sizeof(float));
+    input = output;
+  }
   if (p->config.channels == 2) {
     if (count % 2)
       return SET_ERRNO(ERROR_INVALID_PARAM, "Incomplete stereo PCM frame");
@@ -226,6 +267,8 @@ void audio_processor_destroy(audio_processor_t *p) {
     return;
   spectral_destroy(p->spectral_left);
   spectral_destroy(p->spectral_right);
+  rnnoise_destroy(p->rnnoise);
+  p->rnnoise = NULL;
   p->spectral_left = NULL;
   SAFE_FREE(p);
 }

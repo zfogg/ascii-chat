@@ -16,6 +16,12 @@
  * block sizes and in-place buffers, with no allocations or locks in the hot path.
  * Gain metering follows the sample clock so changing callback sizes does not change
  * the result. Spectral AGC/compression replace their traditional equivalents.
+ * The embedded BSD-licensed RNNoise model is also available for 48 kHz capture.
+ * It runs after native AEC3 on complete 480-sample mono frames; stereo capture
+ * derives one suppression envelope and applies it to both channels. The model
+ * is compiled into the audio library, so the realtime path never loads a model
+ * file or performs filesystem/network work. Other sample rates retain the
+ * existing spectral path.
  *
  * The native client first runs AEC3 using its actual speaker playback reference,
  * then calls the shared processor. Browser microphone capture requests native

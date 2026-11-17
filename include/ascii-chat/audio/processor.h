@@ -30,6 +30,7 @@ typedef struct {
   int sample_rate;
   audio_processor_flags_t flags;
   bool spectral_enabled;
+  bool rnnoise_enabled; /**< Apply the embedded RNNoise model to 48 kHz capture. */
   spectral_config_t spectral;
   int agc_level, agc_max_gain;
   float highpass_hz, lowpass_hz;
