@@ -50,24 +50,26 @@ elseif(USE_MUSL OR PLATFORM_IOS)
             string(APPEND _icu_cc " --target=${MUSL_TARGET}")
             string(APPEND _icu_cxx " --target=${MUSL_TARGET}")
         else()
-            # GCC's g++ driver still searches the host glibc C++ include tree,
-            # even when its C driver is musl-gcc. Use clang++ for ICU's C++
-            # cross objects so libc++ and musl headers stay in one sysroot.
-            set(_icu_cxx "${_icu_musl_cxx} --target=${MUSL_TARGET} -stdlib=libc++")
-            string(APPEND _icu_cxxflags " -nostdlibinc")
+            # Keep ICU on GCC's native C++ ABI. The GCC driver supplies its
+            # matching libstdc++ headers; the musl C include path is already
+            # isolated by the shared musl flags.
+            set(_icu_cxx "${CMAKE_CXX_COMPILER}")
         endif()
         set(_icu_host "${MUSL_TARGET}")
         set(_icu_ldflags "-fuse-ld=lld -static-pie -nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o")
         if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
             string(APPEND _icu_ldflags " -nostdlib++")
         endif()
-        set(_icu_libs "${ALPINE_LIBCXX_STATIC} ${ALPINE_LIBCXXABI_STATIC} ${ALPINE_LIBUNWIND_STATIC} ${MUSL_LIBGCC_PATH} -lc -lm ${MUSL_LIBDIR}/crtn.o")
+        if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+            set(_icu_libs "${MUSL_LIBSTDCPP_PATH} ${MUSL_LIBGCC_PATH} -lc -lm ${MUSL_LIBDIR}/crtn.o")
+        else()
+            set(_icu_libs "${ALPINE_LIBCXX_STATIC} ${ALPINE_LIBCXXABI_STATIC} ${ALPINE_LIBUNWIND_STATIC} ${MUSL_LIBGCC_PATH} -lc -lm ${MUSL_LIBDIR}/crtn.o")
+        endif()
         get_filename_component(_icu_libcxx_libdir "${ALPINE_LIBCXX_STATIC}" DIRECTORY)
         set(_icu_libcxx_include "${_icu_libcxx_libdir}/../include/c++/v1")
-        # GCC's standard library is a host/glibc installation here. ICU's musl
-        # artifacts must use the bundled libc++ headers to match the static
-        # libc++/libc++abi libraries used by the musl link.
-        string(APPEND _icu_cxxflags " -nostdinc++ -isystem ${_icu_libcxx_include}")
+        if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+            string(APPEND _icu_cxxflags " -nostdinc++ -isystem ${_icu_libcxx_include}")
+        endif()
     else()
         set(_icu_cc "${CMAKE_C_COMPILER}")
         set(_icu_cxx "${CMAKE_CXX_COMPILER}")
