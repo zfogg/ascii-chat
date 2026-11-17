@@ -1015,10 +1015,37 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.create-release.outputs.version }}
         run: |
-          gh release create "$RELEASE_TAG" release-assets/**/* \
+          mapfile -t assets < <(find release-assets -maxdepth 1 -type f ! -name 'release-man1' -printf '%p\n' | sort)
+          source_tarball=""
+          installer_count=0
+          for asset in "${assets[@]}"; do
+            name="${asset##*/}"
+            if [[ "$name" == ascii-chat-*-full.tar.gz ]]; then
+              source_tarball="$asset"
+              continue
+            fi
+            case "$name" in
+              *.deb|*.rpm|*.pkg|*.msi|*.zip|*.sh|*.tar.gz) installer_count=$((installer_count + 1)) ;;
+            esac
+          done
+          if [[ -z "$source_tarball" ]]; then
+            echo "::error::Missing full source tarball in downloaded release artifacts"
+            exit 1
+          fi
+          if (( installer_count == 0 )); then
+            echo "::error::No installer/package assets were downloaded"
+            exit 1
+          fi
+          source_sha256="$(sha256sum "$source_tarball" | cut -d' ' -f1)"
+          generated_notes="$(gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$RELEASE_TAG")"
+          {
+            jq -r '.body' <<<"$generated_notes"
+            printf '\n## Source Tarball\n\n- `%s`\n- SHA256: `%s`\n' "${source_tarball##*/}" "$source_sha256"
+          } > release-notes.md
+          gh release create "$RELEASE_TAG" "${assets[@]}" \
             --repo "$GITHUB_REPOSITORY" \
             --title "ascii-chat $RELEASE_TAG" \
-            --generate-notes
+            --notes-file release-notes.md
 
   notify:
     name: Send release notification
