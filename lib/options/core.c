@@ -369,12 +369,7 @@ static bool options_command_mode(const char *name, asciichat_mode_t *mode) {
     const char *name;
     asciichat_mode_t mode;
   } commands[] = {
-      {"server", MODE_SERVER},
-      {"client", MODE_CLIENT},
-      {"mirror", MODE_MIRROR},
-      {"discovery-service", MODE_DISCOVERY_SERVICE},
-      {"mcp-server", MODE_MCP_SERVER},
-      {"api-server", MODE_API_SERVER},
+      {"server", MODE_SERVER}, {"client", MODE_CLIENT}, {"mirror", MODE_MIRROR}, {"discovery-service", MODE_DISCOVERY_SERVICE}, {"mcp-server", MODE_MCP_SERVER}, {"api-server", MODE_API_SERVER},
   };
   if (!name || !mode)
     return false;
@@ -482,10 +477,10 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   if (resolved_command != root) {
     const char *name = flags_command_name(resolved_command);
     if (options_command_mode(name, out_mode)) {
-        *out_mode_index = resolution.command_index;
-        flags_schema_builder_destroy(schema_builder);
-        flags_command_destroy(root);
-        return ASCIICHAT_OK;
+      *out_mode_index = resolution.command_index;
+      flags_schema_builder_destroy(schema_builder);
+      flags_command_destroy(root);
+      return ASCIICHAT_OK;
     }
   }
   flags_schema_builder_destroy(schema_builder);
