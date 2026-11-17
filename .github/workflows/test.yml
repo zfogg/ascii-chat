@@ -239,7 +239,10 @@ jobs:
 
       - name: Build test suite
         run: |
-          cmake --build build --target tests
+          # Unit jobs only need the shared production objects and the unit
+          # executable. The aggregate `tests` target also builds integration,
+          # benchmark, and platform fixture binaries.
+          cmake --build build --target unit_tests
 
           echo "Test executables built:"
           ls -la build/bin/test_* 2>/dev/null || echo "No test executables found in build/bin/"
