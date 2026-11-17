@@ -22,6 +22,11 @@ function(ascii_chat_add_face_detector target)
     set_source_files_properties(${sources} PROPERTIES
         SKIP_PRECOMPILE_HEADERS ON SKIP_UNITY_BUILD_INCLUSION ON
         COMPILE_OPTIONS "${_face_detector_options}")
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        # libfacedetection uses exit() in template bodies without including
+        # <cstdlib>; provide the standard declaration for GCC's strict lookup.
+        set_property(SOURCE ${sources} APPEND PROPERTY COMPILE_OPTIONS "-include" "cstdlib")
+    endif()
     set_source_files_properties(${root}/lib/video/face_detect.cpp PROPERTIES
         SKIP_PRECOMPILE_HEADERS ON SKIP_UNITY_BUILD_INCLUSION ON)
 endfunction()
