@@ -400,11 +400,11 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
     set(_asciichat_recast_cxx_standard_libraries "${CMAKE_CXX_STANDARD_LIBRARIES}")
     set(_asciichat_recast_saved_c_flags "${CMAKE_C_FLAGS}")
     set(_asciichat_recast_saved_cxx_flags "${CMAKE_CXX_FLAGS}")
+    set(CMAKE_C_FLAGS "")
+    set(CMAKE_CXX_FLAGS "")
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND MUSL_LIBSTDCPP_INCLUDE_DIR
        AND MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR)
-      string(APPEND CMAKE_CXX_FLAGS
-        " -isystem ${MUSL_LIBSTDCPP_INCLUDE_DIR}"
-        " -isystem ${MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR}")
+      set(CMAKE_CXX_FLAGS "-isystem ${MUSL_LIBSTDCPP_INCLUDE_DIR} -isystem ${MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR}")
     endif()
     set(CMAKE_EXE_LINKER_FLAGS "")
     set(CMAKE_SHARED_LINKER_FLAGS "")
