@@ -192,7 +192,6 @@ class CoverageReportTests(unittest.TestCase):
         (self.root / "main.c").write_text('#include <openssl/crypto.h>\nint main(void) { return OpenSSL_version_num() == 0; }\n')
         (self.root / "CMakeLists.txt").write_text(
             'cmake_minimum_required(VERSION 3.20)\nproject(fixture C)\n'
-            'set(ASCIICHAT_SHARED_DEPS ON)\n'
             f'include("{module.as_posix()}")\n'
             'find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto)\n'
             'add_executable(fixture main.c)\n'

@@ -434,7 +434,6 @@ jobs:
             -DASCIICHAT_FORCE_TESTS=ON \
             -DUSE_MUSL=OFF \
             -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF \
-            -DASCIICHAT_SHARED_DEPS=ON \
             -DCMAKE_C_FLAGS="-std=c2x" \
             -DCMAKE_VERBOSE_MAKEFILE=ON
 
@@ -620,7 +619,6 @@ jobs:
             -DCMAKE_C_FLAGS="-std=c2x -O3"
             -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF
             -DUSE_MUSL=OFF
-            -DASCIICHAT_SHARED_DEPS=ON
             # Skip hardening validation - coverage builds embed .gcda paths in binary
             -DASCIICHAT_SKIP_HARDENING_VALIDATION=ON
           )

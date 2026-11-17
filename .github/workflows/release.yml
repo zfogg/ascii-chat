@@ -608,7 +608,7 @@ jobs:
           if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
             CMAKE_ARGS="-DASCIICHAT_REQUIRE_HVF=ON"
           fi
-          CMAKE_ARGS="$CMAKE_ARGS --preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }} -DASCIICHAT_SHARED_DEPS=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON"
+          CMAKE_ARGS="$CMAKE_ARGS --preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }} -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON"
           if [ -n "$LLVM_STATIC_DIR" ]; then
             echo "Using LLVM static libraries from: $LLVM_STATIC_DIR"
             CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_LIBCXX_STATIC_ROOT=$LLVM_STATIC_DIR"
