@@ -900,36 +900,36 @@ GENERATE_OPTIONS_TEST(
     color_mode_256, ARGV_LIST("client", "--color-mode", "256"), true, { REQUIRE(opts->color_mode == COLOR_MODE_256_COLOR); }, { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    color_mode_truecolor, ARGV_LIST("client", "--color-mode", "truecolor"), true, { cr_assert_eq(opts->color_mode, COLOR_MODE_TRUECOLOR); },
-    { cr_assert_eq(exit_code, 0, "truecolor mode should not exit"); })
+    color_mode_truecolor, ARGV_LIST("client", "--color-mode", "truecolor"), true, { REQUIRE(opts->color_mode == COLOR_MODE_TRUECOLOR); },
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    render_mode_foreground, ARGV_LIST("client", "--render-mode", "foreground"), true, { cr_assert_eq(opts->render_mode, RENDER_MODE_FOREGROUND); },
-    { cr_assert_eq(exit_code, 0, "foreground render mode should not cause exit"); })
+    render_mode_foreground, ARGV_LIST("client", "--render-mode", "foreground"), true, { REQUIRE(opts->render_mode == RENDER_MODE_FOREGROUND); },
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    render_mode_background, ARGV_LIST("client", "--render-mode", "background"), true, { cr_assert_eq(opts->render_mode, RENDER_MODE_BACKGROUND); },
-    { cr_assert_eq(exit_code, 0, "background render mode should not cause exit"); })
+    render_mode_background, ARGV_LIST("client", "--render-mode", "background"), true, { REQUIRE(opts->render_mode == RENDER_MODE_BACKGROUND); },
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    render_mode_half_block, ARGV_LIST("client", "--render-mode", "half-block"), true, { cr_assert_eq(opts->render_mode, RENDER_MODE_HALF_BLOCK); },
-    { cr_assert_eq(exit_code, 0, "half-block render mode should not cause exit"); })
+    render_mode_half_block, ARGV_LIST("client", "--render-mode", "half-block"), true, { REQUIRE(opts->render_mode == RENDER_MODE_HALF_BLOCK); },
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    palette_standard, ARGV_LIST("client", "--palette", "standard"), true, { cr_assert_eq(opts->palette_type, PALETTE_STANDARD); },
-    { cr_assert_eq(exit_code, 0, "standard palette should not cause exit"); })
+    palette_standard, ARGV_LIST("client", "--palette", "standard"), true, { REQUIRE(opts->palette_type == PALETTE_STANDARD); },
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    palette_blocks, ARGV_LIST("client", "--palette", "blocks"), true, { cr_assert_eq(opts->palette_type, PALETTE_BLOCKS); }, { cr_assert_eq(exit_code, 0, "blocks palette should not cause exit"); })
+    palette_blocks, ARGV_LIST("client", "--palette", "blocks"), true, { REQUIRE(opts->palette_type == PALETTE_BLOCKS); }, { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
     palette_custom_chars, ARGV_LIST("client", "--palette-chars", "@#%*+=:-. "), true,
     {
-      cr_assert_eq(opts->palette_type, PALETTE_CUSTOM);
-      cr_assert_str_eq(opts->palette_custom, "@#%*+=:-. ");
-      cr_assert_eq(opts->palette_custom_set, true);
+      REQUIRE(opts->palette_type == PALETTE_CUSTOM);
+      REQUIRE(std::strcmp(opts->palette_custom, "@#%*+=:-. ") == 0);
+      REQUIRE(opts->palette_custom_set == true);
     },
-    { cr_assert_eq(exit_code, 0, "custom palette chars should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
     test_flag_values,
@@ -937,28 +937,28 @@ GENERATE_OPTIONS_TEST(
     ARGV_LIST("client", "--audio", "--stretch", "--snapshot", "--encrypt", "--utf8", "--show-capabilities", "--flip-x"), true,
     {
       // Test all flags were set
-      cr_assert_eq(opts->audio_enabled, 1);
-      cr_assert_eq(opts->stretch, 1);
+      REQUIRE(opts->audio_enabled == 1);
+      REQUIRE(opts->stretch == 1);
       // opts->quiet removed - now a global option
-      cr_assert_eq(opts->snapshot_mode, 1);
-      cr_assert_eq(opts->encrypt_enabled, 1);
-      cr_assert_eq(opts->force_utf8, 1);
-      cr_assert_eq(opts->show_capabilities, 1);
-      cr_assert_eq(opts->flip_x, true);
+      REQUIRE(opts->snapshot_mode == 1);
+      REQUIRE(opts->encrypt_enabled == 1);
+      REQUIRE(opts->force_utf8 == 1);
+      REQUIRE(opts->show_capabilities == 1);
+      REQUIRE(opts->flip_x == true);
     },
-    { cr_assert_eq(exit_code, 0, "flag values should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
     encryption_key_value, ARGV_LIST("client", "--key", "mysecretpassword123"), true,
     {
-      cr_assert_str_eq(opts->encrypt_key, "mysecretpassword123");
-      cr_assert_eq(opts->encrypt_enabled, 0);
+      REQUIRE(std::strcmp(opts->encrypt_key, "mysecretpassword123") == 0);
+      REQUIRE(opts->encrypt_enabled == 0);
     },
-    { cr_assert_eq(exit_code, 0, "encryption key should not cause exit"); })
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
-    test_snapshot_delay_values, ARGV_LIST("client", "--snapshot", "--snapshot-delay", "2.5"), true, { cr_assert_float_eq(opts->snapshot_delay, 2.5f, 0.01); },
-    { cr_assert_eq(exit_code, 0, "snapshot delay should not cause exit"); })
+    test_snapshot_delay_values, ARGV_LIST("client", "--snapshot", "--snapshot-delay", "2.5"), true, { REQUIRE(std::fabs(opts->snapshot_delay - 2.5f) <= 0.01f); },
+    { REQUIRE(exit_code == 0); })
 
 GENERATE_OPTIONS_TEST(
     test_webcam_values, ARGV_LIST("client", "-c", "3", "--flip-x"), true,
