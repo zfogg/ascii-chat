@@ -30,7 +30,7 @@
 // Helper function to convert string to lowercase in-place (non-destructive)
 static void to_lower(const char *src, char *dst, size_t max_len) {
   size_t i = 0;
-  while (src[i] && i < max_len - 1) {
+  while (i < max_len - 1 && src[i]) {
     dst[i] = (char)tolower((unsigned char)src[i]);
     i++;
   }

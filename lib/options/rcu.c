@@ -458,6 +458,8 @@ asciichat_error_t options_state_set(const options_t *opts) {
   options_t *next = SAFE_MALLOC(sizeof(*next), options_t *);
   *next = *opts;
   options_t *previous = atomic_ptr_load(&g_options);
+  if (!previous)
+    previous = (options_t *)&g_default_options;
   if (previous->flip_x_explicit && !next->flip_x_explicit)
     next->flip_x = previous->flip_x;
   next->flip_x_explicit |= previous->flip_x_explicit;
@@ -532,6 +534,8 @@ const options_t *options_get(void) {
 const terminal_options_t *options_terminal_settings_ptr(void) {
   static terminal_options_t settings;
   const options_t *options = options_get();
+  if (!options)
+    options = &g_default_options;
   settings = (terminal_options_t){
       .color = (terminal_color_setting_t)options->color,
       .color_mode = options->color_mode,
