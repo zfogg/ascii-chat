@@ -2,27 +2,8 @@
 # Catch2 v3 test framework
 # =============================================================================
 
-option(ASCIICHAT_FORCE_TESTS
-    "Build native tests in configurations that normally omit tests" OFF)
-
 set(ASCIICHAT_TEST_FRAMEWORKS "catch2" CACHE STRING
     "Semicolon-separated native test frameworks to enable")
-
-# Dependency subprojects may change the normal BUILD_TESTS variable while
-# leaving the top-level cache entry intact. Restore the user/CI selection at
-# the point where the test adapter is configured.
-get_property(_build_tests_cache CACHE BUILD_TESTS PROPERTY VALUE)
-if(ASCIICHAT_FORCE_TESTS OR _build_tests_cache)
-    set(BUILD_TESTS ON CACHE BOOL "Build test executables" FORCE)
-    set(BUILD_TESTS ON)
-endif()
-
-# The force switch is used by CI and release-like configurations.  Make it
-# authoritative even when another configuration layer defaulted BUILD_TESTS
-# back to OFF before this dependency module was reached.
-if(ASCIICHAT_FORCE_TESTS)
-    set(BUILD_TESTS ON CACHE BOOL "Build test executables" FORCE)
-endif()
 
 if(NOT BUILD_TESTS)
     set(BUILD_CATCH2_TESTS OFF)
@@ -35,13 +16,7 @@ if(NOT "catch2" IN_LIST ASCIICHAT_TEST_FRAMEWORKS)
     return()
 endif()
 
-if(ASCIICHAT_FORCE_TESTS)
-    set(BUILD_CATCH2_TESTS ON)
-elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    set(BUILD_CATCH2_TESTS OFF)
-else()
-    set(BUILD_CATCH2_TESTS ON)
-endif()
+set(BUILD_CATCH2_TESTS ON)
 
 if(BUILD_CATCH2_TESTS)
     # Windows obtains the pinned package from the vcpkg manifest. Linux and

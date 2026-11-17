@@ -208,7 +208,6 @@ jobs:
 
           if [ "${BUILD_TYPE}" = "Release" ]; then
             cmake_args+=(-DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF)
-            # Force Catch2 tests in Release mode for CI testing.
             # Skip hardening validation (linker checks may fail in CI environment)
             cmake_args+=(-DASCIICHAT_SKIP_HARDENING_VALIDATION=ON)
           fi
