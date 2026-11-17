@@ -396,6 +396,14 @@ function(configure_musl_post_project)
         set(MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR
             "${MUSL_LIBSTDCPP_INCLUDE_DIR}/x86_64-alpine-linux-musl" CACHE PATH
             "musl-compatible GCC target C++ headers" FORCE)
+        execute_process(
+            COMMAND "${CMAKE_CXX_COMPILER}" -print-file-name=libgcc_eh.a
+            OUTPUT_VARIABLE MUSL_LIBGCC_EH_PATH
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            COMMAND_ERROR_IS_FATAL ANY)
+        if(NOT EXISTS "${MUSL_LIBGCC_EH_PATH}")
+            message(FATAL_ERROR "GCC exception runtime archive was not found: ${MUSL_LIBGCC_EH_PATH}")
+        endif()
         if(NOT EXISTS "${MUSL_LIBSUPCXX_PATH}" OR
            NOT EXISTS "${MUSL_LIBSTDCPP_INCLUDE_DIR}/string")
             message(FATAL_ERROR "Alpine musl libstdc++ package is incomplete in ${_alpine_libstdcxx_dir}")
@@ -411,6 +419,7 @@ function(configure_musl_post_project)
             target_link_libraries(${TARGET_NAME} PRIVATE
                 "${MUSL_LIBSTDCPP_PATH}"
                 "${MUSL_LIBSUPCXX_PATH}"
+                "${MUSL_LIBGCC_EH_PATH}"
                 "${MUSL_LIBGCC_PATH}"
             )
             return()
