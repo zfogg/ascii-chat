@@ -123,6 +123,21 @@ if(DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg")
     else()
         message(FATAL_ERROR "PortAudio found via vcpkg but no usable target (portaudio or portaudio_static)")
     endif()
+    # PortAudio's static Windows WDM-KS backend defines the media GUIDs it
+    # uses.  Its vcpkg target may also expose strmiids, which duplicates those
+    # definitions when FFmpeg is linked.  Remove only that redundant target
+    # interface entry; keep the actual PortAudio backend and all other system
+    # libraries intact.
+    if(WIN32 AND NOT BUILD_SHARED_LIBS AND TARGET ${PORTAUDIO_LIBRARIES})
+        get_target_property(_asciichat_portaudio_links
+            ${PORTAUDIO_LIBRARIES} INTERFACE_LINK_LIBRARIES)
+        if(_asciichat_portaudio_links)
+            list(REMOVE_ITEM _asciichat_portaudio_links strmiids strmiids.lib)
+            set_property(TARGET ${PORTAUDIO_LIBRARIES} PROPERTY
+                INTERFACE_LINK_LIBRARIES "${_asciichat_portaudio_links}")
+        endif()
+        unset(_asciichat_portaudio_links)
+    endif()
     set(PORTAUDIO_FOUND TRUE)
     message(STATUS "Found PORTAUDIO via vcpkg: ${PORTAUDIO_LIBRARIES}")
 else()
