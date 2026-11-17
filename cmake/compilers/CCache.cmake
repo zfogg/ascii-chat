@@ -54,20 +54,14 @@ endif()
 # LLVM setup may already have selected ccache before this module runs.
 # Apply project settings to existing launchers as well as newly selected ones.
 if(USE_CCACHE AND NOT EMSCRIPTEN AND CMAKE_C_COMPILER_LAUNCHER MATCHES "ccache")
-    execute_process(COMMAND "${ASCIICHAT_CCACHE_EXECUTABLE}" --help
-        OUTPUT_VARIABLE _asciichat_ccache_help ERROR_QUIET)
-    if(_asciichat_ccache_help MATCHES "KEY=VALUE")
-        # Native configuration arguments avoid an extra CMake process per file.
-        set(_asciichat_ccache_launcher "${ASCIICHAT_CCACHE_EXECUTABLE}"
-            "max_size=12G" "compression=true" "compression_level=1")
-        set(ASCIICHAT_CCACHE_KEY_VALUE_SUPPORTED TRUE)
-    else()
-        set(_asciichat_ccache_launcher
-            "${CMAKE_COMMAND}" -E env
-            "CCACHE_MAXSIZE=12G" "CCACHE_COMPRESS=true" "CCACHE_COMPRESSLEVEL=1"
-            "${ASCIICHAT_CCACHE_EXECUTABLE}")
-        set(ASCIICHAT_CCACHE_KEY_VALUE_SUPPORTED FALSE)
-    endif()
+    # ccache's KEY=VALUE syntax is for --set-config, not compiler launcher
+    # arguments. Use environment variables so CMake never passes cache
+    # settings to the compiler executable.
+    set(_asciichat_ccache_launcher
+        "${CMAKE_COMMAND}" -E env
+        "CCACHE_MAXSIZE=12G" "CCACHE_COMPRESS=true" "CCACHE_COMPRESSLEVEL=1"
+        "${ASCIICHAT_CCACHE_EXECUTABLE}")
+    set(ASCIICHAT_CCACHE_KEY_VALUE_SUPPORTED FALSE)
     set(CMAKE_C_COMPILER_LAUNCHER "${_asciichat_ccache_launcher}" CACHE STRING "C compiler launcher" FORCE)
     if(NOT CMAKE_CXX_COMPILER_LAUNCHER OR CMAKE_CXX_COMPILER_LAUNCHER MATCHES "ccache")
         set(CMAKE_CXX_COMPILER_LAUNCHER "${_asciichat_ccache_launcher}" CACHE STRING "C++ compiler launcher" FORCE)
