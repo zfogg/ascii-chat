@@ -16,12 +16,18 @@ else()
     set(_rnnoise_link_flags "--disable-shared --enable-static")
 endif()
 
-execute_process(
+if(WIN32)
     # MSYS2 login shells do not inherit the Windows UCRT64 toolchain path.
-    # Add it inside the shell so autotools can find ld when configuring with
-    # the native Clang compiler. On Git Bash or non-MSYS shells the extra
-    # path is harmless because the directory simply does not exist there.
-    COMMAND "${RNNOISE_SHELL}" -lc "export PATH=\"/ucrt64/bin:/clang64/bin:/usr/local/bin:/usr/bin:$PATH\" && cd \"$(cygpath -u '${RNNOISE_BINARY_DIR}')\" && ./autogen.sh && ./configure --prefix=\"$(cygpath -u '${RNNOISE_INSTALL_DIR}')\" --disable-examples --disable-doc ${_rnnoise_link_flags}"
+    # Convert only Windows paths; native Unix shells accept native paths.
+    set(_rnnoise_shell_command
+        "export PATH=\"/ucrt64/bin:/clang64/bin:/usr/local/bin:/usr/bin:$PATH\" && cd \"$(cygpath -u '${RNNOISE_BINARY_DIR}')\" && ./autogen.sh && ./configure --prefix=\"$(cygpath -u '${RNNOISE_INSTALL_DIR}')\" --disable-examples --disable-doc ${_rnnoise_link_flags}")
+else()
+    set(_rnnoise_shell_command
+        "cd '${RNNOISE_BINARY_DIR}' && ./autogen.sh && ./configure --prefix='${RNNOISE_INSTALL_DIR}' --disable-examples --disable-doc ${_rnnoise_link_flags}")
+endif()
+
+execute_process(
+    COMMAND "${RNNOISE_SHELL}" -lc "${_rnnoise_shell_command}"
     WORKING_DIRECTORY "${RNNOISE_BINARY_DIR}"
     RESULT_VARIABLE _rnnoise_result
 )
