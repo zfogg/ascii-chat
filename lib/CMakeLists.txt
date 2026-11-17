@@ -644,7 +644,11 @@ endif()
 # FFmpeg codecs and system dependencies, but remove that duplicate library
 # before propagating FFmpeg's link set to the application targets.
 if(WIN32 AND NOT BUILD_SHARED_LIBS)
-    list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "(^|/)strmiids(\\.lib)?$")
+    list(REMOVE_ITEM FFMPEG_LIBRARIES strmiids strmiids.lib)
+    string(REPLACE "optimized;strmiids;" "optimized;" FFMPEG_LIBRARIES
+        "${FFMPEG_LIBRARIES}")
+    string(REPLACE "debug;strmiids;" "debug;" FFMPEG_LIBRARIES
+        "${FFMPEG_LIBRARIES}")
 endif()
 
 # Add WebRTC AEC3 include directories BEFORE creating the module
