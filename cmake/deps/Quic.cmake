@@ -2,6 +2,7 @@
 # the selected headers and linked SSL library, not the version of an openssl
 # executable that might come from a different installation.
 include(CheckSymbolExists)
+include(CheckCSourceCompiles)
 include(CMakePushCheckState)
 
 function(asciichat_check_quic_tls)
@@ -20,9 +21,16 @@ function(asciichat_check_quic_tls)
     set(CMAKE_REQUIRED_INCLUDES "${OPENSSL_INCLUDE_DIR}")
     unset(ASCIICHAT_OPENSSL_QUIC_TLS_LINKS CACHE)
     check_symbol_exists(SSL_set_quic_tls_cbs "openssl/ssl.h" ASCIICHAT_OPENSSL_QUIC_TLS_LINKS)
+    unset(ASCIICHAT_OPENSSL_QUIC_TLS_VERSION CACHE)
+    check_c_source_compiles("#include <openssl/ssl.h>
+#if OPENSSL_VERSION_NUMBER < 0x30600000L
+#error OpenSSL 3.6.0 or newer is required for QUIC TLS callbacks
+#endif
+int main(void) { return SSL_set_quic_tls_cbs((SSL *)0, (const OSSL_DISPATCH *)0, (void *)0); }"
+        ASCIICHAT_OPENSSL_QUIC_TLS_VERSION)
     cmake_pop_check_state()
 
-    if(NOT ASCIICHAT_OPENSSL_QUIC_TLS_LINKS)
+    if(NOT ASCIICHAT_OPENSSL_QUIC_TLS_LINKS OR NOT ASCIICHAT_OPENSSL_QUIC_TLS_VERSION)
         message(FATAL_ERROR
             "QUIC requires OpenSSL 3.6.0 or newer with the linked SSL_set_quic_tls_cbs API. "
             "Check the selected OpenSSL headers, libraries, and CMake toolchain.")
