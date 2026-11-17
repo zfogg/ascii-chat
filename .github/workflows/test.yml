@@ -610,6 +610,7 @@ jobs:
             -DCMAKE_C_COMPILER="${CLANG_BIN}"
             -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}"
             -DCMAKE_BUILD_TYPE=Release
+            -DBUILD_TESTS=ON
             -DASCIICHAT_ENABLE_COVERAGE=ON
             -DASCIICHAT_ENABLE_SANITIZERS=OFF
             -DCMAKE_C_FLAGS="-std=c2x -O3"
@@ -657,7 +658,7 @@ jobs:
           # Run Benchmark Tests via ctest preset
           # Test adapters generate detailed XML in build/Testing/xml/
           set -o pipefail
-          ctest --test-dir build --label-regex "^benchmarks$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee benchmarks-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
+          ctest --test-dir build --label-regex "^benchmarks$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee benchmarks-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}.log
 
           echo "Benchmark Tests completed successfully"
 
@@ -690,7 +691,7 @@ jobs:
         if: always()
         with:
           test-type: benchmarks
-          os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+          os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}
           test-xml-dir: build/Testing/xml
           coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
