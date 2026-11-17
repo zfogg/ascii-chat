@@ -13,7 +13,7 @@
 
 #include <options/enums.h>
 #include <options/common.h>
-#include <options/registry.h>
+#include <options/registry/registry.h>
 #include <libflags/builder.h>
 #include <libflags/help.h>
 #include <libflags/format.h>

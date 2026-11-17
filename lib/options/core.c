@@ -65,7 +65,7 @@
 #include <options/actions.h>
 #include <options/registry/mode_defaults.h> // Mode-aware defaults
 #include <options/registry/core.h>
-#include <options/registry.h>
+#include <options/registry/registry.h>
 
 #include <options/config.h>
 #include <options/strings.h> // Enum/mode string conversions
@@ -364,6 +364,28 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
   return false;
 }
 
+static bool options_command_mode(const char *name, asciichat_mode_t *mode) {
+  static const struct {
+    const char *name;
+    asciichat_mode_t mode;
+  } commands[] = {
+      {"server", MODE_SERVER},
+      {"client", MODE_CLIENT},
+      {"mirror", MODE_MIRROR},
+      {"discovery-service", MODE_DISCOVERY_SERVICE},
+      {"mcp-server", MODE_MCP_SERVER},
+      {"api-server", MODE_API_SERVER},
+  };
+  if (!name || !mode)
+    return false;
+  for (size_t i = 0; i < sizeof(commands) / sizeof(commands[0]); ++i)
+    if (!strcmp(name, commands[i].name)) {
+      *mode = commands[i].mode;
+      return true;
+    }
+  return false;
+}
+
 static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mode_t *out_mode, char *out_session_string, int *out_mode_index) {
   if (out_mode == NULL || out_mode_index == NULL) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output parameters must not be NULL");
@@ -374,19 +396,6 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
     out_session_string[0] = '\0';
   }
 
-  // Check if argv[0] itself is a mode name (for test compatibility)
-  // This handles the case where tests pass ["client", "-p", "80"] without a binary name
-  const char *const mode_names_check[] = {"server", "client", "mirror", "discovery-service", "mcp-server", "api-server", NULL};
-  const asciichat_mode_t mode_values_check[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE, MODE_MCP_SERVER, MODE_API_SERVER};
-  for (int i = 0; mode_names_check[i] != NULL; i++) {
-    if (strcmp(argv[0], mode_names_check[i]) == 0) {
-      log_dev("Mode detected from argv[0]: %s", argv[0]);
-      *out_mode = mode_values_check[i];
-      *out_mode_index = 0;
-      return ASCIICHAT_OK;
-    }
-  }
-
   log_dev("argv[0] '%s' is not a mode name, resolving command and positionals with libflags", argv[0]);
   flags_command_t *root = flags_command_create(NULL, "ascii-chat", "ascii-chat root command");
   flags_command_t *server = flags_command_create(root, "server", "server mode");
@@ -395,12 +404,11 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   flags_command_t *discovery_service = flags_command_create(root, "discovery-service", "discovery service mode");
   flags_command_t *mcp_server = flags_command_create(root, "mcp-server", "MCP server mode");
   flags_command_t *api_server = flags_command_create(root, "api-server", "API server mode");
-  flags_command_t *default_command = flags_command_create(root, "default", "default discovery mode");
-  if (!root || !server || !client || !mirror || !discovery_service || !mcp_server || !api_server || !default_command) {
+  if (!root || !server || !client || !mirror || !discovery_service || !mcp_server || !api_server) {
     flags_command_destroy(root);
     return SET_ERRNO(ERROR_MEMORY, "Failed to construct command schema");
   }
-  flags_command_set_default(root, default_command);
+  flags_command_set_default(root, root);
   flags_schema_builder_t *schema_builder = flags_schema_builder_create();
   if (!schema_builder || registry_add_all_to_flags_builder(schema_builder, OPTION_MODE_ALL) != ASCIICHAT_OK) {
     flags_schema_builder_destroy(schema_builder);
@@ -473,21 +481,11 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   }
   if (resolved_command != root) {
     const char *name = flags_command_name(resolved_command);
-    const asciichat_mode_t modes[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE, MODE_MCP_SERVER, MODE_API_SERVER};
-    for (size_t i = 0; i < sizeof(modes) / sizeof(modes[0]); ++i)
-      if (strcmp(name, mode_names_check[i]) == 0) {
-        *out_mode = modes[i];
+    if (options_command_mode(name, out_mode)) {
         *out_mode_index = resolution.command_index;
         flags_schema_builder_destroy(schema_builder);
         flags_command_destroy(root);
         return ASCIICHAT_OK;
-      }
-    if (!strcmp(name, "default")) {
-      *out_mode = MODE_DISCOVERY;
-      *out_mode_index = -1;
-      flags_schema_builder_destroy(schema_builder);
-      flags_command_destroy(root);
-      return ASCIICHAT_OK;
     }
   }
   flags_schema_builder_destroy(schema_builder);
@@ -502,21 +500,6 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   }
 
   const char *positional = argv[first_positional_idx];
-
-  // Try to match against known modes
-  const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "mcp-server", "api-server", "default", NULL};
-  const asciichat_mode_t mode_values[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE, MODE_MCP_SERVER, MODE_API_SERVER, MODE_INVALID};
-
-  for (int i = 0; mode_names[i] != NULL; i++) {
-    if (strcmp(positional, mode_names[i]) == 0) {
-      if (mode_values[i] == MODE_INVALID) {
-        return SET_ERRNO(ERROR_USAGE, "The default mode cannot be specified explicitly. Just run 'ascii-chat' without a mode.");
-      }
-      *out_mode = mode_values[i];
-      *out_mode_index = first_positional_idx;
-      return ASCIICHAT_OK;
-    }
-  }
 
   // Not a known mode - check if it's a session string (word-word-word pattern)
   if (is_session_string(positional)) {

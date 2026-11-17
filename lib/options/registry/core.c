@@ -13,7 +13,7 @@
 
 #include <options/registry/common.h>
 #include <options/registry/core.h>
-#include <options/registry.h>
+#include <options/registry/registry.h>
 #include <string.h>
 
 /**

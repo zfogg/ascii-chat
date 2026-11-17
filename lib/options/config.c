@@ -14,7 +14,7 @@
 #include <ascii-chat/common/error_codes.h>
 #include <options/options.h>
 #include <options/validation.h>
-#include <options/registry.h>
+#include <options/registry/registry.h>
 #include <options/rcu.h>
 #include <ascii-chat/util/path.h>
 #include <util/string.h>

@@ -29,7 +29,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/update_checker.h>
 #include <options/config.h>
-#include <options/registry.h>
+#include <options/registry/registry.h>
 #include <libflags/completions/completions.h>
 #include <libplatform/terminal.h>
 #include <libplatform/filesystem.h>
