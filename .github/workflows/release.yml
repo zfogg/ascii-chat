@@ -291,9 +291,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-source
-          path: |
-            ${{ steps.tarball.outputs.tarball }}
-            ${{ runner.temp }}/release-man1
+          path: ${{ steps.tarball.outputs.tarball }}
           if-no-files-found: error
 
   package-linux:
