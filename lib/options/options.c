@@ -461,6 +461,32 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   flags_logging_config_t logging = {.callback = options_flags_log_event, .user_data = NULL};
   flags_set_logging(command_context, &logging);
   bool order_valid = flags_command_validate_order(command_context, root, argc, argv, &resolution);
+  /* Options shared by the binary and a mode are valid after the mode too.
+   * Only options that are exclusively binary-level must precede the command. */
+  if (!order_valid) {
+    order_valid = true;
+    for (int i = resolution.command_index + 1; i < argc; ++i) {
+      const char *argument = argv[i];
+      if (!argument || argument[0] != '-' || argument[1] == '\0' || !strcmp(argument, "--"))
+        continue;
+      const char *name = argument + 1;
+      if (*name == '-')
+        ++name;
+      const char *equals = strchr(name, '=');
+      size_t length = equals ? (size_t)(equals - name) : strlen(name);
+      char option_name[128];
+      size_t copy_length = length < sizeof(option_name) - 1 ? length : sizeof(option_name) - 1;
+      memcpy(option_name, name, copy_length);
+      option_name[copy_length] = '\0';
+      const registry_entry_t *entry = registry_get_raw();
+      while (entry && entry->long_name && strcmp(entry->long_name, option_name) != 0)
+        ++entry;
+      if (entry && entry->mode_bitmask == OPTION_MODE_BINARY) {
+        order_valid = false;
+        break;
+      }
+    }
+  }
   flags_destroy(command_context);
   if (!order_valid) {
     flags_schema_builder_destroy(schema_builder);

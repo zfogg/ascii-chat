@@ -36,7 +36,7 @@
 static std::vector<char *> make_argv(std::initializer_list<const char *> args) {
   std::vector<char *> result;
   result.reserve(args.size() + 2);
-  result.push_back(const_cast<char *>("program"));
+  result.push_back(const_cast<char *>("ascii-chat"));
   for (const char *arg : args)
     result.push_back(const_cast<char *>(arg));
   result.push_back(nullptr);
@@ -63,17 +63,14 @@ static std::vector<char *> make_argv(std::initializer_list<const char *> args) {
     options_backup_t backup;                                                                                                \
     save_options(&backup);                                                                                                  \
                                                                                                                             \
-    /* Call options_init to test return value */                                                                            \
-    /* (no longer use fork since options_init returns error codes) */                                                       \
     int exit_code = test_options_init_with_fork(argv, argc, is_client_val);                                                 \
-                                                                                                                            \
-    /* Note: We don't call options_init() again because it modifies RCU state and would cause */                            \
-    /* crashes when called multiple times. The exit_code from the first call tells us if */                                 \
-    /* options_init() succeeded or failed, which is what we're testing. */                                                  \
-    /* (option_assertions not used anymore since we don't call options_init twice) */                                       \
-                                                                                                                            \
-    restore_options(&backup);                                                                                               \
+    if (exit_code == 0) {                                                                                                   \
+      const options_t *opts = options_get();                                                                                \
+      option_assertions                                                                                                     \
+    }                                                                                                                       \
     exit_assertions                                                                                                         \
+    options_state_destroy();                                                                                                \
+    restore_options(&backup);                                                                                               \
   }
 
 // Helper function to save and restore RCU options state for test isolation
@@ -98,7 +95,10 @@ static void restore_options(const options_backup_t *backup) {
 // needed and keeping this in-process makes the test portable to Windows.
 static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
   (void)is_client; // Unused parameter
-  return options_init(argc, argv) == ASCIICHAT_OK ? 0 : 1;
+  if (argv && argc > 0)
+    argv[0] = const_cast<char *>("ascii-chat");
+  const asciichat_error_t result = options_init(argc, argv);
+  return result == ASCIICHAT_OK ? 0 : 1;
 }
 
 /* ============================================================================
@@ -679,7 +679,7 @@ Test(options, equals_sign_handling) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"program", "client", "192.168.1.1:8080", "--width=100", "--height=50", NULL};
+  char *argv[] = {"program", "client", "--width=100", "--height=50", "192.168.1.1:8080", NULL};
   int result = test_options_init_with_fork(argv, 5, true);
   cr_assert_eq(result, 0);
 
