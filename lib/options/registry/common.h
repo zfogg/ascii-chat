@@ -9,6 +9,10 @@
 
 #pragma once
 
+#include <ascii-chat/options/registry/common.h>
+
+#if 0
+
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/options.h>
 #include <stdbool.h>
@@ -93,3 +97,5 @@ typedef struct {
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* private compatibility wrapper; public header owns the definitions */

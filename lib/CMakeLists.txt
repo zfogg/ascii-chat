@@ -994,6 +994,32 @@ endif()
 # =============================================================================
 # Unified Library Targets (OPTIONAL - not built by default)
 # =============================================================================
+# The executable links this interface to consume the same object files as the
+# unified libraries. Keep one authoritative object set for static release
+# linking on Windows, Linux, and musl.
+if(NOT TARGET ascii-chat-runtime-objects)
+    add_library(ascii-chat-runtime-objects INTERFACE)
+    foreach(_runtime_module IN ITEMS
+        ascii-chat-util
+        ascii-chat-data-structures
+        ascii-chat-crypto
+        ascii-chat-simd
+        ascii-chat-video
+        ascii-chat-audio
+        ascii-chat-network
+        ascii-chat-runtime
+        ascii-chat-logging
+        ascii-chat-options
+        ascii-chat-terminal
+        ascii-chat-ui
+        ascii-chat-session
+        ascii-chat-discovery
+        ascii-chat-panic)
+        target_sources(ascii-chat-runtime-objects INTERFACE
+            $<TARGET_OBJECTS:${_runtime_module}>)
+    endforeach()
+endif()
+
 # These combine all modules into a single library for external projects.
 # Build with: cmake --build build --target ascii-chat-static
 #         or: cmake --build build --target ascii-chat-shared
