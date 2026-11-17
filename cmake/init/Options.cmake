@@ -159,7 +159,24 @@ option(ASCIICHAT_FORMAT_ONLY "Configure only the source-formatting target withou
 # Default: OFF (web components are optional)
 # When ON: src/web/ is added as a CMake subdirectory
 #
-option(BUILD_WEB "Build web components (WASM, browser targets)" OFF)
+include(CMakeDependentOption)
+
+# BUILD_WEB is a separate Emscripten configure, so require both compiler
+# drivers to be discoverable on PATH before exposing the option as enabled.
+find_program(ASCIICHAT_EMCC_EXECUTABLE NAMES emcc emcc.bat)
+find_program(ASCIICHAT_EMXX_EXECUTABLE NAMES em++ em++.bat)
+set(ASCIICHAT_EMSCRIPTEN_ON_PATH FALSE)
+if(ASCIICHAT_EMCC_EXECUTABLE AND ASCIICHAT_EMXX_EXECUTABLE)
+    set(ASCIICHAT_EMSCRIPTEN_ON_PATH TRUE)
+endif()
+
+cmake_dependent_option(
+    BUILD_WEB
+    "Build web components (WASM, browser targets)"
+    OFF
+    "ASCIICHAT_EMSCRIPTEN_ON_PATH"
+    OFF
+)
 
 # =============================================================================
 # Executable Build Configuration
