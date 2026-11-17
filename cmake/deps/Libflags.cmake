@@ -16,6 +16,8 @@ set(LIBFLAGS_YYJSON_LIBRARIES "${YYJSON_LIBRARIES}" CACHE STRING
     "yyjson target shared with ascii-chat" FORCE)
 set(LIBFLAGS_TOMLC17_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17" CACHE PATH
     "tomlc17 source shared with ascii-chat" FORCE)
+set(LIBFLAGS_UTF8PROC_TARGET utf8proc CACHE STRING
+    "utf8proc target shared with ascii-chat" FORCE)
 # libplatform is configured before libflags, so pass through its real utf8proc
 # target instead of creating a second copy in the embedded dependency.
 set(LIBPLATFORM_UTF8PROC_TARGET utf8proc CACHE STRING
@@ -23,7 +25,7 @@ set(LIBPLATFORM_UTF8PROC_TARGET utf8proc CACHE STRING
 set(_ascii_chat_libflags_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src")
 FetchContent_Declare(libflags
     GIT_REPOSITORY https://github.com/zfogg/libflags.git
-    GIT_TAG 3ce9a0e
+    GIT_TAG 04f10e4
     SOURCE_DIR "${_ascii_chat_libflags_source}")
 set(_ascii_chat_saved_build_shared_libs "${BUILD_SHARED_LIBS}")
 set(BUILD_SHARED_LIBS OFF)
