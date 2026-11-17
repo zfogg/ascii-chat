@@ -53,6 +53,7 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
   (void)is_client; // Unused parameter
   if (argv && argc > 0)
     argv[0] = const_cast<char *>("ascii-chat");
+  options_state_destroy();
   const asciichat_error_t result = options_init(argc, argv);
   return result == ASCIICHAT_OK ? 0 : 1;
 }
