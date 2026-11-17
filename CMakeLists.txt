@@ -388,46 +388,34 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
    (NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}"))
   set(BUILD_TESTING OFF CACHE BOOL "Disable Recast tests in ascii-chat" FORCE)
   set(RECAST_BUILD_DOCS OFF CACHE BOOL "Disable Recast docs in ascii-chat" FORCE)
-  # Recast is a host-side build tool. A musl application uses static-pie
-  # linker flags, but the installed LLVM/libclang used by Recast is a host
-  # shared library on Linux. Do not apply the application CRT/link policy to
-  # this executable; the final ascii-chat targets retain the musl settings.
   if(USE_MUSL)
-    set(_asciichat_recast_exe_linker_flags "${CMAKE_EXE_LINKER_FLAGS}")
-    set(_asciichat_recast_shared_linker_flags "${CMAKE_SHARED_LINKER_FLAGS}")
-    set(_asciichat_recast_module_linker_flags "${CMAKE_MODULE_LINKER_FLAGS}")
-    set(_asciichat_recast_c_standard_libraries "${CMAKE_C_STANDARD_LIBRARIES}")
-    set(_asciichat_recast_cxx_standard_libraries "${CMAKE_CXX_STANDARD_LIBRARIES}")
-    set(_asciichat_recast_saved_c_flags "${CMAKE_C_FLAGS}")
-    set(_asciichat_recast_saved_cxx_flags "${CMAKE_CXX_FLAGS}")
-    find_program(RECAST_HOST_CXX NAMES g++ REQUIRED)
-    set(CMAKE_C_FLAGS "")
-    set(CMAKE_CXX_FLAGS "")
-    set(CMAKE_EXE_LINKER_FLAGS "")
-    set(CMAKE_SHARED_LINKER_FLAGS "")
-    set(CMAKE_MODULE_LINKER_FLAGS "")
-    set(CMAKE_C_STANDARD_LIBRARIES "")
-    set(CMAKE_CXX_STANDARD_LIBRARIES "")
-  endif()
-  add_subdirectory(
-    "${CMAKE_SOURCE_DIR}/deps/recast"
-    "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build"
-    EXCLUDE_FROM_ALL)
-  if(USE_MUSL)
-    set(CMAKE_EXE_LINKER_FLAGS "${_asciichat_recast_exe_linker_flags}")
-    set(CMAKE_SHARED_LINKER_FLAGS "${_asciichat_recast_shared_linker_flags}")
-    set(CMAKE_MODULE_LINKER_FLAGS "${_asciichat_recast_module_linker_flags}")
-    set(CMAKE_C_STANDARD_LIBRARIES "${_asciichat_recast_c_standard_libraries}")
-    set(CMAKE_CXX_STANDARD_LIBRARIES "${_asciichat_recast_cxx_standard_libraries}")
-    set(CMAKE_C_FLAGS "${_asciichat_recast_saved_c_flags}")
-    set(CMAKE_CXX_FLAGS "${_asciichat_recast_saved_cxx_flags}")
-    unset(_asciichat_recast_exe_linker_flags)
-    unset(_asciichat_recast_shared_linker_flags)
-    unset(_asciichat_recast_module_linker_flags)
-    unset(_asciichat_recast_c_standard_libraries)
-    unset(_asciichat_recast_cxx_standard_libraries)
-    unset(_asciichat_recast_saved_c_flags)
-    unset(_asciichat_recast_saved_cxx_flags)
+    include(ExternalProject)
+    find_program(_asciichat_host_cxx NAMES g++ c++ REQUIRED)
+    set(_asciichat_recast_build_dir "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build")
+    ExternalProject_Add(asciichat-recast-host
+      SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/recast"
+      BINARY_DIR "${_asciichat_recast_build_dir}"
+      CMAKE_ARGS
+        "-DCMAKE_CXX_COMPILER=${_asciichat_host_cxx}"
+        "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}"
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS=OFF"
+        "-DRECAST_BUILD_DOCS=OFF"
+        "-DBUILD_TESTING=OFF"
+      BUILD_COMMAND "${CMAKE_COMMAND}" --build <BINARY_DIR> --target recast --config ${CMAKE_BUILD_TYPE}
+      INSTALL_COMMAND ""
+      EXCLUDE_FROM_ALL)
+    add_executable(recast-native IMPORTED GLOBAL)
+    set_target_properties(recast-native PROPERTIES
+      IMPORTED_LOCATION "${_asciichat_recast_build_dir}/recast${CMAKE_EXECUTABLE_SUFFIX}")
+    add_dependencies(recast-native asciichat-recast-host)
+    set(RECAST_NATIVE_BINARY
+        "${_asciichat_recast_build_dir}/bin/recast${CMAKE_EXECUTABLE_SUFFIX}"
+        CACHE FILEPATH "Recast host executable" FORCE)
+  else()
+    add_subdirectory(
+      "${CMAKE_SOURCE_DIR}/deps/recast"
+      "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build"
+      EXCLUDE_FROM_ALL)
   endif()
 endif()
 if(RECAST_BACKEND STREQUAL "NATIVE" AND TARGET recast)
@@ -435,7 +423,7 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND TARGET recast)
     add_executable(recast-native ALIAS recast)
   endif()
   set(RECAST_NATIVE_BINARY
-      "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build/recast${CMAKE_EXECUTABLE_SUFFIX}"
+      "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build/bin/recast${CMAKE_EXECUTABLE_SUFFIX}"
       CACHE FILEPATH
       "Recast host executable" FORCE)
 endif()
