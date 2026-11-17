@@ -24,6 +24,18 @@ if(CMAKE_C_COMPILER MATCHES "(^|/)(gcc|g(cc)?-[0-9]+)$")
     set(MUSL_GCC_RUNTIME_DIR
         "${CMAKE_SOURCE_DIR}/.deps-cache/wsl/Arch/${CMAKE_BUILD_TYPE}/alpine-gcc/usr/lib"
         CACHE PATH "Cached Alpine GCC runtime libraries" FORCE)
+    # The Alpine GCC package provides the compiler/runtime, while the C++
+    # headers and static libstdc++ are staged separately in the dependency
+    # cache. Make those paths part of the toolchain flags before any
+    # dependency project is configured.
+    file(GLOB _asciichat_libstdcpp_roots LIST_DIRECTORIES true
+        "${CMAKE_SOURCE_DIR}/.deps-cache/wsl/Arch/${CMAKE_BUILD_TYPE}/alpine-libstdcxx/usr/include/c++/*")
+    list(SORT _asciichat_libstdcpp_roots)
+    list(GET _asciichat_libstdcpp_roots 0 MUSL_LIBSTDCPP_INCLUDE_DIR)
+    if(MUSL_LIBSTDCPP_INCLUDE_DIR)
+        set(MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR
+            "${MUSL_LIBSTDCPP_INCLUDE_DIR}/${MUSL_TARGET}")
+    endif()
     set(_asciichat_ssp_nonshared "${MUSL_GCC_RUNTIME_DIR}/libssp_nonshared.a")
     if(NOT EXISTS "${_asciichat_ssp_nonshared}")
         find_program(_asciichat_ar NAMES ar llvm-ar REQUIRED)
