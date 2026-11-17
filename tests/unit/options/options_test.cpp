@@ -821,7 +821,7 @@ Test(options, maximum_values) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"program", "client", "--width=512", "--height=256", "--webcam-index=10", "--snapshot", "--snapshot-delay=999.999", NULL};
+  char *argv[] = {"program", "client", "--width=512", "--height=256", "--webcam-index=10", "--snapshot", "--snapshot-delay=60.0", NULL};
   int argc = 7;
 
   int result = test_options_init_with_fork(argv, argc, true);
