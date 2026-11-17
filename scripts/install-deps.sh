@@ -556,13 +556,3 @@ if run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/en
 else
   echo >&2 "Vite+ installed; open a new shell and run vp install in the repository and web directories."
 fi
-
-if command -v corepack >/dev/null 2>&1; then
-  run_as_user corepack enable
-fi
-if run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; command -v pnpm >/dev/null 2>&1' 2>/dev/null; then
-  run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; cd "$1" && pnpm install --frozen-lockfile' bash "$PROJECT_ROOT"
-else
-  echo >&2 "pnpm is unavailable after dependency setup"
-  exit 1
-fi
