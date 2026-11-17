@@ -48,6 +48,15 @@ if(BUILD_CATCH2_TESTS)
             GIT_SHALLOW TRUE)
         FetchContent_MakeAvailable(catch2)
         set(ASCIICHAT_CATCH2_FROM_SOURCE TRUE)
+        # Dependency include directories can put vcpkg's Catch2 headers ahead
+        # of the pinned source tree. Keep the source and headers from this
+        # FetchContent instance paired together.
+        foreach(_catch2_target Catch2 Catch2Main)
+            if(TARGET ${_catch2_target})
+                target_include_directories(${_catch2_target} BEFORE PRIVATE
+                    "${catch2_SOURCE_DIR}/src")
+            endif()
+        endforeach()
         foreach(_catch2_target Catch2 Catch2Main)
             if(TARGET ${_catch2_target})
                 if(WIN32)
