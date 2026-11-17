@@ -421,7 +421,7 @@ function(configure_musl_post_project)
             target_link_libraries(${TARGET_NAME} PRIVATE
                 "${MUSL_LIBSTDCPP_PATH}"
                 "${MUSL_LIBSUPCXX_PATH}"
-                "${MUSL_LIBGCC_EH_PATH}"
+                "${ALPINE_LIBUNWIND_STATIC}"
                 "${MUSL_LIBGCC_PATH}"
             )
             return()
