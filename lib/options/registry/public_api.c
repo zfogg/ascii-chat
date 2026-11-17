@@ -182,9 +182,13 @@ const option_descriptor_t *options_registry_get_for_mode(asciichat_mode_t mode, 
   if (!num_options)
     return NULL;
   registry_init_size();
-  const option_mode_bitmask_t mask = mode == MODE_SERVER ? OPTION_MODE_SERVER : mode == MODE_CLIENT ? OPTION_MODE_CLIENT :
-                                     mode == MODE_MIRROR ? OPTION_MODE_MIRROR : mode == MODE_DISCOVERY_SERVICE ? OPTION_MODE_DISCOVERY_SVC :
-                                     mode == MODE_DISCOVERY ? OPTION_MODE_DISCOVERY : mode == MODE_MCP_SERVER ? OPTION_MODE_MCP_SERVER : OPTION_MODE_NONE;
+  const option_mode_bitmask_t mask = mode == MODE_SERVER              ? OPTION_MODE_SERVER
+                                     : mode == MODE_CLIENT            ? OPTION_MODE_CLIENT
+                                     : mode == MODE_MIRROR            ? OPTION_MODE_MIRROR
+                                     : mode == MODE_DISCOVERY_SERVICE ? OPTION_MODE_DISCOVERY_SVC
+                                     : mode == MODE_DISCOVERY         ? OPTION_MODE_DISCOVERY
+                                     : mode == MODE_MCP_SERVER        ? OPTION_MODE_MCP_SERVER
+                                                                      : OPTION_MODE_NONE;
   size_t count = 0;
   for (size_t i = 0; i < g_registry_size; ++i)
     count += (g_options_registry[i].mode_bitmask & mask) != 0;

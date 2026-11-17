@@ -55,12 +55,18 @@ bool validate_fps_opt(const char *value_str, int *out_fps) {
 
 const char *options_get_type_placeholder(option_type_t type) {
   switch (type) {
-  case OPTION_TYPE_INT: return "INTEGER";
-  case OPTION_TYPE_DOUBLE: return "NUMBER";
-  case OPTION_TYPE_STRING: return "STRING";
-  case OPTION_TYPE_CALLBACK: return "VALUE";
-  case OPTION_TYPE_BOOL: return "BOOLEAN";
-  default: return "";
+  case OPTION_TYPE_INT:
+    return "INTEGER";
+  case OPTION_TYPE_DOUBLE:
+    return "NUMBER";
+  case OPTION_TYPE_STRING:
+    return "STRING";
+  case OPTION_TYPE_CALLBACK:
+    return "VALUE";
+  case OPTION_TYPE_BOOL:
+    return "BOOLEAN";
+  default:
+    return "";
   }
 }
 
@@ -68,11 +74,16 @@ int options_format_default_value(option_type_t type, const void *default_value, 
   if (!default_value || !buf || !bufsize)
     return 0;
   switch (type) {
-  case OPTION_TYPE_BOOL: return safe_snprintf(buf, bufsize, "%s", *(const bool *)default_value ? OPT_VALUE_TRUE : OPT_VALUE_FALSE);
-  case OPTION_TYPE_INT: return safe_snprintf(buf, bufsize, "%d", *(const int *)default_value);
-  case OPTION_TYPE_STRING: return safe_snprintf(buf, bufsize, "%s", *(const char *const *)default_value);
-  case OPTION_TYPE_DOUBLE: return safe_snprintf(buf, bufsize, "%.2f", *(const double *)default_value);
-  default: return 0;
+  case OPTION_TYPE_BOOL:
+    return safe_snprintf(buf, bufsize, "%s", *(const bool *)default_value ? OPT_VALUE_TRUE : OPT_VALUE_FALSE);
+  case OPTION_TYPE_INT:
+    return safe_snprintf(buf, bufsize, "%d", *(const int *)default_value);
+  case OPTION_TYPE_STRING:
+    return safe_snprintf(buf, bufsize, "%s", *(const char *const *)default_value);
+  case OPTION_TYPE_DOUBLE:
+    return safe_snprintf(buf, bufsize, "%.2f", *(const double *)default_value);
+  default:
+    return 0;
   }
 }
 
@@ -87,7 +98,10 @@ const char *find_similar_option_with_mode(const char *unknown_opt, const options
     if (!candidate->long_name)
       continue;
     size_t d = levenshtein(name, candidate->long_name);
-    if (d < distance) { distance = d; best = candidate; }
+    if (d < distance) {
+      distance = d;
+      best = candidate;
+    }
   }
   if (!best || distance > LEVENSHTEIN_SUGGESTION_THRESHOLD)
     return NULL;
