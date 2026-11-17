@@ -27,10 +27,14 @@ function(configure_libuv)
             GIT_TAG v1.51.0
             GIT_SHALLOW TRUE)
         FetchContent_MakeAvailable(asciichat_libuv)
-        # A musl target triple alone still finds the host's glibc headers.
+        # A Clang musl target triple still finds the host's glibc headers.
         # Keep Clang's builtin headers, but select musl and the isolated Linux
         # headers explicitly so libuv does not reference glibc-only symbols.
-        target_compile_options(uv_a PRIVATE -nostdlibinc)
+        # GCC uses -nostdinc from the shared musl toolchain flags; it does not
+        # accept Clang's -nostdlibinc spelling.
+        if(NOT ASCIICHAT_MUSL_USE_GCC AND NOT CMAKE_C_COMPILER_ID STREQUAL "GNU")
+            target_compile_options(uv_a PRIVATE -nostdlibinc)
+        endif()
         # Consumers compile sources that include <uv.h>; propagate the musl
         # and kernel header roots through the static target.
         target_include_directories(uv_a SYSTEM PUBLIC
