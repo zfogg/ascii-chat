@@ -49,9 +49,15 @@ set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
 # Keep the vendored C++ facade aligned with ascii-chat's C++26 toolchain.
 set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
 
-# Keep Gotel and its fetched otlp-c/Sequel build trees in the persistent
-# dependency cache. This is separate from the main build directory.
-set(_asciichat_gotel_cache_dir "${ASCIICHAT_DEPS_CACHE_DIR}/gotel")
+# Keep Gotel's generated sources persistent, but scope its binary tree to the
+# parent build tree. Its compile rules contain parent-build paths, so sharing
+# this binary tree between build/, build-fast-debug/, and build-tests/ makes
+# Ninja see command-line changes even when all builds are Debug.
+get_filename_component(_asciichat_build_name "${CMAKE_BINARY_DIR}" NAME)
+if(NOT _asciichat_build_name)
+    set(_asciichat_build_name "default")
+endif()
+set(_asciichat_gotel_cache_dir "${ASCIICHAT_DEPS_CACHE_DIR}/gotel/${_asciichat_build_name}")
 file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 
 set(_asciichat_parent_shared_libs ${BUILD_SHARED_LIBS})

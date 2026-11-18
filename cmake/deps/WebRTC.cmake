@@ -18,8 +18,12 @@ function(asciichat_build_aec3)
     # AEC3 exposes static component libraries that are embedded in the public library.
     set(BUILD_SHARED_LIBS OFF)
     set(CMAKE_CXX_STANDARD 17)
+    get_filename_component(_asciichat_build_name "${CMAKE_BINARY_DIR}" NAME)
+    if(NOT _asciichat_build_name)
+        set(_asciichat_build_name "default")
+    endif()
     FetchContent_Declare(webrtc_aec3
-        BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc-aec3"
+        BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc-aec3/${_asciichat_build_name}"
         URL https://github.com/zhixingheyixsh/webrtc_AEC3/archive/c1dbdb9924f59d9b3c09189673286665d55f6a5e.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
     # Populate without adding the project. Its CMake files must be patched first.
