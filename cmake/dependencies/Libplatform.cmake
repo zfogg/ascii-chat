@@ -17,7 +17,8 @@ if(NOT TARGET utf8proc)
     add_library(utf8proc STATIC
         "${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc/utf8proc.c")
     target_include_directories(utf8proc PUBLIC
-        "${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc")
+        $<BUILD_INTERFACE:${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc>
+        $<INSTALL_INTERFACE:include>)
     target_compile_definitions(utf8proc PUBLIC UTF8PROC_STATIC=1)
     set_target_properties(utf8proc PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"

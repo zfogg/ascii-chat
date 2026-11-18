@@ -435,8 +435,8 @@ jobs:
           echo "=== Installed compiler-rt builtins packages ==="
           dpkg -L libclang-rt-22-dev 2>/dev/null | grep builtins || echo "libclang-rt-22-dev is not installed"
           echo "=== Target-aware compiler-rt lookup ==="
-          musl_target=$(sed -n 's/^MUSL_TARGET:STRING=//p' build_release/CMakeCache.txt | head -n 1)
-          musl_compiler=$(sed -n 's/^CMAKE_C_COMPILER:FILEPATH=//p' build_release/CMakeCache.txt | head -n 1)
+          musl_target=$(sed -n 's/^MUSL_TARGET:[^=]*=//p' build_release/CMakeCache.txt | head -n 1)
+          musl_compiler=$(sed -n 's/^CMAKE_C_COMPILER:[^=]*=//p' build_release/CMakeCache.txt | head -n 1)
           if [[ -n "$musl_target" && -n "$musl_compiler" ]]; then
             "$musl_compiler" --target="$musl_target" -rtlib=compiler-rt -print-libgcc-file-name || true
           else
