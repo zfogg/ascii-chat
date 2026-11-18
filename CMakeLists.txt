@@ -268,6 +268,12 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslDep.cmake)
 # Dependencies.cmake orchestrates including them all
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Dependencies.cmake)
 
+# Dependency projects may temporarily change the directory-scope value while
+# configuring their own targets. Restore the preset's authoritative cache
+# value before ascii-chat's library targets are created.
+get_property(_asciichat_cached_build_shared_libs CACHE BUILD_SHARED_LIBS PROPERTY VALUE)
+set(BUILD_SHARED_LIBS "${_asciichat_cached_build_shared_libs}")
+
 # A later dependency's module-mode zlib probe can leave the legacy singular
 # cache variable at NOTFOUND even when pkg-config supplied ZLIB_LIBRARIES.
 # Normalize it after all dependency modules have run, before targets consume it.
