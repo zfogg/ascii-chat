@@ -297,7 +297,7 @@ endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/FindDependency.cmake)
 
-asciichat_find_dependency_target(
+find_dependency_library(
     NAME LIBSODIUM
     VCPKG_NAMES libsodium sodium
     HEADER sodium.h

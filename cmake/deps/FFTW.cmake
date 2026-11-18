@@ -59,7 +59,7 @@ if(WIN32)
 endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/FindDependency.cmake)
-asciichat_find_dependency_target(
+find_dependency_library(
     NAME FFTW
     VCPKG_NAMES fftw3 libfftw3-3
     HEADER fftw3.h

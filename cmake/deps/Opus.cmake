@@ -57,7 +57,7 @@ endif()
 # Native builds: Use find_dependency_library helper
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/FindDependency.cmake)
 
-asciichat_find_dependency_target(
+find_dependency_library(
     NAME OPUS
     # vcpkg's Windows static port installs libopus.lib, while other
     # platforms and triplets expose the shorter opus library name.
