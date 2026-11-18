@@ -35,6 +35,29 @@ function(copy_windows_dlls TARGET_NAME)
 
         include(${CMAKE_SOURCE_DIR}/cmake/utils/CopyDLL.cmake)
 
+        # Source-built shared dependencies do not pass through vcpkg's
+        # applocal/PDB staging.  Keep their PDBs beside the runtime DLLs too,
+        # so the debugger can load symbols for the complete process.  Static
+        # libraries contribute their symbols to the executable PDB and do not
+        # need a separate runtime PDB.
+        foreach(_source_runtime_target IN ITEMS
+                ${TARGET_NAME} ascii-chat-shared
+                gotel gotel_cxx otlp_c libplatform sequel flags libflags-tomlc17)
+            if(TARGET ${_source_runtime_target})
+                get_target_property(_source_runtime_type ${_source_runtime_target} TYPE)
+                if(_source_runtime_type STREQUAL "SHARED_LIBRARY" OR
+                   _source_runtime_type STREQUAL "EXECUTABLE")
+                    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            "$<TARGET_PDB_FILE:${_source_runtime_target}>"
+                            "$<TARGET_FILE_DIR:${TARGET_NAME}>"
+                        DEPENDS ${_source_runtime_target}
+                        COMMENT "Staging ${_source_runtime_target} PDB"
+                        VERBATIM)
+                endif()
+            endif()
+        endforeach()
+
         # QUIC dependencies are built outside vcpkg and must be staged too.
         if(TARGET asciichat-ngtcp2 AND TARGET asciichat-ngtcp2-crypto AND TARGET asciichat-nghttp3)
             get_target_property(_quic_runtime_type asciichat-ngtcp2 TYPE)
