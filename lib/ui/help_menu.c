@@ -121,7 +121,8 @@ bool ui_help_menu_render(frame_buffer_t *out, terminal_size_t size, const ui_hel
         ui_help_keys(styled_keys, sizeof(styled_keys), entry->keys);
         ui_text_cell(key, sizeof(key), styled_keys, keys, UI_ALIGN_LEFT);
         ui_text_values_style(description, sizeof(description), entry->description, LOG_COLOR_FATAL);
-        snprintf(lhs, sizeof(lhs), "%.*s  %.*s", (int)(sizeof(lhs) / 2), key, (int)(sizeof(lhs) / 2), description);
+        const int field_width = (int)((sizeof(lhs) - 3) / 2);
+        snprintf(lhs, sizeof(lhs), "%.*s  %.*s", field_width, key, field_width, description);
       }
     }
     if (i < m->settings_count) {
