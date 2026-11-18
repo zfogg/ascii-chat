@@ -114,7 +114,8 @@ if(BUILD_TESTS)
         endif()
     endif()
     set(standalone_includes --native-include=${CMAKE_BINARY_DIR}/generated)
-    foreach(include_dir IN LISTS LIBSODIUM_INCLUDE_DIRS PCRE2_INCLUDE_DIRS PORTAUDIO_INCLUDE_DIRS OPUS_INCLUDE_DIRS)
+    get_target_property(_asciichat_portaudio_includes asciichat-portaudio INTERFACE_INCLUDE_DIRECTORIES)
+    foreach(include_dir IN LISTS LIBSODIUM_INCLUDE_DIRS PCRE2_INCLUDE_DIRS _asciichat_portaudio_includes OPUS_INCLUDE_DIRS)
         if(IS_ABSOLUTE "${include_dir}")
             list(APPEND standalone_includes --native-include=${include_dir})
         endif()
@@ -487,7 +488,7 @@ if(BUILD_TESTS AND CATCH2_FOUND)
         libplatform
         ${LIBSODIUM_LIBRARIES} asciichat-zstd ${OPUS_LIBRARIES}
         ${SQLITE3_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} libdatachannel
-        OpenSSL::Crypto ${FFMPEG_LIBRARIES} ${PORTAUDIO_LIBRARIES} libflags::flags)
+        OpenSSL::Crypto ${FFMPEG_LIBRARIES} asciichat-portaudio libflags::flags)
 add_dependencies(unit_tests ${ASCII_CHAT_UNIFIED_BUILD_TARGET})
 target_link_libraries(unit_tests PRIVATE
     ascii-chat-static
@@ -576,7 +577,7 @@ endif()
         ${TEST_LDFLAGS} ${_ascii_gotel_testing_target}
         ${LIBSODIUM_LIBRARIES} asciichat-zstd ${OPUS_LIBRARIES}
         ${SQLITE3_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} libdatachannel
-        OpenSSL::Crypto ${FFMPEG_LIBRARIES} ${PORTAUDIO_LIBRARIES} libflags::flags)
+        OpenSSL::Crypto ${FFMPEG_LIBRARIES} asciichat-portaudio libflags::flags)
 add_dependencies(benchmarks ${ASCII_CHAT_UNIFIED_BUILD_TARGET})
 target_link_libraries(benchmarks PRIVATE
     ascii-chat-static
@@ -809,7 +810,7 @@ endif()
         endif()
         if(APPLE)
             target_link_libraries(${test_exe_name}
-                ${PORTAUDIO_LIBRARIES}
+                asciichat-portaudio
                 ${COREAUDIO_FRAMEWORK}
                 ${AUDIOUNIT_FRAMEWORK}
                 ${AUDIOTOOLBOX_FRAMEWORK}
@@ -817,11 +818,11 @@ endif()
             )
         elseif(PLATFORM_LINUX AND JACK_LIB)
             target_link_libraries(${test_exe_name}
-                ${PORTAUDIO_LIBRARIES}
+                asciichat-portaudio
                 ${JACK_LIB}
             )
         else()
-            target_link_libraries(${test_exe_name} ${PORTAUDIO_LIBRARIES})
+            target_link_libraries(${test_exe_name} asciichat-portaudio)
         endif()
         if(MINIUPNPC_FOUND)
             target_include_directories(${test_exe_name} PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
@@ -2268,7 +2269,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND CATCH2_FOUND)
     target_link_libraries(test-audio-device PRIVATE ascii-chat-static-lib ${MIMALLOC_LIBRARIES})
     add_dependencies(test-audio-device build-ascii-chat-static-lib)
     target_include_directories(test-audio-device PRIVATE
-        ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include} ${PORTAUDIO_INCLUDE_DIRS})
+        ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
     apply_sanitizers_to_target(test-audio-device)
     set_target_properties(test-audio-device PROPERTIES LINKER_LANGUAGE CXX
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
