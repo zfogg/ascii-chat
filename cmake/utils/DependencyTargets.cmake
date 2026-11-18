@@ -3,7 +3,12 @@ include_guard(GLOBAL)
 
 function(_asciichat_publish_dependency_alias name target)
     if(NOT TARGET "asciichat::${name}")
-        add_library("asciichat::${name}" ALIAS "${target}")
+        get_target_property(_aliased_target "${target}" ALIASED_TARGET)
+        if(_aliased_target)
+            add_library("asciichat::${name}" ALIAS "${_aliased_target}")
+        else()
+            add_library("asciichat::${name}" ALIAS "${target}")
+        endif()
     endif()
 endfunction()
 
