@@ -111,6 +111,14 @@ project(${PROJECT_NAME_FULL}
     LANGUAGES ${PROJECT_LANGUAGES}
 )
 
+# Import the shared cache-launcher implementation after project() and before
+# any project or dependency targets are created.
+include(${CMAKE_SOURCE_DIR}/deps/cmake-utils/CacheLauncher.cmake)
+
+# Configure the shared compiler cache launcher after project() has enabled the
+# languages, before any project or dependency targets are created.
+cmake_utils_configure_cache_launcher()
+
 # This codebase has no C++ module units. Avoid scheduling module dependency
 # scans for ordinary C++ sources, which fail on the Windows Clang toolchain.
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
@@ -213,7 +221,6 @@ endif()
 # =============================================================================
 # Compiler config
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/deps/cmake-utils/CacheLauncher.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compilers/Detection.cmake)
 configure_base_compiler_flags()
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
