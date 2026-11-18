@@ -66,6 +66,8 @@ ExternalProject_Add(asciichat-util-linux-musl
         CC=${_util_linux_cc}
         CFLAGS=${_util_linux_cflags}
         LDFLAGS=${_util_linux_ldflags}
+        ac_cv_func_getttynam=no
+        ac_cv_func_scandirat=no
         "${UTIL_LINUX_SOURCE}/configure"
         --host=${MUSL_TARGET}
         --prefix=${UTIL_LINUX_PREFIX}
@@ -73,6 +75,8 @@ ExternalProject_Add(asciichat-util-linux-musl
         --disable-shared --enable-static --disable-all-programs
         --enable-libmount --enable-libblkid --disable-libsmartcols
         --disable-libuuid --disable-libfdisk --disable-liblastlog2 --disable-nls
+        ac_cv_func_getttynam=no
+        ac_cv_func_scandirat=no
     BUILD_COMMAND ${ASCIICHAT_MAKE_EXECUTABLE} -C "${UTIL_LINUX_BUILD}" -j
         libmount.la libblkid.la
     INSTALL_COMMAND ${ASCIICHAT_MAKE_EXECUTABLE} -C "${UTIL_LINUX_BUILD}" install

@@ -25,14 +25,14 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/DependencyCache.cmake)
 
 # Web-specific build-type cache directory for WASM/Emscripten builds
 # Keeps web dependencies separate from native build dependencies
-if(NOT DEFINED WEB_DEPS_CACHE_DIR OR WEB_DEPS_CACHE_DIR STREQUAL "" OR WEB_DEPS_CACHE_DIR MATCHES "[/\\\\]_deps[/\\\\]legacy[/\\\\]")
-    set(WEB_DEPS_CACHE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache/wasm/${CMAKE_BUILD_TYPE}" CACHE PATH "WASM dependency cache for current build type" FORCE)
+if(NOT DEFINED WEB_DEPS_CACHE_DIR OR WEB_DEPS_CACHE_DIR STREQUAL "")
+    set(WEB_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/wasm/${CMAKE_BUILD_TYPE}" CACHE PATH "WASM dependency cache for current build type" FORCE)
 endif()
 
 # Web-specific source cache for FetchContent (keeps web sources separate)
 # Sources are shared across build types but kept in wasm/ subdirectory
 if(NOT DEFINED WEB_FETCHCONTENT_BASE_DIR OR WEB_FETCHCONTENT_BASE_DIR STREQUAL "")
-    set(WEB_FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache/wasm/src" CACHE PATH "WASM FetchContent source cache" FORCE)
+    set(WEB_FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/wasm/src" CACHE PATH "WASM FetchContent source cache" FORCE)
 endif()
 
 # Validate paths are not empty (which would create directories at root /)

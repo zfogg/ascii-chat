@@ -49,7 +49,7 @@ if(USE_MUSL)
     include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
     function(asciichat_build_x265)
         asciichat_dependency_defaults()
-        set(_prefix "${ASCIICHAT_DEPS_CACHE_DIR}/installed/x265")
+        set(_prefix "${ASCIICHAT_DEPS_CACHE_DIR}/build/installed/x265")
         set(CMAKE_INSTALL_PREFIX "${_prefix}")
         set(CMAKE_CXX_STANDARD 14)
         set(ENABLE_SHARED OFF)
@@ -57,7 +57,7 @@ if(USE_MUSL)
         set(ENABLE_ASSEMBLY OFF)
         set(ENABLE_LIBNUMA OFF)
         FetchContent_Declare(asciichat_x265
-            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/asciichat_x265"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_x265"
             URL "https://bitbucket.org/multicoreware/x265_git/get/${X265_VERSION}.tar.gz"
             URL_HASH "SHA256=${X265_HASH}" DOWNLOAD_EXTRACT_TIMESTAMP TRUE EXCLUDE_FROM_ALL)
         FetchContent_GetProperties(asciichat_x265)

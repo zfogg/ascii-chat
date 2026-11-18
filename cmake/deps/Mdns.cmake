@@ -27,7 +27,7 @@ function(configure_mdns)
     set(MDNS_BUILD_EXAMPLE OFF)
     # Upstream's minimum CMake version predates the current deprecation policy.
     set(CMAKE_POLICY_VERSION_MINIMUM 3.10)
-    add_subdirectory("${DEP_DIR}" "${ASCIICHAT_DEPS_CACHE_DIR}/mdns" EXCLUDE_FROM_ALL)
+    add_subdirectory("${DEP_DIR}" "${ASCIICHAT_DEPS_CACHE_DIR}/build/mdns" EXCLUDE_FROM_ALL)
 
     # Apply patch #0: Exclude main() function
     apply_patch(

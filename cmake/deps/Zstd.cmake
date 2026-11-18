@@ -35,7 +35,7 @@ if(EMSCRIPTEN OR PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             set(ZSTD_MULTITHREAD_SUPPORT OFF)
         endif()
         FetchContent_Declare(asciichat_zstd
-            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/asciichat_zstd"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_zstd"
             EXCLUDE_FROM_ALL
             URL https://github.com/meta/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
             URL_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
@@ -45,6 +45,15 @@ if(EMSCRIPTEN OR PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             set(_target libzstd_shared)
         else()
             set(_target libzstd_static)
+        endif()
+        if(USE_MUSL)
+            # zstd's dictionary builder uses _GNU_SOURCE as the feature test
+            # for glibc's qsort_r signature. musl has no qsort_r; undefine
+            # the inherited glibc feature macro so zstd uses its qsort path.
+            target_compile_options(${_target} PRIVATE -U_GNU_SOURCE)
+            set_source_files_properties(
+                "${asciichat_zstd_SOURCE_DIR}/lib/dictBuilder/cover.c"
+                PROPERTIES COMPILE_DEFINITIONS __ANDROID__)
         endif()
         target_include_directories(${_target} PUBLIC "$<BUILD_INTERFACE:${asciichat_zstd_SOURCE_DIR}/lib>")
         add_library(zstd::libzstd ALIAS ${_target})

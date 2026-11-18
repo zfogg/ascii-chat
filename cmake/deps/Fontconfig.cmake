@@ -23,7 +23,7 @@ if(PLATFORM_IOS OR USE_MUSL)
     find_program(GPERF_EXECUTABLE NAMES gperf REQUIRED)
     include(${CMAKE_CURRENT_LIST_DIR}/Expat.cmake)
     include(ExternalProject)
-    set(FONTCONFIG_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/installed/fontconfig")
+    set(FONTCONFIG_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/installed/fontconfig")
     set(FONTCONFIG_INCLUDE_DIRS "${FONTCONFIG_PREFIX}/include")
     file(MAKE_DIRECTORY "${FONTCONFIG_INCLUDE_DIRS}")
     set(_fontconfig_cflags "-fPIC -I${EXPAT_PREFIX}/include -I${FREETYPE_PREFIX}/include/freetype2")
@@ -44,7 +44,7 @@ if(PLATFORM_IOS OR USE_MUSL)
     ExternalProject_Add(asciichat-fontconfig-musl
         URL https://www.freedesktop.org/software/fontconfig/release/fontconfig-2.14.2.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/fontconfig"
+        PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/fontconfig"
         CONFIGURE_COMMAND ${_fontconfig_env} <SOURCE_DIR>/configure
             --prefix=${FONTCONFIG_PREFIX} --disable-docs --disable-cache-build
             --enable-static --disable-shared
