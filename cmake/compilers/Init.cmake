@@ -18,8 +18,25 @@ if(NOT _ASCIICHAT_COMPILER_MODULE)
         set(_ASCIICHAT_COMPILER_MODULE MSVC)
     elseif(_asciichat_requested_compiler MATCHES "^(gcc|gcc.exe)$")
         set(_ASCIICHAT_COMPILER_MODULE GCC)
-    elseif(_asciichat_requested_compiler MATCHES "^(clang|clang.exe|clang-cl|clang-cl.exe)$")
+    elseif(_asciichat_requested_compiler MATCHES "^(clang(-[0-9]+)?|clang.exe|clang-cl|clang-cl.exe)$")
         set(_ASCIICHAT_COMPILER_MODULE CLANG)
+        # Presets intentionally keep the portable names clang/clang++.  When
+        # LLVM 23 is installed, resolve those names to the matching toolchain
+        # before project() initializes CMake's compiler ABI checks.
+        if(UNIX AND _asciichat_requested_compiler MATCHES "^clang(\.exe)?$")
+            find_program(_asciichat_preferred_clang
+                NAMES clang-23 clang-22 clang-21 clang
+                HINTS "$ENV{LLVM_ROOT}/bin" /usr/lib/llvm-23/bin /usr/local/llvm-23/bin)
+            find_program(_asciichat_preferred_clangxx
+                NAMES clang++-23 clang++-22 clang++-21 clang++
+                HINTS "$ENV{LLVM_ROOT}/bin" /usr/lib/llvm-23/bin /usr/local/llvm-23/bin)
+            if(_asciichat_preferred_clang AND _asciichat_preferred_clangxx)
+                set(CMAKE_C_COMPILER "${_asciichat_preferred_clang}" CACHE FILEPATH
+                    "C compiler" FORCE)
+                set(CMAKE_CXX_COMPILER "${_asciichat_preferred_clangxx}" CACHE FILEPATH
+                    "C++ compiler" FORCE)
+            endif()
+        endif()
     else()
         # Prefer the selected LLVM installation before PATH.  On Linux the
         # distro's unversioned clang is often several major versions behind
@@ -29,11 +46,11 @@ if(NOT _ASCIICHAT_COMPILER_MODULE)
             "$ENV{LLVM_ROOT}/bin"
             "/usr/lib/llvm-23/bin"
             "/usr/local/llvm-23/bin")
-        find_program(_asciichat_clang clang HINTS ${_asciichat_llvm_hints})
+        find_program(_asciichat_clang NAMES clang-23 clang HINTS ${_asciichat_llvm_hints})
         find_program(_asciichat_gcc gcc)
         if(_asciichat_clang)
             set(CMAKE_C_COMPILER "${_asciichat_clang}" CACHE FILEPATH "C compiler" FORCE)
-            find_program(_asciichat_clangxx clang++ HINTS ${_asciichat_llvm_hints})
+            find_program(_asciichat_clangxx NAMES clang++-23 clang++ HINTS ${_asciichat_llvm_hints})
             if(NOT _asciichat_clangxx)
                 message(FATAL_ERROR "Clang was found but clang++ is missing")
             endif()

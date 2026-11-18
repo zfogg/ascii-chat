@@ -82,7 +82,6 @@ function(configure_libuv)
         target_include_directories(uv_a SYSTEM PUBLIC
             "$<BUILD_INTERFACE:${MUSL_INCLUDE_DIR}>"
             "$<BUILD_INTERFACE:${KERNEL_HEADERS_DIR}>")
-        set(ASCIICHAT_LIBUV_INCLUDE_DIRS "${asciichat_libuv_SOURCE_DIR}/include")
         set(ASCIICHAT_LIBUV_TARGET uv_a)
     else()
         # Prefer the distro libuv on Linux.  Homebrew can be earlier in
@@ -138,8 +137,12 @@ function(configure_libuv)
         message(FATAL_ERROR "libuv configuration did not produce a link target")
     endif()
 
-    set(ASCIICHAT_LIBUV_TARGET "${ASCIICHAT_LIBUV_TARGET}" PARENT_SCOPE)
-    set(ASCIICHAT_LIBUV_INCLUDE_DIRS "${ASCIICHAT_LIBUV_INCLUDE_DIRS}" PARENT_SCOPE)
+    # Export one stable target.  Provider-specific targets and discovery
+    # variables stay private to this module.
+    if(NOT TARGET asciichat-libuv)
+        add_library(asciichat-libuv INTERFACE)
+        target_link_libraries(asciichat-libuv INTERFACE "${ASCIICHAT_LIBUV_TARGET}")
+    endif()
 endfunction()
 
 configure_libuv()

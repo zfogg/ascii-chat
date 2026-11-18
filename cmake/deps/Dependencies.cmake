@@ -33,6 +33,7 @@
 # Windows: vcpkg Package Manager Configuration
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Vcpkg.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/SourceDependency.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslToolchainTarget.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Libuv.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Utf8proc.cmake)

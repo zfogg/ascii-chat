@@ -44,9 +44,9 @@ set(LIBPLATFORM_UTF8PROC_TARGET utf8proc CACHE STRING
     "utf8proc target supplied by ascii-chat" FORCE)
 set(_ascii_chat_libflags_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src-${CMAKE_BUILD_TYPE}")
 if(EXISTS "${_ascii_chat_libflags_source}/CMakeLists.txt")
-    FetchContent_Declare(libflags SOURCE_DIR "${_ascii_chat_libflags_source}")
+    asciichat_fetchcontent_declare(libflags SOURCE_DIR "${_ascii_chat_libflags_source}")
 else()
-    FetchContent_Declare(libflags
+    asciichat_fetchcontent_declare(libflags
         GIT_REPOSITORY https://github.com/zfogg/libflags.git
         GIT_TAG main
         SOURCE_DIR "${_ascii_chat_libflags_source}")

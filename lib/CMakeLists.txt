@@ -684,7 +684,7 @@ endforeach()
 # The UI partition contains lib/tui/update_banner.c, which includes <uv.h>
 # directly. Apply the selected libuv target's include paths while compiling it.
 if(NOT EMSCRIPTEN)
-    target_link_libraries(ascii-chat-ui PRIVATE ${ASCIICHAT_LIBUV_TARGET})
+    target_link_libraries(ascii-chat-ui PRIVATE asciichat-libuv)
 endif()
 
 target_link_libraries(ascii-chat-logging PRIVATE
@@ -692,8 +692,8 @@ target_link_libraries(ascii-chat-logging PRIVATE
     asciichat-libwebsockets)
 
 if(NOT EMSCRIPTEN)
-    target_link_libraries(ascii-chat-runtime PRIVATE ${ASCIICHAT_LIBUV_TARGET})
-    target_link_libraries(ascii-chat-ui PRIVATE ${ASCIICHAT_LIBUV_TARGET})
+    target_link_libraries(ascii-chat-runtime PRIVATE asciichat-libuv)
+    target_link_libraries(ascii-chat-ui PRIVATE asciichat-libuv)
 endif()
 if(PLATFORM_LINUX AND NOT USE_MUSL)
     target_link_libraries(ascii-chat-runtime PRIVATE asciichat-systemd)
@@ -818,8 +818,8 @@ endif()
 # nghttp2 is already propagated by the gotel transport dependency.  Adding
 # the separately discovered package here creates two incompatible Windows
 # libraries on the final link line.
-if(ASCIICHAT_LIBUV_TARGET)
-    target_link_libraries(ascii-chat-network PRIVATE ${ASCIICHAT_LIBUV_TARGET})
+if(TARGET asciichat-libuv)
+    target_link_libraries(ascii-chat-network PRIVATE asciichat-libuv)
 endif()
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-network PRIVATE asciichat-quic)
@@ -1566,9 +1566,9 @@ endif()
 target_link_libraries(ascii-chat-static INTERFACE asciichat-bearssl)
 if(NOT EMSCRIPTEN)
     if(TARGET ascii-chat-shared)
-        target_link_libraries(ascii-chat-shared PRIVATE ${ASCIICHAT_LIBUV_TARGET})
+        target_link_libraries(ascii-chat-shared PRIVATE asciichat-libuv)
     endif()
-    target_link_libraries(ascii-chat-static INTERFACE ${ASCIICHAT_LIBUV_TARGET})
+    target_link_libraries(ascii-chat-static INTERFACE asciichat-libuv)
     if(NOT ASCIICHAT_NGHTTP2_TARGET)
         message(FATAL_ERROR "ascii-chat-static requires an nghttp2 provider")
     endif()
