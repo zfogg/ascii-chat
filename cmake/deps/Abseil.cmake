@@ -50,7 +50,12 @@ if(UNIX AND NOT APPLE)
         message(STATUS "${BoldGreen}✓${ColorReset} Abseil: ${ABSEIL_LDFLAGS}")
     else()
         message(STATUS "${BoldYellow}⚠${ColorReset} Abseil not found in system packages, will try to find CMake package")
-        find_package(absl QUIET)
+        find_package(absl CONFIG QUIET
+            PATHS
+                "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/cmake"
+                "/usr/lib/cmake"
+                "/usr/local/lib/cmake"
+            NO_DEFAULT_PATH)
         if(absl_FOUND)
             set(ABSEIL_LIBRARIES absl::base absl::strings)
             set(ABSEIL_INCLUDE_DIRS "")
