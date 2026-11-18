@@ -146,13 +146,17 @@ function(find_dependency_library)
             # Use pkg-config if available (not required - vcpkg handles deps on Windows)
             find_package(PkgConfig QUIET)
             if(PkgConfig_FOUND)
-                pkg_check_modules(_asciichat_dep_pkg QUIET IMPORTED_TARGET ${_DEP_PKG_CONFIG})
+                pkg_check_modules(_asciichat_dep_pkg QUIET IMPORTED_TARGET GLOBAL
+                    ${_DEP_PKG_CONFIG})
             endif()
 
             if(_asciichat_dep_pkg_FOUND)
                 if(TARGET PkgConfig::_asciichat_dep_pkg)
                     set(_dep_libraries PkgConfig::_asciichat_dep_pkg)
+                elseif(_asciichat_dep_pkg_LINK_LIBRARIES)
+                    set(_dep_libraries ${_asciichat_dep_pkg_LINK_LIBRARIES})
                 endif()
+                set(_dep_include_dirs ${_asciichat_dep_pkg_INCLUDE_DIRS})
                 # Ensure INCLUDE_DIRS is set - pkg_check_modules may not set it if headers are in /usr/include
                 if(NOT _dep_include_dirs)
                     # Try to get includedir from pkg-config directly
