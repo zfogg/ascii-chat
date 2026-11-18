@@ -493,6 +493,16 @@ void action_create_manpage(const char *output_path) {
   }
   const flags_manpage_metadata_t metadata = {.program_name = "ascii-chat", .section = "1", .description = "Video chat in your terminal"};
   const bool written = flags_manpage_write(flags_schema_builder_schema(builder), &metadata, output) && flags_manpage_write_environment(flags_schema_builder_schema(builder), "ASCII_CHAT_", output);
+  if (written) {
+    fputs("\n.SH MCP SERVER\n"
+          "ascii-chat mcp-server exposes ASCII rendering tools through the Model Context Protocol.\n"
+          "Use the stdio transport for an MCP client-launched process, or \\fB--transport http\\fR\n"
+          "to serve Streamable HTTP at the configured address and port.\n\n"
+          "Example:\n\n"
+          "ascii-chat mcp-server --transport stdio\n\n"
+          "MCP mode reserves stdin for protocol messages and skips startup update checks.\n",
+          output);
+  }
   if (output != stdout)
     fclose(output);
   flags_schema_builder_destroy(builder);

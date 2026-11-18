@@ -57,8 +57,8 @@ if(NOT EXISTS "${UTIL_LINUX_SOURCE}/configure")
 endif()
 
 set(_util_linux_cc "${ASCIICHAT_CLANG_EXECUTABLE}")
-set(_util_linux_cflags "--target=${MUSL_TARGET} -fPIC -I${MUSL_INCLUDE_DIR} -I${KERNEL_HEADERS_DIR}")
-set(_util_linux_ldflags "--target=${MUSL_TARGET} -fuse-ld=lld -static")
+set(_util_linux_cflags "-nostdlibinc -isystem ${MUSL_INCLUDE_DIR} ${MUSL_KERNEL_CFLAGS} --target=${MUSL_TARGET}")
+set(_util_linux_ldflags "--target=${MUSL_TARGET} -fuse-ld=lld -static -L${MUSL_LIBDIR}")
 ExternalProject_Add(asciichat-util-linux-musl
     SOURCE_DIR "${UTIL_LINUX_SOURCE}"
     BINARY_DIR "${UTIL_LINUX_BUILD}"

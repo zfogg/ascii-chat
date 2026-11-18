@@ -681,9 +681,13 @@ foreach(_core_target IN LISTS _CORE_MODULE_TARGETS)
     endif()
 endforeach()
 
-if(TARGET ascii-chat-logging AND TARGET OpenSSL::SSL)
-    target_link_libraries(ascii-chat-logging PRIVATE OpenSSL::SSL)
+# The UI partition contains lib/tui/update_banner.c, which includes <uv.h>
+# directly. Apply the selected libuv target's include paths while compiling it.
+if(NOT EMSCRIPTEN)
+    target_link_libraries(ascii-chat-ui PRIVATE ${ASCIICHAT_LIBUV_TARGET})
 endif()
+
+target_link_libraries(ascii-chat-logging PRIVATE OpenSSL::SSL)
 
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-runtime PRIVATE ${ASCIICHAT_LIBUV_TARGET})

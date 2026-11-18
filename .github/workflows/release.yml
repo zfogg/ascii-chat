@@ -433,16 +433,25 @@ jobs:
           echo ""
           echo "=== FFmpeg configure logs ==="
           find .deps-cache/Release/musl -path '*/ffbuild/config.log' -type f -print -exec tail -n 160 {} \; 2>/dev/null || echo "No FFmpeg configure log"
+          echo ""
+          echo "=== ALSA and Fontconfig configure logs ==="
+          find .deps-cache/Release/musl -type f \( -path '*/alsa*/config.log' -o -path '*/fontconfig*/config.log' \) -print -exec tail -n 220 {} \; 2>/dev/null || echo "No ALSA/Fontconfig configure logs"
+          echo ""
+          echo "=== util-linux configure logs ==="
+          find .deps-cache/Release/musl -path '*/util-linux*/config.log' -type f -print -exec tail -n 220 {} \; 2>/dev/null || echo "No util-linux configure logs"
+          echo ""
+          echo "=== Musl toolchain/link flags ==="
+          grep -E 'CMAKE_(C|EXE_LINKER)_FLAGS|CMAKE_SYSROOT|CMAKE_C_COMPILER' build_release/CMakeCache.txt 2>/dev/null || true
 
-      - name: Print ccache stats
+      - name: Print sccache stats
         if: success()
-        run: ccache --show-stats || true
+        run: sccache --show-stats || true
 
-      - name: Save ccache
+      - name: Save sccache directory
         if: success()
         uses: actions/cache/save@v4
         with:
-          path: .ccache
+          path: ~/.cache/sccache
           key: ${{ steps.install-deps.outputs.ccache-key }}
 
       - name: Save build directory
@@ -691,15 +700,15 @@ jobs:
           fi
           echo "Verified static libasciichat.a in $archive"
 
-      - name: Print ccache stats
+      - name: Print sccache stats
         if: success()
-        run: ccache --show-stats || true
+        run: sccache --show-stats || true
 
-      - name: Save ccache
+      - name: Save sccache directory
         if: success()
         uses: actions/cache/save@v4
         with:
-          path: .ccache
+          path: ~/Library/Caches/Mozilla.sccache
           key: ${{ steps.install-deps.outputs.ccache-key }}
 
       - name: Save build directory
@@ -942,16 +951,16 @@ jobs:
           }
           Write-Host "Runtime archive contains no DLL dependencies; development archive contains libasciichat.a"
 
-      - name: Print ccache stats
+      - name: Print sccache stats
         if: success()
         shell: bash
-        run: ccache --show-stats || true
+        run: sccache --show-stats || true
 
-      - name: Save ccache
+      - name: Save sccache directory
         if: success()
         uses: actions/cache/save@v4
         with:
-          path: .ccache
+          path: ~/AppData/Local/Temp/sccache
           key: ${{ steps.install-deps.outputs.ccache-key }}
 
       - name: Save build directory
