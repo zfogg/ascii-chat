@@ -441,7 +441,7 @@ if(USE_MUSL)
         add_dependencies(OpenSSL::Crypto asciichat-openssl-musl)
         add_dependencies(OpenSSL::SSL asciichat-openssl-musl)
     else()
-        add_custom_target(openssl-musl)
+        add_custom_target(asciichat-openssl-musl)
     endif()
     set(OPENSSL_FOUND TRUE)
 
