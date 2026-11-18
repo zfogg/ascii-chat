@@ -19,9 +19,13 @@ set(LIBFLAGS_TOMLC17_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc1
 set(LIBFLAGS_UTF8PROC_TARGET utf8proc CACHE STRING
     "utf8proc target shared with ascii-chat" FORCE)
 set(_ascii_chat_libflags_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src-${CMAKE_BUILD_TYPE}")
-FetchContent_Declare(libflags
-    GIT_REPOSITORY https://github.com/zfogg/libflags.git
-  GIT_TAG 251bcca
-    SOURCE_DIR "${_ascii_chat_libflags_source}")
+if(EXISTS "${_ascii_chat_libflags_source}/CMakeLists.txt")
+    FetchContent_Declare(libflags SOURCE_DIR "${_ascii_chat_libflags_source}")
+else()
+    FetchContent_Declare(libflags
+        GIT_REPOSITORY https://github.com/zfogg/libflags.git
+        GIT_TAG 251bcca
+        SOURCE_DIR "${_ascii_chat_libflags_source}")
+endif()
 FetchContent_MakeAvailable(libflags)
 unset(_ascii_chat_libflags_source)
