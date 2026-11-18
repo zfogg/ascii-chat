@@ -37,15 +37,14 @@ endif()
 
 set(_rnnoise_cc_args)
 if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
-  execute_process(
-      COMMAND cmd.exe /d /c "for %I in (\"${ASCIICHAT_CLANG_EXECUTABLE}\") do @echo %~sI"
-      OUTPUT_VARIABLE _rnnoise_clang_short_path
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-      RESULT_VARIABLE _rnnoise_short_path_result)
-  if(NOT _rnnoise_short_path_result EQUAL 0 OR NOT _rnnoise_clang_short_path)
-    message(FATAL_ERROR "Could not obtain a short Windows path for ${ASCIICHAT_CLANG_EXECUTABLE}")
-  endif()
-  set(_rnnoise_cc "${_rnnoise_clang_short_path} --target=x86_64-pc-windows-msvc")
+  set(_rnnoise_cc_wrapper "${CMAKE_CURRENT_BINARY_DIR}/rnnoise-clang.sh")
+  configure_file(
+      "${CMAKE_SOURCE_DIR}/cmake/utils/RnnoiseClang.sh.in"
+      "${_rnnoise_cc_wrapper}"
+      @ONLY)
+  file(CHMOD "${_rnnoise_cc_wrapper}"
+      PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE)
+  set(_rnnoise_cc "${_rnnoise_cc_wrapper}")
   list(APPEND _rnnoise_cc_args -DRNNOISE_CC=${_rnnoise_cc})
 elseif(NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
   list(APPEND _rnnoise_cc_args -DRNNOISE_CC=${ASCIICHAT_CLANG_EXECUTABLE})
@@ -93,3 +92,4 @@ unset(_rnnoise_library_type)
 unset(_rnnoise_library)
 unset(_rnnoise_import_library)
 unset(_rnnoise_cc_args)
+unset(_rnnoise_cc_wrapper)
