@@ -338,68 +338,34 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIB
         # so we use standard optimizations instead. The main binary still uses LTO.
         set(FFMPEG_CFLAGS "-fPIC -O3")
 
-        execute_process(
-            COMMAND "${FFMPEG_SOURCE_DIR}/configure"
+        ExternalProject_Add(ffmpeg-release
+            SOURCE_DIR "${FFMPEG_SOURCE_DIR}"
+            CONFIGURE_COMMAND "${FFMPEG_SOURCE_DIR}/configure"
                 --prefix=${FFMPEG_PREFIX}
-                --enable-static
-                --disable-shared
-                --enable-pic
+                --enable-static --disable-shared --enable-pic
                 --extra-cflags=${FFMPEG_CFLAGS}
-                --disable-programs
-                --disable-doc
-                --disable-htmlpages
-                --disable-manpages
-                --disable-podpages
-                --disable-txtpages
-                --disable-debug
-                --disable-autodetect
-                --enable-gpl
+                --disable-programs --disable-doc --disable-htmlpages
+                --disable-manpages --disable-podpages --disable-txtpages
+                --disable-debug --disable-autodetect --enable-gpl
                 ${FFMPEG_HWACCEL_FLAGS}
                 --enable-protocol=file
                 --enable-demuxer=mov,matroska,avi,gif,image2,mp3,wav,flac,ogg
                 --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg,mp3,aac,flac,vorbis,opus,pcm_s16le
                 ${FFMPEG_CODEC_FLAGS}
                 --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video,aac,mpegaudio
-                --enable-swscale
-                --enable-swresample
-                ${FFMPEG_COMPRESSION_FLAGS}
-                ${FFMPEG_ARCH_FLAGS}
-            WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
-            RESULT_VARIABLE CONFIG_RESULT
-            OUTPUT_VARIABLE CONFIG_OUTPUT
-            ERROR_VARIABLE CONFIG_ERROR
-        )
-        if(NOT CONFIG_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to configure FFmpeg:\nstdout: ${CONFIG_OUTPUT}\nstderr: ${CONFIG_ERROR}")
-        endif()
-
-        # Build FFmpeg
-        message(STATUS "  Building FFmpeg (using ${NPROC} jobs)...")
-        execute_process(
-            COMMAND make -j${NPROC}
-            WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
-            RESULT_VARIABLE BUILD_RESULT
-            OUTPUT_VARIABLE BUILD_OUTPUT
-            ERROR_VARIABLE BUILD_ERROR
-        )
-        if(NOT BUILD_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to build FFmpeg:\n${BUILD_ERROR}")
-        endif()
-
-        # Install FFmpeg
-        message(STATUS "  Installing FFmpeg to cache...")
-        execute_process(
-            COMMAND make install
-            WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
-            RESULT_VARIABLE INSTALL_RESULT
-            OUTPUT_VARIABLE INSTALL_OUTPUT
-            ERROR_VARIABLE INSTALL_ERROR
-        )
-        if(NOT INSTALL_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to install FFmpeg:\n${INSTALL_ERROR}")
-        endif()
-
-        message(STATUS "  ${BoldGreen}FFmpeg${ColorReset} built and cached successfully")
+                --enable-swscale --enable-swresample
+                ${FFMPEG_COMPRESSION_FLAGS} ${FFMPEG_ARCH_FLAGS}
+            BUILD_COMMAND make -j${NPROC}
+            INSTALL_COMMAND make install
+            BUILD_BYPRODUCTS
+                ${FFMPEG_PREFIX}/lib/libavformat.a
+                ${FFMPEG_PREFIX}/lib/libavcodec.a
+                ${FFMPEG_PREFIX}/lib/libavutil.a
+                ${FFMPEG_PREFIX}/lib/libswscale.a
+                ${FFMPEG_PREFIX}/lib/libswresample.a
+            LOG_CONFIGURE TRUE LOG_BUILD TRUE LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE)
+        message(STATUS "  ${BoldGreen}FFmpeg${ColorReset} build scheduled through ExternalProject")
     else()
         message(STATUS "${BoldGreen}FFmpeg${ColorReset} found in cache: ${FFMPEG_PREFIX}/lib/libavformat.a")
     endif()
@@ -559,6 +525,9 @@ if(FFMPEG_FOUND AND NOT TARGET asciichat-ffmpeg)
     if(FFMPEG_LIBRARY_DIRS)
         target_link_directories(asciichat-ffmpeg INTERFACE ${FFMPEG_LIBRARY_DIRS})
     endif()
+endif()
+if(TARGET ffmpeg-release AND TARGET asciichat-ffmpeg)
+    add_dependencies(asciichat-ffmpeg ffmpeg-release)
 endif()
 endfunction()
 
