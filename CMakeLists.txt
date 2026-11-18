@@ -426,6 +426,13 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
       "${CMAKE_SOURCE_DIR}/deps/recast"
       "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build"
       EXCLUDE_FROM_ALL)
+    # A native build uses the Recast target created above.  Do not let a
+    # stale RECAST_NATIVE_BINARY cache entry from an older configuration
+    # override that target and fail configure before the tool can be built.
+    if(TARGET recast AND RECAST_NATIVE_BINARY AND
+       NOT EXISTS "${RECAST_NATIVE_BINARY}")
+      set(RECAST_NATIVE_BINARY "")
+    endif()
   endif()
 endif()
 if(RECAST_BACKEND STREQUAL "NATIVE" AND TARGET recast)
