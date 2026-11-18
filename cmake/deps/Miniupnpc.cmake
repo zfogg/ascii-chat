@@ -86,14 +86,20 @@ find_dependency_library(
     HOMEBREW_PKG miniupnpc
     STATIC_LIB_NAME libminiupnpc.a
 )
-set(_asciichat_miniupnpc_found "${MINIUPNPC_FOUND}")
-set(_asciichat_miniupnpc_link "${MINIUPNPC_LIBRARIES}")
-if(NOT _asciichat_miniupnpc_include)
-    set(_asciichat_miniupnpc_include "${MINIUPNPC_INCLUDE_DIRS}")
+
+# Discovery results are intentionally target-only.  Read the canonical target
+# contract instead of depending on the removed *_FOUND/*_LIBRARIES variables.
+if(TARGET asciichat-miniupnpc)
+    set(_asciichat_miniupnpc_found TRUE)
+    set(_asciichat_miniupnpc_link asciichat-miniupnpc)
+    get_target_property(_asciichat_miniupnpc_include
+        asciichat-miniupnpc INTERFACE_INCLUDE_DIRECTORIES)
+    if(_asciichat_miniupnpc_include STREQUAL "_asciichat_miniupnpc_include-NOTFOUND")
+        set(_asciichat_miniupnpc_include)
+    endif()
+else()
+    set(_asciichat_miniupnpc_found FALSE)
 endif()
-unset(MINIUPNPC_FOUND)
-unset(MINIUPNPC_LIBRARIES)
-unset(MINIUPNPC_INCLUDE_DIRS)
 
 # If miniupnpc is found, define HAVE_MINIUPNPC for the C code
 if(_asciichat_miniupnpc_found)
