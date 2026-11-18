@@ -131,7 +131,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
 
   # Install packages - completely ignore all errors since many are already installed
   # GitHub runners have pre-installed packages with version conflicts that can't be resolved
-  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool go \
+  brew install cmake coreutils pkg-config llvm ccache sccache make autoconf automake libtool go \
     ninja mimalloc zstd libsodium portaudio opus fftw doxygen sqlite3 \
     miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets libuv icu4c openssl@3 yyjson \
     libvterm freetype fontconfig expat pcre2 \
@@ -208,7 +208,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 
     # Install non-LLVM dependencies first
     apt-get install -y \
-      pkg-config make autoconf automake libtool ccache gperf \
+      pkg-config make autoconf automake libtool ccache sccache gperf \
       cmake ninja-build golang-go \
       musl-tools musl-dev \
       nasm \
@@ -387,8 +387,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       pkg-config make autoconf automake libtool python3 python3-pip \
       clang clang-devel llvm llvm-devel lld \
       libcxx-devel libcxxabi-devel \
-      cmake ninja-build golang \
-      musl-devel musl-gcc musl-libc-static \
+      cmake ninja-build golang sccache \
+      musl-devel musl-libc-static \
       nasm \
       libx264-devel libx265-devel \
       mimalloc-devel libzstd-devel zlib-devel libsodium-devel portaudio-devel opus-devel fftw-devel \
@@ -421,7 +421,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Installing dependencies..."
     pacman -S --needed \
       pkg-config autoconf automake libtool python python-pip \
-      ccache \
+      ccache sccache \
       clang llvm lldb lld \
       libc++ libc++abi \
       nasm \
