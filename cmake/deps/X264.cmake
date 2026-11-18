@@ -8,11 +8,8 @@
 #   - Linux/macOS (non-musl): Uses pkg-config for system packages
 #   - Windows: Uses vcpkg
 #
-# Outputs:
-#   - X264_FOUND - Whether x264 was found/configured
-#   - X264_LIBRARIES - Library paths
-#   - X264_INCLUDE_DIRS - Include directories
-#   - X264_PREFIX - Install prefix (for musl builds, passed to FFmpeg configure)
+# Output: `x264::x264` and `asciichat-x264`; `X264_PREFIX` is retained as
+# install metadata for FFmpeg's autotools configure step.
 # =============================================================================
 
 # Stable snapshot from code.videolan.org (x264 doesn't do versioned releases)

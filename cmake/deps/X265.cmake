@@ -8,11 +8,8 @@
 #   - Linux/macOS (non-musl): Uses pkg-config for system packages
 #   - Windows: Uses vcpkg
 #
-# Outputs:
-#   - X265_FOUND - Whether x265 was found/configured
-#   - X265_LIBRARIES - Library paths
-#   - X265_INCLUDE_DIRS - Include directories
-#   - X265_PREFIX - Install prefix (for musl builds, passed to FFmpeg configure)
+# Output: `x265::x265` and `asciichat-x265`; `X265_PREFIX` is retained as
+# install metadata for FFmpeg's autotools configure step.
 # =============================================================================
 
 set(X265_VERSION "4.1")
@@ -78,7 +75,6 @@ if(USE_MUSL)
                 -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../scripts/FixX265PkgConfig.cmake"
             DEPENDS x265-static VERBATIM)
         set(X265_PREFIX "${_prefix}" PARENT_SCOPE)
-        set(ASCIICHAT_X265_INCLUDE_DIRS "${asciichat_x265_SOURCE_DIR}/source;${asciichat_x265_BINARY_DIR}" PARENT_SCOPE)
     endfunction()
     asciichat_build_x265()
     if(NOT TARGET asciichat-x265)
