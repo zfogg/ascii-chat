@@ -14,7 +14,16 @@ For test selection, Criterion, Python integration, Windows Docker test commands,
 - Windows uses Scoop LLVM; macOS prefers Homebrew LLVM; test containers install LLVM and libraries through Linux package managers. Use Clang and Ninja. Verify the selected compiler and CMake cache when reusing a build.
 - Record the checkout, branch, SHA, dirty changes, OS, and architecture tested. A Docker source bind mount includes local edits; an SSH checkout does not. Transfer the intended commit or scoped patch explicitly and verify it arrived before interpreting results.
 - Preserve native `build/`, Docker `build_docker/`, dependency caches, and unrelated work. Reconfigure rather than deleting builds. Separate incompatible architectures, libc variants, and configurations into distinct build/cache trees.
-- All Unix devices use the same checkout path: `~/src/github.com/zfogg/ascii-chat`.
+- On Linux and WSL, use native Linux checkouts under `~/src/github.com/` for
+  ascii-chat and sibling repositories (for example,
+  `~/src/github.com/zfogg/ascii-chat`, `~/src/github.com/zfogg/libplatform`,
+  and `~/src/github.com/zfogg/libflags`). This is the developer's default
+  repository root. Do not build from `/mnt/c` or another Windows-mounted path:
+  it incurs WSL/Windows P9 filesystem overhead and can make CMake and Ninja
+  appear hung. Keep the source, build tree, and dependency cache in the Linux
+  filesystem.
+- All Unix devices use the same ascii-chat checkout path:
+  `~/src/github.com/zfogg/ascii-chat`.
 
 ## Windows native and remote access
 
