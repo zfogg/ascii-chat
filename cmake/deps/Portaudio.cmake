@@ -15,9 +15,9 @@
 #   - VCPKG_ROOT, VCPKG_TARGET_TRIPLET: (Windows only) vcpkg configuration
 #
 # Outputs (variables set by this file):
-#   - PORTAUDIO_LIBRARIES: Libraries to link against
-#   - PORTAUDIO_INCLUDE_DIRS: Include directories
-#   - PORTAUDIO_FOUND: Whether portaudio was found
+#   - _asciichat_portaudio_link: Libraries to link against
+#   - _asciichat_portaudio_include: Include directories
+#   - _asciichat_portaudio_found: Whether portaudio was found
 # =============================================================================
 
 # =============================================================================
@@ -33,13 +33,9 @@ if(PLATFORM_IOS OR EMSCRIPTEN)
     # PortAudio is not suitable for iOS
     # iOS uses AVAudioEngine and the browser uses Web Audio for audio I/O.
     # Create a stub target for compatibility
-    if(NOT TARGET portaudio)
-        add_library(portaudio INTERFACE)
+    if(NOT TARGET asciichat-portaudio)
+        add_library(asciichat-portaudio INTERFACE)
     endif()
-
-    set(PORTAUDIO_FOUND FALSE)
-    set(PORTAUDIO_LIBRARIES "")
-    set(PORTAUDIO_INCLUDE_DIRS "")
 
     message(STATUS "${BoldYellow}⚠${ColorReset} PortAudio skipped for platform audio backend")
     return()
@@ -88,8 +84,8 @@ if(USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             add_dependencies(${_target} alsa-lib-musl)
         endif()
         set(ASCIICHAT_PORTAUDIO_TARGET "${_target}" PARENT_SCOPE)
-        set(PORTAUDIO_LIBRARIES ${_target} PARENT_SCOPE)
-        set(PORTAUDIO_INCLUDE_DIRS "${asciichat_portaudio_SOURCE_DIR}/include" PARENT_SCOPE)
+        set(_asciichat_portaudio_link ${_target} PARENT_SCOPE)
+        set(_asciichat_portaudio_include "${asciichat_portaudio_SOURCE_DIR}/include" PARENT_SCOPE)
     endfunction()
     asciichat_build_portaudio()
     if(NOT TARGET asciichat-portaudio)
@@ -128,30 +124,30 @@ if(WIN32)
     endif()
     # vcpkg provides 'portaudio' target (not portaudio_static as of vcpkg 2024+)
     if(TARGET portaudio_static)
-        set(PORTAUDIO_LIBRARIES portaudio_static)
-        get_target_property(PORTAUDIO_INCLUDE_DIRS portaudio_static INTERFACE_INCLUDE_DIRECTORIES)
+        set(_asciichat_portaudio_link portaudio_static)
+        get_target_property(_asciichat_portaudio_include portaudio_static INTERFACE_INCLUDE_DIRECTORIES)
     elseif(TARGET portaudio)
-        set(PORTAUDIO_LIBRARIES portaudio)
-        get_target_property(PORTAUDIO_INCLUDE_DIRS portaudio INTERFACE_INCLUDE_DIRECTORIES)
+        set(_asciichat_portaudio_link portaudio)
+        get_target_property(_asciichat_portaudio_include portaudio INTERFACE_INCLUDE_DIRECTORIES)
     elseif(TARGET portaudio-vcpkg)
-        set(PORTAUDIO_LIBRARIES portaudio-vcpkg)
-        get_target_property(PORTAUDIO_INCLUDE_DIRS portaudio-vcpkg INTERFACE_INCLUDE_DIRECTORIES)
+        set(_asciichat_portaudio_link portaudio-vcpkg)
+        get_target_property(_asciichat_portaudio_include portaudio-vcpkg INTERFACE_INCLUDE_DIRECTORIES)
     else()
         message(FATAL_ERROR "PortAudio found via vcpkg but no usable target (portaudio or portaudio_static)")
     endif()
-    set(PORTAUDIO_FOUND TRUE)
-    message(STATUS "Found PORTAUDIO via staged Windows package: ${PORTAUDIO_LIBRARIES}")
+    set(_asciichat_portaudio_found TRUE)
+    message(STATUS "Found PORTAUDIO via staged Windows package: ${_asciichat_portaudio_link}")
 elseif(DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg")
     find_package(portaudio CONFIG QUIET)
     if(NOT TARGET portaudio AND NOT TARGET portaudio_static)
         message(FATAL_ERROR "PortAudio vcpkg config did not provide a usable target")
     endif()
     if(TARGET portaudio_static)
-        set(PORTAUDIO_LIBRARIES portaudio_static)
+        set(_asciichat_portaudio_link portaudio_static)
     else()
-        set(PORTAUDIO_LIBRARIES portaudio)
+        set(_asciichat_portaudio_link portaudio)
     endif()
-    set(PORTAUDIO_FOUND TRUE)
+    set(_asciichat_portaudio_found TRUE)
 else()
     # Use system PortAudio
     # On macOS Release builds: prefer static library when BUILD_SHARED_LIBS is OFF
@@ -169,11 +165,11 @@ else()
         )
 
         if(PORTAUDIO_STATIC_LIB AND PORTAUDIO_INC)
-            set(PORTAUDIO_LIBRARIES "${PORTAUDIO_STATIC_LIB}")
-            set(PORTAUDIO_INCLUDE_DIRS "${PORTAUDIO_INC}")
-            set(PORTAUDIO_FOUND TRUE)
+            set(_asciichat_portaudio_link "${PORTAUDIO_STATIC_LIB}")
+            set(_asciichat_portaudio_include "${PORTAUDIO_INC}")
+            set(_asciichat_portaudio_found TRUE)
             # PortAudio on macOS needs these frameworks
-            list(APPEND PORTAUDIO_LIBRARIES
+            list(APPEND _asciichat_portaudio_link
                 "-framework CoreAudio"
                 "-framework AudioToolbox"
                 "-framework AudioUnit"
@@ -185,14 +181,14 @@ else()
     endif()
 
     # Fallback to pkg-config if static not found or not macOS Release
-    if(NOT PORTAUDIO_FOUND)
+    if(NOT _asciichat_portaudio_found)
         message(STATUS "PortAudio: Using system library via pkg-config")
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
-        set(PORTAUDIO_LIBRARIES ${PORTAUDIO_LINK_LIBRARIES})
-        set(PORTAUDIO_INCLUDE_DIRS ${PORTAUDIO_INCLUDE_DIRS})
-        set(PORTAUDIO_FOUND TRUE)
-        message(STATUS "Found PORTAUDIO via pkg-config: ${PORTAUDIO_LIBRARIES}")
+        set(_asciichat_portaudio_link ${PORTAUDIO_LINK_LIBRARIES})
+        set(_asciichat_portaudio_include ${_asciichat_portaudio_include})
+        set(_asciichat_portaudio_found TRUE)
+        message(STATUS "Found PORTAUDIO via pkg-config: ${_asciichat_portaudio_link}")
     endif()
 endif()
 
@@ -200,10 +196,10 @@ endif()
 # local to this module; callers link the interface target.
 if(NOT TARGET asciichat-portaudio)
     add_library(asciichat-portaudio INTERFACE)
-    if(PORTAUDIO_LIBRARIES)
-        target_link_libraries(asciichat-portaudio INTERFACE ${PORTAUDIO_LIBRARIES})
+    if(_asciichat_portaudio_link)
+        target_link_libraries(asciichat-portaudio INTERFACE ${_asciichat_portaudio_link})
     endif()
-    if(PORTAUDIO_INCLUDE_DIRS)
-        target_include_directories(asciichat-portaudio INTERFACE ${PORTAUDIO_INCLUDE_DIRS})
+    if(_asciichat_portaudio_include)
+        target_include_directories(asciichat-portaudio INTERFACE ${_asciichat_portaudio_include})
     endif()
 endif()
