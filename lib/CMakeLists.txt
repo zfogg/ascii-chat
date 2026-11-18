@@ -776,9 +776,7 @@ foreach(_core_target IN LISTS _CORE_MODULE_TARGETS)
     endif()
 endforeach()
 
-if(TARGET ascii-chat-logging AND TARGET OpenSSL::SSL)
-    target_link_libraries(ascii-chat-logging PRIVATE OpenSSL::SSL)
-endif()
+target_link_libraries(ascii-chat-logging PRIVATE OpenSSL::SSL)
 
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-runtime PRIVATE ${ASCIICHAT_LIBUV_TARGET})
@@ -967,16 +965,14 @@ if(NOT BUILDING_OBJECT_LIBS)
     if(LIBWEBSOCKETS_LIBRARIES)
         target_link_libraries(ascii-chat-network PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
     endif()
-    # Link miniupnpc if available (optional UPnP/NAT-PMP support)
-    if(MINIUPNPC_FOUND)
-        target_include_directories(ascii-chat-network PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
-        target_link_libraries(ascii-chat-network PRIVATE ${MINIUPNPC_LIBRARIES})
+    # miniupnpc is a required native dependency.
+    target_include_directories(ascii-chat-network PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
+    target_link_libraries(ascii-chat-network PRIVATE ${MINIUPNPC_LIBRARIES})
         # Also link libnatpmp on macOS
         if(NATPMP_LIBRARY)
             target_include_directories(ascii-chat-network PRIVATE ${NATPMP_INCLUDE_DIR})
             target_link_libraries(ascii-chat-network PRIVATE ${NATPMP_LIBRARY})
         endif()
-    endif()
 else()
     # For OBJECT libs, link external deps only (OpenSSL needed by libdatachannel for TLS/DTLS)
     target_link_libraries(ascii-chat-network PRIVATE ${PCRE2_LIBRARIES} zstd::libzstd ${SQLITE3_LIBRARIES} libdatachannel OpenSSL::Crypto)
@@ -984,19 +980,17 @@ else()
     if(LIBWEBSOCKETS_LIBRARIES)
         target_link_libraries(ascii-chat-network PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
     endif()
-    if(MINIUPNPC_FOUND)
-        target_include_directories(ascii-chat-network PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
-        target_link_libraries(ascii-chat-network PRIVATE ${MINIUPNPC_LIBRARIES})
+    target_include_directories(ascii-chat-network PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
+    target_link_libraries(ascii-chat-network PRIVATE ${MINIUPNPC_LIBRARIES})
         # Also link libnatpmp on macOS
         if(NATPMP_LIBRARY)
             target_include_directories(ascii-chat-network PRIVATE ${NATPMP_INCLUDE_DIR})
             target_link_libraries(ascii-chat-network PRIVATE ${NATPMP_LIBRARY})
         endif()
-    endif()
 endif()
 
 # =============================================================================
-# Unified Library Targets (OPTIONAL - not built by default)
+# Unified Library Targets (not built by default)
 # =============================================================================
 # The executable links this interface to consume the same object files as the
 # unified libraries. Keep one authoritative object set for static release
@@ -1849,7 +1843,7 @@ if(TARGET OpenSSL::Crypto)
     target_link_libraries(ascii-chat-static INTERFACE OpenSSL::Crypto)
 endif()
 
-# Link miniupnpc for UPnP/NAT-PMP port mapping (optional)
+# Link required miniupnpc for UPnP/NAT-PMP port mapping
 # This is linked to ascii-chat-network module, but must also be exposed via the
 # INTERFACE library for final executables since libasciichat.a includes upnp.c
 if(MINIUPNPC_FOUND)

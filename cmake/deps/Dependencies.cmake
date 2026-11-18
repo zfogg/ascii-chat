@@ -91,7 +91,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Libdatachannel.cmake)
 # libwebsockets - WebSocket transport for browser clients (uses zlib for compression and mbedTLS for WSS)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Libwebsockets.cmake)
 
-# miniupnpc - UPnP/NAT-PMP for direct TCP without WebRTC (optional, graceful fallback)
+# miniupnpc - UPnP/NAT-PMP for direct TCP without WebRTC (required)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Miniupnpc.cmake)
 
 # SQLite3 - Database for ACDS sessions and rate limiting
@@ -156,3 +156,20 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Catch2.cmake)
 
 # Platform-specific system libraries (Windows, macOS frameworks, Linux libs)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/PlatformLibraries.cmake)
+
+if(NOT EMSCRIPTEN)
+    foreach(_required_dependency
+        ABSEIL_FOUND BEARSSL_FOUND FFMPEG_FOUND FFTW_FOUND
+        LIBDATACHANNEL_FOUND LIBSODIUM_FOUND LIBWEBSOCKETS_FOUND
+        MINIUPNPC_FOUND OPENSSL_FOUND OPUS_FOUND PCRE2_FOUND
+        PORTAUDIO_FOUND SQLITE3_FOUND ZLIB_FOUND ZSTD_FOUND)
+        if(NOT ${_required_dependency})
+            message(FATAL_ERROR "Required dependency check failed: ${_required_dependency} is not true")
+        endif()
+    endforeach()
+    foreach(_required_target OpenSSL::SSL OpenSSL::Crypto libdatachannel webrtc_audio_processing)
+        if(NOT TARGET ${_required_target})
+            message(FATAL_ERROR "Required dependency target is missing: ${_required_target}")
+        endif()
+    endforeach()
+endif()

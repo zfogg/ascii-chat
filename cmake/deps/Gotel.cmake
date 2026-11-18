@@ -11,14 +11,9 @@ endif()
 set(GOTEL_BUILD_TEST_SUPPORT ${BUILD_TESTS} CACHE BOOL
     "Build reusable telemetry test helpers" FORCE)
 set(GOTEL_WITH_SQLITE ON CACHE BOOL "Build SQLite telemetry adapter" FORCE)
-# Keep the optional gRPC adapter disabled in the application build. The
-# pinned gotel/otlp-c sources expose overlapping HTTP request symbols when
-# combined with the application's HTTP exporter on Windows; telemetry uses
-# OTLP/HTTP here and nghttp2 remains available to the native HTTP server.
-# Keep Gotel's optional gRPC telemetry transport disabled.  Its pinned adapter
-# rewrites the HTTP source staging path and is not needed by ascii-chat's HTTP
-#/2 server.
-set(GOTEL_WITH_GRPC OFF CACHE BOOL "Build native OTLP/gRPC telemetry transport" FORCE)
+# gRPC is part of the application's telemetry contract and must be built on
+# every native configuration.
+set(GOTEL_WITH_GRPC ON CACHE BOOL "Build native OTLP/gRPC telemetry transport" FORCE)
 set(GOTEL_UTF8PROC_TARGET utf8proc CACHE STRING
     "Use ascii-chat's utf8proc target" FORCE)
 
