@@ -93,7 +93,7 @@ function(configure_musl_post_project)
 
     if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
         execute_process(
-            COMMAND "${CMAKE_C_COMPILER}" "--target=${MUSL_TARGET}" -rtlib=compiler-rt -print-libgcc-file-name
+            COMMAND "${CMAKE_C_COMPILER}" "${ASCIICHAT_MUSL_TARGET_FLAG}" -rtlib=compiler-rt -print-libgcc-file-name
             OUTPUT_VARIABLE CLANG_BUILTINS_PATH
             OUTPUT_STRIP_TRAILING_WHITESPACE
             RESULT_VARIABLE _clang_builtins_result)

@@ -18,7 +18,7 @@ endif()
 # =============================================================================
 # Set variables for use in ExternalProject commands
 message(STATUS "Building dependencies from source for musl libc...")
-message(STATUS "  dependency compiler: ${ASCIICHAT_CLANG_EXECUTABLE} --target=${MUSL_TARGET}")
+message(STATUS "  dependency compiler: ${ASCIICHAT_CLANG_EXECUTABLE} ${ASCIICHAT_MUSL_TARGET_FLAG}")
 
 include(FetchContent)
 
