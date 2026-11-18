@@ -507,3 +507,10 @@ endif()
 
 # Variables FFMPEG_LIBRARIES, FFMPEG_INCLUDE_DIRS, and FFMPEG_FOUND are available
 # SourceFiles.cmake will conditionally include media source files when FFMPEG_FOUND is true
+if(FFMPEG_FOUND AND NOT TARGET asciichat-ffmpeg)
+    add_library(asciichat-ffmpeg INTERFACE)
+    target_link_libraries(asciichat-ffmpeg INTERFACE ${FFMPEG_LIBRARIES})
+    if(FFMPEG_INCLUDE_DIRS)
+        target_include_directories(asciichat-ffmpeg INTERFACE ${FFMPEG_INCLUDE_DIRS})
+    endif()
+endif()
