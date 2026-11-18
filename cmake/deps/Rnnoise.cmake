@@ -59,6 +59,7 @@ if(WIN32)
     set(_rnnoise_build_command
         "${CMAKE_COMMAND}" -E env
         "CFLAGS=-DM_PI=3.14159265358979323846"
+        "MSYS_NO_PATHCONV=1"
         "${ASCIICHAT_MAKE_EXECUTABLE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
 else()
     set(_rnnoise_build_command
@@ -93,6 +94,7 @@ ExternalProject_Add(ascii-chat-rnnoise-build
         "${ASCIICHAT_RNNOISE_BUILD_DIR}/rnnoise-uninstalled.pc"
         COMMAND "${CMAKE_COMMAND}" -E env
         "MAKEFLAGS=-o aclocal.m4 -o Makefile.in -o configure -o config.h.in"
+        "MSYS_NO_PATHCONV=1"
         "${ASCIICHAT_RNNOISE_MAKE}" -o aclocal.m4 -o Makefile.in -o configure -o config.h.in
         -C "${ASCIICHAT_RNNOISE_BUILD_DIR}"
     INSTALL_COMMAND "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}" install

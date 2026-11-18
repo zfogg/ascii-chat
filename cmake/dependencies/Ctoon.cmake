@@ -21,6 +21,13 @@ endif()
 if(NOT TARGET ctoon::ctoon)
     message(FATAL_ERROR "CToon did not provide the ctoon::ctoon target")
 endif()
+
+if(WIN32 AND BUILD_SHARED_LIBS AND TARGET ctoon)
+    # CToon’s Windows shared target does not annotate its C API with
+    # __declspec(dllexport), so CMake otherwise emits a DLL without an import
+    # library. Export the public C API from the upstream target automatically.
+    set_target_properties(ctoon PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endif()
 if(TARGET ctoon_cli)
     set_target_properties(ctoon_cli PROPERTIES EXCLUDE_FROM_ALL TRUE)
 endif()

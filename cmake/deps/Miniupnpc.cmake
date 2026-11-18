@@ -91,7 +91,8 @@ find_dependency_library(
 if(MINIUPNPC_FOUND)
     unset(MINIUPNPC_HEADER_INCLUDE_DIR CACHE)
     foreach(_miniupnpc_include_candidate IN ITEMS
-        ${MINIUPNPC_INCLUDE_DIRS} /usr/include /usr/include/miniupnpc
+        ${MINIUPNPC_INCLUDE_DIRS} ${MINIUPNPC_INCLUDE_DIR}
+        /usr/include /usr/include/miniupnpc
         /usr/local/include /usr/local/include/miniupnpc)
         if(EXISTS "${_miniupnpc_include_candidate}/miniupnpc.h")
             set(MINIUPNPC_HEADER_INCLUDE_DIR "${_miniupnpc_include_candidate}")
@@ -202,6 +203,10 @@ if(NOT TARGET asciichat-miniupnpc)
     if(EXISTS "/usr/include/miniupnpc/miniupnpc.h")
         target_include_directories(asciichat-miniupnpc INTERFACE "/usr/include/miniupnpc")
     endif()
+endif()
+if(TARGET asciichat-miniupnpc AND MINIUPNPC_HEADER_INCLUDE_DIR)
+    target_include_directories(asciichat-miniupnpc INTERFACE
+        "${MINIUPNPC_HEADER_INCLUDE_DIR}")
 endif()
 if(NOT TARGET asciichat-miniupnpc)
     add_library(asciichat-miniupnpc INTERFACE)

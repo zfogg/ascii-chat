@@ -80,7 +80,7 @@ if(PkgConfig_FOUND)
 endif()
 unset(OPUS_HEADER_INCLUDE_DIR CACHE)
 foreach(_opus_include_candidate IN ITEMS
-    ${OPUS_INCLUDE_DIRS} ${OPUS_PKG_INCLUDE_DIR}
+    ${OPUS_INCLUDE_DIRS} ${OPUS_INCLUDE_DIR} ${OPUS_PKG_INCLUDE_DIR}
     /usr/include /usr/include/opus /usr/local/include /usr/local/include/opus)
     if(EXISTS "${_opus_include_candidate}/opus.h")
         set(OPUS_HEADER_INCLUDE_DIR "${_opus_include_candidate}")
