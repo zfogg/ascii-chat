@@ -64,7 +64,9 @@ ExternalProject_Add(ascii-chat-rnnoise-build
         -P "${CMAKE_SOURCE_DIR}/cmake/utils/ConfigureRnnoise.cmake"
     # configure/autogen has already generated aclocal.m4; prevent make from
     # requiring the exact Automake version used by the source checkout.
-    BUILD_COMMAND "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}" -o aclocal.m4 -o Makefile.in -o configure -o config.h.in
+    BUILD_COMMAND "${CMAKE_COMMAND}" -E env
+        "MAKEFLAGS=-o aclocal.m4 -o Makefile.in -o configure -o config.h.in"
+        "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}"
         CFLAGS=-DM_PI=3.14159265358979323846
     INSTALL_COMMAND "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}" install
         COMMAND "${CMAKE_COMMAND}"
