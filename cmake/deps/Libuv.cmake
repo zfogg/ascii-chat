@@ -7,7 +7,7 @@ function(configure_libuv)
 
     if(WIN32)
         find_package(libuv CONFIG REQUIRED)
-        if(ASCIICHAT_SHARED_DEPS AND TARGET libuv::uv)
+        if(BUILD_SHARED_LIBS AND TARGET libuv::uv)
             set(ASCIICHAT_LIBUV_TARGET libuv::uv)
         elseif(TARGET libuv::uv_a)
             set(ASCIICHAT_LIBUV_TARGET libuv::uv_a)

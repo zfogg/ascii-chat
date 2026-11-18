@@ -782,6 +782,7 @@ endif()
 
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-runtime PRIVATE ${ASCIICHAT_LIBUV_TARGET})
+    target_link_libraries(ascii-chat-ui PRIVATE ${ASCIICHAT_LIBUV_TARGET})
 endif()
 if(PLATFORM_LINUX AND NOT USE_MUSL)
     target_include_directories(ascii-chat-runtime PRIVATE ${LIBSYSTEMD_INCLUDE_DIRS})
