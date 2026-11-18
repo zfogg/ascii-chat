@@ -61,7 +61,6 @@ if(EMSCRIPTEN OR PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
         endif()
     endfunction()
     asciichat_build_zstd()
-    set(ZSTD_FOUND TRUE)
     return()
 endif()
 
