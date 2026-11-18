@@ -29,7 +29,7 @@ set(LIBPLATFORM_UTF8PROC_TARGET utf8proc CACHE STRING
 # Use the checked-out submodule directly.  Reusing a cached source tree can
 # mix headers and implementations from different libplatform revisions.
 set(_ascii_chat_libplatform_source "${_ascii_chat_repo_root}/deps/ascii-chat-deps/libplatform")
-set(_ascii_chat_libplatform_build "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform-build")
+set(_ascii_chat_libplatform_build "${ASCIICHAT_DEPS_CACHE_DIR}/build/libplatform")
 if(NOT TARGET libplatform)
     add_subdirectory(
         "${_ascii_chat_libplatform_source}"

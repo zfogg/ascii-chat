@@ -27,7 +27,7 @@ function(configure_msvc_pre_project)
         message(FATAL_ERROR "MSVC builds require Python and LLVM libclang.dll for defer source transformation")
     endif()
     set(RECAST_BACKEND NATIVE CACHE STRING "Recast transformer backend" FORCE)
-    set(RECAST_LLVM_DEV_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/llvm-dev-23.1.3" CACHE PATH
+    set(RECAST_LLVM_DEV_ROOT "${ASCIICHAT_DEPS_CACHE_ROOT}/llvm-dev-23.1.3" CACHE PATH
         "LLVM development root for the native Recast host" FORCE)
     set(RECAST_TOOL_ROOT "${CMAKE_SOURCE_DIR}/deps/recast" CACHE PATH "Recast source tree" FORCE)
     set(RECAST_PYTHON_COMMAND "${_msvc_python}" CACHE FILEPATH "Recast Python interpreter" FORCE)
