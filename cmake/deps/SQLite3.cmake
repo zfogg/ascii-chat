@@ -18,9 +18,9 @@
 #   - VCPKG_ROOT, VCPKG_LIB_PATH, etc.: vcpkg config (if USE_VCPKG=ON)
 #
 # Outputs (variables set by this file):
-#   - SQLITE3_FOUND: Whether SQLite3 was found
-#   - SQLITE3_LIBRARIES: Libraries to link against
-#   - SQLITE3_INCLUDE_DIRS: Include directories
+#   - _asciichat_sqlite3_found: Whether SQLite3 was found
+#   - _asciichat_sqlite3_link: Libraries to link against
+#   - _asciichat_sqlite3_include: Include directories
 # =============================================================================
 
 # =============================================================================
@@ -31,12 +31,12 @@ if(PLATFORM_IOS)
 
     # SQLite3 is included in iOS SDK, no build needed
     # Find it via system paths
-    find_library(SQLITE3_LIBRARIES sqlite3)
-    find_path(SQLITE3_INCLUDE_DIRS sqlite3.h)
+    find_library(_asciichat_sqlite3_link sqlite3)
+    find_path(_asciichat_sqlite3_include sqlite3.h)
 
-    if(SQLITE3_LIBRARIES AND SQLITE3_INCLUDE_DIRS)
-        set(SQLITE3_FOUND TRUE)
-        message(STATUS "${BoldGreen}✓${ColorReset} SQLite3 found (iOS system library): ${SQLITE3_LIBRARIES}")
+    if(_asciichat_sqlite3_link AND _asciichat_sqlite3_include)
+        set(_asciichat_sqlite3_found TRUE)
+        message(STATUS "${BoldGreen}✓${ColorReset} SQLite3 found (iOS system library): ${_asciichat_sqlite3_link}")
     else()
         message(FATAL_ERROR "SQLite3 not found in iOS SDK")
     endif()
@@ -207,9 +207,9 @@ if(USE_MUSL)
             IMPORTED_LOCATION "${SQLITE3_PREFIX}/lib/libsqlite3.a"
             INTERFACE_INCLUDE_DIRECTORIES "${SQLITE3_PREFIX}/include")
     endif()
-    set(SQLITE3_FOUND TRUE)
-    set(SQLITE3_LIBRARIES asciichat-sqlite3)
-    set(SQLITE3_INCLUDE_DIRS "${SQLITE3_PREFIX}/include")
+    set(_asciichat_sqlite3_found TRUE)
+    set(_asciichat_sqlite3_link asciichat-sqlite3)
+    set(_asciichat_sqlite3_include "${SQLITE3_PREFIX}/include")
     return()
 endif()
 
@@ -225,20 +225,20 @@ if(USE_VCPKG AND VCPKG_ROOT)
               PATHS "${VCPKG_INCLUDE_PATH}" NO_DEFAULT_PATH)
 
     if(SQLITE3_LIB_RELEASE OR SQLITE3_LIB_DEBUG)
-        set(SQLITE3_FOUND TRUE)
+        set(_asciichat_sqlite3_found TRUE)
         include(${CMAKE_SOURCE_DIR}/cmake/utils/SelectLibraryConfig.cmake)
         asciichat_select_library_config(
             RELEASE_LIB ${SQLITE3_LIB_RELEASE}
             DEBUG_LIB   ${SQLITE3_LIB_DEBUG}
-            OUTPUT      SQLITE3_LIBRARIES
+            OUTPUT      _asciichat_sqlite3_link
         )
-        set(SQLITE3_INCLUDE_DIRS "${SQLITE3_INC}")
+        set(_asciichat_sqlite3_include "${SQLITE3_INC}")
         if(NOT TARGET asciichat-sqlite3)
             add_library(asciichat-sqlite3 INTERFACE)
             if(TARGET SQLite3::SQLite3)
                 target_link_libraries(asciichat-sqlite3 INTERFACE SQLite3::SQLite3)
             else()
-                target_link_libraries(asciichat-sqlite3 INTERFACE "${SQLITE3_LIBRARIES}")
+                target_link_libraries(asciichat-sqlite3 INTERFACE "${_asciichat_sqlite3_link}")
             endif()
             target_include_directories(asciichat-sqlite3 INTERFACE "${SQLITE3_INC}")
         endif()
@@ -266,13 +266,13 @@ if(WIN32 AND ASCIICHAT_DEPS_CACHE_ROOT AND VCPKG_TARGET_TRIPLET)
         asciichat_select_library_config(
             RELEASE_LIB ${_asciichat_sqlite3_release}
             DEBUG_LIB   ${_asciichat_sqlite3_debug}
-            OUTPUT      SQLITE3_LIBRARIES
+            OUTPUT      _asciichat_sqlite3_link
         )
-        set(SQLITE3_FOUND TRUE)
-        set(SQLITE3_INCLUDE_DIRS "${_asciichat_sqlite3_include}")
+        set(_asciichat_sqlite3_found TRUE)
+        set(_asciichat_sqlite3_include "${_asciichat_sqlite3_include}")
         if(NOT TARGET asciichat-sqlite3)
             add_library(asciichat-sqlite3 INTERFACE)
-            target_link_libraries(asciichat-sqlite3 INTERFACE "${SQLITE3_LIBRARIES}")
+            target_link_libraries(asciichat-sqlite3 INTERFACE "${_asciichat_sqlite3_link}")
             target_include_directories(asciichat-sqlite3 INTERFACE "${_asciichat_sqlite3_include}")
         endif()
         message(STATUS "Found ${BoldGreen}SQLite3${ColorReset} in dependency cache: ${_asciichat_sqlite3_release}${_asciichat_sqlite3_debug}")
@@ -287,23 +287,23 @@ endif()
 # Try pkg-config first (more reliable for getting library paths)
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
-    pkg_check_modules(SQLITE3 QUIET IMPORTED_TARGET sqlite3)
-    if(SQLITE3_FOUND)
-        if(TARGET PkgConfig::SQLITE3)
-            set(SQLITE3_LIBRARIES PkgConfig::SQLITE3)
+    pkg_check_modules(_asciichat_sqlite3_pkg QUIET IMPORTED_TARGET sqlite3)
+    if(_asciichat_sqlite3_pkg_FOUND)
+        if(TARGET PkgConfig::_asciichat_sqlite3_pkg)
+            set(_asciichat_sqlite3_link PkgConfig::_asciichat_sqlite3_pkg)
             if(NOT TARGET asciichat-sqlite3)
                 add_library(asciichat-sqlite3 INTERFACE)
-                target_link_libraries(asciichat-sqlite3 INTERFACE PkgConfig::SQLITE3)
+                target_link_libraries(asciichat-sqlite3 INTERFACE PkgConfig::_asciichat_sqlite3_pkg)
             endif()
         endif()
         # pkg-config returns a bare `-lsqlite3` on Windows even when it has
         # resolved the actual vcpkg library.  Preserve the absolute path so
         # clang/lld does not turn it into the invalid `-lsqlite3.lib`.
-        if(WIN32 AND DEFINED pkgcfg_lib_SQLITE3_sqlite3
-           AND EXISTS "${pkgcfg_lib_SQLITE3_sqlite3}")
-            set(SQLITE3_LIBRARIES "${pkgcfg_lib_SQLITE3_sqlite3}")
+        if(WIN32 AND DEFINED pkgcfg_lib__asciichat_sqlite3_pkg_sqlite3
+           AND EXISTS "${pkgcfg_lib__asciichat_sqlite3_pkg_sqlite3}")
+            set(_asciichat_sqlite3_link "${pkgcfg_lib__asciichat_sqlite3_pkg_sqlite3}")
         endif()
-        message(STATUS "Found ${BoldGreen}SQLite3${ColorReset} via pkg-config: ${SQLITE3_VERSION}")
+        message(STATUS "Found ${BoldGreen}SQLite3${ColorReset} via pkg-config: ${_asciichat_sqlite3_pkg_VERSION}")
         return()
     endif()
 endif()
@@ -311,17 +311,17 @@ endif()
 # Try CMake's built-in FindSQLite3
 find_package(SQLite3 QUIET)
 if(SQLite3_FOUND)
-    set(SQLITE3_FOUND TRUE)
-    set(SQLITE3_INCLUDE_DIRS ${SQLite3_INCLUDE_DIRS})
+    set(_asciichat_sqlite3_found TRUE)
+    set(_asciichat_sqlite3_include ${SQLite3_INCLUDE_DIRS})
     # Check if the target exists; if not, use the library path directly
     if(TARGET SQLite3::SQLite3)
-        set(SQLITE3_LIBRARIES SQLite3::SQLite3)
+        set(_asciichat_sqlite3_link SQLite3::SQLite3)
     else()
-        set(SQLITE3_LIBRARIES ${SQLite3_LIBRARIES})
+        set(_asciichat_sqlite3_link ${SQLite3_LIBRARIES})
     endif()
     if(NOT TARGET asciichat-sqlite3)
         add_library(asciichat-sqlite3 INTERFACE)
-        target_link_libraries(asciichat-sqlite3 INTERFACE ${SQLITE3_LIBRARIES})
+        target_link_libraries(asciichat-sqlite3 INTERFACE ${_asciichat_sqlite3_link})
         if(SQLite3_INCLUDE_DIRS)
             target_include_directories(asciichat-sqlite3 INTERFACE "${SQLite3_INCLUDE_DIRS}")
         endif()
@@ -331,9 +331,9 @@ if(SQLite3_FOUND)
 endif()
 
 # Last resort: just link to sqlite3 and hope it's in the system path
-set(SQLITE3_FOUND TRUE)
-set(SQLITE3_LIBRARIES sqlite3)
-set(SQLITE3_INCLUDE_DIRS "")
+set(_asciichat_sqlite3_found TRUE)
+set(_asciichat_sqlite3_link sqlite3)
+set(_asciichat_sqlite3_include "")
 if(NOT TARGET asciichat-sqlite3)
     add_library(asciichat-sqlite3 INTERFACE)
     target_link_libraries(asciichat-sqlite3 INTERFACE sqlite3)
