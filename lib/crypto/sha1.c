@@ -72,7 +72,7 @@ static inline uint32_t sha1_rotate_left32(uint32_t value, unsigned int bits) {
 
 /* Hash a single 512-bit block. This is the core of the algorithm. */
 
-void SHA1Transform(uint32_t state[5], const unsigned char buffer[SHA1_BLOCK_LENGTH]) {
+void SHA1Transform(uint32_t state[5], const unsigned char *buffer) {
   uint32_t a, b, c, d, e;
   typedef union {
     unsigned char c[SHA1_BLOCK_LENGTH];
