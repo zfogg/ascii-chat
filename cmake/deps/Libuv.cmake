@@ -6,6 +6,11 @@ function(configure_libuv)
     endif()
 
     if(WIN32)
+        if(NOT USE_VCPKG)
+            message(FATAL_ERROR
+                "Windows builds require the restored vcpkg libuv package; "
+                "enable USE_VCPKG and restore the selected triplet in the dependency cache")
+        endif()
         find_package(libuv CONFIG REQUIRED)
         if(BUILD_SHARED_LIBS AND TARGET libuv::uv)
             set(ASCIICHAT_LIBUV_TARGET libuv::uv)
