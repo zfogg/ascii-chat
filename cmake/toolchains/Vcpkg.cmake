@@ -2,6 +2,20 @@
 set(VCPKG_INSTALLED_DIR "${CMAKE_CURRENT_LIST_DIR}/../../.deps-cache/vcpkg"
     CACHE PATH "Persistent vcpkg installed dependency tree" FORCE)
 
+# Build only the vcpkg configuration selected by this single-config CMake
+# build.  Without this, vcpkg builds both release and debug variants even
+# though ascii-chat links exactly one of them.  Keep the custom Dev
+# configuration on vcpkg's Debug variant, matching SelectLibraryConfig.cmake
+# and the runtime DLL staging in PostBuild.cmake.
+if(CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
+    set(VCPKG_BUILD_TYPE "debug" CACHE STRING
+        "vcpkg dependency configuration to build" FORCE)
+elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
+    set(VCPKG_BUILD_TYPE "release" CACHE STRING
+        "vcpkg dependency configuration to build" FORCE)
+endif()
+message(STATUS "vcpkg: building only ${VCPKG_BUILD_TYPE} dependency variants")
+
 # A restored dependency cache can contain a complete static triplet without
 # vcpkg's global manifest status file.  Do not make CMake rebuild FFmpeg and
 # the other static packages merely because that status file is absent.
