@@ -194,7 +194,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
     p += char_bytes;
 
     // Calculate actual display width from line_start to current position (excluding ANSI codes)
-    int actual_width = (int)calculate_segment_display_width(line_start, p - line_start);
+    int actual_width = calculate_segment_display_width(line_start, (int)(p - line_start));
 
     // Check if we need to wrap
     if (actual_width >= available_width && last_space && last_space > line_start) {
