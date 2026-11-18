@@ -469,7 +469,7 @@ runs:
         # doxygen is needed for generating documentation included in installers.
         # GitHub's AMD64 image has Chocolatey and its packages resolve much
         # faster than Scoop; ARM64 retains the Scoop path.
-        $basePackages = @('ninja', 'ccache') | Where-Object {
+        $basePackages = @('ninja', 'ccache', 'msys2') | Where-Object {
           $null -eq (Get-Command $_ -ErrorAction SilentlyContinue)
         }
 
@@ -485,6 +485,20 @@ runs:
         foreach ($pkg in $packages) {
           Install-ScoopPackage -Package $pkg
         }
+
+        # RNNoise runs autogen.sh through the MSYS2 installation that CMake
+        # selects. Install autotools into that same installation and verify
+        # autoreconf from its login shell before configuration starts.
+        $msys2Root = (scoop prefix msys2).Trim()
+        if ([string]::IsNullOrWhiteSpace($msys2Root) -or -not (Test-Path "$msys2Root\usr\bin\bash.exe")) {
+          throw "Scoop MSYS2 installation was not found"
+        }
+        $msys2Bash = Join-Path $msys2Root 'usr\bin\bash.exe'
+        & $msys2Bash -lc 'pacman -S --needed --noconfirm autotools'
+        if ($LASTEXITCODE -ne 0) { throw "MSYS2 autotools installation failed" }
+        & $msys2Bash -lc 'autoreconf --version'
+        if ($LASTEXITCODE -ne 0) { throw "MSYS2 autoreconf is unavailable" }
+        Add-Content -Path $env:GITHUB_ENV -Value "MSYS2_ROOT=$msys2Root"
 
         # Persist Scoop shims for later action steps without failing when a
         # runner uses only one of the user/global locations.
