@@ -477,6 +477,31 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
         if(DEFINED _asciichat_recast_native_binary)
             set(_asciichat_wasm_recast_binary "${_asciichat_recast_native_binary}")
         endif()
+        # The WASM child validates RECAST_NATIVE_BINARY during its own
+        # configure. Build the host tool now on a cold cache; it is independent
+        # of the Emscripten targets and is safe to build from the parent.
+        if(NOT EXISTS "${_asciichat_wasm_recast_binary}")
+            if(TARGET asciichat-recast-host)
+                set(_asciichat_recast_build_target asciichat-recast-host)
+            elseif(TARGET recast)
+                set(_asciichat_recast_build_target recast)
+            else()
+                message(FATAL_ERROR "WASM configuration requires a native Recast host target")
+            endif()
+            execute_process(
+                COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
+                    --target "${_asciichat_recast_build_target}"
+                    --config "${CMAKE_BUILD_TYPE}"
+                RESULT_VARIABLE _asciichat_recast_build_result
+                OUTPUT_VARIABLE _asciichat_recast_build_output
+                ERROR_VARIABLE _asciichat_recast_build_error)
+            if(NOT _asciichat_recast_build_result EQUAL 0 OR
+               NOT EXISTS "${_asciichat_wasm_recast_binary}")
+                message(FATAL_ERROR
+                    "Native Recast host build failed before WASM configure:\n"
+                    "${_asciichat_recast_build_output}\n${_asciichat_recast_build_error}")
+            endif()
+        endif()
         set(WASM_CMAKE_ARGS
             -G "${CMAKE_GENERATOR}"
             -B "${WASM_BUILD_DIR}"
