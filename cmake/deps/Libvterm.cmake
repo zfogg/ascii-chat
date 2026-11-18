@@ -11,7 +11,13 @@ if(EMSCRIPTEN OR WIN32 OR USE_MUSL OR PLATFORM_IOS OR ASCIICHAT_BUILD_DEPS_FROM_
             GIT_REPOSITORY https://github.com/neovim/libvterm.git
             GIT_TAG v0.3.3 GIT_SHALLOW TRUE)
         find_package(Perl REQUIRED)
+        set(_asciichat_parent_fetchcontent_updates_disconnected
+            ${FETCHCONTENT_UPDATES_DISCONNECTED})
+        set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
         FetchContent_MakeAvailable(libvterm)
+        set(FETCHCONTENT_UPDATES_DISCONNECTED
+            ${_asciichat_parent_fetchcontent_updates_disconnected})
+        unset(_asciichat_parent_fetchcontent_updates_disconnected)
         set(_vterm_source "${libvterm_SOURCE_DIR}")
         set(_vterm_binary "${CMAKE_CURRENT_BINARY_DIR}/_deps/libvterm")
         file(MAKE_DIRECTORY "${_vterm_binary}/encoding")
