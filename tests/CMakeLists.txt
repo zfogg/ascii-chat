@@ -831,8 +831,8 @@ endif()
                 target_link_libraries(${test_exe_name} ${NATPMP_LIBRARY})
             endif()
         endif()
-        if(BEARSSL_FOUND)
-            target_link_libraries(${test_exe_name} ${BEARSSL_LIBRARIES})
+        if(TARGET asciichat-bearssl)
+            target_link_libraries(${test_exe_name} asciichat-bearssl)
         endif()
 
         # Add query runtime library if available
