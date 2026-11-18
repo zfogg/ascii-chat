@@ -27,7 +27,7 @@ function(asciichat_validate_musl_target target)
             set(_is_host_include FALSE)
             if("${_value}" MATCHES "(^|/)usr/include")
                 if("${_value}" MATCHES "/alpine-libcxx/" OR
-                    "${_value}" MATCHES "/usr/include/[^;>]*musl(/|$)" OR
+                    "${_value}" MATCHES "/usr/include/[^;>]*musl(/|$|>)" OR
                     (MUSL_TARGET AND "${_value}" MATCHES "/usr/include/${MUSL_TARGET}(/|$)"))
                     set(_is_host_include FALSE)
                 else()
