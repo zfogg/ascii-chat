@@ -185,6 +185,7 @@ function(asciichat_configure_quic)
             "-DOPENSSL_ROOT_DIR:PATH=${_quic_openssl_root}"
             "-DOPENSSL_SSL_LIBRARY:FILEPATH=${_quic_ssl_file}"
             "-DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}"
+            "-DOPENSSL_USE_STATIC_LIBS:BOOL=${OPENSSL_USE_STATIC_LIBS}"
             ${_quic_openssl_cache_args})
     endif()
     if(WIN32)
@@ -288,6 +289,7 @@ function(asciichat_configure_quic)
             -D_OPENSSL_INCLUDEDIR:INTERNAL=${OPENSSL_INCLUDE_DIR}
             -DOPENSSL_SSL_LIBRARY:FILEPATH=${_quic_ssl_file}
             -DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}
+            -DOPENSSL_USE_STATIC_LIBS:BOOL=${OPENSSL_USE_STATIC_LIBS}
             ${_quic_openssl_cache_args}
             -DVCPKG_MANIFEST_INSTALL:BOOL=OFF
         RESULT_VARIABLE _ngtcp2_configure_result
@@ -324,6 +326,7 @@ function(asciichat_configure_quic)
             "-D_OPENSSL_INCLUDEDIR:INTERNAL=${OPENSSL_INCLUDE_DIR}"
             "-DOPENSSL_SSL_LIBRARY:FILEPATH=${_quic_ssl_file}"
             "-DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}"
+            "-DOPENSSL_USE_STATIC_LIBS:BOOL=${OPENSSL_USE_STATIC_LIBS}"
             ${_quic_openssl_cache_args}
             "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${_quic_config_args} --target ${_quic_ngtcp2_crypto_target} ${_quic_build_tail}
