@@ -53,7 +53,7 @@ set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE
 # cache checkout here so reconfiguring another parent build directory does not
 # clone Sequel again.
 include(FetchContent)
-set(_asciichat_sequel_source "${_asciichat_gotel_cache_dir}/sequel-src")
+set(_asciichat_sequel_source "${ASCIICHAT_DEPS_CACHE_DIR}/sequel-src")
 if(EXISTS "${_asciichat_sequel_source}/CMakeLists.txt")
     FetchContent_Declare(sequel SOURCE_DIR "${_asciichat_sequel_source}")
 else()
