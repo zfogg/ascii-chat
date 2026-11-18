@@ -4,7 +4,7 @@ if(NOT EMSCRIPTEN)
     if(WIN32)
         # vcpkg's libuv port does not provide a CMake package config. Discover
         # the installed headers/archive directly and publish one project target.
-        find_path(ASCIICHAT_LIBUV_INCLUDE_DIR NAMES uv.h REQUIRED)
+        find_path(ASCIICHAT_LIBUV_INCLUDE_DIR NAMES uv.h PATH_SUFFIXES uv REQUIRED)
         if(ASCIICHAT_SHARED_DEPS)
             find_library(ASCIICHAT_LIBUV_LIBRARY NAMES uv REQUIRED)
         else()
