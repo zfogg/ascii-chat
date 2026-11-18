@@ -48,7 +48,7 @@ outputs:
     value: ${{ steps.cache-keys.outputs.sccache-key || steps.cache-keys-win.outputs.sccache-key }}
   ccache-hit:
     description: "Whether the local sccache directory was hit"
-    value: ${{ steps.sccache-restore.outputs.cache-hit }}
+    value: ${{ steps.sccache-restore-linux.outputs.cache-hit || steps.sccache-restore-macos.outputs.cache-hit || steps.sccache-restore-windows.outputs.cache-hit }}
   build-cache-key:
     description: "Cache key for build directory (computed by cache-keys step)"
     value: ${{ steps.cache-keys.outputs.build-cache-key || steps.cache-keys-win.outputs.build-cache-key }}
@@ -200,29 +200,51 @@ runs:
 
     # Restore the local sccache directory for incremental compilation across CI runs
     # Key includes branch name so each branch has its own cache, with fallback to any branch's cache
-    - name: Restore sccache directory (All platforms)
-      id: sccache-restore
+    - name: Restore sccache directory (Linux)
+      id: sccache-restore-linux
+      if: inputs.os == 'ubuntu'
       uses: actions/cache/restore@v4
       with:
-        path: ${{ runner.temp }}/sccache
+        path: ~/.cache/sccache
+        key: ${{ steps.cache-keys.outputs.sccache-key || steps.cache-keys-win.outputs.sccache-key }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-sccache-v1-
+
+    - name: Restore sccache directory (macOS)
+      id: sccache-restore-macos
+      if: inputs.os == 'macos'
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/Library/Caches/Mozilla.sccache
         # Use computed key from cache-keys step (github.ref_name not available in composite actions)
         key: ${{ steps.cache-keys.outputs.sccache-key || steps.cache-keys-win.outputs.sccache-key }}
         restore-keys: |
           ${{ runner.os }}-${{ runner.arch }}-sccache-v1-
 
-    # Set SCCACHE_DIR to a workspace-relative path for consistent caching
-    - name: Configure sccache directory (Unix)
+    - name: Restore sccache directory (Windows)
+      id: sccache-restore-windows
+      if: inputs.os == 'windows'
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/AppData/Local/Mozilla/sccache
+        key: ${{ steps.cache-keys.outputs.sccache-key || steps.cache-keys-win.outputs.sccache-key }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-sccache-v1-
+
+    - name: Configure sccache directory (Linux)
       if: inputs.os != 'windows'
       shell: bash
       run: |
-        mkdir -p "$RUNNER_TEMP/sccache"
-        echo "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> $GITHUB_ENV
+        sccache_dir="$HOME/.cache/sccache"
+        echo "XDG_CACHE_HOME=$HOME/.cache" >> "$GITHUB_ENV"
+        mkdir -p "$sccache_dir"
+        echo "SCCACHE_DIR=$sccache_dir" >> "$GITHUB_ENV"
 
     - name: Configure sccache directory (Windows)
       if: inputs.os == 'windows'
       shell: pwsh
       run: |
-        $sccacheDir = Join-Path $env:RUNNER_TEMP 'sccache'
+        $sccacheDir = Join-Path $env:LOCALAPPDATA 'Temp\sccache'
         New-Item -ItemType Directory -Force -Path $sccacheDir | Out-Null
         Add-Content -Path $env:GITHUB_ENV -Value "SCCACHE_DIR=$sccacheDir"
 

@@ -448,7 +448,7 @@ jobs:
         if: success()
         uses: actions/cache/save@v4
         with:
-          path: ${{ runner.temp }}/sccache
+          path: ~/.cache/sccache
           key: ${{ steps.install-deps.outputs.ccache-key }}
 
       - name: Save build directory
@@ -705,7 +705,7 @@ jobs:
         if: success()
         uses: actions/cache/save@v4
         with:
-          path: ${{ runner.temp }}/sccache
+          path: ~/Library/Caches/Mozilla.sccache
           key: ${{ steps.install-deps.outputs.ccache-key }}
 
       - name: Save build directory
@@ -957,7 +957,7 @@ jobs:
         if: success()
         uses: actions/cache/save@v4
         with:
-          path: ${{ runner.temp }}/sccache
+          path: ~/AppData/Local/Temp/sccache
           key: ${{ steps.install-deps.outputs.ccache-key }}
 
       - name: Save build directory
