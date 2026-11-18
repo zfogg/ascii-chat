@@ -192,6 +192,27 @@ endif()
 # Native non-musl builds use the system OpenSSL. The system must provide the
 # QUIC TLS API required by ngtcp2; do not silently substitute a source build.
 if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
+    # Prefer the newest locally installed native OpenSSL before consulting the
+    # distribution's pkg-config directory. This keeps WSL/Linux builds on the
+    # developer's /usr/local/openssl-* installation without requiring callers
+    # to export PKG_CONFIG_PATH.
+    file(GLOB _asciichat_local_openssl_pc_dirs LIST_DIRECTORIES true
+        "/usr/local/openssl-*/lib*/pkgconfig")
+    list(SORT _asciichat_local_openssl_pc_dirs COMPARE NATURAL ORDER DESCENDING)
+    foreach(_asciichat_local_openssl_pc_dir IN LISTS _asciichat_local_openssl_pc_dirs)
+        if(EXISTS "${_asciichat_local_openssl_pc_dir}/openssl.pc")
+            if(DEFINED ENV{PKG_CONFIG_PATH} AND NOT "$ENV{PKG_CONFIG_PATH}" STREQUAL "")
+                set(ENV{PKG_CONFIG_PATH}
+                    "${_asciichat_local_openssl_pc_dir}:$ENV{PKG_CONFIG_PATH}")
+            else()
+                set(ENV{PKG_CONFIG_PATH} "${_asciichat_local_openssl_pc_dir}")
+            endif()
+            break()
+        endif()
+    endforeach()
+    unset(_asciichat_local_openssl_pc_dir)
+    unset(_asciichat_local_openssl_pc_dirs)
+
     # Prefer pkg-config when the distribution provides an OpenSSL module. Some
     # distributions, including Arch installations without the development
     # metadata package, provide usable headers/libraries without openssl.pc;

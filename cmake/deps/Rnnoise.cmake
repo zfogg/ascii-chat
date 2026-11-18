@@ -36,7 +36,7 @@ else()
 endif()
 
 set(_rnnoise_cc_args)
-if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+if(WIN32)
   set(_rnnoise_cc_wrapper "${CMAKE_CURRENT_BINARY_DIR}/rnnoise-clang.sh")
   configure_file(
       "${CMAKE_SOURCE_DIR}/cmake/utils/RnnoiseClang.sh.in"
@@ -46,7 +46,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
       PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE)
   set(_rnnoise_cc "${_rnnoise_cc_wrapper}")
   list(APPEND _rnnoise_cc_args -DRNNOISE_CC=${_rnnoise_cc})
-elseif(NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
   list(APPEND _rnnoise_cc_args -DRNNOISE_CC=${ASCIICHAT_CLANG_EXECUTABLE})
 endif()
 

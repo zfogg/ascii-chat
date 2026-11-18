@@ -477,6 +477,24 @@ endif()
 # Check if we need to run pkg-config: either not found yet, or found but no libraries set
 if(NOT FFMPEG_FOUND OR NOT FFMPEG_LIBRARIES)
     message(STATUS "FFmpeg: Searching via pkg-config...")
+    # Prefer a locally installed upstream FFmpeg (for example
+    # /usr/local/ffmpeg-9.0.2) over an older distro package.  Keep the normal
+    # pkg-config search as the fallback so system installations elsewhere are
+    # still supported without requiring PKG_CONFIG_PATH.
+    file(GLOB _asciichat_local_ffmpeg_pc_dirs LIST_DIRECTORIES true
+        "/usr/local/ffmpeg-*/lib*/pkgconfig")
+    list(SORT _asciichat_local_ffmpeg_pc_dirs COMPARE NATURAL ORDER DESCENDING)
+    foreach(_asciichat_ffmpeg_pc_dir IN LISTS _asciichat_local_ffmpeg_pc_dirs)
+        if(EXISTS "${_asciichat_ffmpeg_pc_dir}/libavformat.pc")
+            if(DEFINED ENV{PKG_CONFIG_PATH} AND NOT "$ENV{PKG_CONFIG_PATH}" STREQUAL "")
+                set(ENV{PKG_CONFIG_PATH} "${_asciichat_ffmpeg_pc_dir}:$ENV{PKG_CONFIG_PATH}")
+            else()
+                set(ENV{PKG_CONFIG_PATH} "${_asciichat_ffmpeg_pc_dir}")
+            endif()
+            message(STATUS "FFmpeg: preferring local pkg-config directory ${_asciichat_ffmpeg_pc_dir}")
+            break()
+        endif()
+    endforeach()
     # Find pkg-config (required for finding FFmpeg)
     find_package(PkgConfig QUIET)
 

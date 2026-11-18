@@ -64,7 +64,6 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             <stdbool.h>
             <stdint.h>
             <stddef.h>
-            <stdatomic.h>
             <time.h>
             <errno.h>
             <limits.h>

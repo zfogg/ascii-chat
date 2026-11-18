@@ -4,10 +4,8 @@ if(EMSCRIPTEN)
 endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
-get_property(_asciichat_build_shared_libs CACHE BUILD_SHARED_LIBS PROPERTY VALUE)
 function(asciichat_build_aec3)
     asciichat_dependency_defaults()
-    set(BUILD_SHARED_LIBS "${_asciichat_build_shared_libs}")
     # The dependency patch and its child targets need the target architecture,
     # including Windows cross builds where the host processor is misleading.
     set(ASCIICHAT_TARGET_ARM64 OFF)
@@ -20,9 +18,6 @@ function(asciichat_build_aec3)
     # AEC3 exposes component libraries embedded in the public library. Keep
     # the caller's dependency mode for Debug/Dev; static release-like targets
     # already select BUILD_SHARED_LIBS=OFF at the preset level.
-    if(NOT BUILD_SHARED_LIBS OR USE_MUSL OR PLATFORM_IOS)
-        set(BUILD_SHARED_LIBS OFF)
-    endif()
     set(CMAKE_CXX_STANDARD 17)
     FetchContent_Declare(webrtc_aec3
         BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc-aec3"
