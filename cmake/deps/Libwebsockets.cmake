@@ -6,6 +6,27 @@ if((WIN32 OR ASCIICHAT_SHARED_DEPS OR ASCIICHAT_USE_SYSTEM_LIBWEBSOCKETS)
    AND NOT ASCIICHAT_BUILD_DEPS_FROM_SOURCE
    AND NOT PLATFORM_IOS
    AND NOT USE_MUSL)
+    if(WIN32)
+        # The vcpkg port ships a config file, but its package is not visible
+        # through the project's staged prefix during configure. Discover the
+        # staged archive directly and retain the required system closure.
+        find_path(_asciichat_lws_include NAMES libwebsockets.h
+            PATHS "${VCPKG_INCLUDE_PATH}" REQUIRED)
+        find_library(_asciichat_lws_library NAMES websockets
+            PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+        add_library(asciichat-libwebsockets UNKNOWN IMPORTED GLOBAL)
+        set_target_properties(asciichat-libwebsockets PROPERTIES
+            IMPORTED_LOCATION "${_asciichat_lws_library}"
+            INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_lws_include}"
+            INTERFACE_LINK_LIBRARIES "OpenSSL::SSL;ZLIB::ZLIB;ws2_32")
+        set(LIBWEBSOCKETS_LIBRARIES asciichat-libwebsockets)
+        set(LIBWEBSOCKETS_INCLUDE_DIRS "${_asciichat_lws_include}")
+        set(LIBWEBSOCKETS_FOUND TRUE)
+        if(TARGET asciichat-project-options)
+            target_compile_definitions(asciichat-project-options INTERFACE HAVE_LIBWEBSOCKETS=1)
+        endif()
+        return()
+    endif()
     # Try CMake config first, then fall back to pkg-config
     find_package(libwebsockets QUIET CONFIG)
     if(NOT libwebsockets_FOUND)
