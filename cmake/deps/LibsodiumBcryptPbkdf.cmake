@@ -20,6 +20,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/Patching.cmake)
 # iOS: Build libsodium-bcrypt-pbkdf as static library
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}libsodium-bcrypt-pbkdf${ColorReset} from source (iOS cross-compile)...")
+    include(ExternalProject)
 
     set(LIBSODIUM_BCRYPT_PBKDF_PREFIX "${IOS_DEPS_CACHE_DIR}/libsodium-bcrypt-pbkdf")
     set(LIBSODIUM_BCRYPT_PBKDF_LIBRARY "${LIBSODIUM_BCRYPT_PBKDF_PREFIX}/lib/libsodium-bcrypt-pbkdf.a")
@@ -37,24 +38,23 @@ if(PLATFORM_IOS)
 
         set(DEP_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf")
 
-        message(STATUS "  Building libsodium-bcrypt-pbkdf for iOS...")
-        execute_process(
-            COMMAND bash -c "export PATH=/tmp/bin:$PATH && cd '${DEP_DIR}' && \
-                    CC=clang \
-                    AR=ar \
-                    CFLAGS='-fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0' \
-                    HAVE_EXPLICIT_BZERO=0 \
-                    make lib && \
-                    mkdir -p '${LIBSODIUM_BCRYPT_PBKDF_PREFIX}/lib' '${LIBSODIUM_BCRYPT_PBKDF_PREFIX}/include' && \
-                    cp src/libsodium-bcrypt-pbkdf.a '${LIBSODIUM_BCRYPT_PBKDF_PREFIX}/lib/' && \
-                    cp include/*.h '${LIBSODIUM_BCRYPT_PBKDF_PREFIX}/include/'"
-            RESULT_VARIABLE BUILD_RESULT
-            OUTPUT_VARIABLE BUILD_OUTPUT
-            ERROR_VARIABLE BUILD_ERROR
-        )
-        if(NOT BUILD_RESULT EQUAL 0)
-            message(FATAL_ERROR "libsodium-bcrypt-pbkdf iOS build failed:\\n${BUILD_ERROR}")
-        endif()
+        ExternalProject_Add(asciichat-libsodium-bcrypt-pbkdf-ios
+            SOURCE_DIR "${DEP_DIR}"
+            CONFIGURE_COMMAND ""
+            BUILD_COMMAND ${CMAKE_COMMAND} -E env
+                "CC=clang" "AR=ar"
+                "CFLAGS=-fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0"
+                HAVE_EXPLICIT_BZERO=0 make lib
+            INSTALL_COMMAND ${CMAKE_COMMAND} -E make_directory
+                    "${LIBSODIUM_BCRYPT_PBKDF_PREFIX}/lib"
+                    "${LIBSODIUM_BCRYPT_PBKDF_INCLUDE_DIR}"
+                COMMAND ${CMAKE_COMMAND} -E copy
+                    "${DEP_DIR}/src/libsodium-bcrypt-pbkdf.a"
+                    "${LIBSODIUM_BCRYPT_PBKDF_LIBRARY}"
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    "${DEP_DIR}/include" "${LIBSODIUM_BCRYPT_PBKDF_INCLUDE_DIR}"
+            BUILD_BYPRODUCTS "${LIBSODIUM_BCRYPT_PBKDF_LIBRARY}"
+            LOG_BUILD TRUE LOG_INSTALL TRUE LOG_OUTPUT_ON_FAILURE TRUE)
     else()
         message(STATUS "  ${BoldBlue}libsodium-bcrypt-pbkdf${ColorReset} library found in iOS cache: ${BoldMagenta}${LIBSODIUM_BCRYPT_PBKDF_LIBRARY}${ColorReset}")
     endif()
@@ -69,6 +69,10 @@ if(PLATFORM_IOS)
     endif()
     if(NOT TARGET asciichat::libsodium-bcrypt-pbkdf)
         add_library(asciichat::libsodium-bcrypt-pbkdf ALIAS asciichat-libsodium-bcrypt-pbkdf)
+    endif()
+    if(TARGET asciichat-libsodium-bcrypt-pbkdf-ios)
+        add_dependencies(asciichat-libsodium-bcrypt-pbkdf
+            asciichat-libsodium-bcrypt-pbkdf-ios)
     endif()
 
     message(STATUS "${BoldGreen}✓${ColorReset} libsodium-bcrypt-pbkdf (iOS): ${LIBSODIUM_BCRYPT_PBKDF_LIBRARY}")
