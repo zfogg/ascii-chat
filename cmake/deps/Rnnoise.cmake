@@ -35,6 +35,11 @@ else()
   set(_rnnoise_library "${ASCIICHAT_RNNOISE_INSTALL_DIR}/lib/librnnoise.a")
 endif()
 
+set(_rnnoise_cc_args)
+if(NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+  list(APPEND _rnnoise_cc_args -DRNNOISE_CC=${ASCIICHAT_CLANG_EXECUTABLE})
+endif()
+
 ExternalProject_Add(ascii-chat-rnnoise-build
     SOURCE_DIR "${ASCIICHAT_RNNOISE_SOURCE_DIR}"
     BINARY_DIR "${ASCIICHAT_RNNOISE_BUILD_DIR}"
@@ -43,7 +48,7 @@ ExternalProject_Add(ascii-chat-rnnoise-build
         -DRNNOISE_BINARY_DIR=${ASCIICHAT_RNNOISE_BUILD_DIR}
         -DRNNOISE_INSTALL_DIR=${ASCIICHAT_RNNOISE_INSTALL_DIR}
         -DRNNOISE_SHELL=${ASCIICHAT_RNNOISE_SHELL}
-        -DRNNOISE_CC=${ASCIICHAT_CLANG_EXECUTABLE}
+        ${_rnnoise_cc_args}
         -DRNNOISE_SHARED=OFF
         -P "${CMAKE_SOURCE_DIR}/cmake/utils/ConfigureRnnoise.cmake"
     BUILD_COMMAND "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}"
@@ -69,3 +74,4 @@ add_dependencies(ascii-chat-rnnoise ascii-chat-rnnoise-build)
 unset(_rnnoise_library_type)
 unset(_rnnoise_library)
 unset(_rnnoise_import_library)
+unset(_rnnoise_cc_args)
