@@ -15,6 +15,14 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/Patching.cmake)
 
 # Function definition (applies to all platforms)
 function(configure_tomlc17)
+    if(NOT TARGET asciichat-tomlc17)
+        add_library(asciichat-tomlc17 INTERFACE)
+        target_include_directories(asciichat-tomlc17 INTERFACE
+            "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src")
+    endif()
+    if(NOT TARGET asciichat::tomlc17)
+        add_library(asciichat::tomlc17 ALIAS asciichat-tomlc17)
+    endif()
     # iOS: tomlc17 is header-only, no build needed
     if(PLATFORM_IOS)
         message(STATUS "Configuring ${BoldBlue}tomlc17${ColorReset} (iOS, header-only)...")

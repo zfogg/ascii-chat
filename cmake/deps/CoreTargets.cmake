@@ -102,7 +102,7 @@ foreach(_dependency_name IN ITEMS
     libdatachannel miniupnpc freetype fontconfig vterm openssl bearssl systemd
     webrtc-aec3 ffmpeg x264 x265 bzip2 expat fftw fftw-float gotel ngtcp2
     nghttp3 quic zlib zstd libsodium opus rnnoise abseil portaudio icu ctoon
-    nghttp2 mimalloc)
+    nghttp2 mimalloc mdns tomlc17)
     if(TARGET "asciichat-${_dependency_name}")
         _asciichat_publish_dependency_alias("${_dependency_name}" "asciichat-${_dependency_name}")
     endif()

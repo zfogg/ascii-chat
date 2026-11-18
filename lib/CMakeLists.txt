@@ -672,6 +672,7 @@ foreach(_core_target IN LISTS _CORE_MODULE_TARGETS)
         asciichat-yyjson
         asciichat-pcre2
         asciichat-libflags
+        asciichat-tomlc17
     )
     if(NOT WIN32)
         target_link_libraries(${_core_target} PRIVATE m)
@@ -742,6 +743,7 @@ endif()
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
 target_link_libraries(ascii-chat-network PRIVATE asciichat-libuv)
+target_link_libraries(ascii-chat-network PRIVATE asciichat-mdns)
 if(TARGET asciichat-miniupnpc)
     target_include_directories(ascii-chat-network PRIVATE
         "$<TARGET_PROPERTY:asciichat-miniupnpc,INTERFACE_INCLUDE_DIRECTORIES>")
