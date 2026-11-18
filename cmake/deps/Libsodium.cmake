@@ -224,6 +224,12 @@ if(USE_MUSL)
     set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
     set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
     set(LIBSODIUM_BUILD_TARGET libsodium-musl)
+    add_library(asciichat-libsodium STATIC IMPORTED GLOBAL)
+    set_target_properties(asciichat-libsodium PROPERTIES
+        IMPORTED_LOCATION "${LIBSODIUM_PREFIX}/lib/libsodium.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${LIBSODIUM_PREFIX}/include")
+    add_dependencies(asciichat-libsodium libsodium-musl)
+    set(LIBSODIUM_LIBRARIES asciichat-libsodium)
     set(LIBSODIUM_FOUND TRUE)
     return()
 endif()
@@ -266,6 +272,12 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE AND NOT USE_MUSL A
     set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
     set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
     set(LIBSODIUM_BUILD_TARGET libsodium-linux)
+    add_library(asciichat-libsodium STATIC IMPORTED GLOBAL)
+    set_target_properties(asciichat-libsodium PROPERTIES
+        IMPORTED_LOCATION "${LIBSODIUM_PREFIX}/lib/libsodium.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${LIBSODIUM_PREFIX}/include")
+    add_dependencies(asciichat-libsodium libsodium-linux)
+    set(LIBSODIUM_LIBRARIES asciichat-libsodium)
     return()
 endif()
 
