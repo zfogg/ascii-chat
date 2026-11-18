@@ -90,6 +90,20 @@ if(NOT PLATFORM_IOS AND NOT EMSCRIPTEN)
 endif()
 _asciichat_wrap_target(asciichat-rnnoise asciichat-rnnoise)
 
+# Export the namespaced spelling alongside the historical target names.  The
+# latter remain for compatibility with existing CMake consumers, while new
+# code can use the same stable namespace for every ascii-chat dependency.
+foreach(_dependency_name IN ITEMS
+    libplatform libflags libuv utf8proc yyjson pcre2 sqlite3 libwebsockets
+    libdatachannel miniupnpc freetype fontconfig vterm openssl bearssl systemd
+    webrtc-aec3 ffmpeg x264 x265 bzip2 expat fftw fftw-float gotel ngtcp2
+    nghttp3 quic zlib zstd libsodium opus rnnoise abseil portaudio icu ctoon
+    nghttp2 mimalloc)
+    if(TARGET "asciichat-${_dependency_name}")
+        _asciichat_publish_dependency_alias("${_dependency_name}" "asciichat-${_dependency_name}")
+    endif()
+endforeach()
+
 if(NOT TARGET asciichat-abseil)
     add_library(asciichat-abseil INTERFACE)
     foreach(_absl_target IN ITEMS absl::base absl::strings absl::synchronization)
