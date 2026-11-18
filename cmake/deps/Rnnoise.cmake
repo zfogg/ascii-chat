@@ -37,7 +37,7 @@ endif()
 
 set(_rnnoise_cc_args)
 if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
-  set(_rnnoise_cc "${ASCIICHAT_CLANG_EXECUTABLE} --target=x86_64-pc-windows-msvc")
+  set(_rnnoise_cc "\"${ASCIICHAT_CLANG_EXECUTABLE}\" --target=x86_64-pc-windows-msvc")
   list(APPEND _rnnoise_cc_args -DRNNOISE_CC=${_rnnoise_cc})
 elseif(NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
   list(APPEND _rnnoise_cc_args -DRNNOISE_CC=${ASCIICHAT_CLANG_EXECUTABLE})
