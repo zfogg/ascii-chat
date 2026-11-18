@@ -26,7 +26,7 @@ if(PLATFORM_IOS OR USE_MUSL)
     set(FONTCONFIG_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/installed/fontconfig")
     set(_asciichat_fontconfig_include_dirs "${FONTCONFIG_PREFIX}/include")
     file(MAKE_DIRECTORY "${_asciichat_fontconfig_include_dirs}")
-    set(_fontconfig_cflags "-fPIC -I${EXPAT_PREFIX}/include -I${FREETYPE_PREFIX}/include/freetype2")
+    set(_fontconfig_cflags "-fPIC -I${EXPAT_PREFIX}/include -I${ASCIICHAT_FREETYPE_PREFIX}/include/freetype2")
     set(_fontconfig_host)
     if(PLATFORM_IOS)
         set(_fontconfig_cc "${CMAKE_C_COMPILER}")
@@ -38,9 +38,9 @@ if(PLATFORM_IOS OR USE_MUSL)
     set(_fontconfig_env "${CMAKE_COMMAND}" -E env "CC=${_fontconfig_cc}"
         "GPERF=${GPERF_EXECUTABLE}"
         "CFLAGS=${_fontconfig_cflags}"
-        "LDFLAGS=-L${EXPAT_PREFIX}/lib -L${FREETYPE_PREFIX}/lib"
-        "PKG_CONFIG_PATH=${EXPAT_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig"
-        "PKG_CONFIG_LIBDIR=${EXPAT_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig" --)
+        "LDFLAGS=-L${EXPAT_PREFIX}/lib -L${ASCIICHAT_FREETYPE_PREFIX}/lib"
+        "PKG_CONFIG_PATH=${EXPAT_PREFIX}/lib/pkgconfig:${ASCIICHAT_FREETYPE_PREFIX}/lib/pkgconfig"
+        "PKG_CONFIG_LIBDIR=${EXPAT_PREFIX}/lib/pkgconfig:${ASCIICHAT_FREETYPE_PREFIX}/lib/pkgconfig" --)
     ExternalProject_Add(asciichat-fontconfig-musl
         URL https://www.freedesktop.org/software/fontconfig/release/fontconfig-2.14.2.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE

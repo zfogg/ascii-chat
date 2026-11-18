@@ -42,6 +42,8 @@ int main(void) { return 0; }" ASCIICHAT_FREETYPE_HAS_HVF)
     endif()
 endfunction()
 
+function(asciichat_configure_freetype)
+
 if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE OR ASCIICHAT_REQUIRE_HVF)
     function(asciichat_build_freetype)
         asciichat_dependency_defaults()
@@ -81,7 +83,8 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE OR ASCIICHAT_REQ
         add_custom_target(asciichat-freetype-stage
             COMMAND "${CMAKE_COMMAND}" --install "${asciichat_freetype_BINARY_DIR}" --prefix "${_prefix}"
             DEPENDS freetype VERBATIM)
-        set(FREETYPE_PREFIX "${_prefix}" PARENT_SCOPE)
+        set(ASCIICHAT_FREETYPE_PREFIX "${_prefix}" CACHE PATH
+            "Private staged FreeType prefix" FORCE)
     endfunction()
     asciichat_build_freetype()
     if(NOT TARGET asciichat-freetype)
@@ -191,3 +194,7 @@ elseif(WIN32)
 else()
     message(FATAL_ERROR "Unsupported platform for FreeType2")
 endif()
+
+endfunction()
+
+asciichat_configure_freetype()
