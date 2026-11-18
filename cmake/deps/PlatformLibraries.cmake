@@ -90,3 +90,25 @@ else()
         endif()
     endif()
 endif()
+
+# Stable dependency-module contract for platform libraries.  Consumers link
+# this interface target instead of reaching into platform-specific variables.
+if(NOT TARGET asciichat-platform)
+    add_library(asciichat-platform INTERFACE)
+endif()
+if(WIN32)
+    target_link_libraries(asciichat-platform INTERFACE
+        ${WS2_32_LIB} ${USER32_LIB} ${ADVAPI32_LIB} ${DBGHELP_LIB}
+        ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB})
+elseif(PLATFORM_DARWIN)
+    target_link_libraries(asciichat-platform INTERFACE
+        ${FOUNDATION_FRAMEWORK} ${AVFOUNDATION_FRAMEWORK}
+        ${COREMEDIA_FRAMEWORK} ${COREVIDEO_FRAMEWORK} ${IOKIT_FRAMEWORK}
+        ${COREAUDIO_FRAMEWORK} ${AUDIOUNIT_FRAMEWORK}
+        ${AUDIOTOOLBOX_FRAMEWORK} ${CORESERVICES_FRAMEWORK})
+elseif(PLATFORM_LINUX)
+    target_link_libraries(asciichat-platform INTERFACE Threads::Threads)
+    if(JACK_LIB AND NOT USE_MUSL)
+        target_link_libraries(asciichat-platform INTERFACE ${JACK_LIB})
+    endif()
+endif()

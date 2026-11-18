@@ -45,7 +45,26 @@ function(configure_libuv)
             GIT_TAG v1.51.0
             GIT_SHALLOW TRUE)
         FetchContent_MakeAvailable(asciichat_libuv)
-        # A Clang musl target triple still finds the host's glibc headers.
+        # musl does not provide the glibc three-argument pthread name APIs.
+        # Keep libuv's optional thread-name helpers buildable and let callers
+        # receive UV_ENOSYS for the unsupported operation.
+        set(_asciichat_libuv_thread_source
+            "${asciichat_libuv_SOURCE_DIR}/src/unix/thread.c")
+        file(READ "${_asciichat_libuv_thread_source}" _asciichat_libuv_thread_text)
+        string(REPLACE
+            "#else\nint uv__thread_setname(const char* name) {\n  char namebuf[UV_PTHREAD_MAX_NAMELEN_NP];"
+            "#elif defined(__linux__) && !defined(__GLIBC__)\nint uv__thread_setname(const char* name) {\n  return UV_ENOSYS;\n}\n#else\nint uv__thread_setname(const char* name) {\n  char namebuf[UV_PTHREAD_MAX_NAMELEN_NP];"
+            _asciichat_libuv_thread_text "${_asciichat_libuv_thread_text}")
+        string(REPLACE
+            "#if (defined(__ANDROID_API__) && __ANDROID_API__ < 26) || \\\n    defined(_AIX) || \\\n    defined(__MVS__) || \\\n    defined(__PASE__)"
+            "#if defined(__linux__) && !defined(__GLIBC__) || \\\n    (defined(__ANDROID_API__) && __ANDROID_API__ < 26) || \\\n    defined(_AIX) || \\\n    defined(__MVS__) || \\\n    defined(__PASE__)"
+            _asciichat_libuv_thread_text "${_asciichat_libuv_thread_text}")
+        string(REPLACE
+            "#else\nint uv__thread_getname(uv_thread_t* tid, char* name, size_t size) {\n  int r;"
+            "#else\nint uv__thread_getname(uv_thread_t* tid, char* name, size_t size) {\n  int r;"
+            _asciichat_libuv_thread_text "${_asciichat_libuv_thread_text}")
+        file(WRITE "${_asciichat_libuv_thread_source}" "${_asciichat_libuv_thread_text}")
+        # A musl target triple alone still finds the host's glibc headers.
         # Keep Clang's builtin headers, but select musl and the isolated Linux
         # headers explicitly so libuv does not reference glibc-only symbols.
         # GCC uses -nostdinc from the shared musl toolchain flags; it does not

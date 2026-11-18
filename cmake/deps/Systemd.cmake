@@ -16,6 +16,7 @@ endif()
 
 include(ExternalProject)
 find_program(ASCIICHAT_MESON_EXECUTABLE meson REQUIRED)
+find_program(ASCIICHAT_MAKE_EXECUTABLE make REQUIRED)
 
 set(SYSTEMD_VERSION 256.9)
 set(SYSTEMD_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/musl/systemd-${SYSTEMD_VERSION}")
@@ -24,6 +25,61 @@ set(SYSTEMD_SOURCE "${SYSTEMD_CACHE_DIR}/src")
 set(SYSTEMD_BUILD "${SYSTEMD_CACHE_DIR}/build")
 set(SYSTEMD_ARCHIVE "${SYSTEMD_CACHE_DIR}/systemd-${SYSTEMD_VERSION}.tar.gz")
 file(MAKE_DIRECTORY "${SYSTEMD_CACHE_DIR}")
+# Imported targets validate their interface include directories during CMake
+# generation. Meson creates this directory during install, so stage it up front.
+file(MAKE_DIRECTORY "${SYSTEMD_PREFIX}/include")
+
+# systemd's static library requires libmount and libblkid.  Build those
+# libraries from util-linux with the musl toolchain; using Ubuntu's glibc
+# archives here would invalidate the fully-static musl artifact.
+set(UTIL_LINUX_VERSION 2.40.4)
+set(UTIL_LINUX_CACHE_DIR
+    "${ASCIICHAT_DEPS_CACHE_DIR}/musl/util-linux-${UTIL_LINUX_VERSION}")
+set(UTIL_LINUX_ARCHIVE
+    "${UTIL_LINUX_CACHE_DIR}/util-linux-${UTIL_LINUX_VERSION}.tar.xz")
+set(UTIL_LINUX_SOURCE "${UTIL_LINUX_CACHE_DIR}/src")
+set(UTIL_LINUX_BUILD "${UTIL_LINUX_CACHE_DIR}/build")
+set(UTIL_LINUX_PREFIX "${UTIL_LINUX_CACHE_DIR}/prefix")
+file(MAKE_DIRECTORY "${UTIL_LINUX_CACHE_DIR}")
+if(NOT EXISTS "${UTIL_LINUX_ARCHIVE}")
+    file(DOWNLOAD
+        "https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.40/util-linux-${UTIL_LINUX_VERSION}.tar.xz"
+        "${UTIL_LINUX_ARCHIVE}"
+        EXPECTED_HASH SHA256=5c1daf733b04e9859afdc3bd87cc481180ee0f88b5c0946b16fdec931975fb79
+        SHOW_PROGRESS)
+endif()
+if(NOT EXISTS "${UTIL_LINUX_SOURCE}/configure")
+    file(MAKE_DIRECTORY "${UTIL_LINUX_SOURCE}")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf "${UTIL_LINUX_ARCHIVE}"
+        WORKING_DIRECTORY "${UTIL_LINUX_CACHE_DIR}")
+    file(RENAME "${UTIL_LINUX_CACHE_DIR}/util-linux-${UTIL_LINUX_VERSION}"
+        "${UTIL_LINUX_SOURCE}")
+endif()
+
+set(_util_linux_cc "${ASCIICHAT_CLANG_EXECUTABLE}")
+set(_util_linux_cflags "--target=${MUSL_TARGET} -fPIC -I${MUSL_INCLUDE_DIR} -I${KERNEL_HEADERS_DIR}")
+set(_util_linux_ldflags "--target=${MUSL_TARGET} -fuse-ld=lld -static")
+ExternalProject_Add(asciichat-util-linux-musl
+    SOURCE_DIR "${UTIL_LINUX_SOURCE}"
+    BINARY_DIR "${UTIL_LINUX_BUILD}"
+    CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env
+        CC=${_util_linux_cc}
+        CFLAGS=${_util_linux_cflags}
+        LDFLAGS=${_util_linux_ldflags}
+        "${UTIL_LINUX_SOURCE}/configure"
+        --host=${MUSL_TARGET}
+        --prefix=${UTIL_LINUX_PREFIX}
+        --libdir=${UTIL_LINUX_PREFIX}/lib
+        --disable-shared --enable-static --disable-all-programs
+        --enable-libmount --enable-libblkid --disable-libsmartcols
+        --disable-libuuid --disable-libfdisk --disable-liblastlog2 --disable-nls
+    BUILD_COMMAND ${ASCIICHAT_MAKE_EXECUTABLE} -C "${UTIL_LINUX_BUILD}" -j
+        libmount.la libblkid.la
+    INSTALL_COMMAND ${ASCIICHAT_MAKE_EXECUTABLE} -C "${UTIL_LINUX_BUILD}" install
+    BUILD_BYPRODUCTS
+        "${UTIL_LINUX_PREFIX}/lib/libmount.a"
+        "${UTIL_LINUX_PREFIX}/lib/libblkid.a"
+    USES_TERMINAL_CONFIGURE TRUE USES_TERMINAL_BUILD TRUE USES_TERMINAL_INSTALL TRUE)
 
 if(NOT EXISTS "${SYSTEMD_ARCHIVE}")
     file(DOWNLOAD
@@ -42,20 +98,24 @@ endif()
 set(_systemd_cc "${ASCIICHAT_CLANG_EXECUTABLE}")
 set(_systemd_cxx "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
 set(_systemd_cflags "--target=${MUSL_TARGET} ${MUSL_KERNEL_CFLAGS}")
-set(_systemd_ldflags "--target=${MUSL_TARGET} -fuse-ld=lld -static")
+set(_systemd_cppflags "-I${UTIL_LINUX_PREFIX}/include")
+set(_systemd_ldflags "--target=${MUSL_TARGET} -fuse-ld=lld -static -L${UTIL_LINUX_PREFIX}/lib")
 
 ExternalProject_Add(asciichat-systemd-build
     SOURCE_DIR "${SYSTEMD_SOURCE}"
     BINARY_DIR "${SYSTEMD_BUILD}"
+    DEPENDS asciichat-util-linux-musl
     CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env
         CC=${_systemd_cc} CXX=${_systemd_cxx}
         CFLAGS=${_systemd_cflags} CXXFLAGS=${_systemd_cflags}
+        CPPFLAGS=${_systemd_cppflags}
         LDFLAGS=${_systemd_ldflags}
+        PKG_CONFIG_PATH=${UTIL_LINUX_PREFIX}/lib/pkgconfig
         ${ASCIICHAT_MESON_EXECUTABLE} setup "${SYSTEMD_BUILD}" "${SYSTEMD_SOURCE}"
         --prefix=${SYSTEMD_PREFIX} --libdir=lib --buildtype=release
-        -Dmode=release -Dtests=false -Dman=false -Ddocs=false
-        -Dstatic-libsystemd=enabled -Dstatic-libsystemd-pic=enabled
-        -Dstatic-libudev=false -Dudev=false -Dnetworkd=false -Dresolve=false
+        -Dmode=release -Dtests=false -Dman=false
+        -Dstatic-libsystemd=pic
+        -Dstatic-libudev=false -Dnetworkd=false -Dresolve=false
         -Ddefault-hierarchy=unified
     BUILD_COMMAND ${ASCIICHAT_MESON_EXECUTABLE} compile -C "${SYSTEMD_BUILD}" libsystemd
     INSTALL_COMMAND ${ASCIICHAT_MESON_EXECUTABLE} install -C "${SYSTEMD_BUILD}"

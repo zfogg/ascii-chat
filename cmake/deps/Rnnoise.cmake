@@ -11,17 +11,7 @@ set(ASCIICHAT_RNNOISE_INSTALL_DIR "${CMAKE_BINARY_DIR}/rnnoise-install")
 # so create the empty staging directory up front as well.
 file(MAKE_DIRECTORY "${ASCIICHAT_RNNOISE_INSTALL_DIR}/include")
 
-find_program(ASCIICHAT_RNNOISE_SHELL NAMES bash sh
-    PATHS "C:/msys64/usr/bin" "C:/msys64/bin" NO_DEFAULT_PATH)
-if(NOT ASCIICHAT_RNNOISE_SHELL)
-    find_program(ASCIICHAT_RNNOISE_SHELL NAMES bash sh)
-endif()
-find_program(ASCIICHAT_RNNOISE_MAKE NAMES make gmake
-    PATHS "C:/msys64/usr/bin" "C:/msys64/bin" NO_DEFAULT_PATH)
-if(NOT ASCIICHAT_RNNOISE_MAKE)
-    find_program(ASCIICHAT_RNNOISE_MAKE NAMES make gmake)
-endif()
-if(NOT ASCIICHAT_RNNOISE_SHELL OR NOT ASCIICHAT_RNNOISE_MAKE)
+if(NOT ASCIICHAT_BASH_EXECUTABLE OR NOT ASCIICHAT_MAKE_EXECUTABLE)
     message(FATAL_ERROR "RNNoise requires bash/sh and make to follow its upstream autotools build")
 endif()
 
@@ -57,10 +47,10 @@ if(WIN32)
     set(_rnnoise_build_command
         "${CMAKE_COMMAND}" -E env
         "CFLAGS=-DM_PI=3.14159265358979323846"
-        "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
+        "${ASCIICHAT_MAKE_EXECUTABLE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
 else()
     set(_rnnoise_build_command
-        "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
+        "${ASCIICHAT_MAKE_EXECUTABLE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
 endif()
 
 ExternalProject_Add(ascii-chat-rnnoise-build

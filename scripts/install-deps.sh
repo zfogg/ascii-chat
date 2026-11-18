@@ -132,7 +132,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   # Install packages - completely ignore all errors since many are already installed
   # GitHub runners have pre-installed packages with version conflicts that can't be resolved
   brew install cmake coreutils pkg-config llvm ccache sccache make autoconf automake libtool go \
-    ninja mimalloc zstd libsodium portaudio opus fftw doxygen sqlite3 \
+    ninja meson mimalloc zstd libsodium portaudio opus fftw doxygen sqlite3 \
     miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets libuv icu4c openssl@3 yyjson \
     libvterm freetype fontconfig expat pcre2 \
     >/dev/null 2>&1 || true
@@ -232,6 +232,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libabsl-dev \
       libx264-dev libx265-dev \
       emscripten \
+      meson \
       doxygen \
       mandoc \
       dpkg-dev rpm \
@@ -398,7 +399,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       pkg-config make autoconf automake libtool python3 python3-pip \
       clang clang-devel llvm llvm-devel lld \
       libcxx-devel libcxxabi-devel \
-      cmake ninja-build golang sccache \
+      cmake ninja-build golang sccache meson \
       musl-devel musl-libc-static \
       nasm \
       libx264-devel libx265-devel \
@@ -436,7 +437,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       clang llvm lldb lld \
       libc++ libc++abi \
       nasm \
-      cmake ninja make go \
+      cmake ninja make go meson \
       musl mimalloc \
       zstd zlib libsodium portaudio opus fftw sqlite libdatachannel miniupnpc ffmpeg \
       systemd-libs \
@@ -473,6 +474,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo >&2 "  - yt-dlp (for YouTube URL support)"
     exit 1
   fi
+
+  command -v meson >/dev/null 2>&1 || { echo >&2 "ERROR: meson installation failed"; exit 1; }
 
   if ! pkg-config --exists libsystemd; then
     echo >&2 "ERROR: pkg-config could not find libsystemd after installing Linux dependencies"

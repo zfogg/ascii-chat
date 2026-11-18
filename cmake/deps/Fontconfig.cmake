@@ -41,7 +41,7 @@ if(PLATFORM_IOS OR USE_MUSL)
         "LDFLAGS=-L${EXPAT_PREFIX}/lib -L${FREETYPE_PREFIX}/lib"
         "PKG_CONFIG_PATH=${EXPAT_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig"
         "PKG_CONFIG_LIBDIR=${EXPAT_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig" --)
-    ExternalProject_Add(asciichat-fontconfig
+    ExternalProject_Add(asciichat-fontconfig-musl
         URL https://www.freedesktop.org/software/fontconfig/release/fontconfig-2.14.2.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/fontconfig"
@@ -59,7 +59,9 @@ if(PLATFORM_IOS OR USE_MUSL)
         IMPORTED_LOCATION "${FONTCONFIG_PREFIX}/lib/libfontconfig.a"
         INTERFACE_INCLUDE_DIRECTORIES "${FONTCONFIG_INCLUDE_DIRS}"
         INTERFACE_LINK_LIBRARIES "expat;${FREETYPE_LIBRARIES}")
-    add_dependencies(fontconfig asciichat-fontconfig)
+    add_dependencies(fontconfig asciichat-fontconfig-musl)
+    add_library(asciichat-fontconfig INTERFACE)
+    target_link_libraries(asciichat-fontconfig INTERFACE fontconfig)
     set(FONTCONFIG_LDFLAGS fontconfig)
     set(FONTCONFIG_LINK_LIBRARIES fontconfig)
     return()

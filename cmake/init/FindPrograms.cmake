@@ -15,6 +15,7 @@
 #   - ASCIICHAT_CLANG_FORMAT_EXECUTABLE: clang-format code formatter
 #   - ASCIICHAT_CPPCHECK_EXECUTABLE: cppcheck static analyzer
 #   - ASCIICHAT_BASH_EXECUTABLE: bash shell (Git Bash on Windows)
+#   - ASCIICHAT_MAKE_EXECUTABLE: GNU Make (MSYS2/Unix)
 #   - ASCIICHAT_STRIP_EXECUTABLE: strip for removing symbols
 #   - ASCIICHAT_OBJCOPY_EXECUTABLE: objcopy for binary manipulation
 #   - ASCIICHAT_PYTHON3_EXECUTABLE: Python 3 interpreter
@@ -118,6 +119,9 @@ if(WIN32)
         "C:/Program Files/LLVM/bin"
     )
     set(_BASH_SEARCH_PATHS
+        # CI exports the MSYS2 installation used by autotools dependencies.
+        "$ENV{MSYS2_ROOT}/usr/bin"
+        "$ENV{MSYS2_ROOT}/bin"
         # Git for Windows (64-bit)
         "C:/Program Files/Git/usr/bin"
         "C:/Program Files/Git/bin"
@@ -394,6 +398,27 @@ find_program(ASCIICHAT_BASH_EXECUTABLE
 if(NOT ASCIICHAT_BASH_EXECUTABLE)
     find_program(ASCIICHAT_BASH_EXECUTABLE NAMES bash bash.exe DOC "bash shell")
 endif()
+
+# GNU Make. On Windows, prefer the same exported MSYS2 installation as Bash so
+# autotools dependencies do not mix tools from different environments.
+if(WIN32)
+    set(_MAKE_SEARCH_PATHS
+        "$ENV{MSYS2_ROOT}/usr/bin"
+        "$ENV{MSYS2_ROOT}/bin")
+else()
+    set(_MAKE_SEARCH_PATHS /usr/local/bin /usr/bin /bin)
+endif()
+find_program(ASCIICHAT_MAKE_EXECUTABLE
+    NAMES make gmake make.exe gmake.exe
+    HINTS ${_MAKE_SEARCH_PATHS}
+    NO_DEFAULT_PATH
+    DOC "GNU Make")
+if(NOT ASCIICHAT_MAKE_EXECUTABLE)
+    find_program(ASCIICHAT_MAKE_EXECUTABLE
+        NAMES make gmake make.exe gmake.exe
+        DOC "GNU Make")
+endif()
+unset(_MAKE_SEARCH_PATHS)
 # Windows fallback: try direct path checking for common Git Bash locations
 if(NOT ASCIICHAT_BASH_EXECUTABLE AND WIN32)
     set(_bash_candidate_paths

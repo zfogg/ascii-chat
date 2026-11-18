@@ -84,6 +84,14 @@ set(ASCIICHAT_MIMALLOC_LINK_LIB ${MIMALLOC_LIBRARIES})
 set(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB mimalloc-shared)
 set(MIMALLOC_SHARED_LIBRARIES mimalloc-shared)
 get_target_property(MIMALLOC_INCLUDE_DIRS ${MIMALLOC_LIBRARIES} INTERFACE_INCLUDE_DIRECTORIES)
+
+if(NOT TARGET asciichat-mimalloc)
+    add_library(asciichat-mimalloc INTERFACE)
+    target_link_libraries(asciichat-mimalloc INTERFACE ${MIMALLOC_LIBRARIES})
+    if(MIMALLOC_INCLUDE_DIRS)
+        target_include_directories(asciichat-mimalloc INTERFACE ${MIMALLOC_INCLUDE_DIRS})
+    endif()
+endif()
 if(NOT MIMALLOC_INCLUDE_DIRS)
     find_path(MIMALLOC_INCLUDE_DIRS NAMES mimalloc.h
         HINTS "${MIMALLOC_SOURCE_DIR}/include"
