@@ -90,10 +90,10 @@ function(asciichat_configure_quic)
         # unlike the parent target it does not inherit the Windows system
         # libraries from asciichat-quic's interface link requirements.
         list(APPEND _quic_common_args
-            "-DCMAKE_SHARED_LINKER_FLAGS_RELEASE:STRING=/DEFAULTLIB:ws2_32.lib /DEFAULTLIB:crypt32.lib"
-            "-DCMAKE_SHARED_LINKER_FLAGS_DEBUG:STRING=/DEFAULTLIB:ws2_32.lib /DEFAULTLIB:crypt32.lib"
-            "-DCMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO:STRING=/DEFAULTLIB:ws2_32.lib /DEFAULTLIB:crypt32.lib"
-            "-DCMAKE_SHARED_LINKER_FLAGS_MINSIZEREL:STRING=/DEFAULTLIB:ws2_32.lib /DEFAULTLIB:crypt32.lib")
+            "-DCMAKE_SHARED_LINKER_FLAGS_RELEASE:STRING=-Xlinker /DEFAULTLIB:ws2_32.lib -Xlinker /DEFAULTLIB:crypt32.lib"
+            "-DCMAKE_SHARED_LINKER_FLAGS_DEBUG:STRING=-Xlinker /DEFAULTLIB:ws2_32.lib -Xlinker /DEFAULTLIB:crypt32.lib"
+            "-DCMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO:STRING=-Xlinker /DEFAULTLIB:ws2_32.lib -Xlinker /DEFAULTLIB:crypt32.lib"
+            "-DCMAKE_SHARED_LINKER_FLAGS_MINSIZEREL:STRING=-Xlinker /DEFAULTLIB:ws2_32.lib -Xlinker /DEFAULTLIB:crypt32.lib")
     endif()
     # The parent vcpkg toolchain must not be inherited by these isolated
     # projects: it can redirect them to VCPKG_ROOT/installed and ignore the
