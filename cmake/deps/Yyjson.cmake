@@ -10,8 +10,7 @@
 #   3. Build as static library
 
 # Helper: set yyjson build options, add_subdirectory, and validate the target.
-# Must be called from within configure_yyjson() since it sets PARENT_SCOPE vars
-# (which propagate to configure_yyjson's caller).
+# The helper publishes only the canonical ascii-chat interface target.
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
 macro(_yyjson_build_from_submodule source_dir label)
     asciichat_dependency_defaults()
@@ -47,9 +46,11 @@ macro(_yyjson_build_from_submodule source_dir label)
         ARCHIVE_OUTPUT_DIRECTORY "${YYJSON_BUILD_DIR}/lib"
     )
 
-    set(YYJSON_LIBRARIES yyjson PARENT_SCOPE)
-    set(YYJSON_INCLUDE_DIRS "${${source_dir}}/src" PARENT_SCOPE)
-    set(YYJSON_FOUND TRUE PARENT_SCOPE)
+    if(NOT TARGET asciichat-yyjson)
+        add_library(asciichat-yyjson INTERFACE)
+        target_link_libraries(asciichat-yyjson INTERFACE yyjson)
+        target_include_directories(asciichat-yyjson INTERFACE "${${source_dir}}/src")
+    endif()
 
     message(STATUS "Configured ${BoldGreen}yyjson${ColorReset} from submodule (${label})")
     message(STATUS "  Disabled: UTILS, INCR_READER, TESTS, FUZZER, MISC, DOC")
@@ -106,17 +107,11 @@ function(configure_yyjson)
     endif()
 
     # System package found
-    set(YYJSON_LIBRARIES yyjson::yyjson PARENT_SCOPE)
-
-    # Use pkg-config include dirs if available, otherwise find the header
-    if(NOT yyjson_INCLUDE_DIRS)
-        find_path(YYJSON_INCLUDE yyjson.h PATHS /usr/include /usr/local/include /home/linuxbrew/.linuxbrew/include)
-        set(yyjson_INCLUDE_DIRS ${YYJSON_INCLUDE})
+    if(NOT TARGET asciichat-yyjson)
+        add_library(asciichat-yyjson INTERFACE)
+        target_link_libraries(asciichat-yyjson INTERFACE yyjson::yyjson)
     endif()
 
-    set(YYJSON_INCLUDE_DIRS ${yyjson_INCLUDE_DIRS} PARENT_SCOPE)
-
     message(STATUS "Configured ${BoldGreen}yyjson${ColorReset} from system package")
-    message(STATUS "  YYJSON_LIBRARIES: yyjson::yyjson")
-    message(STATUS "  YYJSON_INCLUDE_DIRS: ${yyjson_INCLUDE_DIRS}")
+    message(STATUS "  Target: asciichat-yyjson")
 endfunction()
