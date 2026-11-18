@@ -80,61 +80,9 @@ set(_asciichat_gotel_cache_dir
     "${ASCIICHAT_DEPS_CACHE_DIR}/gotel-${_asciichat_gotel_compiler_cache}-${_asciichat_gotel_generator_cache}")
 file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 
-# Gotel's gRPC adapter accepts an existing nghttp2 target. Prefer the target
-# supplied by vcpkg so its embedded FetchContent project does not define a
-# second target with the same name.
-find_package(nghttp2 CONFIG QUIET)
-if(GOTEL_NGHTTP2_TARGET AND NOT TARGET "${GOTEL_NGHTTP2_TARGET}")
-    unset(GOTEL_NGHTTP2_TARGET CACHE)
-endif()
-if(TARGET nghttp2::nghttp2)
-    set(GOTEL_NGHTTP2_TARGET nghttp2::nghttp2 CACHE STRING
-        "Use the vcpkg nghttp2 target for gotel gRPC" FORCE)
-elseif(TARGET nghttp2)
-    set(GOTEL_NGHTTP2_TARGET nghttp2 CACHE STRING
-        "Use the vcpkg nghttp2 target for gotel gRPC" FORCE)
-elseif(TARGET nghttp2_static)
-    set(GOTEL_NGHTTP2_TARGET nghttp2_static CACHE STRING
-        "Use the existing nghttp2 target for gotel gRPC" FORCE)
-endif()
-
-if(NOT GOTEL_NGHTTP2_TARGET)
-    set(_asciichat_nghttp2_vcpkg_root
-        "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
-    unset(_asciichat_nghttp2_include_dir CACHE)
-    unset(_asciichat_nghttp2_release_library CACHE)
-    unset(_asciichat_nghttp2_debug_library CACHE)
-    find_path(_asciichat_nghttp2_include_dir
-        NAMES nghttp2/nghttp2.h
-        PATHS "${_asciichat_nghttp2_vcpkg_root}/include"
-        NO_DEFAULT_PATH)
-    find_library(_asciichat_nghttp2_release_library
-        NAMES nghttp2
-        PATHS "${_asciichat_nghttp2_vcpkg_root}/lib"
-        NO_DEFAULT_PATH)
-    find_library(_asciichat_nghttp2_debug_library
-        NAMES nghttp2 nghttp2d
-        PATHS "${_asciichat_nghttp2_vcpkg_root}/debug/lib"
-        NO_DEFAULT_PATH)
-
-    if(_asciichat_nghttp2_include_dir AND
-       _asciichat_nghttp2_release_library AND
-       _asciichat_nghttp2_debug_library)
-        add_library(asciichat-vcpkg-nghttp2 UNKNOWN IMPORTED GLOBAL)
-        set_target_properties(asciichat-vcpkg-nghttp2 PROPERTIES
-            INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_nghttp2_include_dir}"
-            IMPORTED_CONFIGURATIONS "DEBUG;RELEASE"
-            MAP_IMPORTED_CONFIG_DEV DEBUG
-            MAP_IMPORTED_CONFIG_RELWITHDEBINFO RELEASE
-            IMPORTED_LOCATION_DEBUG "${_asciichat_nghttp2_debug_library}"
-            IMPORTED_LOCATION_RELEASE "${_asciichat_nghttp2_release_library}"
-            IMPORTED_IMPLIB_DEBUG "${_asciichat_nghttp2_debug_library}"
-            IMPORTED_IMPLIB_RELEASE "${_asciichat_nghttp2_release_library}")
-        set(GOTEL_NGHTTP2_TARGET asciichat-vcpkg-nghttp2 CACHE STRING
-            "Use the vcpkg nghttp2 target for gotel gRPC" FORCE)
-    endif()
-endif()
-
+# Gotel's gRPC adapter requires the pinned nghttp2 API used by grpc.c. Do not
+# substitute an older system package; the child project uses the cache-backed
+# source checkout when no compatible target is preconfigured.
 # These dependency revisions are pinned in the vendored Gotel checkout.  Keep
 # FetchContent from running its git update step on every configure: updating a
 # populated git checkout refreshes all source mtimes, which makes Ninja treat
@@ -202,27 +150,9 @@ if(USE_MUSL AND NOT TARGET nghttp2_static)
     endif()
 endif()
 
-if(NOT GOTEL_NGHTTP2_TARGET AND NOT USE_MUSL)
-    find_package(PkgConfig QUIET)
-    if(PkgConfig_FOUND)
-        pkg_check_modules(_asciichat_gotel_nghttp2 QUIET IMPORTED_TARGET GLOBAL
-            libnghttp2)
-        if(_asciichat_gotel_nghttp2_FOUND AND
-           TARGET PkgConfig::_asciichat_gotel_nghttp2)
-            set(GOTEL_NGHTTP2_TARGET PkgConfig::_asciichat_gotel_nghttp2)
-        endif()
-    endif()
-endif()
-
-# Expose one application-owned interface regardless of whether nghttp2 came
-# from vcpkg, the system package, or the musl source build. Consumers should
-# never rediscover nghttp2 or depend on its provider-specific target name.
-if(NOT TARGET asciichat-nghttp2)
-    if(NOT GOTEL_NGHTTP2_TARGET OR NOT TARGET "${GOTEL_NGHTTP2_TARGET}")
-        message(FATAL_ERROR "Gotel requires a configured nghttp2 target")
-    endif()
-    add_library(asciichat-nghttp2 INTERFACE)
-    target_link_libraries(asciichat-nghttp2 INTERFACE "${GOTEL_NGHTTP2_TARGET}")
+if(NOT USE_MUSL)
+    unset(GOTEL_NGHTTP2_TARGET CACHE)
+    unset(GOTEL_NGHTTP2_TARGET)
 endif()
 
 set(_asciichat_gotel_parent_c_flags "${CMAKE_C_FLAGS}")
@@ -234,6 +164,24 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                  EXCLUDE_FROM_ALL)
 set(CMAKE_C_FLAGS "${_asciichat_gotel_parent_c_flags}")
 unset(_asciichat_gotel_parent_c_flags)
+
+# Expose one application-owned interface after Gotel has configured its gRPC
+# provider. Consumers must not rediscover nghttp2 or link a host package.
+if(TARGET nghttp2_static)
+    set(_asciichat_nghttp2_target nghttp2_static)
+elseif(TARGET nghttp2)
+    set(_asciichat_nghttp2_target nghttp2)
+elseif(TARGET nghttp2::nghttp2)
+    set(_asciichat_nghttp2_target nghttp2::nghttp2)
+endif()
+if(NOT _asciichat_nghttp2_target)
+    message(FATAL_ERROR "Gotel requires its cache-backed nghttp2 target")
+endif()
+if(NOT TARGET asciichat-nghttp2)
+    add_library(asciichat-nghttp2 INTERFACE)
+    target_link_libraries(asciichat-nghttp2 INTERFACE
+        "${_asciichat_nghttp2_target}")
+endif()
 
 # Keep the produced libraries beside the cached Gotel build, rather than in
 # the parent application's build tree. This makes the cache self-contained
