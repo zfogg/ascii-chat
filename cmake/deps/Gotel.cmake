@@ -83,6 +83,7 @@ file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 # Gotel's gRPC adapter accepts an existing nghttp2 target. Prefer the target
 # supplied by vcpkg so its embedded FetchContent project does not define a
 # second target with the same name.
+find_package(nghttp2 CONFIG QUIET)
 if(GOTEL_NGHTTP2_TARGET AND NOT TARGET "${GOTEL_NGHTTP2_TARGET}")
     unset(GOTEL_NGHTTP2_TARGET CACHE)
 endif()
@@ -199,6 +200,29 @@ if(USE_MUSL AND NOT TARGET nghttp2_static)
         set(GOTEL_NGHTTP2_TARGET nghttp2_static CACHE STRING
             "Reuse the application nghttp2 target for gotel gRPC" FORCE)
     endif()
+endif()
+
+if(NOT GOTEL_NGHTTP2_TARGET AND NOT USE_MUSL)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(_asciichat_gotel_nghttp2 QUIET IMPORTED_TARGET GLOBAL
+            libnghttp2)
+        if(_asciichat_gotel_nghttp2_FOUND AND
+           TARGET PkgConfig::_asciichat_gotel_nghttp2)
+            set(GOTEL_NGHTTP2_TARGET PkgConfig::_asciichat_gotel_nghttp2)
+        endif()
+    endif()
+endif()
+
+# Expose one application-owned interface regardless of whether nghttp2 came
+# from vcpkg, the system package, or the musl source build. Consumers should
+# never rediscover nghttp2 or depend on its provider-specific target name.
+if(NOT TARGET asciichat-nghttp2)
+    if(NOT GOTEL_NGHTTP2_TARGET OR NOT TARGET "${GOTEL_NGHTTP2_TARGET}")
+        message(FATAL_ERROR "Gotel requires a configured nghttp2 target")
+    endif()
+    add_library(asciichat-nghttp2 INTERFACE)
+    target_link_libraries(asciichat-nghttp2 INTERFACE "${GOTEL_NGHTTP2_TARGET}")
 endif()
 
 set(_asciichat_gotel_parent_c_flags "${CMAKE_C_FLAGS}")
