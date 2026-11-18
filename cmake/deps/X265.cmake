@@ -4,7 +4,7 @@
 # Finds and configures x265 for HEVC encoding support in FFmpeg
 #
 # Platform-specific dependency management:
-#   - musl: Built from source with musl-gcc
+#   - musl: Built from source with the selected Clang musl target
 #   - Linux/macOS (non-musl): Uses pkg-config for system packages
 #   - Windows: Uses vcpkg
 #

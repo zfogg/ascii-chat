@@ -26,6 +26,7 @@ if(USE_MUSL OR IOS OR EMSCRIPTEN)
     set(FFTW_LIBRARIES fftw3f)
     set(FFTW_SYS_LIBRARIES fftw3f)
     set(FFTW_SYS_INCLUDE_DIRS ${FFTW_INCLUDE_DIRS})
+    set(FFTW_FOUND TRUE)
     return()
 endif()
 

@@ -44,7 +44,11 @@ macro(_get_version_date _tag_name)
             OUTPUT_VARIABLE PROJECT_VERSION_DATE
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
-            TIMEOUT 3
+            # WSL mounted Windows worktrees can take several seconds when Git
+            # traverses submodules and the index; do not misreport Git as
+            # unavailable merely because the short native-filesystem timeout
+            # expired.
+            TIMEOUT 30
         )
     endif()
 

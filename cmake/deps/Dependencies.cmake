@@ -73,6 +73,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/WebRTC.cmake)
 
 # OpenSSL - SSL/TLS library (required by libdatachannel, libwebsockets, and TURN credentials)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/OpenSSL.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Systemd.cmake)
 # Zlib - Compression library (required by ngtcp2 and libwebsockets)
 # Configure it before QUIC so the isolated ngtcp2 project receives the same
 # include and library selections as the parent build.

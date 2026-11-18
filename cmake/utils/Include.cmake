@@ -79,7 +79,8 @@ function(configure_include_directories)
             target_include_directories(asciichat-project-includes BEFORE INTERFACE ${MIMALLOC_INCLUDE_DIRS})
         endif()
     else()
-        # Don't add system include paths when using musl - musl-gcc handles this via -specs
+        # Don't add system include paths when using musl; the Clang target
+        # toolchain supplies the selected musl include roots.
         if(NOT USE_MUSL)
             # Use pkg-config flags (matches Makefile CFLAGS approach)
             add_core_deps_compile_flags()

@@ -102,10 +102,9 @@ if(USE_MUSL)
 
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E env
-                CC=${MUSL_GCC}
-                REALGCC=${REAL_GCC}
+                CC=${ASCIICHAT_CLANG_EXECUTABLE}
                 CFLAGS=${MUSL_KERNEL_CFLAGS}
-                ${MUSL_GCC} -c
+                ${ASCIICHAT_CLANG_EXECUTABLE} --target=${MUSL_TARGET} -c
                 -DSQLITE_THREADSAFE=1
                 -DSQLITE_ENABLE_FTS5
                 -DSQLITE_ENABLE_RTREE

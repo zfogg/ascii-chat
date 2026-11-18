@@ -369,8 +369,7 @@ if(USE_MUSL)
         message(STATUS "  Configuring OpenSSL for ${OPENSSL_TARGET}...")
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E env
-                CC=${MUSL_GCC}
-                REALGCC=${REAL_GCC}
+                CC=${ASCIICHAT_CLANG_EXECUTABLE}
                 CFLAGS=${MUSL_KERNEL_CFLAGS}
                 "${OPENSSL_SOURCE_DIR}/Configure"
                 ${OPENSSL_TARGET}
@@ -393,7 +392,7 @@ if(USE_MUSL)
 
         message(STATUS "  Building OpenSSL (this takes a few minutes)...")
         execute_process(
-            COMMAND ${CMAKE_COMMAND} -E env REALGCC=${REAL_GCC} make -j${ASCIICHAT_OPENSSL_BUILD_JOBS}
+            COMMAND ${CMAKE_COMMAND} -E env make -j${ASCIICHAT_OPENSSL_BUILD_JOBS}
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             RESULT_VARIABLE BUILD_RESULT
             OUTPUT_VARIABLE BUILD_OUTPUT
@@ -449,6 +448,7 @@ if(USE_MUSL)
 
     # Create a custom target for musl builds (libraries are pre-built/cached)
     add_custom_target(openssl-musl)
+    set(OPENSSL_FOUND TRUE)
 
     return()
 endif()

@@ -33,6 +33,7 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE
         set(ABSEIL_INCLUDE_DIRS "${asciichat_abseil_SOURCE_DIR}" PARENT_SCOPE)
     endfunction()
     asciichat_build_abseil()
+    set(ABSEIL_FOUND TRUE)
     set(ABSEIL_LIBRARIES absl::base absl::strings)
     return()
 endif()

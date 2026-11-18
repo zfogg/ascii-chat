@@ -4,7 +4,7 @@
 # Finds and configures x264 for H.264 encoding support in FFmpeg
 #
 # Platform-specific dependency management:
-#   - musl: Built from source with musl-gcc
+#   - musl: Built from source with the selected Clang musl target
 #   - Linux/macOS (non-musl): Uses pkg-config for system packages
 #   - Windows: Uses vcpkg
 #
@@ -109,11 +109,10 @@ if(USE_MUSL)
             set(NPROC 4)
         endif()
 
-        # x264 uses autotools — pass musl-gcc as CC with appropriate flags
+        # x264 uses autotools — pass the selected Clang target compiler
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E env
-                CC=${MUSL_GCC}
-                REALGCC=${REAL_GCC}
+                CC=${ASCIICHAT_CLANG_EXECUTABLE}
                 CFLAGS=${MUSL_KERNEL_CFLAGS}\ -fPIC
                 "${X264_SOURCE_DIR}/configure"
                 --prefix=${X264_PREFIX}
@@ -140,7 +139,7 @@ if(USE_MUSL)
 
         message(STATUS "  Building x264...")
         execute_process(
-            COMMAND ${CMAKE_COMMAND} -E env REALGCC=${REAL_GCC} make -j${NPROC}
+            COMMAND ${CMAKE_COMMAND} -E env CC=${ASCIICHAT_CLANG_EXECUTABLE} make -j${NPROC}
             WORKING_DIRECTORY "${X264_SOURCE_DIR}"
             RESULT_VARIABLE BUILD_RESULT
             OUTPUT_VARIABLE BUILD_OUTPUT

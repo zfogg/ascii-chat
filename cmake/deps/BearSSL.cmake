@@ -122,7 +122,7 @@ if(USE_MUSL)
             # Build the static library target with parallel jobs for faster builds
             # For musl: disable getentropy() (not in musl), force /dev/urandom, disable fortification
             execute_process(
-                COMMAND make -j lib CC=${MUSL_GCC} AR=${CMAKE_AR} CFLAGS=-DBR_USE_GETENTROPY=0\ -DBR_USE_URANDOM=1\ -U_FORTIFY_SOURCE\ -D_FORTIFY_SOURCE=0\ -fno-stack-protector\ -fPIC
+                COMMAND make -j lib CC=${ASCIICHAT_CLANG_EXECUTABLE} AR=${CMAKE_AR} CFLAGS=--target=${MUSL_TARGET}\ -DBR_USE_GETENTROPY=0\ -DBR_USE_URANDOM=1\ -U_FORTIFY_SOURCE\ -D_FORTIFY_SOURCE=0\ -fno-stack-protector\ -fPIC
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
                 RESULT_VARIABLE BEARSSL_MAKE_RESULT
                 OUTPUT_VARIABLE BEARSSL_MAKE_OUTPUT
