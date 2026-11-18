@@ -23,7 +23,7 @@ message(STATUS "vcpkg: building only ${VCPKG_BUILD_TYPE} dependency variants")
 # A restored dependency cache can contain a complete static triplet without
 # vcpkg's global manifest status file.  Do not make CMake rebuild FFmpeg and
 # the other static packages merely because that status file is absent.
-if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
     foreach(_cached_triplet IN ITEMS x64-windows-static arm64-windows-static)
         if(EXISTS "${VCPKG_INSTALLED_DIR}/${_cached_triplet}/lib/avcodec.lib"
            AND EXISTS "${VCPKG_INSTALLED_DIR}/${_cached_triplet}/lib/avformat.lib"
