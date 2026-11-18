@@ -1549,9 +1549,15 @@ else()
 endif()
 
 if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
-    # Windows symbol tools inspect the DLL export table; Unix tools inspect the
-    # shared object directly. Keep export generation enabled for both paths.
-    set(SHARED_LIB_TO_VALIDATE "$<TARGET_FILE:ascii-chat-shared>")
+    # LLVM's nm reports the exported symbols from the Windows import library,
+    # while a PE DLL itself is not an object-symbol table. Keep the generated
+    # export definition and validate the import library with the selected
+    # compiler family's tool suite.
+    if(WIN32)
+        set(SHARED_LIB_TO_VALIDATE "$<TARGET_LINKER_FILE:ascii-chat-shared>")
+    else()
+        set(SHARED_LIB_TO_VALIDATE "$<TARGET_FILE:ascii-chat-shared>")
+    endif()
 
     # Build the validation command with optional internal symbols
     set(_VALIDATE_CMD
