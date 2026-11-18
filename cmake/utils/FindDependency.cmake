@@ -36,10 +36,8 @@
 #   - VCPKG_ROOT, VCPKG_TARGET_TRIPLET, VCPKG_LIB_PATH, etc.: vcpkg config (if USE_VCPKG=ON)
 #   - Colors.cmake variables for status messages
 #
-# Outputs:
-#   - <NAME>_LIBRARIES: Libraries to link against
-#   - <NAME>_INCLUDE_DIRS: Include directories
-#   - <NAME>_FOUND: Whether the library was found
+# Output:
+#   - asciichat-${NAME}: canonical INTERFACE target for consumers
 # =============================================================================
 
 # Guard against multiple inclusions
@@ -51,7 +49,7 @@ set(_ASCIICHAT_FIND_DEPENDENCY_INCLUDED TRUE)
 # =============================================================================
 # Main dependency finding macro
 # =============================================================================
-macro(find_dependency_library)
+function(find_dependency_library)
     # Parse arguments
     set(_options REQUIRED OPTIONAL)
     set(_one_value_args NAME HEADER PKG_CONFIG HOMEBREW_PKG STATIC_LIB_NAME STATIC_DEFINE)
@@ -199,7 +197,7 @@ macro(find_dependency_library)
         endif()
     endif()
 
-endmacro()
+endfunction()
 
 # Target-only entry point.  The discovery macro runs inside this function's
 # scope, so provider variables cannot leak into the parent directory.  The
