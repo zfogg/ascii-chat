@@ -99,17 +99,10 @@ class CoverageReportTests(unittest.TestCase):
                     self.assertEqual(coverage_report.find_llvm_cov(self.root), str(llvm_cov))
 
     @unittest.skipUnless(shutil.which("clang") and shutil.which("cmake") and shutil.which("ninja"), "Requires CMake, Ninja and Clang")
-<<<<<<< HEAD
-    def test_project_ipo_defaults_preserve_criterion_target_opt_out(self):
+    def test_project_ipo_defaults_preserve_Catch2_target_opt_out(self):
         module = Path(__file__).resolve().parents[2] / "cmake/compilers/ProjectSettings.cmake"
         (self.root / "cmake/compilers").mkdir(parents=True)
         shutil.copy(module.parent / "CPUDetection.cmake", self.root / "cmake/compilers/CPUDetection.cmake")
-=======
-    def test_project_ipo_defaults_preserve_Catch2_target_opt_out(self):
-        module = Path(__file__).resolve().parents[2] / "cmake/compiler/ProjectSettings.cmake"
-        (self.root / "cmake/compiler").mkdir(parents=True)
-        shutil.copy(module.parent / "CPUDetection.cmake", self.root / "cmake/compiler/CPUDetection.cmake")
->>>>>>> origin/master
         (self.root / "main.c").write_text("int main(void) { return 0; }\n")
         (self.root / "tests").mkdir()
         (self.root / "tests/CMakeLists.txt").write_text(
@@ -239,11 +232,7 @@ class CoverageReportTests(unittest.TestCase):
             if enabled == "OFF":
                 self.assertEqual(output.replace("\\", "/"), "lib/main.c")
             else:
-<<<<<<< HEAD
                 self.assertEqual(output.replace("\\", "/"), str(source).replace("\\", "/"))
-=======
-                self.assertEqual(output.replace("\\", "/"), source.as_posix())
->>>>>>> origin/master
                 coverage_report.generate(self.root, build, self.report)
                 entry = ET.parse(self.report).find('.//class[@filename="lib/main.c"]')
                 self.assertIsNotNone(entry)
