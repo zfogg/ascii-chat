@@ -73,6 +73,19 @@ endfunction()
 function(configure_compiler_post_project)
     asciichat_validate_selected_compiler()
     asciichat_configure_common_tools()
+    # Use CMake's launcher interface for every native compiler family.  This
+    # keeps ccache in the compile path without wrapping the compiler name and
+    # lets each preset retain its native compiler/tool suite.
+    if(ASCIICHAT_CCACHE_EXECUTABLE)
+        if(NOT CMAKE_C_COMPILER_LAUNCHER)
+            set(CMAKE_C_COMPILER_LAUNCHER "${ASCIICHAT_CCACHE_EXECUTABLE}" CACHE FILEPATH
+                "C compiler cache launcher" FORCE)
+        endif()
+        if(NOT CMAKE_CXX_COMPILER_LAUNCHER)
+            set(CMAKE_CXX_COMPILER_LAUNCHER "${ASCIICHAT_CCACHE_EXECUTABLE}" CACHE FILEPATH
+                "C++ compiler cache launcher" FORCE)
+        endif()
+    endif()
     if(_ASCIICHAT_COMPILER_MODULE STREQUAL "MSVC")
         # MSVC's librarian creates the archive index itself.
         set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> /nologo /out:<TARGET> <OBJECTS>" PARENT_SCOPE)
