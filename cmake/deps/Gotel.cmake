@@ -157,11 +157,14 @@ if(NOT USE_MUSL)
     # it when present; otherwise the gRPC subproject populates the pinned
     # source checkout below.
     if(TARGET nghttp2::nghttp2)
-        set(GOTEL_NGHTTP2_TARGET nghttp2::nghttp2)
+        set(GOTEL_NGHTTP2_TARGET nghttp2::nghttp2 CACHE STRING
+            "Existing nghttp2 target for gotel gRPC" FORCE)
     elseif(TARGET nghttp2)
-        set(GOTEL_NGHTTP2_TARGET nghttp2)
+        set(GOTEL_NGHTTP2_TARGET nghttp2 CACHE STRING
+            "Existing nghttp2 target for gotel gRPC" FORCE)
     elseif(TARGET nghttp2_static)
-        set(GOTEL_NGHTTP2_TARGET nghttp2_static)
+        set(GOTEL_NGHTTP2_TARGET nghttp2_static CACHE STRING
+            "Existing nghttp2 target for gotel gRPC" FORCE)
     endif()
 endif()
 
