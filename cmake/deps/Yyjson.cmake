@@ -28,7 +28,7 @@ macro(_yyjson_build_from_submodule source_dir label)
     set(YYJSON_BUILD_FUZZER OFF)
     set(YYJSON_BUILD_MISC OFF)
     set(YYJSON_BUILD_DOC OFF)
-    set(YYJSON_BUILD_DIR "${CMAKE_BINARY_DIR}/_deps/yyjson")
+    set(YYJSON_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/yyjson")
 
     add_subdirectory(
         "${${source_dir}}"

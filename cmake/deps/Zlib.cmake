@@ -22,7 +22,7 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
         asciichat_dependency_defaults()
         set(ZLIB_BUILD_EXAMPLES OFF)
         FetchContent_Declare(asciichat_zlib
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_zlib"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_zlib"
             EXCLUDE_FROM_ALL
             URL https://zlib.net/fossils/zlib-1.3.1.tar.gz
             URL_HASH SHA256=9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23

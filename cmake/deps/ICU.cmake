@@ -24,9 +24,9 @@ elseif(USE_MUSL OR PLATFORM_IOS)
     find_program(_icu_make NAMES gmake make REQUIRED)
     find_program(_icu_host_cc NAMES clang NO_CMAKE_FIND_ROOT_PATH REQUIRED)
     find_program(_icu_host_cxx NAMES clang++ NO_CMAKE_FIND_ROOT_PATH REQUIRED)
-    set(_icu_source "${CMAKE_BINARY_DIR}/_deps/icu-source")
-    set(_icu_host_build "${CMAKE_BINARY_DIR}/_deps/icu-host-build")
-    set(_icu_prefix "${CMAKE_BINARY_DIR}/_deps/installed/icu")
+    set(_icu_source "${ASCIICHAT_DEPS_CACHE_DIR}/build/icu-source")
+    set(_icu_host_build "${ASCIICHAT_DEPS_CACHE_DIR}/build/icu-host-build")
+    set(_icu_prefix "${ASCIICHAT_DEPS_CACHE_DIR}/build/installed/icu")
     set(_icu_options --enable-static --disable-shared --disable-tests --disable-samples
         --disable-extras --disable-icuio --with-data-packaging=static)
     ExternalProject_Add(asciichat-icu-host
@@ -34,7 +34,7 @@ elseif(USE_MUSL OR PLATFORM_IOS)
         URL_HASH SHA512=04A49455E1489030C520A4BFD2664FA2171E7938D08F2ACDBBCB1FDA976639FD8B1F0704F2EEC89BA59A7B6D118CEAAB6EC5A096E40D9085A0895D91CE225245
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         SOURCE_DIR "${_icu_source}" BINARY_DIR "${_icu_host_build}"
-        PREFIX "${CMAKE_BINARY_DIR}/_deps/icu-host"
+        PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/icu-host"
         CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${_icu_host_cc}" "CXX=${_icu_host_cxx}"
             "CFLAGS=" "CXXFLAGS=" "LDFLAGS=" "LIBS="
             <SOURCE_DIR>/source/configure ${_icu_options}
@@ -57,8 +57,8 @@ elseif(USE_MUSL OR PLATFORM_IOS)
     file(MAKE_DIRECTORY "${_icu_prefix}/include")
     ExternalProject_Add(asciichat-icu-cross
         SOURCE_DIR "${_icu_source}" DOWNLOAD_COMMAND ""
-        BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/icu-build"
-        PREFIX "${CMAKE_BINARY_DIR}/_deps/icu-cross"
+        BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/icu-build"
+        PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/icu-cross"
         CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${_icu_cc}" "CXX=${_icu_cxx}"
             "CFLAGS=${_icu_cflags}" "CXXFLAGS=${_icu_cxxflags}" "LDFLAGS=${_icu_ldflags}" "LIBS=${_icu_libs}"
             <SOURCE_DIR>/source/configure ${_icu_options} --host=${_icu_host}

@@ -1,7 +1,7 @@
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
 function(asciichat_build_expat)
     asciichat_dependency_defaults()
-    set(_prefix "${CMAKE_CURRENT_BINARY_DIR}/_deps/installed/expat")
+    set(_prefix "${ASCIICHAT_DEPS_CACHE_DIR}/build/installed/expat")
     if(USE_MUSL OR PLATFORM_IOS)
         set(CMAKE_INSTALL_PREFIX "${_prefix}")
     endif()
@@ -11,7 +11,7 @@ function(asciichat_build_expat)
     set(EXPAT_BUILD_TESTS OFF)
     set(EXPAT_BUILD_TOOLS OFF)
     FetchContent_Declare(asciichat_expat
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_expat"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_expat"
         URL https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE EXCLUDE_FROM_ALL)
     FetchContent_MakeAvailable(asciichat_expat)

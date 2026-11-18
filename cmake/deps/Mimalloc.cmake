@@ -33,7 +33,7 @@ if(NOT TARGET mimalloc AND NOT TARGET mimalloc-static)
         FetchContent_Declare(asciichat_mimalloc
             GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
             GIT_TAG v2.2.4 GIT_SHALLOW TRUE
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_mimalloc"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_mimalloc"
             EXCLUDE_FROM_ALL)
         FetchContent_MakeAvailable(asciichat_mimalloc)
         foreach(_target mimalloc-static mimalloc)

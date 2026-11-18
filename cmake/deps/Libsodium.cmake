@@ -144,8 +144,8 @@ if(DEFINED EMSCRIPTEN)
             "${MSYS2_BASH_EXECUTABLE}" --noprofile --norc "${_libsodium_configure}")
     endif()
 
-    set(LIBSODIUM_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/_deps/libsodium")
-    set(LIBSODIUM_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/_deps/libsodium-build")
+    set(LIBSODIUM_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/libsodium")
+    set(LIBSODIUM_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/libsodium-build")
 
     ExternalProject_Add(libsodium-wasm
         SOURCE_DIR ${libsodium-wasm-src_SOURCE_DIR}

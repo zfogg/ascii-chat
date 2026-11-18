@@ -12,8 +12,8 @@ if(USE_MUSL OR IOS OR EMSCRIPTEN)
         set(DISABLE_FORTRAN ON)
         set(CMAKE_POSITION_INDEPENDENT_CODE ON)
         FetchContent_Declare(asciichat_fftw
-            SOURCE_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_fftw-src"
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_fftw-build"
+            SOURCE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_fftw-src"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_fftw-build"
             EXCLUDE_FROM_ALL
             URL https://www.fftw.org/fftw-3.3.10.tar.gz
             URL_HASH SHA256=56c932549852cddcfafdab3820b0200c7742675be92179e59e6215b340e26467
@@ -85,8 +85,8 @@ if(NOT FFTW_FLOAT_LIBRARY)
     set(DISABLE_FORTRAN ON)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
     FetchContent_Declare(asciichat_fftw_float
-        SOURCE_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_fftw_float-src"
-        BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_fftw_float-build"
+        SOURCE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_fftw_float-src"
+        BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_fftw_float-build"
         EXCLUDE_FROM_ALL
         URL https://www.fftw.org/fftw-3.3.10.tar.gz
         URL_HASH SHA256=56c932549852cddcfafdab3820b0200c7742675be92179e59e6215b340e26467
