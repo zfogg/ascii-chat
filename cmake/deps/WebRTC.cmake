@@ -15,8 +15,12 @@ function(asciichat_build_aec3)
        OR CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
         set(ASCIICHAT_TARGET_ARM64 ON)
     endif()
-    # AEC3 exposes static component libraries that are embedded in the public library.
-    set(BUILD_SHARED_LIBS OFF)
+    # AEC3 exposes component libraries embedded in the public library. Keep
+    # the caller's dependency mode for Debug/Dev; static release-like targets
+    # already select BUILD_SHARED_LIBS=OFF at the preset level.
+    if(NOT BUILD_SHARED_LIBS OR USE_MUSL OR PLATFORM_IOS)
+        set(BUILD_SHARED_LIBS OFF)
+    endif()
     set(CMAKE_CXX_STANDARD 17)
     FetchContent_Declare(webrtc_aec3
         BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc-aec3"
