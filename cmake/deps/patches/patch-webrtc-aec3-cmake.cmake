@@ -31,7 +31,7 @@ if(NOT _reverb_contents MATCHES "#include <memory>")
 endif()
 
 # Check if patches have already been applied to avoid unnecessary rewrites
-set(WEBRTC_PATCH_MARKER "${WEBRTC_AEC3_SOURCE_DIR}/.patches_applied_v10")
+set(WEBRTC_PATCH_MARKER "${WEBRTC_AEC3_SOURCE_DIR}/.patches_applied_v11")
 if(EXISTS "${WEBRTC_PATCH_MARKER}")
     message(STATUS "WebRTC AEC3 patches already applied, skipping")
     return()
@@ -335,6 +335,15 @@ else()
             abseil/absl/strings/internal/memutil.cc
             abseil/absl/strings/ascii.cc
             )
+endif()
+
+# cpu_features.cc exports the WebRTC dispatch variables consumed by the
+# audio-processing library.  The upstream project applies hidden visibility
+# globally, which leaves those variables local in a shared build and makes
+# AudioProcess fail at runtime with an unresolved WebRtc_GetCPUInfo symbol.
+if(TARGET base)
+    set_source_files_properties(system_wrappers/source/cpu_features.cc
+        PROPERTIES COMPILE_OPTIONS "-fvisibility=default")
 endif()
 ]=])
 
