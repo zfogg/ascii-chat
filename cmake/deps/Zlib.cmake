@@ -1,25 +1,12 @@
-# =============================================================================
-# zlib Compression Library Configuration
-# =============================================================================
-# Finds and configures zlib compression library (required by libwebsockets)
-#
-# Platform-specific dependency management:
-#   - musl: Built from source in this file with USE_MUSL check
-#   - Linux/macOS (non-musl): Uses pkg-config for system packages
-#   - Windows: Uses vcpkg
-#
-# Outputs:
-#   - ZLIB_FOUND - Whether zlib was found/configured
-#   - ZLIB_LIBRARY - Library path
-#   - ZLIB_INCLUDE_DIR - Include directory
-#   - ZLIB::zlib - Imported target (if created)
-# =============================================================================
-
+# Required zlib dependency. Discovery state stays function-local; consumers
+# use only asciichat-zlib and its compatibility aliases.
 
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
-if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
-    function(asciichat_build_zlib)
-        asciichat_dependency_defaults()
+
+function(asciichat_configure_zlib)
+    set(_provider "")
+
+    if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
         set(ZLIB_BUILD_EXAMPLES OFF)
         asciichat_fetchcontent_declare(asciichat_zlib
             BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/zlib"
@@ -29,98 +16,61 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
         FetchContent_MakeAvailable(asciichat_zlib)
         if(BUILD_SHARED_LIBS)
-            set(_target zlib)
+            set(_provider zlib)
         else()
-            set(_target zlibstatic)
+            set(_provider zlibstatic)
         endif()
-        # Bridge consumers using FindZLIB without adding zlib to their install exports.
-        add_library(ZLIB::ZLIB INTERFACE IMPORTED GLOBAL)
-        set_target_properties(ZLIB::ZLIB PROPERTIES
-            SYSTEM FALSE
-            INTERFACE_LINK_LIBRARIES ${_target}
-            INTERFACE_INCLUDE_DIRECTORIES "${asciichat_zlib_BINARY_DIR};${asciichat_zlib_SOURCE_DIR}")
-        add_library(asciichat-zlib ALIAS ZLIB::ZLIB)
-        add_library(ZLIB::zlib ALIAS ZLIB::ZLIB)
-        set(ZLIB_INCLUDE_DIR "${asciichat_zlib_BINARY_DIR};${asciichat_zlib_SOURCE_DIR}" PARENT_SCOPE)
-    endfunction()
-    asciichat_build_zlib()
-    set(ZLIB_FOUND TRUE)
-    set(ZLIB_LIBRARY asciichat-zlib)
-    set(ZLIB_LIBRARIES asciichat-zlib)
-    set(ZLIB_INCLUDE_DIRS ${ZLIB_INCLUDE_DIR})
-    return()
-endif()
-
-# =============================================================================
-# Non-musl: Use system package or pkg-config
-# =============================================================================
-
-# Try to find zlib via CMake module mode first (vcpkg provides a wrapper),
-# then config mode, then fall back to pkg-config
-find_package(ZLIB QUIET PATHS "${VCPKG_LIB_PATH}/.." NO_DEFAULT_PATH)
-
-if(NOT ZLIB_FOUND)
-    find_package(ZLIB QUIET CONFIG PATHS "${VCPKG_LIB_PATH}/.." NO_DEFAULT_PATH)
-endif()
-
-if(NOT ZLIB_FOUND)
-    # Fall back to pkg-config if CMake find didn't work
-    find_package(PkgConfig QUIET)
-    if(PKG_CONFIG_FOUND)
-        pkg_check_modules(ZLIB REQUIRED zlib)
+        add_library(asciichat-zlib INTERFACE)
+        target_link_libraries(asciichat-zlib INTERFACE "${_provider}")
+        target_include_directories(asciichat-zlib INTERFACE
+            "${asciichat_zlib_BINARY_DIR}" "${asciichat_zlib_SOURCE_DIR}")
     else()
-        # Last resort: check vcpkg installed directory directly
-        if(DEFINED VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
-            set(_vcpkg_zlib_lib "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib/zlib.lib")
-            set(_vcpkg_zlib_inc "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include")
-            if(EXISTS "${_vcpkg_zlib_lib}")
-                set(ZLIB_FOUND TRUE)
-                set(ZLIB_LIBRARIES "${_vcpkg_zlib_lib}")
-                set(ZLIB_INCLUDE_DIRS "${_vcpkg_zlib_inc}")
+        find_package(ZLIB QUIET PATHS "${VCPKG_LIB_PATH}/.." NO_DEFAULT_PATH)
+        if(TARGET ZLIB::ZLIB)
+            set(_provider ZLIB::ZLIB)
+        endif()
+
+        if(NOT _provider)
+            find_package(ZLIB QUIET CONFIG PATHS "${VCPKG_LIB_PATH}/.." NO_DEFAULT_PATH)
+            if(TARGET ZLIB::ZLIB)
+                set(_provider ZLIB::ZLIB)
             endif()
         endif()
-        if(NOT ZLIB_FOUND)
-            message(FATAL_ERROR "zlib not found: no CMake config, no pkg-config, and no vcpkg fallback")
+
+        if(NOT _provider)
+            find_package(PkgConfig QUIET)
+            if(PKG_CONFIG_FOUND)
+                pkg_check_modules(_asciichat_zlib IMPORTED_TARGET REQUIRED zlib)
+                set(_provider PkgConfig::_asciichat_zlib)
+            endif()
         endif()
+
+        if(NOT _provider AND DEFINED VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
+            set(_vcpkg_root "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
+            find_library(_zlib_library NAMES zlib zlibd PATHS "${_vcpkg_root}/lib" REQUIRED)
+            find_path(_zlib_include NAMES zlib.h PATHS "${_vcpkg_root}/include" REQUIRED)
+            add_library(asciichat-zlib-provider UNKNOWN IMPORTED)
+            set_target_properties(asciichat-zlib-provider PROPERTIES
+                IMPORTED_LOCATION "${_zlib_library}"
+                INTERFACE_INCLUDE_DIRECTORIES "${_zlib_include}")
+            set(_provider asciichat-zlib-provider)
+        endif()
+
+        if(NOT _provider)
+            message(FATAL_ERROR "zlib is required but no target provider was found")
+        endif()
+
+        add_library(asciichat-zlib INTERFACE)
+        target_link_libraries(asciichat-zlib INTERFACE "${_provider}")
     endif()
 
-    # Create imported target for compatibility
+    if(NOT TARGET ZLIB::ZLIB)
+        add_library(ZLIB::ZLIB ALIAS asciichat-zlib)
+    endif()
     if(NOT TARGET ZLIB::zlib)
-        add_library(ZLIB::zlib INTERFACE IMPORTED)
-        target_include_directories(ZLIB::zlib SYSTEM INTERFACE ${ZLIB_INCLUDE_DIRS})
-        target_link_libraries(ZLIB::zlib INTERFACE ${ZLIB_LIBRARIES})
+        add_library(ZLIB::zlib ALIAS asciichat-zlib)
     endif()
-endif()
+    message(STATUS "${BoldGreen}✓${ColorReset} zlib configured through asciichat-zlib")
+endfunction()
 
-# Some fallback providers (notably pkg-config) expose only ZLIB_LIBRARIES.
-# Keep the legacy singular variable used by the application and clear any
-# stale NOTFOUND cache value left by CMake's module-mode probe.
-if(DEFINED ZLIB_LIBRARIES AND NOT ZLIB_LIBRARIES STREQUAL "")
-    if(NOT DEFINED ZLIB_LIBRARY OR ZLIB_LIBRARY MATCHES "-NOTFOUND$")
-        set(ZLIB_LIBRARY "${ZLIB_LIBRARIES}")
-        set(ZLIB_LIBRARY "${ZLIB_LIBRARIES}" CACHE STRING "zlib libraries" FORCE)
-    endif()
-endif()
-
-# Normalize all non-source providers to the project target contract.
-if(NOT TARGET asciichat-zlib)
-    add_library(asciichat-zlib INTERFACE)
-    if(TARGET ZLIB::ZLIB)
-        target_link_libraries(asciichat-zlib INTERFACE ZLIB::ZLIB)
-    elseif(ZLIB_LIBRARIES)
-        target_link_libraries(asciichat-zlib INTERFACE ${ZLIB_LIBRARIES})
-    endif()
-    if(ZLIB_INCLUDE_DIRS)
-        target_include_directories(asciichat-zlib INTERFACE ${ZLIB_INCLUDE_DIRS})
-    elseif(ZLIB_INCLUDE_DIR)
-        target_include_directories(asciichat-zlib INTERFACE "${ZLIB_INCLUDE_DIR}")
-    endif()
-endif()
-if(NOT TARGET ZLIB::ZLIB)
-    add_library(ZLIB::ZLIB ALIAS asciichat-zlib)
-endif()
-if(NOT TARGET ZLIB::zlib)
-    add_library(ZLIB::zlib ALIAS asciichat-zlib)
-endif()
-
-message(STATUS "${BoldGreen}✓${ColorReset} zlib found")
+asciichat_configure_zlib()
