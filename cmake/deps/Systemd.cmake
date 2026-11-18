@@ -58,7 +58,8 @@ endif()
 
 set(_util_linux_cc "${ASCIICHAT_CLANG_EXECUTABLE}")
 set(_util_linux_cflags "-nostdlibinc -isystem ${MUSL_INCLUDE_DIR} ${MUSL_KERNEL_CFLAGS} --target=${MUSL_TARGET}")
-set(_util_linux_ldflags "--target=${MUSL_TARGET} -fuse-ld=lld -static -L${MUSL_LIBDIR}")
+set(_util_linux_ldflags
+    "--target=${MUSL_TARGET} -fuse-ld=lld -static -nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o -lc -lm ${MUSL_LIBDIR}/crtn.o")
 ExternalProject_Add(asciichat-util-linux-musl
     SOURCE_DIR "${UTIL_LINUX_SOURCE}"
     BINARY_DIR "${UTIL_LINUX_BUILD}"

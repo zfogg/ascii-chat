@@ -438,7 +438,15 @@ jobs:
           find .deps-cache/Release/musl -type f \( -path '*/alsa*/config.log' -o -path '*/fontconfig*/config.log' \) -print -exec tail -n 220 {} \; 2>/dev/null || echo "No ALSA/Fontconfig configure logs"
           echo ""
           echo "=== util-linux configure logs ==="
-          find .deps-cache/Release/musl -path '*/util-linux*/config.log' -type f -print -exec tail -n 220 {} \; 2>/dev/null || echo "No util-linux configure logs"
+          util_linux_logs=$(find .deps-cache/Release/musl -path '*/util-linux*/config.log' -type f -print)
+          if [[ -n "$util_linux_logs" ]]; then
+            while IFS= read -r log; do
+              echo "--- $log: compiler probe ---"
+              grep -n -B 18 -A 55 'checking whether the C compiler works' "$log" || true
+            done <<< "$util_linux_logs"
+          else
+            echo "No util-linux configure logs"
+          fi
           echo ""
           echo "=== Musl toolchain/link flags ==="
           grep -E 'CMAKE_(C|EXE_LINKER)_FLAGS|CMAKE_SYSROOT|CMAKE_C_COMPILER' build_release/CMakeCache.txt 2>/dev/null || true
