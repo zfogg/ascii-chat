@@ -13,7 +13,7 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
         # Do not let PATH select an older clang++ or GCC.
         asciichat_host_toolchain(_recast_host_cc _recast_host_cxx _recast_host_cache)
         # Keep the host-tool cache separate from older GCC/LLVM configurations.
-        set(_recast_host_build "${_recast_host_cache}/recast-llvm23")
+        set(_recast_host_build "${_recast_host_cache}/recast-llvm23-v2")
         set(_recast_host_link_flags)
         if(UNIX AND NOT APPLE)
             find_program(_recast_host_lld NAMES ld.lld
@@ -63,7 +63,7 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
                 "-DCMAKE_C_COMPILER=${_recast_host_cc}"
                 "-DCMAKE_CXX_COMPILER=${_recast_host_cxx}"
                 "-DCMAKE_EXE_LINKER_FLAGS=${_recast_host_link_flags}"
-                -DASCIICHAT_RECAST_HOST_LINK_REV=2
+                -DASCIICHAT_RECAST_HOST_LINK_REV=3
                 -DRECAST_BUILD_DOCS=OFF -DBUILD_TESTING=OFF
                 -DRECAST_STATIC_LIBCLANG=OFF
             BUILD_COMMAND "${CMAKE_COMMAND}" --build <BINARY_DIR> --target recast
