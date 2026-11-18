@@ -24,25 +24,7 @@ set(GOTEL_PCRE2_TARGET asciichat-gotel-pcre2 CACHE STRING
     "Use ascii-chat's PCRE2 dependency" FORCE)
 
 add_library(asciichat-gotel-sqlite INTERFACE)
-if(SQLITE3_INCLUDE_DIRS)
-    target_include_directories(asciichat-gotel-sqlite INTERFACE ${SQLITE3_INCLUDE_DIRS})
-endif()
-if(WIN32 AND SQLITE3_LIBRARIES MATCHES "(^|;)sqlite3[.]lib($|;)")
-    # pkg-config can return the bare MSVC filename even when vcpkg owns the
-    # selected library. Resolve it to the configuration-specific absolute
-    # path so lld-link does not search only the current build directory.
-    find_library(_asciichat_gotel_sqlite_library NAMES sqlite3 libsqlite3
-        PATHS "${VCPKG_DEBUG_LIB_PATH}" "${VCPKG_LIB_PATH}"
-              "${SQLITE3_LIBRARY_DIRS}" "${SQLITE3_LIBDIR}" NO_DEFAULT_PATH)
-    if(_asciichat_gotel_sqlite_library)
-        target_link_libraries(asciichat-gotel-sqlite INTERFACE
-            "${_asciichat_gotel_sqlite_library}")
-    else()
-        target_link_libraries(asciichat-gotel-sqlite INTERFACE ${SQLITE3_LIBRARIES})
-    endif()
-else()
-    target_link_libraries(asciichat-gotel-sqlite INTERFACE ${SQLITE3_LIBRARIES})
-endif()
+target_link_libraries(asciichat-gotel-sqlite INTERFACE asciichat-sqlite3)
 set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
     "Use ascii-chat's SQLite3 dependency" FORCE)
 
