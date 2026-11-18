@@ -256,13 +256,12 @@ if(WIN32)
         version.lib
     )
 
-    # Find ZLIB and zstd dependencies
+    # zlib is configured by the project dependency graph; discover only the
+    # panic tool's private zstd provider here.
     if(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
         set(CMAKE_PREFIX_PATH "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
-        find_package(ZLIB REQUIRED)
         find_package(zstd CONFIG REQUIRED)
     else()
-        find_package(ZLIB REQUIRED)
         find_package(zstd CONFIG REQUIRED)
     endif()
 
@@ -274,7 +273,7 @@ if(WIN32)
         message(FATAL_ERROR "Could not find zstd target")
     endif()
     target_link_libraries(ascii-instr-panic PRIVATE
-        ZLIB::ZLIB
+        asciichat-zlib
         ${_zstd_target}
     )
 else()
