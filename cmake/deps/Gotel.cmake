@@ -49,15 +49,11 @@ set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
 # Keep the vendored C++ facade aligned with ascii-chat's C++26 toolchain.
 set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
 
-# Keep Gotel's generated sources persistent, but scope its binary tree to the
-# parent build tree. Its compile rules contain parent-build paths, so sharing
-# this binary tree between build/, build-fast-debug/, and build-tests/ makes
-# Ninja see command-line changes even when all builds are Debug.
-get_filename_component(_asciichat_build_name "${CMAKE_BINARY_DIR}" NAME)
-if(NOT _asciichat_build_name)
-    set(_asciichat_build_name "default")
-endif()
-set(_asciichat_gotel_cache_dir "${ASCIICHAT_DEPS_CACHE_DIR}/gotel/${_asciichat_build_name}")
+# Keep Gotel and its fetched otlp-c/Sequel build trees in the persistent
+# dependency cache. Generated Gotel sources are emitted into this same stable
+# tree so the shared Debug dependency build does not depend on the parent
+# application's binary directory.
+set(_asciichat_gotel_cache_dir "${ASCIICHAT_DEPS_CACHE_DIR}/gotel")
 file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 
 set(_asciichat_parent_shared_libs ${BUILD_SHARED_LIBS})
@@ -269,12 +265,12 @@ endif()
 string(REPLACE "${_otel_inflight_step}"
     "\t\t\tif (otlp_atomic_load_int(&e->shutdown_requested, OTLP_MEMORY_ORDER_ACQUIRE)) {\n\t\t\t\totlp_http_request_free(e->in_flight);\n\t\t\t\te->in_flight = NULL;\n\t\t\t\te->in_flight_count = 0;\n\t\t\t\twork_done = true;\n\t\t\t\tcontinue;\n\t\t\t}\n${_otel_inflight_step}"
     _otel_exporter "${_otel_exporter}")
-file(CONFIGURE OUTPUT "${CMAKE_BINARY_DIR}/generated/otlp_exporter.c"
+file(CONFIGURE OUTPUT "${_asciichat_gotel_cache_dir}/generated/otlp_exporter.c"
     CONTENT "${_otel_exporter}" @ONLY)
 get_target_property(_otel_sources otlp_c SOURCES)
 list(FILTER _otel_sources EXCLUDE REGEX "(^|/)exporter\\.c$")
 set_property(TARGET otlp_c PROPERTY SOURCES "${_otel_sources}")
-target_sources(otlp_c PRIVATE "${CMAKE_BINARY_DIR}/generated/otlp_exporter.c")
+target_sources(otlp_c PRIVATE "${_asciichat_gotel_cache_dir}/generated/otlp_exporter.c")
 
 set(BUILD_SHARED_LIBS ${_asciichat_parent_shared_libs})
 set(FETCHCONTENT_UPDATES_DISCONNECTED
