@@ -33,6 +33,11 @@ if(USE_MUSL)
         set(RECAST_NATIVE_BINARY "${_recast_host_build}/bin/recast" CACHE FILEPATH
             "Native host Recast executable used for musl source transformation" FORCE)
     endif()
+    if(NOT TARGET recast-native)
+        add_executable(recast-native IMPORTED GLOBAL)
+        set_target_properties(recast-native PROPERTIES
+            IMPORTED_LOCATION "${RECAST_NATIVE_BINARY}")
+    endif()
 else()
     add_subdirectory("${CMAKE_SOURCE_DIR}/deps/recast" "${CMAKE_BINARY_DIR}/recast-build" EXCLUDE_FROM_ALL)
 endif()

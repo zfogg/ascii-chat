@@ -415,9 +415,15 @@ jobs:
           if [[ "$(uname -m)" == "aarch64" ]]; then arch="arm64"; else arch="amd64"; fi
           archive="build_release/ascii-chat-${version}-Linux-${arch}.tar.gz"
           tar -xOzf "$archive" share/man/man1/ascii-chat.1 > "$RUNNER_TEMP/release-man1"
-          grep -q 'MCP SERVER' "$RUNNER_TEMP/release-man1"
+          if ! grep -q 'MCP SERVER' "$RUNNER_TEMP/release-man1"; then
+            echo "::error::man1 archive check failed: generated manual is missing the MCP SERVER section"
+            exit 1
+          fi
           tar -tzf "$archive" > "$RUNNER_TEMP/release-runtime-files"
-          grep -Eq '(^|/)share/man/man5/ascii-chat\.5$' "$RUNNER_TEMP/release-runtime-files"
+          if ! grep -Eq '(^|/)share/man/man5/ascii-chat\.5$' "$RUNNER_TEMP/release-runtime-files"; then
+            echo "::error::man5 archive check failed: runtime tarball does not contain share/man/man5/ascii-chat.5"
+            exit 1
+          fi
 
       - name: Print build logs on failure
         if: failure()
@@ -655,9 +661,15 @@ jobs:
           if [[ "$(uname -m)" == "arm64" ]]; then arch="arm64"; else arch="amd64"; fi
           archive="build_release/ascii-chat-${version}-macOS-${arch}.tar.gz"
           tar -xOzf "$archive" share/man/man1/ascii-chat.1 > "$RUNNER_TEMP/release-man1"
-          grep -q 'MCP SERVER' "$RUNNER_TEMP/release-man1"
+          if ! grep -q 'MCP SERVER' "$RUNNER_TEMP/release-man1"; then
+            echo "::error::man1 archive check failed: generated manual is missing the MCP SERVER section"
+            exit 1
+          fi
           tar -tzf "$archive" > "$RUNNER_TEMP/release-runtime-files"
-          grep -q 'share/man/man5/ascii-chat.5$' "$RUNNER_TEMP/release-runtime-files"
+          if ! grep -q 'share/man/man5/ascii-chat.5$' "$RUNNER_TEMP/release-runtime-files"; then
+            echo "::error::man5 archive check failed: runtime tarball does not contain share/man/man5/ascii-chat.5"
+            exit 1
+          fi
 
       - name: Verify macOS development package contains the static library
         shell: bash
