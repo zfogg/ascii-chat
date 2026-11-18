@@ -452,11 +452,11 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
     if (bytes < 4) {
       SAFE_MEMSET(char_info->bytes + bytes, 4 - bytes, 0, 4 - bytes);
     }
-    char_info->byte_len = bytes;
+    char_info->byte_len = (uint8_t)bytes;
 
     // Get display width using utf8_display_width
     int width = utf8_display_width_n(p, bytes);
-    char_info->display_width = (width > 0 && width <= 2) ? width : 1;
+    char_info->display_width = (uint8_t)((width > 0 && width <= 2) ? width : 1);
 
     p += bytes;
     bytes_processed += bytes;
