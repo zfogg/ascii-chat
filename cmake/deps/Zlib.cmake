@@ -24,6 +24,13 @@ function(asciichat_configure_zlib)
         target_link_libraries(asciichat-zlib INTERFACE "${_provider}")
         target_include_directories(asciichat-zlib INTERFACE
             "${asciichat_zlib_BINARY_DIR}" "${asciichat_zlib_SOURCE_DIR}")
+        if(BUILD_SHARED_LIBS)
+            set(_provider_library "${asciichat_zlib_BINARY_DIR}/libz.so")
+        else()
+            set(_provider_library "${asciichat_zlib_BINARY_DIR}/libz.a")
+        endif()
+        set_property(TARGET asciichat-zlib PROPERTY
+            ASCIICHAT_PROVIDER_LIBRARY "${_provider_library}")
     else()
         find_package(ZLIB QUIET PATHS "${VCPKG_LIB_PATH}/.." NO_DEFAULT_PATH)
         if(TARGET ZLIB::ZLIB)

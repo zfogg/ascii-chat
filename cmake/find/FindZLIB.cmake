@@ -3,8 +3,16 @@
 # standard FindZLIB result expected by third-party CMake code.
 if(TARGET asciichat-zlib)
     set(ZLIB_FOUND TRUE)
-    set(ZLIB_LIBRARY asciichat-zlib)
-    set(ZLIB_LIBRARIES asciichat-zlib)
+    get_target_property(_asciichat_zlib_library asciichat-zlib
+        ASCIICHAT_PROVIDER_LIBRARY)
+    if(_asciichat_zlib_library AND
+       NOT _asciichat_zlib_library STREQUAL "_asciichat_zlib_library-NOTFOUND")
+        set(ZLIB_LIBRARY "${_asciichat_zlib_library}")
+        set(ZLIB_LIBRARIES "${_asciichat_zlib_library}")
+    else()
+        set(ZLIB_LIBRARY asciichat-zlib)
+        set(ZLIB_LIBRARIES asciichat-zlib)
+    endif()
     get_target_property(_asciichat_zlib_includes asciichat-zlib
         INTERFACE_INCLUDE_DIRECTORIES)
     if(_asciichat_zlib_includes STREQUAL "_asciichat_zlib_includes-NOTFOUND")
