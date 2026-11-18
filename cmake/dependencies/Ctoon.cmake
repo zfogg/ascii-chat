@@ -24,7 +24,6 @@ endif()
 
 # CToon is a normal C library. Its target follows BUILD_SHARED_LIBS, including
 # static linkage required by the musl toolchain.
-set(CTOON_LIBRARIES ctoon::ctoon CACHE INTERNAL "CToon target used by ascii-chat")
 if(NOT TARGET asciichat-ctoon)
     add_library(asciichat-ctoon INTERFACE)
     target_link_libraries(asciichat-ctoon INTERFACE ctoon::ctoon)
