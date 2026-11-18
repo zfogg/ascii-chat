@@ -248,9 +248,9 @@ message(STATUS "Patched WebRTC AEC3 aec3/CMakeLists.txt - removed duplicate oour
 # Write the new base/CMakeLists.txt with system Abseil detection
 # Using a single bracket argument to avoid semicolon artifacts from concatenation
 file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/base/CMakeLists.txt" [=[
-# Set library suffix preference based on ASCIICHAT_SHARED_DEPS
+# Set library suffix preference based on BUILD_SHARED_LIBS
 # This affects how find_package locates Abseil libraries
-if(ASCIICHAT_SHARED_DEPS)
+if(BUILD_SHARED_LIBS)
     # Prefer shared libraries (.dylib on macOS, .so on Linux, .dll on Windows)
     if(APPLE)
         set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib" ".a")
@@ -259,7 +259,7 @@ if(ASCIICHAT_SHARED_DEPS)
     else()
         set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a")
     endif()
-    message(STATUS "WebRTC AEC3: Preferring shared Abseil (ASCIICHAT_SHARED_DEPS=ON)")
+    message(STATUS "WebRTC AEC3: Preferring shared Abseil (BUILD_SHARED_LIBS=ON)")
 else()
     # Prefer static libraries (.a on Unix, .lib on Windows)
     if(WIN32)
@@ -267,7 +267,7 @@ else()
     else()
         set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".dylib" ".so")
     endif()
-    message(STATUS "WebRTC AEC3: Preferring static Abseil (ASCIICHAT_SHARED_DEPS=OFF)")
+    message(STATUS "WebRTC AEC3: Preferring static Abseil (BUILD_SHARED_LIBS=OFF)")
 endif()
 
 # Try to find system Abseil (vcpkg, Homebrew, apt, etc.)

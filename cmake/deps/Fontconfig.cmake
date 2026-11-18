@@ -81,7 +81,7 @@ elseif(APPLE)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(FONTCONFIG fontconfig REQUIRED)
 
-    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
         # Use archives so a release executable does not depend on the
         # developer's Homebrew versions of Fontconfig and its libraries.
         set(_fontconfig_static_paths)

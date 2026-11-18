@@ -58,7 +58,7 @@ endif()
 
 # macOS Release: Prefer Homebrew's static archive to avoid a runtime dependency
 # on the build machine's zstd dylib version.
-if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
     include(FindPkgConfig)
     pkg_check_modules(ZSTD_PKG REQUIRED libzstd)
     find_library(ZSTD_STATIC_LIBRARY

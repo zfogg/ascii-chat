@@ -6,7 +6,7 @@ if(NOT EMSCRIPTEN)
         # the installed headers/archive directly and publish one project target.
         find_path(ASCIICHAT_LIBUV_INCLUDE_DIR NAMES uv.h
             PATHS "${VCPKG_INCLUDE_PATH}" PATH_SUFFIXES uv REQUIRED)
-        if(ASCIICHAT_SHARED_DEPS)
+        if(BUILD_SHARED_LIBS)
             find_library(ASCIICHAT_LIBUV_LIBRARY NAMES uv PATHS "${VCPKG_LIB_PATH}" REQUIRED)
         else()
             find_library(ASCIICHAT_LIBUV_LIBRARY NAMES uv_a uv PATHS "${VCPKG_LIB_PATH}" REQUIRED)
@@ -49,7 +49,7 @@ if(NOT EMSCRIPTEN)
         pkg_check_modules(ASCIICHAT_LIBUV REQUIRED IMPORTED_TARGET libuv)
         # glibc development builds also produce a shared library; distro libuv
         # archives are not necessarily PIC. Linux static releases use musl above.
-        if(NOT APPLE OR ASCIICHAT_SHARED_DEPS)
+        if(NOT APPLE OR BUILD_SHARED_LIBS)
             set(ASCIICHAT_LIBUV_TARGET PkgConfig::ASCIICHAT_LIBUV)
         else()
             find_library(ASCIICHAT_LIBUV_STATIC_ARCHIVE NAMES libuv.a

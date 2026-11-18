@@ -208,13 +208,13 @@ if(WIN32)
 endif()
 
 # =============================================================================
-# Release builds: Build FFmpeg from source when ASCIICHAT_SHARED_DEPS is OFF
+# Release builds: Build FFmpeg from source when BUILD_SHARED_LIBS is OFF
 # =============================================================================
 # For portable Release builds (non-musl), compile FFmpeg from source with only
 # built-in codecs (no external codec dependencies like svt-av1, dav1d, x264, x265, etc.)
 # Musl builds always compile everything from source via MuslDependencies.cmake
 # =============================================================================
-if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS
+if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS
    AND NOT ASCIICHAT_USE_SYSTEM_FFMPEG)
     include(ProcessorCount)
     ProcessorCount(NPROC)
@@ -412,14 +412,14 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
         pkg_check_modules(X264_PKG x264)
         pkg_check_modules(X265_PKG x265)
         if(X264_PKG_FOUND)
-            if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+            if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
                 list(APPEND FFMPEG_LIBRARIES "${X264_STATIC_LIBRARY}")
             else()
                 list(APPEND FFMPEG_LIBRARIES ${X264_PKG_LDFLAGS})
             endif()
         endif()
         if(X265_PKG_FOUND)
-            if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+            if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
                 list(APPEND FFMPEG_LIBRARIES "${X265_STATIC_LIBRARY}")
             else()
                 list(APPEND FFMPEG_LIBRARIES ${X265_PKG_LDFLAGS})

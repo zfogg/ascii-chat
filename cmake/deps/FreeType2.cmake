@@ -125,7 +125,7 @@ elseif(APPLE)
 
     # Homebrew's dylib is versioned to the installed formula and is not a
     # suitable runtime dependency for a portable Release executable.
-    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
         find_file(FREETYPE_STATIC_ARCHIVE NAMES libfreetype.a
             PATHS "${HOMEBREW_PREFIX}/opt/freetype/lib" /usr/local/opt/freetype/lib /opt/homebrew/opt/freetype/lib
             NO_DEFAULT_PATH)
