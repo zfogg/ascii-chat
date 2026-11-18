@@ -74,7 +74,7 @@ int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message
   platform_delete_temp_file(sig_path); // Remove it so gpg can create it fresh
 
   // Write message to temp file
-  ssize_t written = write(msg_fd, message, message_len);
+  ssize_t written = write(msg_fd, message, (unsigned int)message_len);
   close(msg_fd);
   msg_fd = -1;
 

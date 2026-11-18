@@ -419,7 +419,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   }
 #endif
 
-  ssize_t written = write(fd, response_text, response_len);
+  ssize_t written = write(fd, response_text, (unsigned int)response_len);
   close(fd);
 
   if (written != (ssize_t)response_len) {

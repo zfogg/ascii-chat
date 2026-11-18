@@ -75,7 +75,7 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
   }
 
   // Write message
-  if (write(msg_fd, message, message_len) != (ssize_t)message_len) {
+  if (write(msg_fd, message, (unsigned int)message_len) != (ssize_t)message_len) {
     log_error("Failed to write message to temp file");
     close(msg_fd);
     close(sig_fd);
@@ -86,7 +86,7 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
   close(msg_fd);
 
   // Write OpenPGP signature
-  if (write(sig_fd, openpgp_signature, openpgp_len) != (ssize_t)openpgp_len) {
+  if (write(sig_fd, openpgp_signature, (unsigned int)openpgp_len) != (ssize_t)openpgp_len) {
     log_error("Failed to write signature to temp file");
     close(sig_fd);
     platform_delete_temp_file(msg_path);
