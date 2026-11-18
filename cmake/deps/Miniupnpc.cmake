@@ -18,9 +18,9 @@
 #   - VCPKG_ROOT, VCPKG_TARGET_TRIPLET: (Windows only) vcpkg configuration
 #
 # Outputs (variables set by this file):
-#   - MINIUPNPC_LIBRARIES: Libraries to link against
-#   - MINIUPNPC_INCLUDE_DIRS: Include directories
-#   - MINIUPNPC_FOUND: Whether miniupnpc was found (required for native builds)
+#   - _asciichat_miniupnpc_link: Libraries to link against
+#   - _asciichat_miniupnpc_include: Include directories
+#   - _asciichat_miniupnpc_found: Whether miniupnpc was found (required for native builds)
 # =============================================================================
 
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/FindDependency.cmake)
@@ -30,9 +30,9 @@ include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     # Browser transports cannot perform native UPnP/NAT-PMP port mapping.
     # Do not discover a host miniupnpc package while configuring WASM.
-    set(MINIUPNPC_FOUND FALSE)
-    set(MINIUPNPC_LIBRARIES "")
-    set(MINIUPNPC_INCLUDE_DIRS "")
+    set(_asciichat_miniupnpc_found FALSE)
+    set(_asciichat_miniupnpc_link "")
+    set(_asciichat_miniupnpc_include "")
     message(STATUS "miniupnpc skipped for WebAssembly (browser networking has no UPnP API)")
     return()
 endif()
@@ -53,11 +53,11 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             URL https://github.com/miniupnp/miniupnp/archive/refs/tags/miniupnpc_2_2_7.tar.gz
             SOURCE_SUBDIR miniupnpc DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
         FetchContent_MakeAvailable(asciichat_miniupnpc)
-        set(MINIUPNPC_INCLUDE_DIRS "${asciichat_miniupnpc_SOURCE_DIR}/miniupnpc/include" PARENT_SCOPE)
+        set(_asciichat_miniupnpc_include "${asciichat_miniupnpc_SOURCE_DIR}/miniupnpc/include" PARENT_SCOPE)
     endfunction()
     asciichat_build_miniupnpc()
-    set(MINIUPNPC_FOUND TRUE)
-    set(MINIUPNPC_LIBRARIES miniupnpc::miniupnpc)
+    set(_asciichat_miniupnpc_found TRUE)
+    set(_asciichat_miniupnpc_link miniupnpc::miniupnpc)
     if(NOT TARGET asciichat-miniupnpc)
         add_library(asciichat-miniupnpc INTERFACE)
         target_link_libraries(asciichat-miniupnpc INTERFACE miniupnpc::miniupnpc)
@@ -88,10 +88,10 @@ find_dependency_library(
 )
 
 # If miniupnpc is found, define HAVE_MINIUPNPC for the C code
-if(MINIUPNPC_FOUND)
+if(_asciichat_miniupnpc_found)
     unset(MINIUPNPC_HEADER_INCLUDE_DIR CACHE)
     foreach(_miniupnpc_include_candidate IN ITEMS
-        ${MINIUPNPC_INCLUDE_DIRS} ${MINIUPNPC_INCLUDE_DIR}
+        ${_asciichat_miniupnpc_include} ${MINIUPNPC_INCLUDE_DIR}
         /usr/include /usr/include/miniupnpc
         /usr/local/include /usr/local/include/miniupnpc)
         if(EXISTS "${_miniupnpc_include_candidate}/miniupnpc.h")
@@ -104,10 +104,10 @@ if(MINIUPNPC_FOUND)
     endforeach()
     if(NOT MINIUPNPC_HEADER_INCLUDE_DIR)
         find_path(MINIUPNPC_HEADER_INCLUDE_DIR NAMES miniupnpc.h
-            HINTS ${MINIUPNPC_INCLUDE_DIRS} PATH_SUFFIXES miniupnpc REQUIRED)
+            HINTS ${_asciichat_miniupnpc_include} PATH_SUFFIXES miniupnpc REQUIRED)
     endif()
-    set(MINIUPNPC_INCLUDE_DIRS "${MINIUPNPC_HEADER_INCLUDE_DIR}")
-    message(STATUS "miniupnpc found: ${MINIUPNPC_LIBRARIES}")
+    set(_asciichat_miniupnpc_include "${MINIUPNPC_HEADER_INCLUDE_DIR}")
+    message(STATUS "miniupnpc found: ${_asciichat_miniupnpc_link}")
     message(STATUS "  UPnP/NAT-PMP support: ENABLED")
     if(TARGET asciichat-project-options)
         target_compile_definitions(asciichat-project-options INTERFACE HAVE_MINIUPNPC=1)
@@ -124,7 +124,7 @@ if(MINIUPNPC_FOUND)
     # Some distributions have mismatched header API version vs actual function signature,
     # so we must test at configure time rather than relying on MINIUPNPC_API_VERSION
     include(CheckCSourceCompiles)
-    set(CMAKE_REQUIRED_INCLUDES ${MINIUPNPC_INCLUDE_DIRS})
+    set(CMAKE_REQUIRED_INCLUDES ${_asciichat_miniupnpc_include})
 
     # For check_c_source_compiles, we need actual library paths, not CMake imported targets
     # Extract the actual library location from the target if it's an imported target
@@ -141,11 +141,11 @@ if(MINIUPNPC_FOUND)
             if(_miniupnpc_lib_path)
                 set(CMAKE_REQUIRED_LIBRARIES ${_miniupnpc_lib_path})
             else()
-                set(CMAKE_REQUIRED_LIBRARIES ${MINIUPNPC_LIBRARIES})
+                set(CMAKE_REQUIRED_LIBRARIES ${_asciichat_miniupnpc_link})
             endif()
         endif()
     else()
-        set(CMAKE_REQUIRED_LIBRARIES ${MINIUPNPC_LIBRARIES})
+        set(CMAKE_REQUIRED_LIBRARIES ${_asciichat_miniupnpc_link})
     endif()
 
     # The result depends on the selected MiniUPnP headers.  Do not reuse a
@@ -187,7 +187,7 @@ if(MINIUPNPC_FOUND)
     endif()
 endif()
 
-if(NOT MINIUPNPC_FOUND)
+if(NOT _asciichat_miniupnpc_found)
     message(FATAL_ERROR "miniupnpc is required for native builds")
 endif()
 if(NOT TARGET asciichat-miniupnpc)
@@ -195,10 +195,10 @@ if(NOT TARGET asciichat-miniupnpc)
     if(TARGET PkgConfig::MINIUPNPC)
         target_link_libraries(asciichat-miniupnpc INTERFACE PkgConfig::MINIUPNPC)
     else()
-        target_link_libraries(asciichat-miniupnpc INTERFACE ${MINIUPNPC_LIBRARIES})
+        target_link_libraries(asciichat-miniupnpc INTERFACE ${_asciichat_miniupnpc_link})
     endif()
-    if(MINIUPNPC_INCLUDE_DIRS)
-        target_include_directories(asciichat-miniupnpc INTERFACE "${MINIUPNPC_INCLUDE_DIRS}")
+    if(_asciichat_miniupnpc_include)
+        target_include_directories(asciichat-miniupnpc INTERFACE "${_asciichat_miniupnpc_include}")
     endif()
     if(EXISTS "/usr/include/miniupnpc/miniupnpc.h")
         target_include_directories(asciichat-miniupnpc INTERFACE "/usr/include/miniupnpc")
