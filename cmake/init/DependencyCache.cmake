@@ -50,5 +50,7 @@ if(NOT DEFINED ASCIICHAT_DEPS_CACHE_DIR OR ASCIICHAT_DEPS_CACHE_DIR STREQUAL ""
 endif()
 set(ASCIICHAT_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}" CACHE PATH
     "Dependency cache for current build type" FORCE)
-set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}" CACHE PATH
+string(REGEX REPLACE "[^A-Za-z0-9_.-]" "-" _asciichat_generator_cache "${CMAKE_GENERATOR}")
+set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/fetchcontent-${_asciichat_generator_cache}"
+    CACHE PATH
     "FetchContent source/build cache for current build type" FORCE)

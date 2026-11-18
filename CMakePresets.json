@@ -385,13 +385,13 @@
     },
     { "name": "default-clang", "configurePreset": "default-clang" },
     { "name": "default-gcc", "configurePreset": "default-gcc" },
-    { "name": "default-msvc", "configurePreset": "default-msvc" },
+    { "name": "default-msvc", "configurePreset": "default-msvc", "configuration": "Debug" },
     { "name": "dev-clang", "configurePreset": "dev-clang" },
     { "name": "dev-gcc", "configurePreset": "dev-gcc" },
-    { "name": "dev-msvc", "configurePreset": "dev-msvc" },
+    { "name": "dev-msvc", "configurePreset": "dev-msvc", "configuration": "Debug" },
     { "name": "release-clang", "configurePreset": "release-clang" },
     { "name": "release-gcc", "configurePreset": "release-gcc" },
-    { "name": "release-msvc", "configurePreset": "release-msvc" },
+    { "name": "release-msvc", "configurePreset": "release-msvc", "configuration": "Release" },
     {
       "name": "debug",
       "configurePreset": "debug"

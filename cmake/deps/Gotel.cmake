@@ -57,7 +57,9 @@ endif()
 # dependency cache. Generated Gotel sources are emitted into this same stable
 # tree so the shared Debug dependency build does not depend on the parent
 # application's binary directory.
-set(_asciichat_gotel_cache_dir "${ASCIICHAT_DEPS_CACHE_DIR}/gotel")
+string(REGEX REPLACE "[^A-Za-z0-9_.-]" "-" _asciichat_gotel_generator_cache "${CMAKE_GENERATOR}")
+set(_asciichat_gotel_cache_dir
+    "${ASCIICHAT_DEPS_CACHE_DIR}/gotel-${_asciichat_gotel_generator_cache}")
 file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 
 set(_asciichat_parent_shared_libs ${BUILD_SHARED_LIBS})
