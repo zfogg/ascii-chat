@@ -64,41 +64,44 @@ function(find_dependency_library)
         message(FATAL_ERROR "find_dependency_library: HEADER argument is required")
     endif()
 
-    # Initialize output variables
-    set(${_DEP_NAME}_FOUND FALSE)
-    set(${_DEP_NAME}_LIBRARIES "")
-    set(${_DEP_NAME}_INCLUDE_DIRS "")
+    # Keep discovery state private to this function.  The public contract is
+    # the canonical asciichat-* target created below; leaking a package's
+    # historical *_FOUND/*_LIBRARIES/*_INCLUDE_DIRS variables makes unrelated
+    # dependency modules order-dependent.
+    set(_dep_found FALSE)
+    set(_dep_libraries "")
+    set(_dep_include_dirs "")
 
     # =================================================================
     # Try vcpkg first if USE_VCPKG is enabled (all platforms)
     # =================================================================
     if(USE_VCPKG AND _DEP_VCPKG_NAMES AND VCPKG_ROOT)
-        find_library(${_DEP_NAME}_LIBRARY_RELEASE
+        find_library(_dep_library_release
             NAMES ${_DEP_VCPKG_NAMES}
             PATHS "${VCPKG_LIB_PATH}"
             NO_DEFAULT_PATH
         )
-        find_library(${_DEP_NAME}_LIBRARY_DEBUG
+        find_library(_dep_library_debug
             NAMES ${_DEP_VCPKG_NAMES}
             PATHS "${VCPKG_DEBUG_LIB_PATH}"
             NO_DEFAULT_PATH
         )
-        find_path(${_DEP_NAME}_INCLUDE_DIR
+        find_path(_dep_include_dir
             NAMES ${_DEP_HEADER}
             PATHS "${VCPKG_INCLUDE_PATH}"
             NO_DEFAULT_PATH
         )
 
-        if(${_DEP_NAME}_LIBRARY_RELEASE OR ${_DEP_NAME}_LIBRARY_DEBUG)
+        if(_dep_library_release OR _dep_library_debug)
             include(${CMAKE_SOURCE_DIR}/cmake/utils/SelectLibraryConfig.cmake)
             asciichat_select_library_config(
-                RELEASE_LIB ${${_DEP_NAME}_LIBRARY_RELEASE}
-                DEBUG_LIB   ${${_DEP_NAME}_LIBRARY_DEBUG}
-                OUTPUT      ${_DEP_NAME}_LIBRARIES
+                RELEASE_LIB ${_dep_library_release}
+                DEBUG_LIB   ${_dep_library_debug}
+                OUTPUT      _dep_libraries
             )
-            set(${_DEP_NAME}_INCLUDE_DIRS ${${_DEP_NAME}_INCLUDE_DIR})
-            set(${_DEP_NAME}_FOUND TRUE)
-            message(STATUS "Found ${BoldGreen}${_DEP_NAME}${ColorReset} via vcpkg: ${${_DEP_NAME}_LIBRARY_RELEASE}${${_DEP_NAME}_LIBRARY_DEBUG}")
+            set(_dep_include_dirs ${_dep_include_dir})
+            set(_dep_found TRUE)
+            message(STATUS "Found ${BoldGreen}${_DEP_NAME}${ColorReset} via vcpkg: ${_dep_library_release}${_dep_library_debug}")
 
             # Add static define if specified and using static triplet
             if(_DEP_STATIC_DEFINE AND VCPKG_TARGET_TRIPLET MATCHES "static")
@@ -110,56 +113,57 @@ function(find_dependency_library)
     # =================================================================
     # Fallback: Try platform-specific methods if not found via vcpkg
     # =================================================================
-    if(NOT ${_DEP_NAME}_FOUND AND NOT USE_MUSL)
+    if(NOT _dep_found AND NOT USE_MUSL)
         # For Release builds on macOS, prefer static libraries from Homebrew
         # Skip if shared libraries are disabled (e.g., static package builds).
         if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND _DEP_STATIC_LIB_NAME AND _DEP_HOMEBREW_PKG AND NOT BUILD_SHARED_LIBS)
             # Find static library directly from Homebrew
-            find_library(${_DEP_NAME}_STATIC_LIBRARY
+            find_library(_dep_static_library
                 NAMES ${_DEP_STATIC_LIB_NAME}
                 PATHS
                     ${HOMEBREW_PREFIX}/opt/${_DEP_HOMEBREW_PKG}/lib
                 NO_DEFAULT_PATH
             )
-            find_path(${_DEP_NAME}_INCLUDE_DIR
+            find_path(_dep_include_dir
                 NAMES ${_DEP_HEADER}
                 PATHS
                     ${HOMEBREW_PREFIX}/opt/${_DEP_HOMEBREW_PKG}/include
                 NO_DEFAULT_PATH
             )
 
-            if(${_DEP_NAME}_STATIC_LIBRARY)
-                set(${_DEP_NAME}_LIBRARIES ${${_DEP_NAME}_STATIC_LIBRARY})
-                set(${_DEP_NAME}_INCLUDE_DIRS ${${_DEP_NAME}_INCLUDE_DIR})
+            if(_dep_static_library)
+                set(_dep_libraries ${_dep_static_library})
+                set(_dep_include_dirs ${_dep_include_dir})
                 # Extract library directory from full library path for target_link_directories()
-                get_filename_component(${_DEP_NAME}_LIBRARY_DIRS ${${_DEP_NAME}_STATIC_LIBRARY} DIRECTORY)
-                set(${_DEP_NAME}_FOUND TRUE)
-                message(STATUS "Found ${BoldBlue}${_DEP_NAME}${ColorReset} (static): ${BoldGreen}${${_DEP_NAME}_STATIC_LIBRARY}${ColorReset}")
+                get_filename_component(_dep_library_dirs ${_dep_static_library} DIRECTORY)
+                set(_dep_found TRUE)
+                message(STATUS "Found ${BoldBlue}${_DEP_NAME}${ColorReset} (static): ${BoldGreen}${_dep_static_library}${ColorReset}")
             endif()
         endif()
 
         # Try pkg-config if not found yet
-        if(NOT ${_DEP_NAME}_FOUND AND _DEP_PKG_CONFIG)
+        if(NOT _dep_found AND _DEP_PKG_CONFIG)
             # Use pkg-config if available (not required - vcpkg handles deps on Windows)
             find_package(PkgConfig QUIET)
             if(PkgConfig_FOUND)
-                pkg_check_modules(${_DEP_NAME} QUIET IMPORTED_TARGET ${_DEP_PKG_CONFIG})
+                pkg_check_modules(_asciichat_dep_pkg QUIET IMPORTED_TARGET ${_DEP_PKG_CONFIG})
             endif()
 
-            if(${_DEP_NAME}_FOUND)
-                if(TARGET PkgConfig::${_DEP_NAME})
-                    set(${_DEP_NAME}_LIBRARIES PkgConfig::${_DEP_NAME})
+            if(_asciichat_dep_pkg_FOUND)
+                if(TARGET PkgConfig::_asciichat_dep_pkg)
+                    set(_dep_libraries PkgConfig::_asciichat_dep_pkg)
                 endif()
                 # Ensure INCLUDE_DIRS is set - pkg_check_modules may not set it if headers are in /usr/include
-                if(NOT ${_DEP_NAME}_INCLUDE_DIRS)
+                if(NOT _dep_include_dirs)
                     # Try to get includedir from pkg-config directly
-                    pkg_get_variable(_${_DEP_NAME}_INCLUDEDIR ${_DEP_PKG_CONFIG} includedir)
-                    if(_${_DEP_NAME}_INCLUDEDIR)
-                        set(${_DEP_NAME}_INCLUDE_DIRS ${_${_DEP_NAME}_INCLUDEDIR})
+                    pkg_get_variable(_dep_pkg_includedir ${_DEP_PKG_CONFIG} includedir)
+                    if(_dep_pkg_includedir)
+                        set(_dep_include_dirs ${_dep_pkg_includedir})
                     endif()
                 endif()
+                set(_dep_found TRUE)
                 message(STATUS "Checking for module '${BoldBlue}${_DEP_PKG_CONFIG}${ColorReset}'")
-                message(STATUS "  Found ${BoldBlue}${_DEP_PKG_CONFIG}${ColorReset}, version ${BoldGreen}${${_DEP_NAME}_VERSION}${ColorReset}")
+                message(STATUS "  Found ${BoldBlue}${_DEP_PKG_CONFIG}${ColorReset}, version ${BoldGreen}${_asciichat_dep_pkg_VERSION}${ColorReset}")
             endif()
         endif()
     endif()
@@ -167,7 +171,7 @@ function(find_dependency_library)
     # =================================================================
     # Final error handling if dependency not found
     # =================================================================
-    if(NOT ${_DEP_NAME}_FOUND)
+    if(NOT _dep_found)
         if(_DEP_REQUIRED)
             set(_error_msg "Could not find ${BoldRed}${_DEP_NAME}${ColorReset} - required dependency\n")
             if(USE_VCPKG)
@@ -183,16 +187,16 @@ function(find_dependency_library)
     # Every dependency discovered through this helper exposes one stable,
     # target-only interface.  Consumers must not need to know whether the
     # provider came from vcpkg, pkg-config, Homebrew, or an imported archive.
-    if(${_DEP_NAME}_FOUND)
+    if(_dep_found)
         string(TOLOWER "${_DEP_NAME}" _dep_target_name)
         set(_dep_target "asciichat-${_dep_target_name}")
         if(NOT TARGET "${_dep_target}")
             add_library("${_dep_target}" INTERFACE)
-            if(${_DEP_NAME}_LIBRARIES)
-                target_link_libraries("${_dep_target}" INTERFACE ${${_DEP_NAME}_LIBRARIES})
+            if(_dep_libraries)
+                target_link_libraries("${_dep_target}" INTERFACE ${_dep_libraries})
             endif()
-            if(${_DEP_NAME}_INCLUDE_DIRS)
-                target_include_directories("${_dep_target}" INTERFACE ${${_DEP_NAME}_INCLUDE_DIRS})
+            if(_dep_include_dirs)
+                target_include_directories("${_dep_target}" INTERFACE ${_dep_include_dirs})
             endif()
         endif()
     endif()
