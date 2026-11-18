@@ -80,36 +80,12 @@ void teardown_main_tests(void) {
 // Use shared binary path detection from tests/common.h
 #define get_binary_path test_get_binary_path
 
-<<<<<<< HEAD:tests/integration/session/main_integration_test.c
-static pid_t spawn_process(const char *path, char *const argv[], const char *name) {
-  pid_t pid = fork();
-  if (pid == 0) {
-    // Child: redirect output to log file
-    char log_path[256];
-    safe_snprintf(log_path, sizeof(log_path), "/tmp/ascii_chat_test_%s_%d.log", name, getpid());
-
-    FILE *log_file = fopen(log_path, "w");
-    if (log_file) {
-      (void)platform_dup2(fileno(log_file), STDOUT_FILENO);
-      (void)platform_dup2(fileno(log_file), STDERR_FILENO);
-      fclose(log_file);
-    }
-
-    execv(path, argv);
-    fprintf(stderr, "Failed to exec %s: %s\n", path, strerror(errno));
-    exit(127);
-  }
-
-  if (pid > 0 && process_count < MAX_PROCESSES) {
-    tracked_processes[process_count].pid = pid;
-=======
 static platform_process_t *spawn_process(const char *path, char *const argv[], const char *name) {
   platform_process_t *process = NULL;
   if (platform_process_spawn(&process, path, (const char *const *)argv, -1, -1, -1) != ASCIICHAT_OK)
     return NULL;
   if (process_count < MAX_PROCESSES) {
     tracked_processes[process_count].process = process;
->>>>>>> origin/master:tests/integration/session/main_integration_test.cpp
     tracked_processes[process_count].name = name;
     tracked_processes[process_count].running = true;
     process_count++;
