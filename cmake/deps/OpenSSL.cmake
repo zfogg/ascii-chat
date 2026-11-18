@@ -331,7 +331,7 @@ if(USE_MUSL)
     # static.  They require the host compiler's glibc/GCC startup files and
     # cannot be linked by the musl-only toolchain.  Include this setting in
     # the signature so existing caches are invalidated and rebuilt.
-    set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};version=${OPENSSL_VERSION};shared=OFF;modules=OFF;quic=ON;zlib=OFF;async=OFF;cflags=${MUSL_KERNEL_CFLAGS}")
+    set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};version=${OPENSSL_VERSION};shared=OFF;modules=OFF;apps=OFF;quic=ON;zlib=OFF;async=OFF;cflags=${MUSL_KERNEL_CFLAGS}")
     set(OPENSSL_CONFIG_STAMP "${OPENSSL_BUILD_DIR}/.config-signature")
 
     # The musl release build does not provide zlib. Keep OpenSSL's optional
@@ -402,6 +402,7 @@ if(USE_MUSL)
                 --libdir=lib
                 no-shared
                 no-module
+                no-apps
                 enable-quic
                 no-zlib
                 no-async

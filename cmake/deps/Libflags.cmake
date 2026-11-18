@@ -56,11 +56,35 @@ else()
         SOURCE_DIR "${_ascii_chat_libflags_source}")
 endif()
 FetchContent_MakeAvailable(libflags)
-if(USE_MUSL AND TARGET flags)
+if(TARGET libflags::libflags)
+    set(ASCIICHAT_LIBFLAGS_TARGET libflags::libflags CACHE INTERNAL
+        "libflags target selected by ascii-chat" FORCE)
+    # Keep ascii-chat's existing consumer names valid while upstream exposes
+    # the library as libflags::libflags.
+    if(NOT TARGET libflags::flags)
+        add_library(libflags::flags ALIAS libflags::libflags)
+    endif()
+elseif(TARGET libflags::flags)
+    set(ASCIICHAT_LIBFLAGS_TARGET libflags::flags CACHE INTERNAL
+        "libflags target selected by ascii-chat" FORCE)
+endif()
+
+if(NOT ASCIICHAT_LIBFLAGS_TARGET)
+    message(FATAL_ERROR "libflags was configured without a usable CMake target")
+endif()
+
+get_target_property(_asciichat_libflags_real_target
+    ${ASCIICHAT_LIBFLAGS_TARGET} ALIASED_TARGET)
+if(NOT _asciichat_libflags_real_target)
+    set(_asciichat_libflags_real_target ${ASCIICHAT_LIBFLAGS_TARGET})
+endif()
+
+if(USE_MUSL)
     # libflags needs libplatform at link time, but its public dependency edge
     # also propagates libplatform's host pkg-config include roots (notably
     # /usr/include) into this musl target. Keep those dependencies link-only.
-    get_target_property(_libflags_interface_links flags INTERFACE_LINK_LIBRARIES)
+    get_target_property(_libflags_interface_links
+        ${_asciichat_libflags_real_target} INTERFACE_LINK_LIBRARIES)
     if(_libflags_interface_links)
         string(REPLACE "libplatform::libplatform"
             "$<LINK_ONLY:libplatform::libplatform>"
@@ -68,19 +92,14 @@ if(USE_MUSL AND TARGET flags)
         string(REPLACE "libflags-tomlc17"
             "$<LINK_ONLY:libflags-tomlc17>"
             _libflags_interface_links "${_libflags_interface_links}")
-        set_property(TARGET flags PROPERTY INTERFACE_LINK_LIBRARIES
+        set_property(TARGET ${_asciichat_libflags_real_target}
+            PROPERTY INTERFACE_LINK_LIBRARIES
             "${_libflags_interface_links}")
     endif()
-    unset(_libflags_interface_links)
 endif()
-if(TARGET libflags::flags)
-    get_target_property(_libflags_real_target libflags::flags ALIASED_TARGET)
-    if(_libflags_real_target)
-        set_target_properties(${_libflags_real_target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    else()
-        set_target_properties(libflags::flags PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    endif()
-    unset(_libflags_real_target)
-endif()
+set_target_properties(${_asciichat_libflags_real_target}
+    PROPERTIES POSITION_INDEPENDENT_CODE ON)
+unset(_libflags_interface_links)
+unset(_asciichat_libflags_real_target)
 unset(_ascii_chat_libflags_source)
 unset(_asciichat_libflags_pcre2_include_dirs)
