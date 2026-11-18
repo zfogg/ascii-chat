@@ -468,9 +468,7 @@ if(NOT FFMPEG_FOUND OR NOT FFMPEG_LIBRARIES)
     find_package(PkgConfig QUIET)
 
     if(NOT PkgConfig_FOUND)
-        message(WARNING "pkg-config not found - FFmpeg support will be disabled")
-        set(FFMPEG_FOUND FALSE)
-        return()
+        message(FATAL_ERROR "pkg-config is required to locate FFmpeg when no bundled FFmpeg is configured")
     endif()
 
     # Find FFmpeg components
@@ -483,7 +481,7 @@ if(NOT FFMPEG_FOUND OR NOT FFMPEG_LIBRARIES)
     )
 
     if(NOT FFMPEG_FOUND)
-        message(WARNING "FFmpeg not found - media file streaming will be disabled")
+        message(FATAL_ERROR "FFmpeg development libraries are required")
         message(STATUS "Install FFmpeg development libraries:")
         message(STATUS "  Debian/Ubuntu: sudo apt-get install libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev")
         message(STATUS "  Fedora/RHEL: sudo dnf install ffmpeg-devel")

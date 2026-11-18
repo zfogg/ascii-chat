@@ -291,5 +291,8 @@ find_dependency_library(
     HOMEBREW_PKG libsodium
     STATIC_LIB_NAME libsodium.a
     STATIC_DEFINE SODIUM_STATIC
-    OPTIONAL
 )
+
+if(NOT LIBSODIUM_FOUND)
+    message(FATAL_ERROR "libsodium is required for native builds")
+endif()
