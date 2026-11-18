@@ -90,16 +90,12 @@ function(asciichat_build_aec3)
     target_link_libraries(api PUBLIC aec3)
     target_link_libraries(aec3 api AudioProcess)
     set_target_properties(AudioProcess aec3 api PROPERTIES LINK_INTERFACE_MULTIPLICITY 3)
-    if(ABSEIL_INCLUDE_DIRS)
-        foreach(_target AudioProcess aec3 api base)
-            target_include_directories(${_target} BEFORE PRIVATE ${ABSEIL_INCLUDE_DIRS})
-        endforeach()
-    endif()
 endfunction()
 asciichat_build_aec3()
 if(NOT TARGET asciichat-webrtc-aec3)
     add_library(asciichat-webrtc-aec3 INTERFACE)
-    target_link_libraries(asciichat-webrtc-aec3 INTERFACE AudioProcess aec3 api base)
+    target_link_libraries(asciichat-webrtc-aec3 INTERFACE
+        AudioProcess aec3 api base asciichat-abseil)
     target_include_directories(asciichat-webrtc-aec3 INTERFACE
         "${WEBRTC_AEC3_SOURCE_DIR}"
         "${WEBRTC_AEC3_SOURCE_DIR}/base"

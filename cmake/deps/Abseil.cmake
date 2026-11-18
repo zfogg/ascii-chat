@@ -6,9 +6,8 @@
 # For musl builds: Built from source
 # For native builds: Uses system package manager or builds from source
 #
-# Outputs (variables set by this file):
-#   - ABSEIL_LIBRARIES: Abseil libraries to link (PARENT_SCOPE)
-#   - ABSEIL_INCLUDE_DIRS: Abseil include directories (PARENT_SCOPE)
+# Contract:
+#   - asciichat-abseil: canonical target carrying Abseil usage requirements
 # =============================================================================
 
 
@@ -30,7 +29,6 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE
             URL_HASH SHA256=1692f77d1739bacf3f94337188b78583cf09bab7e420d2dc6c5605a4f86785a1
             DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
         FetchContent_MakeAvailable(asciichat_abseil)
-        set(ABSEIL_INCLUDE_DIRS "${asciichat_abseil_SOURCE_DIR}" PARENT_SCOPE)
     endfunction()
     asciichat_build_abseil()
     if(NOT TARGET asciichat-abseil)
@@ -46,12 +44,12 @@ endif()
 if(UNIX AND NOT APPLE)
     # Linux/BSD: Use system package managers
     find_package(PkgConfig REQUIRED)
-    pkg_check_modules(ABSEIL absl QUIET)
+    pkg_check_modules(_asciichat_abseil IMPORTED_TARGET absl QUIET)
 
-    if(ABSEIL_FOUND)
-        set(ABSEIL_LIBRARIES ${ABSEIL_LDFLAGS})
-        set(ABSEIL_INCLUDE_DIRS ${ABSEIL_INCLUDE_DIRS})
-        message(STATUS "${BoldGreen}✓${ColorReset} Abseil: ${ABSEIL_LDFLAGS}")
+    if(_asciichat_abseil_FOUND AND TARGET PkgConfig::_asciichat_abseil)
+        add_library(asciichat-abseil INTERFACE)
+        target_link_libraries(asciichat-abseil INTERFACE PkgConfig::_asciichat_abseil)
+        message(STATUS "${BoldGreen}✓${ColorReset} Abseil: ${_asciichat_abseil_LDFLAGS}")
     else()
         message(STATUS "${BoldYellow}⚠${ColorReset} Abseil not found in system packages, will try to find CMake package")
         find_package(absl CONFIG QUIET
@@ -62,14 +60,13 @@ if(UNIX AND NOT APPLE)
                 "/usr/lib/cmake"
                 "/usr/local/lib/cmake"
             NO_DEFAULT_PATH)
-        if(NOT absl_FOUND)
+        if(NOT TARGET absl::base)
             unset(_asciichat_absl_config CACHE)
             if(EXISTS "/usr/lib/x86_64-linux-gnu/cmake/absl/abslConfig.cmake")
                 include("/usr/lib/x86_64-linux-gnu/cmake/absl/abslConfig.cmake")
-                set(absl_FOUND TRUE)
             endif()
         endif()
-        if(NOT absl_FOUND)
+        if(NOT TARGET absl::base)
             find_file(_asciichat_absl_config
                 NAMES abslConfig.cmake
                 PATHS
@@ -79,12 +76,11 @@ if(UNIX AND NOT APPLE)
                 NO_DEFAULT_PATH)
             if(_asciichat_absl_config)
                 include("${_asciichat_absl_config}")
-                set(absl_FOUND TRUE)
             endif()
         endif()
-        if(absl_FOUND)
-            set(ABSEIL_LIBRARIES absl::base absl::strings)
-            set(ABSEIL_INCLUDE_DIRS "")
+        if(TARGET absl::base)
+            add_library(asciichat-abseil INTERFACE)
+            target_link_libraries(asciichat-abseil INTERFACE absl::base absl::strings)
             message(STATUS "${BoldGreen}✓${ColorReset} Abseil found via CMake")
         else()
             message(FATAL_ERROR "Abseil is required; install the Abseil development package or enable the bundled dependency build")
@@ -94,16 +90,17 @@ if(UNIX AND NOT APPLE)
 elseif(APPLE)
     # macOS: Use homebrew or macports
     find_package(PkgConfig REQUIRED)
-    pkg_check_modules(ABSEIL absl QUIET)
+    pkg_check_modules(_asciichat_abseil IMPORTED_TARGET absl QUIET)
 
-    if(ABSEIL_FOUND)
-        set(ABSEIL_LIBRARIES ${ABSEIL_LDFLAGS})
-        set(ABSEIL_INCLUDE_DIRS ${ABSEIL_INCLUDE_DIRS})
-        message(STATUS "${BoldGreen}✓${ColorReset} Abseil: ${ABSEIL_LDFLAGS}")
+    if(_asciichat_abseil_FOUND AND TARGET PkgConfig::_asciichat_abseil)
+        add_library(asciichat-abseil INTERFACE)
+        target_link_libraries(asciichat-abseil INTERFACE PkgConfig::_asciichat_abseil)
+        message(STATUS "${BoldGreen}✓${ColorReset} Abseil: ${_asciichat_abseil_LDFLAGS}")
     else()
         message(STATUS "${BoldYellow}⚠${ColorReset} Abseil not found in system packages")
-        set(ABSEIL_LIBRARIES "")
-        set(ABSEIL_INCLUDE_DIRS "")
+        find_package(absl CONFIG REQUIRED)
+        add_library(asciichat-abseil INTERFACE)
+        target_link_libraries(asciichat-abseil INTERFACE absl::base absl::strings)
     endif()
 
 elseif(WIN32)
@@ -111,9 +108,9 @@ elseif(WIN32)
     find_package(absl CONFIG QUIET
         PATHS "${VCPKG_LIB_PATH}/.."
         NO_DEFAULT_PATH)
-    if(absl_FOUND)
-        set(ABSEIL_LIBRARIES absl::base absl::strings)
-        set(ABSEIL_INCLUDE_DIRS "")
+    if(TARGET absl::base)
+        add_library(asciichat-abseil INTERFACE)
+        target_link_libraries(asciichat-abseil INTERFACE absl::base absl::strings)
         message(STATUS "${BoldGreen}✓${ColorReset} Abseil (Windows vcpkg)")
 
         # Fixup: vcpkg abseil injects raw MSVC linker flags (-ignore:4221) in
@@ -150,9 +147,6 @@ else()
     message(FATAL_ERROR "Unsupported platform for Abseil")
 endif()
 
-if(NOT ABSEIL_FOUND AND TARGET absl::base)
-    set(ABSEIL_FOUND TRUE)
-endif()
-if(NOT ABSEIL_FOUND)
+if(NOT TARGET asciichat-abseil)
     message(FATAL_ERROR "Abseil is required for the native WebRTC audio dependency")
 endif()
