@@ -177,6 +177,17 @@ function(asciichat_configure_quic)
         set(_quic_openssl_cache_args)
     endif()
     if(WIN32)
+        # FindOpenSSL in the isolated child does not inherit the parent's
+        # vcpkg prefix. Pass the resolved triplet paths explicitly for both
+        # shared and static configurations.
+        set(_quic_openssl_root "${_quic_vcpkg_root}/${VCPKG_TARGET_TRIPLET}")
+        list(APPEND _quic_common_args
+            "-DOPENSSL_ROOT_DIR:PATH=${_quic_openssl_root}"
+            "-DOPENSSL_SSL_LIBRARY:FILEPATH=${_quic_ssl_file}"
+            "-DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}"
+            ${_quic_openssl_cache_args})
+    endif()
+    if(WIN32)
         # ngtcp2's OpenSSL::SSL target does not always carry the paired
         # crypto import library through its child-project interface on Clang.
         # Pass the selected vcpkg crypto library explicitly to its DLL link.
