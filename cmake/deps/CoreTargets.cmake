@@ -37,9 +37,6 @@ _asciichat_wrap_target(asciichat-fftw FFTW3::fftw3 fftw3 fftw3f)
 _asciichat_wrap_target(asciichat-fftw-float FFTW3::fftw3f fftw3f)
 _asciichat_wrap_target(asciichat-zstd zstd::libzstd zstd::zstd)
 _asciichat_wrap_target(asciichat-libsodium asciichat-libsodium unofficial-sodium::sodium sodium)
-if(USE_MIMALLOC)
-    _asciichat_wrap_target(asciichat-mimalloc ${MIMALLOC_LIBRARIES} mimalloc mimalloc-static mimalloc-shared)
-endif()
 
 foreach(_target IN ITEMS
     asciichat-portaudio asciichat-opus asciichat-fftw asciichat-fftw-float
