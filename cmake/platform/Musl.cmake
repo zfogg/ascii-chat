@@ -52,6 +52,14 @@ function(configure_musl_post_project)
     if(NOT USE_MUSL)
         return()
     endif()
+    if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        execute_process(COMMAND "${CMAKE_C_COMPILER}" -print-libgcc-file-name
+            OUTPUT_VARIABLE MUSL_LIBGCC_PATH OUTPUT_STRIP_TRAILING_WHITESPACE
+            COMMAND_ERROR_IS_FATAL ANY)
+        if(NOT EXISTS "${MUSL_LIBGCC_PATH}")
+            message(FATAL_ERROR "GCC musl runtime archive was not found: ${MUSL_LIBGCC_PATH}")
+        endif()
+    endif()
 
     # Set musl dependency cache directories for ExternalProject builds
     # ASCIICHAT_DEPS_CACHE_MUSL is NOT set in CMakeLists.txt because USE_MUSL
@@ -446,7 +454,12 @@ function(configure_musl_post_project)
             PARENT_SCOPE)
         message(STATUS "Using Clang compiler-rt builtins: ${ASCIICHAT_COMPILER_RT_BUILTINS}")
     else()
-        message(FATAL_ERROR "Musl builds require Clang/LLVM; GCC runtimes are unsupported")
+        set(CMAKE_C_STANDARD_LIBRARIES
+            "\"${MUSL_LIBGCC_PATH}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\""
+            PARENT_SCOPE)
+        set(CMAKE_CXX_STANDARD_LIBRARIES
+            "\"${MUSL_LIBGCC_PATH}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\""
+            PARENT_SCOPE)
     endif()
 
     # Disable fortify source for our code (musl doesn't support it)

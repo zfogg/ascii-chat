@@ -1,9 +1,10 @@
 #!/bin/sh
 set -eu
 
-toolchain_root="$(CDPATH= cd -- "$(dirname -- "$0")/../../.deps-cache/wsl/Arch" && pwd)"
+repo_root="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
+toolchain_root="${ASCII_CHAT_DEPS_CACHE_ROOT:-${repo_root}/.deps-cache/wsl/Ubuntu}"
 gcc_root=""
-for candidate in "$toolchain_root"/*/alpine-gcc; do
+for candidate in "$toolchain_root"/alpine-gcc "$toolchain_root"/*/alpine-gcc; do
   if [ -x "$candidate/usr/bin/g++" ]; then
     gcc_root="$candidate"
     break

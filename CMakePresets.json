@@ -139,7 +139,7 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
-        "USE_MUSL": "OFF"
+        "USE_MUSL": "ON"
       },
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
@@ -151,7 +151,7 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++",
-        "USE_MUSL": "OFF"
+        "USE_MUSL": "ON"
       },
       "binaryDir": "${sourceDir}/build/${presetName}",
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
