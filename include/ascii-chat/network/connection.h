@@ -5,6 +5,10 @@
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/connection_endpoint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct network_connection network_connection_t;
 typedef struct network_server network_server_t;
 typedef struct quic_endpoint quic_endpoint_t;
@@ -123,3 +127,7 @@ uint8_t network_connection_crypto_mode(network_connection_t *);
  * that worker before destroy; this call retains all resources on return.
  */
 asciichat_error_t network_connection_run(network_connection_t *, const network_connection_callbacks_t *, void *);
+
+#ifdef __cplusplus
+}
+#endif

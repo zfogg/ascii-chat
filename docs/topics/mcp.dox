@@ -8,7 +8,7 @@
  *
  * `ascii-chat mcp-server` exposes four rendering tools over newline-delimited JSON-RPC on stdio. It runs through the ordinary application initialization, options, logging, error-stack and diagnostic workers. Both transports automatically skip startup update checks. Protocol stdout is reserved before initialization; incidental terminal diagnostics go to stderr.
  *
- * `ascii-chat mcp-server --transport http` serves all five tools at `/mcp` using MCP Streamable HTTP and libwebsockets. The default listener is `127.0.0.1:27228`, following the native TCP and WebSocket defaults (27224–27227). Override it with `--port`, `ASCII_CHAT_PORT`, `--address`, `--address6`, or the existing zero-to-two positional IPv4/IPv6 bind addresses. Examples:
+ * `ascii-chat mcp-server --transport http` serves all five tools at `/mcp` using MCP Streamable HTTP and libwebsockets. The default listener is `127.0.0.1:27228`, following the native TCP and WebSocket defaults (27224–27227). Override it with `--port`, `ASCII_CHAT_PORT`, `--address`, `--address6`, or the existing zero-to-two positional IPv4/IPv6 bind addresses. For service installation on Linux, see @ref systemd_mcp. Examples:
  *
  * ```sh
  * ascii-chat mcp-server --transport http --port 28028 --address 127.0.0.1

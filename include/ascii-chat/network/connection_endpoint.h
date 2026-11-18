@@ -15,6 +15,10 @@
 
 #include "../asciichat_errno.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
   CONNECTION_ENDPOINT_TCP = 0,
   CONNECTION_ENDPOINT_WEBSOCKET = 1,
@@ -52,3 +56,7 @@ asciichat_error_t connection_endpoint_resolve(const char *input, uint16_t defaul
 asciichat_error_t connection_endpoint_override_port(const char *input, uint16_t port, char *output, size_t output_size);
 
 const char *connection_endpoint_protocol_name(connection_endpoint_protocol_t protocol);
+
+#ifdef __cplusplus
+}
+#endif

@@ -32,6 +32,10 @@
 
 #if defined(_MSC_VER) && !defined(__clang__)
 #include <intrin.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 #endif
 
 /* ============================================================================
@@ -199,3 +203,7 @@ static inline int count_set_bits(uint64_t x) {
 }
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

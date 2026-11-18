@@ -14,7 +14,7 @@
 #include <ascii-chat/common/error_codes.h>
 #include <options/options.h>
 #include <options/validation.h>
-#include <options/registry.h>
+#include <options/registry/registry.h>
 #include <options/rcu.h>
 #include <ascii-chat/util/path.h>
 #include <util/string.h>
@@ -163,7 +163,7 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   if (strcmp(config_path, "-") != 0 && stat(config_path, &file_info) != 0) {
     if (!strict && (errno == ENOENT || errno == ENOTDIR))
       return ASCIICHAT_OK;
-    return SET_ERRNO(ERROR_CONFIG, "Unable to access configuration file '%s': %s", config_path, strerror(errno));
+    return SET_ERRNO(ERROR_CONFIG, "Unable to access configuration file '%s': %s", config_path, platform_strerror(errno));
   }
 
   const option_mode_bitmask_t mode_mask = detected_mode == MODE_DISCOVERY ? OPTION_MODE_ALL : (option_mode_bitmask_t)(OPTION_MODE_BINARY | (1U << detected_mode));

@@ -2,6 +2,10 @@
 #include <ascii-chat/network/event.h>
 #include <ascii-chat/network/acip/transport.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Outbound ACIP adapter. Incoming packets are delivered by the connection's
  * decoder. Destroy after the stream close callback, when workers have drained.
  */
@@ -19,3 +23,7 @@ acip_transport_t *acip_async_tcp_client_create(socket_t *, crypto_context_t *);
  */
 acip_transport_t *acip_async_tcp_accepted_create(platform_event_stream_t *);
 /** Atomic-only cancellation request, suitable for the native signal path. */
+
+#ifdef __cplusplus
+}
+#endif

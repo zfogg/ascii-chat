@@ -18,7 +18,7 @@
 #include <options/strings.h>
 #include <libflags/levenshtein.h>
 #include <options/enums.h>
-#include <options/registry.h>
+#include <options/registry/registry.h>
 #include <libplatform/terminal.h>           // For terminal color modes
 #include <ascii-chat/video/ascii/palette.h> // For palette_type_t
 #include <ascii-chat/common.h>
@@ -201,6 +201,10 @@ const char *asciichat_suggest_enum_value(const char *option_name, const char *in
   }
 
   size_t value_count = 0;
+<<<<<<< HEAD
   const char **values = registry_get_enum_values(option_name, NULL, &value_count);
+=======
+  const char **values = options_registry_get_enum_values(option_name, NULL, &value_count);
+>>>>>>> origin/master
   return values ? levenshtein_find_similar(input, values) : NULL;
 }

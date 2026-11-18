@@ -3,6 +3,10 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <libplatform/socket.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Native asynchronous networking. Call handle operations on the loop thread.
  * post() and stop() may be called by other threads. The caller owns the loop
  * thread and must join it before destroy(). No application callback may block.
@@ -64,3 +68,7 @@ void platform_event_stream_observe_queue(platform_event_stream_t *, platform_eve
  * holds a live stream reference; other stream operations are loop-only.
  */
 asciichat_error_t platform_event_stream_work(platform_event_stream_t *, platform_event_work_fn, platform_event_work_done_fn, void *);
+
+#ifdef __cplusplus
+}
+#endif

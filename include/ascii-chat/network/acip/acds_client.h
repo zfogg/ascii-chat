@@ -127,6 +127,10 @@
 #include "../../crypto/policy.h"
 #include "../../network/acip/transport.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // ============================================================================
 // ACDS Client Configuration
 // ============================================================================
@@ -408,3 +412,7 @@ void acds_client_config_init_defaults(acds_client_config_t *config);
 /* ACQT v1 is optional. An absent extension decodes to no advertised endpoints. */
 asciichat_error_t acds_transport_metadata_encode(uint16_t quic_port, const char *url, void *output, size_t capacity, size_t *length);
 asciichat_error_t acds_transport_metadata_decode(const void *bytes, size_t length, uint16_t *quic_port, char *url, size_t capacity);
+
+#ifdef __cplusplus
+}
+#endif

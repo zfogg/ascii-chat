@@ -57,6 +57,10 @@
 #include <ascii-chat/common.h>
 #include <libplatform/terminal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Keep dependency structures at their normal alignment; only image types are packed.
 #ifdef _WIN32
 #pragma pack(push, 1)
@@ -613,6 +617,10 @@ char *rgb_to_ansi_bg(int r, int g, int b);
 void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
 
 #ifdef _WIN32
 #pragma pack(pop)

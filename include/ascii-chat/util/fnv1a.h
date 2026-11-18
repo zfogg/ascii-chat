@@ -24,6 +24,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // NOTE: This is a low-level hash utility. To avoid circular dependencies with
 // asciichat_errno.h and common.h, we don't log errors here. Invalid inputs return 0.
 
@@ -158,3 +162,10 @@ static inline uint32_t fnv1a_hash_uint64(uint64_t value) {
 }
 
 /** @} */
+<<<<<<< HEAD
+=======
+
+#ifdef __cplusplus
+}
+#endif
+>>>>>>> origin/master

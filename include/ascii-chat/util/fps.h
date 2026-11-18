@@ -42,6 +42,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Counters and timestamps used to calculate and report frame rate
  * @brief Counters and timestamps used to calculate and report frame rate
@@ -108,3 +112,7 @@ void fps_init_with_interval(fps_t *tracker, int expected_fps, const char *name, 
 void fps_frame_ns(fps_t *tracker, uint64_t current_time_ns, const char *context);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

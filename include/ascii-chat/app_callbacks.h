@@ -12,9 +12,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
+<<<<<<< HEAD
 static inline bool app_callback_macro_continue(void) {
   return false;
 }
+=======
+#ifdef __cplusplus
+extern "C" {
+#endif
+>>>>>>> origin/master
 
 typedef void (*app_debug_write_fn)(const char *text, void *context);
 
@@ -98,4 +104,8 @@ static inline uint64_t app_callback_platform_get_monotonic_time_us(void) {
     }                                                  \
   } while (app_callback_macro_continue())
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif

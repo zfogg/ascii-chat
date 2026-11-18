@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #include <ascii-chat/util/symbols.h>
 
 #include <ctype.h>
@@ -32,3 +33,7 @@ bool asciichat_symbol_module_is_project(const char *module_name) {
 
   return strncmp(basename, "libasciichat.", strlen("libasciichat.")) == 0 && (strstr(basename, ".so") != NULL || strstr(basename, ".dylib") != NULL);
 }
+=======
+/* Symbol formatting is provided by libplatform. */
+#include <libplatform/symbols.h>
+>>>>>>> origin/master

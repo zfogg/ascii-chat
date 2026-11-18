@@ -83,8 +83,8 @@
  * The optional Python defer backend locates libclang automatically, or accepts
  * `ASCIICHAT_LIBCLANG_PATH` when it cannot be discovered.
  *
- * Linux release builds can use `USE_MUSL=ON`; that path is Linux-only and needs
- * musl-gcc, GCC as its underlying compiler, and LLD. macOS uses Clang, Apple
+ * Linux release builds can use `USE_MUSL=ON`; CMake exposes that option only on
+ * Linux. The path needs musl-gcc, GCC as its underlying compiler, and LLD. macOS uses Clang, Apple
  * frameworks, and the configured Homebrew/system dependencies. Windows release
  * builds use the vcpkg configuration and static triplet selected by the preset.
  *
@@ -115,6 +115,7 @@
  * | `ASCIICHAT_USE_PCH=OFF` | Disable precompiled headers |
  * | `ASCIICHAT_ENABLE_UNITY_BUILDS=ON` | Batch sources for faster builds |
  * | `USE_MUSL=ON` | Select the Linux musl path |
+ * | `BUILD_WEB=ON` | Build WASM/browser targets; requires `emcc` and `em++` on `PATH` |
  * | `ASCIICHAT_ENFORCE_STATIC_RELEASE=OFF` | Permit a non-static release configuration |
  * | `ASCIICHAT_FORMAT_ONLY=ON` | Configure only formatting-related paths |
  * | `USE_CPACK=ON` | Enable package generation |

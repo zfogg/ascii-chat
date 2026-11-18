@@ -18,6 +18,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Array of English nouns for session and client naming
  *
@@ -115,3 +119,7 @@ int generate_client_id(char *buffer, size_t buffer_size);
 int generate_client_name(char *buffer, size_t buffer_size, void *existing_clients_hash, int port, bool is_tcp);
 
 #endif // ASCII_CHAT_DISCOVERY_NOUNS_H
+
+#ifdef __cplusplus
+}
+#endif

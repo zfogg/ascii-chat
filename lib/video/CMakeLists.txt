@@ -17,13 +17,13 @@ set(VIDEO_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/h265/decoder.c
     # ASCII rendering pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ascii.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ascii/render.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sgr.c
   ${CMAKE_CURRENT_SOURCE_DIR}/terminal/ansi.c
     # SIMD-based ASCII render implementations
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/common.c
 
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/ascii/palette.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/output_buffer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/rle.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/zalgo.c

@@ -1,6 +1,6 @@
 #include "mcp.h"
 #include <options/options.h>
-#include <options/registry_core.h>
+#include <options/registry/core.h>
 #include <ascii-chat/app_callbacks.h>
 #include <sodium.h>
 #include <uv.h>

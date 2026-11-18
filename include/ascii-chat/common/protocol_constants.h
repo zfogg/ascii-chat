@@ -12,6 +12,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Protocol Version Constants
  * ============================================================================ */
@@ -87,3 +91,7 @@
 #define PIXEL_FORMAT_BGRA 4
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

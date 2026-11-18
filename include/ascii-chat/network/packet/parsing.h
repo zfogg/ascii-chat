@@ -77,6 +77,10 @@
 #include "../../audio/audio.h"
 #include "../../util/endian.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @name Frame Decoding Functions
  * @{
  * @ingroup packet_parsing
@@ -300,3 +304,7 @@ asciichat_error_t packet_parse_opus_batch(const void *packet_data, size_t packet
 /** @} */
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

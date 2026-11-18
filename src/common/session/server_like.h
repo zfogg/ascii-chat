@@ -16,6 +16,10 @@
 #include <ascii-chat/tui/status.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef asciichat_error_t (*session_server_like_init_fn)(void *user_data);
 
 typedef void (*session_server_like_interrupt_fn)(int sig);
@@ -86,3 +90,7 @@ ASCIICHAT_API asciichat_error_t session_server_like_mdns_advertise(const char *n
 ASCIICHAT_API bool session_server_like_shutdown_requested(void);
 
 ASCIICHAT_API void session_server_like_request_shutdown(void);
+
+#ifdef __cplusplus
+}
+#endif

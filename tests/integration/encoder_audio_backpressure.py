@@ -1,6 +1,6 @@
 """Compile the production audio finalization path against a backpressured codec.
 
-Run with Python and Clang; no Criterion or FFmpeg installation is needed.
+Run with Python and Clang; no Catch2 or FFmpeg installation is needed.
 An optional source path allows verifying the regression against an older revision.
 """
 

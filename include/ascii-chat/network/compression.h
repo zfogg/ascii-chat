@@ -50,6 +50,10 @@
 #include <stdbool.h>
 #include "../asciichat_errno.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name Compression Settings
  * @{
@@ -159,3 +163,7 @@ typedef struct {
 } compression_workspace_t;
 asciichat_error_t compress_workspace(compression_workspace_t *workspace, const void *input, size_t size, int level);
 void compression_workspace_destroy(compression_workspace_t *workspace);
+
+#ifdef __cplusplus
+}
+#endif

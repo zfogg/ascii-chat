@@ -8,6 +8,10 @@
 
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Determine whether an address belongs to the local Tailscale tailnet.
  *
@@ -16,3 +20,7 @@
  * reverse-checked. The resolved name must end in `.ts.net`.
  */
 bool is_tailscale_host(const char *address);
+
+#ifdef __cplusplus
+}
+#endif

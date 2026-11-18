@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.30)
+cmake_policy(SET CMP0131 NEW)
 
 # The project has intentionally forced cache assignments for platform and
 # dependency setup. Keep those assignments from making every Ninja build
@@ -360,15 +361,14 @@ add_custom_command(
     VERBATIM
 )
 
-# Add generated source directly to the ascii-chat-core target.
-# CORE_SRCS was already consumed by create_ascii_chat_module() inside lib/CMakeLists.txt,
-# so list(APPEND CORE_SRCS ...) would be too late. target_sources() adds to the
-# already-created target instead.
+# Add generated source directly to the options target.
+# The former catch-all core target has been split into focused
+# infrastructure modules; manpage embedding belongs to options.
 set_source_files_properties(
     "${MANPAGE_TEMPLATE_EMBEDDED}"
     PROPERTIES GENERATED TRUE
 )
-target_sources(ascii-chat-core PRIVATE "${MANPAGE_TEMPLATE_EMBEDDED}")
+target_sources(ascii-chat-options PRIVATE "${MANPAGE_TEMPLATE_EMBEDDED}")
 
 # Define resource paths for development builds
 # Point to BINARY_DIR where configured templates are located (not SOURCE_DIR raw templates)

@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Run the same cell interpreter without a platform-specific Criterion library.
+// Run the same cell interpreter without a platform-specific test library.
 #define Test(suite, name, ...) static void suite##_##name(void)
 #define cr_assert(condition, ...)                                     \
   do {                                                                \

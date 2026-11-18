@@ -69,6 +69,10 @@
 #include <stdbool.h>
 #include <libplatform/terminal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief For color filter def, this is the live record that ties `name`, `cli_name`, `r`, `g` together. The owning code
  * creates it, updates it while work is active, and releases its handles and pointed-to storage before freeing the
@@ -209,3 +213,7 @@ static inline uint8_t rgb_to_grayscale(uint8_t r, uint8_t g, uint8_t b) {
 int apply_color_filter(uint8_t *pixels, uint32_t width, uint32_t height, uint32_t stride, color_filter_t filter, float time);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

@@ -10,9 +10,9 @@
 # root.
 get_filename_component(_ascii_chat_repo_root "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 
-if(USE_MUSL OR ASCIICHAT_STATIC_DEPS)
+if(USE_MUSL OR NOT BUILD_SHARED_LIBS)
     set(_ascii_chat_libplatform_shared OFF)
-elseif(ASCIICHAT_SHARED_DEPS)
+elseif(BUILD_SHARED_LIBS)
     set(_ascii_chat_libplatform_shared ON)
 elseif(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
     set(_ascii_chat_libplatform_shared ON)
@@ -88,6 +88,16 @@ else()
 endif()
 target_compile_definitions(libplatform PRIVATE
     LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
+if(USE_MUSL AND TARGET libplatform-objects)
+    target_compile_definitions(libplatform-objects PRIVATE USE_MUSL=1)
+endif()
+if(UNIX AND NOT APPLE)
+    foreach(_libplatform_target IN ITEMS libplatform libplatform-objects)
+        if(TARGET ${_libplatform_target})
+            target_compile_definitions(${_libplatform_target} PRIVATE _GNU_SOURCE _XOPEN_SOURCE=700)
+        endif()
+    endforeach()
+endif()
 
 # Coverage is an application-level instrumentation option.  Do not propagate
 # its profile runtime into the shared libplatform DSO: executables own the
@@ -135,6 +145,13 @@ if(EMSCRIPTEN)
                 "${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc")
         endif()
     endforeach()
+endif()
+
+# Clang/lld can infer the exported data section as read-only when a Windows
+# DLL exports mutable C globals (notably getopt's optind/optarg state). Keep
+# the section writable so both the CLI and Catch2 tests can reset getopt.
+if(WIN32 AND TARGET libplatform)
+    target_link_options(libplatform PRIVATE "LINKER:SHELL:/SECTION:.data,RW")
 endif()
 
 

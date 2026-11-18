@@ -201,6 +201,7 @@ jobs:
           if-no-files-found: error
 
       - name: Create Release
+        if: github.ref == 'refs/heads/__release_created_after_validation__'
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
@@ -285,6 +286,13 @@ jobs:
           prerelease: false
           files: ${{ steps.tarball.outputs.tarball }}
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload source artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-source
+          path: ${{ steps.tarball.outputs.tarball }}
+          if-no-files-found: error
 
   package-linux:
     name: Package Linux installers
@@ -409,7 +417,7 @@ jobs:
           tar -xOzf "$archive" share/man/man1/ascii-chat.1 > "$RUNNER_TEMP/release-man1"
           grep -q 'MCP SERVER' "$RUNNER_TEMP/release-man1"
           tar -tzf "$archive" > "$RUNNER_TEMP/release-runtime-files"
-          grep -q 'share/man/man5/ascii-chat.5$' "$RUNNER_TEMP/release-runtime-files"
+          grep -Eq '(^|/)share/man/man5/ascii-chat\.5$' "$RUNNER_TEMP/release-runtime-files"
 
       - name: Print build logs on failure
         if: failure()
@@ -503,24 +511,12 @@ jobs:
           # List signatures
           ls -lh *.asc
 
-      - name: Upload Linux packages to release
-        shell: bash
-        run: |
-          for attempt in 1 2 3; do
-            if gh release upload "${{ needs.create-release.outputs.version }}" dist/* --clobber; then
-              exit 0
-            fi
-
-            if [[ "$attempt" -lt 3 ]]; then
-              echo "Release upload failed; retrying in $((attempt * 5)) seconds (attempt $((attempt + 1))/3)..."
-              sleep $((attempt * 5))
-            fi
-          done
-
-          echo "Release upload failed after 3 attempts"
-          exit 1
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Upload Linux packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-${{ matrix.runner }}
+          path: dist
+          if-no-files-found: error
 
   package-macos:
     name: Package macOS installers
@@ -608,7 +604,7 @@ jobs:
           if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
             CMAKE_ARGS="-DASCIICHAT_REQUIRE_HVF=ON"
           fi
-          CMAKE_ARGS="$CMAKE_ARGS --preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }} -DASCIICHAT_SHARED_DEPS=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON"
+          CMAKE_ARGS="$CMAKE_ARGS --preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }} -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON"
           if [ -n "$LLVM_STATIC_DIR" ]; then
             echo "Using LLVM static libraries from: $LLVM_STATIC_DIR"
             CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_LIBCXX_STATIC_ROOT=$LLVM_STATIC_DIR"
@@ -761,24 +757,12 @@ jobs:
           # List signatures
           ls -lh *.asc
 
-      - name: Upload macOS packages to release
-        shell: bash
-        run: |
-          for attempt in 1 2 3; do
-            if gh release upload "${{ needs.create-release.outputs.version }}" dist/* --clobber; then
-              exit 0
-            fi
-
-            if [[ "$attempt" -lt 3 ]]; then
-              echo "Release upload failed; retrying in $((attempt * 5)) seconds (attempt $((attempt + 1))/3)..."
-              sleep $((attempt * 5))
-            fi
-          done
-
-          echo "Release upload failed after 3 attempts"
-          exit 1
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Upload macOS packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-${{ matrix.os }}
+          path: dist
+          if-no-files-found: error
 
   package-windows:
     name: Package Windows installers (${{ matrix.arch }})
@@ -1003,29 +987,12 @@ jobs:
           }
           Write-Host "All required packages found (runtime + development)"
 
-      - name: Upload Windows packages to release
-        shell: pwsh
-        run: |
-          $version = "${{ needs.create-release.outputs.version }}"
-          $files = @(Get-ChildItem -Path "dist" -File | ForEach-Object { $_.FullName })
-
-          for ($attempt = 1; $attempt -le 3; $attempt++) {
-            gh release upload $version @files --clobber
-            if ($LASTEXITCODE -eq 0) {
-              exit 0
-            }
-
-            if ($attempt -lt 3) {
-              $delaySeconds = $attempt * 5
-              Write-Host "Release upload failed; retrying in $delaySeconds seconds (attempt $($attempt + 1)/3)..."
-              Start-Sleep -Seconds $delaySeconds
-            }
-          }
-
-          Write-Error "Release upload failed after 3 attempts"
-          exit 1
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Upload Windows packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-${{ matrix.arch }}
+          path: dist
+          if-no-files-found: error
 
   publish-release:
     name: Publish verified release
@@ -1034,11 +1001,49 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Publish release after every package job passes
+      - name: Download verified release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create and publish release after every package job passes
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.create-release.outputs.version }}
-        run: gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false
+        run: |
+          mapfile -t assets < <(find release-assets -maxdepth 1 -type f ! -name 'release-man1' -printf '%p\n' | sort)
+          source_tarball=""
+          installer_count=0
+          for asset in "${assets[@]}"; do
+            name="${asset##*/}"
+            if [[ "$name" == ascii-chat-*-full.tar.gz ]]; then
+              source_tarball="$asset"
+              continue
+            fi
+            case "$name" in
+              *.deb|*.rpm|*.pkg|*.msi|*.zip|*.sh|*.tar.gz) installer_count=$((installer_count + 1)) ;;
+            esac
+          done
+          if [[ -z "$source_tarball" ]]; then
+            echo "::error::Missing full source tarball in downloaded release artifacts"
+            exit 1
+          fi
+          if (( installer_count == 0 )); then
+            echo "::error::No installer/package assets were downloaded"
+            exit 1
+          fi
+          source_sha256="$(sha256sum "$source_tarball" | cut -d' ' -f1)"
+          generated_notes="$(gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$RELEASE_TAG")"
+          {
+            jq -r '.body' <<<"$generated_notes"
+            printf '\n## Source Tarball\n\n- `%s`\n- SHA256: `%s`\n' "${source_tarball##*/}" "$source_sha256"
+          } > release-notes.md
+          gh release create "$RELEASE_TAG" "${assets[@]}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "ascii-chat $RELEASE_TAG" \
+            --notes-file release-notes.md
 
   notify:
     name: Send release notification

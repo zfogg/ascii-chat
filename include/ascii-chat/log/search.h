@@ -26,6 +26,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Search mode states
  */
@@ -271,3 +275,7 @@ const char *log_search_get_input_buffer(void);
  * Must be called while holding the mutex from log_search_get_mutex().
  */
 bool log_search_get_case_insensitive(void);
+
+#ifdef __cplusplus
+}
+#endif

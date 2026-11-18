@@ -243,23 +243,23 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/options/config.c
     ${LIB_ROOT}/options/parsing_parsers.c
     ${LIB_ROOT}/options/parsing_validation.c
-    ${LIB_ROOT}/options/registry_audio.c
-    ${LIB_ROOT}/options/registry_configuration.c
-    ${LIB_ROOT}/options/registry_core.c
-    ${LIB_ROOT}/options/registry_database.c
-    ${LIB_ROOT}/options/registry_debug.c
-    ${LIB_ROOT}/options/registry_display.c
-    ${LIB_ROOT}/options/registry_general.c
-    ${LIB_ROOT}/options/registry_logging.c
-    ${LIB_ROOT}/options/registry_media.c
-    ${LIB_ROOT}/options/registry_metadata.c
-    ${LIB_ROOT}/options/registry_mode_defaults.c
-    ${LIB_ROOT}/options/registry_network.c
-    ${LIB_ROOT}/options/registry_public_api.c
-    ${LIB_ROOT}/options/registry_registry.c
-    ${LIB_ROOT}/options/registry_security.c
-    ${LIB_ROOT}/options/registry_terminal.c
-    ${LIB_ROOT}/options/registry_webcam.c
+    ${LIB_ROOT}/options/registry/audio.c
+    ${LIB_ROOT}/options/registry/configuration.c
+    ${LIB_ROOT}/options/registry/core.c
+    ${LIB_ROOT}/options/registry/database.c
+    ${LIB_ROOT}/options/registry/debug.c
+    ${LIB_ROOT}/options/registry/display.c
+    ${LIB_ROOT}/options/registry/general.c
+    ${LIB_ROOT}/options/registry/logging.c
+    ${LIB_ROOT}/options/registry/media.c
+    ${LIB_ROOT}/options/registry/metadata.c
+    ${LIB_ROOT}/options/registry/mode_defaults.c
+    ${LIB_ROOT}/options/registry/network.c
+    ${LIB_ROOT}/options/registry/public_api.c
+    ${LIB_ROOT}/options/registry/registry.c
+    ${LIB_ROOT}/options/registry/security.c
+    ${LIB_ROOT}/options/registry/terminal.c
+    ${LIB_ROOT}/options/registry/webcam.c
 
     # Crypto (needed for logging headers)
     ${LIB_ROOT}/crypto/crypto.c

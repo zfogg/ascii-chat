@@ -1,5 +1,11 @@
 #pragma once
 
+#include <stddef.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file video/rle.h
  * @brief ANSI RLE (REP) sequence compression and expansion
@@ -87,3 +93,7 @@ char *ansi_expand_rle(const char *input, size_t input_len);
 char *ansi_compress_rle(const char *input, size_t input_len);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

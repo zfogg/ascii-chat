@@ -30,6 +30,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name GPG Key Export
  * @{
@@ -90,3 +94,7 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
 /** @} */
 
 /** @} */ /* crypto */
+
+#ifdef __cplusplus
+}
+#endif

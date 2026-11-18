@@ -1,0 +1,120 @@
+#include <catch2/catch_test_macros.hpp>
+#include <libplatform/filesystem.h>
+/** Regressions for source paths in log headers and memory reports. */
+#include <ascii-chat/common.h>
+#include <ascii-chat/debug/memory.h>
+#include <libplatform/terminal.h>
+#include <ascii-chat/source_root.h>
+#include <ascii-chat/util/path.h>
+#include <ctype.h>
+#include <stdio.h>
+#include <string.h>
+
+static char report_path[512];
+static void setup(void) {
+  int fd = -1;
+  REQUIRE((platform_create_temp_file(report_path, sizeof(report_path), "source-paths", &fd)) == (0));
+  if (fd >= 0)
+    platform_close(fd);
+  log_init(report_path, LOG_DEBUG, false, false);
+}
+static void teardown(void) {
+  log_destroy();
+  REQUIRE((platform_delete_temp_file(report_path)) == (0));
+}
+TEST_CASE("source_paths/project_relative_paths_and_symbol_display", "[source_paths] [integration]") {
+
+  const char *paths[] = {"src/main.c", "lib/platform/windows/keyboard.c", "include/ascii-chat/util/path.h", "tests/integration/source_paths.c"};
+  for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
+    char absolute[4096];
+    safe_snprintf(absolute, sizeof(absolute), "%s/%s", ASCIICHAT_SOURCE_ROOT, paths[i]);
+    if (ASCIICHAT_SOURCE_ROOT[0]) {
+      REQUIRE((strcmp(extract_project_relative_path(absolute, ASCIICHAT_OWNED_SOURCE_DIRS), paths[i])) == (0));
+    } else {
+      REQUIRE((extract_project_relative_path(absolute, ASCIICHAT_OWNED_SOURCE_DIRS)) == (absolute));
+    }
+    REQUIRE((extract_project_relative_path(paths[i], ASCIICHAT_OWNED_SOURCE_DIRS)) == (paths[i]));
+
+    // CMake uses forward slashes; __FILE__ on Windows can use backslashes.
+    for (char *p = absolute; *p; p++) {
+      if (*p == '/')
+        *p = '\\';
+    }
+    if (ASCIICHAT_SOURCE_ROOT[0]) {
+      REQUIRE((extract_project_relative_path(absolute, ASCIICHAT_OWNED_SOURCE_DIRS)) == (absolute + strlen(ASCIICHAT_SOURCE_ROOT) + 1));
+    }
+#ifdef _WIN32
+    for (size_t j = 0; j < strlen(ASCIICHAT_SOURCE_ROOT); j++)
+      absolute[j] = (char)toupper((unsigned char)absolute[j]);
+    if (ASCIICHAT_SOURCE_ROOT[0]) {
+      REQUIRE((extract_project_relative_path(absolute, ASCIICHAT_OWNED_SOURCE_DIRS)) == (absolute + strlen(ASCIICHAT_SOURCE_ROOT) + 1));
+    }
+#endif
+  }
+
+#ifdef _WIN32
+  REQUIRE((strcmp(extract_project_relative_path("C:\\src\\client\\main.c", ASCIICHAT_OWNED_SOURCE_DIRS), "src\\client\\main.c")) == (0));
+  REQUIRE((strcmp(extract_project_relative_path("C:\\lib\\debug\\backtrace.c", ASCIICHAT_OWNED_SOURCE_DIRS), "lib\\debug\\backtrace.c")) == (0));
+  REQUIRE((strcmp(extract_project_relative_path("C:\\tests\\integration\\source_paths.c", ASCIICHAT_OWNED_SOURCE_DIRS), "tests\\integration\\source_paths.c")) == (0));
+  REQUIRE((strcmp(extract_project_relative_path("C:/include/ascii-chat/util/path.h", ASCIICHAT_OWNED_SOURCE_DIRS), "include/ascii-chat/util/path.h")) == (0));
+  REQUIRE((strcmp(extract_project_relative_path("C:\\library\\external.c", ASCIICHAT_OWNED_SOURCE_DIRS), "C:\\library\\external.c")) == (0));
+#endif
+
+  char sibling[4096];
+  safe_snprintf(sibling, sizeof(sibling), "%s-other/src/main.c", ASCIICHAT_SOURCE_ROOT);
+  REQUIRE((extract_project_relative_path(sibling, ASCIICHAT_OWNED_SOURCE_DIRS)) == (sibling));
+  REQUIRE((strcmp(extract_project_relative_path(NULL, ASCIICHAT_OWNED_SOURCE_DIRS), "unknown")) == (0));
+  REQUIRE((strcmp(extract_project_relative_path("", ASCIICHAT_OWNED_SOURCE_DIRS), "")) == (0));
+  REQUIRE((strcmp(extract_project_relative_path(ASCIICHAT_SOURCE_ROOT, ASCIICHAT_OWNED_SOURCE_DIRS), ASCIICHAT_SOURCE_ROOT)) == (0));
+  REQUIRE((strcmp(extract_project_relative_path("Z:\\external\\file.c", ASCIICHAT_OWNED_SOURCE_DIRS), "Z:\\external\\file.c")) == (0));
+  REQUIRE((strcmp(path_last_components("D:\\a\\_work\\1\\s\\src\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl", 5), "crt\\vcstartup\\src\\startup\\exe_common.inl")) == (0));
+  REQUIRE((strcmp(path_last_components("vendor/runtime/file.c", 5), "vendor/runtime/file.c")) == (0));
+
+}
+
+TEST_CASE("source_paths/log_headers_and_memory_reports_preserve_locations", "[source_paths] [integration]") {
+  // Exercise the actual log header renderer with absolute src/ and lib/ paths.
+  log_msg(LOG_DEBUG, ASCIICHAT_SOURCE_ROOT "/src/path_fixture.c", 123, "source_fixture", "src path fixture");
+  log_msg(LOG_DEBUG, ASCIICHAT_SOURCE_ROOT "/lib/path_fixture.c", 456, "source_fixture", "lib path fixture");
+  log_msg(LOG_DEBUG, ASCIICHAT_SOURCE_ROOT "\\lib\\windows_fixture.c", 321, "source_fixture", "Windows path fixture");
+
+#ifdef DEBUG_MEMORY
+  void *src = debug_malloc(17, ASCIICHAT_SOURCE_ROOT "/src/path_fixture.c", 123);
+  void *lib = debug_malloc(19, ASCIICHAT_SOURCE_ROOT "/lib/path_fixture.c", 456);
+  void *windows = debug_malloc(29, ASCIICHAT_SOURCE_ROOT "\\src\\windows_fixture.c", 654);
+  // Outside the root, the drive colon must survive parsing of :line:tid.
+  void *external = debug_malloc(23, "Z:\\external\\path_fixture.c", 789);
+  REQUIRE((src && lib && windows && external));
+  debug_memory_set_quiet_mode(false);
+  debug_memory_report(true);
+  debug_free(src, __FILE__, __LINE__);
+  debug_free(lib, __FILE__, __LINE__);
+  debug_free(windows, __FILE__, __LINE__);
+  debug_free(external, __FILE__, __LINE__);
+#endif
+  log_destroy();
+
+  FILE *report = fopen(report_path, "rb");
+  REQUIRE(report != NULL);
+  static char contents[256 * 1024];
+  size_t length = fread(contents, 1, sizeof(contents) - 1, report);
+  REQUIRE(!ferror(report));
+  fclose(report);
+  contents[length] = '\0';
+#ifndef NDEBUG
+  // Debug log headers include source locations; optimized builds use the
+  // compact log format but still exercise the path utility checks above.
+  REQUIRE(strstr(contents, "src/path_fixture.c:123") != NULL);
+  REQUIRE(strstr(contents, "lib/path_fixture.c:456") != NULL);
+  REQUIRE(strstr(contents, "lib\\windows_fixture.c:321") != NULL);
+  REQUIRE(strstr(contents, ASCIICHAT_SOURCE_ROOT "/src/path_fixture.c") == NULL);
+  REQUIRE(strstr(contents, ASCIICHAT_SOURCE_ROOT "/lib/path_fixture.c") == NULL);
+#endif
+  REQUIRE(strstr(contents, "<key:") == NULL);
+#ifdef DEBUG_MEMORY
+  REQUIRE(strstr(contents, "src/path_fixture.c:123 [") != NULL);
+  REQUIRE(strstr(contents, "lib/path_fixture.c:456 [") != NULL);
+  REQUIRE(strstr(contents, "src\\windows_fixture.c:654 [") != NULL);
+  REQUIRE(strstr(contents, "Z:\\external\\path_fixture.c:789 [") != NULL);
+#endif
+}

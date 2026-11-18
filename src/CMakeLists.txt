@@ -68,6 +68,13 @@ endif()
 
 if(BUILD_EXECUTABLES)
 add_executable(ascii-chat ${APP_SRCS})
+
+# PortAudio's static WDM-KS backend and the Windows SDK strmiids library both
+# provide the same COM GUID constants. Keep strmiids because FFmpeg requires
+# IID_ICodecAPI, and let lld resolve the equivalent duplicate definitions.
+if(WIN32 AND NOT BUILD_SHARED_LIBS)
+    target_link_options(ascii-chat PRIVATE "LINKER:/force:multiple")
+endif()
 if(WIN32)
     target_link_libraries(ascii-chat PRIVATE shell32)
 endif()
@@ -106,13 +113,18 @@ endif()
 # Link against the combined library instead of individual libraries
 # Ensure the combined library is built before linking
 # For Debug/Dev: shared library (DLL on Windows) - except musl which needs static
-# For Release: static library (unless ASCIICHAT_SHARED_DEPS is ON)
+# For Release: static library (unless BUILD_SHARED_LIBS is ON)
 # Determine if we should use shared library linking
 # - USE_MUSL: always static (musl requires static linking)
 # - Linux Release (non-musl): static FFmpeg .a can't link into shared lib (PIC issues on arm64)
 set(_use_shared_lib FALSE)
+<<<<<<< HEAD
 if(NOT USE_MUSL AND NOT (WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "MSVC"))
     if(ASCIICHAT_SHARED_DEPS OR CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
+=======
+if(NOT USE_MUSL)
+    if(BUILD_SHARED_LIBS OR CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
+>>>>>>> origin/master
         set(_use_shared_lib TRUE)
     else()
         set(_use_shared_lib FALSE)
@@ -127,13 +139,14 @@ if(NOT _use_shared_lib AND NOT USE_MUSL AND APPLE)
     # macOS Release executables statically link the project archive and its
     # dependencies. Keep ascii-chat-shared as a separate development artifact.
     add_dependencies(ascii-chat build-ascii-chat-static-lib generate_version)
-    target_link_libraries(ascii-chat PRIVATE ascii-chat-static-lib-with-deps OpenSSL::SSL)
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-static OpenSSL::SSL)
     set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
 elseif(NOT _use_shared_lib AND NOT USE_MUSL)
     # Static release linking: link object libraries directly into executable
     # Used on Linux Release non-musl (static FFmpeg .a can't go into .so)
     # and Windows Release (fully static binary with all deps compiled in)
     add_dependencies(ascii-chat generate_version)
+<<<<<<< HEAD
     target_link_libraries(ascii-chat PRIVATE
         ascii-chat-util
         ascii-chat-data-structures
@@ -148,6 +161,9 @@ elseif(NOT _use_shared_lib AND NOT USE_MUSL)
         # link branches; its symbols are not carried by the object targets.
         libplatform
     )
+=======
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-runtime-objects)
+>>>>>>> origin/master
     get_core_deps_libraries(CORE_LIBS)
     target_link_libraries(ascii-chat PRIVATE ${CORE_LIBS} ${BEARSSL_LIBRARIES})
     if(FFMPEG_LIBRARIES)
@@ -296,7 +312,7 @@ endif()
 # Ensure build directory takes precedence in rpath for Debug/Dev builds
 # This prevents conflicts with installed libraries in system directories
 # Skip for Release builds - they use static linking and shouldn't embed developer paths
-# EXCEPTION: ASCIICHAT_SHARED_DEPS builds need rpath to find Homebrew LLVM's libc++ and libunwind
+# EXCEPTION: BUILD_SHARED_LIBS builds need rpath to find Homebrew LLVM's libc++ and libunwind
 if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
     # Put our build/lib directory FIRST in the RPATH so it's searched before system paths
     # Use $ORIGIN for relative paths to maintain portability
@@ -319,8 +335,8 @@ if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$"
         BUILD_RPATH "${_rpath_list}"
         SKIP_BUILD_RPATH FALSE
     )
-elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND ASCIICHAT_SHARED_DEPS)
-    # Release builds with shared deps (Homebrew) need rpath for dynamic linking
+elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND BUILD_SHARED_LIBS)
+    # Release builds with shared libraries (Homebrew) need rpath for dynamic linking
     # Include:
     #   - @loader_path/../lib for libasciichat.dylib (relative to binary)
     #   - CMAKE_BUILD_RPATH for LLVM library paths (libc++, libunwind)
@@ -335,18 +351,18 @@ elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND ASCIICHAT_SHARE
         INSTALL_RPATH "${_install_rpath}"
         INSTALL_RPATH_USE_LINK_PATH FALSE
     )
-    message(STATUS "ascii-chat using rpath for SHARED_DEPS build: ${_install_rpath}")
+    message(STATUS "ascii-chat using rpath for shared-library build: ${_install_rpath}")
 elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
     # Release builds now use shared library (after OBJECT library simplification)
     # Use relative rpath to avoid embedding developer paths in the binary
     # This satisfies the ValidatePaths.cmake security check
     if(APPLE)
-        if(ASCIICHAT_SHARED_DEPS)
+        if(BUILD_SHARED_LIBS)
             set(_release_rpath "@loader_path/../lib;/usr/local/lib;${HOMEBREW_PREFIX}/lib")
         else()
             set(_release_rpath "@loader_path/../lib")
         endif()
-        if(ASCIICHAT_SHARED_DEPS AND EXISTS "${HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.1.dylib")
+        if(BUILD_SHARED_LIBS AND EXISTS "${HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.1.dylib")
             list(APPEND _release_rpath "${HOMEBREW_PREFIX}/opt/llvm/lib/c++")
         endif()
 
@@ -358,7 +374,7 @@ elseif(CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
         )
         # Use explicit linker flags to enforce EXACTLY our RPATH paths
         target_link_options(ascii-chat PRIVATE "LINKER:-rpath,@loader_path/../lib")
-        if(ASCIICHAT_SHARED_DEPS AND EXISTS "${HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.1.dylib")
+        if(BUILD_SHARED_LIBS AND EXISTS "${HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.1.dylib")
             target_link_options(ascii-chat PRIVATE "LINKER:-rpath,${HOMEBREW_PREFIX}/opt/llvm/lib/c++")
         endif()
         # Post-build: Remove any build-directory RPATH entries that CMake added automatically
@@ -434,19 +450,8 @@ if(USE_MUSL)
 
     # Link internal modules directly (OBJECT libraries avoid shared library dependency)
     # These are the same modules that make up ascii-chat-shared
-    # Note: Session files are part of ascii-chat-core, not a separate module
-    target_link_libraries(ascii-chat PRIVATE
-        ascii-chat-util
-        ascii-chat-data-structures
-        ascii-chat-platform
-        ascii-chat-crypto
-        ascii-chat-simd
-        ascii-chat-video
-        ascii-chat-audio
-        ascii-chat-network
-        ascii-chat-core
-        ascii-chat-panic
-    )
+    # Session files are compiled by the dedicated ascii-chat-session module.
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-runtime-objects)
 
     # Link external dependencies (LTO + dead code elimination removes unused code)
     target_link_libraries(ascii-chat PRIVATE

@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct render_progress render_progress_t;
 
 /** Retains only the latest ASCII frame. All updates are serialized; callbacks own copied snapshots. */
@@ -12,3 +16,7 @@ void render_progress_frame(render_progress_t *progress, const char *frame, bool 
 void render_progress_begin(render_progress_t *progress, uint64_t total, bool total_known);
 void render_progress_finalize(render_progress_t *progress);
 void render_progress_destroy(render_progress_t *progress);
+
+#ifdef __cplusplus
+}
+#endif

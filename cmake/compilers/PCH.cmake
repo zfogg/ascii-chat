@@ -5,12 +5,12 @@
 # Precompiled headers can speed up compilation by 20-30%.
 #
 # Prerequisites:
-#   - Must run after ascii-chat-core target is created
+#   - Must run after the infrastructure targets are created
 #   - CMake 3.16+ required
 #   - USE_MUSL must be checked (disabled for musl builds)
 #
 # Outputs:
-#   - Precompiled headers enabled for ascii-chat-core target
+#   - Precompiled headers enabled for the infrastructure targets
 # =============================================================================
 
 # CMake 3.16+ supports target_precompile_headers
@@ -19,7 +19,12 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
 
     if(ASCIICHAT_USE_PCH AND NOT USE_MUSL AND NOT ASCIICHAT_BUILD_WITH_PANIC)
         set(_ascii_chat_pch_targets
-            ascii-chat-core
+            ascii-chat-runtime
+            ascii-chat-logging
+            ascii-chat-options
+            ascii-chat-ui
+            ascii-chat-session
+            ascii-chat-discovery
             ascii-chat-network
             ascii-chat-util
         )

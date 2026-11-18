@@ -167,8 +167,16 @@ else()
     set(SHARED_LIB_OUTPUT "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libasciichat${CMAKE_SHARED_LIBRARY_SUFFIX}")
 endif()
 
-# Wrapper target that builds shared library
-add_custom_target(shared-lib
-    DEPENDS ascii-chat-shared
-    VERBATIM
-)
+# Wrapper target that builds shared library. Release builds intentionally omit
+# ascii-chat-shared, but the wrapper is still referenced by packaging helpers.
+if(TARGET ascii-chat-shared)
+    add_custom_target(shared-lib
+        DEPENDS ascii-chat-shared
+        VERBATIM
+    )
+else()
+    add_custom_target(shared-lib
+        COMMENT "Shared library disabled for this build configuration"
+        VERBATIM
+    )
+endif()

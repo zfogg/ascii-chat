@@ -142,7 +142,7 @@ static int journal_contract(void) {
   CHECK(errno_notifications_snapshot(entries, ARRAY_SIZE(entries), &dropped) == 1);
   CHECK(entries[0].code == ERROR_CRYPTO_AUTH);
   asciichat_error_context_t title_latest;
-  CHECK(errno_title_snapshot(&title_latest) >= 1 && title_latest.code == ERROR_CRYPTO_AUTH);
+  CHECK((errno_title_snapshot(&title_latest) >= 1 && title_latest.code == ERROR_CRYPTO_AUTH));
   CHECK(HAS_ERRNO_CODE(ERROR_NETWORK_TIMEOUT));
   errno_notifications_dismiss(entries[0].error_id);
   CHECK(!errno_notifications_pending());
@@ -152,7 +152,7 @@ static int journal_contract(void) {
   CLEAR_ERRNO();
   CHECK(errno_notifications_snapshot(entries, ARRAY_SIZE(entries), &dropped) == 1);
   CHECK(entries[0].code == ERROR_AUDIO);
-  CHECK(errno_title_snapshot(&title_latest) == 1 && title_latest.code == ERROR_AUDIO);
+  CHECK((errno_title_snapshot(&title_latest) == 1 && title_latest.code == ERROR_AUDIO));
   errno_notifications_pause();
   SET_ERRNO(ERROR_GENERAL, "During screen transition");
   CHECK(errno_notifications_snapshot(entries, ARRAY_SIZE(entries), &dropped) == 1);

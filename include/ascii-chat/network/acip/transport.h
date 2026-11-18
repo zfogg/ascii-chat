@@ -87,6 +87,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Transport method table (virtual function table)
  * @brief This is the handoff point for acip transport. Callers fill `outbound`, `stats_peer`, `methods`, `crypto_ctx`
@@ -496,3 +500,7 @@ acip_transport_t *acip_websocket_server_transport_create(const char *name, struc
 struct webrtc_peer_connection;
 struct webrtc_data_channel;
 acip_transport_t *acip_webrtc_transport_create(struct webrtc_peer_connection *peer_conn, struct webrtc_data_channel *data_channel, crypto_context_t *crypto_ctx);
+
+#ifdef __cplusplus
+}
+#endif

@@ -39,6 +39,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Byte Formatting Functions
  * @{
@@ -93,3 +97,7 @@ void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity);
  * Output is NUL-terminated when capacity is nonzero; NULL output is ignored.
  */
 void format_number_compact(uint64_t value, char *out, size_t out_capacity);
+
+#ifdef __cplusplus
+}
+#endif

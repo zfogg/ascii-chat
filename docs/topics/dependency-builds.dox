@@ -26,8 +26,8 @@
  * objects.
  *
  * Debug and Dev builds default to shared native dependencies; Release-style
- * builds default to static dependencies. `ASCIICHAT_SHARED_DEPS=ON` explicitly
- * selects shared dependencies and `ASCIICHAT_STATIC_DEPS=ON` explicitly selects
+ * builds default to static dependencies. `BUILD_SHARED_LIBS=ON` explicitly
+ * selects shared dependencies and `BUILD_SHARED_LIBS=OFF` explicitly selects
  * static dependencies. WASM, iOS and musl retain their static dependency policy.
  * AEC3's upstream components remain static
  * and can be linked into either the shared ascii-chat library or an executable.
@@ -60,13 +60,13 @@
  * ```sh
  * cmake -S tests/cmake/dependencies -B build/dependency-static -G Ninja \
  *   -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
- *   -DCMAKE_BUILD_TYPE=Release -DASCIICHAT_SHARED_DEPS=OFF
+ *   -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
  * cmake --build build/dependency-static
  * ctest --test-dir build/dependency-static --output-on-failure
  *
  * cmake -S tests/cmake/dependencies -B build/dependency-shared -G Ninja \
  *   -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
- *   -DCMAKE_BUILD_TYPE=Release -DASCIICHAT_SHARED_DEPS=ON
+ *   -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
  * cmake --build build/dependency-shared
  * ctest --test-dir build/dependency-shared --output-on-failure
  * ```

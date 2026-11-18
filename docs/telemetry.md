@@ -59,7 +59,7 @@ registered test, including root-directory smoke checks and subprocesses.
 Every Python test imports the shared `tests/_environment.py` bootstrap before
 loading helpers or launching native children. It sets `TESTING=1` and disables
 signals as a second default. As in the existing C helper, presence of TESTING or
-CRITERION_TEST denotes test mode, including the string value `0`. Do not remove
+TESTING denotes test mode, including the string value `0`. Do not remove
 those variables to enable export in tests.
 
 Collector-based OTEL smoke scripts now report skip code 77. In-process gotel
@@ -81,7 +81,7 @@ query fingerprints, omitted-text reasons, one span per database operation,
 registered query names and redaction. The CLI must be installed to run this
 second check; its absence produces an explicit CTest skip.
 
-`tests/scripts/check_query_names.py` checks production SQLite calls with
+`tests/tools/check_query_names.py` checks production SQLite calls with
 Gotel's public `querynames.check_c` API. It reads CMake's compile database so
 Clang sees the same headers and definitions as the native build. Gotel owns
 source resolution and query identity checks; project code only supplies the
@@ -91,7 +91,7 @@ After configuring the native build, run the checker in its pinned Python
 environment:
 
 ```sh
-uv run --no-project --with-requirements tests/requirements-telemetry.txt python tests/scripts/check_query_names.py --build-dir build
+uv run --no-project --with-requirements tests/requirements-telemetry.txt python tests/tools/check_query_names.py --build-dir build
 ```
 
 ### Failure alerts and active-session scope
@@ -393,12 +393,12 @@ overrun/drop export through the audio-priority fixture. c-gotel has separate
 native unit/wire tests in its repository, including forced HTTP 503 recovery,
 structured retry events, cumulative custom instruments and SQLite delta buckets.
 
-The Criterion suite `test_unit_otel_otel` exercises the host API and ascii-chat
+The Catch2 suite `test_unit_otel_otel` exercises the host API and ascii-chat
 adapter, including all signal masks, context restoration, sampling and budgets,
 metric intervals/validation, retries and permanent loss, queue saturation, SQLite
 lifecycle, and the complete application catalog. It links `gotel::testing` from
 c-gotel; fake clocks, scripted no-I/O transport and atomic event counts remain
-independent of Criterion. The Python integration test shares c-gotel's loopback
+independent of Catch2. The Python integration test shares c-gotel's loopback
 collector/OTLP decoder and waits for complete asynchronous exports.
 
 Collector failures produce local warnings at most once every 30 seconds while

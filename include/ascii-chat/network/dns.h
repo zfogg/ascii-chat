@@ -15,6 +15,10 @@
 
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Test DNS connectivity by resolving a hostname
  *
@@ -30,3 +34,7 @@
 bool dns_test_connectivity(const char *hostname);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

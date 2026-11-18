@@ -89,3 +89,13 @@ if(NOT MIMALLOC_INCLUDE_DIRS)
         HINTS "${MIMALLOC_SOURCE_DIR}/include"
         REQUIRED)
 endif()
+
+# A source-built mimalloc target must compile against its own headers.  On
+# macOS, Homebrew can add a newer mimalloc include directory globally; allowing
+# that header to win over the cached source headers produces mixed-version
+# errors inside mimalloc itself.
+if(MIMALLOC_SOURCE_DIR AND EXISTS "${MIMALLOC_SOURCE_DIR}/include/mimalloc.h")
+    set(MIMALLOC_INCLUDE_DIRS "${MIMALLOC_SOURCE_DIR}/include")
+    target_include_directories(${MIMALLOC_LIBRARIES} BEFORE PRIVATE
+        "${MIMALLOC_SOURCE_DIR}/include")
+endif()

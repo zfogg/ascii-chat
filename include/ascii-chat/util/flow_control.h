@@ -3,6 +3,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
   uint64_t due_ns;
   bool pending;
@@ -20,3 +24,7 @@ bool flow_control_debounce_take_ready(flow_control_debounce_t *debounce, uint64_
 
 /** Discard a pending action. */
 void flow_control_debounce_cancel(flow_control_debounce_t *debounce);
+
+#ifdef __cplusplus
+}
+#endif

@@ -25,7 +25,7 @@ static void await_dimensions(int width, int height) {
       return;
     platform_sleep_ms(10);
   }
-  CHECK(GET_OPTION(width) == width && GET_OPTION(height) == height);
+  CHECK((GET_OPTION(width) == width && GET_OPTION(height) == height));
 }
 int main(void) {
   log_init(NULL, LOG_WARN, false, false);
@@ -37,20 +37,20 @@ int main(void) {
   CHECK(SetConsoleWindowInfo(buffer, TRUE, &first));
   terminal_resize_watcher_t watcher = {0}, independent = {0};
   bool changed = false;
-  CHECK(terminal_resize_poll(&watcher, fd, &changed) == ASCIICHAT_OK && changed);
-  CHECK(watcher.size.cols == 40 && watcher.size.rows == 15);
-  CHECK(terminal_resize_poll(&watcher, fd, &changed) == ASCIICHAT_OK && !changed);
+  CHECK((terminal_resize_poll(&watcher, fd, &changed) == ASCIICHAT_OK && changed));
+  CHECK((watcher.size.cols == 40 && watcher.size.rows == 15));
+  CHECK((terminal_resize_poll(&watcher, fd, &changed) == ASCIICHAT_OK && !changed));
   SMALL_RECT second = {0, 0, 49, 19};
   CHECK(SetConsoleWindowInfo(buffer, TRUE, &second));
-  CHECK(terminal_resize_poll(&watcher, fd, &changed) == ASCIICHAT_OK && changed);
-  CHECK(watcher.size.cols == 50 && watcher.size.rows == 20);
-  CHECK(terminal_resize_poll(&independent, fd, &changed) == ASCIICHAT_OK && changed);
-  CHECK(terminal_resize_poll(&watcher, fd, &changed) == ASCIICHAT_OK && !changed);
+  CHECK((terminal_resize_poll(&watcher, fd, &changed) == ASCIICHAT_OK && changed));
+  CHECK((watcher.size.cols == 50 && watcher.size.rows == 20));
+  CHECK((terminal_resize_poll(&independent, fd, &changed) == ASCIICHAT_OK && changed));
+  CHECK((terminal_resize_poll(&watcher, fd, &changed) == ASCIICHAT_OK && !changed));
   int pipe_fds[2];
   CHECK(_pipe(pipe_fds, 256, _O_BINARY) == 0);
-  CHECK(terminal_resize_poll(&watcher, pipe_fds[0], &changed) != ASCIICHAT_OK && !changed);
-  CHECK(watcher.size.cols == 50 && watcher.size.rows == 20);
-  CHECK(terminal_resize_poll(NULL, fd, &changed) == ERROR_INVALID_PARAM && !changed);
+  CHECK((terminal_resize_poll(&watcher, pipe_fds[0], &changed) != ASCIICHAT_OK && !changed));
+  CHECK((watcher.size.cols == 50 && watcher.size.rows == 20));
+  CHECK((terminal_resize_poll(NULL, fd, &changed) == ERROR_INVALID_PARAM && !changed));
   CHECK(terminal_resize_poll(&watcher, fd, NULL) == ERROR_INVALID_PARAM);
   _close(pipe_fds[0]);
   _close(pipe_fds[1]);

@@ -54,6 +54,10 @@
 #include <ascii-chat-deps/bearssl/inc/bearssl.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Vector type for trust anchors
  * @name Trust Anchor Management
@@ -152,3 +156,7 @@ size_t read_trust_anchors_from_memory(anchor_list *dst, const unsigned char *pem
 void free_ta_contents(br_x509_trust_anchor *ta);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

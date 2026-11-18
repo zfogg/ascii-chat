@@ -13,16 +13,103 @@
 
 #include <options/enums.h>
 #include <options/common.h>
-#include <options/registry.h>
+#include <options/registry/registry.h>
 #include <libflags/builder.h>
 #include <libflags/help.h>
 #include <libflags/format.h>
 #include <libflags/values.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdlib.h>
 
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <options/validation.h>
+#include <options/levenshtein.h>
+
+int strtoint_safe(const char *str) {
+  if (!str || !*str)
+    return INT_MIN;
+  errno = 0;
+  char *end = NULL;
+  long value = strtol(str, &end, 10);
+  if (errno == ERANGE || end == str || *end != '\0' || value < INT_MIN || value > INT_MAX)
+    return INT_MIN;
+  return (int)value;
+}
+
+bool validate_port_opt(const char *value_str, uint16_t *out_port) {
+  if (!out_port || !value_str)
+    return false;
+  return flags_parse_port(value_str, out_port);
+}
+
+bool validate_fps_opt(const char *value_str, int *out_fps) {
+  int32_t fps = 0;
+  if (!out_fps || !flags_parse_int32(value_str, &fps) || fps <= 0)
+    return false;
+  *out_fps = fps;
+  return true;
+}
+
+const char *options_get_type_placeholder(option_type_t type) {
+  switch (type) {
+  case OPTION_TYPE_INT:
+    return "INTEGER";
+  case OPTION_TYPE_DOUBLE:
+    return "NUMBER";
+  case OPTION_TYPE_STRING:
+    return "STRING";
+  case OPTION_TYPE_CALLBACK:
+    return "VALUE";
+  case OPTION_TYPE_BOOL:
+    return "BOOLEAN";
+  default:
+    return "";
+  }
+}
+
+int options_format_default_value(option_type_t type, const void *default_value, char *buf, size_t bufsize) {
+  if (!default_value || !buf || !bufsize)
+    return 0;
+  switch (type) {
+  case OPTION_TYPE_BOOL:
+    return safe_snprintf(buf, bufsize, "%s", *(const bool *)default_value ? OPT_VALUE_TRUE : OPT_VALUE_FALSE);
+  case OPTION_TYPE_INT:
+    return safe_snprintf(buf, bufsize, "%d", *(const int *)default_value);
+  case OPTION_TYPE_STRING:
+    return safe_snprintf(buf, bufsize, "%s", *(const char *const *)default_value);
+  case OPTION_TYPE_DOUBLE:
+    return safe_snprintf(buf, bufsize, "%.2f", *(const double *)default_value);
+  default:
+    return 0;
+  }
+}
+
+const char *find_similar_option_with_mode(const char *unknown_opt, const options_config_t *config, option_mode_bitmask_t current_mode_bitmask) {
+  if (!unknown_opt || !config)
+    return NULL;
+  const char *name = unknown_opt + (unknown_opt[0] == '-' ? (unknown_opt[1] == '-' ? 2 : 1) : 0);
+  const option_descriptor_t *best = NULL;
+  size_t distance = SIZE_MAX;
+  for (size_t i = 0; i < config->num_descriptors; ++i) {
+    const option_descriptor_t *candidate = &config->descriptors[i];
+    if (!candidate->long_name)
+      continue;
+    size_t d = levenshtein(name, candidate->long_name);
+    if (d < distance) {
+      distance = d;
+      best = candidate;
+    }
+  }
+  if (!best || distance > LEVENSHTEIN_SUGGESTION_THRESHOLD)
+    return NULL;
+  static char suggestion[OPTIONS_COMMON_SUGGESTION_BUFFER_SIZE];
+  safe_snprintf(suggestion, sizeof(suggestion), "Did you mean '--%s'?", best->long_name);
+  (void)current_mode_bitmask;
+  return suggestion;
+}
 #include <libplatform/terminal.h>
 #include <sys/stat.h>
 #include <ascii-chat/util/parsing.h>

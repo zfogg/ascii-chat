@@ -94,37 +94,63 @@ set(CORE_SRCS
     ${LIB_DIR}/tui/shortcuts.c
     ${LIB_DIR}/tui/errno_stacks.c
     # options/
-    ${CMAKE_SOURCE_DIR}/lib/options/colorscheme.c
-    ${CMAKE_SOURCE_DIR}/lib/options/core.c
-    ${CMAKE_SOURCE_DIR}/lib/options/common.c
-    ${CMAKE_SOURCE_DIR}/lib/options/enums.c
-    ${CMAKE_SOURCE_DIR}/lib/options/strings.c
-    ${CMAKE_SOURCE_DIR}/lib/options/runtime.c
-    ${CMAKE_SOURCE_DIR}/lib/options/help.c
+    ${LIB_DIR}/options/colorscheme.c
+    ${LIB_DIR}/options/options.c
+    ${LIB_DIR}/options/common.c
+    ${LIB_DIR}/options/enums.c
+    ${LIB_DIR}/options/strings.c
+    ${LIB_DIR}/options/levenshtein.c
+    ${LIB_DIR}/options/rcu.c
+    ${LIB_DIR}/options/layout.c
+    ${LIB_DIR}/options/manpage.c
+    ${LIB_DIR}/options/help_api.c
+    # options/builder/
+    ${LIB_DIR}/options/builder/builder.c
+    ${LIB_DIR}/options/builder/handlers.c
+    ${LIB_DIR}/options/builder/help.c
     # options/config/
-    ${CMAKE_SOURCE_DIR}/lib/options/config.c
+    ${LIB_DIR}/options/config.c
+    ${LIB_DIR}/options/config/schema.c
+    ${LIB_DIR}/options/config/presets.c
     # options/registry/
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_metadata.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_general.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_logging.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_configuration.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_terminal.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_webcam.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_display.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_network.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_security.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_media.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_audio.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_database.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_registry.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_core.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_public_api.c
-    ${CMAKE_SOURCE_DIR}/lib/options/registry_mode_defaults.c
+    ${LIB_DIR}/options/registry/metadata.c
+    ${LIB_DIR}/options/registry/general.c
+    ${LIB_DIR}/options/registry/logging.c
+    ${LIB_DIR}/options/registry/configuration.c
+    ${LIB_DIR}/options/registry/terminal.c
+    ${LIB_DIR}/options/registry/webcam.c
+    ${LIB_DIR}/options/registry/display.c
+    ${LIB_DIR}/options/registry/network.c
+    ${LIB_DIR}/options/registry/security.c
+    ${LIB_DIR}/options/registry/media.c
+    ${LIB_DIR}/options/registry/audio.c
+    ${LIB_DIR}/options/registry/database.c
+    ${LIB_DIR}/options/registry/registry.c
+    ${LIB_DIR}/options/registry/core.c
+    ${LIB_DIR}/options/registry/public_api.c
+    ${LIB_DIR}/options/registry/mode_defaults.c
     # options/parsing/
-    ${CMAKE_SOURCE_DIR}/lib/options/parsing_parsers.c
-    ${CMAKE_SOURCE_DIR}/lib/options/parsing_validation.c
-    ${CMAKE_SOURCE_DIR}/lib/options/parsing_actions.c
+    ${LIB_DIR}/options/parsing/parsers.c
+    ${LIB_DIR}/options/parsing/validation.c
+    ${LIB_DIR}/options/parsing/actions.c
     # options/manpage/
+    # version
+    ${LIB_DIR}/options/manpage/embedded.c
+    ${LIB_DIR}/options/manpage/resources.c
+    ${LIB_DIR}/options/manpage/parser.c
+    ${LIB_DIR}/options/manpage/formatter.c
+    ${LIB_DIR}/options/manpage/merger.c
+    ${LIB_DIR}/options/manpage/content/options.c
+    ${LIB_DIR}/options/manpage/content/environment.c
+    ${LIB_DIR}/options/manpage/content/usage.c
+    ${LIB_DIR}/options/manpage/content/examples.c
+    ${LIB_DIR}/options/manpage/content/positional.c
+    # options/completions/
+    ${LIB_DIR}/options/completions/completions.c
+    ${LIB_DIR}/options/completions/bash.c
+    ${LIB_DIR}/options/completions/fish.c
+    ${LIB_DIR}/options/completions/zsh.c
+    ${LIB_DIR}/options/completions/powershell.c
     # version
     ${LIB_DIR}/version.c
     # discovery/ (library)
@@ -180,7 +206,7 @@ endif()
 list(APPEND CORE_SRCS
     ${LIB_DIR}/debug/stats.c
     ${LIB_DIR}/debug/errno.c
-        ${CMAKE_SOURCE_DIR}/lib/options/registry_debug.c
+        ${CMAKE_SOURCE_DIR}/lib/options/registry/debug.c
 )
 
 # Additional debug sources only in non-Release builds
@@ -388,35 +414,47 @@ target_link_libraries(ascii-chat-data-structures PRIVATE ascii-chat-util)
 # Module 3: Platform Abstraction (depends on: util, data-structures)
 # -----------------------------------------------------------------------------
 
+<<<<<<< HEAD
 add_library(ascii-chat-platform INTERFACE)
 target_link_libraries(ascii-chat-platform INTERFACE libplatform)
 target_include_directories(ascii-chat-platform INTERFACE
+=======
+# Runtime is created before the dependency interface below because the
+# platform dependency bundle is now attached directly to the runtime module.
+set(_core_runtime_regex "[/\\\\]lib[/\\\\](event|common|otel|asciichat_errno|app_callbacks|version)[.]c$|[/\\\\]lib[/\\\\]util[/\\\\]utf8[.]c$|[/\\\\]src[/\\\\]common[/\\\\]http_renderer[.]c$|[/\\\\]lib[/\\\\]stats[/\\\\].*[.]c$|[/\\\\]lib[/\\\\]media[/\\\\](input|playlist)[.]c$|[/\\\\]lib[/\\\\]debug[/\\\\](stats|errno)[.]c$")
+set(_runtime_sources "${CORE_SRCS}")
+list(FILTER _runtime_sources INCLUDE REGEX "${_core_runtime_regex}")
+list(APPEND _runtime_sources ${LIB_DIR}/video/ascii/palette.c)
+create_ascii_chat_module(ascii-chat-runtime "${_runtime_sources}")
+
+target_link_libraries(ascii-chat-runtime INTERFACE libplatform::libplatform)
+target_include_directories(ascii-chat-runtime INTERFACE
+>>>>>>> origin/master
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/lib
 )
 if(NOT EMSCRIPTEN)
-    target_link_libraries(ascii-chat-platform INTERFACE ${ASCIICHAT_LIBUV_TARGET})
+    target_link_libraries(ascii-chat-runtime INTERFACE ${ASCIICHAT_LIBUV_TARGET})
 endif()
-target_link_libraries(ascii-chat-platform INTERFACE
+target_link_libraries(ascii-chat-runtime INTERFACE
     ascii-chat-util
     ascii-chat-data-structures
-    ascii-chat-core
 )
 
 # Link render-file dependencies to platform module (for terminal renderers)
-target_include_directories(ascii-chat-platform INTERFACE ${PLATFORM_INCLUDES})
-target_link_libraries(ascii-chat-platform INTERFACE ${PLATFORM_LIBS} ${UTF8PROC_LIBRARIES})
+target_include_directories(ascii-chat-runtime INTERFACE ${PLATFORM_INCLUDES})
+target_link_libraries(ascii-chat-runtime INTERFACE ${PLATFORM_LIBS} ${UTF8PROC_LIBRARIES})
 
 # Add kernel headers for musl builds (needed for V4L2)
 if(USE_MUSL AND DEFINED MUSL_DEPS_DIR AND EXISTS "${MUSL_DEPS_DIR}/musl-deps/kernel-headers")
-    target_include_directories(ascii-chat-platform INTERFACE
+    target_include_directories(ascii-chat-runtime INTERFACE
         "${MUSL_DEPS_DIR}/musl-deps/kernel-headers"
     )
 endif()
 
 # Platform-specific system libraries
 if(WIN32)
-    target_link_libraries(ascii-chat-platform INTERFACE
+    target_link_libraries(ascii-chat-runtime INTERFACE
         ${WS2_32_LIB}
         ${USER32_LIB}
         ${ADVAPI32_LIB}
@@ -431,7 +469,7 @@ if(WIN32)
     )
 else()
     if(PLATFORM_DARWIN)
-        target_link_libraries(ascii-chat-platform INTERFACE
+        target_link_libraries(ascii-chat-runtime INTERFACE
             "-framework CoreFoundation"
             ${ASCIICHAT_CLIPBOARD_FRAMEWORK}
             ${FOUNDATION_FRAMEWORK}
@@ -442,15 +480,15 @@ else()
             ${IOKIT_FRAMEWORK}  # Required for IOPMLib.h (keepawake functionality)
         )
     elseif(PLATFORM_LINUX)
-        target_link_libraries(ascii-chat-platform INTERFACE ${CMAKE_THREAD_LIBS_INIT})
+        target_link_libraries(ascii-chat-runtime INTERFACE ${CMAKE_THREAD_LIBS_INIT})
         # Link libsystemd on Linux for keepawake functionality
         # Skip for musl builds: system libsystemd is glibc-linked and incompatible with static musl linking
         if(NOT USE_MUSL)
             find_package(PkgConfig REQUIRED)
             pkg_check_modules(LIBSYSTEMD REQUIRED libsystemd)
-            target_include_directories(ascii-chat-platform INTERFACE ${LIBSYSTEMD_INCLUDE_DIRS})
-            target_link_libraries(ascii-chat-platform INTERFACE ${LIBSYSTEMD_LIBRARIES})
-            target_compile_definitions(ascii-chat-platform INTERFACE HAVE_LIBSYSTEMD=1)
+            target_include_directories(ascii-chat-runtime INTERFACE ${LIBSYSTEMD_INCLUDE_DIRS})
+            target_link_libraries(ascii-chat-runtime INTERFACE ${LIBSYSTEMD_LIBRARIES})
+            target_compile_definitions(ascii-chat-runtime INTERFACE HAVE_LIBSYSTEMD=1)
             message(STATUS "libsystemd found: keepawake support enabled")
         else()
             message(STATUS "libsystemd skipped: musl static builds use glibc-independent keepawake")
@@ -602,7 +640,7 @@ endif()
 target_link_libraries(ascii-chat-video PRIVATE ${FFTW_FLOAT_LIBRARY})
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # V4L2 capture uses swscale and needs generated FFmpeg headers before compiling.
-    target_link_libraries(ascii-chat-platform INTERFACE ${FFMPEG_LIBRARIES})
+    target_link_libraries(ascii-chat-runtime INTERFACE ${FFMPEG_LIBRARIES})
 endif()
 if(VTERM_MUSL_TARGET)
     add_dependencies(ascii-chat-video ${VTERM_MUSL_TARGET})
@@ -667,6 +705,7 @@ endif()
 
 # Now create the module with WebRTC includes in scope
 create_ascii_chat_module(ascii-chat-audio "${AUDIO_SRCS}")
+target_link_libraries(ascii-chat-audio PRIVATE ascii-chat-rnnoise)
 
 # Add library search directories for pkg-config found libraries
 if(PORTAUDIO_LIBRARY_DIRS)
@@ -703,102 +742,97 @@ if(DEFINED PORTAUDIO_BUILD_TARGET AND TARGET ${PORTAUDIO_BUILD_TARGET})
 endif()
 
 # -----------------------------------------------------------------------------
-# Module 8: Core Infrastructure (depends on: util, platform)
+# Application infrastructure modules
+#
+# CORE_SRCS used to be compiled as one catch-all OBJECT library.  Keep the
+# source inventory in one place for now, but partition it by ownership so that
+# changes to options, UI, sessions, or discovery no longer invalidate all of
+# application infrastructure.
 # -----------------------------------------------------------------------------
-create_ascii_chat_module(ascii-chat-core "${CORE_SRCS}")
-if(PLATFORM_LINUX AND NOT USE_MUSL)
-    target_include_directories(ascii-chat-core PRIVATE ${LIBSYSTEMD_INCLUDE_DIRS})
-    target_link_libraries(ascii-chat-core PRIVATE ${LIBSYSTEMD_LIBRARIES})
-    target_compile_definitions(ascii-chat-core PRIVATE HAVE_LIBSYSTEMD=1)
-endif()
+set(_CORE_MODULES runtime logging options terminal ui session discovery)
+set(_CORE_MODULE_TARGETS)
+
+set(_core_runtime_regex "[/\\\\]lib[/\\\\](event|common|otel|asciichat_errno|app_callbacks|version)[.]c$|[/\\\\]lib[/\\\\]util[/\\\\]utf8[.]c$|[/\\\\]src[/\\\\]common[/\\\\]http_renderer[.]c$|[/\\\\]lib[/\\\\]stats[/\\\\].*[.]c$|[/\\\\]lib[/\\\\]media[/\\\\](input|playlist)[.]c$|[/\\\\]lib[/\\\\]debug[/\\\\](stats|errno)[.]c$")
+set(_core_logging_regex "[/\\\\]log[/\\\\].*[.]c$")
+set(_core_options_regex "[/\\\\]options[/\\\\].*[.]c$")
+set(_core_terminal_regex "[/\\\\]terminal[/\\\\].*[.]c$|tomlc17[/\\\\]src[/\\\\]tomlc17[.]c$")
+set(_core_ui_regex "[/\\\\](tui|ui)[/\\\\].*[.]c$")
+set(_core_session_regex "[/\\\\]src[/\\\\]common[/\\\\]session[/\\\\].*[.]c$")
+set(_core_discovery_regex "[/\\\\](lib[/\\\\]discovery|src[/\\\\]discovery)[/\\\\].*[.]c$")
+
+foreach(_core_module IN LISTS _CORE_MODULES)
+    set(_module_sources "${CORE_SRCS}")
+    list(FILTER _module_sources INCLUDE REGEX "${_core_${_core_module}_regex}")
+    set(_module_target "ascii-chat-${_core_module}")
+    if(NOT TARGET ${_module_target})
+        create_ascii_chat_module(${_module_target} "${_module_sources}")
+    endif()
+    list(APPEND _CORE_MODULE_TARGETS ${_module_target})
+endforeach()
+
+# Shared include/dependency requirements for the formerly monolithic sources.
+foreach(_core_target IN LISTS _CORE_MODULE_TARGETS)
+    target_include_directories(${_core_target} PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/common
+        ${CMAKE_SOURCE_DIR}/lib
+        ${PCRE2_INCLUDE_DIRS}
+        ${LIBWEBSOCKETS_INCLUDE_DIRS}
+        ${YYJSON_INCLUDE_DIRS}
+        "${libflags_SOURCE_DIR}/include"
+    )
+    target_compile_definitions(${_core_target} PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
+    target_link_libraries(${_core_target} PRIVATE
+        ${SQLITE3_LIBRARIES}
+        ${UTF8PROC_LIBRARIES}
+        ${YYJSON_LIBRARIES}
+        ${PCRE2_LIBRARIES}
+        libflags::flags
+    )
+    if(PCRE2_LIBRARY_DIRS)
+        target_link_directories(${_core_target} PRIVATE ${PCRE2_LIBRARY_DIRS})
+    endif()
+    if(DEFINED PCRE2_BUILD_TARGET)
+        add_dependencies(${_core_target} ${PCRE2_BUILD_TARGET})
+    endif()
+    if(NOT WIN32)
+        target_link_libraries(${_core_target} PRIVATE m)
+    endif()
+endforeach()
+
 if(NOT EMSCRIPTEN)
-    target_link_libraries(ascii-chat-core PRIVATE ${ASCIICHAT_LIBUV_TARGET})
+    target_link_libraries(ascii-chat-runtime PRIVATE ${ASCIICHAT_LIBUV_TARGET})
 endif()
-
+if(PLATFORM_LINUX AND NOT USE_MUSL)
+    target_include_directories(ascii-chat-runtime PRIVATE ${LIBSYSTEMD_INCLUDE_DIRS})
+    target_link_libraries(ascii-chat-runtime PRIVATE ${LIBSYSTEMD_LIBRARIES})
+    target_compile_definitions(ascii-chat-runtime PRIVATE HAVE_LIBSYSTEMD=1)
+endif()
 if(LIBWEBSOCKETS_BUILD_TARGET)
-    add_dependencies(ascii-chat-core ${LIBWEBSOCKETS_BUILD_TARGET})
+    add_dependencies(ascii-chat-discovery ${LIBWEBSOCKETS_BUILD_TARGET})
 endif()
-
-# For OBJECT libs, link external deps
-target_link_libraries(ascii-chat-core PRIVATE
-    ${SQLITE3_LIBRARIES}
-    ${UTF8PROC_LIBRARIES}
-    libflags::flags
-)
-target_include_directories(ascii-chat-core PRIVATE "${libflags_SOURCE_DIR}/include")
-
-# PCRE2: Configure for core module (for session string format validation)
-# Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
-target_compile_definitions(ascii-chat-core PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
-
-# Add PCRE2 include directory
-target_include_directories(ascii-chat-core PRIVATE ${PCRE2_INCLUDE_DIRS})
-
-# Add session headers directory (refactored from lib/session to src/common/session)
-# Using src/common allows #include "session/display.h" style includes
-target_include_directories(ascii-chat-core PRIVATE ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_SOURCE_DIR}/lib)
-
-# Session server headers include the public WebSocket server API, which in turn
-# includes libwebsockets.h. Core needs its include path even though the
-# WebSocket implementation itself belongs to ascii-chat-network.
-target_include_directories(ascii-chat-core PRIVATE ${LIBWEBSOCKETS_INCLUDE_DIRS})
-target_link_libraries(ascii-chat-core PRIVATE OpenSSL::SSL)
-
-# Link PCRE2 library (required)
-target_link_libraries(ascii-chat-core PRIVATE ${PCRE2_LIBRARIES})
-if(PCRE2_LIBRARY_DIRS)
-    target_link_directories(ascii-chat-core PRIVATE ${PCRE2_LIBRARY_DIRS})
-endif()
-
-# Add dependency on PCRE2 build target if building from source
-if(DEFINED PCRE2_BUILD_TARGET)
-    add_dependencies(ascii-chat-core ${PCRE2_BUILD_TARGET})
-endif()
-
-# Math library (Unix only - Windows has math functions in C runtime)
-if(NOT WIN32)
-    target_link_libraries(ascii-chat-core PRIVATE m)
-endif()
-
-# Special musl handling for libexecinfo
 if(USE_MUSL)
-    target_link_libraries(ascii-chat-core PRIVATE ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a)
-    add_dependencies(ascii-chat-core libexecinfo-musl)
-    add_dependencies(ascii-chat-platform libexecinfo-musl)
-endif()
-
-# mimalloc for core
-if(USE_MIMALLOC)
-    if(TARGET mimalloc-static)
-        add_dependencies(ascii-chat-core mimalloc-static)
-    endif()
-    if(ASCIICHAT_MIMALLOC_LINK_LIB)
-        target_link_libraries(ascii-chat-core PRIVATE ${ASCIICHAT_MIMALLOC_LINK_LIB})
-    elseif(MIMALLOC_LIBRARIES)
-        target_link_libraries(ascii-chat-core PRIVATE ${MIMALLOC_LIBRARIES})
-    endif()
+    add_dependencies(ascii-chat-runtime libexecinfo-musl)
 endif()
 
 # yyjson - Fast JSON library for structured logging and JSON parsing
 
 # Add yyjson include directory
-target_include_directories(ascii-chat-core PRIVATE ${YYJSON_INCLUDE_DIRS})
 target_include_directories(ascii-chat-video PRIVATE ${YYJSON_INCLUDE_DIRS})
 target_link_libraries(ascii-chat-video PRIVATE ${YYJSON_LIBRARIES})
 
 # Link yyjson library
 if(USE_MUSL)
     if(DEFINED YYJSON_BUILD_TARGET)
-        add_dependencies(ascii-chat-core ${YYJSON_BUILD_TARGET})
+        add_dependencies(ascii-chat-runtime ${YYJSON_BUILD_TARGET})
         add_dependencies(ascii-chat-video ${YYJSON_BUILD_TARGET})
     endif()
 endif()
 
 # Link yyjson (required)
-target_link_libraries(ascii-chat-core PRIVATE ${YYJSON_LIBRARIES})
+target_link_libraries(ascii-chat-logging PRIVATE ${YYJSON_LIBRARIES})
 
 # -----------------------------------------------------------------------------
-# Module 9: Panic Instrumentation Runtime (depends on: util, platform, core)
+# Module 9: Panic Instrumentation Runtime (depends on infrastructure modules)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-panic "${TOOLING_PANIC_SRCS}")
 target_include_directories(ascii-chat-panic PRIVATE
@@ -809,8 +843,14 @@ if(NOT BUILDING_OBJECT_LIBS)
     target_link_libraries(ascii-chat-panic PRIVATE
         PRIVATE
             ascii-chat-util
-            ascii-chat-platform
-            ascii-chat-core
+            ascii-chat-runtime
+            ascii-chat-runtime
+            ascii-chat-logging
+            ascii-chat-options
+            ascii-chat-terminal
+            ascii-chat-ui
+            ascii-chat-session
+            ascii-chat-discovery
     )
 endif()
 if(NOT WIN32 AND TARGET Threads::Threads)
@@ -818,7 +858,7 @@ if(NOT WIN32 AND TARGET Threads::Threads)
 endif()
 
 # -----------------------------------------------------------------------------
-# Module 10: Network (depends on: util, platform, crypto, core)
+# Module 10: Network (depends on: util, platform, crypto)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
 if(USE_MUSL AND ASCIICHAT_LIBUV_INCLUDE_DIRS)
@@ -940,9 +980,15 @@ target_compile_definitions(ascii-chat-network PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
 if(NOT BUILDING_OBJECT_LIBS)
     target_link_libraries(ascii-chat-network PRIVATE
         ascii-chat-util
-        ascii-chat-platform
+        ascii-chat-runtime
         ascii-chat-crypto
-        ascii-chat-core
+        ascii-chat-runtime
+        ascii-chat-logging
+        ascii-chat-options
+        ascii-chat-terminal
+        ascii-chat-ui
+        ascii-chat-session
+        ascii-chat-discovery
         ${PCRE2_LIBRARIES}
         zstd::libzstd
         ${SQLITE3_LIBRARIES}  # Rate limiting SQLite backend
@@ -984,6 +1030,32 @@ endif()
 # =============================================================================
 # Unified Library Targets (OPTIONAL - not built by default)
 # =============================================================================
+# The executable links this interface to consume the same object files as the
+# unified libraries. Keep one authoritative object set for static release
+# linking on Windows, Linux, and musl.
+if(NOT TARGET ascii-chat-runtime-objects)
+    add_library(ascii-chat-runtime-objects INTERFACE)
+    foreach(_runtime_module IN ITEMS
+        ascii-chat-util
+        ascii-chat-data-structures
+        ascii-chat-crypto
+        ascii-chat-simd
+        ascii-chat-video
+        ascii-chat-audio
+        ascii-chat-network
+        ascii-chat-runtime
+        ascii-chat-logging
+        ascii-chat-options
+        ascii-chat-terminal
+        ascii-chat-ui
+        ascii-chat-session
+        ascii-chat-discovery
+        ascii-chat-panic)
+        target_sources(ascii-chat-runtime-objects INTERFACE
+            $<TARGET_OBJECTS:${_runtime_module}>)
+    endforeach()
+endif()
+
 # These combine all modules into a single library for external projects.
 # Build with: cmake --build build --target ascii-chat-static
 #         or: cmake --build build --target ascii-chat-shared
@@ -1000,13 +1072,7 @@ endif()
 # Skip shared library for musl builds (static PIE binary only)
 # Also skip on Linux Release non-musl: static FFmpeg .a can't link into .so (PIC/TLS issues on arm64)
 # Also skip on Windows Release: link object libraries directly into executable for fully static binary
-set(_build_shared_lib TRUE)
-if(USE_MUSL)
-    set(_build_shared_lib FALSE)
-elseif(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
-    set(_build_shared_lib FALSE)
-endif()
-if(_build_shared_lib)
+if(BUILD_SHARED_LIBS AND NOT USE_MUSL)
 add_library(ascii-chat-shared SHARED
         $<TARGET_OBJECTS:ascii-chat-util>
         $<TARGET_OBJECTS:ascii-chat-data-structures>
@@ -1015,7 +1081,13 @@ add_library(ascii-chat-shared SHARED
         $<TARGET_OBJECTS:ascii-chat-video>
         $<TARGET_OBJECTS:ascii-chat-audio>
         $<TARGET_OBJECTS:ascii-chat-network>
-        $<TARGET_OBJECTS:ascii-chat-core>
+        $<TARGET_OBJECTS:ascii-chat-runtime>
+        $<TARGET_OBJECTS:ascii-chat-logging>
+        $<TARGET_OBJECTS:ascii-chat-options>
+        $<TARGET_OBJECTS:ascii-chat-terminal>
+        $<TARGET_OBJECTS:ascii-chat-ui>
+        $<TARGET_OBJECTS:ascii-chat-session>
+        $<TARGET_OBJECTS:ascii-chat-discovery>
         $<TARGET_OBJECTS:ascii-chat-panic>
     )
     # Consumers of the shared object also call platform APIs directly (tests,
@@ -1024,7 +1096,7 @@ add_library(ascii-chat-shared SHARED
     if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
     endif()
-    target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES} libflags::flags)
+    target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES} libflags::flags ascii-chat-rnnoise)
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
     endif()
@@ -1097,7 +1169,7 @@ add_library(ascii-chat-shared SHARED
             else()
                 set(_shared_rpath_list "\$ORIGIN")
             endif()
-            if(ASCIICHAT_SHARED_DEPS AND CMAKE_BUILD_RPATH)
+            if(BUILD_SHARED_LIBS AND CMAKE_BUILD_RPATH)
                 list(APPEND _shared_rpath_list ${CMAKE_BUILD_RPATH})
             endif()
             message(STATUS "Release build: Will copy FFmpeg libs to ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} with \$ORIGIN RPATH")
@@ -1157,7 +1229,13 @@ add_library(ascii-chat-shared SHARED
         ascii-chat-video
         ascii-chat-audio
         ascii-chat-network
-        ascii-chat-core
+        ascii-chat-runtime
+        ascii-chat-logging
+        ascii-chat-options
+        ascii-chat-terminal
+        ascii-chat-ui
+        ascii-chat-session
+        ascii-chat-discovery
         ascii-chat-panic
     )
 
@@ -1219,13 +1297,19 @@ add_library(ascii-chat-shared SHARED
     add_dependencies(ascii-chat-shared
         ascii-chat-util
         ascii-chat-data-structures
-        ascii-chat-platform
+        ascii-chat-runtime
         ascii-chat-crypto
         ascii-chat-simd
         ascii-chat-video
         ascii-chat-audio
         ascii-chat-network
-        ascii-chat-core
+        ascii-chat-runtime
+        ascii-chat-logging
+        ascii-chat-options
+        ascii-chat-terminal
+        ascii-chat-ui
+        ascii-chat-session
+        ascii-chat-discovery
         ascii-chat-panic
     )
 
@@ -1374,7 +1458,7 @@ add_library(ascii-chat-shared SHARED
         ${WS2_32_LIB} ${USER32_LIB} ${ADVAPI32_LIB} ${DBGHELP_LIB}
         ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB}
         shell32  # CommandLineToArgvW
-        crypt32  # For Windows crypto certificate functions (matches ascii-chat-platform)
+    crypt32  # For Windows crypto certificate functions
         Winmm    # For timeBeginPeriod/timeEndPeriod
         ${CORE_LIBS}
     )
@@ -1616,7 +1700,7 @@ if(ASCIICHAT_SYMBOL_NM_EXECUTABLE AND NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     )
 endif()
 
-endif()  # End if(_build_shared_lib) - closes shared library configuration
+endif()  # End BUILD_SHARED_LIBS shared library configuration
 
 # =============================================================================
 # Required Symbol Definitions (musl builds skip shared lib but still need these for static lib)
@@ -1655,7 +1739,13 @@ set(STATIC_LIB_MODULES
     ascii-chat-video
     ascii-chat-audio
     ascii-chat-network
-    ascii-chat-core
+    ascii-chat-runtime
+    ascii-chat-logging
+    ascii-chat-options
+    ascii-chat-terminal
+    ascii-chat-ui
+    ascii-chat-session
+    ascii-chat-discovery
     ascii-chat-panic
 )
 
@@ -1724,29 +1814,34 @@ add_dependencies(ascii-chat-static-lib build-ascii-chat-static-lib)
 
 # Create an INTERFACE library for dependency propagation
 # (IMPORTED libraries can't have INTERFACE_LINK_LIBRARIES in older CMake)
+<<<<<<< HEAD
 add_library(ascii-chat-static-lib-deps INTERFACE)
 target_link_libraries(ascii-chat-static-lib-deps INTERFACE libplatform ${UTF8PROC_LIBRARIES} asciichat-icu)
+=======
+add_library(ascii-chat-static INTERFACE)
+target_link_libraries(ascii-chat-static INTERFACE libplatform::libplatform ${UTF8PROC_LIBRARIES} asciichat-icu ascii-chat-rnnoise)
+>>>>>>> origin/master
 if(NOT EMSCRIPTEN)
-    target_link_libraries(ascii-chat-static-lib-deps INTERFACE asciichat-quic)
+    target_link_libraries(ascii-chat-static INTERFACE asciichat-quic)
 endif()
 
 # Link bundled dependencies (not available via package managers)
 # BearSSL and WebRTC AEC3 are embedded in the static library
 # BearSSL is required
-target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${BEARSSL_LIBRARIES})
+target_link_libraries(ascii-chat-static INTERFACE ${BEARSSL_LIBRARIES})
 if(NOT EMSCRIPTEN)
     if(TARGET ascii-chat-shared)
         target_link_libraries(ascii-chat-shared PRIVATE ${ASCIICHAT_LIBUV_TARGET})
     endif()
-    target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${ASCIICHAT_LIBUV_TARGET})
+    target_link_libraries(ascii-chat-static INTERFACE ${ASCIICHAT_LIBUV_TARGET})
 endif()
 if(WEBRTC_AEC3_LIBRARIES)
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${WEBRTC_AEC3_LIBRARIES})
+    target_link_libraries(ascii-chat-static INTERFACE ${WEBRTC_AEC3_LIBRARIES})
 endif()
 
 # External dependencies - users must install these via package manager
 # These are linked but NOT embedded in the static library
-target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
+target_link_libraries(ascii-chat-static INTERFACE
     ${PCRE2_LIBRARIES}
     ${LIBSODIUM_LIBRARIES}
     zstd::libzstd
@@ -1763,30 +1858,30 @@ target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
     OpenSSL::Crypto
 )
 if(FREETYPE_LIBRARY_DIRS)
-    target_link_directories(ascii-chat-static-lib-deps INTERFACE ${FREETYPE_LIBRARY_DIRS})
+    target_link_directories(ascii-chat-static INTERFACE ${FREETYPE_LIBRARY_DIRS})
 endif()
 
 # Link mimalloc
 if(USE_MIMALLOC)
     if(TARGET mimalloc-static)
-        target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE mimalloc-static)
+        target_link_libraries(ascii-chat-static INTERFACE mimalloc-static)
     elseif(MIMALLOC_LIBRARIES)
-        target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${MIMALLOC_LIBRARIES})
+        target_link_libraries(ascii-chat-static INTERFACE ${MIMALLOC_LIBRARIES})
     endif()
 endif()
 
 # Link FFmpeg for media file streaming
 if(FFMPEG_FOUND)
-    target_link_directories(ascii-chat-static-lib-deps INTERFACE ${FFMPEG_LIBRARY_DIRS})
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${FFMPEG_LIBRARIES})
+    target_link_directories(ascii-chat-static INTERFACE ${FFMPEG_LIBRARY_DIRS})
+    target_link_libraries(ascii-chat-static INTERFACE ${FFMPEG_LIBRARIES})
 endif()
 
 # Link yyjson for structured logging (required)
-target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${YYJSON_LIBRARIES})
+target_link_libraries(ascii-chat-static INTERFACE ${YYJSON_LIBRARIES})
 
 # Platform-specific system libraries
 if(WIN32)
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
+    target_link_libraries(ascii-chat-static INTERFACE
         ${WS2_32_LIB}
         ${USER32_LIB}
         ${ADVAPI32_LIB}
@@ -1799,7 +1894,7 @@ if(WIN32)
         crypt32
     )
 elseif(APPLE)
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
+    target_link_libraries(ascii-chat-static INTERFACE
         ${FOUNDATION_FRAMEWORK}
         "-framework CoreFoundation"
             ${ASCIICHAT_CLIPBOARD_FRAMEWORK}
@@ -1816,7 +1911,7 @@ elseif(APPLE)
     )
 else()
     # Linux
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
+    target_link_libraries(ascii-chat-static INTERFACE
         ${CMAKE_THREAD_LIBS_INIT}
         m
         dl
@@ -1826,54 +1921,47 @@ else()
     if(USE_MUSL)
         # Musl builds use Alpine's musl-compatible libc++
         if(ALPINE_LIBCXX_STATIC AND ALPINE_LIBCXXABI_STATIC)
-            target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE
+            target_link_libraries(ascii-chat-static INTERFACE
                 ${ALPINE_LIBCXX_STATIC}
                 ${ALPINE_LIBCXXABI_STATIC}
             )
             if(ALPINE_LIBUNWIND_STATIC)
-                target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${ALPINE_LIBUNWIND_STATIC})
+                target_link_libraries(ascii-chat-static INTERFACE ${ALPINE_LIBUNWIND_STATIC})
             endif()
         endif()
     else()
         # Non-musl builds: link the C++ standard library
-        target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE c++)
+        target_link_libraries(ascii-chat-static INTERFACE c++)
         # The combined archive includes the platform keepawake implementation.
-        target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${LIBSYSTEMD_LIBRARIES})
+        target_link_libraries(ascii-chat-static INTERFACE ${LIBSYSTEMD_LIBRARIES})
     endif()
 endif()
 
 # Link libdatachannel for WebRTC P2P connections (static library)
 # The libdatachannel INTERFACE target's dependencies propagate to ascii-chat-static-lib
 if(TARGET libdatachannel)
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE libdatachannel)
+    target_link_libraries(ascii-chat-static INTERFACE libdatachannel)
 endif()
 
 # Link OpenSSL for TURN credentials (required by network module)
 # This is linked to ascii-chat-network module, but must also be exposed via the
 # INTERFACE library for final executables since libasciichat.a includes turn_credentials.c
 if(TARGET OpenSSL::Crypto)
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE OpenSSL::Crypto)
+    target_link_libraries(ascii-chat-static INTERFACE OpenSSL::Crypto)
 endif()
 
 # Link miniupnpc for UPnP/NAT-PMP port mapping (optional)
 # This is linked to ascii-chat-network module, but must also be exposed via the
 # INTERFACE library for final executables since libasciichat.a includes upnp.c
 if(MINIUPNPC_FOUND)
-    target_include_directories(ascii-chat-static-lib-deps INTERFACE ${MINIUPNPC_INCLUDE_DIRS})
-    target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${MINIUPNPC_LIBRARIES})
+    target_include_directories(ascii-chat-static INTERFACE ${MINIUPNPC_INCLUDE_DIRS})
+    target_link_libraries(ascii-chat-static INTERFACE ${MINIUPNPC_LIBRARIES})
     # Also link libnatpmp on macOS (separate library for NAT-PMP protocol)
     if(NATPMP_LIBRARY)
-        target_include_directories(ascii-chat-static-lib-deps INTERFACE ${NATPMP_INCLUDE_DIR})
-        target_link_libraries(ascii-chat-static-lib-deps PRIVATE INTERFACE ${NATPMP_LIBRARY})
+        target_include_directories(ascii-chat-static INTERFACE ${NATPMP_INCLUDE_DIR})
+        target_link_libraries(ascii-chat-static INTERFACE ${NATPMP_LIBRARY})
     endif()
 endif()
-
-# Wrapper: links both the archive and its dependencies
-add_library(ascii-chat-static-lib-with-deps INTERFACE)
-target_link_libraries(ascii-chat-static-lib-with-deps PRIVATE INTERFACE
-    ascii-chat-static-lib
-    ascii-chat-static-lib-deps
-)
 
 # =============================================================================
 # Symbol Validation for Combined Static Library
@@ -1919,21 +2007,20 @@ endif()
 # Release: Static library for distribution
 # USE_MUSL: Always static (musl requires static linking)
 if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev") AND NOT USE_MUSL)
-    # Use the existing ascii-chat-shared target but make it build by default
-    # Remove EXCLUDE_FROM_ALL for Debug/Dev builds
-    set_target_properties(ascii-chat-shared PROPERTIES EXCLUDE_FROM_ALL FALSE)
-
-    # Create interface library that wraps the shared library
-    # Link directly to the target (CMake handles the import library on Windows)
-    add_library(ascii-chat-static INTERFACE)
-    target_link_libraries(ascii-chat-static PRIVATE INTERFACE ascii-chat-shared)
-
-    # Build target name for consistency
-    set(ASCII_CHAT_UNIFIED_BUILD_TARGET ascii-chat-shared)
+    if(TARGET ascii-chat-shared)
+        # Use the existing shared target but make it build by default.
+        set_target_properties(ascii-chat-shared PROPERTIES EXCLUDE_FROM_ALL FALSE)
+        target_link_libraries(ascii-chat-static INTERFACE ascii-chat-shared)
+        set(ASCII_CHAT_UNIFIED_BUILD_TARGET ascii-chat-shared)
+    else()
+        # Static-only configurations (for example security analysis with
+        # BUILD_SHARED_LIBS=OFF) still need the unified compatibility target.
+        target_link_libraries(ascii-chat-static INTERFACE ascii-chat-static-lib)
+        set(ASCII_CHAT_UNIFIED_BUILD_TARGET build-ascii-chat-static-lib)
+    endif()
 else()
     # Release builds or USE_MUSL: ascii-chat-static wraps the combined static library
-    add_library(ascii-chat-static INTERFACE)
-    target_link_libraries(ascii-chat-static PRIVATE INTERFACE ascii-chat-static-lib-with-deps)
+    target_link_libraries(ascii-chat-static INTERFACE ascii-chat-static-lib)
 
     # Build target name for consistency
     set(ASCII_CHAT_UNIFIED_BUILD_TARGET build-ascii-chat-static-lib)
@@ -1955,16 +2042,21 @@ endif()
 # - network needs symbols from core
 # Solution: List consumers before providers, with circulars listed twice
 add_library(ascii-chat-lib INTERFACE)
-target_link_libraries(ascii-chat-lib PRIVATE INTERFACE
+target_link_libraries(ascii-chat-lib INTERFACE
     ascii-chat-simd
     ascii-chat-video
     ascii-chat-audio
-    ascii-chat-core
+    ascii-chat-runtime
+    ascii-chat-logging
+    ascii-chat-options
+    ascii-chat-terminal
+    ascii-chat-ui
+    ascii-chat-session
+    ascii-chat-discovery
     ascii-chat-network
     ascii-chat-crypto
     ascii-chat-network
-    ascii-chat-core
-    ascii-chat-platform
+    ascii-chat-runtime
     ascii-chat-data-structures
     ascii-chat-util
 )
@@ -1984,16 +2076,16 @@ if(TARGET ascii-chat-shared)
         target_link_libraries(ascii-chat-shared PRIVATE FFTW3::fftw3f)
     endif()
 endif()
-target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_LIBRARIES})
-target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFTW_FLOAT_LIBRARY})
-target_link_libraries(ascii-chat-core PRIVATE ${FFTW_FLOAT_LIBRARY})
+target_link_libraries(ascii-chat-static INTERFACE ${FFTW_LIBRARIES})
+target_link_libraries(ascii-chat-static INTERFACE ${FFTW_FLOAT_LIBRARY})
+target_link_libraries(ascii-chat-runtime PRIVATE ${FFTW_FLOAT_LIBRARY})
 
 if(NOT EMSCRIPTEN)
     if(NOT TARGET gotel::gotel)
         message(FATAL_ERROR "gotel dependency was configured without a usable target")
     endif()
     set(ASCIICHAT_GOTEL_TARGET gotel::gotel)
-    target_link_libraries(ascii-chat-core PRIVATE ${ASCIICHAT_GOTEL_TARGET})
+    target_link_libraries(ascii-chat-runtime PRIVATE ${ASCIICHAT_GOTEL_TARGET})
     if(TARGET ascii-chat-shared)
         target_link_libraries(ascii-chat-shared PRIVATE ${ASCIICHAT_GOTEL_TARGET})
         # ascii-chat-shared is assembled from object libraries, so keep gotel's
@@ -2002,6 +2094,6 @@ if(NOT EMSCRIPTEN)
             target_link_libraries(ascii-chat-shared PRIVATE otlp-c::otlp_c)
         endif()
     endif()
-    target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${ASCIICHAT_GOTEL_TARGET})
+    target_link_libraries(ascii-chat-static INTERFACE ${ASCIICHAT_GOTEL_TARGET})
 endif()
-target_link_libraries(ascii-chat-static-lib-deps INTERFACE libflags::flags)
+target_link_libraries(ascii-chat-static INTERFACE libflags::flags)

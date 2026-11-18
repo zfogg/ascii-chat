@@ -36,6 +36,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name GPG Signing Operations
  * @{
@@ -174,3 +178,7 @@ int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t
 /** @} */
 
 /** @} */ /* crypto */
+
+#ifdef __cplusplus
+}
+#endif

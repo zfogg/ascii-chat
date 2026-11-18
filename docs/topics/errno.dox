@@ -257,7 +257,7 @@ supersede unfinished media frames and are not terminal write errors.
 
 @section errno_tests Tests
 
-Build the production library tests without Criterion:
+Build the production library tests without Catch2:
 @code
 cmake --preset default -B build -DBUILD_TESTS=ON
 cmake --build build --target test-errno-stacks

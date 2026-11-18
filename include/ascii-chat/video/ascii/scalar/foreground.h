@@ -17,6 +17,10 @@
 #include <ascii-chat/video/rgba/image.h>
 #include <libplatform/terminal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Greyscale functions
 char *image_print(const image_t *p, const char *palette);
 char *image_print_color(const image_t *p, const char *palette);
@@ -35,3 +39,7 @@ char *image_print_16color_dithered(const image_t *p, const char *palette);
 char *image_print_16color_dithered_with_background(const image_t *image, bool use_background, const char *palette);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

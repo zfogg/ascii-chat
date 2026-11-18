@@ -23,6 +23,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Election callback function type
  *
@@ -180,3 +184,7 @@ int consensus_coordinator_get_metrics_count(const consensus_coordinator_t *coord
 /** Session-owned observations; this callback must not perform blocking I/O. */
 typedef asciichat_error_t (*consensus_metrics_provider_fn)(void *, const uint8_t[16], participant_metrics_t *);
 void consensus_coordinator_set_metrics_provider(consensus_coordinator_t *, consensus_metrics_provider_fn, void *);
+
+#ifdef __cplusplus
+}
+#endif

@@ -14,6 +14,10 @@
 #include <libplatform/socket.h>
 #include "../common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief When code needs to work with parallel connect config, it keeps `hostname`, `port`, `timeout_ms`,
  * `should_exit_callback` here instead of scattering it across globals. Initialization establishes the handles and
@@ -56,3 +60,7 @@ typedef struct {
 asciichat_error_t parallel_connect(const parallel_connect_config_t *config, socket_t *out_socket);
 
 #endif // PARALLEL_CONNECT_H
+
+#ifdef __cplusplus
+}
+#endif

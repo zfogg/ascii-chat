@@ -2,6 +2,10 @@
 #include <ascii-chat/crypto/record.h>
 #include <ascii-chat/util/time.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Logical rotation messages; the protocol adapter owns their wire encoding. */
 typedef enum {
   CRYPTO_REKEY_NONE,
@@ -35,3 +39,7 @@ asciichat_error_t crypto_rekey_session_tick(crypto_rekey_session_t *, uint64_t n
 asciichat_error_t crypto_rekey_session_request(crypto_rekey_session_t *, uint64_t now_ns);
 asciichat_error_t crypto_rekey_session_receive(crypto_rekey_session_t *, unsigned, unsigned, crypto_rekey_message_t, const void *, size_t, uint64_t now_ns, bool *consumed);
 void crypto_rekey_session_cleanup(crypto_rekey_session_t *);
+
+#ifdef __cplusplus
+}
+#endif

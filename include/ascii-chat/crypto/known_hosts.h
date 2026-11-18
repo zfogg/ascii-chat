@@ -42,6 +42,10 @@
 #include "../common.h"
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name Known Hosts Verification
  * @{
@@ -380,5 +384,9 @@ void compute_key_fingerprint(const uint8_t key[ED25519_PUBLIC_KEY_SIZE], char fi
  * @ingroup crypto
  */
 void known_hosts_destroy(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */

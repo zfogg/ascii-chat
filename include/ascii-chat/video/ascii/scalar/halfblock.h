@@ -18,6 +18,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Convert RGB to truecolor half-blocks using scalar code
  * @param rgb RGB pixel data (RGB24 format, 3 bytes per pixel)
@@ -103,3 +107,7 @@ char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height
 char *rgb_to_256color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes, const char *palette);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

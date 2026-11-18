@@ -17,6 +17,10 @@
 #include <libplatform/atomic.h>
 #include <ascii-chat/util/time.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Counters and timing aggregates for one WebSocket callback kind
  * @brief Timing aggregates for protocol-init, teardown, writable, and receive callbacks
@@ -89,3 +93,7 @@ void websocket_callback_timing_log_stats(void);
 void websocket_callback_timing_reset(void);
 
 #endif // WEBSOCKET_CALLBACK_TIMING_H
+
+#ifdef __cplusplus
+}
+#endif

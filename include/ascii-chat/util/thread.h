@@ -53,6 +53,10 @@
 #include <string.h>
 #include <libplatform/thread.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Check if a thread has been created.
  *
@@ -143,3 +147,7 @@
  * @endcode
  */
 #define THREAD_CLEAR_HANDLE(thread_var) memset(&(thread_var), 0, sizeof(thread_var))
+
+#ifdef __cplusplus
+}
+#endif

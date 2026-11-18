@@ -15,6 +15,10 @@
 // NOTE: Use explicit path to avoid Windows include resolution picking up options/common.h
 #include "../common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Generate new Ed25519 keypair
  * @param public_key Output buffer for 32-byte public key
@@ -59,3 +63,7 @@ void acds_identity_fingerprint(const uint8_t public_key[ED25519_PUBLIC_KEY_SIZE]
  * - Windows: %APPDATA%\ascii-chat\acds_identity
  */
 asciichat_error_t acds_identity_default_path(char *path_out, size_t path_size);
+
+#ifdef __cplusplus
+}
+#endif

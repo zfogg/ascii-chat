@@ -4,6 +4,10 @@
 #include <ascii-chat/buffer.h>
 #include <limits.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define CRYPTO_RECORD_CHANNELS 3
 #define CRYPTO_RECORD_CONTROL_CHANNEL 0
 #define CRYPTO_RECORD_RELIABLE 0
@@ -39,3 +43,7 @@ asciichat_error_t crypto_record_prepare_epoch(crypto_record_t *);
 asciichat_error_t crypto_record_commit_epoch(crypto_record_t *);
 asciichat_error_t crypto_record_retire_epoch_flow(crypto_record_t *, unsigned channel, uint64_t epoch);
 void crypto_record_cleanup(crypto_record_t *);
+
+#ifdef __cplusplus
+}
+#endif

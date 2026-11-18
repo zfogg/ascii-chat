@@ -28,6 +28,7 @@ static audio_processor_t *create_processor(int sample_rate, bool bypass, unsigne
   config.channels = channels;
   if (bypass) {
     config.spectral_enabled = false;
+    config.rnnoise_enabled = false;
     config.flags = {};
   }
   audio_processor_t *processor = nullptr;

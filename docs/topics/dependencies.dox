@@ -54,6 +54,10 @@
  * backends. Linux and macOS use their platform terminal/device layers. iOS
  * builds use the reduced static library path and omit desktop-only subsystems;
  * see @ref topic_build for the current Apple workflow.
+ * Linux builds use libsystemd for keepawake, except for musl builds.
+ * `scripts/install-deps.sh` installs `libsystemd-dev` on apt-based systems,
+ * `systemd-devel` on yum-based systems, or `systemd-libs` on Arch Linux.
+ * To verify a manual installation, run `pkg-config --modversion libsystemd`.
  *
  * @section dependencies_troubleshooting Troubleshooting
  *

@@ -32,7 +32,22 @@ add_library(asciichat-gotel-sqlite INTERFACE)
 if(SQLITE3_INCLUDE_DIRS)
     target_include_directories(asciichat-gotel-sqlite INTERFACE ${SQLITE3_INCLUDE_DIRS})
 endif()
-target_link_libraries(asciichat-gotel-sqlite INTERFACE ${SQLITE3_LIBRARIES})
+if(WIN32 AND SQLITE3_LIBRARIES MATCHES "(^|;)sqlite3[.]lib($|;)")
+    # pkg-config can return the bare MSVC filename even when vcpkg owns the
+    # selected library. Resolve it to the configuration-specific absolute
+    # path so lld-link does not search only the current build directory.
+    find_library(_asciichat_gotel_sqlite_library NAMES sqlite3 libsqlite3
+        PATHS "${VCPKG_DEBUG_LIB_PATH}" "${VCPKG_LIB_PATH}"
+              "${SQLITE3_LIBRARY_DIRS}" "${SQLITE3_LIBDIR}" NO_DEFAULT_PATH)
+    if(_asciichat_gotel_sqlite_library)
+        target_link_libraries(asciichat-gotel-sqlite INTERFACE
+            "${_asciichat_gotel_sqlite_library}")
+    else()
+        target_link_libraries(asciichat-gotel-sqlite INTERFACE ${SQLITE3_LIBRARIES})
+    endif()
+else()
+    target_link_libraries(asciichat-gotel-sqlite INTERFACE ${SQLITE3_LIBRARIES})
+endif()
 set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
     "Use ascii-chat's SQLite3 dependency" FORCE)
 
@@ -49,13 +64,10 @@ set(_asciichat_gotel_cache_dir "${ASCIICHAT_DEPS_CACHE_DIR}/gotel")
 file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 
 set(_asciichat_parent_shared_libs ${BUILD_SHARED_LIBS})
-if(USE_MUSL OR ASCIICHAT_STATIC_DEPS)
-    set(_asciichat_gotel_shared OFF)
-else()
-    set(_asciichat_gotel_shared ${ASCIICHAT_SHARED_DEPS})
+if(USE_MUSL)
+    set(BUILD_SHARED_LIBS OFF)
 endif()
-set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared})
-set(BUILD_SHARED_LIBS ${_asciichat_gotel_shared} CACHE BOOL
+set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS} CACHE BOOL
     "Build gotel and its public dependencies as shared libraries" FORCE)
 
 # Gotel's gRPC adapter accepts an existing nghttp2 target. Prefer the target
@@ -204,6 +216,17 @@ set(UTF8PROC_LIBRARIES utf8proc CACHE STRING "utf8proc target supplied by gotel"
 if(TARGET gotel)
     target_include_directories(gotel PRIVATE
         "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/src")
+endif()
+
+# gotel's public SQL header includes sequel.h directly.  The sequel target's
+# include directory is not exposed by older gotel revisions, so propagate the
+# target-owned header directory to project consumers before recast compiles
+# sources that include gotel/gotel.h.
+if(TARGET sequel)
+    get_target_property(_asciichat_sequel_source_dir sequel SOURCE_DIR)
+    if(EXISTS "${_asciichat_sequel_source_dir}/include")
+        include_directories("${_asciichat_sequel_source_dir}/include")
+    endif()
 endif()
 
 if(USE_MUSL AND TARGET gotel_cxx AND ALPINE_LIBCXX_INCLUDE_DIR)

@@ -217,7 +217,7 @@ if (verify_key_in_buffer(server_identity_key, github_keys, keys_len)) {
 
 - `SSH_AUTH_SOCK` - SSH agent socket (Unix domain socket or named pipe)
 - `GNUPGHOME` - GPG home directory (default: ~/.gnupg)
-- `CRITERION_TEST` / `TESTING` - Enable test mode (reduced rekeying thresholds)
+- `TESTING` - Enable test mode (reduced rekeying thresholds)
 
 ### Configuration Files
 

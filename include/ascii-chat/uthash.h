@@ -49,6 +49,10 @@ static inline unsigned uthash_ascii_chat_hash(const void *keyptr, size_t keylen)
 // Include the upstream uthash header
 #include <ascii-chat-deps/uthash/src/uthash.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Redefine HASH_JEN_MIX to use safe arithmetic that doesn't trigger UBSan
 // This prevents undefined behavior from left shifts that exceed uint32_t range
 // The original uthash uses shifts that can overflow, but we fix it by using
@@ -110,3 +114,7 @@ static inline unsigned uthash_ascii_chat_hash(const void *keyptr, size_t keylen)
     _c ^= ((uint64_t)b >> 15);                                                                   \
     c = (unsigned)(_c & 0xFFFFFFFFU);                                                            \
   } while (0)
+
+#ifdef __cplusplus
+}
+#endif

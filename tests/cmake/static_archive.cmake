@@ -15,7 +15,7 @@ endfunction()
 
 string(RANDOM LENGTH 12 ALPHABET 0123456789abcdef case_id)
 set(work "${STATIC_ARCHIVE_TEST_BINARY_DIR}/${case_id}")
-set(objects "${work}/CMakeFiles/ascii-chat-core.dir/lib")
+set(objects "${work}/CMakeFiles/ascii-chat-runtime.dir/lib")
 file(MAKE_DIRECTORY "${objects}")
 foreach(name stable retired replacement)
     file(WRITE "${work}/${name}.c" "int ${name}(void) { return 7; }\n")

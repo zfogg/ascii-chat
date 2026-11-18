@@ -25,6 +25,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Mathematical Macros
  * ============================================================================
@@ -156,3 +160,7 @@ static inline size_t math_next_power_of_two(size_t n) {
 #endif
   return n + 1;
 }
+
+#ifdef __cplusplus
+}
+#endif

@@ -17,6 +17,10 @@
 // NOTE: Use explicit path to avoid Windows include resolution picking up options/common.h
 #include "../common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // ============================================================================
 // Session String Size Constants (Calculated from wordlists)
 // ============================================================================
@@ -95,3 +99,7 @@ bool is_session_string(const char *str);
  * @brief Cleanup function for session string cache
  */
 void acds_strings_destroy(void);
+
+#ifdef __cplusplus
+}
+#endif

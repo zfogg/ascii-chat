@@ -1,6 +1,10 @@
 #pragma once
 #include <ascii-chat/common.h>
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 #define ASCII_TEMPORAL_MOTION_LIMIT 8
 #define ASCII_TEMPORAL_MAX_INTERVAL_NS 250000000ULL
 #define ASCII_TEMPORAL_COLOR_TIME_NS 50000000ULL
@@ -38,3 +42,7 @@ ascii_stabilizer_t *ascii_stabilizer_target(void);
 uint32_t ascii_stabilizer_blend_color(uint32_t previous, uint32_t current, unsigned weight);
 uint32_t ascii_stabilizer_glyph(ascii_temporal_cell_t *cell, const uint8_t samples[16], const int16_t rgb_samples[3][16], bool colored, uint32_t candidate, uint64_t candidate_error,
                                 uint64_t previous_error, uint32_t previous_color, uint64_t elapsed_ns, uint32_t *color, uint32_t *background);
+
+#ifdef __cplusplus
+}
+#endif

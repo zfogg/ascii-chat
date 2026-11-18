@@ -24,6 +24,10 @@
 #include <stdbool.h>
 #include "../../common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum { NAT_UPNP_TCP, NAT_UPNP_UDP } nat_upnp_protocol_t;
 
 /** @brief Handle to UPnP context */
@@ -126,3 +130,7 @@ asciichat_error_t nat_upnp_refresh(nat_upnp_context_t *ctx);
  * @return ERROR_INVALID_PARAM if addr is too small
  */
 asciichat_error_t nat_upnp_get_address(const nat_upnp_context_t *ctx, char *addr, size_t addr_len);
+
+#ifdef __cplusplus
+}
+#endif

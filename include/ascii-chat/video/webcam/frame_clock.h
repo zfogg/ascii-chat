@@ -3,6 +3,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Map a live device's 100 ns sample clock to monotonic arrival times. */
 /**
  * @brief The useful part of webcam frame clock is in `sample`, `previous`, `wall`, `initialized`: together they
@@ -37,3 +41,7 @@ static inline uint64_t webcam_frame_clock_age(webcam_frame_clock_t *clock, int64
   }
   return elapsed_wall - elapsed_ticks * 100;
 }
+
+#ifdef __cplusplus
+}
+#endif

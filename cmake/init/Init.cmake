@@ -221,7 +221,7 @@ endif()
 # vcpkg chooses and installs its triplet during project(), so select the static
 # release triplet before loading the toolchain rather than in dependency setup.
 if(CMAKE_HOST_WIN32 AND (NOT CMAKE_SYSTEM_NAME OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
-   AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+   AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
     if(NOT DEFINED VCPKG_TARGET_TRIPLET AND NOT DEFINED ENV{VCPKG_TARGET_TRIPLET})
         if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
             set(_asciichat_vcpkg_arch arm64)

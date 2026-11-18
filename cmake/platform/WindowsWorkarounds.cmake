@@ -92,6 +92,8 @@ function(find_msvc_libraries)
     endforeach()
 
     if(MSVC_LIB_PATH)
+        set(ASCIICHAT_MSVC_LIB_PATH "${MSVC_LIB_PATH}" CACHE PATH
+            "MSVC library directory used by native and isolated dependency builds" FORCE)
         target_link_directories(asciichat-project-options INTERFACE "${MSVC_LIB_PATH}")
         message(STATUS "Added ${BoldGreen}MSVC${ColorReset} library path: ${BoldCyan}${MSVC_LIB_PATH}${ColorReset}")
     else()

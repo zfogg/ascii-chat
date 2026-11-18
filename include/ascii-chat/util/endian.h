@@ -50,6 +50,10 @@
 #include <stdint.h>
 #include <ascii-chat/network/platform.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Convert a 32-bit value from host byte order to network byte order.
  * Typically used when preparing data for transmission.
@@ -248,3 +252,7 @@ static inline uint64_t endian_unpack_u64(uint64_t val) {
 static inline uint64_t endian_pack_u64(uint64_t val) {
   return htonll(val);
 }
+
+#ifdef __cplusplus
+}
+#endif
