@@ -10,8 +10,6 @@ endif()
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libplatform.cmake)
-target_include_directories(asciichat-project-includes INTERFACE
-    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include)
 set(CORE_SRCS
     ${LIB_DIR}/event.c
     ${LIB_DIR}/util/utf8.c
@@ -390,10 +388,6 @@ list(APPEND _runtime_sources ${LIB_DIR}/video/ascii/palette.c)
 create_ascii_chat_module(ascii-chat-runtime "${_runtime_sources}")
 
 target_link_libraries(ascii-chat-runtime INTERFACE ${ASCIICHAT_LIBPLATFORM_TARGET})
-target_include_directories(ascii-chat-runtime INTERFACE
-    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include
-    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/lib
-)
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-runtime INTERFACE asciichat-libuv)
 endif()
@@ -550,9 +544,6 @@ ascii_chat_add_face_detector(ascii-chat-video)
 # Link external dependencies (FFmpeg, freetype, fontconfig)
 # Module dependencies (util, platform, core, simd) are resolved through OBJECT library merging
 target_link_libraries(ascii-chat-video PRIVATE asciichat-fftw-float)
-if(FFTW_INCLUDE_DIRS)
-    target_include_directories(ascii-chat-video PRIVATE ${FFTW_INCLUDE_DIRS})
-endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # V4L2 capture uses swscale and needs generated FFmpeg headers before compiling.
     target_link_libraries(ascii-chat-runtime INTERFACE asciichat-ffmpeg)
@@ -697,14 +688,6 @@ target_link_libraries(ascii-chat-logging PRIVATE
     OpenSSL::SSL
     asciichat-libwebsockets)
 
-if(NOT EMSCRIPTEN)
-    target_link_libraries(ascii-chat-runtime PRIVATE asciichat-libuv)
-    target_link_libraries(ascii-chat-ui PRIVATE asciichat-libuv)
-endif()
-if(PLATFORM_LINUX AND NOT USE_MUSL)
-    target_link_libraries(ascii-chat-runtime PRIVATE asciichat-systemd)
-    target_compile_definitions(ascii-chat-runtime PRIVATE HAVE_LIBSYSTEMD=1)
-endif()
 if(LIBWEBSOCKETS_BUILD_TARGET)
     add_dependencies(ascii-chat-discovery ${LIBWEBSOCKETS_BUILD_TARGET})
 endif()
