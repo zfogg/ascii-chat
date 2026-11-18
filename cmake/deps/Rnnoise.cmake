@@ -58,6 +58,7 @@ ExternalProject_Add(ascii-chat-rnnoise-build
         -DRNNOISE_BINARY_DIR=${ASCIICHAT_RNNOISE_BUILD_DIR}
         -DRNNOISE_INSTALL_DIR=${ASCIICHAT_RNNOISE_INSTALL_DIR}
         -DRNNOISE_SHELL=${ASCIICHAT_RNNOISE_SHELL}
+        -DRNNOISE_WINDOWS=${WIN32}
         ${_rnnoise_cc_args}
         -DRNNOISE_SHARED=OFF
         -P "${CMAKE_SOURCE_DIR}/cmake/utils/ConfigureRnnoise.cmake"
