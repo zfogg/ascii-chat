@@ -7,9 +7,8 @@
 # For iOS builds: Built from source with iOS cross-compilation
 # For native builds: Uses system package manager unless HVF is required
 #
-# Outputs (variables set by this file):
-#   - FREETYPE_LIBRARIES: FreeType2 libraries to link
-#   - FREETYPE_INCLUDE_DIRS: FreeType2 include directories
+# Contract:
+#   - asciichat-freetype: canonical target carrying all usage requirements
 # =============================================================================
 
 
@@ -78,8 +77,6 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE OR ASCIICHAT_REQ
         if(APPLE)
             asciichat_check_freetype_hvf("${asciichat_freetype_BINARY_DIR}/include" "${asciichat_freetype_SOURCE_DIR}/include")
         endif()
-        # Generated options must precede the source tree's default ftoption.h.
-        set(FREETYPE_INCLUDE_DIRS "${asciichat_freetype_BINARY_DIR}/include;${asciichat_freetype_SOURCE_DIR}/include" PARENT_SCOPE)
         # Fontconfig's Autotools build consumes an installation, not CMake targets.
         add_custom_target(asciichat-freetype-stage
             COMMAND "${CMAKE_COMMAND}" --install "${asciichat_freetype_BINARY_DIR}" --prefix "${_prefix}"
@@ -101,19 +98,22 @@ endif()
 if(UNIX AND NOT APPLE)
     # Linux/BSD: Try pkg-config first, then fall back to CMake FindFreetype
     find_package(PkgConfig QUIET)
+    set(_asciichat_freetype_target "")
     if(PkgConfig_FOUND)
         pkg_check_modules(FREETYPE IMPORTED_TARGET freetype2)
         if(FREETYPE_FOUND AND TARGET PkgConfig::FREETYPE)
-            set(FREETYPE_LIBRARIES PkgConfig::FREETYPE)
+            set(_asciichat_freetype_target PkgConfig::FREETYPE)
         endif()
     endif()
 
     # If pkg-config didn't work, try CMake's FindFreetype
-    if(NOT FREETYPE_FOUND)
+    if(NOT _asciichat_freetype_target)
         find_package(Freetype REQUIRED)
+        set(_asciichat_freetype_target Freetype::Freetype)
     endif()
-
-    message(STATUS "${BoldGreen}✓${ColorReset} FreeType2: ${FREETYPE_LIBRARIES}")
+    add_library(asciichat-freetype INTERFACE)
+    target_link_libraries(asciichat-freetype INTERFACE "${_asciichat_freetype_target}")
+    message(STATUS "${BoldGreen}✓${ColorReset} FreeType2: ${_asciichat_freetype_target}")
 
 elseif(APPLE)
     find_package(Freetype REQUIRED)
@@ -177,14 +177,14 @@ elseif(WIN32)
         PATHS "${VCPKG_LIB_PATH}" REQUIRED)
     find_library(_asciichat_bzip2_library NAMES bz2 bzip2
         PATHS "${VCPKG_LIB_PATH}" REQUIRED)
-    add_library(asciichat-freetype UNKNOWN IMPORTED GLOBAL)
-    set_target_properties(asciichat-freetype PROPERTIES
-        IMPORTED_LOCATION "${_asciichat_freetype_library}"
-        INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_freetype_include}"
-        INTERFACE_LINK_LIBRARIES
-            "${_asciichat_png_library};${_asciichat_brotli_decode_library};${_asciichat_brotli_common_library};${_asciichat_bzip2_library}")
-    set(FREETYPE_LIBRARIES asciichat-freetype)
-    set(FREETYPE_INCLUDE_DIRS "${_asciichat_freetype_include}")
+    if(NOT TARGET asciichat-freetype)
+        add_library(asciichat-freetype UNKNOWN IMPORTED GLOBAL)
+        set_target_properties(asciichat-freetype PROPERTIES
+            IMPORTED_LOCATION "${_asciichat_freetype_library}"
+            INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_freetype_include}"
+            INTERFACE_LINK_LIBRARIES
+                "${_asciichat_png_library};${_asciichat_brotli_decode_library};${_asciichat_brotli_common_library};${_asciichat_bzip2_library}")
+    endif()
 
     message(STATUS "${BoldGreen}✓${ColorReset} FreeType2: vcpkg")
 

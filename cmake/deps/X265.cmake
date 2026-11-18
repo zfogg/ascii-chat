@@ -20,11 +20,13 @@ set(X265_HASH "7d23cdcdbd510728202c0dfbf7c51eda26a395de2096c504c2b10d6035711102"
 # =============================================================================
 if(WIN32)
     message(STATUS "⚠ x265 not needed on Windows (vcpkg FFmpeg uses built-in codecs)")
+    add_library(asciichat-x265 INTERFACE)
     return()
 endif()
 
 if(EMSCRIPTEN)
     message(STATUS "⚠ x265 not needed for Emscripten web targets")
+    add_library(asciichat-x265 INTERFACE)
     return()
 endif()
 
@@ -38,6 +40,7 @@ if(USE_MUSL)
     # supported; GCC+musl uses FFmpeg's built-in codecs instead.
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         message(STATUS "x265 disabled for GCC musl builds (host C++ runtime is not musl-compatible)")
+        add_library(asciichat-x265 INTERFACE)
         return()
     endif()
     include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)

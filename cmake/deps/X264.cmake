@@ -21,6 +21,7 @@ set(X264_HASH "44ce79258656d7dbe06165321cb989cc242a66effa308e25d2f0a197b50f8398"
 # =============================================================================
 if(WIN32)
     message(STATUS "⚠ x264 not needed on Windows (vcpkg FFmpeg uses built-in codecs)")
+    add_library(asciichat-x264 INTERFACE)
     return()
 endif()
 
@@ -28,6 +29,7 @@ endif()
 # require a host x264 pkg-config module when generating the browser targets.
 if(EMSCRIPTEN)
     message(STATUS "⚠ x264 not needed for Emscripten web targets")
+    add_library(asciichat-x264 INTERFACE)
     return()
 endif()
 
