@@ -216,7 +216,7 @@ void framebuffer_destroy(framebuffer_t *fb) {
     return;
 
   // Add magic number check to detect double-free using rb pointer
-  if (fb->rb == (ringbuffer_t *)0xDEADBEEF) {
+  if (fb->rb == (ringbuffer_t *)(uintptr_t)0xDEADBEEFU) {
     SET_ERRNO(ERROR_INVALID_STATE, "DOUBLE-FREE DETECTED: framebuffer %p already destroyed!", fb);
     return;
   }
@@ -226,7 +226,7 @@ void framebuffer_destroy(framebuffer_t *fb) {
   mutex_destroy(&fb->mutex);
 
   // Mark as destroyed before freeing
-  fb->rb = (ringbuffer_t *)0xDEADBEEF;
+  fb->rb = (ringbuffer_t *)(uintptr_t)0xDEADBEEFU;
   SAFE_FREE(fb);
 }
 
