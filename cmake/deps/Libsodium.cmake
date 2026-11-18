@@ -247,8 +247,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE AND NOT USE_MUSL A
 
     include(ExternalProject)
 
-    set(LIBSODIUM_PREFIX "${CMAKE_BINARY_DIR}/deps-cache/libsodium")
-    set(LIBSODIUM_BUILD_DIR "${CMAKE_BINARY_DIR}/deps-cache/libsodium-build")
+    set(LIBSODIUM_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/libsodium")
+    set(LIBSODIUM_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libsodium-build")
 
     if(NOT EXISTS "${LIBSODIUM_PREFIX}/lib/libsodium.a")
         message(STATUS "  libsodium library not found in cache, will build from source")
