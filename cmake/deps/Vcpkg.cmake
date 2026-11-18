@@ -94,7 +94,7 @@ elseif(NOT DEFINED VCPKG_TARGET_TRIPLET)
     # Determine triplet based on platform and build type
     # Windows Release: static libraries to avoid DLL dependencies
     # Unix/macOS: always use dynamic libraries (static is default)
-    if(WIN32 AND CMAKE_BUILD_TYPE MATCHES "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    if(WIN32 AND CMAKE_BUILD_TYPE MATCHES "Release" AND NOT BUILD_SHARED_LIBS)
         set(VCPKG_TARGET_TRIPLET "${_vcpkg_arch}-${_vcpkg_platform}-static")
         set(VCPKG_OVERLAY_TRIPLETS "${CMAKE_SOURCE_DIR}/vcpkg-triplets")
         message(STATUS "vcpkg: Using ${BoldGreen}static triplet${ColorReset} for Windows Release: ${BoldCyan}${VCPKG_TARGET_TRIPLET}${ColorReset} (release-only, no debug libs)")
@@ -120,8 +120,9 @@ endif()
 # Set library and include paths
 # =============================================================================
 
-if(VCPKG_MANIFEST_MODE AND VCPKG_TOOLCHAIN_LOADED)
-    # Respect vcpkg's installed directory override in manifest mode.
+if(VCPKG_MANIFEST_MODE AND DEFINED VCPKG_INSTALLED_DIR)
+    # Respect vcpkg's installed directory override in manifest mode even when
+    # manifest installation is disabled for a restored dependency cache.
     set(_vcpkg_installed_dir "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
 else()
     # Classic mode: packages in global vcpkg installation

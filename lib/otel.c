@@ -394,6 +394,13 @@ void ascii_otel_scope_parent(ascii_otel_scope_t *s, ascii_otel_operation_t op, c
     current_scope = s;
   }
 }
+/* Keep the stack-scope lifetime boundary visible to the cleanup caller.  If
+ * GCC inlines this helper, its dangling-pointer analysis treats the deliberate
+ * thread-local scope stack as an escaped local even though cleanup restores it
+ * before return. */
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((noinline))
+#endif
 static bool scope_retained(ascii_otel_scope_t *s, ascii_otel_operation_t op, const gotel_context_t *parent) {
   gotel_host_t *h = retain();
   if (!h)
@@ -410,8 +417,6 @@ static bool scope_retained(ascii_otel_scope_t *s, ascii_otel_operation_t op, con
 void ascii_otel_scope_end(ascii_otel_scope_t *s) {
   if (!s || !s->retained)
     return;
-  if (atomic_load_explicit(&stopping, memory_order_acquire))
-    gotel_outcome(&s->scope, GOTEL_OUTCOME_CANCELLED, NULL);
   gotel_end(&s->scope);
   if (current_scope == s)
     current_scope = s->previous;
@@ -468,10 +473,10 @@ void ascii_otel_shutdown(void) {
   uint64_t budget_ns = shutdown_timeout_ns < 900 * NS_PER_MS_INT ? shutdown_timeout_ns : 900 * NS_PER_MS_INT;
   bool producers_active = atomic_load_explicit(&readers, memory_order_seq_cst) != 0;
   if (worker_started) {
-    // Do not call gotel_shutdown() here: it performs exporter cancellation on
-    // this thread and can block in the collector's network stack. Setting
-    // `stopping` above wakes the worker, which owns the drain and can be
-    // retained until process exit if its interruptible export exceeds budget.
+    // Interrupt any exporter request before waiting for the worker. Waiting
+    // first makes cancellation unreachable when the worker is blocked in
+    // DNS/TLS/HTTP, which turns a bounded shutdown into a process hang.
+    (void)otel_status(gotel_drain(h), "Drain telemetry exporter");
     while (!atomic_load_explicit(&worker_done, memory_order_acquire) && time_get_ns() - started < budget_ns)
       platform_sleep_ms(1);
     bool done = atomic_load_explicit(&worker_done, memory_order_acquire);
@@ -656,7 +661,7 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
     config.exporter.flush_timeout_ms = shutdown_safe_timeout_ms;
   if (*o->otel_ca_file)
     config.tls_ca_file = o->otel_ca_file;
-#if defined(PLATFORM_IOS)
+#if defined(PLATFORM_IOS) && PLATFORM_IOS
   else {
     const char *ios_ca_path = platform_system_ca_certs_path();
     if (ios_ca_path)

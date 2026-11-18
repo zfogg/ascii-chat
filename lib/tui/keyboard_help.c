@@ -71,13 +71,10 @@ const char *keyboard_help_screen_name(int parent) {
   }
 }
 
-<<<<<<< HEAD
 static asciichat_error_t present_help_snapshot(int fd, terminal_size_t minimum, const char *text, size_t length) {
   return ui_controller_present(UI_SCREEN_HELP, fd, minimum, text, length);
 }
 
-=======
->>>>>>> origin/master
 void keyboard_help_toggle_terminal(int fd) {
   int parent =
       ui_controller_current_screen() == UI_SCREEN_HELP ? keyboard_help_parent_screen() : ui_controller_current_screen();
@@ -98,7 +95,6 @@ void keyboard_help_toggle_terminal(int fd) {
     render_size.rows = 24;
   }
   terminal_size_t minimum;
-<<<<<<< HEAD
   char *text = ui_session_context_help_render(render_size, (ui_screen_t)keyboard_help_parent_screen(), &minimum);
   if (!text)
     return;
@@ -111,13 +107,6 @@ void keyboard_help_toggle_terminal(int fd) {
   }
   SAFE_FREE(text);
   return;
-=======
-  char *text = keyboard_help_text(ui_controller_size(), &minimum);
-  if (!text)
-    return;
-  if (!GET_OPTION(snapshot_mode))
-    (void)ui_controller_submit(UI_SCREEN_HELP, fd, minimum, render_help_snapshot, &fd, sizeof(fd));
->>>>>>> origin/master
 }
 
 void keyboard_help_toggle(session_display_ctx_t *ctx) {

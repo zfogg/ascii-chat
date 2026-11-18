@@ -84,8 +84,10 @@ __attribute__((weak)) void platform_log_hook(log_level_t level, const char *mess
  * This structure consolidates all logging system state into a single, named struct
  * for better auditability and easier initialization/cleanup.
  */
+#if defined(__GNUC__) && !defined(_MSC_VER)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#endif
 // Console logs never draw over a live screen, even from its rendering callback.
 static void log_terminal_printf(int fd, const char *format, ...) {
   if (ui_controller_is_presenting())
@@ -145,9 +147,9 @@ static struct log_system_t {
     .lifecycle = LIFECYCLE_INIT,
     .filename = {0},
     .current_size = {0},
-    .terminal_output_enabled = {1}, /* true */
-    .force_stderr = {0},            /* false */
-    .terminal_locked = {0},         /* false */
+    .terminal_output_enabled = {.impl = 1}, /* true */
+    .force_stderr = {0},                    /* false */
+    .terminal_locked = {0},                 /* false */
     .terminal_owner_thread = {0},
     .level_manually_set = {0}, /* false */
     .flush_delay_ms = {0},
@@ -162,7 +164,9 @@ static struct log_system_t {
     .rotation_mutex_lifecycle = LIFECYCLE_INIT,
     .session_log_buffer = {0}, /* NULL */
 };
+#if defined(__GNUC__) && !defined(_MSC_VER)
 #pragma GCC diagnostic pop
+#endif
 
 /* Level strings are defined in format.c (get_level_string_padded / get_level_string) */
 
@@ -1534,7 +1538,7 @@ void log_plain_msg(const char *fmt, ...) {
     log_mmap_write(LOG_INFO, NULL, 0, NULL, "%s", log_buffer);
   } else {
     // Write to file with headers (atomic write syscall)
-    int file_fd = atomic_load_u64(&g_log.file);
+    int file_fd = (int)atomic_load_u64(&g_log.file);
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
       // Add header with timestamp and log level to file output
       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
@@ -1613,7 +1617,7 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
     log_mmap_write(LOG_INFO, NULL, 0, NULL, "%s", log_buffer);
   } else {
     // Write to file with headers (atomic write syscall)
-    int file_fd = atomic_load_u64(&g_log.file);
+    int file_fd = (int)atomic_load_u64(&g_log.file);
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
       // Add header with timestamp and log level to file output
       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
@@ -1706,7 +1710,7 @@ static void log_plain_stdout_internal_atomic(const char *fmt, va_list args, bool
     log_mmap_write(LOG_INFO, NULL, 0, NULL, "%s", log_buffer);
   } else {
     // Write to file with headers (atomic write syscall)
-    int file_fd = atomic_load_u64(&g_log.file);
+    int file_fd = (int)atomic_load_u64(&g_log.file);
     if (file_fd >= 0 && file_fd != STDOUT_FILENO) {
       // Add header with timestamp and log level to file output
       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
@@ -1785,7 +1789,7 @@ void log_file_msg(const char *fmt, ...) {
   if (log_mmap_is_active()) {
     log_mmap_write(LOG_INFO, NULL, 0, NULL, "%s", log_buffer);
   } else {
-    int file_fd = atomic_load_u64(&g_log.file);
+    int file_fd = (int)atomic_load_u64(&g_log.file);
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
       write_to_log_file_atomic(log_buffer, msg_len, NULL);
       write_to_log_file_atomic("\n", 1, NULL);

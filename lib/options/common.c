@@ -183,8 +183,8 @@ const char *format_available_modes(option_mode_bitmask_t mode_bitmask) {
 char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name, asciichat_mode_t mode);
 
 // Validate and retrieve required argument for an option
-char *validate_required_argument(const char *optarg, char *argbuf, size_t argbuf_size, const char *option_name, asciichat_mode_t mode) {
-  char *value = get_required_argument(optarg, argbuf, argbuf_size, option_name, mode);
+char *validate_required_argument(const char *option_arg, char *argbuf, size_t argbuf_size, const char *option_name, asciichat_mode_t mode) {
+  char *value = get_required_argument(option_arg, argbuf, argbuf_size, option_name, mode);
   if (!value) {
     (void)option_error_invalid();
   }

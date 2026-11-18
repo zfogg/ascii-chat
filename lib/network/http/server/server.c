@@ -510,7 +510,7 @@ static bool parse_request(http_server_client_t *c, http_request_t *r) {
     r->info.protocol = HTTP_PROTOCOL_11;
   else
     return false;
-  char *q = strchr(r->info.path, '?');
+  char *q = strchr((char *)r->info.path, '?');
   if (q) {
     *q = 0;
     r->info.query = q + 1;

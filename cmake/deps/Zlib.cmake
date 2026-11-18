@@ -22,7 +22,7 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
         asciichat_dependency_defaults()
         set(ZLIB_BUILD_EXAMPLES OFF)
         FetchContent_Declare(asciichat_zlib
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_zlib"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_zlib"
             EXCLUDE_FROM_ALL
             URL https://zlib.net/fossils/zlib-1.3.1.tar.gz
             URL_HASH SHA256=9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23
@@ -57,10 +57,10 @@ endif()
 
 # Try to find zlib via CMake module mode first (vcpkg provides a wrapper),
 # then config mode, then fall back to pkg-config
-find_package(ZLIB QUIET)
+find_package(ZLIB QUIET PATHS "${VCPKG_LIB_PATH}/.." NO_DEFAULT_PATH)
 
 if(NOT ZLIB_FOUND)
-    find_package(ZLIB QUIET CONFIG)
+    find_package(ZLIB QUIET CONFIG PATHS "${VCPKG_LIB_PATH}/.." NO_DEFAULT_PATH)
 endif()
 
 if(NOT ZLIB_FOUND)
@@ -100,6 +100,27 @@ if(DEFINED ZLIB_LIBRARIES AND NOT ZLIB_LIBRARIES STREQUAL "")
         set(ZLIB_LIBRARY "${ZLIB_LIBRARIES}")
         set(ZLIB_LIBRARY "${ZLIB_LIBRARIES}" CACHE STRING "zlib libraries" FORCE)
     endif()
+endif()
+
+# Normalize all non-source providers to the project target contract.
+if(NOT TARGET asciichat-zlib)
+    add_library(asciichat-zlib INTERFACE)
+    if(TARGET ZLIB::ZLIB)
+        target_link_libraries(asciichat-zlib INTERFACE ZLIB::ZLIB)
+    elseif(ZLIB_LIBRARIES)
+        target_link_libraries(asciichat-zlib INTERFACE ${ZLIB_LIBRARIES})
+    endif()
+    if(ZLIB_INCLUDE_DIRS)
+        target_include_directories(asciichat-zlib INTERFACE ${ZLIB_INCLUDE_DIRS})
+    elseif(ZLIB_INCLUDE_DIR)
+        target_include_directories(asciichat-zlib INTERFACE "${ZLIB_INCLUDE_DIR}")
+    endif()
+endif()
+if(NOT TARGET ZLIB::ZLIB)
+    add_library(ZLIB::ZLIB ALIAS asciichat-zlib)
+endif()
+if(NOT TARGET ZLIB::zlib)
+    add_library(ZLIB::zlib ALIAS asciichat-zlib)
 endif()
 
 message(STATUS "${BoldGreen}✓${ColorReset} zlib found")

@@ -16,29 +16,9 @@ endif()
 # =============================================================================
 # Validate required programs for musl builds
 # =============================================================================
-if(NOT ASCIICHAT_MUSL_GCC_EXECUTABLE)
-    message(FATAL_ERROR "musl-gcc not found. Required for Linux Release builds with USE_MUSL=ON.\n"
-        "Install musl development tools:\n"
-        "  Arch Linux: sudo pacman -S musl\n"
-        "  Ubuntu/Debian: sudo apt install musl-tools\n"
-        "  Fedora: sudo dnf install musl-gcc")
-endif()
-
-if(NOT ASCIICHAT_GCC_EXECUTABLE)
-    message(FATAL_ERROR "gcc not found. Required by musl-gcc (via REALGCC).\n"
-        "Install GCC:\n"
-        "  Arch Linux: sudo pacman -S gcc\n"
-        "  Ubuntu/Debian: sudo apt install gcc\n"
-        "  Fedora: sudo dnf install gcc")
-endif()
-
 # Set variables for use in ExternalProject commands
-set(MUSL_GCC "${ASCIICHAT_MUSL_GCC_EXECUTABLE}")
-set(REAL_GCC "${ASCIICHAT_GCC_EXECUTABLE}")
-
 message(STATUS "Building dependencies from source for musl libc...")
-message(STATUS "  musl-gcc: ${MUSL_GCC}")
-message(STATUS "  gcc (REALGCC): ${REAL_GCC}")
+message(STATUS "  dependency compiler: ${ASCIICHAT_CLANG_EXECUTABLE} --target=${MUSL_TARGET}")
 
 include(FetchContent)
 

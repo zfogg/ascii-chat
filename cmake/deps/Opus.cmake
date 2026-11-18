@@ -40,7 +40,7 @@ if(EMSCRIPTEN OR PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             set(OPUS_DISABLE_INTRINSICS ON)
         endif()
         FetchContent_Declare(asciichat_opus
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_opus"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_opus"
             EXCLUDE_FROM_ALL
             URL https://github.com/xiph/opus/releases/download/v1.5.2/opus-1.5.2.tar.gz
             URL_HASH SHA256=65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1
@@ -51,6 +51,11 @@ if(EMSCRIPTEN OR PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
     asciichat_build_opus()
     set(OPUS_LIBRARIES Opus::opus)
     set(OPUS_FOUND TRUE)
+    if(NOT TARGET asciichat-opus)
+        add_library(asciichat-opus INTERFACE)
+        target_link_libraries(asciichat-opus INTERFACE Opus::opus)
+        target_include_directories(asciichat-opus INTERFACE "${OPUS_INCLUDE_DIRS}")
+    endif()
     return()
 endif()
 
@@ -76,3 +81,9 @@ endif()
 find_path(OPUS_HEADER_INCLUDE_DIR NAMES opus.h
     HINTS ${OPUS_INCLUDE_DIRS} ${OPUS_PKG_INCLUDE_DIR} PATH_SUFFIXES opus REQUIRED)
 set(OPUS_INCLUDE_DIRS "${OPUS_HEADER_INCLUDE_DIR}")
+
+if(NOT TARGET asciichat-opus)
+    add_library(asciichat-opus INTERFACE)
+    target_link_libraries(asciichat-opus INTERFACE ${OPUS_LIBRARIES})
+endif()
+target_include_directories(asciichat-opus INTERFACE "${OPUS_INCLUDE_DIRS}")

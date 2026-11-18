@@ -102,10 +102,9 @@ if(USE_MUSL)
 
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E env
-                CC=${MUSL_GCC}
-                REALGCC=${REAL_GCC}
+                CC=${ASCIICHAT_CLANG_EXECUTABLE}
                 CFLAGS=${MUSL_KERNEL_CFLAGS}
-                ${MUSL_GCC} -c
+                ${ASCIICHAT_CLANG_EXECUTABLE} --target=${MUSL_TARGET} -c
                 -DSQLITE_THREADSAFE=1
                 -DSQLITE_ENABLE_FTS5
                 -DSQLITE_ENABLE_RTREE
@@ -208,8 +207,11 @@ endif()
 # Try pkg-config first (more reliable for getting library paths)
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
-    pkg_check_modules(SQLITE3 QUIET sqlite3)
+    pkg_check_modules(SQLITE3 QUIET IMPORTED_TARGET sqlite3)
     if(SQLITE3_FOUND)
+        if(TARGET PkgConfig::SQLITE3)
+            set(SQLITE3_LIBRARIES PkgConfig::SQLITE3)
+        endif()
         # pkg-config returns a bare `-lsqlite3` on Windows even when it has
         # resolved the actual vcpkg library.  Preserve the absolute path so
         # clang/lld does not turn it into the invalid `-lsqlite3.lib`.

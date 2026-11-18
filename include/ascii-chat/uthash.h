@@ -38,13 +38,12 @@
 // UBSan-safe hash wrapper for uthash (fnv1a uses 64-bit arithmetic, no overflow)
 // Note: uthash expects HASH_FUNCTION(keyptr, keylen, hashv) where hashv is an output parameter
 #undef HASH_FUNCTION
-#define HASH_FUNCTION(keyptr, keylen, hashv)          \
-  do {                                                \
-    if (!(keyptr) || (keylen) == 0) {                 \
-      (hashv) = 1; /* Non-zero constant for safety */ \
-    } else {                                          \
-      (hashv) = fnv1a_hash_bytes((keyptr), (keylen)); \
-    }                                                 \
+static inline unsigned uthash_ascii_chat_hash(const void *keyptr, size_t keylen) {
+  return keylen == 0 || keyptr == NULL ? 1U : (unsigned)fnv1a_hash_bytes(keyptr, keylen);
+}
+#define HASH_FUNCTION(keyptr, keylen, hashv)              \
+  do {                                                    \
+    (hashv) = uthash_ascii_chat_hash((keyptr), (keylen)); \
   } while (0)
 
 // Include the upstream uthash header

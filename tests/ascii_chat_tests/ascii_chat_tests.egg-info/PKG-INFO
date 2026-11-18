@@ -1,0 +1,26 @@
+Metadata-Version: 2.4
+Name: ascii-chat-tests
+Version: 0.1.0
+Summary: Shared Python fixtures for ascii-chat integration tests
+Requires-Python: >=3.15
+Requires-Dist: pytest<10,>=9
+Requires-Dist: pytest-xdist<4,>=3.8
+Requires-Dist: psutil>=6
+Requires-Dist: filelock>=3.16
+Requires-Dist: fonttools<5,>=4.60
+Requires-Dist: numpy<3,>=1.26
+Requires-Dist: pyte==0.8.2
+Requires-Dist: pywinpty; sys_platform == "win32"
+Requires-Dist: Pillow<13,>=12
+Requires-Dist: wcwidth
+Requires-Dist: ruff<1,>=0.14
+Requires-Dist: ty<0.1,>=0.0.99
+Requires-Dist: pexpect==4.9.0
+Requires-Dist: pyyaml<7,>=6
+Provides-Extra: audio
+Requires-Dist: scipy; extra == "audio"
+Requires-Dist: matplotlib; extra == "audio"
+Requires-Dist: sounddevice; extra == "audio"
+Requires-Dist: soundfile; extra == "audio"
+Provides-Extra: telemetry
+Requires-Dist: gotel @ git+https://github.com/zfogg/gotel.git@v0.14.0#subdirectory=python ; extra == "telemetry"

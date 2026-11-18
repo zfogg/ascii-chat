@@ -114,7 +114,7 @@ if(USE_MUSL)
             UPDATE_DISCONNECTED 1
             BUILD_ALWAYS 0
             CONFIGURE_COMMAND ""
-            BUILD_COMMAND bash -c "cd <SOURCE_DIR> && env CC=${MUSL_GCC} CFLAGS=-fPIC make -j"
+            BUILD_COMMAND bash -c "cd <SOURCE_DIR> && env CC=${ASCIICHAT_CLANG_EXECUTABLE} CFLAGS='--target=${MUSL_TARGET} -fPIC' make -j"
             INSTALL_COMMAND bash -c "mkdir -p ${BZIP2_PREFIX}/lib ${BZIP2_PREFIX}/include && cp <SOURCE_DIR>/bzlib.h ${BZIP2_PREFIX}/include/ && cp <SOURCE_DIR>/libbz2.a ${BZIP2_PREFIX}/lib/"
             BUILD_BYPRODUCTS ${BZIP2_LIBRARY}
             LOG_BUILD TRUE

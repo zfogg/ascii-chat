@@ -15,8 +15,9 @@ function(asciichat_build_aec3)
        OR CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
         set(ASCIICHAT_TARGET_ARM64 ON)
     endif()
-    # AEC3 exposes static component libraries that are embedded in the public library.
-    set(BUILD_SHARED_LIBS OFF)
+    # AEC3 exposes component libraries embedded in the public library. Keep
+    # the caller's dependency mode for Debug/Dev; static release-like targets
+    # already select BUILD_SHARED_LIBS=OFF at the preset level.
     set(CMAKE_CXX_STANDARD 17)
     FetchContent_Declare(webrtc_aec3
         BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc-aec3"
@@ -35,13 +36,30 @@ function(asciichat_build_aec3)
         FetchContent_Populate(webrtc_aec3)
         cmake_policy(POP)
     endif()
-<<<<<<< HEAD
-    set(WEBRTC_AEC3_SOURCE_DIR "${asciichat_aec3_SOURCE_DIR}")
-    set(WEBRTC_AEC3_SOURCE_DIR "${asciichat_aec3_SOURCE_DIR}" CACHE INTERNAL "WebRTC AEC3 source directory" FORCE)
-=======
     set(WEBRTC_AEC3_SOURCE_DIR "${webrtc_aec3_SOURCE_DIR}")
->>>>>>> origin/master
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/patch-webrtc-aec3-cmake.cmake")
+    if(MSVC)
+        # Older cached AEC3 source trees may already contain the upstream
+        # GNU-only flag edits from an earlier configure. Remove those source
+        # edits before adding the subproject so cl.exe sees only native flags.
+        file(READ "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" _aec3_cmake)
+        string(REPLACE "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -fvisibility=hidden\")" "" _aec3_cmake "${_aec3_cmake}")
+        string(REPLACE "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -std=c++17\")" "" _aec3_cmake "${_aec3_cmake}")
+        string(REPLACE "add_compile_options(-w)  # Suppress all warnings" "" _aec3_cmake "${_aec3_cmake}")
+        file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${_aec3_cmake}")
+    endif()
+    if(WIN32)
+        # The fetched project enables global PIC, which CMake translates to
+        # ELF's -fPIC even for clang-cl/GNU-style Clang targeting Windows.
+        file(READ "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" _aec3_cmake)
+        string(REPLACE "set(CMAKE_POSITION_INDEPENDENT_CODE ON)"
+            "set(CMAKE_POSITION_INDEPENDENT_CODE OFF)" _aec3_cmake "${_aec3_cmake}")
+        string(REPLACE "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -fvisibility=hidden -fPIC -pthread -std=c++17\")"
+            "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -fvisibility=hidden -pthread -std=c++17\")"
+            _aec3_cmake "${_aec3_cmake}")
+        file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${_aec3_cmake}")
+        set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
+    endif()
     add_subdirectory("${webrtc_aec3_SOURCE_DIR}" "${webrtc_aec3_BINARY_DIR}")
     # Upstream uses private directory includes; publish the public audio API.
     target_include_directories(AudioProcess PUBLIC
@@ -55,14 +73,11 @@ function(asciichat_build_aec3)
     else()
         target_compile_definitions(AudioProcess PUBLIC WEBRTC_POSIX)
     endif()
-    set_target_properties(AudioProcess aec3 api base PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    if(PLATFORM_IOS AND CMAKE_CXX_COMPILER_TARGET)
-        # WebRTC is added through its own CMake project and does not inherit
-        # the top-level compiler target on an Intel macOS host. Without this,
-        # Clang selects x86 WebRTC intrinsics even when -arch arm64 is present.
-        foreach(_target AudioProcess aec3 api base)
-            target_compile_options(${_target} PRIVATE "--target=${CMAKE_CXX_COMPILER_TARGET}")
-        endforeach()
+    # Windows object files are position-independent by default; Clang's
+    # Windows driver rejects the ELF-only -fPIC flag emitted by CMake for this
+    # property. Keep PIC for ELF/Mach-O targets only.
+    if(NOT WIN32)
+        set_target_properties(AudioProcess aec3 api base PROPERTIES POSITION_INDEPENDENT_CODE ON)
     endif()
     # MSVC's C++ container annotations must match the consuming ASan objects.
     if(WIN32 AND "-fsanitize=address" IN_LIST ASCIICHAT_SANITIZER_COMPILE_FLAGS)
@@ -83,4 +98,4 @@ function(asciichat_build_aec3)
 endfunction()
 asciichat_build_aec3()
 add_library(webrtc_audio_processing INTERFACE)
-target_link_libraries(webrtc_audio_processing INTERFACE AudioProcess)
+target_link_libraries(webrtc_audio_processing INTERFACE AudioProcess aec3 api base)

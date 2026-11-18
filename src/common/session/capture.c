@@ -601,7 +601,7 @@ static void *load_media_worker(void *data) {
   asciichat_error_context_t failure;
   char error[SESSION_CAPTURE_ERROR_BUFFER_SIZE] = "Could not open media";
   if (!source && errno_peek_since(scope, &failure))
-    snprintf(error, sizeof(error), "%s", failure.context_message);
+    snprintf(error, sizeof(error), "%.*s", (int)(sizeof(error) - 1), failure.context_message);
   errno_scope_end(scope, ASCIICHAT_ERRNO_DISMISSED);
   mutex_lock(&ctx->load_mutex);
   ctx->loaded_source = source;
@@ -629,7 +629,9 @@ static asciichat_error_t capture_load_playlist(session_capture_ctx_t *ctx, const
   const char *path = list->paths[index];
   if (!ctx || !ctx->media_locks_ready || !path || strlen(path) >= sizeof(ctx->load_path))
     return SET_ERRNO(ERROR_INVALID_STATE, "Local capture is unavailable");
-  size_t limit = strstr(path, "://") ? sizeof(((options_t *)0)->media_url) : sizeof(((options_t *)0)->media_file);
+  size_t limit = sizeof(((options_t *)0)->media_file);
+  if (strstr(path, "://"))
+    limit = sizeof(((options_t *)0)->media_url);
   if (strlen(path) >= limit)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Media path or URL exceeds the configured source limit");
   mutex_lock(&ctx->load_mutex);

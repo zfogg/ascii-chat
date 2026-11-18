@@ -48,7 +48,6 @@ set(APP_SRCS ${APP_SRCS} PARENT_SCOPE)
 # =============================================================================
 # Executables Module
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/utils/CoreDependencies.cmake)
 # This module creates the main executable target
 #
 # Prerequisites:
@@ -80,6 +79,7 @@ if(WIN32)
 endif()
 target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LIBUV_TARGET} ${YYJSON_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
 target_link_libraries(ascii-chat PRIVATE libflags::flags)
+target_link_libraries(ascii-chat PRIVATE asciichat-rnnoise)
 target_include_directories(ascii-chat PRIVATE ${YYJSON_INCLUDE_DIRS})
 
 # Clang with compiler-rt does not always add the system unwinder when linking
@@ -88,9 +88,11 @@ if(UNIX AND NOT APPLE)
     if(ASCIICHAT_LLVM_LIBUNWIND)
         target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LLVM_LIBUNWIND})
     endif()
-    # Arch ships the GCC unwinder as libgcc_s.so.1 without an unversioned
-    # development symlink, so find_library cannot discover it by filename.
-    target_link_libraries(ascii-chat PRIVATE gcc_s)
+    if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND NOT USE_MUSL)
+        # Arch ships the GCC unwinder as libgcc_s.so.1 without an unversioned
+        # development symlink, so find_library cannot discover it by filename.
+        target_link_libraries(ascii-chat PRIVATE gcc_s)
+    endif()
 endif()
 
 # The executable's mode sources call FFmpeg directly. pkg-config can return
@@ -109,14 +111,12 @@ endif()
 
 # Link against the combined library instead of individual libraries
 # Ensure the combined library is built before linking
-# For Debug/Dev: shared library (DLL on Windows) - except musl which needs static
-# For Release: static library (unless BUILD_SHARED_LIBS is ON)
-# Determine if we should use shared library linking
+# Determine whether the executable should link the shared library target.
 # - USE_MUSL: always static (musl requires static linking)
 # - Linux Release (non-musl): static FFmpeg .a can't link into shared lib (PIC issues on arm64)
 set(_use_shared_lib FALSE)
 if(NOT USE_MUSL)
-    if(BUILD_SHARED_LIBS OR CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
+    if(BUILD_SHARED_LIBS)
         set(_use_shared_lib TRUE)
     else()
         set(_use_shared_lib FALSE)
@@ -127,19 +127,19 @@ if(NOT _use_shared_lib)
     target_compile_definitions(ascii-chat PRIVATE BUILDING_STATIC_LIB)
 endif()
 
-if(NOT _use_shared_lib AND NOT USE_MUSL AND APPLE)
+if(NOT BUILD_SHARED_LIBS AND NOT USE_MUSL AND APPLE)
     # macOS Release executables statically link the project archive and its
     # dependencies. Keep ascii-chat-shared as a separate development artifact.
     add_dependencies(ascii-chat build-ascii-chat-static-lib generate_version)
     target_link_libraries(ascii-chat PRIVATE ascii-chat-static OpenSSL::SSL)
     set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
-elseif(NOT _use_shared_lib AND NOT USE_MUSL)
-    # Static release linking: link object libraries directly into executable
-    # Used on Linux Release non-musl (static FFmpeg .a can't go into .so)
-    # and Windows Release (fully static binary with all deps compiled in)
+elseif(NOT BUILD_SHARED_LIBS OR USE_MUSL)
+    # Static linking: link object libraries and the unified dependency
+    # interface directly into the executable. This covers Linux release,
+    # musl, and Windows release configurations.
     add_dependencies(ascii-chat generate_version)
     target_link_libraries(ascii-chat PRIVATE ascii-chat-runtime-objects)
-    get_core_deps_libraries(CORE_LIBS)
+    set(CORE_LIBS asciichat-core-dependencies)
     target_link_libraries(ascii-chat PRIVATE ${CORE_LIBS} ${BEARSSL_LIBRARIES})
     if(FFMPEG_LIBRARIES)
         target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LIBRARIES})
@@ -201,16 +201,16 @@ elseif(NOT _use_shared_lib AND NOT USE_MUSL)
     endif()
 
     set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
-elseif(_use_shared_lib)
+elseif(BUILD_SHARED_LIBS AND NOT USE_MUSL)
     add_dependencies(ascii-chat ascii-chat-shared generate_version)
-    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared libplatform::libplatform libflags::flags)
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared ${ASCIICHAT_LIBPLATFORM_TARGET} libflags::flags)
 
     # Explicitly add system libraries when using shared library
     # The executable needs to link against the same dependencies as the shared library
     if(WIN32)
         # Import library is in bin directory with the DLL
         target_link_directories(ascii-chat PRIVATE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-        get_core_deps_libraries(CORE_LIBS)
+        set(CORE_LIBS asciichat-core-dependencies)
         target_link_libraries(ascii-chat PRIVATE
             ${WS2_32_LIB} ${USER32_LIB} ${ADVAPI32_LIB} ${DBGHELP_LIB}
             ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB}
@@ -244,7 +244,7 @@ elseif(_use_shared_lib)
         target_link_libraries(ascii-chat PRIVATE delayimp)
     else()
         # Unix: Also need explicit dependencies when linking against shared library
-        get_core_deps_libraries(CORE_LIBS)
+        set(CORE_LIBS asciichat-core-dependencies)
         target_link_libraries(ascii-chat PRIVATE
             ${CORE_LIBS}
         )
@@ -505,8 +505,13 @@ if(NOT WIN32 AND CMAKE_C_LINK_PIE_SUPPORTED)
     endif()
 endif()
 
-# Enable dead code elimination for optimal binary size
-target_compile_options(ascii-chat PRIVATE -ffunction-sections -fdata-sections)
+# Enable dead code elimination for optimal binary size using the compiler's
+# native sectioning options.
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    target_compile_options(ascii-chat PRIVATE /Gy /Gw)
+else()
+    target_compile_options(ascii-chat PRIVATE -ffunction-sections -fdata-sections)
+endif()
 
 # Release-specific optimizations for executable
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -536,7 +541,6 @@ if(NOT WIN32)
     if(APPLE)
         target_link_options(ascii-chat PRIVATE -Wl,-dead_strip)
     else()
-        message(FATAL_ERROR "libdatachannel is required for musl builds")
         target_link_options(ascii-chat PRIVATE -Wl,--gc-sections)
     endif()
 endif()
@@ -652,7 +656,7 @@ if(WIN32)
 endif()
 # Check static linking for Release builds
 check_static_linking(ascii-chat)
-if((WIN32 OR APPLE) AND _use_shared_lib AND TARGET ascii-chat-shared)
+if((WIN32 OR APPLE) AND BUILD_SHARED_LIBS AND NOT USE_MUSL AND TARGET ascii-chat-shared)
     # The shared ABI library is shipped for developers; its third-party
     # dependencies must still be linked statically in a Release package.
     check_static_linking(ascii-chat-shared)
@@ -701,7 +705,7 @@ if(BUILD_WEB AND BUILD_EXECUTABLES)
     # For dynamic builds, it points to .so/.dylib
     target_link_libraries(ascii-chat-strings PRIVATE ${LIBSODIUM_LIBRARIES})
     if(WIN32)
-        target_link_libraries(ascii-chat-strings PRIVATE libplatform::libplatform)
+        target_link_libraries(ascii-chat-strings PRIVATE ${ASCIICHAT_LIBPLATFORM_TARGET})
     endif()
 
     # Static linking for release builds (musl on Linux only)

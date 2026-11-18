@@ -45,7 +45,6 @@ if(PLATFORM_IOS OR EMSCRIPTEN)
     return()
 endif()
 
-
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
 if(USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
     function(asciichat_build_portaudio)
@@ -64,7 +63,7 @@ if(USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             set(ALSA_LIBRARY "${ALSA_PREFIX}/lib/libasound.a")
         endif()
         FetchContent_Declare(asciichat_portaudio
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_portaudio"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_portaudio"
             EXCLUDE_FROM_ALL
             URL https://github.com/PortAudio/portaudio/archive/refs/tags/v19.7.0.tar.gz
             DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
@@ -127,8 +126,8 @@ if(DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg")
     message(STATUS "Found PORTAUDIO via vcpkg: ${PORTAUDIO_LIBRARIES}")
 else()
     # Use system PortAudio
-    # On macOS Release builds: prefer static library when ASCIICHAT_SHARED_DEPS is OFF
-    if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    # On macOS Release builds: prefer static library when BUILD_SHARED_LIBS is OFF
+    if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
         find_library(PORTAUDIO_STATIC_LIB
             NAMES libportaudio.a
             PATHS
@@ -166,5 +165,17 @@ else()
         set(PORTAUDIO_INCLUDE_DIRS ${PORTAUDIO_INCLUDE_DIRS})
         set(PORTAUDIO_FOUND TRUE)
         message(STATUS "Found PORTAUDIO via pkg-config: ${PORTAUDIO_LIBRARIES}")
+    endif()
+endif()
+
+# Stable target consumed by application code. Keep provider-specific variables
+# local to this module; callers link the interface target.
+if(NOT TARGET asciichat-portaudio)
+    add_library(asciichat-portaudio INTERFACE)
+    if(PORTAUDIO_LIBRARIES)
+        target_link_libraries(asciichat-portaudio INTERFACE ${PORTAUDIO_LIBRARIES})
+    endif()
+    if(PORTAUDIO_INCLUDE_DIRS)
+        target_include_directories(asciichat-portaudio INTERFACE ${PORTAUDIO_INCLUDE_DIRS})
     endif()
 endif()

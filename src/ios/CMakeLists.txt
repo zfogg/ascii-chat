@@ -52,12 +52,8 @@ target_compile_options(ascii-chat-ios-app PRIVATE
     "$<$<COMPILE_LANGUAGE:Swift>:-parse-as-library>"
 )
 
-get_core_deps_libraries(IOS_CORE_LIBS)
-
 target_link_libraries(ascii-chat-ios-app PRIVATE
-    ascii-chat-static-lib
-    ascii-chat-static-lib-deps
-    ${IOS_CORE_LIBS}
+    ascii-chat-static
     ${FFMPEG_LIBRARIES}
     ${UTF8PROC_LIBRARIES}
     ${FFTW_LIBRARIES}

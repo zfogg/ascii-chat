@@ -6,6 +6,7 @@
  * @brief render_file_* — ties together font resolution, platform renderer, FFmpeg encoder
  */
 #include <ascii-chat/media/render/renderer.h>
+#include <ascii-chat/font.h>
 #include <ascii-chat/media/ffmpeg_encoder.h>
 #include <libplatform/font.h>
 #include <options/options.h>

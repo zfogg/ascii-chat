@@ -40,9 +40,9 @@ void ui_status_render_header(frame_buffer_t *buf, terminal_size_t term_size, voi
   // Calculate uptime
   time_t now = time(NULL);
   time_t uptime_secs = now - status->start_time;
-  int uptime_hours = uptime_secs / SEC_PER_HOUR;
-  int uptime_mins = (uptime_secs % SEC_PER_HOUR) / SEC_PER_MIN;
-  int uptime_secs_rem = uptime_secs % 60;
+  int uptime_hours = (int)(uptime_secs / SEC_PER_HOUR);
+  int uptime_mins = (int)((uptime_secs % SEC_PER_HOUR) / SEC_PER_MIN);
+  int uptime_secs_rem = (int)(uptime_secs % 60);
 
   // Line 1: Top border
   bool unicode = terminal_should_use_utf8(GET_OPTION(force_utf8));

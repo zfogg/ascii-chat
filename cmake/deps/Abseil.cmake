@@ -14,7 +14,7 @@
 
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
 if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE
-   OR (APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS))
+   OR (APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS))
     function(asciichat_build_abseil)
         asciichat_dependency_defaults()
         set(ABSL_BUILD_TESTING OFF)
@@ -24,7 +24,7 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE
             set(ABSL_BUILD_MONOLITHIC_SHARED_LIBS ${BUILD_SHARED_LIBS})
         endif()
         FetchContent_Declare(asciichat_abseil
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_abseil"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_abseil"
             EXCLUDE_FROM_ALL
             URL https://github.com/abseil/abseil-cpp/archive/refs/tags/20250814.1.tar.gz
             URL_HASH SHA256=1692f77d1739bacf3f94337188b78583cf09bab7e420d2dc6c5605a4f86785a1
@@ -33,6 +33,7 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE
         set(ABSEIL_INCLUDE_DIRS "${asciichat_abseil_SOURCE_DIR}" PARENT_SCOPE)
     endfunction()
     asciichat_build_abseil()
+    set(ABSEIL_FOUND TRUE)
     set(ABSEIL_LIBRARIES absl::base absl::strings)
     return()
 endif()
@@ -49,7 +50,27 @@ if(UNIX AND NOT APPLE)
         message(STATUS "${BoldGreen}✓${ColorReset} Abseil: ${ABSEIL_LDFLAGS}")
     else()
         message(STATUS "${BoldYellow}⚠${ColorReset} Abseil not found in system packages, will try to find CMake package")
-        find_package(absl QUIET)
+        find_package(absl CONFIG QUIET
+            PATHS
+                "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/cmake"
+                "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/cmake/absl"
+                "/usr/lib/cmake"
+                "/usr/local/lib/cmake"
+            PATH_SUFFIXES absl
+            NO_DEFAULT_PATH)
+        if(NOT absl_FOUND)
+            find_file(_asciichat_absl_config
+                NAMES abslConfig.cmake
+                PATHS
+                    "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/cmake/absl"
+                    "/usr/lib/x86_64-linux-gnu/cmake/absl"
+                    "/usr/lib/aarch64-linux-gnu/cmake/absl"
+                NO_DEFAULT_PATH)
+            if(_asciichat_absl_config)
+                include("${_asciichat_absl_config}")
+                set(absl_FOUND TRUE)
+            endif()
+        endif()
         if(absl_FOUND)
             set(ABSEIL_LIBRARIES absl::base absl::strings)
             set(ABSEIL_INCLUDE_DIRS "")
@@ -76,7 +97,9 @@ elseif(APPLE)
 
 elseif(WIN32)
     # Windows: Use vcpkg
-    find_package(absl CONFIG QUIET)
+    find_package(absl CONFIG QUIET
+        PATHS "${VCPKG_LIB_PATH}/.."
+        NO_DEFAULT_PATH)
     if(absl_FOUND)
         set(ABSEIL_LIBRARIES absl::base absl::strings)
         set(ABSEIL_INCLUDE_DIRS "")

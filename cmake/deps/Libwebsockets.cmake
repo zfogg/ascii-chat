@@ -2,10 +2,31 @@
 option(ASCIICHAT_USE_SYSTEM_LIBWEBSOCKETS
     "Use system libwebsockets when the package is available"
     ON)
-if((WIN32 OR ASCIICHAT_SHARED_DEPS OR ASCIICHAT_USE_SYSTEM_LIBWEBSOCKETS)
+if((WIN32 OR BUILD_SHARED_LIBS OR ASCIICHAT_USE_SYSTEM_LIBWEBSOCKETS)
    AND NOT ASCIICHAT_BUILD_DEPS_FROM_SOURCE
    AND NOT PLATFORM_IOS
    AND NOT USE_MUSL)
+    if(WIN32)
+        # The vcpkg port ships a config file, but its package is not visible
+        # through the project's staged prefix during configure. Discover the
+        # staged archive directly and retain the required system closure.
+        find_path(_asciichat_lws_include NAMES libwebsockets.h
+            PATHS "${VCPKG_INCLUDE_PATH}" REQUIRED)
+        find_library(_asciichat_lws_library NAMES websockets
+            PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+        add_library(asciichat-libwebsockets UNKNOWN IMPORTED GLOBAL)
+        set_target_properties(asciichat-libwebsockets PROPERTIES
+            IMPORTED_LOCATION "${_asciichat_lws_library}"
+            INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_lws_include}"
+            INTERFACE_LINK_LIBRARIES "OpenSSL::SSL;ZLIB::ZLIB;ws2_32")
+        set(LIBWEBSOCKETS_LIBRARIES asciichat-libwebsockets)
+        set(LIBWEBSOCKETS_INCLUDE_DIRS "${_asciichat_lws_include}")
+        set(LIBWEBSOCKETS_FOUND TRUE)
+        if(TARGET asciichat-project-options)
+            target_compile_definitions(asciichat-project-options INTERFACE HAVE_LIBWEBSOCKETS=1)
+        endif()
+        return()
+    endif()
     # Try CMake config first, then fall back to pkg-config
     find_package(libwebsockets QUIET CONFIG)
     if(NOT libwebsockets_FOUND)
@@ -48,7 +69,7 @@ function(asciichat_build_libwebsockets)
     set(CMAKE_TRY_COMPILE_TARGET_TYPE EXECUTABLE)
     if(USE_MUSL)
         # Use the target CRT rather than the host's implicit runtime.
-        set(CMAKE_C_STANDARD_LIBRARIES "${MUSL_LIBGCC_PATH} -lc -lm ${MUSL_LIBDIR}/crtn.o")
+        set(CMAKE_C_STANDARD_LIBRARIES "${MUSL_COMPILER_RT_PATH} -lc -lm ${MUSL_LIBDIR}/crtn.o")
         list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES CMAKE_C_STANDARD_LIBRARIES)
     endif()
     set(LWS_WITH_SHARED ${BUILD_SHARED_LIBS})
@@ -91,7 +112,7 @@ function(asciichat_build_libwebsockets)
     set(LWS_WITHOUT_DAEMONIZE ON)
     set(LWS_IPV6 ON)
     FetchContent_Declare(asciichat_libwebsockets
-        BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_libwebsockets"
+        BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_libwebsockets"
         URL https://github.com/warmcat/libwebsockets/archive/4cb71af648294663ebd38550ccf47b29adec7974.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         SOURCE_SUBDIR asciichat-patch-first)
@@ -101,6 +122,14 @@ function(asciichat_build_libwebsockets)
     set(LWS_SOURCE_DIR "${asciichat_libwebsockets_SOURCE_DIR}")
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/patch-libwebsockets-cmake.cmake")
     add_subdirectory("${asciichat_libwebsockets_SOURCE_DIR}" "${asciichat_libwebsockets_BINARY_DIR}" EXCLUDE_FROM_ALL)
+
+# OpenSSL 4 keeps HMAC_CTX opaque. libwebsockets' generated config can miss
+# this capability because the deprecated constructor probe is disabled, while
+# the public header still needs the pointer form for host-side Recast parsing.
+if(PLATFORM_IOS AND EXISTS "${asciichat_libwebsockets_BINARY_DIR}/lws_config.h")
+    file(APPEND "${asciichat_libwebsockets_BINARY_DIR}/lws_config.h"
+        "\n#ifndef LWS_HAVE_HMAC_CTX_new\n#define LWS_HAVE_HMAC_CTX_new 1\n#endif\n")
+endif()
     if(TARGET websockets)
         target_compile_definitions(websockets PRIVATE
             LWS_SUPPRESS_DEPRECATED_API_WARNINGS

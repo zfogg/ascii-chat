@@ -102,7 +102,7 @@ asciichat_error_t ice_get_selected_pair_impl(webrtc_peer_connection_t *pc, ice_c
 
     return ASCIICHAT_OK;
 
-  } catch (const std::exception &e) {
+  } catch (const std::exception &) {
     return ERROR_NETWORK;
   } catch (...) {
     return ERROR_NETWORK;

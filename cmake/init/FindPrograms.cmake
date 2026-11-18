@@ -15,6 +15,7 @@
 #   - ASCIICHAT_CLANG_FORMAT_EXECUTABLE: clang-format code formatter
 #   - ASCIICHAT_CPPCHECK_EXECUTABLE: cppcheck static analyzer
 #   - ASCIICHAT_BASH_EXECUTABLE: bash shell (Git Bash on Windows)
+#   - ASCIICHAT_MAKE_EXECUTABLE: GNU Make (MSYS2/Unix)
 #   - ASCIICHAT_STRIP_EXECUTABLE: strip for removing symbols
 #   - ASCIICHAT_OBJCOPY_EXECUTABLE: objcopy for binary manipulation
 #   - ASCIICHAT_PYTHON3_EXECUTABLE: Python 3 interpreter
@@ -32,8 +33,6 @@
 #   - ASCIICHAT_GMAKE_EXECUTABLE: GNU Make (macOS)
 #   - ASCIICHAT_CLANG_CL_EXECUTABLE: clang-cl MSVC-compatible compiler (Windows only)
 #   - ASCIICHAT_LLVM_LIB_EXECUTABLE: llvm-lib library archive tool (Windows only)
-#   - ASCIICHAT_MUSL_GCC_EXECUTABLE: musl-gcc compiler wrapper (Linux only, for USE_MUSL builds)
-#   - ASCIICHAT_GCC_EXECUTABLE: GCC compiler (Linux only, used by musl-gcc via REALGCC)
 #   - ASCIICHAT_BREW_EXECUTABLE: Homebrew package manager (macOS/Linux)
 #
 # Exported paths (for modules that need to find additional LLVM tools):
@@ -120,6 +119,9 @@ if(WIN32)
         "C:/Program Files/LLVM/bin"
     )
     set(_BASH_SEARCH_PATHS
+        # CI exports the MSYS2 installation used by autotools dependencies.
+        "$ENV{MSYS2_ROOT}/usr/bin"
+        "$ENV{MSYS2_ROOT}/bin"
         # Git for Windows (64-bit)
         "C:/Program Files/Git/usr/bin"
         "C:/Program Files/Git/bin"
@@ -167,7 +169,7 @@ else()
     set(_BASH_SEARCH_PATHS /bin /usr/bin /usr/sbin)
 endif()
 
-# Export LLVM search paths for use by other modules (e.g., LLVM.cmake)
+# Export LLVM search paths for use by other modules (e.g., Clang.cmake)
 set(ASCIICHAT_LLVM_SEARCH_PATHS "${_LLVM_SEARCH_PATHS}" CACHE INTERNAL "LLVM search paths")
 unset(_LLVM_SEARCH_PATHS)
 
@@ -214,10 +216,11 @@ set(_LLVM_SUPPORTED_VERSIONS 23 22 21 20 19 18)
 #   cmake -B build -DASCIICHAT_LLVM_CONFIG_EXECUTABLE=/usr/bin/llvm-config
 
 # Build versioned names list for llvm-config
-set(_llvm_config_names llvm-config llvm-config.exe)
+set(_llvm_config_names)
 foreach(_ver IN LISTS _LLVM_SUPPORTED_VERSIONS)
     list(APPEND _llvm_config_names llvm-config-${_ver})
 endforeach()
+list(APPEND _llvm_config_names llvm-config llvm-config.exe)
 
 # Use find_program which searches PATH (from environment) first, then fallback hints
 find_program(ASCIICHAT_LLVM_CONFIG_EXECUTABLE
@@ -309,6 +312,25 @@ macro(_find_llvm_tool VAR_NAME)
                 DOC "LLVM tool (fallback from PATH)"
             )
         endif()
+        # Some distributions package the linker separately from LLVM and
+        # expose it only through PATH (for example, lld-21 in /usr/bin while
+        # llvm-config reports /usr/lib/llvm-23/bin).  Accept only that linker
+        # fallback; all other LLVM tools must remain from one installation.
+        if(VAR_NAME STREQUAL "ASCIICHAT_LLD_EXECUTABLE" AND NOT ${VAR_NAME})
+            if(UNIX AND NOT APPLE)
+                find_program(${VAR_NAME}
+                    NAMES ${_tool_names}
+                    PATHS /usr/bin /usr/local/bin
+                    NO_DEFAULT_PATH
+                    DOC "LLVM linker from the system tool directories"
+                )
+            else()
+                find_program(${VAR_NAME}
+                    NAMES ${_tool_names}
+                    DOC "LLVM linker from the system PATH"
+                )
+            endif()
+        endif()
     else()
         # Fallback mode: search PATH (from environment) first, then known locations
         find_program(${VAR_NAME}
@@ -317,6 +339,13 @@ macro(_find_llvm_tool VAR_NAME)
             NO_DEFAULT_PATH
             DOC "LLVM tool"
         )
+    endif()
+    # Finally honor the process PATH.  This is the source of truth for tools
+    # such as llvm-nm when LLVM was installed by the user's environment.
+    if(NOT ${VAR_NAME})
+        find_program(${VAR_NAME}
+            NAMES ${_tool_names}
+            DOC "LLVM tool from PATH")
     endif()
     unset(_tool_names)
 endmacro()
@@ -369,6 +398,27 @@ find_program(ASCIICHAT_BASH_EXECUTABLE
 if(NOT ASCIICHAT_BASH_EXECUTABLE)
     find_program(ASCIICHAT_BASH_EXECUTABLE NAMES bash bash.exe DOC "bash shell")
 endif()
+
+# GNU Make. On Windows, prefer the same exported MSYS2 installation as Bash so
+# autotools dependencies do not mix tools from different environments.
+if(WIN32)
+    set(_MAKE_SEARCH_PATHS
+        "$ENV{MSYS2_ROOT}/usr/bin"
+        "$ENV{MSYS2_ROOT}/bin")
+else()
+    set(_MAKE_SEARCH_PATHS /usr/local/bin /usr/bin /bin)
+endif()
+find_program(ASCIICHAT_MAKE_EXECUTABLE
+    NAMES make gmake make.exe gmake.exe
+    HINTS ${_MAKE_SEARCH_PATHS}
+    NO_DEFAULT_PATH
+    DOC "GNU Make")
+if(NOT ASCIICHAT_MAKE_EXECUTABLE)
+    find_program(ASCIICHAT_MAKE_EXECUTABLE
+        NAMES make gmake make.exe gmake.exe
+        DOC "GNU Make")
+endif()
+unset(_MAKE_SEARCH_PATHS)
 # Windows fallback: try direct path checking for common Git Bash locations
 if(NOT ASCIICHAT_BASH_EXECUTABLE AND WIN32)
     set(_bash_candidate_paths
@@ -404,10 +454,23 @@ _find_llvm_tool(ASCIICHAT_LLVM_STRIP_EXECUTABLE llvm-strip)
 _find_llvm_tool(ASCIICHAT_LLVM_AR_EXECUTABLE llvm-ar)
 _find_llvm_tool(ASCIICHAT_LLVM_RANLIB_EXECUTABLE llvm-ranlib)
 _find_llvm_tool(ASCIICHAT_LLVM_NM_EXECUTABLE llvm-nm)
-_find_llvm_tool(ASCIICHAT_LLVM_READELF_EXECUTABLE llvm-readelf)
+_find_llvm_tool(ASCIICHAT_LLVM_READELF_EXECUTABLE llvm-readelf readelf)
 _find_llvm_tool(ASCIICHAT_LLVM_READOBJ_EXECUTABLE llvm-readobj)
-_find_llvm_tool(ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE llvm-objdump)
-_find_llvm_tool(ASCIICHAT_LLVM_STRINGS_EXECUTABLE llvm-strings)
+_find_llvm_tool(ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE llvm-objdump objdump)
+_find_llvm_tool(ASCIICHAT_LLVM_STRINGS_EXECUTABLE llvm-strings strings)
+
+# LLVM's binary-analysis utilities are not shipped by every Clang package.
+# The platform tools are ABI-compatible for these read-only inspections, so
+# retain the LLVM tool when present and fall back to the system implementation
+# when a valid LLVM installation does not provide it.
+if(NOT ASCIICHAT_LLVM_READELF_EXECUTABLE AND UNIX AND NOT APPLE)
+    find_program(ASCIICHAT_LLVM_READELF_EXECUTABLE NAMES readelf
+        DOC "ELF reader for binary validation")
+endif()
+if(NOT ASCIICHAT_LLVM_STRINGS_EXECUTABLE AND UNIX)
+    find_program(ASCIICHAT_LLVM_STRINGS_EXECUTABLE NAMES strings
+        DOC "String extractor for binary path validation")
+endif()
 
 # =============================================================================
 # Windows-specific LLVM tools - clang-cl, llvm-lib
@@ -600,6 +663,17 @@ elseif(WIN32)
 else()
     # Linux/Unix
     _find_llvm_tool(ASCIICHAT_LLD_EXECUTABLE ld.lld lld)
+    # The LLVM helper may not run during the early compiler/bootstrap phase,
+    # while musl still requires a linker during that same configure.  Probe
+    # the standard installation directories directly as a final LLD-only
+    # fallback.
+    if(NOT ASCIICHAT_LLD_EXECUTABLE)
+        find_program(ASCIICHAT_LLD_EXECUTABLE
+            NAMES ld.lld lld ld.lld-23 ld.lld-22 ld.lld-21 ld.lld-20 ld.lld-19
+            PATHS /usr/bin /usr/local/bin
+            NO_DEFAULT_PATH
+            DOC "System LLD linker")
+    endif()
 endif()
 
 # =============================================================================
@@ -698,19 +772,6 @@ if(UNIX AND NOT APPLE)
         DOC "RPM rpmbuild package builder"
     )
 
-    # musl-gcc and gcc are required for Linux Release builds with USE_MUSL=ON
-    # musl-gcc wraps gcc to build against musl libc instead of glibc
-    find_program(ASCIICHAT_MUSL_GCC_EXECUTABLE
-        NAMES musl-gcc
-        HINTS /usr/bin /usr/local/bin
-        DOC "musl-gcc C compiler wrapper for musl libc"
-    )
-
-    find_program(ASCIICHAT_GCC_EXECUTABLE
-        NAMES gcc
-        HINTS /usr/bin /usr/local/bin
-        DOC "GCC C compiler (used by musl-gcc via REALGCC)"
-    )
 endif()
 
 # =============================================================================
@@ -756,8 +817,6 @@ if(ASCIICHAT_VERBOSE_FIND_PROGRAMS)
     if(UNIX AND NOT APPLE)
         message(STATUS "FindPrograms: ASCIICHAT_DPKG_DEB_EXECUTABLE = ${ASCIICHAT_DPKG_DEB_EXECUTABLE}")
         message(STATUS "FindPrograms: ASCIICHAT_RPMBUILD_EXECUTABLE = ${ASCIICHAT_RPMBUILD_EXECUTABLE}")
-        message(STATUS "FindPrograms: ASCIICHAT_MUSL_GCC_EXECUTABLE = ${ASCIICHAT_MUSL_GCC_EXECUTABLE}")
-        message(STATUS "FindPrograms: ASCIICHAT_GCC_EXECUTABLE = ${ASCIICHAT_GCC_EXECUTABLE}")
     endif()
 endif()
 
@@ -778,8 +837,7 @@ endif()
 #   - llvm-lib: for BearSSL static library build
 #
 # Required for Linux Release builds with USE_MUSL=ON:
-#   - musl-gcc: musl C compiler wrapper (builds static dependencies)
-#   - gcc: used by musl-gcc via REALGCC environment variable
+#   - clang: Clang compiler targeting musl for application and dependencies
 #   - lld: LLVM linker (for static-PIE linking)
 #   (Validated in MuslDependencies.cmake when USE_MUSL is enabled)
 #
@@ -788,7 +846,7 @@ endif()
 # =============================================================================
 
 # clang is required for all builds (ascii-chat is a Clang-only project)
-if(NOT ASCIICHAT_CLANG_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT ASCIICHAT_CLANG_EXECUTABLE)
     message(FATAL_ERROR "clang not found. Install LLVM/Clang:\n"
         "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
         "  macOS:   brew install llvm\n"
@@ -796,7 +854,7 @@ if(NOT ASCIICHAT_CLANG_EXECUTABLE)
 endif()
 
 # clang++ is required for C++ dependencies and tooling
-if(NOT ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
     message(FATAL_ERROR "clang++ not found. Required for C++ dependencies and tooling. Install LLVM/Clang:\n"
         "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
         "  macOS:   brew install llvm\n"
@@ -805,14 +863,14 @@ endif()
 
 # llvm-config identifies the LLVM installation on Unix. Windows binaries can
 # be located from the compiler path when llvm-config.exe is unavailable.
-if(NOT WIN32 AND NOT ASCIICHAT_LLVM_CONFIG_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT WIN32 AND NOT ASCIICHAT_LLVM_CONFIG_EXECUTABLE)
     message(FATAL_ERROR "llvm-config not found. Required to identify LLVM on Unix. Install LLVM:\n"
         "  macOS:   brew install llvm\n"
         "  Linux:   sudo apt install llvm  OR  sudo pacman -S llvm")
 endif()
 
 # llvm-ar is required for static library archiving
-if(NOT ASCIICHAT_LLVM_AR_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT ASCIICHAT_LLVM_AR_EXECUTABLE)
     message(FATAL_ERROR "llvm-ar not found. Install LLVM:\n"
         "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
         "  macOS:   brew install llvm\n"
@@ -820,7 +878,7 @@ if(NOT ASCIICHAT_LLVM_AR_EXECUTABLE)
 endif()
 
 # llvm-ranlib is required for static library indexing
-if(NOT ASCIICHAT_LLVM_RANLIB_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT ASCIICHAT_LLVM_RANLIB_EXECUTABLE)
     message(FATAL_ERROR "llvm-ranlib not found. Install LLVM:\n"
         "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
         "  macOS:   brew install llvm\n"
@@ -828,13 +886,13 @@ if(NOT ASCIICHAT_LLVM_RANLIB_EXECUTABLE)
 endif()
 
 # Windows-specific: llvm-lib is required for BearSSL static library
-if(WIN32 AND NOT ASCIICHAT_LLVM_LIB_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND WIN32 AND NOT ASCIICHAT_LLVM_LIB_EXECUTABLE)
     message(FATAL_ERROR "llvm-lib not found (required for BearSSL on Windows). Install LLVM:\n"
         "  winget install LLVM.LLVM  OR  scoop install llvm")
 endif()
 
 # Windows-specific: clang-cl is required for BearSSL build
-if(WIN32 AND NOT ASCIICHAT_CLANG_CL_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND WIN32 AND NOT ASCIICHAT_CLANG_CL_EXECUTABLE)
     message(FATAL_ERROR "clang-cl not found (required for BearSSL on Windows). Install LLVM:\n"
         "  winget install LLVM.LLVM  OR  scoop install llvm")
 endif()
@@ -872,19 +930,9 @@ function(asciichat_validate_optional_programs)
             "  macOS/Linux: bash should be available at /bin/bash")
     endif()
 
-    # USE_MUSL requires musl-gcc and gcc (Linux only)
+    # USE_MUSL uses Clang's compiler-rt; no GCC runtime compiler is required.
     # Note: More detailed validation happens in MuslDependencies.cmake
     if(USE_MUSL)
-        if(NOT ASCIICHAT_MUSL_GCC_EXECUTABLE)
-            message(FATAL_ERROR "USE_MUSL=ON but musl-gcc not found. Install musl-tools:\n"
-                "  Debian/Ubuntu: sudo apt install musl-tools\n"
-                "  Arch: sudo pacman -S musl")
-        endif()
-        if(NOT ASCIICHAT_GCC_EXECUTABLE)
-            message(FATAL_ERROR "USE_MUSL=ON but gcc not found (required by musl-gcc via REALGCC).\n"
-                "  Debian/Ubuntu: sudo apt install gcc\n"
-                "  Arch: sudo pacman -S gcc")
-        endif()
         if(NOT ASCIICHAT_LLD_EXECUTABLE)
             message(FATAL_ERROR "USE_MUSL=ON but lld not found (required for static-PIE linking). Install LLVM:\n"
                 "  Debian/Ubuntu: sudo apt install lld\n"

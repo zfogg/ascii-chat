@@ -136,7 +136,7 @@ endif()
 # FFmpeg has no upstream CMake build. Its build waits for the CMake codec targets.
 if(USE_MUSL)
     include(ExternalProject)
-    set(FFMPEG_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/_deps/installed/ffmpeg")
+    set(FFMPEG_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/installed/ffmpeg")
     set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include")
     file(MAKE_DIRECTORY "${FFMPEG_INCLUDE_DIRS}")
     # The defer parser consumes the compilation database before target-level
@@ -144,37 +144,44 @@ if(USE_MUSL)
     add_compile_options("-I${FFMPEG_INCLUDE_DIRS}")
     set(_ffmpeg_runtime "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libcxx/usr/lib")
     set(_ffmpeg_libs "-lm ${_ffmpeg_runtime}/libc++.a ${_ffmpeg_runtime}/libc++abi.a ${_ffmpeg_runtime}/libunwind.a")
-    set(_ffmpeg_ldflags "-L${X264_PREFIX}/lib -L${X265_PREFIX}/lib")
+    set(_ffmpeg_ldflags "-L${X264_PREFIX}/lib")
+    set(_ffmpeg_codec_flags --enable-encoder=libx264 --enable-libx264)
+    set(_ffmpeg_dependencies)
+    if(X265_FOUND)
+        string(APPEND _ffmpeg_ldflags " -L${X265_PREFIX}/lib")
+        list(APPEND _ffmpeg_codec_flags --enable-encoder=libx265 --enable-libx265)
+        list(APPEND _ffmpeg_dependencies asciichat-x265-stage)
+    endif()
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
         string(APPEND _ffmpeg_ldflags " -mno-outline-atomics -nodefaultlibs")
-        string(APPEND _ffmpeg_libs " ${MUSL_LIBGCC_PATH} -lc")
+        string(APPEND _ffmpeg_libs " ${MUSL_COMPILER_RT_PATH} -lc")
     endif()
     set(_ffmpeg_archives)
     foreach(_lib avformat avcodec avutil swscale swresample)
         list(APPEND _ffmpeg_archives "${FFMPEG_PREFIX}/lib/lib${_lib}.a")
     endforeach()
-    set(_ffmpeg_env "${CMAKE_COMMAND}" -E env "REALGCC=${REAL_GCC}"
+    set(_ffmpeg_env "${CMAKE_COMMAND}" -E env
         "PKG_CONFIG_PATH=${X264_PREFIX}/lib/pkgconfig:${X265_PREFIX}/lib/pkgconfig"
         "PKG_CONFIG_LIBDIR=${X264_PREFIX}/lib/pkgconfig:${X265_PREFIX}/lib/pkgconfig" --)
     ExternalProject_Add(ffmpeg-musl
         URL "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
         URL_HASH "SHA256=${FFMPEG_HASH}" DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        PREFIX "${CMAKE_CURRENT_BINARY_DIR}/_deps/ffmpeg"
+        PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/ffmpeg"
         CONFIGURE_COMMAND ${_ffmpeg_env} <SOURCE_DIR>/configure
-            --prefix=${FFMPEG_PREFIX} --cc=${MUSL_GCC}
-            "--extra-cflags=${MUSL_KERNEL_CFLAGS} -I${X264_PREFIX}/include -I${X265_PREFIX}/include"
+            --prefix=${FFMPEG_PREFIX} --cc=${ASCIICHAT_CLANG_EXECUTABLE}
+            "--extra-cflags=${MUSL_KERNEL_CFLAGS} --target=${MUSL_TARGET} -I${X264_PREFIX}/include -I${X265_PREFIX}/include"
             "--extra-ldflags=${_ffmpeg_ldflags}" "--extra-libs=${_ffmpeg_libs}"
             --enable-static --disable-shared --enable-pic --disable-programs --disable-doc
             --disable-debug --disable-runtime-cpudetect --disable-autodetect
             --disable-x86asm --disable-inline-asm --enable-gpl --enable-protocol=file
             --enable-demuxer=mov,matroska,avi,gif,image2
             --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg
-            --enable-encoder=libx264,libx265 --enable-libx264 --enable-libx265
+            ${_ffmpeg_codec_flags}
             --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video --enable-swscale --enable-swresample
         BUILD_COMMAND ${_ffmpeg_env} make -j8
         INSTALL_COMMAND ${_ffmpeg_env} make install
         INSTALL_BYPRODUCTS ${_ffmpeg_archives}
-        DEPENDS asciichat-x265-stage
+        DEPENDS ${_ffmpeg_dependencies}
         LOG_CONFIGURE TRUE LOG_BUILD TRUE LOG_INSTALL TRUE LOG_OUTPUT_ON_FAILURE TRUE)
     add_library(asciichat-ffmpeg INTERFACE IMPORTED GLOBAL)
     set_target_properties(asciichat-ffmpeg PROPERTIES
@@ -192,23 +199,39 @@ endif()
 # Windows: Use vcpkg-provided FFmpeg
 # =============================================================================
 if(WIN32)
-    # vcpkg's package describes both static archives and DLL import libraries.
-    find_package(FFMPEG REQUIRED)
-    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-        list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "^-l(pthreads|pthread|m|atomic)$")
-        list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "^-pthread$")
+    # The vcpkg FFmpeg port does not ship an FFMPEGConfig.cmake package. Find
+    # its headers and libraries directly and expose the canonical project
+    # target instead of asking CMake's package search to invent a config.
+    find_path(FFMPEG_INCLUDE_DIR NAMES libavformat/avformat.h
+        PATHS "${VCPKG_INCLUDE_PATH}" REQUIRED)
+    set(_ffmpeg_windows_libs)
+    foreach(_ffmpeg_lib avformat avcodec avutil swscale swresample)
+        find_library(_ffmpeg_${_ffmpeg_lib}_library NAMES ${_ffmpeg_lib}
+            PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+        list(APPEND _ffmpeg_windows_libs "${_ffmpeg_${_ffmpeg_lib}_library}")
+    endforeach()
+    if(NOT TARGET asciichat-ffmpeg)
+        add_library(asciichat-ffmpeg INTERFACE IMPORTED GLOBAL)
+        set_target_properties(asciichat-ffmpeg PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INCLUDE_DIR}"
+            # vcpkg's static FFmpeg enables the Windows Schannel backend.
+            # Keep its system closure on the imported target.
+            INTERFACE_LINK_LIBRARIES "${_ffmpeg_windows_libs};secur32;strmiids")
     endif()
+    set(FFMPEG_INCLUDE_DIRS "${FFMPEG_INCLUDE_DIR}")
+    set(FFMPEG_LIBRARIES asciichat-ffmpeg)
+    set(FFMPEG_FOUND TRUE)
     return()
 endif()
 
 # =============================================================================
-# Release builds: Build FFmpeg from source when ASCIICHAT_SHARED_DEPS is OFF
+# Release builds: Build FFmpeg from source when BUILD_SHARED_LIBS is OFF
 # =============================================================================
 # For portable Release builds (non-musl), compile FFmpeg from source with only
 # built-in codecs (no external codec dependencies like svt-av1, dav1d, x264, x265, etc.)
 # Musl builds always compile everything from source via MuslDependencies.cmake
 # =============================================================================
-if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS
+if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS
    AND NOT ASCIICHAT_USE_SYSTEM_FFMPEG)
     include(ProcessorCount)
     ProcessorCount(NPROC)
@@ -406,14 +429,14 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
         pkg_check_modules(X264_PKG x264)
         pkg_check_modules(X265_PKG x265)
         if(X264_PKG_FOUND)
-            if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+            if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
                 list(APPEND FFMPEG_LIBRARIES "${X264_STATIC_LIBRARY}")
             else()
                 list(APPEND FFMPEG_LIBRARIES ${X264_PKG_LDFLAGS})
             endif()
         endif()
         if(X265_PKG_FOUND)
-            if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+            if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
                 list(APPEND FFMPEG_LIBRARIES "${X265_STATIC_LIBRARY}")
             else()
                 list(APPEND FFMPEG_LIBRARIES ${X265_PKG_LDFLAGS})
@@ -464,6 +487,24 @@ endif()
 # Check if we need to run pkg-config: either not found yet, or found but no libraries set
 if(NOT FFMPEG_FOUND OR NOT FFMPEG_LIBRARIES)
     message(STATUS "FFmpeg: Searching via pkg-config...")
+    # Prefer a locally installed upstream FFmpeg (for example
+    # /usr/local/ffmpeg-9.0.2) over an older distro package.  Keep the normal
+    # pkg-config search as the fallback so system installations elsewhere are
+    # still supported without requiring PKG_CONFIG_PATH.
+    file(GLOB _asciichat_local_ffmpeg_pc_dirs LIST_DIRECTORIES true
+        "/usr/local/ffmpeg-*/lib*/pkgconfig")
+    list(SORT _asciichat_local_ffmpeg_pc_dirs COMPARE NATURAL ORDER DESCENDING)
+    foreach(_asciichat_ffmpeg_pc_dir IN LISTS _asciichat_local_ffmpeg_pc_dirs)
+        if(EXISTS "${_asciichat_ffmpeg_pc_dir}/libavformat.pc")
+            if(DEFINED ENV{PKG_CONFIG_PATH} AND NOT "$ENV{PKG_CONFIG_PATH}" STREQUAL "")
+                set(ENV{PKG_CONFIG_PATH} "${_asciichat_ffmpeg_pc_dir}:$ENV{PKG_CONFIG_PATH}")
+            else()
+                set(ENV{PKG_CONFIG_PATH} "${_asciichat_ffmpeg_pc_dir}")
+            endif()
+            message(STATUS "FFmpeg: preferring local pkg-config directory ${_asciichat_ffmpeg_pc_dir}")
+            break()
+        endif()
+    endforeach()
     # Find pkg-config (required for finding FFmpeg)
     find_package(PkgConfig QUIET)
 
@@ -472,7 +513,7 @@ if(NOT FFMPEG_FOUND OR NOT FFMPEG_LIBRARIES)
     endif()
 
     # Find FFmpeg components
-    pkg_check_modules(FFMPEG
+    pkg_check_modules(FFMPEG IMPORTED_TARGET
         libavformat
         libavcodec
         libavutil
@@ -494,7 +535,9 @@ if(NOT FFMPEG_FOUND OR NOT FFMPEG_LIBRARIES)
     # pkg_check_modules sets FFMPEG_LIBRARIES (library names), FFMPEG_LIBRARY_DIRS (paths), and FFMPEG_LDFLAGS (full flags)
     # We use FFMPEG_LINK_LIBRARIES which pkg-config creates from the above and is the proper way to link
     # If not available, fall back to FFMPEG_LDFLAGS which includes all necessary -L and -l flags
-    if(FFMPEG_LINK_LIBRARIES)
+    if(TARGET PkgConfig::FFMPEG)
+        set(FFMPEG_LIBRARIES PkgConfig::FFMPEG)
+    elseif(FFMPEG_LINK_LIBRARIES)
         set(FFMPEG_LIBRARIES ${FFMPEG_LINK_LIBRARIES})
     else()
         # Fallback to full linker flags (includes both -L and -l flags)
@@ -515,3 +558,10 @@ endif()
 
 # Variables FFMPEG_LIBRARIES, FFMPEG_INCLUDE_DIRS, and FFMPEG_FOUND are available
 # SourceFiles.cmake will conditionally include media source files when FFMPEG_FOUND is true
+if(FFMPEG_FOUND AND NOT TARGET asciichat-ffmpeg)
+    add_library(asciichat-ffmpeg INTERFACE)
+    target_link_libraries(asciichat-ffmpeg INTERFACE ${FFMPEG_LIBRARIES})
+    if(FFMPEG_INCLUDE_DIRS)
+        target_include_directories(asciichat-ffmpeg INTERFACE ${FFMPEG_INCLUDE_DIRS})
+    endif()
+endif()

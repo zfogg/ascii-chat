@@ -306,7 +306,7 @@ static void format_error_heading(char *buffer, size_t capacity, const asciichat_
 }
 
 void ui_error_popup_render(frame_buffer_t *out, terminal_size_t size) {
-  asciichat_error_context_t error;
+  asciichat_error_context_t error = {0};
   lock_state();
   refresh_locked();
   size_t count = g_count, selected = g_selected;

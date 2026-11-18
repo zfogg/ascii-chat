@@ -35,6 +35,64 @@ function(copy_windows_dlls TARGET_NAME)
 
         include(${CMAKE_SOURCE_DIR}/cmake/utils/CopyDLL.cmake)
 
+        # Source-built shared dependencies do not pass through vcpkg's
+        # applocal/PDB staging.  Keep their PDBs beside the runtime DLLs too,
+        # so the debugger can load symbols for the complete process.  Static
+        # libraries contribute their symbols to the executable PDB and do not
+        # need a separate runtime PDB.
+        if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+        foreach(_source_runtime_target IN ITEMS
+                ${TARGET_NAME} ascii-chat-shared
+                gotel gotel_cxx otlp_c libplatform sequel flags libflags-tomlc17
+                bearssl bearssl-shared BearSSL::bearssl BearSSL::shared)
+            if(TARGET ${_source_runtime_target})
+                get_target_property(_source_runtime_type ${_source_runtime_target} TYPE)
+                if(_source_runtime_type STREQUAL "SHARED_LIBRARY" OR
+                   _source_runtime_type STREQUAL "EXECUTABLE")
+                    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            "$<TARGET_PDB_FILE:${_source_runtime_target}>"
+                            "$<TARGET_FILE_DIR:${TARGET_NAME}>"
+                        COMMENT "Staging ${_source_runtime_target} PDB"
+                        VERBATIM)
+                endif()
+            endif()
+        endforeach()
+        endif()
+
+        # BearSSL is normally built by its Make/NMake project and may not
+        # appear as a CMake target.  If that build exposes a DLL directory,
+        # stage its DLL and matching PDB just like the CMake-built runtimes.
+        if(DEFINED BEARSSL_LIBRARY_DIRS)
+            list(GET BEARSSL_LIBRARY_DIRS 0 _bearssl_library_dir)
+            get_filename_component(_bearssl_prefix "${_bearssl_library_dir}" DIRECTORY)
+            foreach(_bearssl_bin_dir IN ITEMS
+                    "${_bearssl_library_dir}" "${_bearssl_prefix}/bin")
+                file(GLOB _bearssl_dlls
+                    "${_bearssl_bin_dir}/bearssl*.dll"
+                    "${_bearssl_bin_dir}/bearss*.dll")
+                if(_bearssl_dlls)
+                    foreach(_bearssl_dll IN LISTS _bearssl_dlls)
+                        get_filename_component(_bearssl_name "${_bearssl_dll}" NAME)
+                        stage_dlls_for_target(
+                            TARGET ${TARGET_NAME}
+                            NAMES ${_bearssl_name}
+                            SOURCE_DIR "${_bearssl_bin_dir}"
+                            COMMENT "BearSSL runtime")
+                        get_filename_component(_bearssl_stem "${_bearssl_name}" NAME_WE)
+                        if(EXISTS "${_bearssl_bin_dir}/${_bearssl_stem}.pdb")
+                            stage_dlls_for_target(
+                                TARGET ${TARGET_NAME}
+                                NAMES "${_bearssl_stem}.pdb"
+                                SOURCE_DIR "${_bearssl_bin_dir}"
+                                COMMENT "BearSSL symbols")
+                        endif()
+                    endforeach()
+                    break()
+                endif()
+            endforeach()
+        endif()
+
         # QUIC dependencies are built outside vcpkg and must be staged too.
         if(TARGET asciichat-ngtcp2 AND TARGET asciichat-ngtcp2-crypto AND TARGET asciichat-nghttp3)
             get_target_property(_quic_runtime_type asciichat-ngtcp2 TYPE)
@@ -245,6 +303,9 @@ function(check_static_linking TARGET_NAME)
         if(UNIX AND NOT APPLE)
             set(PLATFORM "linux")
             set(STATIC_AUDIT_TOOL "${ASCIICHAT_LLVM_READELF_EXECUTABLE}")
+            if(NOT STATIC_AUDIT_TOOL)
+                find_program(STATIC_AUDIT_TOOL NAMES llvm-readelf readelf)
+            endif()
         elseif(WIN32)
             set(PLATFORM "windows")
             set(STATIC_AUDIT_TOOL "${ASCIICHAT_LLVM_READOBJ_EXECUTABLE}")

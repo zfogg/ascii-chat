@@ -714,7 +714,7 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
  */
 
 // Forward declaration for ACIP server callbacks (defined later in file)
-static const acip_server_callbacks_t g_acip_server_callbacks;
+static acip_server_callbacks_t g_acip_server_callbacks;
 
 asciichat_error_t server_dispatch_packet(client_info_t *client, packet_type_t type, const void *data, size_t length) {
   if (type == PACKET_TYPE_ACIP_SETTINGS_SYNC)
@@ -883,7 +883,7 @@ static void acip_server_on_remote_log(const remote_log_packet_t *header, const c
  * Handles all ACIP packet types from clients including crypto handshake and rekey protocols.
  * Callback wrappers delegate to existing handler functions in protocol.c
  */
-static const acip_server_callbacks_t g_acip_server_callbacks = {
+static acip_server_callbacks_t g_acip_server_callbacks = {
     .on_protocol_version = acip_server_on_protocol_version,
     .on_image_frame = acip_server_on_image_frame,
     .on_image_frame_h265 = acip_server_on_image_frame_h265,
@@ -1130,7 +1130,7 @@ static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_
   uint64_t decode_start = time_get_ns();
   int result;
   {
-    ASCII_OTEL_SCOPE(FFMPEG_PACKET_SEND);
+    ASCII_OTEL_SCOPE_AS(packet_scope, FFMPEG_PACKET_SEND);
     result = avcodec_send_packet(ctx, packet);
     if (result < 0 && result != AVERROR(EAGAIN) && result != AVERROR_EOF)
       ascii_otel_error("FFmpeg server packet send failed");
@@ -1162,7 +1162,7 @@ static void acip_server_on_encoded_frame(uint32_t width, uint32_t height, uint8_
     av_image_fill_arrays(rgb->data, rgb->linesize, pixels, AV_PIX_FMT_RGB24, frame->width, frame->height, 32);
     int rows;
     {
-      ASCII_OTEL_SCOPE(FFMPEG_SCALE);
+      ASCII_OTEL_SCOPE_AS(scale_scope, FFMPEG_SCALE);
       rows = sws_scale(sws, (const uint8_t *const *)frame->data, frame->linesize, 0, frame->height, rgb->data, rgb->linesize);
       if (rows != frame->height)
         ascii_otel_error("FFmpeg server frame scale failed");

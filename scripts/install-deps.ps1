@@ -162,6 +162,23 @@ if ($RunningOnWindows -and $Architecture -ne 'arm64' -and -not (Get-Command gcc 
     }
 }
 
+# sccache is used as the compiler launcher by local and CI builds.
+if (-not (Get-Command sccache -ErrorAction SilentlyContinue)) {
+    if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+        throw "sccache is required. Install Scoop or sccache and rerun this script."
+    }
+    & scoop install sccache
+    if ($LASTEXITCODE -ne 0) { throw "sccache installation failed." }
+    if (-not (Get-Command sccache -ErrorAction SilentlyContinue)) {
+        $ScoopShims = Join-Path $env:USERPROFILE 'scoop\shims'
+        if (Test-Path -LiteralPath $ScoopShims) { $env:Path = "$ScoopShims;$env:Path" }
+    }
+    if (-not (Get-Command sccache -ErrorAction SilentlyContinue)) {
+        throw "sccache was installed by Scoop but is not on PATH. Open a new shell and rerun this script."
+    }
+}
+Write-Host "Found sccache: $((Get-Command sccache).Source)" -ForegroundColor Green
+
 # Check for Visual Studio Build Tools (provides nmake for BearSSL)
 $VsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 if (Test-Path $VsWhere) {
@@ -332,6 +349,18 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
 }
 uv python install 3.15
 uv python pin 3.15
+Write-Host "  Installing Meson with uv" -ForegroundColor Gray
+uv tool install --upgrade meson
+if ($LASTEXITCODE -ne 0) { throw "Meson installation failed" }
+$UvToolBin = (& uv tool dir --bin).Trim()
+if (-not $UvToolBin -or -not (Test-Path -LiteralPath $UvToolBin)) {
+    throw "uv tool bin directory was not found after installing Meson"
+}
+$env:Path = "$UvToolBin;$env:Path"
+if (-not (Get-Command meson -ErrorAction SilentlyContinue)) {
+    throw "Meson was installed but is not on PATH"
+}
+Write-Host "  Found Meson: $((Get-Command meson).Source)" -ForegroundColor Green
 uv tool install --upgrade "yt-dlp[default]"
 uv sync --project "$PSScriptRoot\..\tests\ascii_chat_tests" --frozen --python 3.15 --managed-python
 if ($LASTEXITCODE -ne 0) { throw "Failed to sync the Python test project" }

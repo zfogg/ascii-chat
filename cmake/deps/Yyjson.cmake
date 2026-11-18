@@ -28,13 +28,7 @@ macro(_yyjson_build_from_submodule source_dir label)
     set(YYJSON_BUILD_FUZZER OFF)
     set(YYJSON_BUILD_MISC OFF)
     set(YYJSON_BUILD_DOC OFF)
-    if(ASCIICHAT_SHARED_DEPS AND NOT USE_MUSL AND NOT PLATFORM_IOS AND NOT EMSCRIPTEN)
-        set(BUILD_SHARED_LIBS ON)
-    else()
-        set(BUILD_SHARED_LIBS OFF)
-    endif()
-
-    set(YYJSON_BUILD_DIR "${CMAKE_BINARY_DIR}/_deps/yyjson")
+    set(YYJSON_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/yyjson")
 
     add_subdirectory(
         "${${source_dir}}"
@@ -80,7 +74,7 @@ function(configure_yyjson)
 
     # Release binaries must not depend on the Homebrew yyjson dylib version
     # installed on the build host.
-    if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
         message(STATUS "Configuring ${BoldBlue}yyjson${ColorReset} from submodule (macOS Release)...")
         set(YYJSON_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/yyjson")
         _yyjson_build_from_submodule(YYJSON_SOURCE_DIR "macOS Release")

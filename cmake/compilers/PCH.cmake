@@ -64,7 +64,6 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             <stdbool.h>
             <stdint.h>
             <stddef.h>
-            <stdatomic.h>
             <time.h>
             <errno.h>
             <limits.h>
@@ -80,26 +79,37 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
                 if(NOT _pch_existing)
                     target_precompile_headers(${_pch_target} PRIVATE ${_ascii_chat_pch_headers})
                 endif()
-                set(_pch_ccache_enabled FALSE)
-                foreach(_language C CXX)
+                set(_pch_cache_launcher_enabled FALSE)
+                foreach(_language C CXX OBJC OBJCXX)
                     get_target_property(_pch_launcher ${_pch_target} ${_language}_COMPILER_LAUNCHER)
-                    if(USE_CCACHE AND _pch_launcher MATCHES "ccache" AND CMAKE_${_language}_COMPILER_ID MATCHES "Clang")
+                    # A reused build tree can retain a target-local ccache
+                    # launcher after the project selects sccache globally.
+                    if(CMAKE_${_language}_COMPILER_LAUNCHER MATCHES "sccache")
+                        set_property(TARGET ${_pch_target} PROPERTY ${_language}_COMPILER_LAUNCHER
+                            ${CMAKE_${_language}_COMPILER_LAUNCHER})
+                        set(_pch_launcher ${CMAKE_${_language}_COMPILER_LAUNCHER})
+                        set(_pch_cache_launcher_enabled TRUE)
+                    elseif(_pch_launcher MATCHES "ccache" AND CMAKE_${_language}_COMPILER_ID MATCHES "Clang")
                         # ccache cannot inspect macro definitions or time macros in a PCH.
                         # Keep this relaxation local to targets that actually use PCH.
-                        list(GET _pch_launcher 0 _pch_launcher_program)
-                        if(ASCIICHAT_CCACHE_KEY_VALUE_SUPPORTED AND
-                           _pch_launcher_program STREQUAL ASCIICHAT_CCACHE_EXECUTABLE)
-                            set_property(TARGET ${_pch_target} PROPERTY ${_language}_COMPILER_LAUNCHER
-                                ${_pch_launcher} "sloppiness=pch_defines,time_macros")
-                        else()
-                            set_property(TARGET ${_pch_target} PROPERTY ${_language}_COMPILER_LAUNCHER
-                                "${CMAKE_COMMAND}" -E env "CCACHE_SLOPPINESS=pch_defines,time_macros"
-                                ${_pch_launcher})
+                        if(_pch_launcher MATCHES "ccache")
+                            list(GET _pch_launcher 0 _pch_launcher_program)
+                            if(ASCIICHAT_CCACHE_KEY_VALUE_SUPPORTED AND
+                               _pch_launcher_program STREQUAL ASCIICHAT_CCACHE_EXECUTABLE)
+                                set_property(TARGET ${_pch_target} PROPERTY ${_language}_COMPILER_LAUNCHER
+                                    ${_pch_launcher} "sloppiness=pch_defines,time_macros")
+                            else()
+                                set_property(TARGET ${_pch_target} PROPERTY ${_language}_COMPILER_LAUNCHER
+                                    "${CMAKE_COMMAND}" -E env "CCACHE_SLOPPINESS=pch_defines,time_macros"
+                                    ${_pch_launcher})
+                            endif()
                         endif()
-                        set(_pch_ccache_enabled TRUE)
+                        set(_pch_cache_launcher_enabled TRUE)
                     endif()
                 endforeach()
-                if(_pch_ccache_enabled)
+                if(_pch_cache_launcher_enabled AND
+                   (CMAKE_C_COMPILER_ID MATCHES "Clang|AppleClang" OR
+                    CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang"))
                     target_compile_options(${_pch_target} PRIVATE
                         "$<$<COMPILE_LANGUAGE:C,CXX>:-Xclang>"
                         "$<$<COMPILE_LANGUAGE:C,CXX>:-fno-pch-timestamp>")

@@ -13,7 +13,7 @@ endif()
 # =============================================================================
 # CMake Build Types
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/ProjectSettings.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compilers/ProjectSettings.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
 # INFO: CMAKE_BUILD_TYPE is now configured.
 
@@ -25,14 +25,14 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/DependencyCache.cmake)
 
 # Web-specific build-type cache directory for WASM/Emscripten builds
 # Keeps web dependencies separate from native build dependencies
-if(NOT DEFINED WEB_DEPS_CACHE_DIR OR WEB_DEPS_CACHE_DIR STREQUAL "" OR WEB_DEPS_CACHE_DIR MATCHES "[/\\\\]_deps[/\\\\]legacy[/\\\\]")
-    set(WEB_DEPS_CACHE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache/wasm/${CMAKE_BUILD_TYPE}" CACHE PATH "WASM dependency cache for current build type" FORCE)
+if(NOT DEFINED WEB_DEPS_CACHE_DIR OR WEB_DEPS_CACHE_DIR STREQUAL "")
+    set(WEB_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/wasm/${CMAKE_BUILD_TYPE}" CACHE PATH "WASM dependency cache for current build type" FORCE)
 endif()
 
 # Web-specific source cache for FetchContent (keeps web sources separate)
 # Sources are shared across build types but kept in wasm/ subdirectory
 if(NOT DEFINED WEB_FETCHCONTENT_BASE_DIR OR WEB_FETCHCONTENT_BASE_DIR STREQUAL "")
-    set(WEB_FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache/wasm/src" CACHE PATH "WASM FetchContent source cache" FORCE)
+    set(WEB_FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/wasm/src" CACHE PATH "WASM FetchContent source cache" FORCE)
 endif()
 
 # Validate paths are not empty (which would create directories at root /)
@@ -91,8 +91,7 @@ configure_musl_pre_project("${CMAKE_BUILD_TYPE}")
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/platform/iOS.cmake)
 
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/LLVM.cmake)
-configure_llvm_pre_project()
+configure_selected_compiler_pre_project()
 
 # Enable C++ for project dependencies and source instrumentation
 if(APPLE)
@@ -111,6 +110,14 @@ project(${PROJECT_NAME_FULL}
     HOMEPAGE_URL "${PROJECT_HOMEPAGE_URL}"
     LANGUAGES ${PROJECT_LANGUAGES}
 )
+
+# Import the shared cache-launcher implementation after project() and before
+# any project or dependency targets are created.
+include(${CMAKE_SOURCE_DIR}/deps/cmake-utils/CacheLauncher.cmake)
+
+# Configure the shared compiler cache launcher after project() has enabled the
+# languages, before any project or dependency targets are created.
+cmake_utils_configure_cache_launcher()
 
 # This codebase has no C++ module units. Avoid scheduling module dependency
 # scans for ordinary C++ sources, which fail on the Windows Clang toolchain.
@@ -214,12 +221,17 @@ endif()
 # =============================================================================
 # Compiler config
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/CCache.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/CompilerDetection.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/CompilerFlags.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compilers/Detection.cmake)
 configure_base_compiler_flags()
-configure_llvm_post_project()
-fix_llvm_ranlib()
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    configure_clang_post_project()
+    fix_clang_ranlib()
+elseif(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    configure_gcc_post_project()
+elseif(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    configure_msvc_post_project()
+endif()
+configure_compiler_post_project()
 configure_musl_post_project()
 
 include(${CMAKE_SOURCE_DIR}/cmake/platform/WindowsWorkarounds.cmake)
@@ -238,8 +250,8 @@ asciichat_validate_optional_programs()
 # Hardware Acceleration Detection (must be before build type configuration)
 # =============================================================================
 # Note: CRC32 detection depends on SIMD detection, so SIMD must come first
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/SIMD.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/CRC32.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compilers/SIMD.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compilers/CRC32.cmake)
 
 # =============================================================================
 # pkg-config Setup (must come before any pkg-config-dependent dependencies)
@@ -291,7 +303,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/Include.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Mimalloc.cmake)
 
 configure_include_directories()
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/HeaderChecks.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compilers/HeaderChecks.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/BuildIdentity.cmake)
 
 if(USE_MUSL)
@@ -379,9 +391,83 @@ foreach(_package_manager HOMEBREW SCOOP AUR)
 endforeach()
 
 include("${CMAKE_SOURCE_DIR}/deps/recast/Recast.cmake")
-add_subdirectory("${CMAKE_SOURCE_DIR}/deps/recast" "${CMAKE_BINARY_DIR}/recast-build" EXCLUDE_FROM_ALL)
-file(COPY "${CMAKE_SOURCE_DIR}/include/ascii-chat"
-     DESTINATION "${CMAKE_BINARY_DIR}/recast_headers/include")
+if(RECAST_BACKEND STREQUAL "NATIVE" AND
+   (USE_MUSL OR PLATFORM_IOS OR NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}"))
+  set(BUILD_TESTING OFF CACHE BOOL "Disable Recast tests in ascii-chat" FORCE)
+  set(RECAST_BUILD_DOCS OFF CACHE BOOL "Disable Recast docs in ascii-chat" FORCE)
+  if(USE_MUSL OR PLATFORM_IOS)
+    include(ExternalProject)
+    find_program(_asciichat_host_cxx NAMES g++ c++ REQUIRED)
+    set(_asciichat_recast_build_dir "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build")
+    set(_asciichat_recast_binary
+        "${_asciichat_recast_build_dir}/bin/recast${CMAKE_EXECUTABLE_SUFFIX}")
+    if(PLATFORM_IOS AND NOT EXISTS "${_asciichat_recast_binary}")
+      execute_process(
+        COMMAND "${CMAKE_COMMAND}" -S "${CMAKE_SOURCE_DIR}/deps/recast"
+          -B "${_asciichat_recast_build_dir}" -G Ninja
+          "-DCMAKE_CXX_COMPILER=${_asciichat_host_cxx}"
+          -DRECAST_BUILD_DOCS=OFF -DBUILD_TESTING=OFF
+        RESULT_VARIABLE _recast_configure_result)
+      if(NOT _recast_configure_result EQUAL 0)
+        message(FATAL_ERROR "Failed to configure native Recast host tool")
+      endif()
+      execute_process(
+        COMMAND "${CMAKE_COMMAND}" --build "${_asciichat_recast_build_dir}" --target recast
+        RESULT_VARIABLE _recast_build_result)
+      if(NOT _recast_build_result EQUAL 0)
+        message(FATAL_ERROR "Failed to build native Recast host tool")
+      endif()
+    endif()
+    ExternalProject_Add(asciichat-recast-host
+      SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/recast"
+      BINARY_DIR "${_asciichat_recast_build_dir}"
+      CMAKE_ARGS
+        "-DCMAKE_CXX_COMPILER=${_asciichat_host_cxx}"
+        "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}"
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS=OFF"
+        "-DRECAST_BUILD_DOCS=OFF"
+        "-DBUILD_TESTING=OFF"
+      BUILD_COMMAND "${CMAKE_COMMAND}" --build <BINARY_DIR> --target recast --config ${CMAKE_BUILD_TYPE}
+      BUILD_BYPRODUCTS "${_asciichat_recast_binary}"
+      INSTALL_COMMAND ""
+      EXCLUDE_FROM_ALL)
+    add_executable(recast-native IMPORTED GLOBAL)
+    set_target_properties(recast-native PROPERTIES
+      IMPORTED_LOCATION "${_asciichat_recast_binary}")
+    add_dependencies(recast-native asciichat-recast-host)
+    set(RECAST_NATIVE_BINARY
+        "${_asciichat_recast_binary}"
+        CACHE FILEPATH "Recast host executable" FORCE)
+  else()
+    add_subdirectory(
+      "${CMAKE_SOURCE_DIR}/deps/recast"
+      "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build"
+      EXCLUDE_FROM_ALL)
+    # Recast is a host-side build tool used by custom commands.  Keep its
+    # executable at one path for every Visual Studio configuration so
+    # $<TARGET_FILE:recast> cannot select Debug while a Release build is
+    # running the transformer.
+    set_target_properties(recast PROPERTIES
+      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+      RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/bin"
+      RUNTIME_OUTPUT_DIRECTORY_DEV "${CMAKE_BINARY_DIR}/bin"
+      RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/bin"
+      RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_BINARY_DIR}/bin"
+      RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_BINARY_DIR}/bin")
+    # A native build uses the Recast target created above.  Do not let a
+    # stale RECAST_NATIVE_BINARY cache entry from an older configuration
+    # override that target and fail configure before the tool can be built.
+    if(TARGET recast AND RECAST_NATIVE_BINARY AND
+       NOT EXISTS "${RECAST_NATIVE_BINARY}")
+      set(RECAST_NATIVE_BINARY "")
+    endif()
+  endif()
+endif()
+if(RECAST_BACKEND STREQUAL "NATIVE" AND TARGET recast)
+  if(NOT TARGET recast-native)
+    add_executable(recast-native ALIAS recast)
+  endif()
+endif()
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Query.cmake)
 ascii_panic_prepare()
@@ -393,7 +479,7 @@ ascii_query_prepare()
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/ToolingRuntime.cmake)
 ascii_build_tooling_runtime()
 
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compilers/PCH.cmake)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
 if(PLATFORM_IOS)
@@ -419,6 +505,16 @@ if(USE_MUSL AND TARGET ffmpeg-musl)
   endforeach()
 endif()
 set(RECAST_SOURCE_HOOK ascii_panic_defer_source)
+set(RECAST_EXTRA_INCLUDE_DIRS ${SQLITE3_INCLUDE_DIRS} "${libflags_SOURCE_DIR}/include")
+if(PLATFORM_IOS)
+  # Recast parses shared headers with the host tool. PortAudio is intentionally
+  # not an iOS target dependency, but its host header is still needed while
+  # transforming those headers.
+  find_path(_asciichat_host_portaudio_include portaudio.h NO_CMAKE_FIND_ROOT_PATH)
+  if(_asciichat_host_portaudio_include)
+    list(APPEND RECAST_EXTRA_INCLUDE_DIRS "${_asciichat_host_portaudio_include}")
+  endif()
+endif()
 recast_targets(${_defer_targets})
 unset(RECAST_SOURCE_HOOK)
 enable_testing()

@@ -46,7 +46,7 @@ endfunction()
 if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE OR ASCIICHAT_REQUIRE_HVF)
     function(asciichat_build_freetype)
         asciichat_dependency_defaults()
-        set(_prefix "${CMAKE_CURRENT_BINARY_DIR}/_deps/installed/freetype")
+        set(_prefix "${ASCIICHAT_DEPS_CACHE_DIR}/build/installed/freetype")
         if(USE_MUSL OR PLATFORM_IOS)
             set(CMAKE_INSTALL_PREFIX "${_prefix}")
         endif()
@@ -69,7 +69,7 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE OR ASCIICHAT_REQ
         set(HARFBUZZ_FOUND FALSE)
         set(BROTLIDEC_FOUND FALSE)
         FetchContent_Declare(asciichat_freetype
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_freetype"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_freetype"
             EXCLUDE_FROM_ALL
             URL ${_freetype_url}
             URL_HASH SHA256=${_freetype_hash}
@@ -96,7 +96,10 @@ if(UNIX AND NOT APPLE)
     # Linux/BSD: Try pkg-config first, then fall back to CMake FindFreetype
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
-        pkg_check_modules(FREETYPE freetype2)
+        pkg_check_modules(FREETYPE IMPORTED_TARGET freetype2)
+        if(FREETYPE_FOUND AND TARGET PkgConfig::FREETYPE)
+            set(FREETYPE_LIBRARIES PkgConfig::FREETYPE)
+        endif()
     endif()
 
     # If pkg-config didn't work, try CMake's FindFreetype
@@ -122,7 +125,7 @@ elseif(APPLE)
 
     # Homebrew's dylib is versioned to the installed formula and is not a
     # suitable runtime dependency for a portable Release executable.
-    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
         find_file(FREETYPE_STATIC_ARCHIVE NAMES libfreetype.a
             PATHS "${HOMEBREW_PREFIX}/opt/freetype/lib" /usr/local/opt/freetype/lib /opt/homebrew/opt/freetype/lib
             NO_DEFAULT_PATH)
@@ -154,12 +157,28 @@ elseif(APPLE)
     message(STATUS "${BoldGreen}✓${ColorReset} FreeType2: ${FREETYPE_LIBRARIES}")
 
 elseif(WIN32)
-    # Windows: Use vcpkg
-    find_package(freetype CONFIG REQUIRED)
-    # Set FREETYPE_LIBRARIES for compatibility with lib/CMakeLists.txt
-    set(FREETYPE_LIBRARIES freetype)
-    # Get include dirs from the target
-    get_target_property(FREETYPE_INCLUDE_DIRS freetype INTERFACE_INCLUDE_DIRECTORIES)
+    # The vcpkg FreeType port may not expose its config through the staged
+    # prefix. Discover the archive and headers directly and publish one target.
+    find_path(_asciichat_freetype_include NAMES ft2build.h
+        PATHS "${VCPKG_INCLUDE_PATH}" REQUIRED)
+    find_library(_asciichat_freetype_library NAMES freetype
+        PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    find_library(_asciichat_png_library NAMES png16 libpng16
+        PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    find_library(_asciichat_brotli_decode_library NAMES brotlidec
+        PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    find_library(_asciichat_brotli_common_library NAMES brotlicommon
+        PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    find_library(_asciichat_bzip2_library NAMES bz2 bzip2
+        PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    add_library(asciichat-freetype UNKNOWN IMPORTED GLOBAL)
+    set_target_properties(asciichat-freetype PROPERTIES
+        IMPORTED_LOCATION "${_asciichat_freetype_library}"
+        INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_freetype_include}"
+        INTERFACE_LINK_LIBRARIES
+            "${_asciichat_png_library};${_asciichat_brotli_decode_library};${_asciichat_brotli_common_library};${_asciichat_bzip2_library}")
+    set(FREETYPE_LIBRARIES asciichat-freetype)
+    set(FREETYPE_INCLUDE_DIRS "${_asciichat_freetype_include}")
 
     message(STATUS "${BoldGreen}✓${ColorReset} FreeType2: vcpkg")
 

@@ -25,7 +25,7 @@ foreach(src ${C_FILES})
     get_filename_component(name ${src} NAME_WE)
     set(obj "${SOURCE_DIR}/${name}.o")
     execute_process(
-        COMMAND ${MUSL_GCC} -O2 -fPIC -Wno-error
+        COMMAND ${ASCIICHAT_CLANG_EXECUTABLE} --target=${MUSL_TARGET} -O2 -fPIC -Wno-error
             -isystem ${KERNEL_HEADERS_DIR}
             -I${SOURCE_DIR}/include -std=c99
             -c ${src} -o ${obj}

@@ -4,7 +4,7 @@
 # Finds and configures x265 for HEVC encoding support in FFmpeg
 #
 # Platform-specific dependency management:
-#   - musl: Built from source with musl-gcc
+#   - musl: Built from source with the selected Clang musl target
 #   - Linux/macOS (non-musl): Uses pkg-config for system packages
 #   - Windows: Uses vcpkg
 #
@@ -37,10 +37,19 @@ endif()
 # musl: Build from source
 # =============================================================================
 if(USE_MUSL)
+    # GCC's host libstdc++/glibc toolchain cannot produce a musl-compatible
+    # x265 archive on this platform: GCC 16 emits glibc __isoc23_* and libmvec
+    # references from x265's C++ sources. Clang's musl libc++ path remains
+    # supported; GCC+musl uses FFmpeg's built-in codecs instead.
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        set(X265_FOUND FALSE)
+        message(STATUS "x265 disabled for GCC musl builds (host C++ runtime is not musl-compatible)")
+        return()
+    endif()
     include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
     function(asciichat_build_x265)
         asciichat_dependency_defaults()
-        set(_prefix "${CMAKE_CURRENT_BINARY_DIR}/_deps/installed/x265")
+        set(_prefix "${ASCIICHAT_DEPS_CACHE_DIR}/build/installed/x265")
         set(CMAKE_INSTALL_PREFIX "${_prefix}")
         set(CMAKE_CXX_STANDARD 14)
         set(ENABLE_SHARED OFF)
@@ -48,7 +57,7 @@ if(USE_MUSL)
         set(ENABLE_ASSEMBLY OFF)
         set(ENABLE_LIBNUMA OFF)
         FetchContent_Declare(asciichat_x265
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_x265"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_x265"
             URL "https://bitbucket.org/multicoreware/x265_git/get/${X265_VERSION}.tar.gz"
             URL_HASH "SHA256=${X265_HASH}" DOWNLOAD_EXTRACT_TIMESTAMP TRUE EXCLUDE_FROM_ALL)
         FetchContent_GetProperties(asciichat_x265)
@@ -86,7 +95,7 @@ endif()
 include(FindPkgConfig)
 pkg_check_modules(X265 REQUIRED x265)
 
-if(APPLE AND NOT PLATFORM_IOS AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
     find_library(X265_STATIC_LIBRARY
         NAMES libx265.a
         PATHS ${X265_LIBRARY_DIRS}

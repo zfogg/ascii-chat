@@ -269,7 +269,7 @@ bool atomic_cas_int_impl(atomic_t *a, int *expected, int new_value);
  * @return Current uint64_t value
  */
 #ifndef NDEBUG
-uint64_t atomic_load_u64(atomic_t *a);
+uint64_t atomic_load_u64(const atomic_t *a);
 #else
 #define atomic_load_u64(a) atomic_load_u64_impl(a)
 #endif

@@ -87,7 +87,7 @@ static pid_t g_init_pid = -1;
  * @see options_state_init() - Initializes g_options, this becomes fallback
  * @see options_state_destroy() - Clears g_options, this becomes fallback again
  */
-static const options_t g_default_options = (options_t){
+static const options_t g_default_options = {
     // ========================================================================
     // Mode Detection (auto-detected, default here is uninitialized)
     // ========================================================================
@@ -345,7 +345,7 @@ static void deferred_free_all(void) {
 static void options_rcu_atfork_child(void) {
   /* Reset the lifecycle state to allow reinitialization after fork */
   /* This is safe because lifecycle_t is just an atomic int, can be reset directly */
-  __c11_atomic_store(&g_options_lifecycle.state, LIFECYCLE_UNINITIALIZED, __ATOMIC_RELEASE);
+  atomic_store_explicit(&g_options_lifecycle.state, LIFECYCLE_UNINITIALIZED, memory_order_release);
 
   /* Reset the atomic options pointer to avoid dangling references */
   /* The parent's allocated memory is not accessible/valid in the child */
@@ -516,6 +516,10 @@ const options_t *options_get(void) {
   return current;
 }
 
+void options_warn_uninitialized(void) {
+  log_warn("GET_OPTION called but options not initialized");
+}
+
 const terminal_options_t *options_terminal_settings_ptr(void) {
   static terminal_options_t settings;
   const options_t *options = options_get();
@@ -625,7 +629,6 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(server_key, OPTIONS_VALUE_STRING, "server-key"),
     FIELD(client_keys, OPTIONS_VALUE_STRING, "client-keys"),
     FIELD(discovery_server, OPTIONS_VALUE_STRING, "discovery-server"),
-    FIELD(discovery_service_url, OPTIONS_VALUE_STRING, "discovery-service-url"),
     FIELD(discovery_service_key, OPTIONS_VALUE_STRING, "discovery-service-key"),
     FIELD(discovery_database_path, OPTIONS_VALUE_STRING, "discovery-database-path"),
     FIELD(log_file, OPTIONS_VALUE_STRING, "log-file"),
@@ -643,7 +646,6 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(microphone_sensitivity, OPTIONS_VALUE_DOUBLE, "microphone-volume"),
     FIELD(speakers_volume, OPTIONS_VALUE_DOUBLE, "speakers-volume"),
     FIELD(webrtc_ice_timeout_ms, OPTIONS_VALUE_INT, "webrtc-ice-timeout"),
-    FIELD(webrtc_reconnect_attempts, OPTIONS_VALUE_INT, "webrtc-reconnect-attempts"),
 };
 #undef FIELD
 
@@ -1032,20 +1034,12 @@ char *options_values_json(const options_t *values, bool remote_only) {
   yyjson_mut_doc_set_root(doc, root);
   for (size_t i = 0; i < sizeof(runtime_fields) / sizeof(*runtime_fields); ++i) {
     const runtime_field_t *field = &runtime_fields[i];
-<<<<<<< HEAD
     bool exposed = remote_only ? options_remote_render_field(field->name) : true;
     // The local iOS settings editor uses the non-remote snapshot to expose the
     // complete editable runtime registry. This marker is derived state and is
     // intentionally not patchable.
     if (!remote_only && !strcmp(field->name, "flip_x_explicit"))
       exposed = false;
-=======
-    bool exposed = options_remote_render_field(field->name);
-    if (!remote_only && (!strcmp(field->name, "flip_x") || !strcmp(field->name, "media_input") || !strcmp(field->name, "flip_y") || !strcmp(field->name, "waveform") || !strcmp(field->name, "fft") ||
-                         !strcmp(field->name, "fps_counter") || !strcmp(field->name, "audio_source") || !strcmp(field->name, "speakers_volume") || !strcmp(field->name, "microphone_sensitivity") ||
-                         !strcmp(field->name, "audio_enabled")))
-      exposed = true;
->>>>>>> origin/master
     if (!exposed)
       continue;
     const char *ptr = (const char *)values + field->offset;

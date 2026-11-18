@@ -23,7 +23,10 @@ typedef struct {
   bool dithered;
   // A terminal row normally fits on the stack; unusually wide images retain
   // the heap fallback. Each invocation owns its scratch, including reentry.
-  _Alignas(64) uint32_t inline_scratch[ASCII_INLINE_SCRATCH_COLUMNS * ASCII_SCRATCH_PLANES];
+  // SIMD consumers load this storage with unaligned-safe operations. Keeping
+  // the member naturally aligned also avoids padding every frame object on
+  // MSVC merely to satisfy an alignment annotation.
+  uint32_t inline_scratch[ASCII_INLINE_SCRATCH_COLUMNS * ASCII_SCRATCH_PLANES];
 } ascii_frame_t;
 asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, const char *palette);
 void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows, const simd_cells_t *ops);

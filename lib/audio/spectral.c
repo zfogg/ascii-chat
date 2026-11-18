@@ -182,8 +182,8 @@ static void correct_pitch(spectral_processor_t *p) {
     double magnitude = p->shifted_magnitude[k];
     double frequency = magnitude > 1e-15 ? p->shifted_frequency[k] / magnitude : two_pi * k / n;
     p->synthesis_phase[k] = remainder(p->synthesis_phase[k] + frequency * hop, two_pi);
-    p->frequency[k][0] = magnitude * cos(p->synthesis_phase[k]);
-    p->frequency[k][1] = (k == 0 || k == n / 2) ? 0 : magnitude * sin(p->synthesis_phase[k]);
+    p->frequency[k][0] = (float)(magnitude * cos(p->synthesis_phase[k]));
+    p->frequency[k][1] = (float)((k == 0 || k == n / 2) ? 0.0 : magnitude * sin(p->synthesis_phase[k]));
   }
 }
 

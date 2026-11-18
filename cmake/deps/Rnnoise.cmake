@@ -11,17 +11,7 @@ set(ASCIICHAT_RNNOISE_INSTALL_DIR "${CMAKE_BINARY_DIR}/rnnoise-install")
 # so create the empty staging directory up front as well.
 file(MAKE_DIRECTORY "${ASCIICHAT_RNNOISE_INSTALL_DIR}/include")
 
-find_program(ASCIICHAT_RNNOISE_SHELL NAMES bash sh
-    PATHS "C:/msys64/usr/bin" "C:/msys64/bin" NO_DEFAULT_PATH)
-if(NOT ASCIICHAT_RNNOISE_SHELL)
-    find_program(ASCIICHAT_RNNOISE_SHELL NAMES bash sh)
-endif()
-find_program(ASCIICHAT_RNNOISE_MAKE NAMES make gmake
-    PATHS "C:/msys64/usr/bin" "C:/msys64/bin" NO_DEFAULT_PATH)
-if(NOT ASCIICHAT_RNNOISE_MAKE)
-    find_program(ASCIICHAT_RNNOISE_MAKE NAMES make gmake)
-endif()
-if(NOT ASCIICHAT_RNNOISE_SHELL OR NOT ASCIICHAT_RNNOISE_MAKE)
+if(NOT ASCIICHAT_BASH_EXECUTABLE OR NOT ASCIICHAT_MAKE_EXECUTABLE)
     message(FATAL_ERROR "RNNoise requires bash/sh and make to follow its upstream autotools build")
 endif()
 
@@ -35,6 +25,34 @@ else()
   set(_rnnoise_library "${ASCIICHAT_RNNOISE_INSTALL_DIR}/lib/librnnoise.a")
 endif()
 
+set(_rnnoise_cc_args)
+if(WIN32)
+  set(_rnnoise_cc_wrapper "${CMAKE_CURRENT_BINARY_DIR}/rnnoise-clang.sh")
+  configure_file(
+      "${CMAKE_SOURCE_DIR}/cmake/utils/RnnoiseClang.sh.in"
+      "${_rnnoise_cc_wrapper}"
+      @ONLY)
+  file(CHMOD "${_rnnoise_cc_wrapper}"
+      PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE)
+  set(_rnnoise_cc "${_rnnoise_cc_wrapper}")
+  list(APPEND _rnnoise_cc_args -DRNNOISE_CC=${_rnnoise_cc})
+elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+  list(APPEND _rnnoise_cc_args -DRNNOISE_CC=${ASCIICHAT_CLANG_EXECUTABLE})
+endif()
+
+if(WIN32)
+    # Do not add the ELF-only -fPIC flag to the native Windows autotools build,
+    # and prevent a stale process-level CFLAGS value from being forwarded.
+    set(ENV{CFLAGS} "")
+    set(_rnnoise_build_command
+        "${CMAKE_COMMAND}" -E env
+        "CFLAGS=-DM_PI=3.14159265358979323846"
+        "${ASCIICHAT_MAKE_EXECUTABLE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
+else()
+    set(_rnnoise_build_command
+        "${ASCIICHAT_MAKE_EXECUTABLE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
+endif()
+
 ExternalProject_Add(ascii-chat-rnnoise-build
     SOURCE_DIR "${ASCIICHAT_RNNOISE_SOURCE_DIR}"
     BINARY_DIR "${ASCIICHAT_RNNOISE_BUILD_DIR}"
@@ -43,12 +61,33 @@ ExternalProject_Add(ascii-chat-rnnoise-build
         -DRNNOISE_BINARY_DIR=${ASCIICHAT_RNNOISE_BUILD_DIR}
         -DRNNOISE_INSTALL_DIR=${ASCIICHAT_RNNOISE_INSTALL_DIR}
         -DRNNOISE_SHELL=${ASCIICHAT_RNNOISE_SHELL}
-        -DRNNOISE_CC=${CMAKE_C_COMPILER}
+        -DRNNOISE_WINDOWS=${WIN32}
+        ${_rnnoise_cc_args}
         -DRNNOISE_SHARED=OFF
         -P "${CMAKE_SOURCE_DIR}/cmake/utils/ConfigureRnnoise.cmake"
-    BUILD_COMMAND "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}"
-        CFLAGS=-DM_PI=3.14159265358979323846
-    INSTALL_COMMAND "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}" install
+    # configure/autogen has already generated aclocal.m4; prevent make from
+    # requiring the exact Automake version used by the source checkout.
+    BUILD_COMMAND "${CMAKE_COMMAND}" -E touch
+        "${ASCIICHAT_RNNOISE_BUILD_DIR}/aclocal.m4"
+        "${ASCIICHAT_RNNOISE_BUILD_DIR}/Makefile.in"
+        "${ASCIICHAT_RNNOISE_BUILD_DIR}/configure"
+        "${ASCIICHAT_RNNOISE_BUILD_DIR}/config.h.in"
+        "${ASCIICHAT_RNNOISE_BUILD_DIR}/config.status"
+        "${ASCIICHAT_RNNOISE_BUILD_DIR}/Makefile"
+        "${ASCIICHAT_RNNOISE_BUILD_DIR}/config.h"
+        "${ASCIICHAT_RNNOISE_BUILD_DIR}/stamp-h1"
+        "${ASCIICHAT_RNNOISE_BUILD_DIR}/rnnoise.pc"
+        "${ASCIICHAT_RNNOISE_BUILD_DIR}/rnnoise-uninstalled.pc"
+        COMMAND "${CMAKE_COMMAND}" -E env
+        "MAKEFLAGS=-o aclocal.m4 -o Makefile.in -o configure -o config.h.in"
+        "${ASCIICHAT_MAKE_EXECUTABLE}" -o aclocal.m4 -o Makefile.in -o configure -o config.h.in
+        -C "${ASCIICHAT_RNNOISE_BUILD_DIR}"
+    INSTALL_COMMAND "${ASCIICHAT_MAKE_EXECUTABLE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}" install
+        COMMAND "${CMAKE_COMMAND}"
+            -DRNNOISE_BUILD_DIR=${ASCIICHAT_RNNOISE_BUILD_DIR}
+            -DRNNOISE_INSTALL_DIR=${ASCIICHAT_RNNOISE_INSTALL_DIR}
+            -DRNNOISE_LLVM_LIB=${ASCIICHAT_LLVM_LIB_EXECUTABLE}
+            -P "${CMAKE_SOURCE_DIR}/cmake/utils/InstallRnnoise.cmake"
     BUILD_BYPRODUCTS "${_rnnoise_library}"
     BUILD_ALWAYS FALSE
     UPDATE_COMMAND ""
@@ -56,16 +95,19 @@ ExternalProject_Add(ascii-chat-rnnoise-build
     INSTALL_DIR "${ASCIICHAT_RNNOISE_INSTALL_DIR}"
 )
 
-add_library(ascii-chat-rnnoise ${_rnnoise_library_type} IMPORTED GLOBAL)
-set_target_properties(ascii-chat-rnnoise PROPERTIES
+add_library(asciichat-rnnoise ${_rnnoise_library_type} IMPORTED GLOBAL)
+set_target_properties(asciichat-rnnoise PROPERTIES
     IMPORTED_LOCATION "${_rnnoise_library}"
     INTERFACE_INCLUDE_DIRECTORIES "${ASCIICHAT_RNNOISE_INSTALL_DIR}/include"
 )
 if(_rnnoise_import_library)
-    set_target_properties(ascii-chat-rnnoise PROPERTIES IMPORTED_IMPLIB "${_rnnoise_import_library}")
+    set_target_properties(asciichat-rnnoise PROPERTIES IMPORTED_IMPLIB "${_rnnoise_import_library}")
 endif()
-add_dependencies(ascii-chat-rnnoise ascii-chat-rnnoise-build)
+add_dependencies(asciichat-rnnoise asciichat-rnnoise-build)
 
 unset(_rnnoise_library_type)
 unset(_rnnoise_library)
 unset(_rnnoise_import_library)
+unset(_rnnoise_cc_args)
+unset(_rnnoise_cc_wrapper)
+unset(_rnnoise_build_command)

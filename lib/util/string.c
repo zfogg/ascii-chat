@@ -175,7 +175,7 @@ bool escape_shell_double_quotes(const char *str, char *out_buffer, size_t out_bu
   }
 
   // Calculate required size: each " becomes \" (2 chars) instead of 1
-  // Each \ also needs escaping, so \\ becomes \\\\
+  // Each backslash also needs escaping.
   // Worst case: all chars are quotes/backslashes, so we need strlen(str) * 2 + 2 (for surrounding quotes)
   size_t required_size = 2; // Start and end quotes
   for (size_t i = 0; str[i] != '\0'; i++) {

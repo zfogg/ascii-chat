@@ -78,25 +78,30 @@ function(configure_musl_post_project)
 
     # Use -static-pie flag to build fully static PIE binaries with musl
     # Combines static linking with Position Independent Executable for security (ASLR)
-    # Using clang directly with musl for proper static-PIE support (musl-gcc wrapper doesn't support it)
+    # Using clang directly with musl for proper static-PIE support.
     # See: https://github.com/rust-lang/rust/issues/95926
 
-    # Find GCC library directory for libgcc.a
-    # Use gcc -print-libgcc-file-name to get the actual path (works on all distros)
+    # Use Clang's compiler-rt builtins archive for the musl runtime.
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
+        set(_compiler_rt_arch "aarch64")
+    else()
+        set(_compiler_rt_arch "x86_64")
+    endif()
     execute_process(
-        COMMAND gcc -print-libgcc-file-name
-        OUTPUT_VARIABLE GCC_LIBGCC_PATH
+        COMMAND "${CMAKE_C_COMPILER}" --print-resource-dir
+        OUTPUT_VARIABLE CLANG_RESOURCE_DIR
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
-    if(NOT GCC_LIBGCC_PATH OR NOT EXISTS "${GCC_LIBGCC_PATH}")
-        message(FATAL_ERROR "GCC libgcc runtime was not found; it is required for musl static linking")
+    set(CLANG_BUILTINS_PATH "${CLANG_RESOURCE_DIR}/lib/linux/libclang_rt.builtins-${_compiler_rt_arch}.a")
+    if(NOT EXISTS "${CLANG_BUILTINS_PATH}")
+        message(FATAL_ERROR "Clang compiler-rt builtins archive was not found: ${CLANG_BUILTINS_PATH}")
     endif()
-    set(MUSL_LIBGCC_PATH "${GCC_LIBGCC_PATH}" CACHE FILEPATH "Compiler runtime archive for musl static executables" FORCE)
+    set(MUSL_COMPILER_RT_PATH "${CLANG_BUILTINS_PATH}" CACHE FILEPATH "Clang compiler-rt builtins archive for musl static executables" FORCE)
 
-    if(NOT CMAKE_C_COMPILER_TARGET STREQUAL MUSL_TARGET)
+    if(NOT CMAKE_C_COMPILER MATCHES "musl-gcc" AND NOT CMAKE_C_COMPILER_TARGET STREQUAL MUSL_TARGET)
         message(FATAL_ERROR "The musl compiler toolchain was not loaded. Configure a fresh build tree with cmake --fresh.")
     endif()
-    target_compile_definitions(asciichat-project-options INTERFACE USE_MUSL _FORTIFY_SOURCE=0)
+    target_compile_definitions(asciichat-project-options INTERFACE USE_MUSL)
     target_compile_options(asciichat-project-options INTERFACE -U_FORTIFY_SOURCE)
 
     # Compiler target, CRT startup files and search boundaries belong to the toolchain.
@@ -125,46 +130,6 @@ function(configure_musl_post_project)
         set(ALPINE_ARCH "armv7")
     else()
         message(FATAL_ERROR "Unsupported architecture for Alpine libc++: ${CMAKE_SYSTEM_PROCESSOR}")
-    endif()
-
-    if(ALPINE_ARCH STREQUAL "aarch64")
-        # Use Alpine's compiler runtime for AArch64 musl. The host Debian
-        # libgcc archive contains an LSE initializer that calls glibc-only
-        # __getauxval; Alpine's archive provides the same helpers against musl.
-        set(ALPINE_GCC_VERSION "14.2.0-r4")
-        set(ALPINE_GCC_RUNTIME_VERSION "14.2.0")
-        set(ALPINE_GCC_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-gcc")
-        set(ALPINE_GCC_PACKAGE "gcc-${ALPINE_GCC_VERSION}.apk")
-        set(ALPINE_LIBGCC_PATH
-            "${ALPINE_GCC_DIR}/usr/lib/gcc/aarch64-alpine-linux-musl/${ALPINE_GCC_RUNTIME_VERSION}/libgcc.a")
-
-        if(NOT EXISTS "${ALPINE_LIBGCC_PATH}")
-            file(MAKE_DIRECTORY "${ALPINE_GCC_DIR}")
-            file(DOWNLOAD
-                "${ALPINE_MIRROR}/v${ALPINE_VERSION}/main/${ALPINE_ARCH}/${ALPINE_GCC_PACKAGE}"
-                "${ALPINE_GCC_DIR}/${ALPINE_GCC_PACKAGE}"
-                EXPECTED_HASH SHA256=f9fa19072d1f1a4f72631f3fd090a85a48b95fa08b2062630ea96813275e130f
-                STATUS ALPINE_GCC_DOWNLOAD_STATUS
-                SHOW_PROGRESS
-            )
-            list(GET ALPINE_GCC_DOWNLOAD_STATUS 0 ALPINE_GCC_DOWNLOAD_CODE)
-            if(NOT ALPINE_GCC_DOWNLOAD_CODE EQUAL 0)
-                list(GET ALPINE_GCC_DOWNLOAD_STATUS 1 ALPINE_GCC_DOWNLOAD_ERROR)
-                message(FATAL_ERROR "Failed to download Alpine AArch64 libgcc: ${ALPINE_GCC_DOWNLOAD_ERROR}")
-            endif()
-            execute_process(
-                COMMAND ${CMAKE_COMMAND} -E tar xzf "${ALPINE_GCC_PACKAGE}"
-                WORKING_DIRECTORY "${ALPINE_GCC_DIR}"
-                RESULT_VARIABLE ALPINE_GCC_EXTRACT_RESULT
-            )
-            if(NOT ALPINE_GCC_EXTRACT_RESULT EQUAL 0 OR NOT EXISTS "${ALPINE_LIBGCC_PATH}")
-                message(FATAL_ERROR "Failed to extract Alpine AArch64 libgcc from ${ALPINE_GCC_PACKAGE}")
-            endif()
-        endif()
-
-        set(MUSL_LIBGCC_PATH "${ALPINE_LIBGCC_PATH}" CACHE FILEPATH
-            "Musl-compatible AArch64 compiler runtime archive" FORCE)
-        message(STATUS "Using Alpine musl AArch64 compiler runtime: ${MUSL_LIBGCC_PATH}")
     endif()
 
     if(NOT EXISTS "${ALPINE_LIBCXX_DIR}/libc++.a")
@@ -368,11 +333,61 @@ function(configure_musl_post_project)
         set(ALPINE_LIBUNWIND_STATIC "${LIBUNWIND_PATH}" CACHE FILEPATH "Alpine libunwind for static executables" FORCE)
     endif()
 
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        set(_alpine_libstdcxx_dir "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libstdcxx")
+        set(_alpine_libstdcxx_version "14.2.0-r4")
+        set(_alpine_libstdcxx_base "https://dl-cdn.alpinelinux.org/alpine/v3.21/main/x86_64")
+        set(_alpine_libstdcxx_apk "${_alpine_libstdcxx_dir}/libstdc++-dev-${_alpine_libstdcxx_version}.apk")
+        set(_alpine_libstdcxx_archive "${_alpine_libstdcxx_dir}/usr/lib/libstdc++.a")
+        if(NOT EXISTS "${_alpine_libstdcxx_archive}")
+            file(MAKE_DIRECTORY "${_alpine_libstdcxx_dir}")
+            file(DOWNLOAD
+                "${_alpine_libstdcxx_base}/libstdc++-dev-${_alpine_libstdcxx_version}.apk"
+                "${_alpine_libstdcxx_apk}"
+                STATUS _alpine_libstdcxx_download
+                TLS_VERIFY ON)
+            list(GET _alpine_libstdcxx_download 0 _alpine_libstdcxx_download_code)
+            if(NOT _alpine_libstdcxx_download_code EQUAL 0)
+                message(FATAL_ERROR "Failed to download Alpine musl libstdc++: ${_alpine_libstdcxx_download}")
+            endif()
+            execute_process(
+                COMMAND "${CMAKE_COMMAND}" -E tar xzf "${_alpine_libstdcxx_apk}"
+                WORKING_DIRECTORY "${_alpine_libstdcxx_dir}"
+                RESULT_VARIABLE _alpine_libstdcxx_extract_code
+                COMMAND_ERROR_IS_FATAL ANY)
+        endif()
+        set(MUSL_LIBSTDCPP_PATH "${_alpine_libstdcxx_archive}" CACHE FILEPATH
+            "musl-compatible GCC libstdc++ archive" FORCE)
+        set(MUSL_LIBSUPCXX_PATH "${_alpine_libstdcxx_dir}/usr/lib/libsupc++.a" CACHE FILEPATH
+            "musl-compatible GCC libsupc++ archive" FORCE)
+        set(MUSL_LIBSTDCPP_INCLUDE_DIR "${_alpine_libstdcxx_dir}/usr/include/c++/14.2.0" CACHE PATH
+            "musl-compatible GCC C++ headers" FORCE)
+        file(GLOB _alpine_libstdcxx_target_dirs LIST_DIRECTORIES true
+            "${MUSL_LIBSTDCPP_INCLUDE_DIR}/*-linux-musl")
+        list(SORT _alpine_libstdcxx_target_dirs)
+        list(GET _alpine_libstdcxx_target_dirs 0 _alpine_libstdcxx_target_dir)
+        set(MUSL_LIBSTDCPP_TARGET_INCLUDE_DIR "${_alpine_libstdcxx_target_dir}" CACHE PATH
+            "musl-compatible GCC target C++ headers" FORCE)
+        if(NOT EXISTS "${MUSL_LIBSUPCXX_PATH}" OR
+           NOT EXISTS "${MUSL_LIBSTDCPP_INCLUDE_DIR}/string")
+            message(FATAL_ERROR "Alpine musl libstdc++ package is incomplete in ${_alpine_libstdcxx_dir}")
+        endif()
+    endif()
+
     # Define helper function to link Alpine libc++ to static executables
     # Usage: link_alpine_libcxx(target_name)
     # Always uses PRIVATE keyword signature (modern CMake best practice)
     # Uses LINKER: syntax for proper linker directive handling
     function(link_alpine_libcxx TARGET_NAME)
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            target_link_libraries(${TARGET_NAME} PRIVATE
+                "${MUSL_LIBSTDCPP_PATH}"
+                "${MUSL_LIBSUPCXX_PATH}"
+                "${ALPINE_LIBUNWIND_STATIC}"
+                "${MUSL_LIBGCC_PATH}"
+            )
+            return()
+        endif()
         if(ALPINE_LIBCXX_STATIC AND ALPINE_LIBCXXABI_STATIC)
             # Link libc++ and libc++abi using explicit linker directives
             # The LINKER: prefix ensures CMake processes this as a linker flag
@@ -389,7 +404,7 @@ function(configure_musl_post_project)
             # conversion and outlined-atomic helpers required by the static
             # dependencies without introducing glibc-only runtime symbols.
             if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
-                target_link_libraries(${TARGET_NAME} PRIVATE "${MUSL_LIBGCC_PATH}")
+                target_link_libraries(${TARGET_NAME} PRIVATE "${MUSL_COMPILER_RT_PATH}")
             endif()
             # Static musl executables must search libc after all dependency
             # archives so AArch64 sigsetjmp can branch to setjmp in range.
@@ -398,18 +413,52 @@ function(configure_musl_post_project)
     endfunction()
 
     # Search the target runtime after all application and dependency archives.
-    set(CMAKE_C_STANDARD_LIBRARIES "\"${MUSL_LIBGCC_PATH}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\"" PARENT_SCOPE)
-    set(CMAKE_CXX_STANDARD_LIBRARIES "\"${MUSL_LIBGCC_PATH}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\"" PARENT_SCOPE)
+    # GCC uses libgcc.a; Clang uses compiler-rt builtins and must never inherit
+    # GCC's runtime archive or the dynamically named gcc_s unwinder.
+    if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+        execute_process(
+            COMMAND "${CMAKE_C_COMPILER}" --print-resource-dir
+            OUTPUT_VARIABLE _asciichat_clang_resource_dir
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            RESULT_VARIABLE _asciichat_clang_resource_result)
+        if(NOT _asciichat_clang_resource_result EQUAL 0)
+            message(FATAL_ERROR "Unable to locate Clang's compiler-rt resource directory")
+        endif()
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
+            set(_asciichat_compiler_rt_arch "x86_64")
+        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
+            set(_asciichat_compiler_rt_arch "aarch64")
+        else()
+            message(FATAL_ERROR "Unsupported architecture for Clang compiler-rt: ${CMAKE_SYSTEM_PROCESSOR}")
+        endif()
+        find_file(ASCIICHAT_COMPILER_RT_BUILTINS
+            NAMES "libclang_rt.builtins-${_asciichat_compiler_rt_arch}.a"
+            PATHS "${_asciichat_clang_resource_dir}/lib/linux"
+            NO_DEFAULT_PATH)
+        if(NOT ASCIICHAT_COMPILER_RT_BUILTINS)
+            message(FATAL_ERROR "Clang compiler-rt builtins archive was not found under ${_asciichat_clang_resource_dir}/lib/linux")
+        endif()
+        set(CMAKE_C_STANDARD_LIBRARIES
+            "\"${ASCIICHAT_COMPILER_RT_BUILTINS}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\""
+            PARENT_SCOPE)
+        set(CMAKE_CXX_STANDARD_LIBRARIES
+            "\"${ASCIICHAT_COMPILER_RT_BUILTINS}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\""
+            PARENT_SCOPE)
+        message(STATUS "Using Clang compiler-rt builtins: ${ASCIICHAT_COMPILER_RT_BUILTINS}")
+    else()
+        set(CMAKE_C_STANDARD_LIBRARIES "\"${MUSL_LIBGCC_PATH}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\"" PARENT_SCOPE)
+        set(CMAKE_CXX_STANDARD_LIBRARIES "\"${MUSL_LIBGCC_PATH}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\"" PARENT_SCOPE)
+    endif()
 
     # Disable fortify source for our code (musl doesn't support it)
     # Note: We now use Alpine's musl-native libc++ which doesn't have fortify calls
-    target_compile_options(asciichat-project-options INTERFACE -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
+    target_compile_options(asciichat-project-options INTERFACE -U_FORTIFY_SOURCE)
 
     # Disable precompiled headers
     set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON CACHE BOOL "Disable PCH for musl" FORCE)
 
     message(STATUS "${BoldBlue}musl${ColorReset} C library enabled (static linking with ${BoldCyan}clang${ColorReset})")
-    message(STATUS "Using compiler runtime for musl: ${BoldMagenta}${MUSL_LIBGCC_PATH}${ColorReset}")
+    message(STATUS "Using Clang compiler-rt for musl: ${BoldMagenta}${MUSL_COMPILER_RT_PATH}${ColorReset}")
     message(STATUS "")
     message(STATUS "NOTE: Static linking enabled - will build static dependencies with musl")
 
@@ -418,7 +467,7 @@ function(configure_musl_post_project)
 
     # Extract real compiler path (skip ccache if present)
     if(CMAKE_C_COMPILER MATCHES "ccache")
-        # CMAKE_C_COMPILER is "/usr/bin/ccache /usr/bin/musl-gcc" - extract the real compiler
+        # CMAKE_C_COMPILER may include a compiler launcher; extract the real compiler.
         string(REGEX REPLACE ".* " "" MUSL_CC "${CMAKE_C_COMPILER}")
     else()
         set(MUSL_CC "${CMAKE_C_COMPILER}")

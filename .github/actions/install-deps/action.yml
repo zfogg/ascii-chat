@@ -44,11 +44,11 @@ outputs:
     description: "Whether the Windows vcpkg cache was hit"
     value: ${{ steps.vcpkg-cache.outputs.cache-hit }}
   ccache-key:
-    description: "Cache key for ccache (computed by cache-keys step)"
-    value: ${{ steps.cache-keys.outputs.ccache-key || steps.cache-keys-win.outputs.ccache-key }}
+    description: "Cache key for the local sccache directory (compatibility output name)"
+    value: ${{ steps.cache-keys.outputs.sccache-key || steps.cache-keys-win.outputs.sccache-key }}
   ccache-hit:
-    description: "Whether ccache was hit"
-    value: ${{ steps.ccache-restore.outputs.cache-hit }}
+    description: "Whether the local sccache directory was hit"
+    value: ${{ steps.sccache-restore-linux.outputs.cache-hit || steps.sccache-restore-macos.outputs.cache-hit || steps.sccache-restore-windows.outputs.cache-hit }}
   build-cache-key:
     description: "Cache key for build directory (computed by cache-keys step)"
     value: ${{ steps.cache-keys.outputs.build-cache-key || steps.cache-keys-win.outputs.build-cache-key }}
@@ -56,6 +56,21 @@ outputs:
 runs:
   using: "composite"
   steps:
+    # Shared compiler cache setup for every workflow that uses install-deps.
+    # Mozilla's action uses the GitHub Actions cache backend for sccache.
+    - name: Enable sccache compiler cache
+      uses: mozilla-actions/sccache-action@v0.0.11
+      with:
+        version: "v0.19.0"
+
+    - name: Export sccache build environment
+      shell: bash
+      run: |
+        echo "SCCACHE_GHA_ENABLED=true" >> "$GITHUB_ENV"
+        echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> "$GITHUB_ENV"
+        echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> "$GITHUB_ENV"
+        echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+
     # =========================================================================
     # CMake 4.2.0 Installation (macOS and Windows only)
     # =========================================================================
@@ -130,12 +145,12 @@ runs:
         # Versioned keys invalidate incompatible dependency caches.
         # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
         echo "cmake-cache-key=${os}-${arch}-cmake-deps-v19-${deps_hash}-${install_hash}" >> $GITHUB_OUTPUT
-        echo "ccache-key=${os}-${arch}-ccache-v2" >> $GITHUB_OUTPUT
+        echo "sccache-key=${os}-${arch}-sccache-v1" >> $GITHUB_OUTPUT
         echo "build-cache-key=${os}-${arch}-build-v10" >> $GITHUB_OUTPUT
 
         echo "Computed cache keys:"
         echo "  cmake: ${os}-${arch}-cmake-deps-v19-${deps_hash}-${install_hash}"
-        echo "  ccache: ${os}-${arch}-ccache-v2"
+        echo "  sccache: ${os}-${arch}-sccache-v1"
         echo "  build: ${os}-${arch}-build-v10"
 
     - name: Compute cache keys (Windows)
@@ -164,12 +179,12 @@ runs:
         # Versioned keys invalidate incompatible dependency caches.
         # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
         Add-Content -Path $env:GITHUB_OUTPUT -Value "cmake-cache-key=${os}-${arch}-cmake-deps-v19-${depsHash}-${installHash}"
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "ccache-key=${os}-${arch}-ccache-v2"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "sccache-key=${os}-${arch}-sccache-v1"
         Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v10"
 
         Write-Host "Computed cache keys:"
         Write-Host "  cmake: ${os}-${arch}-cmake-deps-v18-${depsHash}-${installHash}"
-        Write-Host "  ccache: ${os}-${arch}-ccache-v2"
+        Write-Host "  sccache: ${os}-${arch}-sccache-v1"
         Write-Host "  build: ${os}-${arch}-build-v10"
 
     - name: Restore CMake dependency cache (All platforms)
@@ -183,36 +198,55 @@ runs:
         # v8: Fix cache timing - cache is now saved by workflows AFTER cmake configure
         key: ${{ steps.cache-keys.outputs.cmake-cache-key || steps.cache-keys-win.outputs.cmake-cache-key }}
 
-    # Restore ccache for incremental compilation across CI runs
+    # Restore the local sccache directory for incremental compilation across CI runs
     # Key includes branch name so each branch has its own cache, with fallback to any branch's cache
-    - name: Restore ccache (All platforms)
-      id: ccache-restore
+    - name: Restore sccache directory (Linux)
+      id: sccache-restore-linux
+      if: inputs.os == 'ubuntu'
       uses: actions/cache/restore@v4
       with:
-        path: .ccache
-        # Use computed key from cache-keys step (github.ref_name not available in composite actions)
-        key: ${{ steps.cache-keys.outputs.ccache-key || steps.cache-keys-win.outputs.ccache-key }}
+        path: ~/.cache/sccache
+        key: ${{ steps.cache-keys.outputs.sccache-key || steps.cache-keys-win.outputs.sccache-key }}
         restore-keys: |
-          ${{ runner.os }}-${{ runner.arch }}-ccache-v2-
+          ${{ runner.os }}-${{ runner.arch }}-sccache-v1-
 
-    # Set CCACHE_DIR to workspace-relative path for consistent caching
-    - name: Configure ccache directory (Unix)
+    - name: Restore sccache directory (macOS)
+      id: sccache-restore-macos
+      if: inputs.os == 'macos'
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.cache/sccache
+        # Use computed key from cache-keys step (github.ref_name not available in composite actions)
+        key: ${{ steps.cache-keys.outputs.sccache-key || steps.cache-keys-win.outputs.sccache-key }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-sccache-v1-
+
+    - name: Restore sccache directory (Windows)
+      id: sccache-restore-windows
+      if: inputs.os == 'windows'
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/AppData/Local/Temp/sccache
+        key: ${{ steps.cache-keys.outputs.sccache-key || steps.cache-keys-win.outputs.sccache-key }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-sccache-v1-
+
+    - name: Configure sccache directory (Linux)
       if: inputs.os != 'windows'
       shell: bash
       run: |
-        mkdir -p .ccache
-        echo "CCACHE_DIR=${{ github.workspace }}/.ccache" >> $GITHUB_ENV
-        echo "CCACHE_MAXSIZE=500M" >> $GITHUB_ENV
-        echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+        sccache_dir="$HOME/.cache/sccache"
+        echo "XDG_CACHE_HOME=$HOME/.cache" >> "$GITHUB_ENV"
+        mkdir -p "$sccache_dir"
+        echo "SCCACHE_DIR=$sccache_dir" >> "$GITHUB_ENV"
 
-    - name: Configure ccache directory (Windows)
+    - name: Configure sccache directory (Windows)
       if: inputs.os == 'windows'
       shell: pwsh
       run: |
-        New-Item -ItemType Directory -Force -Path .ccache | Out-Null
-        Add-Content -Path $env:GITHUB_ENV -Value "CCACHE_DIR=${{ github.workspace }}\.ccache"
-        Add-Content -Path $env:GITHUB_ENV -Value "CCACHE_MAXSIZE=500M"
-        Add-Content -Path $env:GITHUB_ENV -Value "CCACHE_COMPRESS=1"
+        $sccacheDir = Join-Path $env:LOCALAPPDATA 'Temp\sccache'
+        New-Item -ItemType Directory -Force -Path $sccacheDir | Out-Null
+        Add-Content -Path $env:GITHUB_ENV -Value "SCCACHE_DIR=$sccacheDir"
 
     # Restore build directory for incremental builds
     # Same key per branch - Ninja handles rebuilding only changed files
@@ -389,6 +423,43 @@ runs:
       run: |
         $ErrorActionPreference = 'Stop'
 
+        function Find-UsableMsys2 {
+          $candidates = @()
+          if (-not [string]::IsNullOrWhiteSpace($env:MSYS2_ROOT)) { $candidates += $env:MSYS2_ROOT }
+          $candidates += @('C:\msys64', 'C:\msys64\ucrt64',
+            (Join-Path $env:USERPROFILE 'scoop\apps\msys2\current'),
+            'C:\ProgramData\scoop\apps\msys2\current')
+          foreach ($candidate in $candidates | Select-Object -Unique) {
+            if (-not [string]::IsNullOrWhiteSpace($candidate) -and
+                (Test-Path -LiteralPath (Join-Path $candidate 'usr\bin\bash.exe')) -and
+                (Test-Path -LiteralPath (Join-Path $candidate 'usr\bin\make.exe'))) {
+              return (Resolve-Path -LiteralPath $candidate).Path
+            }
+          }
+          return $null
+        }
+
+        # Reuse a complete installation when present; this avoids Scoop trying
+        # to extract its x86-64 archive on ARM64 runners.
+        $existingMsys2 = Find-UsableMsys2
+        if ($existingMsys2) {
+          Write-Host "Using existing MSYS2 installation: $existingMsys2"
+          Add-Content -Path $env:GITHUB_ENV -Value "MSYS2_ROOT=$existingMsys2"
+        }
+        elseif (-not (Get-Command 7z.exe -ErrorAction SilentlyContinue)) {
+          winget install --id 7zip.7zip --exact --scope machine --silent --accept-package-agreements --accept-source-agreements
+          if ($LASTEXITCODE -ne 0) { throw '7-Zip provisioning failed' }
+          foreach ($path in @('C:\Program Files\7-Zip', 'C:\Program Files (x86)\7-Zip')) {
+            if (Test-Path -LiteralPath (Join-Path $path '7z.exe')) {
+              $env:Path = "$path;$env:Path"
+              Add-Content -Path $env:GITHUB_PATH -Value $path
+            }
+          }
+        }
+        $sevenZip = Get-Command 7z.exe -ErrorAction SilentlyContinue
+        if (-not $sevenZip) { throw '7z.exe is required before Scoop installs MSYS2' }
+        Write-Host "Using Scoop extractor: $($sevenZip.Source)"
+
         function Ensure-Scoop {
           if (Get-Command scoop -ErrorAction SilentlyContinue) {
             Write-Host "Scoop already installed"
@@ -454,9 +525,14 @@ runs:
         # doxygen is needed for generating documentation included in installers.
         # GitHub's AMD64 image has Chocolatey and its packages resolve much
         # faster than Scoop; ARM64 retains the Scoop path.
-        $basePackages = @('ninja', 'ccache') | Where-Object {
+        # sccache is provisioned by mozilla-actions/sccache-action above;
+        # do not ask Scoop for the obsolete ccache package. Keep the pipeline
+        # wrapped so a single missing package still remains an array before
+        # appending MSYS2.
+        $basePackages = @(@('ninja') | Where-Object {
           $null -eq (Get-Command $_ -ErrorAction SilentlyContinue)
-        }
+        })
+        if (-not $existingMsys2) { $basePackages += 'msys2' }
 
         $extra = @()
         if (-not [string]::IsNullOrWhiteSpace('${{ inputs.extra-packages }}')) {
@@ -465,11 +541,27 @@ runs:
         $packages = $basePackages + $extra
 
         Ensure-Scoop
+        scoop config use_external_7zip true
+        if ($LASTEXITCODE -ne 0) { throw 'Failed to enable Scoop external 7-Zip extraction' }
         Ensure-ScoopBucket -Bucket 'main'
         Ensure-ScoopBucket -Bucket 'extras'
         foreach ($pkg in $packages) {
           Install-ScoopPackage -Package $pkg
         }
+
+        # RNNoise runs autogen.sh through the MSYS2 installation that CMake
+        # selects. Install autotools into that same installation and verify
+        # autoreconf from its login shell before configuration starts.
+        $msys2Root = if ($existingMsys2) { $existingMsys2 } else { (scoop prefix msys2).Trim() }
+        if ([string]::IsNullOrWhiteSpace($msys2Root) -or -not (Test-Path "$msys2Root\usr\bin\bash.exe")) {
+          throw "Scoop MSYS2 installation was not found"
+        }
+        $msys2Bash = Join-Path $msys2Root 'usr\bin\bash.exe'
+        & $msys2Bash -lc 'pacman -S --needed --noconfirm autotools'
+        if ($LASTEXITCODE -ne 0) { throw "MSYS2 autotools installation failed" }
+        & $msys2Bash -lc 'autoreconf --version'
+        if ($LASTEXITCODE -ne 0) { throw "MSYS2 autoreconf is unavailable" }
+        Add-Content -Path $env:GITHUB_ENV -Value "MSYS2_ROOT=$msys2Root"
 
         # Persist Scoop shims for later action steps without failing when a
         # runner uses only one of the user/global locations.

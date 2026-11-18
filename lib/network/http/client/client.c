@@ -225,12 +225,12 @@ char *https_get(const char *hostname, const char *path) {
 
   int dns_result;
   {
-    ASCII_OTEL_SCOPE(DNS_RESOLVE);
-    if (otel_scope.retained)
-      gotel_attr_string(&otel_scope.scope, "dns.question.name", hostname);
+    ASCII_OTEL_SCOPE_AS(dns_scope, DNS_RESOLVE);
+    if (dns_scope.retained)
+      gotel_attr_string(&dns_scope.scope, "dns.question.name", hostname);
     dns_result = getaddrinfo(hostname, "443", &hints, &result);
-    if (dns_result && otel_scope.retained)
-      gotel_error(&otel_scope.scope, "dns.error", "DNS lookup failed");
+    if (dns_result && dns_scope.retained)
+      gotel_error(&dns_scope.scope, "dns.error", "DNS lookup failed");
   }
   if (dns_result != 0) {
     log_error("Failed to resolve hostname: %s", hostname);

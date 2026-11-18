@@ -411,9 +411,9 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
   }
 
   // Validate packet header
-  uint16_t pkt_type;
-  uint32_t pkt_len;
-  uint32_t expected_crc;
+  uint16_t pkt_type = 0;
+  uint32_t pkt_len = 0;
+  uint32_t expected_crc = 0;
   if (packet_validate_header(&header, &pkt_type, &pkt_len, &expected_crc) != ASCIICHAT_OK) {
     // Error context is already set by packet_validate_header
     return ERROR_NETWORK_PROTOCOL;
@@ -529,7 +529,7 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
   packet_header_t header;
   asciichat_error_t result = packet_header_build(&header, type, &payload, 1, 0);
   socket_buffer_t slices[] = {{&header, sizeof(header)}, payload};
-  acip_packet_plan_t plan;
+  acip_packet_plan_t plan = {0};
   if (result == ASCIICHAT_OK)
     result = acip_packet_plan(crypto_ctx, slices, 2, &plan);
   uint8_t *ciphertext = NULL;

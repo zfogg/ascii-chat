@@ -415,9 +415,15 @@ jobs:
           if [[ "$(uname -m)" == "aarch64" ]]; then arch="arm64"; else arch="amd64"; fi
           archive="build_release/ascii-chat-${version}-Linux-${arch}.tar.gz"
           tar -xOzf "$archive" share/man/man1/ascii-chat.1 > "$RUNNER_TEMP/release-man1"
-          grep -q 'MCP SERVER' "$RUNNER_TEMP/release-man1"
+          if ! grep -q 'MCP SERVER' "$RUNNER_TEMP/release-man1"; then
+            echo "::error::man1 archive check failed: generated manual is missing the MCP SERVER section"
+            exit 1
+          fi
           tar -tzf "$archive" > "$RUNNER_TEMP/release-runtime-files"
-          grep -Eq '(^|/)share/man/man5/ascii-chat\.5$' "$RUNNER_TEMP/release-runtime-files"
+          if ! grep -Eq '(^|/)share/man/man5/ascii-chat\.5$' "$RUNNER_TEMP/release-runtime-files"; then
+            echo "::error::man5 archive check failed: runtime tarball does not contain share/man/man5/ascii-chat.5"
+            exit 1
+          fi
 
       - name: Print build logs on failure
         if: failure()
@@ -427,16 +433,33 @@ jobs:
           echo ""
           echo "=== FFmpeg configure logs ==="
           find .deps-cache/Release/musl -path '*/ffbuild/config.log' -type f -print -exec tail -n 160 {} \; 2>/dev/null || echo "No FFmpeg configure log"
+          echo ""
+          echo "=== ALSA and Fontconfig configure logs ==="
+          find .deps-cache/Release/musl -type f \( -path '*/alsa*/config.log' -o -path '*/fontconfig*/config.log' \) -print -exec tail -n 220 {} \; 2>/dev/null || echo "No ALSA/Fontconfig configure logs"
+          echo ""
+          echo "=== util-linux configure logs ==="
+          util_linux_logs=$(find .deps-cache/Release/musl -path '*/util-linux*/config.log' -type f -print)
+          if [[ -n "$util_linux_logs" ]]; then
+            while IFS= read -r log; do
+              echo "--- $log: compiler probe ---"
+              grep -n -B 18 -A 55 'checking whether the C compiler works' "$log" || true
+            done <<< "$util_linux_logs"
+          else
+            echo "No util-linux configure logs"
+          fi
+          echo ""
+          echo "=== Musl toolchain/link flags ==="
+          grep -E 'CMAKE_(C|EXE_LINKER)_FLAGS|CMAKE_SYSROOT|CMAKE_C_COMPILER' build_release/CMakeCache.txt 2>/dev/null || true
 
-      - name: Print ccache stats
+      - name: Print sccache stats
         if: success()
-        run: ccache --show-stats || true
+        run: sccache --show-stats || true
 
-      - name: Save ccache
+      - name: Save sccache directory
         if: success()
         uses: actions/cache/save@v4
         with:
-          path: .ccache
+          path: ~/.cache/sccache
           key: ${{ steps.install-deps.outputs.ccache-key }}
 
       - name: Save build directory
@@ -655,9 +678,15 @@ jobs:
           if [[ "$(uname -m)" == "arm64" ]]; then arch="arm64"; else arch="amd64"; fi
           archive="build_release/ascii-chat-${version}-macOS-${arch}.tar.gz"
           tar -xOzf "$archive" share/man/man1/ascii-chat.1 > "$RUNNER_TEMP/release-man1"
-          grep -q 'MCP SERVER' "$RUNNER_TEMP/release-man1"
+          if ! grep -q 'MCP SERVER' "$RUNNER_TEMP/release-man1"; then
+            echo "::error::man1 archive check failed: generated manual is missing the MCP SERVER section"
+            exit 1
+          fi
           tar -tzf "$archive" > "$RUNNER_TEMP/release-runtime-files"
-          grep -q 'share/man/man5/ascii-chat.5$' "$RUNNER_TEMP/release-runtime-files"
+          if ! grep -q 'share/man/man5/ascii-chat.5$' "$RUNNER_TEMP/release-runtime-files"; then
+            echo "::error::man5 archive check failed: runtime tarball does not contain share/man/man5/ascii-chat.5"
+            exit 1
+          fi
 
       - name: Verify macOS development package contains the static library
         shell: bash
@@ -679,15 +708,15 @@ jobs:
           fi
           echo "Verified static libasciichat.a in $archive"
 
-      - name: Print ccache stats
+      - name: Print sccache stats
         if: success()
-        run: ccache --show-stats || true
+        run: sccache --show-stats || true
 
-      - name: Save ccache
+      - name: Save sccache directory
         if: success()
         uses: actions/cache/save@v4
         with:
-          path: .ccache
+          path: ~/Library/Caches/Mozilla.sccache
           key: ${{ steps.install-deps.outputs.ccache-key }}
 
       - name: Save build directory
@@ -930,16 +959,16 @@ jobs:
           }
           Write-Host "Runtime archive contains no DLL dependencies; development archive contains libasciichat.a"
 
-      - name: Print ccache stats
+      - name: Print sccache stats
         if: success()
         shell: bash
-        run: ccache --show-stats || true
+        run: sccache --show-stats || true
 
-      - name: Save ccache
+      - name: Save sccache directory
         if: success()
         uses: actions/cache/save@v4
         with:
-          path: .ccache
+          path: ~/AppData/Local/Temp/sccache
           key: ${{ steps.install-deps.outputs.ccache-key }}
 
       - name: Save build directory
@@ -1072,3 +1101,4 @@ jobs:
           package-macos:  ${{ needs.package-macos.result }}
           package-windows: ${{ needs.package-windows.result }}
           publish-release: ${{ needs.publish-release.result }}
+

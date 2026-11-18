@@ -607,8 +607,8 @@ static char *convert_to_ascii(session_display_ctx_t *ctx, const image_t *image, 
     return NULL;
   }
   const options_t *values = &snapshot.values;
-  unsigned short int width = values->width;
-  unsigned short int height = values->height;
+  unsigned short int width = (unsigned short int)values->width;
+  unsigned short int height = (unsigned short int)values->height;
   bool stretch = values->stretch;
   terminal_capabilities_t caps_copy = ctx->caps;
   caps_copy.render_mode = (terminal_render_mode_t)values->render_mode;
@@ -1118,7 +1118,7 @@ void session_display_write_ascii_frame(session_display_ctx_t *ctx, const char *a
   // Increment shared frame counter for both client and host rendering
   // This metric is used by debug scripts to measure FPS across all modes
   static atomic_t g_display_frames_rendered = {0};
-  int frame_number = atomic_fetch_add_u64(&g_display_frames_rendered, 1) + 1;
+  int frame_number = (int)(atomic_fetch_add_u64(&g_display_frames_rendered, 1) + 1);
   log_dev("[FRAMES_RENDERED_TOTAL] %d", frame_number);
 
   if (use_tty_control) {
@@ -1438,7 +1438,7 @@ asciichat_error_t session_display_write_audio(session_display_ctx_t *ctx, const 
     } else {
       // Split write: first part to end of buffer, second part wraps to beginning
       uint32_t first_part = space_before_wrap;
-      uint32_t second_part = num_samples - first_part;
+      uint32_t second_part = (uint32_t)(num_samples - first_part);
       memcpy(&rb->data[write_idx], buffer, first_part * sizeof(float));
       memcpy(&rb->data[0], &buffer[first_part], second_part * sizeof(float));
     }

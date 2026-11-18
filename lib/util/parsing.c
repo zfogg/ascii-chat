@@ -249,7 +249,7 @@ asciichat_error_t parse_int32(const char *str, int32_t *out_value, int32_t min_v
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output pointer is NULL");
   }
 
-  long value;
+  long value = 0;
   asciichat_error_t err = parse_long(str, &value, (long)min_value, (long)max_value);
   if (err != ASCIICHAT_OK) {
     return err;
@@ -268,7 +268,7 @@ asciichat_error_t parse_uint32(const char *str, uint32_t *out_value, uint32_t mi
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output pointer is NULL");
   }
 
-  unsigned long value;
+  unsigned long value = 0;
   asciichat_error_t err = parse_ulong(str, &value, (unsigned long)min_value, (unsigned long)max_value);
   if (err != ASCIICHAT_OK) {
     return err;

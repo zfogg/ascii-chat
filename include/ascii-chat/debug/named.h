@@ -436,7 +436,7 @@ uintptr_t thread_to_key(platform_thread_t thread);
 #ifndef NDEBUG
 #define NAMED_REGISTER_RWLOCK(lock, name, parent_ptr) named_register((uintptr_t)(const void *)(lock), (name), "rwlock", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_RWLOCK(lock, name, parent_ptr) ((void)(lock), (void)(parent_ptr), (name))
+#define NAMED_REGISTER_RWLOCK(lock, name, parent_ptr) ((void)(lock), (void)(name), (void)(parent_ptr))
 #endif
 
 /**
@@ -1068,7 +1068,7 @@ asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required,
     } else {                                                 \
       snprintf((buffer), (size), "0x%tx", (ptrdiff_t)(key)); \
     }                                                        \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * @brief Get name of an integer ID or format as hex fallback
@@ -1095,7 +1095,7 @@ asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required,
     } else {                                                    \
       snprintf((buffer), (size), "0x%lx", (unsigned long)(id)); \
     }                                                           \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * @brief Copy a string to buffer, with bounds checking
@@ -1117,7 +1117,7 @@ asciichat_error_t named_registry_try_snapshot(size_t capacity, size_t *required,
     } else {                                \
       (buffer)[0] = '\0';                   \
     }                                       \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /** Print a synchronized hash-table summary without logging under its lock. */
 void named_print_hash_stats(void);

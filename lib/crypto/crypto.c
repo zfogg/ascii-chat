@@ -920,7 +920,7 @@ bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonc
   return result;
 }
 
-crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size, size_t *packet_len_out) {
+crypto_result_t crypto_create_auth_challenge(crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size, size_t *packet_len_out) {
   if (!ctx || !ctx->initialized || !packet_out || !packet_len_out) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters (ctx=%p, initialized=%d, packet_out=%p, packet_len_out=%p)", ctx, ctx ? ctx->initialized : 0, packet_out, packet_len_out);
     return CRYPTO_ERROR_INVALID_PARAMS;

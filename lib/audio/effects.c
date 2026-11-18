@@ -46,8 +46,8 @@ void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, 
   comp->knee_dB = 2.0f; // Fixed soft knee
 
   // Calculate time constants
-  float attack_tau = (float)attack_ns / NS_PER_SEC;
-  float release_tau = (float)release_ns / NS_PER_SEC;
+  float attack_tau = (float)attack_ns / (float)NS_PER_SEC;
+  float release_tau = (float)release_ns / (float)NS_PER_SEC;
   comp->attack_coeff = expf(-1.0f / (attack_tau * comp->sample_rate + 1e-12f));
   comp->release_coeff = expf(-1.0f / (release_tau * comp->sample_rate + 1e-12f));
 }
@@ -123,8 +123,8 @@ void noise_gate_set_params(noise_gate_t *gate, float threshold, uint64_t attack_
 
   // Calculate coefficients for envelope follower
   // Using exponential moving average: coeff = 1 - exp(-1 / (time_s * sample_rate))
-  float attack_s = (float)attack_ns / NS_PER_SEC;
-  float release_s = (float)release_ns / NS_PER_SEC;
+  float attack_s = (float)attack_ns / (float)NS_PER_SEC;
+  float release_s = (float)release_ns / (float)NS_PER_SEC;
   gate->attack_coeff = 1.0f - expf(-1.0f / (attack_s * gate->sample_rate + 1e-12f));
   gate->release_coeff = 1.0f - expf(-1.0f / (release_s * gate->sample_rate + 1e-12f));
 }
@@ -191,7 +191,7 @@ void highpass_filter_init(highpass_filter_t *filter, float cutoff_hz, float samp
 
   // Calculate filter coefficient
   // alpha = 1 / (1 + 2*pi*fc/fs)
-  filter->alpha = 1.0f / (1.0f + 2.0f * M_PI * cutoff_hz / sample_rate);
+  filter->alpha = 1.0f / (1.0f + 2.0f * (float)M_PI * cutoff_hz / sample_rate);
 
   highpass_filter_reset(filter);
 }

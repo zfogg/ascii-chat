@@ -47,19 +47,56 @@ set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
     "Use ascii-chat's SQLite3 dependency" FORCE)
 
 # Keep the vendored C++ facade aligned with ascii-chat's C++26 toolchain.
-set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    set(GOTEL_CXX_STANDARD 23 CACHE STRING "C++ standard for the gotel facade" FORCE)
+else()
+    set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
+endif()
+
+# Gotel declares Sequel in its nested CMake project. Predeclare the persistent
+# cache checkout here so reconfiguring another parent build directory does not
+# clone Sequel again.
+include(FetchContent)
+set(_asciichat_sequel_source "${ASCIICHAT_DEPS_CACHE_DIR}/sequel-src")
+if(EXISTS "${_asciichat_sequel_source}/CMakeLists.txt")
+    FetchContent_Declare(sequel SOURCE_DIR "${_asciichat_sequel_source}")
+else()
+    FetchContent_Declare(sequel
+        GIT_REPOSITORY https://github.com/zfogg/sequel.git
+        GIT_TAG f0865335e0c90b872ad2d4b40d2590509439f1fe
+        SOURCE_DIR "${_asciichat_sequel_source}")
+endif()
+set(_asciichat_otlp_c_source "${ASCIICHAT_DEPS_CACHE_DIR}/otlp_c-src")
+if(EXISTS "${_asciichat_otlp_c_source}/CMakeLists.txt")
+    FetchContent_Declare(otlp_c SOURCE_DIR "${_asciichat_otlp_c_source}")
+else()
+    FetchContent_Declare(otlp_c
+        GIT_REPOSITORY https://github.com/riboseinc/otlp-c.git
+        GIT_TAG 0798449d66331c3953b8ba9354164cfbf2f3bdaf
+        SOURCE_DIR "${_asciichat_otlp_c_source}")
+endif()
+set(_asciichat_gotel_nghttp2_source "${ASCIICHAT_DEPS_CACHE_DIR}/gotel_nghttp2-src")
+if(EXISTS "${_asciichat_gotel_nghttp2_source}/CMakeLists.txt")
+    FetchContent_Declare(gotel_nghttp2 SOURCE_DIR "${_asciichat_gotel_nghttp2_source}")
+else()
+    FetchContent_Declare(gotel_nghttp2
+        GIT_REPOSITORY https://github.com/nghttp2/nghttp2.git
+        GIT_TAG 43b29f991403b5419dd0bea2840581078ead9bf8
+        SOURCE_DIR "${_asciichat_gotel_nghttp2_source}")
+endif()
 
 # Keep Gotel and its fetched otlp-c/Sequel build trees in the persistent
-# dependency cache. This is separate from the main build directory.
-set(_asciichat_gotel_cache_dir "${ASCIICHAT_DEPS_CACHE_DIR}/gotel")
-file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
-
-set(_asciichat_parent_shared_libs ${BUILD_SHARED_LIBS})
-if(USE_MUSL)
-    set(BUILD_SHARED_LIBS OFF)
+# dependency cache. Generated Gotel sources are emitted into this same stable
+# tree so the shared Debug dependency build does not depend on the parent
+# application's binary directory.
+string(REGEX REPLACE "[^A-Za-z0-9_.-]" "-" _asciichat_gotel_generator_cache "${CMAKE_GENERATOR}")
+string(REGEX REPLACE "[^A-Za-z0-9_.-]" "-" _asciichat_gotel_compiler_cache "${CMAKE_C_COMPILER_ID}")
+if(NOT _asciichat_gotel_compiler_cache)
+    set(_asciichat_gotel_compiler_cache default)
 endif()
-set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS} CACHE BOOL
-    "Build gotel and its public dependencies as shared libraries" FORCE)
+set(_asciichat_gotel_cache_dir
+    "${ASCIICHAT_DEPS_CACHE_DIR}/gotel-${_asciichat_gotel_compiler_cache}-${_asciichat_gotel_generator_cache}")
+file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 
 # Gotel's gRPC adapter accepts an existing nghttp2 target. Prefer the target
 # supplied by vcpkg so its embedded FetchContent project does not define a
@@ -133,8 +170,14 @@ if(DEFINED FETCHCONTENT_BASE_DIR)
     set(_asciichat_fetchcontent_base_dir_was_defined TRUE)
     set(_asciichat_parent_fetchcontent_base_dir "${FETCHCONTENT_BASE_DIR}")
 endif()
-set(FETCHCONTENT_BASE_DIR "${_asciichat_gotel_cache_dir}" CACHE PATH
-    "Persistent Gotel dependency source/build cache" FORCE)
+# Child dependencies are siblings in the compiler/generator-specific
+# FetchContent cache. Using the unqualified build-type root lets incompatible
+# MSVC and Clang subbuilds reuse the same CMake cache.
+if(NOT _asciichat_parent_fetchcontent_base_dir)
+    set(_asciichat_parent_fetchcontent_base_dir "${ASCIICHAT_DEPS_CACHE_DIR}")
+endif()
+set(FETCHCONTENT_BASE_DIR "${_asciichat_parent_fetchcontent_base_dir}" CACHE PATH
+    "Persistent dependency source/build cache" FORCE)
 
 if(USE_MUSL AND NOT TARGET nghttp2_static)
     # The musl application links its native HTTP/2 server against a static
@@ -148,6 +191,23 @@ if(USE_MUSL AND NOT TARGET nghttp2_static)
     set(ENABLE_EXAMPLES OFF CACHE BOOL "Disable nghttp2 examples" FORCE)
     set(ENABLE_DOC OFF CACHE BOOL "Disable nghttp2 documentation" FORCE)
     set(BUILD_TESTING OFF CACHE BOOL "Disable nghttp2 tests" FORCE)
+    # nghttp2 probes these libraries before applying ENABLE_LIB_ONLY. Give its
+    # find modules the same cached artifacts used by the parent dependency
+    # graph, rather than allowing them to fall through to host discovery.
+    if(USE_MUSL)
+        set(LIBNGTCP2_LIBRARY "${ASCIICHAT_NGTCP2_LIBRARY}" CACHE FILEPATH
+            "Cached ngtcp2 library for nghttp2 discovery" FORCE)
+        set(LIBNGTCP2_INCLUDE_DIR "${ASCIICHAT_NGTCP2_BUILD_INCLUDE_DIR}" CACHE PATH
+            "Cached ngtcp2 headers for nghttp2 discovery" FORCE)
+        set(LIBNGHTTP3_LIBRARY "${ASCIICHAT_NGHTTP3_LIBRARY}" CACHE FILEPATH
+            "Cached nghttp3 library for nghttp2 discovery" FORCE)
+        set(LIBNGHTTP3_INCLUDE_DIR "${ASCIICHAT_NGHTTP3_BUILD_INCLUDE_DIR}" CACHE PATH
+            "Cached nghttp3 headers for nghttp2 discovery" FORCE)
+        set(SYSTEMD_LIBRARIES "${SYSTEMD_PREFIX}/lib/libsystemd.a" CACHE FILEPATH
+            "Cached systemd library for nghttp2 discovery" FORCE)
+        set(SYSTEMD_INCLUDE_DIRS "${SYSTEMD_PREFIX}/include" CACHE PATH
+            "Cached systemd headers for nghttp2 discovery" FORCE)
+    endif()
     FetchContent_Declare(asciichat_nghttp2
         GIT_REPOSITORY https://github.com/nghttp2/nghttp2.git
         GIT_TAG 43b29f991403b5419dd0bea2840581078ead9bf8)
@@ -159,9 +219,28 @@ if(USE_MUSL AND NOT TARGET nghttp2_static)
     endif()
 endif()
 
+set(_asciichat_gotel_parent_c_flags "${CMAKE_C_FLAGS}")
+if(UNIX)
+    string(APPEND CMAKE_C_FLAGS " -D_POSIX_C_SOURCE=200809L")
+endif()
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                  "${_asciichat_gotel_cache_dir}/build"
                  EXCLUDE_FROM_ALL)
+set(CMAKE_C_FLAGS "${_asciichat_gotel_parent_c_flags}")
+unset(_asciichat_gotel_parent_c_flags)
+
+# Keep the produced libraries beside the cached Gotel build, rather than in
+# the parent application's build tree. This makes the cache self-contained
+# and lets Ninja reuse valid archives across parent reconfigures.
+file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}/lib")
+foreach(_asciichat_gotel_target gotel otlp_c sequel)
+    if(TARGET ${_asciichat_gotel_target})
+        set_target_properties(${_asciichat_gotel_target} PROPERTIES
+            ARCHIVE_OUTPUT_DIRECTORY "${_asciichat_gotel_cache_dir}/lib"
+            LIBRARY_OUTPUT_DIRECTORY "${_asciichat_gotel_cache_dir}/lib"
+            RUNTIME_OUTPUT_DIRECTORY "${_asciichat_gotel_cache_dir}/bin")
+    endif()
+endforeach()
 
 # The vendored Gotel shared target calls its TLS selection helper directly,
 # while some Apple linkers do not export that helper from the separately built
@@ -263,14 +342,13 @@ endif()
 string(REPLACE "${_otel_inflight_step}"
     "\t\t\tif (otlp_atomic_load_int(&e->shutdown_requested, OTLP_MEMORY_ORDER_ACQUIRE)) {\n\t\t\t\totlp_http_request_free(e->in_flight);\n\t\t\t\te->in_flight = NULL;\n\t\t\t\te->in_flight_count = 0;\n\t\t\t\twork_done = true;\n\t\t\t\tcontinue;\n\t\t\t}\n${_otel_inflight_step}"
     _otel_exporter "${_otel_exporter}")
-file(CONFIGURE OUTPUT "${CMAKE_BINARY_DIR}/generated/otlp_exporter.c"
+file(CONFIGURE OUTPUT "${_asciichat_gotel_cache_dir}/generated/otlp_exporter.c"
     CONTENT "${_otel_exporter}" @ONLY)
 get_target_property(_otel_sources otlp_c SOURCES)
 list(FILTER _otel_sources EXCLUDE REGEX "(^|/)exporter\\.c$")
 set_property(TARGET otlp_c PROPERTY SOURCES "${_otel_sources}")
-target_sources(otlp_c PRIVATE "${CMAKE_BINARY_DIR}/generated/otlp_exporter.c")
+target_sources(otlp_c PRIVATE "${_asciichat_gotel_cache_dir}/generated/otlp_exporter.c")
 
-set(BUILD_SHARED_LIBS ${_asciichat_parent_shared_libs})
 set(FETCHCONTENT_UPDATES_DISCONNECTED
     ${_asciichat_parent_fetchcontent_updates_disconnected})
 set(FETCHCONTENT_FULLY_DISCONNECTED

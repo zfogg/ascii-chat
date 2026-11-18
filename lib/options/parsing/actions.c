@@ -256,8 +256,8 @@ void action_show_capabilities_immediate(void) {
   // Use detected terminal size (immediate execution doesn't have parsed options yet)
   terminal_size_t size;
   terminal_get_size(&size);
-  unsigned short width = size.cols;
-  unsigned short height = size.rows;
+  unsigned short width = (unsigned short)size.cols;
+  unsigned short height = (unsigned short)size.rows;
 
   log_color_t label_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
   log_color_t string_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
@@ -368,8 +368,8 @@ static void execute_show_capabilities(void) {
 
   // Get width and height from parsed options (respects --width and --height flags)
   const options_t *opts = options_get();
-  unsigned short width = opts ? opts->width : 110;
-  unsigned short height = opts ? opts->height : 70;
+  unsigned short width = opts ? (unsigned short)opts->width : 110;
+  unsigned short height = opts ? (unsigned short)opts->height : 70;
 
   // Color scheme:
   // - Labels: grey
@@ -493,6 +493,16 @@ void action_create_manpage(const char *output_path) {
   }
   const flags_manpage_metadata_t metadata = {.program_name = "ascii-chat", .section = "1", .description = "Video chat in your terminal"};
   const bool written = flags_manpage_write(flags_schema_builder_schema(builder), &metadata, output) && flags_manpage_write_environment(flags_schema_builder_schema(builder), "ASCII_CHAT_", output);
+  if (written) {
+    fputs("\n.SH MCP SERVER\n"
+          "ascii-chat mcp-server exposes ASCII rendering tools through the Model Context Protocol.\n"
+          "Use the stdio transport for an MCP client-launched process, or \\fB--transport http\\fR\n"
+          "to serve Streamable HTTP at the configured address and port.\n\n"
+          "Example:\n\n"
+          "ascii-chat mcp-server --transport stdio\n\n"
+          "MCP mode reserves stdin for protocol messages and skips startup update checks.\n",
+          output);
+  }
   if (output != stdout)
     fclose(output);
   flags_schema_builder_destroy(builder);

@@ -23,7 +23,7 @@ if(PLATFORM_IOS OR USE_MUSL)
     find_program(GPERF_EXECUTABLE NAMES gperf REQUIRED)
     include(${CMAKE_CURRENT_LIST_DIR}/Expat.cmake)
     include(ExternalProject)
-    set(FONTCONFIG_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/_deps/installed/fontconfig")
+    set(FONTCONFIG_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/installed/fontconfig")
     set(FONTCONFIG_INCLUDE_DIRS "${FONTCONFIG_PREFIX}/include")
     file(MAKE_DIRECTORY "${FONTCONFIG_INCLUDE_DIRS}")
     set(_fontconfig_cflags "-fPIC -I${EXPAT_PREFIX}/include -I${FREETYPE_PREFIX}/include/freetype2")
@@ -33,20 +33,21 @@ if(PLATFORM_IOS OR USE_MUSL)
         string(APPEND _fontconfig_cflags " -isysroot ${CMAKE_OSX_SYSROOT} -arch ${CMAKE_OSX_ARCHITECTURES} -miphoneos-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
         set(_fontconfig_host --host=aarch64-apple-darwin)
     else()
-        set(_fontconfig_cc "${MUSL_GCC}")
+        set(_fontconfig_cc "${ASCIICHAT_CLANG_EXECUTABLE} --target=${MUSL_TARGET}")
     endif()
     set(_fontconfig_env "${CMAKE_COMMAND}" -E env "CC=${_fontconfig_cc}"
         "GPERF=${GPERF_EXECUTABLE}"
-        "REALGCC=${REAL_GCC}" "CFLAGS=${_fontconfig_cflags}"
+        "CFLAGS=${_fontconfig_cflags}"
         "LDFLAGS=-L${EXPAT_PREFIX}/lib -L${FREETYPE_PREFIX}/lib"
         "PKG_CONFIG_PATH=${EXPAT_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig"
         "PKG_CONFIG_LIBDIR=${EXPAT_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig" --)
-    ExternalProject_Add(asciichat-fontconfig
+    ExternalProject_Add(asciichat-fontconfig-musl
         URL https://www.freedesktop.org/software/fontconfig/release/fontconfig-2.14.2.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        PREFIX "${CMAKE_CURRENT_BINARY_DIR}/_deps/fontconfig"
+        PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/fontconfig"
         CONFIGURE_COMMAND ${_fontconfig_env} <SOURCE_DIR>/configure
-            --prefix=${FONTCONFIG_PREFIX} --disable-docs --enable-static --disable-shared
+            --prefix=${FONTCONFIG_PREFIX} --disable-docs --disable-cache-build
+            --enable-static --disable-shared
             --with-baseconfigdir=${FONTCONFIG_PREFIX}/etc/fonts ${_fontconfig_host}
         BUILD_COMMAND ${_fontconfig_env} make -j8
         INSTALL_COMMAND ${_fontconfig_env} make install
@@ -58,7 +59,9 @@ if(PLATFORM_IOS OR USE_MUSL)
         IMPORTED_LOCATION "${FONTCONFIG_PREFIX}/lib/libfontconfig.a"
         INTERFACE_INCLUDE_DIRECTORIES "${FONTCONFIG_INCLUDE_DIRS}"
         INTERFACE_LINK_LIBRARIES "expat;${FREETYPE_LIBRARIES}")
-    add_dependencies(fontconfig asciichat-fontconfig)
+    add_dependencies(fontconfig asciichat-fontconfig-musl)
+    add_library(asciichat-fontconfig INTERFACE)
+    target_link_libraries(asciichat-fontconfig INTERFACE fontconfig)
     set(FONTCONFIG_LDFLAGS fontconfig)
     set(FONTCONFIG_LINK_LIBRARIES fontconfig)
     return()
@@ -72,6 +75,7 @@ if(UNIX AND NOT APPLE)
 
     # pkg_check_modules already sets FONTCONFIG_LDFLAGS to proper linker flags
     # (-L/path/to/lib -lfontconfig), so use it as-is
+    set(FONTCONFIG_LINK_LIBRARIES ${FONTCONFIG_LDFLAGS})
 
     message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: ${FONTCONFIG_LDFLAGS}")
 
@@ -80,7 +84,7 @@ elseif(APPLE)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(FONTCONFIG fontconfig REQUIRED)
 
-    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
         # Use archives so a release executable does not depend on the
         # developer's Homebrew versions of Fontconfig and its libraries.
         set(_fontconfig_static_paths)
@@ -127,4 +131,14 @@ elseif(WIN32)
 
 else()
     message(FATAL_ERROR "Unsupported platform for Fontconfig")
+endif()
+
+# Keep the dependency target contract identical for system and source-built
+# fontconfig. CoreTargets consumes this stable target name on Unix platforms.
+if((UNIX OR APPLE) AND NOT TARGET asciichat-fontconfig)
+    add_library(asciichat-fontconfig INTERFACE)
+    target_link_libraries(asciichat-fontconfig INTERFACE ${FONTCONFIG_LINK_LIBRARIES})
+    if(FONTCONFIG_INCLUDE_DIRS)
+        target_include_directories(asciichat-fontconfig INTERFACE ${FONTCONFIG_INCLUDE_DIRS})
+    endif()
 endif()

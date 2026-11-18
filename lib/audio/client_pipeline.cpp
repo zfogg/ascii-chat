@@ -28,9 +28,11 @@
 
 // Suppress WebRTC/Abseil warnings about deprecated builtins and unused parameters
 // These are third-party code issues, not our code
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-builtins"
 #pragma clang diagnostic ignored "-Wunused-parameter"
+#endif
 
 // WebRTC AEC3 extracted repository has different include paths
 // than full WebRTC (no api/audio/ subdirectory)
@@ -39,7 +41,9 @@
 // Note: extracted AEC3 doesn't have environment API - using direct classes
 #include "audio_processing/audio_buffer.h"
 
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#endif
 
 // WebRTC defines FATAL() with no parameters, but ascii-chat defines
 // FATAL(code, ...) with parameters. Undefine the WebRTC version before
@@ -112,7 +116,7 @@ extern "C" {
 // ============================================================================
 
 client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
-  return (client_audio_pipeline_config_t){
+  return client_audio_pipeline_config_t{
       .channels = AUDIO_CHANNELS,
       .encoder_channels = AUDIO_CHANNELS,
       .sample_rate = AUDIO_SAMPLE_RATE,
@@ -125,7 +129,7 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
       .processor = audio_processor_default_config(AUDIO_SAMPLE_RATE),
       .jitter_margin_ms = 60,
 
-      .flags = CLIENT_AUDIO_PIPELINE_FLAGS_ALL,
+      .flags = {true, true, true, true, true, true, true, true, true},
   };
 }
 
@@ -186,7 +190,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
     return NULL;
   }
   p->flags = p->config.flags;
-  p->frame_size = p->config.sample_rate * p->config.frame_duration_ms / 1000 * p->config.channels;
+  p->frame_size = static_cast<int>(p->config.sample_rate * p->config.frame_duration_ms / 1000 * p->config.channels);
 
   // No mutex needed - full-duplex means single callback thread handles all AEC3
 
@@ -322,7 +326,11 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   p->config.processor.channels = p->config.channels;
   p->config.processor.sample_rate = p->config.sample_rate;
   p->config.processor.spectral.sample_rate = p->config.sample_rate;
-  p->config.processor.flags = {p->flags.agc, p->flags.compressor, p->flags.noise_gate, p->flags.highpass, p->flags.lowpass};
+  p->config.processor.flags.agc = p->flags.agc;
+  p->config.processor.flags.compressor = p->flags.compressor;
+  p->config.processor.flags.noise_gate = p->flags.noise_gate;
+  p->config.processor.flags.highpass = p->flags.highpass;
+  p->config.processor.flags.lowpass = p->flags.lowpass;
   if (audio_processor_create(&p->config.processor, &p->processor) != ASCIICHAT_OK)
     goto error;
   p->initialized = true;
@@ -401,12 +409,20 @@ void client_audio_pipeline_set_flags(client_audio_pipeline_t *pipeline, client_a
     return;
   // No mutex needed - flags are only read by capture thread
   pipeline->flags = flags;
-  audio_processor_set_flags(pipeline->processor, {flags.agc, flags.compressor, flags.noise_gate, flags.highpass, flags.lowpass});
+  audio_processor_flags_t processor_flags;
+  processor_flags.agc = flags.agc;
+  processor_flags.compressor = flags.compressor;
+  processor_flags.noise_gate = flags.noise_gate;
+  processor_flags.highpass = flags.highpass;
+  processor_flags.lowpass = flags.lowpass;
+  audio_processor_set_flags(pipeline->processor, processor_flags);
 }
 
 client_audio_pipeline_flags_t client_audio_pipeline_get_flags(client_audio_pipeline_t *pipeline) {
-  if (!pipeline)
-    return CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL;
+  if (!pipeline) {
+    client_audio_pipeline_flags_t minimal = {false, false, false, false, false, false, false, false, false};
+    return minimal;
+  }
   // No mutex needed - flags are only written from main thread during setup
   return pipeline->flags;
 }
@@ -629,7 +645,7 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, con
 int client_audio_pipeline_jitter_margin(client_audio_pipeline_t *pipeline) {
   if (!pipeline)
     return 0;
-  return pipeline->config.jitter_margin_ms;
+  return pipeline->config.jitter_margin_ms > static_cast<uint64_t>(INT_MAX) ? INT_MAX : static_cast<int>(pipeline->config.jitter_margin_ms);
 }
 
 /**

@@ -136,7 +136,7 @@ if(DEFINED IOS_DEPS_CACHE_DIR)
     else()
         set(_OPENSSL_IOS_VARIANT "device")
     endif()
-    set(_OPENSSL_ROOT_DIR "${IOS_DEPS_CACHE_DIR}/openssl-3.6.0-${_OPENSSL_IOS_VARIANT}")
+set(_OPENSSL_ROOT_DIR "${IOS_DEPS_CACHE_DIR}/openssl-4.1.0-${_OPENSSL_IOS_VARIANT}")
     set(_OPENSSL_INCLUDE_DIR "${_OPENSSL_ROOT_DIR}/include")
     set(_OPENSSL_LIB_DIR "${_OPENSSL_ROOT_DIR}/lib")
 

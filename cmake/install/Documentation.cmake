@@ -55,7 +55,13 @@ if(BUILD_EXECUTABLES)
     add_custom_command(
         OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
         COMMAND ${CMAKE_COMMAND} -E rm -f "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-        COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' ASCIICHAT_RESOURCE_DIR='${CMAKE_BINARY_DIR}' LSAN_OPTIONS=verbosity=0:halt_on_error=0 ASAN_OPTIONS=verbosity=0:halt_on_error=0 timeout -k 1 60 '${ASCII_CHAT_EXECUTABLE}' --man-page-create '${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1' < /dev/null > /dev/null 2>&1"
+        COMMAND ${CMAKE_COMMAND} -E env
+            "ASCII_CHAT_QUESTION_PROMPT_RESPONSE=y"
+            "ASCIICHAT_RESOURCE_DIR=${CMAKE_BINARY_DIR}"
+            "LSAN_OPTIONS=verbosity=0:halt_on_error=0"
+            "ASAN_OPTIONS=verbosity=0:halt_on_error=0"
+            "${ASCII_CHAT_EXECUTABLE}" --man-page-create
+            "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
         DEPENDS
             $<TARGET_FILE:ascii-chat>
             "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1.in"
@@ -65,7 +71,7 @@ if(BUILD_EXECUTABLES)
 
     # Build man pages as part of the default build unless a target platform
     # cannot execute its freshly built binary during packaging.
-    if(ASCIICHAT_SKIP_RUNTIME_GENERATED_DOCS)
+    if(ASCIICHAT_SKIP_RUNTIME_GENERATED_DOCS OR WIN32)
         add_custom_target(man1
             DEPENDS "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
             COMMENT "Man pages build complete"

@@ -213,11 +213,11 @@ char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t
 /** Borrow output from the caller-owned buffer until its next conversion or release.
  * Both workspaces require a single owner; passing NULL output keeps owned-output semantics.
  */
-char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
+char *ascii_convert_with_buffers(const image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
                                  const char *palette_chars, const bool contain, image_t **workspace, outbuf_t *output);
 
 /** Convert with a history owned by this stream; reset it when the source changes. */
-char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
+char *ascii_convert_with_buffers_stabilized(const image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
                                             const char *palette_chars, const bool contain, image_t **workspace, outbuf_t *output, ascii_stabilizer_t *stabilizer);
 
 /**

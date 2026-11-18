@@ -35,7 +35,7 @@ if(EMSCRIPTEN OR PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             set(ZSTD_MULTITHREAD_SUPPORT OFF)
         endif()
         FetchContent_Declare(asciichat_zstd
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_zstd"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_zstd"
             EXCLUDE_FROM_ALL
             URL https://github.com/meta/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
             URL_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
@@ -45,6 +45,15 @@ if(EMSCRIPTEN OR PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             set(_target libzstd_shared)
         else()
             set(_target libzstd_static)
+        endif()
+        if(USE_MUSL)
+            # zstd's dictionary builder uses _GNU_SOURCE as the feature test
+            # for glibc's qsort_r signature. musl has no qsort_r; undefine
+            # the inherited glibc feature macro so zstd uses its qsort path.
+            target_compile_options(${_target} PRIVATE -U_GNU_SOURCE)
+            set_source_files_properties(
+                "${asciichat_zstd_SOURCE_DIR}/lib/dictBuilder/cover.c"
+                PROPERTIES COMPILE_DEFINITIONS __ANDROID__)
         endif()
         target_include_directories(${_target} PUBLIC "$<BUILD_INTERFACE:${asciichat_zstd_SOURCE_DIR}/lib>")
         add_library(zstd::libzstd ALIAS ${_target})
@@ -58,7 +67,7 @@ endif()
 
 # macOS Release: Prefer Homebrew's static archive to avoid a runtime dependency
 # on the build machine's zstd dylib version.
-if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
     include(FindPkgConfig)
     pkg_check_modules(ZSTD_PKG REQUIRED libzstd)
     find_library(ZSTD_STATIC_LIBRARY
@@ -80,6 +89,30 @@ if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
     endif()
     set(ZSTD_FOUND TRUE)
     message(STATUS "${BoldGreen}✓${ColorReset} zstd (static): ${ZSTD_STATIC_LIBRARY}")
+    return()
+endif()
+
+if(WIN32)
+    find_path(_asciichat_zstd_include NAMES zstd.h
+        PATHS "${VCPKG_INCLUDE_PATH}" REQUIRED)
+    find_library(_asciichat_zstd_library NAMES zstd
+        PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    add_library(asciichat-zstd-system UNKNOWN IMPORTED GLOBAL)
+    set_target_properties(asciichat-zstd-system PROPERTIES
+        IMPORTED_LOCATION "${_asciichat_zstd_library}"
+        INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_zstd_include}")
+    add_library(asciichat-zstd INTERFACE)
+    target_link_libraries(asciichat-zstd INTERFACE asciichat-zstd-system)
+    if(NOT TARGET zstd::libzstd)
+        add_library(zstd::libzstd ALIAS asciichat-zstd)
+    endif()
+    if(NOT TARGET zstd::zstd)
+        add_library(zstd::zstd ALIAS asciichat-zstd)
+    endif()
+    set(ZSTD_LIBRARIES asciichat-zstd)
+    set(ZSTD_INCLUDE_DIRS "${_asciichat_zstd_include}")
+    set(ZSTD_FOUND TRUE)
+    message(STATUS "${BoldGreen}✓${ColorReset} zstd (vcpkg): ${_asciichat_zstd_library}")
     return()
 endif()
 
@@ -109,5 +142,10 @@ if(NOT zstd_FOUND)
 endif()
 
 set(ZSTD_FOUND TRUE)
+
+if(NOT TARGET asciichat-zstd)
+    add_library(asciichat-zstd INTERFACE)
+    target_link_libraries(asciichat-zstd INTERFACE zstd::libzstd)
+endif()
 
 message(STATUS "${BoldGreen}✓${ColorReset} zstd found")

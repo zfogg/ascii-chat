@@ -20,7 +20,6 @@
 #define LOG_NAMED_TYPE_BUFFER_SIZE 64
 #define LOG_NAMED_KW_BUFFER_SIZE 32
 #define LOG_NAMED_TEMP_BUFFER_SIZE 512
-#define LOG_NAMED_TYPE_SHORT_BUFFER_SIZE 32
 #define LOG_NAMED_TYPE_EXTENDED_BUFFER_SIZE 256
 #define LOG_NAMED_NAME_BUFFER_SIZE 256
 #define LOG_NAMED_ADDR_BUFFER_SIZE 128
@@ -32,6 +31,16 @@
 #include "ascii-chat/debug/named.h"
 #include "ascii-chat/util/string.h"
 #include "ascii-chat/log/log.h"
+
+static int named_format_int(char *buffer, size_t capacity, const char *format, int value) {
+  int (*writer)(char *, size_t, const char *, ...) = snprintf;
+  return writer(buffer, capacity, format, value);
+}
+
+static int named_format_ptrdiff(char *buffer, size_t capacity, const char *format, ptrdiff_t value) {
+  int (*writer)(char *, size_t, const char *, ...) = snprintf;
+  return writer(buffer, capacity, format, value);
+}
 
 /* Use a thread-local buffer to avoid allocations in the hot path */
 #define NAMED_FORMAT_BUFFER_SIZE (4096)
@@ -60,64 +69,6 @@ static bool is_type_in_registry(const char *type_str, size_t type_len) {
  * If found, replaces with "type/name (0xaddress)" format.
  * Otherwise, leaves the address as-is.
  */
-
-/**
- * @brief Find any type prefix before an integer (socket, client, connection, fd, etc.)
- * @param start Start of string
- * @param p Current position in string (at the integer)
- * @param out_type Output buffer for the type name found
- * @param out_type_len Output for length of type name
- * @return Pointer to start of prefix, or p if no prefix found
- *
- * Generic function that detects common keywords: socket, client, connection, fd, file, etc.
- * Returns the type name in out_type for registry lookup.
- */
-static const char *find_generic_type_prefix(const char *start, const char *p, const char **out_type, size_t *out_type_len) {
-  if (p == start) {
-    *out_type = NULL;
-    *out_type_len = 0;
-    return p;
-  }
-
-  const char *word_start = p - 1;
-  /* Skip back over whitespace, '=', ':' */
-  while (word_start > start && (*word_start == ' ' || *word_start == '\t' || *word_start == '=' || *word_start == ':')) {
-    word_start--;
-  }
-
-  /* Check if we have a digit (we're in a decimal number) */
-  if (!isdigit(*word_start)) {
-    /* Not a digit, so look for type keywords before us */
-    const char *check = word_start;
-    while (check > start && (isalnum(*check) || *check == '_')) {
-      check--;
-    }
-    check++;
-
-    const char *type_start = check;
-    size_t type_len = word_start - type_start + 1;
-
-    /* Check for known type keywords */
-    static const struct {
-      const char *type;
-      size_t len;
-    } known_types[] = {
-        {"socket", 6}, {"client", 6}, {"connection", 10}, {"fd", 2}, {"file", 4}, {"descriptor", 11}, {"thread", 6}, {"decoder", 7}, {"encoder", 7}, {"context", 7}, {"handler", 7},
-    };
-
-    for (size_t i = 0; i < sizeof(known_types) / sizeof(known_types[0]); i++) {
-      if (type_len == known_types[i].len && strncmp(type_start, known_types[i].type, type_len) == 0) {
-        *out_type = type_start;
-        *out_type_len = type_len;
-        return type_start;
-      }
-    }
-  }
-
-  *out_type = NULL;
-  *out_type_len = 0;
-  return p;
-}
 
 /**
  * @brief Find a type prefix before a hex address (e.g., "transport=" in "transport=0x1234")
@@ -330,7 +281,7 @@ static bool write_formatted_packet_type(int pkt_value, const char *name, char *o
   const char *fmt_spec = named_packet_metadata_copy(pkt_value, &metadata) ? metadata.format : "%d";
 
   char id_buffer[LOG_NAMED_ID_BUFFER_SIZE];
-  int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, pkt_value);
+  int id_written = named_format_int(id_buffer, sizeof(id_buffer), fmt_spec, pkt_value);
   if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
     return false;
   }
@@ -355,7 +306,7 @@ static bool write_formatted_fd(int fd_value, const char *name, char *output, siz
   const char *fmt_spec = named_fd_metadata_copy(fd_value, &metadata) ? metadata.format : "%d";
 
   char id_buffer[LOG_NAMED_ID_BUFFER_SIZE];
-  int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, fd_value);
+  int id_written = named_format_int(id_buffer, sizeof(id_buffer), fmt_spec, fd_value);
   if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
     return false;
   }
@@ -407,7 +358,7 @@ static bool write_formatted_type_equals(int pkt_value, const char *name, char *o
   const char *fmt_spec = named_packet_metadata_copy(pkt_value, &metadata) ? metadata.format : "%d";
 
   char id_buffer[LOG_NAMED_ID_BUFFER_SIZE];
-  int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, pkt_value);
+  int id_written = named_format_int(id_buffer, sizeof(id_buffer), fmt_spec, pkt_value);
   if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
     return false;
   }
@@ -484,7 +435,7 @@ static bool try_format_hex_address(const char *message, const char *hex_start, c
     const char *fmt_spec = metadata.format;
 
     char id_buffer[LOG_NAMED_ID_EXTENDED_BUFFER_SIZE];
-    int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, (ptrdiff_t)address);
+    int id_written = named_format_ptrdiff(id_buffer, sizeof(id_buffer), fmt_spec, (ptrdiff_t)address);
     if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
       return false;
     }
@@ -722,7 +673,7 @@ int log_named_format_message(const char *message, char *output, size_t output_si
               memcpy(kw_buf, prefix_start, kw_len);
               kw_buf[kw_len] = '\0';
             } else {
-              snprintf(kw_buf, sizeof(kw_buf), "%s", reg_type);
+              snprintf(kw_buf, sizeof(kw_buf), "%.*s", (int)(sizeof(kw_buf) - 1), reg_type);
             }
 
             char temp[LOG_NAMED_TEMP_BUFFER_SIZE];
@@ -742,86 +693,6 @@ int log_named_format_message(const char *message, char *output, size_t output_si
           }
 
           out_pos = saved_pos; /* Restore on failure */
-        }
-      }
-
-      /* Check if this integer has a generic type prefix (socket, client, connection, etc.)
-       * DISABLED: This feature has a backtracking bug that corrupts output when applied after
-       * other formatting operations. Re-enable only after fixing the backtracking logic to
-       * properly track correspondence between input and output positions.
-       * See commit b86fed2a8 which introduced the bug.
-       */
-      // NOLINTNEXTLINE(readability-simplify-boolean-expr) - Intentionally disabled code, see comment above
-      if (false && !is_already_formatted && digit_count > 0) {
-        const char *type_name = NULL;
-        size_t type_len = 0;
-        const char *prefix_start = find_generic_type_prefix(message, int_start, &type_name, &type_len);
-
-        if (type_name && prefix_start != int_start) {
-          /* Skip if already formatted with a name (e.g., "socket/listener.0" already has a /) */
-          bool skip_format = false;
-          /* Check if this looks like it's already been formatted by looking for / in the pattern */
-          const char *check_ptr = prefix_start;
-          while (check_ptr < int_start && *check_ptr && *check_ptr != '/') {
-            check_ptr++;
-          }
-          if (check_ptr < int_start && *check_ptr == '/') {
-            /* Already formatted (contains /), skip */
-            skip_format = true;
-          }
-
-          if (!skip_format) {
-            /* We found a type prefix like "socket", "client", etc.
-             * Try to look up a registered name for this type+id */
-
-            /* Normalize type name aliases: "sockfd" → "socket", "descriptor" → "fd" */
-            const char *lookup_type = type_name;
-            size_t lookup_len = type_len;
-            if (type_len == 6 && strncmp(type_name, "sockfd", 6) == 0) {
-              lookup_type = "socket";
-              lookup_len = 6;
-            } else if (type_len == 10 && strncmp(type_name, "descriptor", 10) == 0) {
-              lookup_type = "fd";
-              lookup_len = 2;
-            }
-
-            const char *name = named_get_by_type_and_id(lookup_type, lookup_len, fd_value);
-
-            char temp_output[LOG_NAMED_TEMP_OUTPUT_BUFFER_SIZE];
-            char type_str[LOG_NAMED_TYPE_SHORT_BUFFER_SIZE];
-            char id_buffer[LOG_NAMED_ID_BUFFER_SIZE];
-
-            /* Safely copy type name */
-            if (type_len < sizeof(type_str)) {
-              memcpy(type_str, type_name, type_len);
-              type_str[type_len] = '\0';
-
-              int id_written = snprintf(id_buffer, sizeof(id_buffer), "%d", fd_value);
-              if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
-                int temp_written = 0;
-                if (name) {
-                  /* Format with name: type/name (type=value) */
-                  temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (%s=%s)", type_str, name, type_str, id_buffer);
-
-                  if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
-                    /* Backtrack to remove the prefix we already copied */
-                    size_t prefix_len = int_start - prefix_start;
-                    if (out_pos >= prefix_len) {
-                      out_pos -= prefix_len;
-                    }
-
-                    int copy_len = temp_written;
-                    if (out_pos + copy_len < output_size - 1) {
-                      memcpy(output + out_pos, temp_output, copy_len);
-                      out_pos += copy_len;
-                      any_transformed = true;
-                      continue;
-                    }
-                  }
-                }
-              }
-            }
-          }
         }
       }
 

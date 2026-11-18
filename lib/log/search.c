@@ -639,7 +639,6 @@ asciichat_error_t log_search_filter_buffer(session_log_buffer_t *log_buf, sessio
 
     // Strip ANSI codes to match against plain text (consistent with highlighting)
     char plain_message[SESSION_LOG_LINE_MAX] = {0};
-    const char *strip_ansi_codes_fn(const char *src, char *dst, size_t dst_size);
     // Use inline stripping to avoid function call overhead
     {
       size_t pos = 0;

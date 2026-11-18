@@ -28,8 +28,8 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(EMSCRIPTEN)
-    find_program(ASCIICHAT_CCACHE_EXECUTABLE NAMES ccache)
-    include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/compiler/CCache.cmake")
+    include("${CMAKE_CURRENT_LIST_DIR}/../../deps/cmake-utils/CacheLauncher.cmake")
+    cmake_utils_configure_cache_launcher()
 endif()
 
 # Required for Emscripten
@@ -459,7 +459,7 @@ endif()
 
 add_dependencies(wasm-common generate_version)
 target_link_libraries(wasm-common PUBLIC asciichat-icu)
-target_link_libraries(wasm-common PUBLIC libplatform::libplatform)
+target_link_libraries(wasm-common PUBLIC ${ASCIICHAT_LIBPLATFORM_TARGET})
 
 target_link_libraries(wasm-common PRIVATE
     ${UTF8PROC_LIBRARIES}
@@ -766,9 +766,9 @@ target_sources(client-web PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common/opts.cpp ${
 
 # The platform implementation is a static library; link it explicitly into
 # each Emscripten entry point so its object files are retained by wasm-ld.
-target_link_libraries(client-web PRIVATE libplatform::libplatform)
-target_link_libraries(mirror-web PRIVATE libplatform::libplatform)
-target_link_libraries(renderer-web PRIVATE libplatform::libplatform)
+target_link_libraries(client-web PRIVATE ${ASCIICHAT_LIBPLATFORM_TARGET})
+target_link_libraries(mirror-web PRIVATE ${ASCIICHAT_LIBPLATFORM_TARGET})
+target_link_libraries(renderer-web PRIVATE ${ASCIICHAT_LIBPLATFORM_TARGET})
 
 # This file is configured as a separate CMake project for Emscripten, so the
 # native project cannot finalize these targets in its own directory scope.

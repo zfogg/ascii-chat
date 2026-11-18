@@ -33,6 +33,7 @@
 # Windows: vcpkg Package Manager Configuration
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Vcpkg.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslToolchainTarget.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Libuv.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Utf8proc.cmake)
 
@@ -73,6 +74,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/WebRTC.cmake)
 
 # OpenSSL - SSL/TLS library (required by libdatachannel, libwebsockets, and TURN credentials)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/OpenSSL.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Systemd.cmake)
 # Zlib - Compression library (required by ngtcp2 and libwebsockets)
 # Configure it before QUIC so the isolated ngtcp2 project receives the same
 # include and library selections as the parent build.
@@ -156,6 +158,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Catch2.cmake)
 
 # Platform-specific system libraries (Windows, macOS frameworks, Linux libs)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/PlatformLibraries.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/CoreTargets.cmake)
 
 if(NOT EMSCRIPTEN)
     foreach(_required_dependency

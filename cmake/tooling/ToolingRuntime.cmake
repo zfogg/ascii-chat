@@ -79,10 +79,16 @@ function(ascii_build_tooling_runtime)
 
         # Always use shared library (built from OBJECT libraries for all build types)
         target_link_libraries(ascii-panic-report PRIVATE ascii-chat-shared)
+        # ascii-chat-shared is object-based and gotel/OTLP symbols are not
+        # guaranteed to be resolved transitively when this utility is linked
+        # against the shared artifact on GNU linkers.
+        if(TARGET otlp-c::otlp_c)
+            target_link_libraries(ascii-panic-report PRIVATE otlp-c::otlp_c)
+        endif()
         # The report tool calls platform/debug helpers directly.  libplatform is
         # a private dependency of the shared object, so link it explicitly here
         # instead of relying on transitive shared-library lookup.
-    target_link_libraries(ascii-panic-report PRIVATE libplatform::libplatform)
+    target_link_libraries(ascii-panic-report PRIVATE ${ASCIICHAT_LIBPLATFORM_TARGET})
         apply_sanitizers_to_target(ascii-panic-report)
         # Link mimalloc explicitly - shared library links it PRIVATE so symbols don't propagate
         if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
@@ -105,8 +111,15 @@ function(ascii_copy_tooling_dlls)
         return()
     endif()
 
-    # DLL source directory
-    set(_dll_source "$ENV{VCPKG_ROOT}/installed/x64-windows/debug/bin")
+    # DLL source directory. Use the same selected triplet and installed root as
+    # the main configure so ARM/ARM64 builds never fall back to x64 packages.
+    if(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
+        set(_dll_source "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin")
+    elseif(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_DEFAULT_TRIPLET)
+        set(_dll_source "${VCPKG_INSTALLED_DIR}/${VCPKG_DEFAULT_TRIPLET}/debug/bin")
+    else()
+        return()
+    endif()
 
     # Copy DLLs for ascii-instr-panic (if built locally, not cached)
     if(TARGET ascii-instr-panic AND NOT ASCII_PANIC_TOOL_CACHED)

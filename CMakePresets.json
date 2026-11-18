@@ -4,6 +4,7 @@
     {
       "name": "base",
       "hidden": true,
+      "description": "Shared Ninja generator and compile-command settings inherited by native configure presets",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
@@ -15,7 +16,7 @@
       "name": "base-vcpkg",
       "hidden": true,
       "description": "Base configuration for vcpkg-enabled builds",
-      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/Vcpkg.cmake",
       "cacheVariables": {
         "USE_VCPKG": "ON"
       },
@@ -29,6 +30,7 @@
       "name": "base-debug",
       "inherits": "base",
       "hidden": true,
+      "description": "Shared Debug settings: PCH enabled, unity builds disabled, diagnostics available, and shared libraries enabled",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "USE_CPACK": "OFF",
@@ -45,6 +47,7 @@
       "name": "base-release",
       "inherits": "base",
       "hidden": true,
+      "description": "Shared optimized release settings: mimalloc, CPack packaging, unity builds, and fast math enabled",
       "binaryDir": "${sourceDir}/build_release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
@@ -55,13 +58,15 @@
         "ASCIICHAT_ENABLE_CTEST_DASHBOARD": "OFF",
         "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
         "ASCIICHAT_BUILD_WITH_PANIC": "OFF",
-        "ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS": "OFF"
+        "ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS": "OFF",
+        "ASCIICHAT_ENFORCE_STATIC_RELEASE": "ON",
+        "BUILD_SHARED_LIBS": "OFF"
       }
     },
     {
       "name": "default",
       "displayName": "Default (Debug)",
-      "description": "Default configuration - Debug build with system libc, clang, and all compatible sanitizers (ASan+UBSan+LSan+Integer+Nullability)",
+      "description": "Recommended local Debug build with Clang, system libc, compatible sanitizers, and application tests disabled for faster iteration",
       "inherits": "base-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -69,9 +74,106 @@
       }
     },
     {
+      "name": "default-clang",
+      "displayName": "Default (Clang)",
+      "description": "Debug build using the Clang toolchain",
+      "inherits": "default",
+      "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "default-gcc",
+      "displayName": "Default (GCC)",
+      "description": "Debug build using GCC and GNU binutils",
+      "inherits": "default",
+      "cacheVariables": { "CMAKE_C_COMPILER": "gcc", "CMAKE_CXX_COMPILER": "g++" },
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    },
+    {
+      "name": "default-msvc",
+      "displayName": "Default (MSVC)",
+      "description": "Debug build using MSVC and the Visual C++ tools",
+      "inherits": ["default", "base-vcpkg"],
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "dev-clang",
+      "displayName": "Dev (Clang)",
+      "description": "Fast developer build using Clang",
+      "inherits": "dev",
+      "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "dev-gcc",
+      "displayName": "Dev (GCC)",
+      "description": "Fast developer build using GCC",
+      "inherits": "dev",
+      "cacheVariables": { "CMAKE_C_COMPILER": "gcc", "CMAKE_CXX_COMPILER": "g++" },
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    },
+    {
+      "name": "dev-msvc",
+      "displayName": "Dev (MSVC)",
+      "description": "Fast developer build using MSVC",
+      "inherits": ["dev", "base-vcpkg"],
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "release-clang",
+      "displayName": "Release (Clang)",
+      "description": "Release build using Clang",
+      "inherits": "release",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "USE_MUSL": "ON"
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "release-gcc",
+      "displayName": "Release (GCC)",
+      "description": "Release build using GCC",
+      "inherits": "release",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++",
+        "USE_MUSL": "ON"
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    },
+    {
+      "name": "release-msvc",
+      "displayName": "Release (MSVC)",
+      "description": "Release build using MSVC",
+      "inherits": ["release", "base-vcpkg"],
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl",
+        "ASCIICHAT_ENFORCE_STATIC_RELEASE": "ON",
+        "USE_MUSL": "OFF"
+      },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
       "name": "debug",
       "displayName": "Debug",
-      "description": "Debug build with system libc and sanitizers (ASan+UBSan+LSan) - same as default",
+      "description": "Sanitized Debug build with system libc; use for memory and undefined-behavior diagnostics with tests disabled",
       "inherits": "base-debug",
       "cacheVariables": {
         "USE_MUSL": "OFF",
@@ -84,7 +186,7 @@
     {
       "name": "debug-fast",
       "displayName": "Fast Debug (without sanitizers)",
-      "description": "Debug symbols and diagnostics with rendering optimizations; sanitizer instrumentation is disabled",
+      "description": "Fast local Debug build with symbols and diagnostics but sanitizer instrumentation disabled; useful for renderer iteration",
       "inherits": "base-debug",
       "binaryDir": "${sourceDir}/build-fast-debug",
       "cacheVariables": {
@@ -95,7 +197,7 @@
     {
       "name": "debug-musl",
       "displayName": "Debug (musl - Linux only)",
-      "description": "Debug build with musl - static linked, no sanitizers (incompatible with musl)",
+      "description": "Linux-only Debug build linked against musl with sanitizers disabled; useful for static-libc compatibility checks",
       "inherits": "base-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -108,7 +210,7 @@
     {
       "name": "release",
       "displayName": "Release",
-      "description": "Optimized static release build - automatically uses musl on Linux, vcpkg static on Windows",
+      "description": "Optimized distributable release build; selects musl on Linux and static vcpkg dependencies on Windows where applicable",
       "inherits": "base-release",
       "cacheVariables": {
         "ASCIICHAT_ENABLE_ANALYZERS": "OFF"
@@ -117,7 +219,7 @@
     {
       "name": "release-musl",
       "displayName": "Release (musl)",
-      "description": "Optimized static release build with musl explicitly enabled (Linux only)",
+      "description": "Linux-only optimized release build with musl explicitly enabled for static-libc distribution testing",
       "inherits": "base-release",
       "cacheVariables": {
         "USE_MUSL": "ON"
@@ -127,7 +229,7 @@
     {
       "name": "relwithdebinfo",
       "displayName": "RelWithDebInfo",
-      "description": "Optimized build with debug symbols (if you want to build and install ascii-chat yourself probably choose this to start)",
+      "description": "Optimized RelWithDebInfo build with debug symbols; a practical starting point for local installs and production-like debugging",
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
@@ -139,7 +241,7 @@
     {
       "name": "dev",
       "displayName": "Dev",
-      "description": "Debug without sanitizers (faster)",
+      "description": "Fast Debug configuration without sanitizer instrumentation for day-to-day development",
       "inherits": "base-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Dev"
@@ -149,7 +251,7 @@
     {
       "name": "coverage",
       "displayName": "Coverage",
-      "description": "Debug build with coverage instrumentation enabled",
+      "description": "Debug build with coverage instrumentation for collecting native test coverage reports",
       "inherits": "base-debug",
       "cacheVariables": {
         "ASCIICHAT_ENABLE_COVERAGE": "ON"
@@ -159,7 +261,7 @@
     {
       "name": "tests",
       "displayName": "Tests (Debug)",
-      "description": "Debug build with tests enabled (for running test suite)",
+      "description": "Debug build with native tests enabled; use with the tests build preset and unit, integration, benchmark, or all test presets",
       "inherits": "base-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -171,7 +273,7 @@
     {
       "name": "github",
       "displayName": "GitHub CI",
-      "description": "Configuration used by GitHub Actions workflows (tests enabled, coverage, C23)",
+      "description": "GitHub Actions CI configuration with tests, coverage, analyzers disabled, and C23 compilation settings",
       "inherits": "base",
       "binaryDir": "${sourceDir}/$env{GITHUB_CMAKE_BINARY_DIR}",
       "environment": {
@@ -191,7 +293,7 @@
     {
       "name": "docker",
       "displayName": "Docker",
-      "description": "Configuration for Docker container builds (tests enabled, C++20 for WebRTC AEC3 compatibility)",
+      "description": "Container-oriented Debug configuration with tests enabled and C++20 selected for WebRTC AEC3 compatibility",
       "inherits": "base-debug",
       "binaryDir": "${sourceDir}/build_docker",
       "cacheVariables": {
@@ -204,7 +306,7 @@
     {
       "name": "windows-debug",
       "displayName": "Windows Debug (vcpkg)",
-      "description": "Windows Debug build using vcpkg for dependencies",
+      "description": "Windows-only sanitized Debug build using vcpkg dependencies and a per-preset build directory",
       "inherits": ["base-debug", "base-vcpkg"],
       "condition": {
         "type": "equals",
@@ -216,7 +318,7 @@
     {
       "name": "windows-unity",
       "displayName": "Windows Debug (unity)",
-      "description": "Sanitized Debug build with project library and application sources compiled in batches",
+      "description": "Windows-only sanitized Debug build with unity compilation enabled for faster batch builds",
       "inherits": "default",
       "cacheVariables": {
         "ASCIICHAT_ENABLE_UNITY_BUILDS": "ON"
@@ -230,7 +332,7 @@
     {
       "name": "windows-release",
       "displayName": "Windows Release (vcpkg)",
-      "description": "Windows Release build using vcpkg static libraries (x64-windows-static by default; override for other architectures)",
+      "description": "Windows-only optimized release build using static vcpkg libraries; defaults to x64-windows-static and supports triplet overrides",
       "inherits": ["base-release", "base-vcpkg"],
       "cacheVariables": {
         "VCPKG_TARGET_TRIPLET": "x64-windows-static"
@@ -244,6 +346,7 @@
     },
     {
       "name": "vs26",
+      "description": "Visual Studio 2026 ClangCL generator configuration for IDE-based Windows development",
       "inherits": "base",
       "generator": "Visual Studio 18 2026",
       "binaryDir": "${sourceDir}/build_vs",
@@ -263,6 +366,7 @@
     },
     {
       "name": "shared",
+      "description": "RelWithDebInfo build that produces shared libraries and keeps musl disabled for local debugging",
       "inherits": "relwithdebinfo",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
@@ -272,6 +376,7 @@
     },
     {
       "name": "static",
+      "description": "Release build that produces static libraries for packaging and deployment checks",
       "inherits": "release",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
@@ -282,98 +387,111 @@
   "buildPresets": [
     {
       "name": "default",
+      "description": "Build the recommended sanitized Debug configuration",
       "configurePreset": "default"
     },
+    { "name": "default-clang", "configurePreset": "default-clang" },
+    { "name": "default-gcc", "configurePreset": "default-gcc" },
+    { "name": "default-msvc", "configurePreset": "default-msvc", "configuration": "Debug" },
+    { "name": "dev-clang", "configurePreset": "dev-clang" },
+    { "name": "dev-gcc", "configurePreset": "dev-gcc" },
+    { "name": "dev-msvc", "configurePreset": "dev-msvc", "configuration": "Debug" },
+    { "name": "release-clang", "configurePreset": "release-clang" },
+    { "name": "release-gcc", "configurePreset": "release-gcc" },
+    { "name": "release-msvc", "configurePreset": "release-msvc", "configuration": "Release" },
     {
       "name": "debug",
+      "description": "Build the sanitized Debug configuration",
       "configurePreset": "debug"
     },
     {
       "name": "debug-musl",
+      "description": "Build the Linux musl Debug configuration",
       "configurePreset": "debug-musl"
     },
     {
       "name": "release",
+      "description": "Build the optimized distributable release configuration",
       "configurePreset": "release"
     },
     {
       "name": "release-musl",
+      "description": "Build the Linux musl release configuration",
       "configurePreset": "release-musl"
     },
     {
       "name": "windows-debug",
+      "description": "Build the Windows vcpkg Debug configuration",
       "configurePreset": "windows-debug"
     },
     {
       "name": "windows-release",
+      "description": "Build the Windows static-vcpkg release configuration",
       "configurePreset": "windows-release"
     },
     {
       "name": "windows-unity",
+      "description": "Build the Windows unity-compilation application target",
       "configurePreset": "windows-unity",
       "targets": ["ascii-chat"]
     },
     {
       "name": "relwithdebinfo",
+      "description": "Build the optimized RelWithDebInfo configuration",
       "configurePreset": "relwithdebinfo"
     },
     {
       "name": "dev",
+      "description": "Build the fast unsanitized development configuration",
       "configurePreset": "dev"
     },
     {
       "name": "coverage",
+      "description": "Build the coverage-instrumented Debug configuration",
       "configurePreset": "coverage"
     },
     {
       "name": "tests",
+      "description": "Build the Debug configuration and native test targets",
       "configurePreset": "tests",
       "targets": ["tests"]
     },
     {
       "name": "github",
+      "description": "Build the GitHub Actions CI configuration",
       "configurePreset": "github"
     },
     {
       "name": "docker",
+      "description": "Build the Docker-oriented test configuration",
       "configurePreset": "docker"
     },
     {
       "name": "vs26",
+      "description": "Build using the Visual Studio 2026 ClangCL configuration",
       "configurePreset": "vs26"
     },
     {
       "name": "panic",
+      "description": "Build the source-print-instrumented Debug configuration",
       "configurePreset": "panic"
     },
     {
       "name": "shared",
+      "description": "Build the shared-library RelWithDebInfo configuration",
       "configurePreset": "shared"
     },
     {
       "name": "static",
+      "description": "Build the static-library release configuration",
       "configurePreset": "static"
-    },
-    {
-      "name": "check-default",
-      "configurePreset": "default",
-      "targets": ["ascii-chat"]
-    },
-    {
-      "name": "check-shared",
-      "configurePreset": "shared",
-      "targets": ["ascii-chat"]
-    },
-    {
-      "name": "check-static",
-      "configurePreset": "static",
-      "targets": ["ascii-chat"]
     }
   ],
   "testPresets": [
     {
       "name": "base-test",
       "hidden": true,
+      "description": "Shared CTest settings: run tests in parallel and show output for failures",
       "output": {
         "outputOnFailure": true
       },
@@ -384,7 +502,7 @@
     {
       "name": "unit",
       "displayName": "Unit Tests",
-      "description": "Run unit tests only",
+      "description": "Run only tests labeled unit against the tests Debug configuration",
       "configurePreset": "tests",
       "inherits": "base-test",
       "filter": {
@@ -396,7 +514,7 @@
     {
       "name": "integration",
       "displayName": "Integration Tests",
-      "description": "Run integration tests only",
+      "description": "Run only tests labeled integration against the tests Debug configuration",
       "configurePreset": "tests",
       "inherits": "base-test",
       "filter": {
@@ -408,7 +526,7 @@
     {
       "name": "benchmarks",
       "displayName": "Benchmark Tests",
-      "description": "Run benchmark tests only",
+      "description": "Run only tests labeled benchmarks against the tests Debug configuration",
       "configurePreset": "tests",
       "inherits": "base-test",
       "filter": {
@@ -420,7 +538,7 @@
     {
       "name": "github-unit",
       "displayName": "Unit Tests (GitHub CI)",
-      "description": "Run unit tests in GitHub CI environment",
+      "description": "Run only unit-labeled tests using the GitHub Actions CI configuration",
       "configurePreset": "github",
       "inherits": "base-test",
       "filter": {
@@ -432,7 +550,7 @@
     {
       "name": "github-integration",
       "displayName": "Integration Tests (GitHub CI)",
-      "description": "Run integration tests in GitHub CI environment",
+      "description": "Run only integration-labeled tests using the GitHub Actions CI configuration",
       "configurePreset": "github",
       "inherits": "base-test",
       "filter": {
@@ -444,7 +562,7 @@
     {
       "name": "github-benchmarks",
       "displayName": "Benchmark Tests (GitHub CI)",
-      "description": "Run benchmark tests in GitHub CI environment",
+      "description": "Run only benchmark-labeled tests using the GitHub Actions CI configuration",
       "configurePreset": "github",
       "inherits": "base-test",
       "filter": {
@@ -455,107 +573,19 @@
     },
     {
       "name": "all",
+      "description": "Run the complete native CTest suite and fail when no tests are discovered",
       "configurePreset": "tests",
       "inherits": "base-test",
       "execution": {
         "jobs": 0,
         "noTestsAction": "error"
       }
-    },
-    {
-      "name": "smoke-default",
-      "configurePreset": "default",
-      "inherits": "base-test",
-      "filter": {
-        "include": {
-          "name": "^ascii-chat-version$"
-        }
-      },
-      "execution": {
-        "noTestsAction": "error"
-      }
-    },
-    {
-      "name": "smoke-shared",
-      "configurePreset": "shared",
-      "inherits": "base-test",
-      "filter": {
-        "include": {
-          "name": "^ascii-chat-version$"
-        }
-      },
-      "execution": {
-        "noTestsAction": "error"
-      }
-    },
-    {
-      "name": "smoke-static",
-      "configurePreset": "static",
-      "inherits": "base-test",
-      "filter": {
-        "include": {
-          "name": "^ascii-chat-version$"
-        }
-      },
-      "execution": {
-        "noTestsAction": "error"
-      }
     }
   ],
   "workflowPresets": [
     {
-      "name": "check-default",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "default"
-        },
-        {
-          "type": "build",
-          "name": "check-default"
-        },
-        {
-          "type": "test",
-          "name": "smoke-default"
-        }
-      ]
-    },
-    {
-      "name": "check-shared",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "shared"
-        },
-        {
-          "type": "build",
-          "name": "check-shared"
-        },
-        {
-          "type": "test",
-          "name": "smoke-shared"
-        }
-      ]
-    },
-    {
-      "name": "check-static",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "static"
-        },
-        {
-          "type": "build",
-          "name": "check-static"
-        },
-        {
-          "type": "test",
-          "name": "smoke-static"
-        }
-      ]
-    },
-    {
       "name": "tests",
+      "description": "Configure, build, and run the complete native test suite",
       "steps": [
         {
           "type": "configure",

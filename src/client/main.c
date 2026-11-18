@@ -182,7 +182,7 @@ static acip_websocket_runtime_t *g_websocket_runtime;
  *
  * Safe to call multiple times (idempotent).
  */
-static void shutdown_client() {
+static void shutdown_client(void) {
   // Guard against double cleanup (can be called explicitly + via atexit)
   static bool shutdown_done = false;
   if (shutdown_done) {

@@ -2,12 +2,11 @@
 # Install dependencies for ascii-chat
 #
 # This script handles platform-specific dependency installation:
-# - macOS: Uses Homebrew
+# - macOS: Uses Homebrew by default
 # - Linux: Uses apt-get, yum, or pacman
 # - Windows: Directs to install-deps.ps1
 #
-# Usage:
-#   ./install-deps.sh
+# Use --homebrew to use Homebrew on a non-macOS platform.
 
 set -e
 
@@ -31,15 +30,20 @@ run_git_as_user() {
 
 # Parse arguments
 DANGEROUSLY_DELETE_CONFLICTS=false
+USE_HOMEBREW=false
 for arg in "$@"; do
   case $arg in
     --dangerously-delete-conflicts)
       DANGEROUSLY_DELETE_CONFLICTS=true
       ;;
+    --homebrew)
+      USE_HOMEBREW=true
+      ;;
     --help|-h)
-      echo "Usage: $0 [--dangerously-delete-conflicts]"
+      echo "Usage: $0 [--homebrew] [--dangerously-delete-conflicts]"
       echo ""
       echo "Options:"
+      echo "  --homebrew                     Use Homebrew regardless of platform"
       echo "  --dangerously-delete-conflicts  Delete conflicting binaries in /usr/bin"
       echo "                                  (requires CI=true environment variable)"
       exit 0
@@ -119,20 +123,24 @@ verify_llvm_for_defer() {
   "$llvm_config" --libs support --system-libs >/dev/null
 }
 
-# macOS: Use Homebrew
-if [[ "$PLATFORM" == "macos" ]]; then
+# macOS: Use Homebrew by default; --homebrew enables it on other platforms.
+if [[ "$PLATFORM" == "macos" || "$USE_HOMEBREW" == "true" ]]; then
   if ! command -v brew &>/dev/null; then
     echo >&2 "ERROR: Homebrew not found"
     echo >&2 "Please install Homebrew from https://brew.sh"
     exit 1
   fi
 
-  echo "Installing dependencies via Homebrew..."
+  if [[ "$PLATFORM" == "macos" ]]; then
+    echo "Installing dependencies via Homebrew..."
+  else
+    echo "Installing dependencies via Homebrew (--homebrew)..."
+  fi
 
   # Install packages - completely ignore all errors since many are already installed
   # GitHub runners have pre-installed packages with version conflicts that can't be resolved
-  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool go \
-    ninja mimalloc zstd libsodium portaudio opus fftw doxygen sqlite3 \
+  brew install cmake coreutils pkg-config llvm ccache sccache make autoconf automake libtool go \
+    ninja meson mimalloc zstd libsodium portaudio opus fftw doxygen sqlite3 \
     miniupnpc libnatpmp ffmpeg abseil emscripten binaryen yt-dlp libwebsockets libuv icu4c openssl@3 yyjson \
     libvterm freetype fontconfig expat pcre2 \
     >/dev/null 2>&1 || true
@@ -150,7 +158,18 @@ if [[ "$PLATFORM" == "macos" ]]; then
 # Linux: Detect package manager
 elif [[ "$PLATFORM" == "linux" ]]; then
   if [ -f /etc/debian_version ]; then
-    bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+    # apt.llvm.org can lag newly released Ubuntu codenames.  If its installer
+    # adds a repository without a Release file, every later apt-get update
+    # fails even though the runner's native repositories provide LLVM.
+    ubuntu_codename="$(. /etc/os-release && printf '%s' "${VERSION_CODENAME:-}")"
+    case "$ubuntu_codename" in
+      resolute)
+        echo "Skipping apt.llvm.org for unsupported Ubuntu codename: $ubuntu_codename"
+        ;;
+      *)
+        bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+        ;;
+    esac
   fi
 
   if command -v apt-get &>/dev/null; then
@@ -208,7 +227,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 
     # Install non-LLVM dependencies first
     apt-get install -y \
-      pkg-config make autoconf automake libtool ccache gperf \
+      pkg-config make autoconf automake libtool ccache sccache gperf \
       cmake ninja-build golang-go \
       musl-tools musl-dev \
       nasm \
@@ -221,6 +240,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libabsl-dev \
       libx264-dev libx265-dev \
       emscripten \
+      meson \
       doxygen \
       mandoc \
       dpkg-dev rpm \
@@ -387,8 +407,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       pkg-config make autoconf automake libtool python3 python3-pip \
       clang clang-devel llvm llvm-devel lld \
       libcxx-devel libcxxabi-devel \
-      cmake ninja-build golang \
-      musl-devel musl-gcc musl-libc-static \
+      cmake ninja-build golang sccache meson \
+      musl-devel musl-libc-static \
       nasm \
       libx264-devel libx265-devel \
       mimalloc-devel libzstd-devel zlib-devel libsodium-devel portaudio-devel opus-devel fftw-devel \
@@ -421,11 +441,11 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Installing dependencies..."
     pacman -S --needed \
       pkg-config autoconf automake libtool python python-pip \
-      ccache \
+      ccache sccache \
       clang llvm lldb lld \
       libc++ libc++abi \
       nasm \
-      cmake ninja make go \
+      cmake ninja make go meson \
       musl mimalloc \
       zstd zlib libsodium portaudio opus fftw sqlite libdatachannel miniupnpc ffmpeg \
       systemd-libs \
@@ -462,6 +482,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo >&2 "  - yt-dlp (for YouTube URL support)"
     exit 1
   fi
+
+  command -v meson >/dev/null 2>&1 || { echo >&2 "ERROR: meson installation failed"; exit 1; }
 
   if ! pkg-config --exists libsystemd; then
     echo >&2 "ERROR: pkg-config could not find libsystemd after installing Linux dependencies"
@@ -506,7 +528,7 @@ fi
 # go.mod. On older distributions, use Go's versioned toolchain launcher in
 # the configured GOBIN (or GOPATH/bin) without replacing the system Go.
 if ! command -v go >/dev/null 2>&1; then
-  if [[ "$PLATFORM" == "macos" ]]; then
+  if [[ "$PLATFORM" == "macos" || "$USE_HOMEBREW" == "true" ]]; then
     brew install go
   elif command -v apt-get >/dev/null 2>&1; then
     apt-get install -y golang-go

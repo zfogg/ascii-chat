@@ -13,9 +13,9 @@ asciichat_error_t media_playlist_append(media_playlist_t *list, const char *path
     return result;
   if (url && !strstr(normalized, "://")) {
     char absolute[MEDIA_PLAYLIST_PATH_MAX];
-    if (strlen(normalized) + 7 >= sizeof(absolute))
+    int written = snprintf(absolute, sizeof(absolute), "http://%.*s", (int)(sizeof(absolute) - sizeof("http://")), normalized);
+    if (written < 0 || (size_t)written >= sizeof(absolute))
       return SET_ERRNO(ERROR_INVALID_PARAM, "Media URL is too long");
-    snprintf(absolute, sizeof(absolute), "http://%s", normalized);
     const size_t absolute_bytes = strlen(absolute) + 1;
     memcpy(normalized, absolute, absolute_bytes);
   }

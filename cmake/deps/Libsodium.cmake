@@ -156,8 +156,8 @@ if(DEFINED EMSCRIPTEN)
             "${MSYS2_BASH_EXECUTABLE}" --noprofile --norc "${_libsodium_configure}")
     endif()
 
-    set(LIBSODIUM_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/_deps/libsodium")
-    set(LIBSODIUM_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/_deps/libsodium-build")
+    set(LIBSODIUM_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/libsodium")
+    set(LIBSODIUM_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/libsodium-build")
 
     ExternalProject_Add(libsodium-wasm
         SOURCE_DIR ${libsodium-wasm-src_SOURCE_DIR}
@@ -222,8 +222,14 @@ if(USE_MUSL)
         BUILD_ALWAYS 0
         # For shared library support, ALL object files must be compiled with -fPIC.
         # Use --with-pic to force position-independent code generation.
-        CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} <SOURCE_DIR>/configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared --with-pic
-        BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} make -j
+        CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env
+            "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
+            "CFLAGS=--target=${MUSL_TARGET} -fPIC"
+            <SOURCE_DIR>/configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared --with-pic
+        BUILD_COMMAND ${CMAKE_COMMAND} -E env
+            "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
+            "CFLAGS=--target=${MUSL_TARGET} -fPIC"
+            make -j
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
         LOG_DOWNLOAD TRUE
@@ -236,12 +242,19 @@ if(USE_MUSL)
     set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
     set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
     set(LIBSODIUM_BUILD_TARGET libsodium-musl)
+    file(MAKE_DIRECTORY "${LIBSODIUM_PREFIX}/include")
+    add_library(asciichat-libsodium STATIC IMPORTED GLOBAL)
+    set_target_properties(asciichat-libsodium PROPERTIES
+        IMPORTED_LOCATION "${LIBSODIUM_PREFIX}/lib/libsodium.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${LIBSODIUM_PREFIX}/include")
+    add_dependencies(asciichat-libsodium libsodium-musl)
+    set(LIBSODIUM_LIBRARIES asciichat-libsodium)
     set(LIBSODIUM_FOUND TRUE)
     return()
 endif()
 
 # Handle Release Linux builds - build from source to ensure static linking
-if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE AND NOT USE_MUSL AND NOT ASCIICHAT_SHARED_DEPS)
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE AND NOT USE_MUSL AND NOT BUILD_SHARED_LIBS)
     message(STATUS "Configuring ${BoldBlue}libsodium${ColorReset} from source (Release Linux)...")
 
     include(ExternalProject)
@@ -278,6 +291,13 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE AND NOT USE_MUSL A
     set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
     set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
     set(LIBSODIUM_BUILD_TARGET libsodium-linux)
+    file(MAKE_DIRECTORY "${LIBSODIUM_PREFIX}/include")
+    add_library(asciichat-libsodium STATIC IMPORTED GLOBAL)
+    set_target_properties(asciichat-libsodium PROPERTIES
+        IMPORTED_LOCATION "${LIBSODIUM_PREFIX}/lib/libsodium.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${LIBSODIUM_PREFIX}/include")
+    add_dependencies(asciichat-libsodium libsodium-linux)
+    set(LIBSODIUM_LIBRARIES asciichat-libsodium)
     return()
 endif()
 

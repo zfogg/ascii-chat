@@ -31,7 +31,7 @@ typedef struct {
   bool color;
   bool unicode;
   bool secret;
-  char text[];
+  char text[1];
   /**
    * @brief When code needs to work with prompt snapshot, it keeps `kind`, `prompt_bytes`, `cursor`, `selected_button`
    * here instead of scattering it across globals. Initialization establishes the handles and sizes; teardown must

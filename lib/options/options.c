@@ -2364,8 +2364,8 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     goto cleanup;
   }
-  int remaining_argc;
-  char **remaining_argv;
+  int remaining_argc = 0;
+  char **remaining_argv = NULL;
   result = parse_mode_options(&opts, detected_mode, mode_args.argc, mode_args.argv, &remaining_argc, &remaining_argv);
   if (result != ASCIICHAT_OK) {
     goto cleanup;

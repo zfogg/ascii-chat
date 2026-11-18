@@ -101,7 +101,7 @@ void buffer_unref(const void *data);
     __typeof__(&(data)) buffer_slot__ = &(data); \
     buffer_unref(*buffer_slot__);                \
     *buffer_slot__ = NULL;                       \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /** Worker-owned reusable storage. Zero-initialize; never share a workspace. */
 /**

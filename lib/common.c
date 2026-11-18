@@ -151,9 +151,9 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client, bo
       return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize named.");
     }
     debug_memory_ensure_init();
-    static const char *const ascii_chat_libraries[] = {"libasciichat", NULL};
-    symbol_cache_set_project_modules("ascii-chat", ascii_chat_libraries);
-    symbol_cache_init();
+    if (symbol_cache_init() != ASCIICHAT_OK) {
+      return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize symbol cache.");
+    }
 #endif
 
     // 2. LOGGING - Initialize system state first, then user-level logging

@@ -6,7 +6,7 @@ if(NOT USE_MIMALLOC)
     return()
 endif()
 
-if(NOT USE_MUSL AND NOT ASCIICHAT_BUILD_DEPS_FROM_SOURCE AND (WIN32 OR ASCIICHAT_SHARED_DEPS))
+if(NOT USE_MUSL AND NOT ASCIICHAT_BUILD_DEPS_FROM_SOURCE AND (WIN32 OR BUILD_SHARED_LIBS))
     find_package(mimalloc QUIET CONFIG)
 endif()
 if(NOT TARGET mimalloc AND NOT TARGET mimalloc-static)
@@ -30,7 +30,7 @@ if(NOT TARGET mimalloc AND NOT TARGET mimalloc-static)
         FetchContent_Declare(asciichat_mimalloc
             GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
             GIT_TAG v2.2.4 GIT_SHALLOW TRUE
-            BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/asciichat_mimalloc"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_mimalloc"
             EXCLUDE_FROM_ALL)
         FetchContent_MakeAvailable(asciichat_mimalloc)
         foreach(_target mimalloc-static mimalloc)
@@ -46,7 +46,7 @@ if(NOT TARGET mimalloc AND NOT TARGET mimalloc-static)
     asciichat_build_mimalloc()
 endif()
 
-if(ASCIICHAT_SHARED_DEPS AND TARGET mimalloc)
+if(BUILD_SHARED_LIBS AND TARGET mimalloc)
     set(MIMALLOC_LIBRARIES mimalloc)
 elseif(TARGET mimalloc-static)
     set(MIMALLOC_LIBRARIES mimalloc-static)
@@ -81,6 +81,14 @@ set(ASCIICHAT_MIMALLOC_LINK_LIB ${MIMALLOC_LIBRARIES})
 set(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB mimalloc-shared)
 set(MIMALLOC_SHARED_LIBRARIES mimalloc-shared)
 get_target_property(MIMALLOC_INCLUDE_DIRS ${MIMALLOC_LIBRARIES} INTERFACE_INCLUDE_DIRECTORIES)
+
+if(NOT TARGET asciichat-mimalloc)
+    add_library(asciichat-mimalloc INTERFACE)
+    target_link_libraries(asciichat-mimalloc INTERFACE ${MIMALLOC_LIBRARIES})
+    if(MIMALLOC_INCLUDE_DIRS)
+        target_include_directories(asciichat-mimalloc INTERFACE ${MIMALLOC_INCLUDE_DIRS})
+    endif()
+endif()
 if(NOT MIMALLOC_INCLUDE_DIRS)
     find_path(MIMALLOC_INCLUDE_DIRS NAMES mimalloc.h
         HINTS "${MIMALLOC_SOURCE_DIR}/include"

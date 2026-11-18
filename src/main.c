@@ -50,10 +50,9 @@
 #include "discovery-service/main.h"
 #include "discovery/main.h"
 #include <ascii-chat/discovery/session.h>
-#ifdef PLATFORM_IOS
+#if defined(PLATFORM_IOS) && PLATFORM_IOS
 #include "ios/main.h"
 #endif
-
 // Global exit API (exported in main.h)
 #include "main.h"
 
@@ -68,6 +67,7 @@
 #include <ascii-chat/util/env.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/string.h>
+#include <libplatform/util/string.h>
 
 // Common headers for version info and initialization
 #include <libplatform/atomic.h>
@@ -543,14 +543,10 @@ static void on_exit_show_cursor(void) {
  * Main Entry Point
  * ============================================================================ */
 
-<<<<<<< HEAD
 int asciichat_main(int argc, char *argv[]) {
-=======
-int main(int argc, char *argv[]) {
   // Configure the console before --help or any early option error can emit
   // Unicode text.
   terminal_enable_ansi();
->>>>>>> origin/master
   if (process_utf8_arguments(&argc, &argv) != ASCIICHAT_OK) {
     fprintf(stderr, "Failed to convert command-line arguments to UTF-8\n");
     return 1;
@@ -688,7 +684,7 @@ int main(int argc, char *argv[]) {
 
   // Load color scheme early (from config files and CLI) before logging initialization
   // This allows logging to use the correct colors from the start
-  options_colorscheme_init_early(argc, argv);
+  options_colorscheme_init_early(argc, (const char *const *)argv);
 
   // Parse --color-scheme from argv early to set logging colors for help output
   const char *colorscheme_name = "pastel"; // default
@@ -924,14 +920,14 @@ int main(int argc, char *argv[]) {
     // Clean up options state before exiting
     options_state_destroy();
 
-#ifdef PLATFORM_IOS
+#if defined(PLATFORM_IOS) && PLATFORM_IOS
     return options_result;
 #else
     exit(options_result);
 #endif
   }
 
-#ifdef PLATFORM_IOS
+#if defined(PLATFORM_IOS) && PLATFORM_IOS
   // Apply persisted runtime settings after the shared options snapshot exists.
   asciichat_ios_apply_pending_options();
 #endif
@@ -980,7 +976,7 @@ int main(int argc, char *argv[]) {
         }
       } else {
         // File doesn't end with .log - just append .json
-        snprintf(json_filename_buf, sizeof(json_filename_buf), "%s.json", final_log_file);
+        snprintf(json_filename_buf, sizeof(json_filename_buf), "%.*s.json", (int)(sizeof(json_filename_buf) - sizeof(".json")), final_log_file);
       }
     }
     final_log_file = json_filename_buf;
@@ -1227,7 +1223,7 @@ int main(int argc, char *argv[]) {
   // (called via atexit handler), which runs AFTER the memory report
 
   if (exit_code == ERROR_USAGE) {
-#ifdef PLATFORM_IOS
+#if defined(PLATFORM_IOS) && PLATFORM_IOS
     return exit_code;
 #else
     exit(ERROR_USAGE);
@@ -1237,8 +1233,9 @@ int main(int argc, char *argv[]) {
   return exit_code;
 }
 
-#ifndef PLATFORM_IOS
+#if !defined(PLATFORM_IOS) || !PLATFORM_IOS
 int main(int argc, char *argv[]) {
   return asciichat_main(argc, argv);
 }
 #endif
+

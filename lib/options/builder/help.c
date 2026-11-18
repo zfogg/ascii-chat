@@ -196,7 +196,7 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
 
     // Build option display string with separate coloring for short and long flags
     char opts_buf[BUFFER_SIZE_SMALL];
-    if (desc->short_name && desc->short_name != '\0') {
+    if (desc->short_name != '\0') {
       char short_flag[OPTIONS_BUILDER_HELP_SHORT_FLAG_BUFFER_SIZE];
       safe_snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
       char long_flag[BUFFER_SIZE_SMALL];

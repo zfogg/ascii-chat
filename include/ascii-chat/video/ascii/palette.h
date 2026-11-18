@@ -290,7 +290,7 @@ extern ASCIICHAT_API const char DEFAULT_ASCII_PALETTE[];
  *
  * @ingroup palette
  */
-extern const size_t DEFAULT_ASCII_PALETTE_LEN;
+extern ASCIICHAT_API const size_t DEFAULT_ASCII_PALETTE_LEN;
 
 /** @} */
 

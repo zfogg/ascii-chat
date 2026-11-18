@@ -24,67 +24,67 @@ elseif(USE_MUSL OR PLATFORM_IOS)
     find_program(_icu_make NAMES gmake make REQUIRED)
     find_program(_icu_host_cc NAMES clang NO_CMAKE_FIND_ROOT_PATH REQUIRED)
     find_program(_icu_host_cxx NAMES clang++ NO_CMAKE_FIND_ROOT_PATH REQUIRED)
-    set(_icu_source "${CMAKE_BINARY_DIR}/_deps/icu-source")
-    if(PLATFORM_IOS)
-        set(_icu_host_build "${CMAKE_BINARY_DIR}/_deps/icu-host-build-${CMAKE_OSX_ARCHITECTURES}-native2")
-    else()
-        set(_icu_host_build "${CMAKE_BINARY_DIR}/_deps/icu-host-build")
-    endif()
-    if(PLATFORM_IOS)
-        set(_icu_prefix "${CMAKE_BINARY_DIR}/_deps/installed/icu-${CMAKE_OSX_ARCHITECTURES}-native2")
-    else()
-        set(_icu_prefix "${CMAKE_BINARY_DIR}/_deps/installed/icu")
-    endif()
+    find_program(_icu_musl_cxx NAMES clang++ NO_CMAKE_FIND_ROOT_PATH REQUIRED)
+    set(_icu_cache "${ASCIICHAT_DEPS_CACHE_DIR}/build/icu")
+    set(_icu_source "${_icu_cache}/source")
+    set(_icu_host_build "${_icu_cache}/host-build")
+    set(_icu_prefix "${_icu_cache}/installed")
     set(_icu_options --enable-static --disable-shared --disable-tests --disable-samples
         --disable-extras --disable-icuio --with-data-packaging=static)
-    set(_icu_cross_options ${_icu_options} --disable-tools)
     ExternalProject_Add(asciichat-icu-host
         URL https://github.com/unicode-org/icu/releases/download/release-78.3/icu4c-78.3-sources.tgz
         URL_HASH SHA512=04A49455E1489030C520A4BFD2664FA2171E7938D08F2ACDBBCB1FDA976639FD8B1F0704F2EEC89BA59A7B6D118CEAAB6EC5A096E40D9085A0895D91CE225245
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         SOURCE_DIR "${_icu_source}" BINARY_DIR "${_icu_host_build}"
-        PREFIX "${CMAKE_BINARY_DIR}/_deps/icu-host"
+        PREFIX "${_icu_cache}/host"
         CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${_icu_host_cc}" "CXX=${_icu_host_cxx}"
-            "CPPFLAGS=" "CFLAGS=" "CXXFLAGS=" "LDFLAGS=" "LIBS="
+            "CFLAGS=" "CXXFLAGS=" "LDFLAGS=" "LIBS="
             <SOURCE_DIR>/source/configure ${_icu_options}
         BUILD_COMMAND ${_icu_make} -j8 INSTALL_COMMAND ""
         LOG_CONFIGURE TRUE LOG_BUILD TRUE LOG_OUTPUT_ON_FAILURE TRUE)
     if(USE_MUSL)
         asciichat_musl_compile_flags(_icu_cflags _icu_cxxflags)
-        set(_icu_cc "${CMAKE_C_COMPILER} --target=${MUSL_TARGET}")
-        set(_icu_cxx "${CMAKE_CXX_COMPILER} --target=${MUSL_TARGET}")
+        set(_icu_cc "${CMAKE_C_COMPILER}")
+        set(_icu_cxx "${CMAKE_CXX_COMPILER}")
+        if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+            string(APPEND _icu_cc " --target=${MUSL_TARGET}")
+            string(APPEND _icu_cxx " --target=${MUSL_TARGET}")
+        else()
+            # Keep ICU on GCC's native C++ ABI. The GCC driver supplies its
+            # matching libstdc++ headers; the musl C include path is already
+            # isolated by the shared musl flags.
+            set(_icu_cxx "${CMAKE_CXX_COMPILER}")
+        endif()
         set(_icu_host "${MUSL_TARGET}")
-        set(_icu_ldflags "-fuse-ld=lld -static-pie -nostdlib -nostdlib++ -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o")
-        set(_icu_libs "${ALPINE_LIBCXX_STATIC} ${ALPINE_LIBCXXABI_STATIC} ${ALPINE_LIBUNWIND_STATIC} ${MUSL_LIBGCC_PATH} -lc -lm ${MUSL_LIBDIR}/crtn.o")
+        set(_icu_ldflags "-fuse-ld=lld -static-pie -nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o")
+        if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+            string(APPEND _icu_ldflags " -nostdlib++")
+        endif()
+        if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+            set(_icu_libs "${MUSL_LIBSTDCPP_PATH} ${MUSL_LIBSUPCXX_PATH} ${ALPINE_LIBUNWIND_STATIC} ${MUSL_LIBGCC_PATH} -lc -lm ${MUSL_LIBDIR}/crtn.o")
+        else()
+            set(_icu_libs "${ALPINE_LIBCXX_STATIC} ${ALPINE_LIBCXXABI_STATIC} ${ALPINE_LIBUNWIND_STATIC} ${MUSL_LIBGCC_PATH} -lc -lm ${MUSL_LIBDIR}/crtn.o")
+        endif()
+        get_filename_component(_icu_libcxx_libdir "${ALPINE_LIBCXX_STATIC}" DIRECTORY)
+        set(_icu_libcxx_include "${_icu_libcxx_libdir}/../include/c++/v1")
+        if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+            string(APPEND _icu_cxxflags " -nostdinc++ -isystem ${_icu_libcxx_include}")
+        endif()
     else()
         set(_icu_cc "${CMAKE_C_COMPILER}")
         set(_icu_cxx "${CMAKE_CXX_COMPILER}")
-        if(CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64")
-            set(_icu_host "x86_64-apple-darwin")
-        else()
-            set(_icu_host "aarch64-apple-darwin")
-        endif()
-        if(PLATFORM_IOS)
-            if(BUILD_IOS_SIM)
-                set(_icu_target "${CMAKE_OSX_ARCHITECTURES}-apple-ios16.0-simulator")
-                set(_icu_min_flag "-mios-simulator-version-min=16.0")
-            else()
-                set(_icu_target "${CMAKE_OSX_ARCHITECTURES}-apple-ios16.0")
-                set(_icu_min_flag "-miphoneos-version-min=16.0")
-            endif()
-            set(_icu_target_flags "-target ${_icu_target} ${_icu_min_flag}")
-        endif()
-        set(_icu_cflags "${CMAKE_C_FLAGS} ${_icu_target_flags} -isysroot ${CMAKE_OSX_SYSROOT} -arch ${CMAKE_OSX_ARCHITECTURES}")
-        set(_icu_cxxflags "${CMAKE_CXX_FLAGS} ${_icu_target_flags} -isysroot ${CMAKE_OSX_SYSROOT} -arch ${CMAKE_OSX_ARCHITECTURES}")
+        set(_icu_host "aarch64-apple-darwin")
+        set(_icu_cflags "${CMAKE_C_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT} -arch ${CMAKE_OSX_ARCHITECTURES}")
+        set(_icu_cxxflags "${CMAKE_CXX_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT} -arch ${CMAKE_OSX_ARCHITECTURES}")
     endif()
     file(MAKE_DIRECTORY "${_icu_prefix}/include")
     ExternalProject_Add(asciichat-icu-cross
         SOURCE_DIR "${_icu_source}" DOWNLOAD_COMMAND ""
-        BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/icu-build-${CMAKE_OSX_ARCHITECTURES}-native2"
-        PREFIX "${CMAKE_BINARY_DIR}/_deps/icu-cross"
+        BINARY_DIR "${_icu_cache}/build"
+        PREFIX "${_icu_cache}/cross"
         CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${_icu_cc}" "CXX=${_icu_cxx}"
             "CFLAGS=${_icu_cflags}" "CXXFLAGS=${_icu_cxxflags}" "LDFLAGS=${_icu_ldflags}" "LIBS=${_icu_libs}"
-            <SOURCE_DIR>/source/configure ${_icu_cross_options} --host=${_icu_host}
+            <SOURCE_DIR>/source/configure ${_icu_options} --host=${_icu_host}
             --with-cross-build=${_icu_host_build} --prefix=${_icu_prefix}
         BUILD_COMMAND ${_icu_make} -j8 INSTALL_COMMAND ${_icu_make} install
         INSTALL_BYPRODUCTS "${_icu_prefix}/lib/libicuuc.a" "${_icu_prefix}/lib/libicudata.a"
@@ -101,11 +101,34 @@ elseif(UNIX AND NOT APPLE)
     pkg_check_modules(ASCIICHAT_ICU REQUIRED IMPORTED_TARGET icu-uc>=60)
     set(ICU_VERSION "${ASCIICHAT_ICU_VERSION}")
     target_link_libraries(asciichat-icu INTERFACE PkgConfig::ASCIICHAT_ICU)
+elseif(WIN32)
+    # The staged vcpkg ICU config can leave imported locations pointing at a
+    # different installation. Publish stable imported targets from this
+    # build's include/lib prefix instead.
+    find_path(_asciichat_icu_include NAMES unicode/utypes.h
+        PATHS "${VCPKG_INCLUDE_PATH}" REQUIRED)
+    find_library(_asciichat_icu_uc NAMES icuuc PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    find_library(_asciichat_icu_data NAMES icudt PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    if(NOT TARGET ICU::uc)
+        add_library(ICU::uc UNKNOWN IMPORTED GLOBAL)
+        set_target_properties(ICU::uc PROPERTIES
+            IMPORTED_LOCATION "${_asciichat_icu_uc}"
+            INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_icu_include}")
+    endif()
+    if(NOT TARGET ICU::data)
+        add_library(ICU::data UNKNOWN IMPORTED GLOBAL)
+        set_target_properties(ICU::data PROPERTIES
+            IMPORTED_LOCATION "${_asciichat_icu_data}"
+            INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_icu_include}")
+    endif()
+    set(ICU_VERSION "78.1")
+    target_include_directories(asciichat-icu INTERFACE "${_asciichat_icu_include}")
+    target_link_libraries(asciichat-icu INTERFACE ICU::uc ICU::data)
 else()
     if(APPLE AND HOMEBREW_PREFIX)
         list(PREPEND CMAKE_PREFIX_PATH "${HOMEBREW_PREFIX}/opt/icu4c")
     endif()
-    if(APPLE AND NOT ASCIICHAT_SHARED_DEPS)
+    if(APPLE AND NOT BUILD_SHARED_LIBS)
         set(_icu_saved_suffixes "${CMAKE_FIND_LIBRARY_SUFFIXES}")
         set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
     endif()

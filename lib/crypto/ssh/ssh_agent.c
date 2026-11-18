@@ -201,7 +201,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   pos += 64;
 
   // Comment (key path)
-  len = key_path ? strlen(key_path) : 0;
+  len = (uint32_t)(key_path ? strlen(key_path) : 0);
 
   // SECURITY: Validate key path length to prevent buffer overflow
   // Buffer is BUFFER_SIZE_XXLARGE (4096), pos is ~128 at this point, need 4 bytes for length prefix
@@ -220,7 +220,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   }
 
   // Write message length at start (excluding the 4-byte length field itself)
-  uint32_t msg_len = pos - 4;
+  uint32_t msg_len = (uint32_t)(pos - 4);
   write_u32_be(buf, msg_len);
 
   // Send message to agent
@@ -288,7 +288,7 @@ asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *
   // Calculate total message length
   // 1 (type) + 4 (key_blob_len) + key_blob_size + 4 (data_len) + data_size + 4 (flags)
   uint32_t key_blob_size = 4 + key_type_len + 4 + 32; // string(key_type) + string(pubkey)
-  uint32_t total_len = 1 + 4 + key_blob_size + 4 + message_len + 4;
+  uint32_t total_len = 1 + 4 + key_blob_size + 4 + (uint32_t)message_len + 4;
 
   uint8_t *buf = SAFE_MALLOC(total_len + 4, uint8_t *); // +4 for length prefix
   if (!buf) {

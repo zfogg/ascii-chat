@@ -87,7 +87,7 @@ static uint64_t g_echo_correlation_sample_count = 0; // Samples checked for echo
 // Echo detection metrics at different delays (in milliseconds)
 #define ECHO_DELAY_COUNT 5
 static uint32_t g_echo_delays_ms[ECHO_DELAY_COUNT] = {50, 100, 150, 200, 250};
-static uint64_t g_echo_correlation_strength[ECHO_DELAY_COUNT] = {0, 0, 0, 0, 0};
+static float g_echo_correlation_strength[ECHO_DELAY_COUNT] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 static uint64_t g_echo_match_count[ECHO_DELAY_COUNT] = {0, 0, 0, 0, 0};
 static uint32_t g_detected_echo_delay_ms = 0; // If echo detected, at what delay
 
@@ -506,7 +506,7 @@ const audio_analysis_stats_t *audio_analysis_get_sent_stats(void) {
 
 const audio_analysis_stats_t *audio_analysis_get_received_stats(void) {
   g_received_stats.dc_offset = g_received_stats.total_samples ? (float)(g_received_mean / g_received_stats.total_samples) : 0.0f;
-  g_received_stats.rms_level = g_received_rms_sample_count ? sqrtf(g_received_rms_accumulator / g_received_rms_sample_count) : 0.0f;
+  g_received_stats.rms_level = g_received_rms_sample_count ? sqrtf(g_received_rms_accumulator / (float)g_received_rms_sample_count) : 0.0f;
   return &g_received_stats;
 }
 
@@ -515,7 +515,7 @@ void audio_analysis_set_aec3_metrics(double echo_return_loss, double echo_return
   // These come from WebRTC EchoControl::GetMetrics() call
   g_aec3_echo_return_loss = echo_return_loss;
   g_aec3_echo_return_loss_enhancement = echo_return_loss_enhancement;
-  g_aec3_delay_ns = delay_ns;
+  g_aec3_delay_ns = delay_ns > INT_MAX ? INT_MAX : (int)delay_ns;
   g_aec3_metrics_available = true;
 }
 
@@ -747,7 +747,6 @@ void audio_analysis_print_report(void) {
 
   // Stuttering/periodic gap detection using packet inter-arrival times
   if (g_received_packet_times_count >= 5) {
-    uint32_t inter_arrival_times_ms[MAX_PACKET_SAMPLES - 1];
     uint32_t inter_arrival_count = 0;
     uint32_t min_interval_ms = 0xFFFFFFFF;
     uint32_t max_interval_ms = 0;
@@ -762,7 +761,8 @@ void audio_analysis_print_report(void) {
       uint64_t gap_ns = time_elapsed_ns(prev_ns, curr_ns);
       uint32_t gap_ms = (uint32_t)time_ns_to_ms(gap_ns);
 
-      inter_arrival_times_ms[inter_arrival_count++] = gap_ms;
+      (void)gap_ms;
+      inter_arrival_count++;
       if (gap_ms < min_interval_ms)
         min_interval_ms = gap_ms;
       if (gap_ms > max_interval_ms)

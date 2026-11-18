@@ -31,8 +31,11 @@ if(USE_MUSL)
             UPDATE_DISCONNECTED 1
             BUILD_ALWAYS 0
             CONFIGURE_COMMAND ""
-            BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC make -j -C <SOURCE_DIR>
-            INSTALL_COMMAND env CC=${MUSL_GCC} make -C <SOURCE_DIR> install PREFIX=${LIBEXECINFO_PREFIX}
+            BUILD_COMMAND ${CMAKE_COMMAND} -E env
+                "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
+                "CFLAGS=--target=${MUSL_TARGET} -fPIC"
+                make -j -C <SOURCE_DIR>
+            INSTALL_COMMAND env CC=${ASCIICHAT_CLANG_EXECUTABLE} make -C <SOURCE_DIR> install PREFIX=${LIBEXECINFO_PREFIX}
             BUILD_IN_SOURCE 1
             BUILD_BYPRODUCTS ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a
             LOG_DOWNLOAD TRUE

@@ -48,6 +48,8 @@
 #include <stdio.h>
 #include <ascii-chat/asciichat_errno.h>
 
+#include <ascii-chat/log/color.h>
+
 #ifdef _WIN32
 #include <BaseTsd.h>
 typedef SSIZE_T ssize_t;

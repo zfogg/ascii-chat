@@ -50,7 +50,7 @@ size_t ui_table_row(char *out, size_t cap, const ui_table_column_t *cols, const 
       out[used] = '\0';
       --available;
     }
-    int cell_width = cols[i].width > 0 ? cols[i].width : flexible ? remaining / (int)flexible : 0;
+    int cell_width = cols[i].width > 0 ? cols[i].width : flexible ? (int)(remaining / (int)flexible) : 0;
     if (cell_width < 0)
       cell_width = 0;
     if (!cols[i].width && flexible) {

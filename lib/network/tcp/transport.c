@@ -89,7 +89,10 @@ static asciichat_error_t tcp_sendv(acip_transport_t *transport, const socket_buf
     if (result == ASCIICHAT_OK && !supported) {
       socket_buffer_t slice = {wire.data, wire_len};
       uint64_t elapsed = time_get_ns() - send_start;
-      result = elapsed >= timeout ? SET_ERRNO(ERROR_NETWORK_TIMEOUT, "TCP send deadline expired") : socket_sendv_all(tcp->sockfd, &slice, 1, timeout - elapsed);
+      if (elapsed >= timeout)
+        result = SET_ERRNO(ERROR_NETWORK_TIMEOUT, "TCP send deadline expired");
+      else
+        result = (asciichat_error_t)socket_sendv_all(tcp->sockfd, &slice, 1, timeout - elapsed);
     }
     socket_send_buffer_free(&wire);
   }

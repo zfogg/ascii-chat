@@ -1,41 +1,35 @@
-name: Send notification
+name: Send Pushover notification
 
 on:
   workflow_call:
     inputs:
       subject:
-        description: Notification subject
         required: true
         type: string
       body:
-        description: Notification body
         required: true
         type: string
     secrets:
-      SMTP_SERVER:
+      PUSHOVER_TOKEN:
         required: true
-      SMTP_PORT:
-        required: true
-      SMTP_FROM_EMAIL:
-        required: true
-      SMTP_PASSWORD:
-        required: true
-      SMTP_TO_EMAIL:
+      PUSHOVER_USER:
         required: true
 
 jobs:
   send:
-    name: Send notification
+    name: Send Pushover notification
     runs-on: ubuntu-latest
     steps:
-      - name: Send email notification
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: ${{ secrets.SMTP_SERVER }}
-          server_port: ${{ secrets.SMTP_PORT }}
-          username: ${{ secrets.SMTP_FROM_EMAIL }}
-          password: ${{ secrets.SMTP_PASSWORD }}
-          subject: ${{ inputs.subject }}
-          to: ${{ secrets.SMTP_TO_EMAIL }}
-          from: ${{ secrets.SMTP_FROM_EMAIL }}
-          body: ${{ inputs.body }}
+      - name: Send notification
+        env:
+          PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
+          PUSHOVER_USER: ${{ secrets.PUSHOVER_USER }}
+          PUSHOVER_TITLE: ${{ inputs.subject }}
+          PUSHOVER_MESSAGE: ${{ inputs.body }}
+        run: |
+          curl --fail --silent --show-error --request POST \
+            --form-string "token=$PUSHOVER_TOKEN" \
+            --form-string "user=$PUSHOVER_USER" \
+            --form-string "title=$PUSHOVER_TITLE" \
+            --form-string "message=$PUSHOVER_MESSAGE" \
+            https://api.pushover.net/1/messages.json

@@ -121,7 +121,8 @@ bool ui_help_menu_render(frame_buffer_t *out, terminal_size_t size, const ui_hel
         ui_help_keys(styled_keys, sizeof(styled_keys), entry->keys);
         ui_text_cell(key, sizeof(key), styled_keys, keys, UI_ALIGN_LEFT);
         ui_text_values_style(description, sizeof(description), entry->description, LOG_COLOR_FATAL);
-        snprintf(lhs, sizeof(lhs), "%s  %s", key, description);
+        const int field_width = (int)((sizeof(lhs) - 3) / 2);
+        snprintf(lhs, sizeof(lhs), "%.*s  %.*s", field_width, key, field_width, description);
       }
     }
     if (i < m->settings_count) {
@@ -133,12 +134,34 @@ bool ui_help_menu_render(frame_buffer_t *out, terminal_size_t size, const ui_hel
         ui_help_keys(styled, sizeof(styled), binding);
         char values[UI_HELP_MENU_VALUES_BUFFER_SIZE];
         ui_text_values_style(values, sizeof(values), end + 1, LOG_COLOR_FATAL);
-        snprintf(rhs, sizeof(rhs), "%s%s", styled, values);
+        size_t rhs_pos = 0;
+        size_t styled_len = strlen(styled);
+        size_t styled_copy = styled_len < sizeof(rhs) - 1 ? styled_len : sizeof(rhs) - 1;
+        memcpy(rhs, styled, styled_copy);
+        rhs_pos += styled_copy;
+        size_t values_len = strlen(values);
+        size_t values_copy = values_len < sizeof(rhs) - 1 - rhs_pos ? values_len : sizeof(rhs) - 1 - rhs_pos;
+        memcpy(rhs + rhs_pos, values, values_copy);
+        rhs[rhs_pos + values_copy] = '\0';
       } else
         ui_text_values_style(rhs, sizeof(rhs), setting, LOG_COLOR_FATAL);
     }
     ui_text_cell(padded, sizeof(padded), lhs, left, UI_ALIGN_LEFT);
-    snprintf(text[i], sizeof(text[i]), "%s%s%s", padded, right ? "   " : "", rhs);
+    size_t text_pos = 0;
+    size_t padded_copy = strlen(padded);
+    if (padded_copy >= sizeof(text[i]))
+      padded_copy = sizeof(text[i]) - 1;
+    memcpy(text[i] + text_pos, padded, padded_copy);
+    text_pos += padded_copy;
+    if (right && text_pos + 3 < sizeof(text[i])) {
+      memcpy(text[i] + text_pos, "   ", 3);
+      text_pos += 3;
+    }
+    size_t rhs_copy = strlen(rhs);
+    if (rhs_copy > sizeof(text[i]) - text_pos - 1)
+      rhs_copy = sizeof(text[i]) - text_pos - 1;
+    memcpy(text[i] + text_pos, rhs, rhs_copy);
+    text[i][text_pos + rhs_copy] = '\0';
     lines[i + 1] = text[i];
   }
   ui_popup_t box = {.title = m->title, .lines = lines, .line_count = rows + 1, .footer = m->footer, .top_margin = m->top_margin};

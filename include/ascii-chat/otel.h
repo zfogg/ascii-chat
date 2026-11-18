@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <ascii-chat/stats/stats.h>
+#include <sqlite3.h>
 typedef enum {
 #define ASCII_OTEL_OPERATION(id, name, realtime) ASCII_OTEL_##id,
 #include <ascii-chat/otel_operations.def>
@@ -77,6 +78,9 @@ int ascii_otel_sqlite_prepare(sqlite3 *db, const char *sql, sqlite3_stmt **state
 #define ASCII_OTEL_SCOPE(id)                                                          \
   ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0}; \
   ascii_otel_scope_begin(&otel_scope, ASCII_OTEL_##id)
+#define ASCII_OTEL_SCOPE_AS(variable, id)                                           \
+  ascii_otel_scope_t variable __attribute__((cleanup(ascii_otel_scope_end))) = {0}; \
+  ascii_otel_scope_begin(&variable, ASCII_OTEL_##id)
 #else
 #define ASCII_OTEL_ATTR_STRING(key, value) ((void)(key), (void)(value))
 #define ASCII_OTEL_ATTR_INT(key, value) ((void)(key), (void)(value))
@@ -92,6 +96,7 @@ int ascii_otel_sqlite_prepare(sqlite3 *db, const char *sql, sqlite3_stmt **state
 #define ascii_otel_stats_attach(scope) ((void)(scope))
 #define ASCII_OTEL_SCOPE_PARENT(id, parent) ((void)0)
 #define ASCII_OTEL_SCOPE(id) ((void)0)
+#define ASCII_OTEL_SCOPE_AS(variable, id) ((void)0)
 #endif
 
 #ifdef __cplusplus

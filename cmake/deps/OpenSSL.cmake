@@ -4,8 +4,8 @@
 #
 
 set(ASCIICHAT_OPENSSL_RUNTIME_DIR "" CACHE INTERNAL "Runtime directory for selected shared OpenSSL" FORCE)
-set(ASCIICHAT_OPENSSL_SOURCE_VERSION "3.6.0")
-set(ASCIICHAT_OPENSSL_SOURCE_SHA256 "b6a5f44b7eb69e3fa35dbf15524405b44837a481d43d81daddde3ff21fcbb8e9")
+set(ASCIICHAT_OPENSSL_SOURCE_VERSION "4.1.0")
+set(ASCIICHAT_OPENSSL_SOURCE_SHA256 "50c17baf54cb008f6ce42d50deb4b28050a1aad711636cabd4b241c7e90cc2fd")
 set(ASCIICHAT_OPENSSL_BUILD_JOBS 4 CACHE STRING "Parallel jobs for source-built OpenSSL")
 if(NOT ASCIICHAT_OPENSSL_BUILD_JOBS MATCHES "^[1-9][0-9]*$")
     message(FATAL_ERROR "ASCIICHAT_OPENSSL_BUILD_JOBS must be a positive integer")
@@ -222,6 +222,27 @@ endif()
 # Native non-musl builds use the system OpenSSL. The system must provide the
 # QUIC TLS API required by ngtcp2; do not silently substitute a source build.
 if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
+    # Prefer the newest locally installed native OpenSSL before consulting the
+    # distribution's pkg-config directory. This keeps WSL/Linux builds on the
+    # developer's /usr/local/openssl-* installation without requiring callers
+    # to export PKG_CONFIG_PATH.
+    file(GLOB _asciichat_local_openssl_pc_dirs LIST_DIRECTORIES true
+        "/usr/local/openssl-*/lib*/pkgconfig")
+    list(SORT _asciichat_local_openssl_pc_dirs COMPARE NATURAL ORDER DESCENDING)
+    foreach(_asciichat_local_openssl_pc_dir IN LISTS _asciichat_local_openssl_pc_dirs)
+        if(EXISTS "${_asciichat_local_openssl_pc_dir}/openssl.pc")
+            if(DEFINED ENV{PKG_CONFIG_PATH} AND NOT "$ENV{PKG_CONFIG_PATH}" STREQUAL "")
+                set(ENV{PKG_CONFIG_PATH}
+                    "${_asciichat_local_openssl_pc_dir}:$ENV{PKG_CONFIG_PATH}")
+            else()
+                set(ENV{PKG_CONFIG_PATH} "${_asciichat_local_openssl_pc_dir}")
+            endif()
+            break()
+        endif()
+    endforeach()
+    unset(_asciichat_local_openssl_pc_dir)
+    unset(_asciichat_local_openssl_pc_dirs)
+
     # Prefer pkg-config when the distribution provides an OpenSSL module. Some
     # distributions, including Arch installations without the development
     # metadata package, provide usable headers/libraries without openssl.pc;
@@ -399,8 +420,7 @@ if(USE_MUSL)
         message(STATUS "  Configuring OpenSSL for ${OPENSSL_TARGET}...")
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E env
-                CC=${MUSL_GCC}
-                REALGCC=${REAL_GCC}
+                CC=${ASCIICHAT_CLANG_EXECUTABLE}
                 CFLAGS=${MUSL_KERNEL_CFLAGS}
                 "${OPENSSL_SOURCE_DIR}/Configure"
                 ${OPENSSL_TARGET}
@@ -423,7 +443,7 @@ if(USE_MUSL)
 
         message(STATUS "  Building OpenSSL (this takes a few minutes)...")
         execute_process(
-            COMMAND ${CMAKE_COMMAND} -E env REALGCC=${REAL_GCC} make -j${ASCIICHAT_OPENSSL_BUILD_JOBS}
+            COMMAND ${CMAKE_COMMAND} -E env make -j${ASCIICHAT_OPENSSL_BUILD_JOBS}
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             RESULT_VARIABLE BUILD_RESULT
             OUTPUT_VARIABLE BUILD_OUTPUT
@@ -479,6 +499,7 @@ if(USE_MUSL)
 
     # Create a custom target for musl builds (libraries are pre-built/cached)
     add_custom_target(openssl-musl)
+    set(OPENSSL_FOUND TRUE)
 
     return()
 endif()
@@ -537,7 +558,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
     # Release packages should not retain a runtime dependency on the build
     # machine's OpenSSL dylib or its install path. Debug/dev builds keep shared
     # OpenSSL for faster iteration.
-    if(NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
+    if(NOT BUILD_SHARED_LIBS AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
         set(OPENSSL_BUILD_SHARED OFF)
     else()
         set(OPENSSL_BUILD_SHARED ON)
@@ -783,7 +804,7 @@ endif()
 # macOS Release: Use the versioned source-build cache when available
 # =============================================================================
 set(_OPENSSL_STATIC_FOUND FALSE)
-if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
     set(_OPENSSL_HOMEBREW_PATH "")
     set(OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-${ASCIICHAT_OPENSSL_SOURCE_VERSION}/usr/local")
     set(OPENSSL_LIBDIR "lib")

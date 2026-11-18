@@ -1,16 +1,22 @@
 # Upstream libvterm is Make-based; use a small target wrapper and tracked generators.
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
 if(EMSCRIPTEN OR WIN32 OR USE_MUSL OR PLATFORM_IOS OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE
-   OR (APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS))
+   OR (APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS))
     function(asciichat_build_vterm)
         asciichat_dependency_defaults()
-        FetchContent_Declare(libvterm-src
+        FetchContent_Declare(libvterm
             GIT_REPOSITORY https://github.com/neovim/libvterm.git
             GIT_TAG v0.3.3 GIT_SHALLOW TRUE)
         find_package(Perl REQUIRED)
-        FetchContent_MakeAvailable(libvterm-src)
-        set(_vterm_source "${libvterm-src_SOURCE_DIR}")
-        set(_vterm_binary "${CMAKE_CURRENT_BINARY_DIR}/_deps/libvterm")
+        set(_asciichat_parent_fetchcontent_updates_disconnected
+            ${FETCHCONTENT_UPDATES_DISCONNECTED})
+        set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
+        FetchContent_MakeAvailable(libvterm)
+        set(FETCHCONTENT_UPDATES_DISCONNECTED
+            ${_asciichat_parent_fetchcontent_updates_disconnected})
+        unset(_asciichat_parent_fetchcontent_updates_disconnected)
+        set(_vterm_source "${libvterm_SOURCE_DIR}")
+        set(_vterm_binary "${ASCIICHAT_DEPS_CACHE_DIR}/build/libvterm")
         file(MAKE_DIRECTORY "${_vterm_binary}/encoding")
         file(GLOB _tables CONFIGURE_DEPENDS "${_vterm_source}/src/encoding/*.tbl")
         set(_generated)
@@ -40,7 +46,12 @@ if(EMSCRIPTEN OR WIN32 OR USE_MUSL OR PLATFORM_IOS OR ASCIICHAT_BUILD_DEPS_FROM_
             target_compile_options(asciichat-vterm PRIVATE -msimd128)
         endif()
         if(USE_MUSL)
-            target_compile_options(asciichat-vterm PRIVATE -nostdlibinc "--target=${MUSL_TARGET}")
+            # Clang needs an explicit target and its libc header-isolation flag;
+            # musl-gcc already selects the target and uses GCC's -nostdinc.
+            if(CMAKE_C_COMPILER_ID STREQUAL "Clang"
+               OR CMAKE_C_COMPILER MATCHES "(^|[/\\\\])clang(\\.exe)?$")
+                target_compile_options(asciichat-vterm PRIVATE -nostdlibinc "--target=${MUSL_TARGET}")
+            endif()
             target_include_directories(asciichat-vterm SYSTEM PRIVATE "${MUSL_INCLUDE_DIR}" "${KERNEL_HEADERS_DIR}")
         endif()
         set_target_properties(asciichat-vterm PROPERTIES C_STANDARD 99 POSITION_INDEPENDENT_CODE ON)
