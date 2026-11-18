@@ -9,7 +9,9 @@
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_CXX_STANDARD": "26"
+        "CMAKE_CXX_STANDARD": "26",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
       }
     },
     {
@@ -137,7 +139,7 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
-        "USE_MUSL": "ON"
+        "USE_MUSL": "OFF"
       },
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
@@ -149,7 +151,7 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++",
-        "USE_MUSL": "ON"
+        "USE_MUSL": "OFF"
       },
       "binaryDir": "${sourceDir}/build/${presetName}",
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
