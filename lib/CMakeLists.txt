@@ -302,7 +302,11 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
         BUILDING_ASCIICHAT_DLL=1
     )
 
-    if(ASCIICHAT_ENABLE_UNITY_BUILDS)
+    # Unity compilation mixes C and C++ sources in the audio module.  That
+    # defeats musl's isolated C++ standard-library/header setup and can pull
+    # host glibc headers into the translation unit, so keep musl builds
+    # source-isolated.
+    if(ASCIICHAT_ENABLE_UNITY_BUILDS AND NOT USE_MUSL)
         set_target_properties(${MODULE_NAME} PROPERTIES UNITY_BUILD ON)
     endif()
 
@@ -1806,6 +1810,9 @@ target_link_libraries(ascii-chat-lib INTERFACE
 # FFTW symbols are used unconditionally by the native audio module.
 target_link_libraries(ascii-chat-audio PRIVATE asciichat-fftw)
 target_link_libraries(ascii-chat-audio PRIVATE asciichat-fftw-float)
+if(ASCIICHAT_FFTW_INCLUDE_DIR)
+    target_include_directories(ascii-chat-audio PRIVATE "${ASCIICHAT_FFTW_INCLUDE_DIR}")
+endif()
 if(TARGET ascii-chat-shared)
     target_link_libraries(ascii-chat-shared PRIVATE asciichat-fftw)
     target_link_libraries(ascii-chat-shared PRIVATE asciichat-fftw-float)
