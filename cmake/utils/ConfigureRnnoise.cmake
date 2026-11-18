@@ -38,3 +38,22 @@ execute_process(
 if(NOT _rnnoise_result EQUAL 0)
     message(FATAL_ERROR "RNNoise autotools configuration failed (${_rnnoise_result})")
 endif()
+
+# The configure step has already produced the generated autotools inputs.
+# Automake otherwise re-enters aclocal/autoheader during a later build when
+# their source timestamps differ, which is not required for a fixed checkout
+# and is unavailable in a minimal Windows MSYS installation.
+set(_rnnoise_makefile "${RNNOISE_BINARY_DIR}/Makefile")
+if(EXISTS "${_rnnoise_makefile}")
+    file(READ "${_rnnoise_makefile}" _rnnoise_makefile_contents)
+    string(REPLACE "$(ACLOCAL_M4):  $(am__aclocal_m4_deps)"
+        "$(ACLOCAL_M4):" _rnnoise_makefile_contents "${_rnnoise_makefile_contents}")
+    string(REPLACE "$(srcdir)/config.h.in:  $(am__configure_deps) "
+        "$(srcdir)/config.h.in:" _rnnoise_makefile_contents "${_rnnoise_makefile_contents}")
+    string(REPLACE "$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)"
+        "$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am"
+        _rnnoise_makefile_contents "${_rnnoise_makefile_contents}")
+    string(REPLACE "$(top_srcdir)/configure:  $(am__configure_deps)"
+        "$(top_srcdir)/configure:" _rnnoise_makefile_contents "${_rnnoise_makefile_contents}")
+    file(WRITE "${_rnnoise_makefile}" "${_rnnoise_makefile_contents}")
+endif()
