@@ -78,20 +78,25 @@ function(configure_musl_post_project)
 
     # Use -static-pie flag to build fully static PIE binaries with musl
     # Combines static linking with Position Independent Executable for security (ASLR)
-    # Using clang directly with musl for proper static-PIE support (musl-gcc wrapper doesn't support it)
+    # Using clang directly with musl for proper static-PIE support.
     # See: https://github.com/rust-lang/rust/issues/95926
 
-    # Find GCC library directory for libgcc.a
-    # Use gcc -print-libgcc-file-name to get the actual path (works on all distros)
+    # Use Clang's compiler-rt builtins archive for the musl runtime.
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
+        set(_compiler_rt_arch "aarch64")
+    else()
+        set(_compiler_rt_arch "x86_64")
+    endif()
     execute_process(
-        COMMAND gcc -print-libgcc-file-name
-        OUTPUT_VARIABLE GCC_LIBGCC_PATH
+        COMMAND "${CMAKE_C_COMPILER}" --print-resource-dir
+        OUTPUT_VARIABLE CLANG_RESOURCE_DIR
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
-    if(NOT GCC_LIBGCC_PATH OR NOT EXISTS "${GCC_LIBGCC_PATH}")
-        message(FATAL_ERROR "GCC libgcc runtime was not found; it is required for musl static linking")
+    set(CLANG_BUILTINS_PATH "${CLANG_RESOURCE_DIR}/lib/linux/libclang_rt.builtins-${_compiler_rt_arch}.a")
+    if(NOT EXISTS "${CLANG_BUILTINS_PATH}")
+        message(FATAL_ERROR "Clang compiler-rt builtins archive was not found: ${CLANG_BUILTINS_PATH}")
     endif()
-    set(MUSL_LIBGCC_PATH "${GCC_LIBGCC_PATH}" CACHE FILEPATH "Compiler runtime archive for musl static executables" FORCE)
+    set(MUSL_COMPILER_RT_PATH "${CLANG_BUILTINS_PATH}" CACHE FILEPATH "Clang compiler-rt builtins archive for musl static executables" FORCE)
 
     if(NOT CMAKE_C_COMPILER MATCHES "musl-gcc" AND NOT CMAKE_C_COMPILER_TARGET STREQUAL MUSL_TARGET)
         message(FATAL_ERROR "The musl compiler toolchain was not loaded. Configure a fresh build tree with cmake --fresh.")
@@ -125,46 +130,6 @@ function(configure_musl_post_project)
         set(ALPINE_ARCH "armv7")
     else()
         message(FATAL_ERROR "Unsupported architecture for Alpine libc++: ${CMAKE_SYSTEM_PROCESSOR}")
-    endif()
-
-    if(ALPINE_ARCH STREQUAL "aarch64")
-        # Use Alpine's compiler runtime for AArch64 musl. The host Debian
-        # libgcc archive contains an LSE initializer that calls glibc-only
-        # __getauxval; Alpine's archive provides the same helpers against musl.
-        set(ALPINE_GCC_VERSION "14.2.0-r4")
-        set(ALPINE_GCC_RUNTIME_VERSION "14.2.0")
-        set(ALPINE_GCC_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-gcc")
-        set(ALPINE_GCC_PACKAGE "gcc-${ALPINE_GCC_VERSION}.apk")
-        set(ALPINE_LIBGCC_PATH
-            "${ALPINE_GCC_DIR}/usr/lib/gcc/aarch64-alpine-linux-musl/${ALPINE_GCC_RUNTIME_VERSION}/libgcc.a")
-
-        if(NOT EXISTS "${ALPINE_LIBGCC_PATH}")
-            file(MAKE_DIRECTORY "${ALPINE_GCC_DIR}")
-            file(DOWNLOAD
-                "${ALPINE_MIRROR}/v${ALPINE_VERSION}/main/${ALPINE_ARCH}/${ALPINE_GCC_PACKAGE}"
-                "${ALPINE_GCC_DIR}/${ALPINE_GCC_PACKAGE}"
-                EXPECTED_HASH SHA256=f9fa19072d1f1a4f72631f3fd090a85a48b95fa08b2062630ea96813275e130f
-                STATUS ALPINE_GCC_DOWNLOAD_STATUS
-                SHOW_PROGRESS
-            )
-            list(GET ALPINE_GCC_DOWNLOAD_STATUS 0 ALPINE_GCC_DOWNLOAD_CODE)
-            if(NOT ALPINE_GCC_DOWNLOAD_CODE EQUAL 0)
-                list(GET ALPINE_GCC_DOWNLOAD_STATUS 1 ALPINE_GCC_DOWNLOAD_ERROR)
-                message(FATAL_ERROR "Failed to download Alpine AArch64 libgcc: ${ALPINE_GCC_DOWNLOAD_ERROR}")
-            endif()
-            execute_process(
-                COMMAND ${CMAKE_COMMAND} -E tar xzf "${ALPINE_GCC_PACKAGE}"
-                WORKING_DIRECTORY "${ALPINE_GCC_DIR}"
-                RESULT_VARIABLE ALPINE_GCC_EXTRACT_RESULT
-            )
-            if(NOT ALPINE_GCC_EXTRACT_RESULT EQUAL 0 OR NOT EXISTS "${ALPINE_LIBGCC_PATH}")
-                message(FATAL_ERROR "Failed to extract Alpine AArch64 libgcc from ${ALPINE_GCC_PACKAGE}")
-            endif()
-        endif()
-
-        set(MUSL_LIBGCC_PATH "${ALPINE_LIBGCC_PATH}" CACHE FILEPATH
-            "Musl-compatible AArch64 compiler runtime archive" FORCE)
-        message(STATUS "Using Alpine musl AArch64 compiler runtime: ${MUSL_LIBGCC_PATH}")
     endif()
 
     if(NOT EXISTS "${ALPINE_LIBCXX_DIR}/libc++.a")
@@ -439,7 +404,7 @@ function(configure_musl_post_project)
             # conversion and outlined-atomic helpers required by the static
             # dependencies without introducing glibc-only runtime symbols.
             if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
-                target_link_libraries(${TARGET_NAME} PRIVATE "${MUSL_LIBGCC_PATH}")
+                target_link_libraries(${TARGET_NAME} PRIVATE "${MUSL_COMPILER_RT_PATH}")
             endif()
             # Static musl executables must search libc after all dependency
             # archives so AArch64 sigsetjmp can branch to setjmp in range.
@@ -493,7 +458,7 @@ function(configure_musl_post_project)
     set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON CACHE BOOL "Disable PCH for musl" FORCE)
 
     message(STATUS "${BoldBlue}musl${ColorReset} C library enabled (static linking with ${BoldCyan}clang${ColorReset})")
-    message(STATUS "Using compiler runtime for musl: ${BoldMagenta}${MUSL_LIBGCC_PATH}${ColorReset}")
+    message(STATUS "Using Clang compiler-rt for musl: ${BoldMagenta}${MUSL_COMPILER_RT_PATH}${ColorReset}")
     message(STATUS "")
     message(STATUS "NOTE: Static linking enabled - will build static dependencies with musl")
 
@@ -502,7 +467,7 @@ function(configure_musl_post_project)
 
     # Extract real compiler path (skip ccache if present)
     if(CMAKE_C_COMPILER MATCHES "ccache")
-        # CMAKE_C_COMPILER is "/usr/bin/ccache /usr/bin/musl-gcc" - extract the real compiler
+        # CMAKE_C_COMPILER may include a compiler launcher; extract the real compiler.
         string(REGEX REPLACE ".* " "" MUSL_CC "${CMAKE_C_COMPILER}")
     else()
         set(MUSL_CC "${CMAKE_C_COMPILER}")

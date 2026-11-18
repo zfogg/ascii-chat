@@ -33,11 +33,11 @@ if(PLATFORM_IOS OR USE_MUSL)
         string(APPEND _fontconfig_cflags " -isysroot ${CMAKE_OSX_SYSROOT} -arch ${CMAKE_OSX_ARCHITECTURES} -miphoneos-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
         set(_fontconfig_host --host=aarch64-apple-darwin)
     else()
-        set(_fontconfig_cc "${MUSL_GCC}")
+        set(_fontconfig_cc "${ASCIICHAT_CLANG_EXECUTABLE} --target=${MUSL_TARGET}")
     endif()
     set(_fontconfig_env "${CMAKE_COMMAND}" -E env "CC=${_fontconfig_cc}"
         "GPERF=${GPERF_EXECUTABLE}"
-        "REALGCC=${REAL_GCC}" "CFLAGS=${_fontconfig_cflags}"
+        "CFLAGS=${_fontconfig_cflags}"
         "LDFLAGS=-L${EXPAT_PREFIX}/lib -L${FREETYPE_PREFIX}/lib"
         "PKG_CONFIG_PATH=${EXPAT_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig"
         "PKG_CONFIG_LIBDIR=${EXPAT_PREFIX}/lib/pkgconfig:${FREETYPE_PREFIX}/lib/pkgconfig" --)

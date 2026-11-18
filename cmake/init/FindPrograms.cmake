@@ -32,8 +32,6 @@
 #   - ASCIICHAT_GMAKE_EXECUTABLE: GNU Make (macOS)
 #   - ASCIICHAT_CLANG_CL_EXECUTABLE: clang-cl MSVC-compatible compiler (Windows only)
 #   - ASCIICHAT_LLVM_LIB_EXECUTABLE: llvm-lib library archive tool (Windows only)
-#   - ASCIICHAT_MUSL_GCC_EXECUTABLE: musl-gcc compiler wrapper (Linux only, for USE_MUSL builds)
-#   - ASCIICHAT_GCC_EXECUTABLE: GCC compiler (Linux only, used by musl-gcc via REALGCC)
 #   - ASCIICHAT_BREW_EXECUTABLE: Homebrew package manager (macOS/Linux)
 #
 # Exported paths (for modules that need to find additional LLVM tools):
@@ -214,10 +212,11 @@ set(_LLVM_SUPPORTED_VERSIONS 23 22 21 20 19 18)
 #   cmake -B build -DASCIICHAT_LLVM_CONFIG_EXECUTABLE=/usr/bin/llvm-config
 
 # Build versioned names list for llvm-config
-set(_llvm_config_names llvm-config llvm-config.exe)
+set(_llvm_config_names)
 foreach(_ver IN LISTS _LLVM_SUPPORTED_VERSIONS)
     list(APPEND _llvm_config_names llvm-config-${_ver})
 endforeach()
+list(APPEND _llvm_config_names llvm-config llvm-config.exe)
 
 # Use find_program which searches PATH (from environment) first, then fallback hints
 find_program(ASCIICHAT_LLVM_CONFIG_EXECUTABLE
@@ -741,19 +740,6 @@ if(UNIX AND NOT APPLE)
         DOC "RPM rpmbuild package builder"
     )
 
-    # musl-gcc and gcc are required for Linux Release builds with USE_MUSL=ON
-    # musl-gcc wraps gcc to build against musl libc instead of glibc
-    find_program(ASCIICHAT_MUSL_GCC_EXECUTABLE
-        NAMES musl-gcc
-        HINTS /usr/bin /usr/local/bin
-        DOC "musl-gcc C compiler wrapper for musl libc"
-    )
-
-    find_program(ASCIICHAT_GCC_EXECUTABLE
-        NAMES gcc
-        HINTS /usr/bin /usr/local/bin
-        DOC "GCC C compiler (used by musl-gcc via REALGCC)"
-    )
 endif()
 
 # =============================================================================
@@ -799,8 +785,6 @@ if(ASCIICHAT_VERBOSE_FIND_PROGRAMS)
     if(UNIX AND NOT APPLE)
         message(STATUS "FindPrograms: ASCIICHAT_DPKG_DEB_EXECUTABLE = ${ASCIICHAT_DPKG_DEB_EXECUTABLE}")
         message(STATUS "FindPrograms: ASCIICHAT_RPMBUILD_EXECUTABLE = ${ASCIICHAT_RPMBUILD_EXECUTABLE}")
-        message(STATUS "FindPrograms: ASCIICHAT_MUSL_GCC_EXECUTABLE = ${ASCIICHAT_MUSL_GCC_EXECUTABLE}")
-        message(STATUS "FindPrograms: ASCIICHAT_GCC_EXECUTABLE = ${ASCIICHAT_GCC_EXECUTABLE}")
     endif()
 endif()
 
@@ -821,8 +805,7 @@ endif()
 #   - llvm-lib: for BearSSL static library build
 #
 # Required for Linux Release builds with USE_MUSL=ON:
-#   - musl-gcc: musl C compiler wrapper (builds static dependencies)
-#   - gcc: used by musl-gcc via REALGCC environment variable
+#   - clang: Clang compiler targeting musl for application and dependencies
 #   - lld: LLVM linker (for static-PIE linking)
 #   (Validated in MuslDependencies.cmake when USE_MUSL is enabled)
 #
@@ -915,19 +898,9 @@ function(asciichat_validate_optional_programs)
             "  macOS/Linux: bash should be available at /bin/bash")
     endif()
 
-    # USE_MUSL requires musl-gcc and gcc (Linux only)
+    # USE_MUSL uses Clang's compiler-rt; no GCC runtime compiler is required.
     # Note: More detailed validation happens in MuslDependencies.cmake
     if(USE_MUSL)
-        if(NOT ASCIICHAT_MUSL_GCC_EXECUTABLE)
-            message(FATAL_ERROR "USE_MUSL=ON but musl-gcc not found. Install musl-tools:\n"
-                "  Debian/Ubuntu: sudo apt install musl-tools\n"
-                "  Arch: sudo pacman -S musl")
-        endif()
-        if(NOT ASCIICHAT_GCC_EXECUTABLE)
-            message(FATAL_ERROR "USE_MUSL=ON but gcc not found (required by musl-gcc via REALGCC).\n"
-                "  Debian/Ubuntu: sudo apt install gcc\n"
-                "  Arch: sudo pacman -S gcc")
-        endif()
         if(NOT ASCIICHAT_LLD_EXECUTABLE)
             message(FATAL_ERROR "USE_MUSL=ON but lld not found (required for static-PIE linking). Install LLVM:\n"
                 "  Debian/Ubuntu: sudo apt install lld\n"

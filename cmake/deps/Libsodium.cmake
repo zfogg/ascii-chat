@@ -210,8 +210,8 @@ if(USE_MUSL)
         BUILD_ALWAYS 0
         # For shared library support, ALL object files must be compiled with -fPIC.
         # Use --with-pic to force position-independent code generation.
-        CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} <SOURCE_DIR>/configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared --with-pic
-        BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} make -j
+        CONFIGURE_COMMAND env CC=${ASCIICHAT_CLANG_EXECUTABLE} CFLAGS="--target=${MUSL_TARGET}" <SOURCE_DIR>/configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared --with-pic
+        BUILD_COMMAND env CC=${ASCIICHAT_CLANG_EXECUTABLE} make -j
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
         LOG_DOWNLOAD TRUE

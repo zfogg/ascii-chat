@@ -8,12 +8,20 @@ include("${CMAKE_SOURCE_DIR}/deps/recast/Recast.cmake")
 # and must be built with the runner's native compiler and shared libclang.
 if(USE_MUSL)
     if(NOT RECAST_NATIVE_BINARY)
-        find_program(_recast_host_cxx NAMES clang++ g++ REQUIRED)
-        set(_recast_host_build "${CMAKE_BINARY_DIR}/recast-host")
+        # Use the same LLVM installation as the main build for the host tool.
+        # Do not let PATH select an older clang++ or GCC.
+        set(_recast_host_cxx "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
+        if(NOT _recast_host_cxx)
+            find_program(_recast_host_cxx NAMES clang++-23 clang++ REQUIRED)
+        endif()
+        # Keep the host-tool cache separate from older GCC/LLVM configurations.
+        set(_recast_host_build "${CMAKE_BINARY_DIR}/recast-host-llvm23")
         execute_process(
             COMMAND "${CMAKE_COMMAND}" -S "${CMAKE_SOURCE_DIR}/deps/recast"
                 -B "${_recast_host_build}" -G Ninja
                 "-DRECAST_HOST_CXX=${_recast_host_cxx}"
+                "-DCMAKE_C_COMPILER=${ASCIICHAT_CLANG_EXECUTABLE}"
+                "-DCMAKE_CXX_COMPILER=${_recast_host_cxx}"
                 -DRECAST_BUILD_DOCS=OFF -DBUILD_TESTING=OFF
                 -DRECAST_STATIC_LIBCLANG=OFF
             RESULT_VARIABLE _recast_host_configure_result

@@ -144,13 +144,13 @@ if(USE_MUSL)
     endif()
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
         string(APPEND _ffmpeg_ldflags " -mno-outline-atomics -nodefaultlibs")
-        string(APPEND _ffmpeg_libs " ${MUSL_LIBGCC_PATH} -lc")
+        string(APPEND _ffmpeg_libs " ${MUSL_COMPILER_RT_PATH} -lc")
     endif()
     set(_ffmpeg_archives)
     foreach(_lib avformat avcodec avutil swscale swresample)
         list(APPEND _ffmpeg_archives "${FFMPEG_PREFIX}/lib/lib${_lib}.a")
     endforeach()
-    set(_ffmpeg_env "${CMAKE_COMMAND}" -E env "REALGCC=${REAL_GCC}"
+    set(_ffmpeg_env "${CMAKE_COMMAND}" -E env
         "PKG_CONFIG_PATH=${X264_PREFIX}/lib/pkgconfig:${X265_PREFIX}/lib/pkgconfig"
         "PKG_CONFIG_LIBDIR=${X264_PREFIX}/lib/pkgconfig:${X265_PREFIX}/lib/pkgconfig" --)
     ExternalProject_Add(ffmpeg-musl
@@ -158,8 +158,8 @@ if(USE_MUSL)
         URL_HASH "SHA256=${FFMPEG_HASH}" DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/ffmpeg"
         CONFIGURE_COMMAND ${_ffmpeg_env} <SOURCE_DIR>/configure
-            --prefix=${FFMPEG_PREFIX} --cc=${MUSL_GCC}
-            "--extra-cflags=${MUSL_KERNEL_CFLAGS} -I${X264_PREFIX}/include -I${X265_PREFIX}/include"
+            --prefix=${FFMPEG_PREFIX} --cc=${ASCIICHAT_CLANG_EXECUTABLE}
+            "--extra-cflags=${MUSL_KERNEL_CFLAGS} --target=${MUSL_TARGET} -I${X264_PREFIX}/include -I${X265_PREFIX}/include"
             "--extra-ldflags=${_ffmpeg_ldflags}" "--extra-libs=${_ffmpeg_libs}"
             --enable-static --disable-shared --enable-pic --disable-programs --disable-doc
             --disable-debug --disable-runtime-cpudetect --disable-autodetect
