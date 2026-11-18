@@ -16,9 +16,9 @@
 #   - VCPKG_ROOT, VCPKG_TARGET_TRIPLET: (Windows only) vcpkg configuration
 #
 # Outputs (variables set by this file):
-#   - LIBSODIUM_LIBRARIES: Libraries to link against
-#   - LIBSODIUM_INCLUDE_DIRS: Include directories
-#   - LIBSODIUM_FOUND: Whether libsodium was found
+#   - _asciichat_libsodium_link: Libraries to link against
+#   - _asciichat_libsodium_include: Include directories
+#   - _asciichat_libsodium_found: Whether libsodium was found
 # =============================================================================
 
 # Handle iOS builds - libsodium is built from source
@@ -75,10 +75,16 @@ if(PLATFORM_IOS)
         add_custom_target(libsodium-ios)
     endif()
 
-    set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
-    set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
+    set(_asciichat_libsodium_link "${LIBSODIUM_PREFIX}/lib/libsodium.a")
+    set(_asciichat_libsodium_include "${LIBSODIUM_PREFIX}/include")
     set(LIBSODIUM_BUILD_TARGET libsodium-ios)
-    set(LIBSODIUM_FOUND TRUE)
+    file(MAKE_DIRECTORY "${_asciichat_libsodium_include}")
+    add_library(asciichat-libsodium STATIC IMPORTED GLOBAL)
+    set_target_properties(asciichat-libsodium PROPERTIES
+        IMPORTED_LOCATION "${_asciichat_libsodium_link}"
+        INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_libsodium_include}")
+    add_dependencies(asciichat-libsodium libsodium-ios)
+    set(_asciichat_libsodium_found TRUE)
     return()
 endif()
 
@@ -182,9 +188,9 @@ if(DEFINED EMSCRIPTEN)
         INTERFACE_INCLUDE_DIRECTORIES "${LIBSODIUM_PREFIX}/include")
     add_dependencies(asciichat-libsodium libsodium-wasm)
 
-    set(LIBSODIUM_FOUND TRUE)
-    set(LIBSODIUM_LIBRARIES asciichat-libsodium)
-    set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
+    set(_asciichat_libsodium_found TRUE)
+    set(_asciichat_libsodium_link asciichat-libsodium)
+    set(_asciichat_libsodium_include "${LIBSODIUM_PREFIX}/include")
     set(LIBSODIUM_BUILD_TARGET libsodium-wasm)
 
     message(STATUS "${BoldGreen}✓${ColorReset} libsodium (WASM): ${BoldCyan}libsodium${ColorReset}")
@@ -227,8 +233,8 @@ if(USE_MUSL)
         LOG_OUTPUT_ON_FAILURE TRUE
     )
 
-    set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
-    set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
+    set(_asciichat_libsodium_link "${LIBSODIUM_PREFIX}/lib/libsodium.a")
+    set(_asciichat_libsodium_include "${LIBSODIUM_PREFIX}/include")
     set(LIBSODIUM_BUILD_TARGET libsodium-musl)
     file(MAKE_DIRECTORY "${LIBSODIUM_PREFIX}/include")
     add_library(asciichat-libsodium STATIC IMPORTED GLOBAL)
@@ -236,8 +242,8 @@ if(USE_MUSL)
         IMPORTED_LOCATION "${LIBSODIUM_PREFIX}/lib/libsodium.a"
         INTERFACE_INCLUDE_DIRECTORIES "${LIBSODIUM_PREFIX}/include")
     add_dependencies(asciichat-libsodium libsodium-musl)
-    set(LIBSODIUM_LIBRARIES asciichat-libsodium)
-    set(LIBSODIUM_FOUND TRUE)
+    set(_asciichat_libsodium_link asciichat-libsodium)
+    set(_asciichat_libsodium_found TRUE)
     return()
 endif()
 
@@ -275,9 +281,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE AND NOT USE_MUSL A
         add_custom_target(libsodium-linux)
     endif()
 
-    set(LIBSODIUM_FOUND TRUE)
-    set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
-    set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
+    set(_asciichat_libsodium_found TRUE)
+    set(_asciichat_libsodium_link "${LIBSODIUM_PREFIX}/lib/libsodium.a")
+    set(_asciichat_libsodium_include "${LIBSODIUM_PREFIX}/include")
     set(LIBSODIUM_BUILD_TARGET libsodium-linux)
     file(MAKE_DIRECTORY "${LIBSODIUM_PREFIX}/include")
     add_library(asciichat-libsodium STATIC IMPORTED GLOBAL)
@@ -285,7 +291,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE AND NOT USE_MUSL A
         IMPORTED_LOCATION "${LIBSODIUM_PREFIX}/lib/libsodium.a"
         INTERFACE_INCLUDE_DIRECTORIES "${LIBSODIUM_PREFIX}/include")
     add_dependencies(asciichat-libsodium libsodium-linux)
-    set(LIBSODIUM_LIBRARIES asciichat-libsodium)
+    set(_asciichat_libsodium_link asciichat-libsodium)
     return()
 endif()
 
