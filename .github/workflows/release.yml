@@ -19,7 +19,7 @@ on:
         default: false
 
 concurrency:
-  group: release-${{ github.repository }}-${{ github.ref }}
+  group: release-${{ github.repository }}
   cancel-in-progress: true
 
 env:
