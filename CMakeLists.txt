@@ -435,10 +435,6 @@ get_target_property(_asciichat_sqlite_includes asciichat-sqlite3
 set(RECAST_EXTRA_INCLUDE_DIRS ${_asciichat_sqlite_includes}
     "${libflags_SOURCE_DIR}/include")
 recast_targets(${_defer_targets})
-if(DEFINED _asciichat_recast_native_binary)
-  set(RECAST_NATIVE_BINARY "${_asciichat_recast_native_binary}" CACHE FILEPATH
-      "Recast host executable" FORCE)
-endif()
 unset(RECAST_SOURCE_HOOK)
 enable_testing()
 add_test(NAME ascii-chat-version COMMAND $<TARGET_FILE:ascii-chat> --version)
@@ -487,7 +483,7 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
             -DASCIICHAT_DEPS_CACHE_DIR=${WEB_DEPS_CACHE_DIR}
             -DPARENT_CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
             "-DRECAST_SOURCE_ROOT=${CMAKE_SOURCE_DIR}"
-            "-DRECAST_NATIVE_BINARY=${RECAST_NATIVE_BINARY}"
+            "-DRECAST_NATIVE_BINARY=${_asciichat_recast_native_binary}"
         )
         if(ASCIICHAT_MSYS2_ROOT)
             list(APPEND WASM_CMAKE_ARGS "-DASCIICHAT_MSYS2_ROOT=${ASCIICHAT_MSYS2_ROOT}")
