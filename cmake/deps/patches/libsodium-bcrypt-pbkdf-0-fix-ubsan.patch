@@ -2,25 +2,17 @@ diff --git a/src/openbsd-compat/blowfish.c b/src/openbsd-compat/blowfish.c
 index e10f7e7..c088a7a 100644
 --- a/src/openbsd-compat/blowfish.c
 +++ b/src/openbsd-compat/blowfish.c
-@@ -65,6 +65,13 @@
- /* Function for Feistel Networks */
-+/* Note: Blowfish intentionally uses wrapping arithmetic (modulo 2^32). */
-+/* Unsigned integer overflow is well-defined and intentional here. */
-+#if defined(__clang__)
-+#define BLOWFISH_FUNC __attribute__((no_sanitize("unsigned-integer-overflow")))
-+#else
-+#define BLOWFISH_FUNC
-+#endif
-
-@@ -73,6 +80,7 @@
+@@ -71,3 +71,6 @@
  #define BLFRND(s,p,i,j,n) (i ^= F(s,j) ^ (p)[n])
-
-+BLOWFISH_FUNC
+ 
++#if defined(__clang__)
++__attribute__((no_sanitize("unsigned-integer-overflow")))
++#endif
  void
- Blowfish_encipher(blf_ctx *c, u_int32_t *xl, u_int32_t *xr)
-@@ -98,6 +106,7 @@
+@@ -96,3 +99,6 @@
  }
-
-+BLOWFISH_FUNC
+ 
++#if defined(__clang__)
++__attribute__((no_sanitize("unsigned-integer-overflow")))
++#endif
  void
- Blowfish_decipher(blf_ctx *c, u_int32_t *xl, u_int32_t *xr)
