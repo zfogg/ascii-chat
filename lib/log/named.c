@@ -762,7 +762,7 @@ int log_named_format_message(const char *message, char *output, size_t output_si
        * See commit b86fed2a8 which introduced the bug.
        */
       // NOLINTNEXTLINE(readability-simplify-boolean-expr) - Intentionally disabled code, see comment above
-      if (false && !is_already_formatted && digit_count > 0) {
+      if (is_already_formatted && !is_already_formatted && digit_count > 0) {
         const char *type_name = NULL;
         size_t type_len = 0;
         const char *prefix_start = find_generic_type_prefix(message, int_start, &type_name, &type_len);
