@@ -92,6 +92,8 @@ configure_musl_pre_project("${CMAKE_BUILD_TYPE}")
 include(${CMAKE_SOURCE_DIR}/cmake/platform/iOS.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/LLVM.cmake)
+include(${CMAKE_SOURCE_DIR}/deps/cmake-utils/CacheLauncher.cmake)
+cmake_utils_configure_cache_launcher()
 configure_llvm_pre_project()
 
 # Enable C++ for project dependencies and source instrumentation
@@ -214,7 +216,7 @@ endif()
 # =============================================================================
 # Compiler config
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/CCache.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compiler/CacheLaunchers.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/CompilerDetection.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/CompilerFlags.cmake)
 configure_base_compiler_flags()

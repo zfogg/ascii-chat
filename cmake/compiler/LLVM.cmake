@@ -33,7 +33,7 @@
 
 function(configure_llvm_pre_project)
     # Check for ccache and use it if available (from centralized FindPrograms.cmake)
-    if(ASCIICHAT_CCACHE_EXECUTABLE)
+    if(NOT CMAKE_C_COMPILER_LAUNCHER AND ASCIICHAT_CCACHE_EXECUTABLE)
         set(CMAKE_C_COMPILER_LAUNCHER "${ASCIICHAT_CCACHE_EXECUTABLE}" CACHE STRING "C compiler launcher" FORCE)
     else()
         if(DEFINED CMAKE_C_COMPILER_LAUNCHER AND CMAKE_C_COMPILER_LAUNCHER MATCHES "ccache")
