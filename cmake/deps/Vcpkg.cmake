@@ -120,8 +120,9 @@ endif()
 # Set library and include paths
 # =============================================================================
 
-if(VCPKG_MANIFEST_MODE AND VCPKG_TOOLCHAIN_LOADED)
-    # Respect vcpkg's installed directory override in manifest mode.
+if(VCPKG_MANIFEST_MODE AND DEFINED VCPKG_INSTALLED_DIR)
+    # Respect vcpkg's installed directory override in manifest mode even when
+    # manifest installation is disabled for a restored dependency cache.
     set(_vcpkg_installed_dir "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
 else()
     # Classic mode: packages in global vcpkg installation

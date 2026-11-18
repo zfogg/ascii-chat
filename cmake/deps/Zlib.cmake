@@ -57,10 +57,10 @@ endif()
 
 # Try to find zlib via CMake module mode first (vcpkg provides a wrapper),
 # then config mode, then fall back to pkg-config
-find_package(ZLIB QUIET)
+find_package(ZLIB QUIET PATHS "${VCPKG_LIB_PATH}/.." NO_DEFAULT_PATH)
 
 if(NOT ZLIB_FOUND)
-    find_package(ZLIB QUIET CONFIG)
+    find_package(ZLIB QUIET CONFIG PATHS "${VCPKG_LIB_PATH}/.." NO_DEFAULT_PATH)
 endif()
 
 if(NOT ZLIB_FOUND)

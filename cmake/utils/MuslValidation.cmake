@@ -1,0 +1,15 @@
+# Validation for fully static musl targets.
+include_guard(GLOBAL)
+
+function(asciichat_validate_musl_target target)
+    if(NOT USE_MUSL OR NOT TARGET "${target}")
+        return()
+    endif()
+    get_target_property(_link_options "${target}" INTERFACE_LINK_OPTIONS)
+    get_target_property(_link_libs "${target}" INTERFACE_LINK_LIBRARIES)
+    foreach(_value IN LISTS _link_options _link_libs)
+        if("${_value}" MATCHES "(^|/)usr/include|libgcc|gcc_s|glibc|\.so($|[.;])")
+            message(FATAL_ERROR "Musl target ${target} contains forbidden host dependency: ${_value}")
+        endif()
+    endforeach()
+endfunction()

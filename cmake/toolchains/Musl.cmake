@@ -1,5 +1,6 @@
 # A Clang musl toolchain for packaged musl SDKs and optional complete sysroots.
 include_guard(GLOBAL)
+include("${CMAKE_CURRENT_LIST_DIR}/../utils/MuslValidation.cmake")
 set(CMAKE_SYSTEM_NAME Linux)
 if(NOT CMAKE_SYSTEM_PROCESSOR)
     set(CMAKE_SYSTEM_PROCESSOR "${CMAKE_HOST_SYSTEM_PROCESSOR}")

@@ -110,4 +110,9 @@ endif()
 
 set(ZSTD_FOUND TRUE)
 
+if(NOT TARGET asciichat-zstd)
+    add_library(asciichat-zstd INTERFACE)
+    target_link_libraries(asciichat-zstd INTERFACE zstd::libzstd)
+endif()
+
 message(STATUS "${BoldGreen}✓${ColorReset} zstd found")

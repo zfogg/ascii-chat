@@ -35,7 +35,7 @@ else()
   set(_rnnoise_library "${ASCIICHAT_RNNOISE_INSTALL_DIR}/lib/librnnoise.a")
 endif()
 
-ExternalProject_Add(ascii-chat-rnnoise-build
+ExternalProject_Add(asciichat-rnnoise-build
     SOURCE_DIR "${ASCIICHAT_RNNOISE_SOURCE_DIR}"
     BINARY_DIR "${ASCIICHAT_RNNOISE_BUILD_DIR}"
     CONFIGURE_COMMAND "${CMAKE_COMMAND}"
@@ -56,15 +56,15 @@ ExternalProject_Add(ascii-chat-rnnoise-build
     INSTALL_DIR "${ASCIICHAT_RNNOISE_INSTALL_DIR}"
 )
 
-add_library(ascii-chat-rnnoise ${_rnnoise_library_type} IMPORTED GLOBAL)
-set_target_properties(ascii-chat-rnnoise PROPERTIES
+add_library(asciichat-rnnoise ${_rnnoise_library_type} IMPORTED GLOBAL)
+set_target_properties(asciichat-rnnoise PROPERTIES
     IMPORTED_LOCATION "${_rnnoise_library}"
     INTERFACE_INCLUDE_DIRECTORIES "${ASCIICHAT_RNNOISE_INSTALL_DIR}/include"
 )
 if(_rnnoise_import_library)
-    set_target_properties(ascii-chat-rnnoise PROPERTIES IMPORTED_IMPLIB "${_rnnoise_import_library}")
+    set_target_properties(asciichat-rnnoise PROPERTIES IMPORTED_IMPLIB "${_rnnoise_import_library}")
 endif()
-add_dependencies(ascii-chat-rnnoise ascii-chat-rnnoise-build)
+add_dependencies(asciichat-rnnoise asciichat-rnnoise-build)
 
 unset(_rnnoise_library_type)
 unset(_rnnoise_library)

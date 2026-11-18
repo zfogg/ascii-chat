@@ -77,7 +77,9 @@ elseif(APPLE)
 
 elseif(WIN32)
     # Windows: Use vcpkg
-    find_package(absl CONFIG QUIET)
+    find_package(absl CONFIG QUIET
+        PATHS "${VCPKG_LIB_PATH}/.."
+        NO_DEFAULT_PATH)
     if(absl_FOUND)
         set(ABSEIL_LIBRARIES absl::base absl::strings)
         set(ABSEIL_INCLUDE_DIRS "")
