@@ -338,9 +338,8 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
         target_compile_definitions(${MODULE_NAME} PRIVATE MI_DEBUG=${MIMALLOC_DEBUG_LEVEL})
     endif()
 
-    # Mimalloc include directory (use MIMALLOC_INCLUDE_DIRS for system vs FetchContent)
-    if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
-        target_include_directories(${MODULE_NAME} BEFORE PRIVATE ${MIMALLOC_INCLUDE_DIRS})
+    if(USE_MIMALLOC AND TARGET asciichat-mimalloc)
+        target_link_libraries(${MODULE_NAME} PRIVATE asciichat-mimalloc)
     endif()
 
     # Musl flag
@@ -357,7 +356,7 @@ endmacro()
 # -----------------------------------------------------------------------------
 list(FILTER UTIL_SRCS EXCLUDE REGEX "/utf8proc/utf8proc[.]c$")
 create_ascii_chat_module(ascii-chat-util "${UTIL_SRCS}")
-target_link_libraries(ascii-chat-util PRIVATE ${UTF8PROC_LIBRARIES} asciichat-icu libflags::flags)
+target_link_libraries(ascii-chat-util PRIVATE asciichat-utf8proc asciichat-icu asciichat-libflags)
 
 # PCRE2: Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
 # CRITICAL: Must be defined before including pcre2.h in any source file
@@ -366,25 +365,7 @@ target_compile_definitions(ascii-chat-util PUBLIC PCRE2_CODE_UNIT_WIDTH=8)
 
 # Add PCRE2 include directory (must be before linking)
 # PUBLIC because pcre2.h is included from public header include/ascii-chat/util/pcre2.h
-target_include_directories(ascii-chat-util PUBLIC ${PCRE2_INCLUDE_DIRS})
-
-# Link PCRE2 library
-# Two modes: (1) pkg-config sets LIBRARY_DIRS + LIBRARIES, (2) static lib sets full path in LIBRARIES
-# If LIBRARY_DIRS is set (pkg-config mode), add link directory first
-if(PCRE2_LIBRARY_DIRS)
-    target_link_directories(ascii-chat-util PRIVATE ${PCRE2_LIBRARY_DIRS})
-endif()
-# Link the library (either library name or full path)
-if(WIN32)
-    target_link_libraries(ascii-chat-util PRIVATE ${PCRE2_LIBRARIES})
-else()
-    target_link_libraries(ascii-chat-util PRIVATE ${PCRE2_LIBRARIES} pthread)
-endif()
-
-# Add dependency on PCRE2 build target if building from source (musl)
-if(DEFINED PCRE2_BUILD_TARGET)
-    add_dependencies(ascii-chat-util ${PCRE2_BUILD_TARGET})
-endif()
+target_link_libraries(ascii-chat-util PUBLIC asciichat-pcre2)
 
 # -----------------------------------------------------------------------------
 # Module 2: Data Structures (depends on: util)
@@ -404,13 +385,13 @@ list(FILTER _runtime_sources INCLUDE REGEX "${_core_runtime_regex}")
 list(APPEND _runtime_sources ${LIB_DIR}/video/ascii/palette.c)
 create_ascii_chat_module(ascii-chat-runtime "${_runtime_sources}")
 
-target_link_libraries(ascii-chat-runtime INTERFACE libplatform::libplatform)
+target_link_libraries(ascii-chat-runtime INTERFACE asciichat-libplatform)
 target_include_directories(ascii-chat-runtime INTERFACE
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/lib
 )
 if(NOT EMSCRIPTEN)
-    target_link_libraries(ascii-chat-runtime INTERFACE ${ASCIICHAT_LIBUV_TARGET})
+    target_link_libraries(ascii-chat-runtime INTERFACE asciichat-libuv)
 endif()
 target_link_libraries(ascii-chat-runtime INTERFACE
     ascii-chat-util
@@ -418,8 +399,7 @@ target_link_libraries(ascii-chat-runtime INTERFACE
 )
 
 # Link render-file dependencies to platform module (for terminal renderers)
-target_include_directories(ascii-chat-runtime INTERFACE ${PLATFORM_INCLUDES})
-target_link_libraries(ascii-chat-runtime INTERFACE ${PLATFORM_LIBS} ${UTF8PROC_LIBRARIES})
+target_link_libraries(ascii-chat-runtime INTERFACE asciichat-platform asciichat-utf8proc)
 
 # Add kernel headers for musl builds (needed for V4L2)
 if(USE_MUSL AND DEFINED MUSL_DEPS_DIR AND EXISTS "${MUSL_DEPS_DIR}/musl-deps/kernel-headers")
@@ -457,8 +437,7 @@ else()
         )
     elseif(PLATFORM_LINUX)
         target_link_libraries(ascii-chat-runtime INTERFACE ${CMAKE_THREAD_LIBS_INIT})
-        target_include_directories(ascii-chat-runtime INTERFACE ${LIBSYSTEMD_INCLUDE_DIRS})
-        target_link_libraries(ascii-chat-runtime INTERFACE ${LIBSYSTEMD_LIBRARIES})
+        target_link_libraries(ascii-chat-runtime INTERFACE asciichat-systemd)
         target_compile_definitions(ascii-chat-runtime INTERFACE HAVE_LIBSYSTEMD=1)
     endif()
 endif()
@@ -468,36 +447,17 @@ endif()
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-crypto "${CRYPTO_SRCS}")
 # For OBJECT libs, link external deps only (no module deps)
-target_link_libraries(ascii-chat-crypto PRIVATE ${LIBSODIUM_LIBRARIES})
-
-# Add libsodium include directory (for GCC builds from source)
-target_include_directories(ascii-chat-crypto PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
-
-# Add dependency on libsodium build target if building from source
-if(DEFINED LIBSODIUM_BUILD_TARGET)
-    add_dependencies(ascii-chat-crypto ${LIBSODIUM_BUILD_TARGET})
-endif()
+target_link_libraries(ascii-chat-crypto PRIVATE asciichat-libsodium)
 
 # PCRE2: Configure for crypto module (for SSH parser regex)
 # Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
 target_compile_definitions(ascii-chat-crypto PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
 
 # Add PCRE2 include directory
-target_include_directories(ascii-chat-crypto PRIVATE ${PCRE2_INCLUDE_DIRS})
-
-# Link PCRE2 library
-target_link_libraries(ascii-chat-crypto PRIVATE ${PCRE2_LIBRARIES})
-if(PCRE2_LIBRARY_DIRS)
-    target_link_directories(ascii-chat-crypto PRIVATE ${PCRE2_LIBRARY_DIRS})
-endif()
-
-# Add dependency on PCRE2 build target if building from source
-if(DEFINED PCRE2_BUILD_TARGET)
-    add_dependencies(ascii-chat-crypto ${PCRE2_BUILD_TARGET})
-endif()
+target_link_libraries(ascii-chat-crypto PRIVATE asciichat-pcre2)
 
 # Add BearSSL (required crypto library)
-target_link_libraries(ascii-chat-crypto PRIVATE ${BEARSSL_LIBRARIES})
+target_link_libraries(ascii-chat-crypto PRIVATE asciichat-bearssl)
 
 # Configure libsodium-bcrypt-pbkdf source files
 # These files need src/ directory in include path to find their own internal headers
@@ -571,7 +531,7 @@ create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
 # The defer transformer parses video sources from the compilation database
 # before external FFmpeg headers are installed; keep this target's include
 # search path explicit instead of relying only on the project interface target.
-target_include_directories(ascii-chat-video BEFORE PRIVATE ${FFMPEG_INCLUDE_DIRS})
+target_link_libraries(ascii-chat-video PRIVATE asciichat-ffmpeg)
 if(USE_MUSL)
     set(_musl_ffmpeg_include_dir "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include")
     target_include_directories(ascii-chat-video BEFORE PRIVATE "${_musl_ffmpeg_include_dir}")
@@ -585,51 +545,23 @@ ascii_chat_add_face_detector(ascii-chat-video)
 
 # Link external dependencies (FFmpeg, freetype, fontconfig)
 # Module dependencies (util, platform, core, simd) are resolved through OBJECT library merging
-target_link_directories(ascii-chat-video PRIVATE ${FFMPEG_LIBRARY_DIRS})
-target_link_libraries(ascii-chat-video PRIVATE ${FFMPEG_LIBRARIES})
-target_link_libraries(ascii-chat-video PRIVATE ${FFTW_LIBRARIES})
-if(TARGET FFTW3::fftw3f)
-    set(FFTW_FLOAT_LIBRARY FFTW3::fftw3f)
-elseif(TARGET fftw3f)
-    set(FFTW_FLOAT_LIBRARY fftw3f)
-else()
-    find_package(PkgConfig QUIET)
-    if(PkgConfig_FOUND)
-        pkg_check_modules(FFTW_FLOAT QUIET IMPORTED_TARGET fftw3f)
-    endif()
-    if(FFTW_FLOAT_FOUND AND FFTW_FLOAT_LIBRARIES)
-        set(FFTW_FLOAT_LIBRARY "${FFTW_FLOAT_LIBRARIES}")
-        target_link_directories(ascii-chat-video PRIVATE ${FFTW_FLOAT_LIBRARY_DIRS})
-    else()
-        find_library(FFTW_FLOAT_LIBRARY NAMES fftw3f REQUIRED)
-    endif()
-endif()
-target_link_libraries(ascii-chat-video PRIVATE ${FFTW_FLOAT_LIBRARY})
+target_link_libraries(ascii-chat-video PRIVATE asciichat-fftw-float)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # V4L2 capture uses swscale and needs generated FFmpeg headers before compiling.
-    target_link_libraries(ascii-chat-runtime INTERFACE ${FFMPEG_LIBRARIES})
+    target_link_libraries(ascii-chat-runtime INTERFACE asciichat-ffmpeg)
 endif()
 if(VTERM_MUSL_TARGET)
     add_dependencies(ascii-chat-video ${VTERM_MUSL_TARGET})
 endif()
 
 # libvterm for terminal rendering in render-file
-if(VTERM_INCLUDE_DIRS)
-    target_include_directories(ascii-chat-video PRIVATE ${VTERM_INCLUDE_DIRS})
-endif()
-if(VTERM_LDFLAGS)
-    target_link_libraries(ascii-chat-video PRIVATE ${VTERM_LDFLAGS})
-endif()
+target_link_libraries(ascii-chat-video PRIVATE asciichat-vterm)
 
 # FreeType2 for font rendering in render-file
-target_include_directories(ascii-chat-video PRIVATE ${FREETYPE_INCLUDE_DIRS})
-target_link_libraries(ascii-chat-video PRIVATE ${FREETYPE_LIBRARIES})
+target_link_libraries(ascii-chat-video PRIVATE asciichat-freetype)
 
 # Fontconfig for font selection in render-file
-if(FONTCONFIG_LINK_LIBRARIES)
-    target_include_directories(ascii-chat-video PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
-    target_link_libraries(ascii-chat-video PRIVATE ${FONTCONFIG_LINK_LIBRARIES})
-endif()
+target_link_libraries(ascii-chat-video PRIVATE asciichat-fontconfig)
 
 # Mark generated font files as generated (for OBJECT libraries, must be before module creation)
 set_source_files_properties(
@@ -646,18 +578,7 @@ add_dependencies(ascii-chat-video generate_fonts)
 target_compile_definitions(ascii-chat-video PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
 
 # Add PCRE2 include directory
-target_include_directories(ascii-chat-video PRIVATE ${PCRE2_INCLUDE_DIRS})
-
-# Link PCRE2 library (required)
-target_link_libraries(ascii-chat-video PRIVATE ${PCRE2_LIBRARIES})
-if(PCRE2_LIBRARY_DIRS)
-    target_link_directories(ascii-chat-video PRIVATE ${PCRE2_LIBRARY_DIRS})
-endif()
-
-# Add dependency on PCRE2 build target if building from source
-if(DEFINED PCRE2_BUILD_TARGET)
-    add_dependencies(ascii-chat-video ${PCRE2_BUILD_TARGET})
-endif()
+target_link_libraries(ascii-chat-video PRIVATE asciichat-pcre2)
 
 # -----------------------------------------------------------------------------
 # Module 6: Audio Processing (depends on: util, platform, data-structures)
@@ -673,14 +594,6 @@ endif()
 # Now create the module with WebRTC includes in scope
 create_ascii_chat_module(ascii-chat-audio "${AUDIO_SRCS}")
 target_link_libraries(ascii-chat-audio PRIVATE asciichat-rnnoise)
-
-# Add library search directories for pkg-config found libraries
-if(PORTAUDIO_LIBRARY_DIRS)
-    link_directories(${PORTAUDIO_LIBRARY_DIRS})
-endif()
-if(OPUS_LIBRARY_DIRS)
-    link_directories(${OPUS_LIBRARY_DIRS})
-endif()
 
 # For OBJECT libs, link external deps only
 target_link_libraries(ascii-chat-audio PRIVATE
@@ -743,25 +656,16 @@ foreach(_core_target IN LISTS _CORE_MODULE_TARGETS)
     target_include_directories(${_core_target} PRIVATE
         ${CMAKE_SOURCE_DIR}/src/common
         ${CMAKE_SOURCE_DIR}/lib
-        ${PCRE2_INCLUDE_DIRS}
-        ${LIBWEBSOCKETS_INCLUDE_DIRS}
-        ${YYJSON_INCLUDE_DIRS}
         "${libflags_SOURCE_DIR}/include"
     )
     target_compile_definitions(${_core_target} PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
     target_link_libraries(${_core_target} PRIVATE
-        ${SQLITE3_LIBRARIES}
-        ${UTF8PROC_LIBRARIES}
-        ${YYJSON_LIBRARIES}
-        ${PCRE2_LIBRARIES}
-        libflags::flags
+        asciichat-sqlite3
+        asciichat-utf8proc
+        asciichat-yyjson
+        asciichat-pcre2
+        asciichat-libflags
     )
-    if(PCRE2_LIBRARY_DIRS)
-        target_link_directories(${_core_target} PRIVATE ${PCRE2_LIBRARY_DIRS})
-    endif()
-    if(DEFINED PCRE2_BUILD_TARGET)
-        add_dependencies(${_core_target} ${PCRE2_BUILD_TARGET})
-    endif()
     if(NOT WIN32)
         target_link_libraries(${_core_target} PRIVATE m)
     endif()
@@ -770,11 +674,10 @@ endforeach()
 target_link_libraries(ascii-chat-logging PRIVATE OpenSSL::SSL)
 
 if(NOT EMSCRIPTEN)
-    target_link_libraries(ascii-chat-runtime PRIVATE ${ASCIICHAT_LIBUV_TARGET})
+    target_link_libraries(ascii-chat-runtime PRIVATE asciichat-libuv)
 endif()
 if(PLATFORM_LINUX AND NOT USE_MUSL)
-    target_include_directories(ascii-chat-runtime PRIVATE ${LIBSYSTEMD_INCLUDE_DIRS})
-    target_link_libraries(ascii-chat-runtime PRIVATE ${LIBSYSTEMD_LIBRARIES})
+    target_link_libraries(ascii-chat-runtime PRIVATE asciichat-systemd)
     target_compile_definitions(ascii-chat-runtime PRIVATE HAVE_LIBSYSTEMD=1)
 endif()
 if(LIBWEBSOCKETS_BUILD_TARGET)
@@ -787,8 +690,7 @@ endif()
 # yyjson - Fast JSON library for structured logging and JSON parsing
 
 # Add yyjson include directory
-target_include_directories(ascii-chat-video PRIVATE ${YYJSON_INCLUDE_DIRS})
-target_link_libraries(ascii-chat-video PRIVATE ${YYJSON_LIBRARIES})
+target_link_libraries(ascii-chat-video PRIVATE asciichat-yyjson)
 
 # Link yyjson library
 if(USE_MUSL)
@@ -799,7 +701,7 @@ if(USE_MUSL)
 endif()
 
 # Link yyjson (required)
-target_link_libraries(ascii-chat-logging PRIVATE ${YYJSON_LIBRARIES})
+target_link_libraries(ascii-chat-logging PRIVATE asciichat-yyjson)
 
 # -----------------------------------------------------------------------------
 # Module 9: Panic Instrumentation Runtime (depends on infrastructure modules)
@@ -831,9 +733,7 @@ endif()
 # Module 10: Network (depends on: util, platform, crypto)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
-if(USE_MUSL AND ASCIICHAT_LIBUV_INCLUDE_DIRS)
-    target_include_directories(ascii-chat-network PRIVATE ${ASCIICHAT_LIBUV_INCLUDE_DIRS})
-endif()
+target_link_libraries(ascii-chat-network PRIVATE asciichat-libuv)
 # Prefer the package target so manifest/vcpkg builds carry the correct
 # include and transitive-link settings on every platform.  Keep the direct
 # search as a fallback for distro/Homebrew installs that do not ship a CMake
@@ -916,20 +816,11 @@ endif()
 target_compile_definitions(ascii-chat-network PRIVATE MDNS_NO_MAIN)
 target_link_libraries(ascii-chat-network PRIVATE mdns::mdns)
 # yyjson for /health JSON endpoint
-target_include_directories(ascii-chat-network PRIVATE ${YYJSON_INCLUDE_DIRS})
-target_link_libraries(ascii-chat-network PRIVATE ${YYJSON_LIBRARIES})
+target_link_libraries(ascii-chat-network PRIVATE asciichat-yyjson)
 
 # PCRE2: Add include directory and define PCRE2_CODE_UNIT_WIDTH=8
 # Network module uses PCRE2 in sdp.c and ice.c
-if(PCRE2_INCLUDE_DIRS)
-    target_include_directories(ascii-chat-network PRIVATE ${PCRE2_INCLUDE_DIRS})
-endif()
-if(LIBWEBSOCKETS_INCLUDE_DIRS)
-    target_include_directories(ascii-chat-network PRIVATE ${LIBWEBSOCKETS_INCLUDE_DIRS})
-endif()
-if(LIBWEBSOCKETS_LIBRARIES)
-    target_link_libraries(ascii-chat-network PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
-endif()
+target_link_libraries(ascii-chat-network PRIVATE asciichat-pcre2 asciichat-libwebsockets)
 if(LIBWEBSOCKETS_BUILD_TARGET)
     add_dependencies(ascii-chat-network ${LIBWEBSOCKETS_BUILD_TARGET})
 endif()
@@ -946,19 +837,15 @@ if(NOT BUILDING_OBJECT_LIBS)
         ascii-chat-ui
         ascii-chat-session
         ascii-chat-discovery
-        ${PCRE2_LIBRARIES}
-        zstd::libzstd
-        ${SQLITE3_LIBRARIES}  # Rate limiting SQLite backend
-        libdatachannel  # WebRTC DataChannels for P2P transport
+        asciichat-pcre2
+        asciichat-zstd
+        asciichat-sqlite3  # Rate limiting SQLite backend
+        asciichat-libdatachannel  # WebRTC DataChannels for P2P transport
         OpenSSL::Crypto  # Required by libdatachannel for TLS/DTLS
     )
     # Link libwebsockets
-    if(LIBWEBSOCKETS_LIBRARIES)
-        target_link_libraries(ascii-chat-network PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
-    endif()
     # miniupnpc is a required native dependency.
-    target_include_directories(ascii-chat-network PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
-    target_link_libraries(ascii-chat-network PRIVATE ${MINIUPNPC_LIBRARIES})
+    target_link_libraries(ascii-chat-network PRIVATE asciichat-miniupnpc)
         # Also link libnatpmp on macOS
         if(NATPMP_LIBRARY)
             target_include_directories(ascii-chat-network PRIVATE ${NATPMP_INCLUDE_DIR})
@@ -966,13 +853,9 @@ if(NOT BUILDING_OBJECT_LIBS)
         endif()
 else()
     # For OBJECT libs, link external deps only (OpenSSL needed by libdatachannel for TLS/DTLS)
-    target_link_libraries(ascii-chat-network PRIVATE ${PCRE2_LIBRARIES} zstd::libzstd ${SQLITE3_LIBRARIES} libdatachannel OpenSSL::Crypto)
+    target_link_libraries(ascii-chat-network PRIVATE asciichat-pcre2 asciichat-zstd asciichat-sqlite3 asciichat-libdatachannel OpenSSL::Crypto)
     # Link libwebsockets
-    if(LIBWEBSOCKETS_LIBRARIES)
-        target_link_libraries(ascii-chat-network PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
-    endif()
-    target_include_directories(ascii-chat-network PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
-    target_link_libraries(ascii-chat-network PRIVATE ${MINIUPNPC_LIBRARIES})
+    target_link_libraries(ascii-chat-network PRIVATE asciichat-libwebsockets asciichat-miniupnpc)
         # Also link libnatpmp on macOS
         if(NATPMP_LIBRARY)
             target_include_directories(ascii-chat-network PRIVATE ${NATPMP_INCLUDE_DIR})
@@ -1049,7 +932,7 @@ add_library(ascii-chat-shared SHARED
     if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
     endif()
-target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES} libflags::flags asciichat-rnnoise)
+target_link_libraries(ascii-chat-shared PRIVATE asciichat-utf8proc asciichat-libflags asciichat-rnnoise)
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
     endif()
@@ -1211,22 +1094,15 @@ target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES} libflags::
         $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>
     )
 
-    if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
-        target_include_directories(ascii-chat-shared BEFORE PRIVATE $<BUILD_INTERFACE:${MIMALLOC_INCLUDE_DIRS}>)
-    endif()
-
     # Add yyjson include directory
     # Add yyjson include directory (required)
-    target_include_directories(ascii-chat-shared PRIVATE ${YYJSON_INCLUDE_DIRS})
+    target_link_libraries(ascii-chat-shared PRIVATE asciichat-yyjson)
 
     # Add PCRE2 include directory and library directory for the shared library
     # PUBLIC because public header include/ascii-chat/util/pcre2.h includes pcre2.h (required)
-    target_include_directories(ascii-chat-shared PUBLIC ${PCRE2_INCLUDE_DIRS})
+    target_link_libraries(ascii-chat-shared PUBLIC asciichat-pcre2)
     # PCRE2_CODE_UNIT_WIDTH=8 must be defined before including pcre2.h
     target_compile_definitions(ascii-chat-shared PUBLIC PCRE2_CODE_UNIT_WIDTH=8)
-    if(PCRE2_LIBRARY_DIRS)
-        target_link_directories(ascii-chat-shared PRIVATE ${PCRE2_LIBRARY_DIRS})
-    endif()
 
     # Unix: Set proper visibility and TLS model for shared library
     # Shared libraries must use global-dynamic or local-dynamic TLS model (not initial-exec)
@@ -1257,12 +1133,12 @@ target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES} libflags::
     target_link_libraries(ascii-chat-shared PRIVATE
         asciichat-icu
         ${ASCIICHAT_NGHTTP2_TARGET}
-        ${LIBSODIUM_LIBRARIES}
-        zstd::libzstd
-        ${OPUS_LIBRARIES}
-        ${SQLITE3_LIBRARIES}
-        ${PCRE2_LIBRARIES}
-        ${YYJSON_LIBRARIES}
+        asciichat-libsodium
+        asciichat-zstd
+        asciichat-opus
+        asciichat-sqlite3
+        asciichat-pcre2
+        asciichat-yyjson
     )
 
     # Coverage instrumentation is propagated through the shared target's
@@ -1277,7 +1153,7 @@ target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES} libflags::
     # Link PortAudio with platform-specific dependencies
     if(APPLE)
         target_link_libraries(ascii-chat-shared PRIVATE
-            ${PORTAUDIO_LIBRARIES}
+            asciichat-portaudio
             "-framework CoreFoundation"
             ${ASCIICHAT_CLIPBOARD_FRAMEWORK}
             ${COREAUDIO_FRAMEWORK}
@@ -1288,38 +1164,35 @@ target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES} libflags::
         )
     elseif(PLATFORM_LINUX AND JACK_LIB)
         target_link_libraries(ascii-chat-shared PRIVATE
-            ${PORTAUDIO_LIBRARIES}
+            asciichat-portaudio
             ${JACK_LIB}
         )
     else()
-        target_link_libraries(ascii-chat-shared PRIVATE ${PORTAUDIO_LIBRARIES})
+        target_link_libraries(ascii-chat-shared PRIVATE asciichat-portaudio)
     endif()
 
     # Link libsystemd (required for keepawake)
     if(NOT USE_MUSL)
-        target_link_libraries(ascii-chat-shared PRIVATE ${LIBSYSTEMD_LIBRARIES})
+        target_link_libraries(ascii-chat-shared PRIVATE asciichat-systemd)
     endif()
 
     # Link WebRTC and other network libraries
     target_link_libraries(ascii-chat-shared PRIVATE
-        libdatachannel
+        asciichat-libdatachannel
         OpenSSL::SSL
         OpenSSL::Crypto
     )
     if(MINIUPNPC_FOUND)
-        target_include_directories(ascii-chat-shared PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
-        target_link_libraries(ascii-chat-shared PRIVATE ${MINIUPNPC_LIBRARIES})
+        target_link_libraries(ascii-chat-shared PRIVATE asciichat-miniupnpc)
         if(NATPMP_LIBRARY)
             target_include_directories(ascii-chat-shared PRIVATE ${NATPMP_INCLUDE_DIR})
             target_link_libraries(ascii-chat-shared PRIVATE ${NATPMP_LIBRARY})
         endif()
     endif()
     # Link BearSSL (required)
-    target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
+    target_link_libraries(ascii-chat-shared PRIVATE asciichat-bearssl)
     # Link libwebsockets
-    if(LIBWEBSOCKETS_LIBRARIES)
-        target_link_libraries(ascii-chat-shared PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
-    endif()
+    target_link_libraries(ascii-chat-shared PRIVATE asciichat-libwebsockets)
 
     # Suppress linker warnings about duplicate debug symbols in libdatachannel
     # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
@@ -1348,11 +1221,10 @@ target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES} libflags::
         ${CORE_LIBS}
     )
     # Link BearSSL (required)
-    target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
+    target_link_libraries(ascii-chat-shared PRIVATE asciichat-bearssl)
     # Link miniupnpc if available (UPnP/NAT-PMP support)
     if(MINIUPNPC_FOUND)
-        target_include_directories(ascii-chat-shared PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
-        target_link_libraries(ascii-chat-shared PRIVATE ${MINIUPNPC_LIBRARIES})
+        target_link_libraries(ascii-chat-shared PRIVATE asciichat-miniupnpc)
         if(NATPMP_LIBRARY)
             target_include_directories(ascii-chat-shared PRIVATE ${NATPMP_INCLUDE_DIR})
             target_link_libraries(ascii-chat-shared PRIVATE ${NATPMP_LIBRARY})
@@ -1360,7 +1232,7 @@ target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES} libflags::
     endif()
     # Windows DLL needs mimalloc built in (no LD_PRELOAD mechanism)
     if(USE_MIMALLOC)
-        target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_LIBRARIES})
+        target_link_libraries(ascii-chat-shared PRIVATE asciichat-mimalloc)
     endif()
     # Delay-load datachannel.dll to avoid loading it for simple commands like --help/--version.
     # Note: We cannot delay-load MSVCP140D.dll because it breaks CRT initialization.
@@ -1378,59 +1250,29 @@ else()
     pkg_check_modules(JACK jack)
 
     target_link_libraries(ascii-chat-shared PRIVATE
-        ${CORE_LIBS} m ${SQLITE3_LIBRARIES}
-        ${JACK_LIBRARIES}
+        ${CORE_LIBS} m asciichat-sqlite3
+        asciichat-platform
     )
     # Link miniupnpc if available (UPnP/NAT-PMP support)
     if(MINIUPNPC_FOUND)
-        target_include_directories(ascii-chat-shared PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
-        target_link_libraries(ascii-chat-shared PRIVATE ${MINIUPNPC_LIBRARIES})
+        target_link_libraries(ascii-chat-shared PRIVATE asciichat-miniupnpc)
         if(NATPMP_LIBRARY)
             target_link_libraries(ascii-chat-shared PRIVATE ${NATPMP_LIBRARY})
         endif()
     endif()
     # Link BearSSL (required)
-    target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
+    target_link_libraries(ascii-chat-shared PRIVATE asciichat-bearssl)
     # Audio codec and processing
-    target_link_libraries(ascii-chat-shared PRIVATE ${OPUS_LIBRARIES})
+        target_link_libraries(ascii-chat-shared PRIVATE asciichat-opus)
     # Link mimalloc into shared library (required for SAFE_MALLOC macros)
     # Use force_load/whole-archive to export all mimalloc symbols from the shared library
     if(USE_MIMALLOC)
-        if(MIMALLOC_IS_SHARED_LIB)
+        if(TARGET mimalloc-shared)
             # System mimalloc is a shared library - link normally (no --whole-archive)
             # Symbols stay in separate .so, not embedded in our library
-            if(TARGET mimalloc-shared)
-                target_link_libraries(ascii-chat-shared PRIVATE mimalloc-shared)
-            elseif(MIMALLOC_LIBRARIES)
-                target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_LIBRARIES})
-            endif()
-        elseif(TARGET mimalloc-shared)
-            # Static library - use force_load/whole-archive to include all objects
-            add_dependencies(ascii-chat-shared mimalloc-shared)
-            if(APPLE)
-                # macOS: -force_load includes all objects from static library
-                target_link_libraries(ascii-chat-shared PRIVATE -force_load $<TARGET_FILE:mimalloc-shared>)
-            else()
-                # Linux: --whole-archive includes all objects from static library
-                target_link_libraries(ascii-chat-shared PRIVATE
-                    -Wl,--whole-archive $<TARGET_FILE:mimalloc-shared> -Wl,--no-whole-archive)
-            endif()
-        elseif(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB)
-            # Fallback: use explicit path if set (cached builds)
-            if(APPLE)
-                target_link_libraries(ascii-chat-shared PRIVATE -force_load ${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB})
-            else()
-                target_link_libraries(ascii-chat-shared PRIVATE
-                    -Wl,--whole-archive ${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB} -Wl,--no-whole-archive)
-            endif()
-        elseif(MIMALLOC_SHARED_LIBRARIES)
-            # Another fallback: use MIMALLOC_SHARED_LIBRARIES if set
-            if(APPLE)
-                target_link_libraries(ascii-chat-shared PRIVATE -force_load ${MIMALLOC_SHARED_LIBRARIES})
-            else()
-                target_link_libraries(ascii-chat-shared PRIVATE
-                    -Wl,--whole-archive ${MIMALLOC_SHARED_LIBRARIES} -Wl,--no-whole-archive)
-            endif()
+            target_link_libraries(ascii-chat-shared PRIVATE asciichat-mimalloc)
+        else()
+            target_link_libraries(ascii-chat-shared PRIVATE asciichat-mimalloc)
         endif()
     endif()
     if(PLATFORM_DARWIN)
@@ -1464,27 +1306,19 @@ endif()
 
 # Link FFmpeg for media file streaming
 if(FFMPEG_FOUND)
-    target_link_directories(ascii-chat-shared PRIVATE ${FFMPEG_LIBRARY_DIRS})
-    target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LIBRARIES})
+    target_link_libraries(ascii-chat-shared PRIVATE asciichat-ffmpeg)
 endif()
 
 # Link FreeType2 and Fontconfig for font rendering
 # Use PUBLIC to ensure these are transitively linked when linking static library
-if(FREETYPE_LIBRARY_DIRS)
-    target_link_directories(ascii-chat-shared PRIVATE ${FREETYPE_LIBRARY_DIRS})
-endif()
-target_link_libraries(ascii-chat-shared PRIVATE ${FREETYPE_LIBRARIES})
-if(FONTCONFIG_LINK_LIBRARIES)
-    target_link_libraries(ascii-chat-shared PRIVATE ${FONTCONFIG_LINK_LIBRARIES})
-endif()
+target_link_libraries(ascii-chat-shared PRIVATE asciichat-freetype)
+target_link_libraries(ascii-chat-shared PRIVATE asciichat-fontconfig)
 
 # Link vterm for terminal emulation
-if(VTERM_LDFLAGS)
-    target_link_libraries(ascii-chat-shared PRIVATE ${VTERM_LDFLAGS})
-endif()
+target_link_libraries(ascii-chat-shared PRIVATE asciichat-vterm)
 
 # Link yyjson for JSON support
-target_link_libraries(ascii-chat-shared PRIVATE ${YYJSON_LIBRARIES})
+target_link_libraries(ascii-chat-shared PRIVATE asciichat-yyjson)
 
 # Suppress linker warnings about duplicate debug symbols in libdatachannel
 # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
@@ -1700,7 +1534,7 @@ add_dependencies(ascii-chat-static-lib build-ascii-chat-static-lib)
 # Create an INTERFACE library for dependency propagation
 # (IMPORTED libraries can't have INTERFACE_LINK_LIBRARIES in older CMake)
 add_library(ascii-chat-static INTERFACE)
-target_link_libraries(ascii-chat-static INTERFACE libplatform::libplatform ${UTF8PROC_LIBRARIES} asciichat-icu asciichat-rnnoise)
+target_link_libraries(ascii-chat-static INTERFACE asciichat-libplatform asciichat-utf8proc asciichat-icu asciichat-rnnoise)
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-static INTERFACE asciichat-quic)
 endif()
@@ -1708,7 +1542,7 @@ endif()
 # Link bundled dependencies (not available via package managers)
 # BearSSL and WebRTC AEC3 are embedded in the static library
 # BearSSL is required
-target_link_libraries(ascii-chat-static INTERFACE ${BEARSSL_LIBRARIES})
+target_link_libraries(ascii-chat-static INTERFACE asciichat-bearssl)
 if(NOT EMSCRIPTEN)
     if(TARGET ascii-chat-shared)
         target_link_libraries(ascii-chat-shared PRIVATE ${ASCIICHAT_LIBUV_TARGET})
@@ -1719,49 +1553,43 @@ if(NOT EMSCRIPTEN)
     endif()
     target_link_libraries(ascii-chat-static INTERFACE ${ASCIICHAT_NGHTTP2_TARGET})
 endif()
-if(WEBRTC_AEC3_LIBRARIES)
-    target_link_libraries(ascii-chat-static INTERFACE ${WEBRTC_AEC3_LIBRARIES})
-endif()
+target_link_libraries(ascii-chat-static INTERFACE asciichat-webrtc-aec3)
 
 # External dependencies - users must install these via package manager
 # These are linked but NOT embedded in the static library
 target_link_libraries(ascii-chat-static INTERFACE
-    ${PCRE2_LIBRARIES}
-    ${LIBSODIUM_LIBRARIES}
-    zstd::libzstd
-    ${PORTAUDIO_LIBRARIES}
-    ${OPUS_LIBRARIES}
-    ${SQLITE3_LIBRARIES}
+    asciichat-pcre2
+    asciichat-libsodium
+    asciichat-zstd
+    asciichat-portaudio
+    asciichat-opus
+    asciichat-sqlite3
     webrtc_audio_processing
-    ${FREETYPE_LIBRARIES}
-    ${FONTCONFIG_LINK_LIBRARIES}
-    ${VTERM_LDFLAGS}
-    libdatachannel
-    ${LIBWEBSOCKETS_LIBRARIES}
+    asciichat-freetype
+    asciichat-fontconfig
+    asciichat-vterm
+    asciichat-libdatachannel
+    asciichat-libwebsockets
     OpenSSL::SSL
     OpenSSL::Crypto
 )
-if(FREETYPE_LIBRARY_DIRS)
-    target_link_directories(ascii-chat-static INTERFACE ${FREETYPE_LIBRARY_DIRS})
-endif()
 
 # Link mimalloc
 if(USE_MIMALLOC)
     if(TARGET mimalloc-static)
         target_link_libraries(ascii-chat-static INTERFACE mimalloc-static)
-    elseif(MIMALLOC_LIBRARIES)
-        target_link_libraries(ascii-chat-static INTERFACE ${MIMALLOC_LIBRARIES})
+    elseif(TARGET asciichat-mimalloc)
+        target_link_libraries(ascii-chat-static INTERFACE asciichat-mimalloc)
     endif()
 endif()
 
 # Link FFmpeg for media file streaming
 if(FFMPEG_FOUND)
-    target_link_directories(ascii-chat-static INTERFACE ${FFMPEG_LIBRARY_DIRS})
-    target_link_libraries(ascii-chat-static INTERFACE ${FFMPEG_LIBRARIES})
+    target_link_libraries(ascii-chat-static INTERFACE asciichat-ffmpeg)
 endif()
 
 # Link yyjson for structured logging (required)
-target_link_libraries(ascii-chat-static INTERFACE ${YYJSON_LIBRARIES})
+target_link_libraries(ascii-chat-static INTERFACE asciichat-yyjson)
 
 # Platform-specific system libraries
 if(WIN32)
@@ -1817,7 +1645,7 @@ else()
         # Non-musl builds: link the C++ standard library
         target_link_libraries(ascii-chat-static INTERFACE c++)
         # The combined archive includes the platform keepawake implementation.
-        target_link_libraries(ascii-chat-static INTERFACE ${LIBSYSTEMD_LIBRARIES})
+        target_link_libraries(ascii-chat-static INTERFACE asciichat-systemd)
     endif()
 endif()
 
@@ -1838,8 +1666,7 @@ endif()
 # This is linked to ascii-chat-network module, but must also be exposed via the
 # INTERFACE library for final executables since libasciichat.a includes upnp.c
 if(MINIUPNPC_FOUND)
-    target_include_directories(ascii-chat-static INTERFACE ${MINIUPNPC_INCLUDE_DIRS})
-    target_link_libraries(ascii-chat-static INTERFACE ${MINIUPNPC_LIBRARIES})
+    target_link_libraries(ascii-chat-static INTERFACE asciichat-miniupnpc)
     # Also link libnatpmp on macOS (separate library for NAT-PMP protocol)
     if(NATPMP_LIBRARY)
         target_include_directories(ascii-chat-static INTERFACE ${NATPMP_INCLUDE_DIR})
@@ -1951,16 +1778,16 @@ target_link_libraries(ascii-chat-lib INTERFACE
 # See cmake/scripts/create_static_archive.cmake for implementation details
 
 # FFTW symbols are used unconditionally by the native audio module.
-target_link_libraries(ascii-chat-audio PRIVATE ${FFTW_LIBRARIES})
+target_link_libraries(ascii-chat-audio PRIVATE asciichat-fftw)
 target_link_libraries(ascii-chat-audio PRIVATE ${FFTW_FLOAT_LIBRARY})
 if(TARGET ascii-chat-shared)
-    target_link_libraries(ascii-chat-shared PRIVATE ${FFTW_LIBRARIES})
+    target_link_libraries(ascii-chat-shared PRIVATE asciichat-fftw)
     target_link_libraries(ascii-chat-shared PRIVATE ${FFTW_FLOAT_LIBRARY})
     if(TARGET FFTW3::fftw3f)
         target_link_libraries(ascii-chat-shared PRIVATE FFTW3::fftw3f)
     endif()
 endif()
-target_link_libraries(ascii-chat-static INTERFACE ${FFTW_LIBRARIES})
+target_link_libraries(ascii-chat-static INTERFACE asciichat-fftw)
 target_link_libraries(ascii-chat-static INTERFACE ${FFTW_FLOAT_LIBRARY})
 target_link_libraries(ascii-chat-runtime PRIVATE ${FFTW_FLOAT_LIBRARY})
 

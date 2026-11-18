@@ -37,6 +37,9 @@ _asciichat_wrap_target(asciichat-fftw FFTW3::fftw3 fftw3 fftw3f)
 _asciichat_wrap_target(asciichat-fftw-float FFTW3::fftw3f fftw3f)
 _asciichat_wrap_target(asciichat-zstd zstd::libzstd zstd::zstd)
 _asciichat_wrap_target(asciichat-libsodium asciichat-libsodium unofficial-sodium::sodium sodium)
+if(USE_MIMALLOC)
+    _asciichat_wrap_target(asciichat-mimalloc ${MIMALLOC_LIBRARIES} mimalloc mimalloc-static mimalloc-shared)
+endif()
 
 foreach(_target IN ITEMS
     asciichat-portaudio asciichat-opus asciichat-fftw asciichat-fftw-float
@@ -49,6 +52,9 @@ endforeach()
 # rest of ascii-chat consumes only these stable names.
 _asciichat_wrap_target(asciichat-libplatform libplatform::libplatform)
 _asciichat_wrap_target(asciichat-libflags libflags::flags)
+if(NOT EMSCRIPTEN)
+    _asciichat_wrap_target(asciichat-libuv ${ASCIICHAT_LIBUV_TARGET} asciichat-libuv uv_a PkgConfig::ASCIICHAT_LIBUV)
+endif()
 _asciichat_wrap_target(asciichat-utf8proc utf8proc)
 _asciichat_wrap_target(asciichat-yyjson yyjson::yyjson yyjson)
 _asciichat_wrap_target(asciichat-pcre2 ${PCRE2_LIBRARIES})
