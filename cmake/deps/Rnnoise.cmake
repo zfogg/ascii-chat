@@ -70,6 +70,11 @@ ExternalProject_Add(ascii-chat-rnnoise-build
         "${ASCIICHAT_RNNOISE_BUILD_DIR}/configure"
         "${ASCIICHAT_RNNOISE_BUILD_DIR}/config.h.in"
         "${ASCIICHAT_RNNOISE_BUILD_DIR}/config.status"
+        "${ASCIICHAT_RNNOISE_BUILD_DIR}/Makefile"
+        "${ASCIICHAT_RNNOISE_BUILD_DIR}/config.h"
+        "${ASCIICHAT_RNNOISE_BUILD_DIR}/stamp-h1"
+        "${ASCIICHAT_RNNOISE_BUILD_DIR}/rnnoise.pc"
+        "${ASCIICHAT_RNNOISE_BUILD_DIR}/rnnoise-uninstalled.pc"
         COMMAND "${CMAKE_COMMAND}" -E env
         "MAKEFLAGS=-o aclocal.m4 -o Makefile.in -o configure -o config.h.in"
         "${ASCIICHAT_RNNOISE_MAKE}" -o aclocal.m4 -o Makefile.in -o configure -o config.h.in
