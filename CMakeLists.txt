@@ -213,7 +213,7 @@ endif()
 # =============================================================================
 # Compiler config
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/compilers/CacheLaunchers.cmake)
+include(${CMAKE_SOURCE_DIR}/deps/cmake-utils/CacheLauncher.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compilers/Detection.cmake)
 configure_base_compiler_flags()
 if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
