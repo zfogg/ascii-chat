@@ -23,7 +23,6 @@ set(X264_HASH "44ce79258656d7dbe06165321cb989cc242a66effa308e25d2f0a197b50f8398"
 # Windows: x264 not needed (vcpkg FFmpeg is built without libx264)
 # =============================================================================
 if(WIN32)
-    set(X264_FOUND FALSE)
     message(STATUS "⚠ x264 not needed on Windows (vcpkg FFmpeg uses built-in codecs)")
     return()
 endif()
@@ -31,7 +30,6 @@ endif()
 # Emscripten's web builds do not link the native FFmpeg encoder path.  Do not
 # require a host x264 pkg-config module when generating the browser targets.
 if(EMSCRIPTEN)
-    set(X264_FOUND FALSE)
     message(STATUS "⚠ x264 not needed for Emscripten web targets")
     return()
 endif()
@@ -166,9 +164,6 @@ if(USE_MUSL)
         message(STATUS "  ${BoldGreen}x264${ColorReset} library found in cache: ${BoldMagenta}${X264_PREFIX}/lib/libx264.a${ColorReset}")
     endif()
 
-    set(X264_LIBRARIES "${X264_PREFIX}/lib/libx264.a")
-    set(X264_INCLUDE_DIRS "${X264_PREFIX}/include")
-
     file(MAKE_DIRECTORY "${X264_PREFIX}/include" "${X264_PREFIX}/lib")
 
     if(NOT TARGET x264::x264)
@@ -179,7 +174,10 @@ if(USE_MUSL)
         )
     endif()
 
-    set(X264_FOUND TRUE)
+    if(NOT TARGET asciichat-x264)
+        add_library(asciichat-x264 INTERFACE)
+        target_link_libraries(asciichat-x264 INTERFACE x264::x264)
+    endif()
     message(STATUS "${BoldGreen}✓${ColorReset} x264 (musl): ${X264_PREFIX}/lib/libx264.a")
     return()
 endif()
@@ -188,28 +186,30 @@ endif()
 # Non-musl: Use system package via pkg-config
 # =============================================================================
 include(FindPkgConfig)
-pkg_check_modules(X264 REQUIRED x264)
+pkg_check_modules(_asciichat_x264 REQUIRED x264)
 
 if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
-    find_library(X264_STATIC_LIBRARY
+    find_library(_asciichat_x264_static_library
         NAMES libx264.a
-        PATHS ${X264_LIBRARY_DIRS}
+        PATHS ${_asciichat_x264_LIBRARY_DIRS}
         NO_DEFAULT_PATH
     )
-    if(NOT X264_STATIC_LIBRARY)
+    if(NOT _asciichat_x264_static_library)
         message(FATAL_ERROR "Static x264 is required for portable macOS Release builds")
     endif()
-    set(X264_LIBRARIES "${X264_STATIC_LIBRARY}")
-    message(STATUS "${BoldGreen}✓${ColorReset} x264 (static): ${X264_STATIC_LIBRARY}")
+    set(_asciichat_x264_link "${_asciichat_x264_static_library}")
+    message(STATUS "${BoldGreen}✓${ColorReset} x264 (static): ${_asciichat_x264_static_library}")
 else()
-    set(X264_LIBRARIES ${X264_LDFLAGS})
+    set(_asciichat_x264_link "${_asciichat_x264_LDFLAGS}")
     message(STATUS "${BoldGreen}✓${ColorReset} x264 found")
 endif()
 
 if(NOT TARGET x264::x264)
     add_library(x264::x264 INTERFACE IMPORTED)
-    target_include_directories(x264::x264 SYSTEM INTERFACE ${X264_INCLUDE_DIRS})
-    target_link_libraries(x264::x264 INTERFACE ${X264_LIBRARIES})
+    target_include_directories(x264::x264 SYSTEM INTERFACE ${_asciichat_x264_INCLUDE_DIRS})
+    target_link_libraries(x264::x264 INTERFACE ${_asciichat_x264_link})
 endif()
-
-set(X264_FOUND TRUE)
+if(NOT TARGET asciichat-x264)
+    add_library(asciichat-x264 INTERFACE)
+    target_link_libraries(asciichat-x264 INTERFACE x264::x264)
+endif()
