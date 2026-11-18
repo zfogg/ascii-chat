@@ -6,9 +6,9 @@ if(NOT RNNOISE_BUILD_DIR OR NOT RNNOISE_INSTALL_DIR OR NOT RNNOISE_LLVM_LIB)
     message(FATAL_ERROR "RNNoise MSVC install requires build, install, and llvm-lib paths")
 endif()
 
-file(GLOB _rnnoise_objects "${RNNOISE_BUILD_DIR}/.libs/*.o")
+file(GLOB _rnnoise_objects "${RNNOISE_BUILD_DIR}/src/*.o")
 if(NOT _rnnoise_objects)
-    message(FATAL_ERROR "RNNoise object files were not produced in ${RNNOISE_BUILD_DIR}/.libs")
+    message(FATAL_ERROR "RNNoise object files were not produced in ${RNNOISE_BUILD_DIR}/src")
 endif()
 
 file(MAKE_DIRECTORY "${RNNOISE_INSTALL_DIR}/lib")
