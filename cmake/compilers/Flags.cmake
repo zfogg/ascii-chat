@@ -106,7 +106,8 @@ function(configure_base_compiler_flags)
     configure_toolchain_capabilities()
 
     if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
-        target_compile_options(asciichat-project-options INTERFACE /W4 /permissive- /D_CRT_SECURE_NO_WARNINGS)
+        target_compile_options(asciichat-project-options INTERFACE
+            /W4 /permissive- /D_CRT_SECURE_NO_WARNINGS /experimental:c11atomics)
         return()
     endif()
 

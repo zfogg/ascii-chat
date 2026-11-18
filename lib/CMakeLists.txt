@@ -1635,7 +1635,11 @@ foreach(MODULE ${STATIC_LIB_MODULES})
 endforeach()
 
 # Use file(GENERATE) to expand generator expressions at build time
-set(OBJECT_LIST_FILE "${CMAKE_CURRENT_BINARY_DIR}/static_lib_objects.txt")
+if(CMAKE_CONFIGURATION_TYPES)
+    set(OBJECT_LIST_FILE "${CMAKE_CURRENT_BINARY_DIR}/static_lib_objects-$<CONFIG>.txt")
+else()
+    set(OBJECT_LIST_FILE "${CMAKE_CURRENT_BINARY_DIR}/static_lib_objects.txt")
+endif()
 file(GENERATE
     OUTPUT ${OBJECT_LIST_FILE}
     CONTENT "${OBJECT_EXPR_LIST}"
