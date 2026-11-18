@@ -1561,13 +1561,9 @@ else()
 endif()
 
 if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
-    # On Windows, check the import library (.lib) since DLLs don't expose symbols to llvm-nm
-    # On Unix, check the shared object directly
-    if(WIN32)
-        set(SHARED_LIB_TO_VALIDATE "${ASCIICHAT_WINDOWS_IMPORT_LIBRARY}")
-    else()
-        set(SHARED_LIB_TO_VALIDATE "$<TARGET_FILE:ascii-chat-shared>")
-    endif()
+    # Windows symbol tools inspect the DLL export table; Unix tools inspect the
+    # shared object directly. Keep export generation enabled for both paths.
+    set(SHARED_LIB_TO_VALIDATE "$<TARGET_FILE:ascii-chat-shared>")
 
     # Build the validation command with optional internal symbols
     set(_VALIDATE_CMD

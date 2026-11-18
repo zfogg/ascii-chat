@@ -43,13 +43,24 @@ if(NOT EXISTS "${LIBRARY}")
     message(FATAL_ERROR "Library not found: ${LIBRARY}")
 endif()
 
-# Run llvm-nm to get all symbols
-execute_process(
-    COMMAND "${LLVM_NM}" --defined-only "${LIBRARY}"
-    OUTPUT_VARIABLE NM_OUTPUT
-    ERROR_VARIABLE NM_ERROR
-    RESULT_VARIABLE NM_RESULT
-)
+# Run the active platform's symbol tool. MSVC's dumpbin reports exports from
+# the DLL, while llvm-nm reports defined symbols from Unix objects/libraries.
+get_filename_component(_symbol_tool_name "${LLVM_NM}" NAME)
+if(_symbol_tool_name MATCHES "^(dumpbin|dumpbin\.exe)$")
+    execute_process(
+        COMMAND "${LLVM_NM}" /exports "${LIBRARY}"
+        OUTPUT_VARIABLE NM_OUTPUT
+        ERROR_VARIABLE NM_ERROR
+        RESULT_VARIABLE NM_RESULT)
+    set(_symbol_export_format TRUE)
+else()
+    execute_process(
+        COMMAND "${LLVM_NM}" --defined-only "${LIBRARY}"
+        OUTPUT_VARIABLE NM_OUTPUT
+        ERROR_VARIABLE NM_ERROR
+        RESULT_VARIABLE NM_RESULT)
+    set(_symbol_export_format FALSE)
+endif()
 
 if(NOT NM_RESULT EQUAL 0)
     message(FATAL_ERROR "llvm-nm failed on ${LIBRARY}:\n${NM_ERROR}")
@@ -58,6 +69,13 @@ endif()
 # Check each required exported symbol (uppercase T/D/B/R = global/exported)
 set(MISSING_SYMBOLS "")
 foreach(SYMBOL ${SYMBOLS})
+    if(_symbol_export_format)
+        string(FIND "${NM_OUTPUT}" " ${SYMBOL} =" FOUND_EXPORT)
+        if(FOUND_EXPORT EQUAL -1)
+            list(APPEND MISSING_SYMBOLS "${SYMBOL}")
+        endif()
+        continue()
+    endif()
     # Symbol should appear as " T symbol" or " D symbol" etc. in nm output
     # Use simple string FIND - symbol names are unique enough
     # Look for " T symbolname" or " D symbolname" pattern
