@@ -8,8 +8,8 @@
 # For native builds: Uses system package manager
 #
 # Outputs (variables set by this file):
-#   - FONTCONFIG_LDFLAGS: Fontconfig libraries to link
-#   - FONTCONFIG_INCLUDE_DIRS: Fontconfig include directories
+#   - _asciichat_fontconfig_pkg_LDFLAGS: Fontconfig libraries to link
+#   - _asciichat_fontconfig_include_dirs: Fontconfig include directories
 # =============================================================================
 
 if(PLATFORM_IOS AND NOT BUILD_EXECUTABLES)
@@ -24,8 +24,8 @@ if(PLATFORM_IOS OR USE_MUSL)
     include(${CMAKE_CURRENT_LIST_DIR}/Expat.cmake)
     include(ExternalProject)
     set(FONTCONFIG_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/installed/fontconfig")
-    set(FONTCONFIG_INCLUDE_DIRS "${FONTCONFIG_PREFIX}/include")
-    file(MAKE_DIRECTORY "${FONTCONFIG_INCLUDE_DIRS}")
+    set(_asciichat_fontconfig_include_dirs "${FONTCONFIG_PREFIX}/include")
+    file(MAKE_DIRECTORY "${_asciichat_fontconfig_include_dirs}")
     set(_fontconfig_cflags "-fPIC -I${EXPAT_PREFIX}/include -I${FREETYPE_PREFIX}/include/freetype2")
     set(_fontconfig_host)
     if(PLATFORM_IOS)
@@ -57,13 +57,13 @@ if(PLATFORM_IOS OR USE_MUSL)
     add_library(fontconfig STATIC IMPORTED GLOBAL)
     set_target_properties(fontconfig PROPERTIES
         IMPORTED_LOCATION "${FONTCONFIG_PREFIX}/lib/libfontconfig.a"
-        INTERFACE_INCLUDE_DIRECTORIES "${FONTCONFIG_INCLUDE_DIRS}"
+        INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_fontconfig_include_dirs}"
         INTERFACE_LINK_LIBRARIES "asciichat-expat;asciichat-freetype")
     add_dependencies(fontconfig asciichat-fontconfig-musl)
     add_library(asciichat-fontconfig INTERFACE)
     target_link_libraries(asciichat-fontconfig INTERFACE fontconfig)
-    set(FONTCONFIG_LDFLAGS fontconfig)
-    set(FONTCONFIG_LINK_LIBRARIES fontconfig)
+    set(_asciichat_fontconfig_pkg_LDFLAGS fontconfig)
+    set(_asciichat_fontconfig_link_libraries fontconfig)
     return()
 endif()
 
@@ -71,18 +71,18 @@ endif()
 if(UNIX AND NOT APPLE)
     # Linux/BSD: Use system package managers
     find_package(PkgConfig REQUIRED)
-    pkg_check_modules(FONTCONFIG fontconfig REQUIRED)
+    pkg_check_modules(_asciichat_fontconfig_pkg fontconfig REQUIRED)
 
-    # pkg_check_modules already sets FONTCONFIG_LDFLAGS to proper linker flags
+    # pkg_check_modules already sets _asciichat_fontconfig_pkg_LDFLAGS to proper linker flags
     # (-L/path/to/lib -lfontconfig), so use it as-is
-    set(FONTCONFIG_LINK_LIBRARIES ${FONTCONFIG_LDFLAGS})
+    set(_asciichat_fontconfig_link_libraries ${_asciichat_fontconfig_pkg_LDFLAGS})
 
-    message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: ${FONTCONFIG_LDFLAGS}")
+    message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: ${_asciichat_fontconfig_pkg_LDFLAGS}")
 
 elseif(APPLE)
     # macOS: Use homebrew or macports
     find_package(PkgConfig REQUIRED)
-    pkg_check_modules(FONTCONFIG fontconfig REQUIRED)
+    pkg_check_modules(_asciichat_fontconfig_pkg fontconfig REQUIRED)
 
     if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
         # Use archives so a release executable does not depend on the
@@ -91,7 +91,7 @@ elseif(APPLE)
         foreach(_dependency fontconfig expat freetype intl png16)
             if(_dependency STREQUAL "freetype")
                 # Share the renderer's selected FreeType, including pinned HVF builds.
-                list(APPEND _fontconfig_static_paths ${FREETYPE_LIBRARIES})
+                list(APPEND _fontconfig_static_paths asciichat-freetype)
                 continue()
             endif()
             set(_brew_package "${_dependency}")
@@ -113,20 +113,20 @@ elseif(APPLE)
         # fontconfig's static pkg-config closure also uses the system math,
         # compression, and zlib libraries on macOS.
         list(APPEND _fontconfig_static_paths bz2 z m)
-        set(FONTCONFIG_LINK_LIBRARIES ${_fontconfig_static_paths})
+        set(_asciichat_fontconfig_link_libraries ${_fontconfig_static_paths})
     else()
         # pkg_check_modules supplies the normal system linker flags.
-        set(FONTCONFIG_LINK_LIBRARIES ${FONTCONFIG_LDFLAGS})
+        set(_asciichat_fontconfig_link_libraries ${_asciichat_fontconfig_pkg_LDFLAGS})
     endif()
 
-    message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: ${FONTCONFIG_LDFLAGS}")
+    message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: ${_asciichat_fontconfig_pkg_LDFLAGS}")
 
 elseif(WIN32)
     # Windows: fontconfig is not typically available or needed (Windows uses GDI for fonts)
     # Set empty variables so the build can proceed without fontconfig
-    set(FONTCONFIG_LINK_LIBRARIES "")
-    set(FONTCONFIG_LDFLAGS "")
-    set(FONTCONFIG_INCLUDE_DIRS "")
+    set(_asciichat_fontconfig_link_libraries "")
+    set(_asciichat_fontconfig_pkg_LDFLAGS "")
+    set(_asciichat_fontconfig_include_dirs "")
     message(STATUS "⚠ Fontconfig not needed on Windows (using GDI for font resolution)")
 
 else()
@@ -137,8 +137,8 @@ endif()
 # fontconfig. CoreTargets consumes this stable target name on Unix platforms.
 if((UNIX OR APPLE) AND NOT TARGET asciichat-fontconfig)
     add_library(asciichat-fontconfig INTERFACE)
-    target_link_libraries(asciichat-fontconfig INTERFACE ${FONTCONFIG_LINK_LIBRARIES})
-    if(FONTCONFIG_INCLUDE_DIRS)
-        target_include_directories(asciichat-fontconfig INTERFACE ${FONTCONFIG_INCLUDE_DIRS})
+    target_link_libraries(asciichat-fontconfig INTERFACE ${_asciichat_fontconfig_link_libraries})
+    if(_asciichat_fontconfig_include_dirs)
+        target_include_directories(asciichat-fontconfig INTERFACE ${_asciichat_fontconfig_include_dirs})
     endif()
 endif()
