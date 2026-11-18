@@ -55,7 +55,19 @@ else()
         GIT_TAG main
         SOURCE_DIR "${_ascii_chat_libflags_source}")
 endif()
-FetchContent_MakeAvailable(libflags)
+if(USE_MUSL)
+    # libflags is embedded in the musl application build. Its standalone
+    # install export cannot export ascii-chat-owned dependency wrapper targets
+    # supplied through the embedding interface, so suppress only libflags'
+    # install rules while configuring the embedded project.
+    set(_asciichat_saved_skip_install_rules "${CMAKE_SKIP_INSTALL_RULES}")
+    set(CMAKE_SKIP_INSTALL_RULES TRUE)
+    FetchContent_MakeAvailable(libflags)
+    set(CMAKE_SKIP_INSTALL_RULES "${_asciichat_saved_skip_install_rules}")
+    unset(_asciichat_saved_skip_install_rules)
+else()
+    FetchContent_MakeAvailable(libflags)
+endif()
 if(TARGET libflags::libflags)
     set(ASCIICHAT_LIBFLAGS_TARGET libflags::libflags CACHE INTERNAL
         "libflags target selected by ascii-chat" FORCE)
