@@ -175,7 +175,7 @@ if(USE_MUSL)
             --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg
             ${_ffmpeg_codec_flags}
             --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video --enable-swscale --enable-swresample
-        BUILD_COMMAND ${_ffmpeg_env} make -j8
+        BUILD_COMMAND ${_ffmpeg_env} make -j1
         INSTALL_COMMAND ${_ffmpeg_env} make install
         INSTALL_BYPRODUCTS ${_ffmpeg_archives}
         DEPENDS ${_ffmpeg_dependencies}
