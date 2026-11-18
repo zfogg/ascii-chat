@@ -161,11 +161,15 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/PlatformLibraries.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/CoreTargets.cmake)
 
 if(NOT EMSCRIPTEN)
-    foreach(_required_dependency
+    set(_required_dependencies
         ABSEIL_FOUND BEARSSL_FOUND FFMPEG_FOUND FFTW_FOUND
         LIBDATACHANNEL_FOUND LIBSODIUM_FOUND LIBWEBSOCKETS_FOUND
         MINIUPNPC_FOUND OPENSSL_FOUND OPUS_FOUND PCRE2_FOUND
-        PORTAUDIO_FOUND SQLITE3_FOUND ZLIB_FOUND ZSTD_FOUND)
+        SQLITE3_FOUND ZLIB_FOUND ZSTD_FOUND)
+    if(NOT PLATFORM_IOS)
+        list(APPEND _required_dependencies PORTAUDIO_FOUND)
+    endif()
+    foreach(_required_dependency IN LISTS _required_dependencies)
         if(NOT ${_required_dependency})
             message(FATAL_ERROR "Required dependency check failed: ${_required_dependency} is not true")
         endif()

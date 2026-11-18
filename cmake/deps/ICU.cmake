@@ -77,6 +77,10 @@ elseif(USE_MUSL OR PLATFORM_IOS)
         set(_icu_cflags "${CMAKE_C_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT} -arch ${CMAKE_OSX_ARCHITECTURES}")
         set(_icu_cxxflags "${CMAKE_CXX_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT} -arch ${CMAKE_OSX_ARCHITECTURES}")
     endif()
+    # ICU's cross build reuses the host tools from --with-cross-build. Building
+    # another copy of those tools with the iOS sysroot fails because utilities
+    # such as pkgdata use host-only APIs (for example system()).
+    set(_icu_cross_options ${_icu_options} --disable-tools)
     file(MAKE_DIRECTORY "${_icu_prefix}/include")
     ExternalProject_Add(asciichat-icu-cross
         SOURCE_DIR "${_icu_source}" DOWNLOAD_COMMAND ""
@@ -84,7 +88,7 @@ elseif(USE_MUSL OR PLATFORM_IOS)
         PREFIX "${_icu_cache}/cross"
         CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${_icu_cc}" "CXX=${_icu_cxx}"
             "CFLAGS=${_icu_cflags}" "CXXFLAGS=${_icu_cxxflags}" "LDFLAGS=${_icu_ldflags}" "LIBS=${_icu_libs}"
-            <SOURCE_DIR>/source/configure ${_icu_options} --host=${_icu_host}
+            <SOURCE_DIR>/source/configure ${_icu_cross_options} --host=${_icu_host}
             --with-cross-build=${_icu_host_build} --prefix=${_icu_prefix}
         BUILD_COMMAND ${_icu_make} -j8 INSTALL_COMMAND ${_icu_make} install
         INSTALL_BYPRODUCTS "${_icu_prefix}/lib/libicuuc.a" "${_icu_prefix}/lib/libicudata.a"
