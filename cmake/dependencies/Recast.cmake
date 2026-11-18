@@ -16,9 +16,13 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
         set(_recast_host_build "${_recast_host_cache}/recast-llvm23-v2")
         set(_recast_host_link_flags)
         if(UNIX AND NOT APPLE)
-            unset(_recast_host_lld CACHE)
-            find_program(_recast_host_lld NAMES ld.lld
-                PATHS /usr/lib/llvm-23/bin /usr/bin NO_DEFAULT_PATH)
+            get_filename_component(_recast_host_llvm_bin
+                "${_recast_host_cc}" DIRECTORY)
+            set(_recast_host_lld "${_recast_host_llvm_bin}/ld.lld")
+            if(NOT EXISTS "${_recast_host_lld}")
+                unset(_recast_host_lld CACHE)
+                find_program(_recast_host_lld NAMES ld.lld)
+            endif()
             if(_recast_host_lld)
                 string(APPEND _recast_host_link_flags
                     " -fuse-ld=${_recast_host_lld}")
