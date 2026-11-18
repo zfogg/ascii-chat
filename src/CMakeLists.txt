@@ -523,7 +523,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
 endif()
 
 if(USE_MIMALLOC)
-    message(STATUS "ascii-chat linking mimalloc: ${ASCIICHAT_MIMALLOC_LINK_LIB}")
+    message(STATUS "ascii-chat linking mimalloc through asciichat-mimalloc")
     if(TARGET mimalloc-static)
         add_dependencies(ascii-chat mimalloc-static)
     endif()
