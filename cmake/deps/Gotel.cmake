@@ -49,6 +49,20 @@ set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
 # Keep the vendored C++ facade aligned with ascii-chat's C++26 toolchain.
 set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
 
+# Gotel declares Sequel in its nested CMake project. Predeclare the persistent
+# cache checkout here so reconfiguring another parent build directory does not
+# clone Sequel again.
+include(FetchContent)
+set(_asciichat_sequel_source "${_asciichat_gotel_cache_dir}/sequel-src")
+if(EXISTS "${_asciichat_sequel_source}/CMakeLists.txt")
+    FetchContent_Declare(sequel SOURCE_DIR "${_asciichat_sequel_source}")
+else()
+    FetchContent_Declare(sequel
+        GIT_REPOSITORY https://github.com/zfogg/sequel.git
+        GIT_TAG f0865335e0c90b872ad2d4b40d2590509439f1fe
+        SOURCE_DIR "${_asciichat_sequel_source}")
+endif()
+
 # Keep Gotel and its fetched otlp-c/Sequel build trees in the persistent
 # dependency cache. Generated Gotel sources are emitted into this same stable
 # tree so the shared Debug dependency build does not depend on the parent
