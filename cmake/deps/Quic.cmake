@@ -193,13 +193,25 @@ function(asciichat_configure_quic)
     endif()
     set(_ngtcp2_build "${ASCIICHAT_DEPS_CACHE_DIR}/asciichat-ngtcp2-${_quic_generator_cache}")
     set(_nghttp3_build "${ASCIICHAT_DEPS_CACHE_DIR}/asciichat-nghttp3-${_quic_generator_cache}")
-    set(_ngtcp2_library "${_ngtcp2_build}/lib/${_quic_library_prefix}ngtcp2${_quic_library_suffix}")
-    set(_ngtcp2_crypto_library "${_ngtcp2_build}/crypto/ossl/${_quic_library_prefix}ngtcp2_crypto_ossl${_quic_library_suffix}")
-    set(_nghttp3_library "${_nghttp3_build}/lib/${_quic_library_prefix}nghttp3${_quic_library_suffix}")
+    if(CMAKE_GENERATOR MATCHES "^Visual Studio")
+        if(CMAKE_BUILD_TYPE STREQUAL "Release")
+            set(_quic_config_name Release)
+        else()
+            set(_quic_config_name Debug)
+        endif()
+        set(_quic_config_suffix "/${_quic_config_name}")
+        set(_quic_config_args --config "${_quic_config_name}")
+    else()
+        set(_quic_config_suffix)
+        set(_quic_config_args)
+    endif()
+    set(_ngtcp2_library "${_ngtcp2_build}/lib${_quic_config_suffix}/${_quic_library_prefix}ngtcp2${_quic_library_suffix}")
+    set(_ngtcp2_crypto_library "${_ngtcp2_build}/crypto/ossl${_quic_config_suffix}/${_quic_library_prefix}ngtcp2_crypto_ossl${_quic_library_suffix}")
+    set(_nghttp3_library "${_nghttp3_build}/lib${_quic_config_suffix}/${_quic_library_prefix}nghttp3${_quic_library_suffix}")
     if(WIN32 AND _quic_shared)
-        set(_ngtcp2_import_library "${_ngtcp2_build}/lib/ngtcp2.lib")
-        set(_ngtcp2_crypto_import_library "${_ngtcp2_build}/crypto/ossl/ngtcp2_crypto_ossl.lib")
-        set(_nghttp3_import_library "${_nghttp3_build}/lib/nghttp3.lib")
+        set(_ngtcp2_import_library "${_ngtcp2_build}/lib${_quic_config_suffix}/ngtcp2.lib")
+        set(_ngtcp2_crypto_import_library "${_ngtcp2_build}/crypto/ossl${_quic_config_suffix}/ngtcp2_crypto_ossl.lib")
+        set(_nghttp3_import_library "${_nghttp3_build}/lib${_quic_config_suffix}/nghttp3.lib")
     endif()
     set(_ngtcp2_byproducts "${_ngtcp2_library}" "${_ngtcp2_crypto_library}")
     set(_nghttp3_byproducts "${_nghttp3_library}")
@@ -275,7 +287,7 @@ function(asciichat_configure_quic)
             "-DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}"
             ${_quic_openssl_cache_args}
             "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
-        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ${_quic_ngtcp2_crypto_target} ${_quic_build_tail}
+        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${_quic_config_args} --target ${_quic_ngtcp2_crypto_target} ${_quic_build_tail}
         BUILD_BYPRODUCTS ${_ngtcp2_byproducts}
         EXCLUDE_FROM_ALL TRUE)
 
@@ -284,7 +296,7 @@ function(asciichat_configure_quic)
         BINARY_DIR "${_nghttp3_build}"
         DOWNLOAD_COMMAND "" UPDATE_COMMAND "" CONFIGURE_COMMAND "${CMAKE_COMMAND}" -E true INSTALL_COMMAND ""
         CMAKE_ARGS ${_quic_common_args} "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
-        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ${_quic_nghttp3_target} ${_quic_build_tail}
+        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${_quic_config_args} --target ${_quic_nghttp3_target} ${_quic_build_tail}
         BUILD_BYPRODUCTS ${_nghttp3_byproducts}
         EXCLUDE_FROM_ALL TRUE)
 
