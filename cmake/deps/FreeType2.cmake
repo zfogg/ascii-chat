@@ -96,7 +96,10 @@ if(UNIX AND NOT APPLE)
     # Linux/BSD: Try pkg-config first, then fall back to CMake FindFreetype
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
-        pkg_check_modules(FREETYPE freetype2)
+        pkg_check_modules(FREETYPE IMPORTED_TARGET freetype2)
+        if(FREETYPE_FOUND AND TARGET PkgConfig::FREETYPE)
+            set(FREETYPE_LIBRARIES PkgConfig::FREETYPE)
+        endif()
     endif()
 
     # If pkg-config didn't work, try CMake's FindFreetype
