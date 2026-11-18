@@ -498,8 +498,13 @@ if(NOT WIN32 AND CMAKE_C_LINK_PIE_SUPPORTED)
     endif()
 endif()
 
-# Enable dead code elimination for optimal binary size
-target_compile_options(ascii-chat PRIVATE -ffunction-sections -fdata-sections)
+# Enable dead code elimination for optimal binary size using the compiler's
+# native sectioning options.
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    target_compile_options(ascii-chat PRIVATE /Gy /Gw)
+else()
+    target_compile_options(ascii-chat PRIVATE -ffunction-sections -fdata-sections)
+endif()
 
 # Release-specific optimizations for executable
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
