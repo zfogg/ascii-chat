@@ -673,6 +673,7 @@ endif()
 # Now create the module with WebRTC includes in scope
 create_ascii_chat_module(ascii-chat-audio "${AUDIO_SRCS}")
 target_link_libraries(ascii-chat-audio PRIVATE asciichat-rnnoise)
+add_dependencies(ascii-chat-audio asciichat-rnnoise-build)
 
 # Add library search directories for pkg-config found libraries
 if(PORTAUDIO_LIBRARY_DIRS)
