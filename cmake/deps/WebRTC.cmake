@@ -53,6 +53,9 @@ function(asciichat_build_aec3)
         file(READ "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" _aec3_cmake)
         string(REPLACE "set(CMAKE_POSITION_INDEPENDENT_CODE ON)"
             "set(CMAKE_POSITION_INDEPENDENT_CODE OFF)" _aec3_cmake "${_aec3_cmake}")
+        string(REPLACE "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -fvisibility=hidden -fPIC -pthread -std=c++17\")"
+            "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -fvisibility=hidden -pthread -std=c++17\")"
+            _aec3_cmake "${_aec3_cmake}")
         file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${_aec3_cmake}")
         set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
     endif()
