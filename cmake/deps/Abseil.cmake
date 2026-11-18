@@ -58,6 +58,16 @@ if(UNIX AND NOT APPLE)
                 "/usr/local/lib/cmake"
             PATH_SUFFIXES absl
             NO_DEFAULT_PATH)
+        if(NOT absl_FOUND)
+            find_file(_asciichat_absl_config
+                NAMES abslConfig.cmake
+                PATHS "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/cmake/absl"
+                NO_DEFAULT_PATH)
+            if(_asciichat_absl_config)
+                include("${_asciichat_absl_config}")
+                set(absl_FOUND TRUE)
+            endif()
+        endif()
         if(absl_FOUND)
             set(ABSEIL_LIBRARIES absl::base absl::strings)
             set(ABSEIL_INCLUDE_DIRS "")
