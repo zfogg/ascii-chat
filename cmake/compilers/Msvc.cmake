@@ -49,8 +49,8 @@ function(configure_msvc_pre_project)
     set(CMAKE_CXX_COMPILER "${_cl}" CACHE FILEPATH "MSVC C++ compiler" FORCE)
     # CMake's stock MSVC Debug flags add /RTC1, which conflicts with the
     # optimized SIMD translation units used by ascii-chat.
-    set(CMAKE_C_FLAGS_DEBUG "/Od /Zi" CACHE STRING "MSVC Debug C flags" FORCE)
-    set(CMAKE_CXX_FLAGS_DEBUG "/Od /Zi" CACHE STRING "MSVC Debug C++ flags" FORCE)
+    set(CMAKE_C_FLAGS_DEBUG "/Od" CACHE STRING "MSVC Debug C flags" FORCE)
+    set(CMAKE_CXX_FLAGS_DEBUG "/Od" CACHE STRING "MSVC Debug C++ flags" FORCE)
     set(GOTEL_CXX_STANDARD 23 CACHE STRING "C++ standard for gotel" FORCE)
     set(ASCIICHAT_MSVC_LINK_EXECUTABLE "${_link}" CACHE FILEPATH "MSVC linker" FORCE)
     set(ASCIICHAT_MSVC_LIB_EXECUTABLE "${_lib}" CACHE FILEPATH "MSVC librarian" FORCE)

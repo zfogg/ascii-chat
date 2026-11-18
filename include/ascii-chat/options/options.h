@@ -1330,6 +1330,12 @@ const terminal_options_t *options_terminal_settings_ptr(void);
 #define ASCIICHAT_OPTION_FIELD_TYPE(field) typeof(((options_t *)0)->field)
 #endif
 
+#if defined(_MSC_VER)
+/* MSVC C has neither GNU statement expressions nor typeof. All production
+ * callers use GET_OPTION after options_init(), so use the direct typed field
+ * access that preserves the macro's zero-overhead behavior. */
+#define GET_OPTION(field) (options_get()->field)
+#else
 #define GET_OPTION(field)                                                    \
   ({                                                                         \
     const options_t *_opts = options_get();                                  \
@@ -1339,6 +1345,7 @@ const terminal_options_t *options_terminal_settings_ptr(void);
     static ASCIICHAT_OPTION_FIELD_TYPE(field) _default = {0};                \
     (_opts ? (_opts->field) : _default);                                     \
   })
+#endif
 
 /**
  * @brief Check if an option was explicitly set via command-line

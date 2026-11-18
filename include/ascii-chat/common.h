@@ -266,6 +266,29 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  */
 
 /* Safe memory allocation with error checking - returns allocated pointer */
+#if defined(_MSC_VER)
+static inline void *asciichat_safe_malloc(size_t size) {
+  void *ptr = ALLOC_MALLOC(size);
+  if (!ptr)
+    FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", size);
+  return ptr;
+}
+static inline void *asciichat_safe_calloc(size_t count, size_t size) {
+  void *ptr = ALLOC_CALLOC(count, size);
+  if (!ptr)
+    FATAL(ERROR_MEMORY, "Memory allocation failed: %zu elements x %zu bytes", count, size);
+  return ptr;
+}
+static inline void *asciichat_safe_realloc(void *ptr, size_t size) {
+  void *result = ALLOC_REALLOC(ptr, size);
+  if (!result)
+    FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", size);
+  return result;
+}
+#define SAFE_MALLOC(size, cast) ((cast)asciichat_safe_malloc((size)))
+#define SAFE_CALLOC(count, size, cast) ((cast)asciichat_safe_calloc((count), (size)))
+#define SAFE_REALLOC(ptr, size, cast) ((cast)asciichat_safe_realloc((ptr), (size)))
+#else
 #define SAFE_MALLOC(size, cast)                                                   \
   ({                                                                              \
     cast _ptr = (cast)ALLOC_MALLOC(size);                                         \
@@ -294,6 +317,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
     }                                                                               \
     (cast)(tmp_ptr);                                                                \
   })
+#endif
 
 /* Helper macro to track aligned allocations when DEBUG_MEMORY is enabled */
 #if defined(DEBUG_MEMORY) && !defined(MI_MALLOC_OVERRIDE)
