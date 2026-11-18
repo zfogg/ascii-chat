@@ -18,10 +18,8 @@
 #   - CMAKE_BUILD_TYPE: Build type
 #   - ASCIICHAT_DEPS_CACHE_DIR: Dependency cache directory
 #
-# Outputs (variables set by this file):
-#   - BEARSSL_LIBRARIES: Libraries to link against (bearssl_static target)
-#   - BEARSSL_INCLUDE_DIRS: Include directories
-#   - BEARSSL_FOUND: Whether BearSSL was found or built successfully
+# Contract:
+#   - asciichat-bearssl: canonical target carrying the archive and includes
 # =============================================================================
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Patching.cmake)
@@ -93,9 +91,6 @@ if(PLATFORM_IOS)
             target_link_libraries(asciichat-bearssl INTERFACE bearssl_static)
             target_include_directories(asciichat-bearssl INTERFACE "${BEARSSL_SOURCE_DIR}/inc")
         endif()
-        set(BEARSSL_LIBRARIES bearssl_static)
-        set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
-        set(BEARSSL_FOUND TRUE)
     else()
         message(FATAL_ERROR "BearSSL source directory not found: ${BEARSSL_SOURCE_DIR}")
     endif()
@@ -161,19 +156,10 @@ if(USE_MUSL)
             target_link_libraries(asciichat-bearssl INTERFACE bearssl_static)
             target_include_directories(asciichat-bearssl INTERFACE "${BEARSSL_SOURCE_DIR}/inc")
         endif()
-        set(BEARSSL_LIBRARIES bearssl_static)
-        set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
-        set(BEARSSL_FOUND TRUE)
     else()
         message(FATAL_ERROR "BearSSL submodule not found - GitHub/GitLab key fetching will be disabled")
-        set(BEARSSL_LIBRARIES "")
-        set(BEARSSL_INCLUDE_DIRS "")
-        set(BEARSSL_FOUND FALSE)
     endif()
 
-    set(BEARSSL_LIBRARIES "${BEARSSL_LIBRARIES}")
-    set(BEARSSL_INCLUDE_DIRS "${BEARSSL_INCLUDE_DIRS}")
-    set(BEARSSL_FOUND "${BEARSSL_FOUND}")
     return()
 endif()
 
@@ -193,9 +179,6 @@ if(BEARSSL_SYSTEM_LIB AND BEARSSL_SYSTEM_INC)
         IMPORTED_LOCATION "${BEARSSL_SYSTEM_LIB}"
     )
     target_include_directories(bearssl_static INTERFACE "${BEARSSL_SYSTEM_INC}")
-    set(BEARSSL_LIBRARIES bearssl_static)
-    set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SYSTEM_INC}")
-    set(BEARSSL_FOUND TRUE)
 
     # Try to get version from system package manager
     execute_process(
@@ -380,9 +363,6 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
     # Make sure the library is built before anything tries to link against it
     add_dependencies(bearssl_static bearssl_build)
 
-    set(BEARSSL_LIBRARIES bearssl_static)
-    set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
-    set(BEARSSL_FOUND TRUE)
 
     # Get version from git submodule
     execute_process(
@@ -398,7 +378,4 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
     endif()
 else()
     message(FATAL_ERROR "${BoldRed}BearSSL submodule not found${ColorReset}")
-    set(BEARSSL_FOUND FALSE)
-    set(BEARSSL_LIBRARIES "")
-    set(BEARSSL_INCLUDE_DIRS "")
 endif()
