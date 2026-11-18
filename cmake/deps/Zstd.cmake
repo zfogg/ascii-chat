@@ -83,6 +83,24 @@ if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
     return()
 endif()
 
+if(WIN32)
+    find_path(_asciichat_zstd_include NAMES zstd.h
+        PATHS "${VCPKG_INCLUDE_PATH}" REQUIRED)
+    find_library(_asciichat_zstd_library NAMES zstd
+        PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    add_library(asciichat-zstd-system UNKNOWN IMPORTED GLOBAL)
+    set_target_properties(asciichat-zstd-system PROPERTIES
+        IMPORTED_LOCATION "${_asciichat_zstd_library}"
+        INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_zstd_include}")
+    add_library(asciichat-zstd INTERFACE)
+    target_link_libraries(asciichat-zstd INTERFACE asciichat-zstd-system)
+    set(ZSTD_LIBRARIES asciichat-zstd)
+    set(ZSTD_INCLUDE_DIRS "${_asciichat_zstd_include}")
+    set(ZSTD_FOUND TRUE)
+    message(STATUS "${BoldGreen}✓${ColorReset} zstd (vcpkg): ${_asciichat_zstd_library}")
+    return()
+endif()
+
 # =============================================================================
 # Non-musl: Use system package or pkg-config
 # =============================================================================
