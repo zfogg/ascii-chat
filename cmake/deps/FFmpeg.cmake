@@ -190,6 +190,14 @@ endif()
 # =============================================================================
 if(WIN32)
     # vcpkg's package describes both static archives and DLL import libraries.
+    if(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
+        set(_asciichat_vcpkg_ffmpeg_module_dir
+            "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/share/ffmpeg")
+        if(EXISTS "${_asciichat_vcpkg_ffmpeg_module_dir}/FindFFMPEG.cmake")
+            list(PREPEND CMAKE_MODULE_PATH "${_asciichat_vcpkg_ffmpeg_module_dir}")
+        endif()
+        unset(_asciichat_vcpkg_ffmpeg_module_dir)
+    endif()
     find_package(FFMPEG REQUIRED)
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "^-l(pthreads|pthread|m|atomic)$")
