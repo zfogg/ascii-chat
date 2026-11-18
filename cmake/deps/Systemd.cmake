@@ -116,7 +116,6 @@ ExternalProject_Add(asciichat-systemd-build
         --prefix=${SYSTEMD_PREFIX} --libdir=lib --buildtype=release
         -Dmode=release -Dtests=false -Dman=false
         -Dstatic-libsystemd=pic
-        -Ddefault-library=static
         -Dstatic-libudev=false -Dnetworkd=false -Dresolve=false
         -Ddefault-hierarchy=unified
     BUILD_COMMAND ninja -C "${SYSTEMD_BUILD}" libsystemd.a
