@@ -300,40 +300,23 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
             endif()
             set(BEARSSL_CC "${CMAKE_C_COMPILER}")
 
-            # Clean BearSSL build directory before initial build
-            execute_process(
-                COMMAND make clean
-                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
-                OUTPUT_QUIET
-                ERROR_QUIET
-            )
-
-            # Build BearSSL at configure time using execute_process
-            # This is more reliable than add_custom_command which has issues with
-            # make on macOS GitHub Actions runners (commands echo but don't execute)
-            set(BEARSSL_LOG_FILE "${BEARSSL_BUILD_DIR}/bearssl-build.log")
-            execute_process(
-                COMMAND make -j${NPROC} lib "CC=${BEARSSL_CC}" "AR=${CMAKE_AR}" "CFLAGS=${BEARSSL_EXTRA_CFLAGS}"
-                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
-                RESULT_VARIABLE BEARSSL_BUILD_RESULT
-                OUTPUT_FILE "${BEARSSL_LOG_FILE}"
-                ERROR_FILE "${BEARSSL_LOG_FILE}"
-            )
-
-            if(NOT BEARSSL_BUILD_RESULT EQUAL 0)
-                message(FATAL_ERROR "${BoldRed}BearSSL build failed${ColorReset}. Check log: ${BEARSSL_LOG_FILE}")
-            endif()
-
-            # Copy built library to cache
-            file(COPY_FILE "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" "${BEARSSL_LIB}")
-
-            message(STATUS "  ${BoldGreen}BearSSL${ColorReset} library built and cached successfully")
+            ExternalProject_Add(asciichat-bearssl-build
+                SOURCE_DIR "${BEARSSL_SOURCE_DIR}"
+                CONFIGURE_COMMAND ""
+                BUILD_COMMAND make -j${NPROC} lib
+                    "CC=${BEARSSL_CC}" "AR=${CMAKE_AR}"
+                    "CFLAGS=${BEARSSL_EXTRA_CFLAGS}"
+                INSTALL_COMMAND ${CMAKE_COMMAND} -E make_directory "${BEARSSL_BUILD_DIR}"
+                    COMMAND ${CMAKE_COMMAND} -E copy
+                        "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" "${BEARSSL_LIB}"
+                BUILD_BYPRODUCTS "${BEARSSL_LIB}"
+                LOG_BUILD TRUE LOG_INSTALL TRUE LOG_OUTPUT_ON_FAILURE TRUE)
+            message(STATUS "  ${BoldGreen}BearSSL${ColorReset} build scheduled through ExternalProject")
         else()
             message(STATUS "${BoldGreen}BearSSL${ColorReset} library found in cache: ${BoldCyan}${BEARSSL_LIB}${ColorReset}")
         endif()
 
-        # Create a dummy target so dependencies work (library already built at configure time)
-        add_custom_target(asciichat-bearssl-build)
+            add_custom_target(asciichat-bearssl-build)
     endif()
 
     # Create an imported library that links to the custom command output
