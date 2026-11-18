@@ -99,7 +99,7 @@ if(WIN32)
     target_link_libraries(ascii-chat PRIVATE shell32)
 endif()
 target_link_libraries(ascii-chat PRIVATE asciichat-core-dependencies)
-target_link_libraries(ascii-chat PRIVATE libflags::flags)
+target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LIBFLAGS_TARGET})
 target_link_libraries(ascii-chat PRIVATE asciichat-rnnoise)
 
 # Clang with compiler-rt does not always add the system unwinder when linking
@@ -174,9 +174,6 @@ elseif(NOT BUILD_SHARED_LIBS OR USE_MUSL)
         # libwebsockets
         target_link_libraries(ascii-chat PRIVATE asciichat-libwebsockets)
         # FreeType and Fontconfig
-        if(FREETYPE_LIBRARY_DIRS)
-            target_link_directories(ascii-chat PRIVATE ${FREETYPE_LIBRARY_DIRS})
-        endif()
         target_link_libraries(ascii-chat PRIVATE asciichat-freetype)
         if(TARGET asciichat-fontconfig)
             target_link_libraries(ascii-chat PRIVATE asciichat-fontconfig)
@@ -207,7 +204,7 @@ elseif(NOT BUILD_SHARED_LIBS OR USE_MUSL)
     set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
 elseif(BUILD_SHARED_LIBS AND NOT USE_MUSL)
     add_dependencies(ascii-chat ascii-chat-shared generate_version)
-    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared ${ASCIICHAT_LIBPLATFORM_TARGET} libflags::flags)
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared ${ASCIICHAT_LIBPLATFORM_TARGET} ${ASCIICHAT_LIBFLAGS_TARGET})
 
     # Explicitly add system libraries when using shared library
     # The executable needs to link against the same dependencies as the shared library

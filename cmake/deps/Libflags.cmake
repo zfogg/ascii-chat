@@ -59,11 +59,6 @@ FetchContent_MakeAvailable(libflags)
 if(TARGET libflags::libflags)
     set(ASCIICHAT_LIBFLAGS_TARGET libflags::libflags CACHE INTERNAL
         "libflags target selected by ascii-chat" FORCE)
-    # Keep ascii-chat's existing consumer names valid while upstream exposes
-    # the library as libflags::libflags.
-    if(NOT TARGET libflags::flags)
-        add_library(libflags::flags ALIAS libflags::libflags)
-    endif()
 elseif(TARGET libflags::flags)
     set(ASCIICHAT_LIBFLAGS_TARGET libflags::flags CACHE INTERNAL
         "libflags target selected by ascii-chat" FORCE)

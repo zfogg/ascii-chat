@@ -488,7 +488,7 @@ if(BUILD_TESTS AND CATCH2_FOUND)
         libplatform
         asciichat-libsodium asciichat-zstd asciichat-opus
         asciichat-sqlite3 asciichat-libwebsockets asciichat-libdatachannel
-        OpenSSL::Crypto asciichat-ffmpeg asciichat-portaudio libflags::flags)
+        OpenSSL::Crypto asciichat-ffmpeg asciichat-portaudio ${ASCIICHAT_LIBFLAGS_TARGET})
 add_dependencies(unit_tests ${ASCII_CHAT_UNIFIED_BUILD_TARGET})
 target_link_libraries(unit_tests PRIVATE
     ascii-chat-static
@@ -577,7 +577,7 @@ endif()
         ${TEST_LDFLAGS} ${_ascii_gotel_testing_target}
         asciichat-libsodium asciichat-zstd asciichat-opus
         asciichat-sqlite3 asciichat-libwebsockets asciichat-libdatachannel
-        OpenSSL::Crypto asciichat-ffmpeg asciichat-portaudio libflags::flags)
+        OpenSSL::Crypto asciichat-ffmpeg asciichat-portaudio ${ASCIICHAT_LIBFLAGS_TARGET})
 add_dependencies(benchmarks ${ASCII_CHAT_UNIFIED_BUILD_TARGET})
 target_link_libraries(benchmarks PRIVATE
     ascii-chat-static
@@ -730,7 +730,7 @@ endif()
             ${_ascii_tests_library}
             asciichat-project-includes
             ascii-chat-runtime
-            libflags::flags
+            ${ASCIICHAT_LIBFLAGS_TARGET}
             ${TEST_LDFLAGS}
         )
 
@@ -2758,7 +2758,7 @@ if(BUILD_TESTS AND TARGET gotel)
     target_sources(test-otel-contract PRIVATE ${_ascii_gotel_contract_testing_sources})
     # The Debug ascii-chat-static facade selects the shared library. This
     # white-box host must share one link image with the exercised production code.
-    target_link_libraries(test-otel-contract PRIVATE ascii-chat-static-lib ascii-chat-static ascii-chat-runtime libflags::flags ${_ascii_gotel_contract_testing_target} asciichat-mimalloc)
+    target_link_libraries(test-otel-contract PRIVATE ascii-chat-static-lib ascii-chat-static ascii-chat-runtime ${ASCIICHAT_LIBFLAGS_TARGET} ${_ascii_gotel_contract_testing_target} asciichat-mimalloc)
     if(WIN32)
         target_link_libraries(test-otel-contract PRIVATE nghttp2 winmm)
     endif()
