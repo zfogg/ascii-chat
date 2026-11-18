@@ -20,10 +20,8 @@
 #   - CMAKE_BUILD_TYPE: Build type
 #   - VCPKG_ROOT, VCPKG_TARGET_TRIPLET: (Windows only) vcpkg configuration
 #
-# Outputs (variables set by this file):
-#   - PCRE2_LIBRARIES: Libraries to link against
-#   - PCRE2_INCLUDE_DIRS: Include directories
-#   - PCRE2_FOUND: Whether PCRE2 was found
+# Output:
+#   - asciichat-pcre2: canonical INTERFACE target for consumers
 # =============================================================================
 
 

@@ -47,7 +47,7 @@ endif()
 set(_ASCIICHAT_FIND_DEPENDENCY_INCLUDED TRUE)
 
 # =============================================================================
-# Main dependency finding macro
+# Main dependency finding function
 # =============================================================================
 function(find_dependency_library)
     # Parse arguments
@@ -199,7 +199,7 @@ function(find_dependency_library)
 
 endfunction()
 
-# Target-only entry point.  The discovery macro runs inside this function's
+# Target-only entry point.  The discovery function runs inside this function's
 # scope, so provider variables cannot leak into the parent directory.  The
 # canonical asciichat-${NAME} interface target created by the macro remains
 # available to consumers.

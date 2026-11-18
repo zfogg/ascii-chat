@@ -22,10 +22,8 @@
 #   - CMAKE_BUILD_TYPE: Build type
 #   - FETCHCONTENT_BASE_DIR: Shared source cache directory
 #
-# Outputs (variables set by this file):
-#   - OPUS_FOUND: Whether Opus was found
-#   - OPUS_LIBRARIES: Libraries to link against
-#   - OPUS_INCLUDE_DIRS: Include directories
+# Output:
+#   - asciichat-opus: canonical INTERFACE target for consumers
 # =============================================================================
 
 
