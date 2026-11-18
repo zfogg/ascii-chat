@@ -220,11 +220,17 @@ function(asciichat_configure_quic)
     set(ASCIICHAT_NGTCP2_INCLUDE_DIR
         "${_ngtcp2_source}/lib/includes;${_ngtcp2_build}/lib/includes" CACHE STRING
         "Selected ngtcp2 headers" FORCE)
+    set(ASCIICHAT_NGTCP2_BUILD_INCLUDE_DIR
+        "${_ngtcp2_build}/lib/includes" CACHE PATH
+        "Generated ngtcp2 headers" FORCE)
     set(ASCIICHAT_NGHTTP3_LIBRARY "${_nghttp3_library}" CACHE FILEPATH
         "Selected nghttp3 library" FORCE)
     set(ASCIICHAT_NGHTTP3_INCLUDE_DIR
         "${_nghttp3_source}/lib/includes;${_nghttp3_build}/lib/includes" CACHE STRING
         "Selected nghttp3 headers" FORCE)
+    set(ASCIICHAT_NGHTTP3_BUILD_INCLUDE_DIR
+        "${_nghttp3_build}/lib/includes" CACHE PATH
+        "Generated nghttp3 headers" FORCE)
     if(WIN32 AND _quic_shared)
         set(_ngtcp2_import_library "${_ngtcp2_build}/lib/ngtcp2.lib")
         set(_ngtcp2_crypto_import_library "${_ngtcp2_build}/crypto/ossl/ngtcp2_crypto_ossl.lib")

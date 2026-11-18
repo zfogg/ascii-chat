@@ -184,11 +184,11 @@ if(USE_MUSL AND NOT TARGET nghttp2_static)
     if(USE_MUSL)
         set(LIBNGTCP2_LIBRARY "${ASCIICHAT_NGTCP2_LIBRARY}" CACHE FILEPATH
             "Cached ngtcp2 library for nghttp2 discovery" FORCE)
-        set(LIBNGTCP2_INCLUDE_DIR "${ASCIICHAT_NGTCP2_INCLUDE_DIR}" CACHE PATH
+        set(LIBNGTCP2_INCLUDE_DIR "${ASCIICHAT_NGTCP2_BUILD_INCLUDE_DIR}" CACHE PATH
             "Cached ngtcp2 headers for nghttp2 discovery" FORCE)
         set(LIBNGHTTP3_LIBRARY "${ASCIICHAT_NGHTTP3_LIBRARY}" CACHE FILEPATH
             "Cached nghttp3 library for nghttp2 discovery" FORCE)
-        set(LIBNGHTTP3_INCLUDE_DIR "${ASCIICHAT_NGHTTP3_INCLUDE_DIR}" CACHE PATH
+        set(LIBNGHTTP3_INCLUDE_DIR "${ASCIICHAT_NGHTTP3_BUILD_INCLUDE_DIR}" CACHE PATH
             "Cached nghttp3 headers for nghttp2 discovery" FORCE)
         set(SYSTEMD_LIBRARIES "${SYSTEMD_PREFIX}/lib/libsystemd.a" CACHE FILEPATH
             "Cached systemd library for nghttp2 discovery" FORCE)
