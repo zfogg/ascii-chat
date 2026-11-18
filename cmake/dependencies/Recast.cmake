@@ -20,7 +20,17 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
             # dependencies are not encoded as transitive linker inputs.
             # Recast is a host tool, so link those host libraries explicitly;
             # these flags never enter the target (musl) build.
-            set(_recast_host_link_flags "-lffi -lz3 -lz -lzstd -lxml2 -ltinfo -licuuc -licudata")
+            set(_recast_host_link_flags)
+            foreach(_recast_host_link_library IN ITEMS
+                ffi z3 z zstd xml2 tinfo icuuc icudata)
+                find_library(_recast_host_link_path
+                    NAMES "${_recast_host_link_library}")
+                if(_recast_host_link_path)
+                    string(APPEND _recast_host_link_flags
+                        " ${_recast_host_link_path}")
+                endif()
+                unset(_recast_host_link_path CACHE)
+            endforeach()
             foreach(_recast_host_library IN ITEMS
                 /lib/x86_64-linux-gnu/libedit.so.2
                 /lib/x86_64-linux-gnu/libbsd.so.0
