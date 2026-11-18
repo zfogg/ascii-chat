@@ -210,21 +210,19 @@ if(WIN32 AND USE_VCPKG)
         "Persistent vcpkg installed dependency tree" FORCE)
 endif()
 
-# vcpkg manifest mode is intentionally left enabled. It is idempotent when the
-# manifest is already satisfied, and must remain enabled so a cleared or
-# incomplete cache is repopulated during a normal preset configure.
 option(ASCIICHAT_VCPKG_REFRESH "Install or update vcpkg dependencies during configuration" OFF)
-if(EXISTS "${CMAKE_BINARY_DIR}/CMakeCache.txt" AND EXISTS "${CMAKE_BINARY_DIR}/cmake_install.cmake" AND NOT ASCIICHAT_VCPKG_REFRESH)
-    set(VCPKG_MANIFEST_INSTALL OFF)
-endif()
 
 # vcpkg chooses and installs its triplet during project(), so select the static
 # release triplet before loading the toolchain rather than in dependency setup.
 if(CMAKE_HOST_WIN32 AND (NOT CMAKE_SYSTEM_NAME OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
    AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
     if(NOT DEFINED VCPKG_TARGET_TRIPLET AND NOT DEFINED ENV{VCPKG_TARGET_TRIPLET})
-        if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
+        if(CMAKE_GENERATOR_PLATFORM MATCHES "^(ARM64|arm64)$"
+                OR CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
             set(_asciichat_vcpkg_arch arm64)
+        elseif(CMAKE_GENERATOR_PLATFORM MATCHES "^(ARM|arm)$"
+                OR CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^(ARM|arm)$")
+            set(_asciichat_vcpkg_arch arm)
         else()
             set(_asciichat_vcpkg_arch x64)
         endif()

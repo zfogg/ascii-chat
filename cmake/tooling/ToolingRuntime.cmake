@@ -111,8 +111,15 @@ function(ascii_copy_tooling_dlls)
         return()
     endif()
 
-    # DLL source directory
-    set(_dll_source "$ENV{VCPKG_ROOT}/installed/x64-windows/debug/bin")
+    # DLL source directory. Use the same selected triplet and installed root as
+    # the main configure so ARM/ARM64 builds never fall back to x64 packages.
+    if(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
+        set(_dll_source "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin")
+    elseif(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_DEFAULT_TRIPLET)
+        set(_dll_source "${VCPKG_INSTALLED_DIR}/${VCPKG_DEFAULT_TRIPLET}/debug/bin")
+    else()
+        return()
+    endif()
 
     # Copy DLLs for ascii-instr-panic (if built locally, not cached)
     if(TARGET ascii-instr-panic AND NOT ASCII_PANIC_TOOL_CACHED)
