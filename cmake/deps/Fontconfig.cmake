@@ -54,16 +54,16 @@ if(PLATFORM_IOS OR USE_MUSL)
         INSTALL_BYPRODUCTS "${FONTCONFIG_PREFIX}/lib/libfontconfig.a"
         DEPENDS asciichat-expat-stage asciichat-freetype-stage
         LOG_CONFIGURE TRUE LOG_BUILD TRUE LOG_INSTALL TRUE LOG_OUTPUT_ON_FAILURE TRUE)
-    add_library(fontconfig STATIC IMPORTED GLOBAL)
-    set_target_properties(fontconfig PROPERTIES
+    add_library(asciichat-fontconfig-static STATIC IMPORTED GLOBAL)
+    set_target_properties(asciichat-fontconfig-static PROPERTIES
         IMPORTED_LOCATION "${FONTCONFIG_PREFIX}/lib/libfontconfig.a"
         INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_fontconfig_include_dirs}"
         INTERFACE_LINK_LIBRARIES "asciichat-expat;asciichat-freetype")
-    add_dependencies(fontconfig asciichat-fontconfig-musl)
+    add_dependencies(asciichat-fontconfig-static asciichat-fontconfig-musl)
     add_library(asciichat-fontconfig INTERFACE)
-    target_link_libraries(asciichat-fontconfig INTERFACE fontconfig)
-    set(_asciichat_fontconfig_pkg_LDFLAGS fontconfig)
-    set(_asciichat_fontconfig_link_libraries fontconfig)
+    target_link_libraries(asciichat-fontconfig INTERFACE asciichat-fontconfig-static)
+    set(_asciichat_fontconfig_pkg_LDFLAGS asciichat-fontconfig-static)
+    set(_asciichat_fontconfig_link_libraries asciichat-fontconfig-static)
     return()
 endif()
 
