@@ -35,6 +35,12 @@ function(configure_msvc_pre_project)
     # Native cl.exe rejects the generated PCH path form used by the project's
     # cross-compiler PCH helper. MSVC builds remain fully supported without it.
     set(ASCIICHAT_USE_PCH OFF CACHE BOOL "Use precompiled headers" FORCE)
+    # Visual Studio's unity project entries flatten source object names and
+    # emits MSB8027 when independent sources share a basename (for example
+    # several network/server.c files). Compile MSVC sources individually so
+    # the generator preserves their distinct paths.
+    set(ASCIICHAT_ENABLE_UNITY_BUILDS OFF CACHE BOOL
+        "Disable unity builds for MSVC source-path correctness" FORCE)
     find_program(_vswhere vswhere PATHS "$ENV{ProgramFiles}/Microsoft Visual Studio/Installer" "C:/Program Files (x86)/Microsoft Visual Studio/Installer")
     if(_vswhere)
         execute_process(COMMAND "${_vswhere}" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath OUTPUT_VARIABLE _vs_root OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
