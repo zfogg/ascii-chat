@@ -22,10 +22,11 @@ endforeach()
 include("${ASCIICHAT_ROOT}/cmake/deps/Mimalloc.cmake")
 add_executable(source-dependencies main.cpp)
 # Use the selected allocator headers even when a TLS package shares its include prefix.
-target_include_directories(source-dependencies BEFORE PRIVATE ${MIMALLOC_INCLUDE_DIRS})
 target_link_libraries(source-dependencies PRIVATE
-    ${ZLIB_LIBRARIES} ${ZSTD_LIBRARIES} ${PCRE2_LIBRARIES} ${OPUS_LIBRARIES}
-    ${PORTAUDIO_LIBRARIES} ${FREETYPE_LIBRARIES} ${ABSEIL_LIBRARIES} ${MINIUPNPC_LIBRARIES}
-    expat ${VTERM_LDFLAGS} ${LIBWEBSOCKETS_LIBRARIES} libdatachannel webrtc_audio_processing ${MIMALLOC_LIBRARIES} ${UTF8PROC_LIBRARIES})
+    asciichat-zlib asciichat-zstd asciichat-pcre2 asciichat-opus
+    asciichat-portaudio asciichat-freetype asciichat-abseil asciichat-miniupnpc
+    asciichat-expat asciichat-vterm asciichat-libwebsockets
+    asciichat-libdatachannel asciichat-webrtc-aec3 asciichat-mimalloc
+    asciichat-utf8proc)
 enable_testing()
 add_test(NAME source-dependencies COMMAND source-dependencies)
