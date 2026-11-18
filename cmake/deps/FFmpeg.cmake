@@ -462,7 +462,7 @@ if(NOT FFMPEG_FOUND OR NOT FFMPEG_LIBRARIES)
     endif()
 
     # Find FFmpeg components
-    pkg_check_modules(FFMPEG
+    pkg_check_modules(FFMPEG IMPORTED_TARGET
         libavformat
         libavcodec
         libavutil
@@ -484,7 +484,9 @@ if(NOT FFMPEG_FOUND OR NOT FFMPEG_LIBRARIES)
     # pkg_check_modules sets FFMPEG_LIBRARIES (library names), FFMPEG_LIBRARY_DIRS (paths), and FFMPEG_LDFLAGS (full flags)
     # We use FFMPEG_LINK_LIBRARIES which pkg-config creates from the above and is the proper way to link
     # If not available, fall back to FFMPEG_LDFLAGS which includes all necessary -L and -l flags
-    if(FFMPEG_LINK_LIBRARIES)
+    if(TARGET PkgConfig::FFMPEG)
+        set(FFMPEG_LIBRARIES PkgConfig::FFMPEG)
+    elseif(FFMPEG_LINK_LIBRARIES)
         set(FFMPEG_LIBRARIES ${FFMPEG_LINK_LIBRARIES})
     else()
         # Fallback to full linker flags (includes both -L and -l flags)
