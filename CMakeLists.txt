@@ -388,6 +388,14 @@ if(RECAST_BACKEND STREQUAL "NATIVE")
   # build graph.
   include("${CMAKE_SOURCE_DIR}/cmake/dependencies/Recast.cmake")
 endif()
+# Native recast_targets() calls must use the target dependency. The pinned
+# Recast.cmake rejects a non-existent RECAST_NATIVE_BINARY during configure,
+# even though the ExternalProject will create that file before compilation.
+if(TARGET recast-native AND NOT TARGET recast)
+  set(_asciichat_recast_native_binary "${RECAST_NATIVE_BINARY}")
+  set(RECAST_NATIVE_BINARY "" CACHE FILEPATH "Recast host executable" FORCE)
+  add_executable(recast ALIAS recast-native)
+endif()
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Query.cmake)
 ascii_panic_prepare()
@@ -465,6 +473,10 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
     if(NOT EXISTS "${WASM_CONFIG_STAMP}" OR
        (ASCIICHAT_MSYS2_ROOT AND NOT "${ASCIICHAT_MSYS2_ROOT}" STREQUAL "${_WASM_ASCIICHAT_MSYS2_ROOT}"))
         message(STATUS "Configuring WASM targets with Emscripten toolchain")
+        set(_asciichat_wasm_recast_binary "${RECAST_NATIVE_BINARY}")
+        if(DEFINED _asciichat_recast_native_binary)
+            set(_asciichat_wasm_recast_binary "${_asciichat_recast_native_binary}")
+        endif()
         set(WASM_CMAKE_ARGS
             -G "${CMAKE_GENERATOR}"
             -B "${WASM_BUILD_DIR}"
@@ -475,7 +487,7 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
             -DASCIICHAT_DEPS_CACHE_DIR=${WEB_DEPS_CACHE_DIR}
             -DPARENT_CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
             "-DRECAST_SOURCE_ROOT=${CMAKE_SOURCE_DIR}"
-            "-DRECAST_NATIVE_BINARY=${RECAST_NATIVE_BINARY}"
+            "-DRECAST_NATIVE_BINARY=${_asciichat_wasm_recast_binary}"
         )
         if(ASCIICHAT_MSYS2_ROOT)
             list(APPEND WASM_CMAKE_ARGS "-DASCIICHAT_MSYS2_ROOT=${ASCIICHAT_MSYS2_ROOT}")
