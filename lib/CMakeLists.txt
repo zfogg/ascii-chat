@@ -561,7 +561,9 @@ target_link_libraries(ascii-chat-video PRIVATE asciichat-vterm)
 target_link_libraries(ascii-chat-video PRIVATE asciichat-freetype)
 
 # Fontconfig for font selection in render-file
-target_link_libraries(ascii-chat-video PRIVATE asciichat-fontconfig)
+if(TARGET asciichat-fontconfig)
+    target_link_libraries(ascii-chat-video PRIVATE asciichat-fontconfig)
+endif()
 
 # Mark generated font files as generated (for OBJECT libraries, must be before module creation)
 set_source_files_properties(
@@ -1169,8 +1171,8 @@ target_link_libraries(ascii-chat-shared PRIVATE asciichat-utf8proc asciichat-lib
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-portaudio)
     endif()
 
-    # Link libsystemd (required for keepawake)
-    if(NOT USE_MUSL)
+    # Link libsystemd (required for keepawake) on Linux only.
+    if(PLATFORM_LINUX AND NOT USE_MUSL)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-systemd)
     endif()
 
@@ -1310,7 +1312,9 @@ endif()
 # Link FreeType2 and Fontconfig for font rendering
 # Use PUBLIC to ensure these are transitively linked when linking static library
 target_link_libraries(ascii-chat-shared PRIVATE asciichat-freetype)
-target_link_libraries(ascii-chat-shared PRIVATE asciichat-fontconfig)
+if(TARGET asciichat-fontconfig)
+    target_link_libraries(ascii-chat-shared PRIVATE asciichat-fontconfig)
+endif()
 
 # Link vterm for terminal emulation
 target_link_libraries(ascii-chat-shared PRIVATE asciichat-vterm)
@@ -1570,13 +1574,15 @@ target_link_libraries(ascii-chat-static INTERFACE
     asciichat-sqlite3
     webrtc_audio_processing
     asciichat-freetype
-    asciichat-fontconfig
     asciichat-vterm
     asciichat-libdatachannel
     asciichat-libwebsockets
     OpenSSL::SSL
     OpenSSL::Crypto
 )
+if(TARGET asciichat-fontconfig)
+    target_link_libraries(ascii-chat-static INTERFACE asciichat-fontconfig)
+endif()
 
 # Link mimalloc
 if(USE_MIMALLOC)
@@ -1648,8 +1654,11 @@ else()
     else()
         # Non-musl builds: link the C++ standard library
         target_link_libraries(ascii-chat-static INTERFACE c++)
-        # The combined archive includes the platform keepawake implementation.
+        # The combined archive includes the platform keepawake implementation
+        # on Linux; systemd is not available on Windows or Darwin.
+        if(PLATFORM_LINUX)
         target_link_libraries(ascii-chat-static INTERFACE asciichat-systemd)
+        endif()
     endif()
 endif()
 
