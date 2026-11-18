@@ -485,7 +485,7 @@ if(BUILD_TESTS AND CATCH2_FOUND)
     target_link_libraries(unit_tests PRIVATE
         ${TEST_LDFLAGS} ${_ascii_gotel_testing_target}
         libplatform
-        ${LIBSODIUM_LIBRARIES} ${ZSTD_LIBRARIES} ${OPUS_LIBRARIES}
+        ${LIBSODIUM_LIBRARIES} asciichat-zstd ${OPUS_LIBRARIES}
         ${SQLITE3_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} libdatachannel
         OpenSSL::Crypto ${FFMPEG_LIBRARIES} ${PORTAUDIO_LIBRARIES} libflags::flags)
 add_dependencies(unit_tests ${ASCII_CHAT_UNIFIED_BUILD_TARGET})
@@ -574,7 +574,7 @@ endif()
     endif()
     target_link_libraries(benchmarks PRIVATE
         ${TEST_LDFLAGS} ${_ascii_gotel_testing_target}
-        ${LIBSODIUM_LIBRARIES} ${ZSTD_LIBRARIES} ${OPUS_LIBRARIES}
+        ${LIBSODIUM_LIBRARIES} asciichat-zstd ${OPUS_LIBRARIES}
         ${SQLITE3_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} libdatachannel
         OpenSSL::Crypto ${FFMPEG_LIBRARIES} ${PORTAUDIO_LIBRARIES} libflags::flags)
 add_dependencies(benchmarks ${ASCII_CHAT_UNIFIED_BUILD_TARGET})
@@ -795,7 +795,7 @@ endif()
         # (normal for dylibs - symbols resolved at runtime)
         target_link_libraries(${test_exe_name}
             ${LIBSODIUM_LIBRARIES}
-            ${ZSTD_LIBRARIES}
+            asciichat-zstd
             ${OPUS_LIBRARIES}
             ${SQLITE3_LIBRARIES}
             ${LIBWEBSOCKETS_LIBRARIES}

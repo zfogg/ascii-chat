@@ -10,12 +10,7 @@
 #   - Linux/macOS (non-musl): Uses pkg-config for system packages
 #   - Windows: Uses vcpkg
 #
-# Outputs:
-#   - zstd::zstd or zstd::libzstd - Imported target for linking
-#   - ZSTD_FOUND - Whether zstd was found/configured
-#   - ZSTD_LIBRARIES - Library paths
-#   - ZSTD_INCLUDE_DIRS - Include directories
-#   - FETCHCONTENT_BASE_DIR: Shared source cache directory
+# Output: the `asciichat-zstd` interface target.
 # =============================================================================
 
 
@@ -64,8 +59,6 @@ if(EMSCRIPTEN OR PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             target_include_directories(asciichat-zstd INTERFACE
                 "$<BUILD_INTERFACE:${asciichat_zstd_SOURCE_DIR}/lib>")
         endif()
-        set(ZSTD_LIBRARIES ${_target} PARENT_SCOPE)
-        set(ZSTD_INCLUDE_DIRS "${asciichat_zstd_SOURCE_DIR}/lib" PARENT_SCOPE)
     endfunction()
     asciichat_build_zstd()
     set(ZSTD_FOUND TRUE)
@@ -85,16 +78,13 @@ if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
     if(NOT ZSTD_STATIC_LIBRARY)
         message(FATAL_ERROR "Static zstd is required for macOS Release builds")
     endif()
-    set(ZSTD_LIBRARIES "${ZSTD_STATIC_LIBRARY}")
-    set(ZSTD_INCLUDE_DIRS ${ZSTD_PKG_INCLUDE_DIRS})
     if(NOT TARGET zstd::libzstd)
         add_library(zstd::libzstd STATIC IMPORTED GLOBAL)
         set_target_properties(zstd::libzstd PROPERTIES
             IMPORTED_LOCATION "${ZSTD_STATIC_LIBRARY}"
-            INTERFACE_INCLUDE_DIRECTORIES "${ZSTD_INCLUDE_DIRS}"
+            INTERFACE_INCLUDE_DIRECTORIES "${ZSTD_PKG_INCLUDE_DIRS}"
         )
     endif()
-    set(ZSTD_FOUND TRUE)
     message(STATUS "${BoldGreen}✓${ColorReset} zstd (static): ${ZSTD_STATIC_LIBRARY}")
     return()
 endif()
@@ -116,9 +106,6 @@ if(WIN32)
     if(NOT TARGET zstd::zstd)
         add_library(zstd::zstd ALIAS asciichat-zstd)
     endif()
-    set(ZSTD_LIBRARIES asciichat-zstd)
-    set(ZSTD_INCLUDE_DIRS "${_asciichat_zstd_include}")
-    set(ZSTD_FOUND TRUE)
     message(STATUS "${BoldGreen}✓${ColorReset} zstd (vcpkg): ${_asciichat_zstd_library}")
     return()
 endif()
@@ -147,8 +134,6 @@ if(NOT zstd_FOUND)
         add_library(zstd::zstd ALIAS zstd::libzstd)
     endif()
 endif()
-
-set(ZSTD_FOUND TRUE)
 
 if(NOT TARGET asciichat-zstd)
     add_library(asciichat-zstd INTERFACE)

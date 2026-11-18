@@ -5,7 +5,7 @@
 # Handles base directories, dependency includes, and platform-specific paths.
 #
 # Prerequisites:
-#   - Must run after Dependencies.cmake (for ZSTD_INCLUDE_DIRS, etc.)
+#   - Must run after Dependencies.cmake (for dependency interface targets)
 #   - Must run after Mimalloc.cmake (for USE_MIMALLOC and FETCHCONTENT_BASE_DIR)
 #   - Must run after Dependencies.cmake (for dependency interface targets)
 #
