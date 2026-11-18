@@ -4,6 +4,7 @@
 
 include("${CMAKE_SOURCE_DIR}/deps/recast/Recast.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/utils/HostTools.cmake")
+include(ExternalProject)
 
 # Musl is a target toolchain. Recast itself is a host-side source transformer
 # and must be built with the runner's native compiler and shared libclang.
@@ -22,34 +23,31 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
             set(_recast_host_link_flags
                 "-lffi /lib/x86_64-linux-gnu/libedit.so.2 /lib/x86_64-linux-gnu/libbsd.so.0 /lib/x86_64-linux-gnu/libmd.so.0 -lz3 -lz -lzstd -lxml2 -ltinfo -licuuc -licudata")
         endif()
-        execute_process(
-            COMMAND "${CMAKE_COMMAND}" -S "${CMAKE_SOURCE_DIR}/deps/recast"
-                -B "${_recast_host_build}" -G Ninja
+        set(_recast_host_binary "${_recast_host_build}/bin/recast${CMAKE_EXECUTABLE_SUFFIX}")
+        ExternalProject_Add(asciichat-recast-host
+            SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/recast"
+            BINARY_DIR "${_recast_host_build}"
+            PREFIX "${_recast_host_cache}/recast-host"
+            CMAKE_ARGS
+                -G Ninja
                 "-DRECAST_HOST_CXX=${_recast_host_cxx}"
                 "-DCMAKE_C_COMPILER=${_recast_host_cc}"
                 "-DCMAKE_CXX_COMPILER=${_recast_host_cxx}"
                 "-DCMAKE_EXE_LINKER_FLAGS=${_recast_host_link_flags}"
                 -DRECAST_BUILD_DOCS=OFF -DBUILD_TESTING=OFF
                 -DRECAST_STATIC_LIBCLANG=OFF
-            RESULT_VARIABLE _recast_host_configure_result
-            OUTPUT_VARIABLE _recast_host_configure_output
-            ERROR_VARIABLE _recast_host_configure_error)
-        if(NOT _recast_host_configure_result EQUAL 0)
-            message(FATAL_ERROR "Failed to configure native Recast host tool:\n${_recast_host_configure_output}\n${_recast_host_configure_error}")
-        endif()
-        execute_process(
-            COMMAND "${CMAKE_COMMAND}" --build "${_recast_host_build}" --target recast
-            RESULT_VARIABLE _recast_host_build_result
-            OUTPUT_VARIABLE _recast_host_build_output
-            ERROR_VARIABLE _recast_host_build_error)
-        if(NOT _recast_host_build_result EQUAL 0)
-            message(FATAL_ERROR "Failed to build native Recast host tool:\n${_recast_host_build_output}\n${_recast_host_build_error}")
-        endif()
-        set(RECAST_NATIVE_BINARY "${_recast_host_build}/bin/recast" CACHE FILEPATH
+            BUILD_COMMAND "${CMAKE_COMMAND}" --build <BINARY_DIR> --target recast
+            INSTALL_COMMAND ""
+            BUILD_BYPRODUCTS "${_recast_host_binary}"
+            USES_TERMINAL_CONFIGURE USES_TERMINAL_BUILD)
+        set(RECAST_NATIVE_BINARY "${_recast_host_binary}" CACHE FILEPATH
             "Native host Recast executable used for musl source transformation" FORCE)
 endif()
 if(NOT TARGET recast-native)
     add_executable(recast-native IMPORTED GLOBAL)
     set_target_properties(recast-native PROPERTIES
         IMPORTED_LOCATION "${RECAST_NATIVE_BINARY}")
+    if(TARGET asciichat-recast-host)
+        add_dependencies(recast-native asciichat-recast-host)
+    endif()
 endif()
