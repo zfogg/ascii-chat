@@ -1546,7 +1546,7 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
     return SET_ERRNO(ERROR_INVALID_PARAM, "argv_index %d out of bounds [0, %d)", argv_index, argc);
   }
 
-  const char *arg = argv[argv_index];
+  char *arg = argv[argv_index];
 
   // Skip --grep (already handled in main.c before mode-specific parsing)
   if (strcmp(arg, "--grep") == 0) {
@@ -1557,7 +1557,7 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
     return ASCIICHAT_OK;
   }
   char *long_opt_value = NULL;
-  const char *equals = NULL;
+  char *equals = NULL;
   char *arg_copy = NULL; // Copy of arg for safe parsing without modifying original
   defer(SAFE_FREE(arg_copy));
   const char *arg_for_lookup = arg; // What to use for option lookup
