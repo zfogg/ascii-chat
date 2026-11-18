@@ -24,8 +24,11 @@ endif()
 if(WIN32)
     # MSYS2 login shells do not inherit the Windows UCRT64 toolchain path.
     # Convert only Windows paths; native Unix shells accept native paths.
+    if(NOT RNNOISE_LLVM_LIB)
+        message(FATAL_ERROR "RNNoise Windows configure requires RNNOISE_LLVM_LIB")
+    endif()
     set(_rnnoise_shell_command
-        "export PATH=\"/ucrt64/bin:/clang64/bin:/usr/local/bin:/usr/bin:$PATH\" && cd \"$(cygpath -u '${RNNOISE_BINARY_DIR}')\" && ./autogen.sh && ./configure --prefix=\"$(cygpath -u '${RNNOISE_INSTALL_DIR}')\" --disable-examples --disable-doc ${_rnnoise_link_flags}")
+        "export PATH=\"/ucrt64/bin:/clang64/bin:/usr/local/bin:/usr/bin:$(dirname \"$(cygpath -u '${RNNOISE_LLVM_LIB}')\"):$PATH\" && export MSYS_NO_PATHCONV=1 && cd \"$(cygpath -u '${RNNOISE_BINARY_DIR}')\" && ./autogen.sh && ./configure --prefix=\"$(cygpath -u '${RNNOISE_INSTALL_DIR}')\" --disable-examples --disable-doc ${_rnnoise_link_flags} && sed -i 's|old_archive_cmds=\"lib -OUT:|old_archive_cmds=\"llvm-lib /out:|' libtool")
 else()
     set(_rnnoise_shell_command
         "cd '${RNNOISE_BINARY_DIR}' && ./autogen.sh && ./configure --prefix='${RNNOISE_INSTALL_DIR}' --disable-examples --disable-doc ${_rnnoise_link_flags}")

@@ -91,15 +91,19 @@ find_dependency_library(
 if(MINIUPNPC_FOUND)
     unset(MINIUPNPC_HEADER_INCLUDE_DIR CACHE)
     foreach(_miniupnpc_include_candidate IN ITEMS
-        ${MINIUPNPC_INCLUDE_DIRS} /usr/include/miniupnpc /usr/local/include/miniupnpc)
+        ${MINIUPNPC_INCLUDE_DIRS} /usr/include /usr/include/miniupnpc
+        /usr/local/include /usr/local/include/miniupnpc)
         if(EXISTS "${_miniupnpc_include_candidate}/miniupnpc.h")
             set(MINIUPNPC_HEADER_INCLUDE_DIR "${_miniupnpc_include_candidate}")
+            break()
+        elseif(EXISTS "${_miniupnpc_include_candidate}/miniupnpc/miniupnpc.h")
+            set(MINIUPNPC_HEADER_INCLUDE_DIR "${_miniupnpc_include_candidate}/miniupnpc")
             break()
         endif()
     endforeach()
     if(NOT MINIUPNPC_HEADER_INCLUDE_DIR)
         find_path(MINIUPNPC_HEADER_INCLUDE_DIR NAMES miniupnpc.h
-            HINTS ${MINIUPNPC_INCLUDE_DIRS} REQUIRED)
+            HINTS ${MINIUPNPC_INCLUDE_DIRS} PATH_SUFFIXES miniupnpc REQUIRED)
     endif()
     set(MINIUPNPC_INCLUDE_DIRS "${MINIUPNPC_HEADER_INCLUDE_DIR}")
     message(STATUS "miniupnpc found: ${MINIUPNPC_LIBRARIES}")

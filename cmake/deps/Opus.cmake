@@ -81,15 +81,19 @@ endif()
 unset(OPUS_HEADER_INCLUDE_DIR CACHE)
 foreach(_opus_include_candidate IN ITEMS
     ${OPUS_INCLUDE_DIRS} ${OPUS_PKG_INCLUDE_DIR}
-    /usr/include/opus /usr/local/include/opus)
+    /usr/include /usr/include/opus /usr/local/include /usr/local/include/opus)
     if(EXISTS "${_opus_include_candidate}/opus.h")
         set(OPUS_HEADER_INCLUDE_DIR "${_opus_include_candidate}")
+        break()
+    elseif(EXISTS "${_opus_include_candidate}/opus/opus.h")
+        set(OPUS_HEADER_INCLUDE_DIR "${_opus_include_candidate}/opus")
         break()
     endif()
 endforeach()
 if(NOT OPUS_HEADER_INCLUDE_DIR)
     find_path(OPUS_HEADER_INCLUDE_DIR NAMES opus.h
-        HINTS ${OPUS_INCLUDE_DIRS} ${OPUS_PKG_INCLUDE_DIR} REQUIRED)
+        HINTS ${OPUS_INCLUDE_DIRS} ${OPUS_PKG_INCLUDE_DIR}
+        PATH_SUFFIXES opus REQUIRED)
 endif()
 set(OPUS_INCLUDE_DIRS "${OPUS_HEADER_INCLUDE_DIR}")
 
