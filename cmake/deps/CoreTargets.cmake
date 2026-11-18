@@ -60,7 +60,7 @@ _asciichat_wrap_target(asciichat-freetype Freetype::Freetype freetype ${FREETYPE
 if(NOT WIN32)
     _asciichat_wrap_target(asciichat-fontconfig PkgConfig::FONTCONFIG ${FONTCONFIG_LINK_LIBRARIES})
 endif()
-_asciichat_wrap_target(asciichat-vterm asciichat-vterm)
+_asciichat_wrap_target(asciichat-vterm asciichat-vterm PkgConfig::VTERM vterm)
 _asciichat_wrap_target(asciichat-openssl OpenSSL::SSL OpenSSL::Crypto)
 _asciichat_wrap_target(asciichat-bearssl ${BEARSSL_LIBRARIES})
 if(PLATFORM_LINUX)
