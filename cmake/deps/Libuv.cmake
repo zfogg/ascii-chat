@@ -43,7 +43,7 @@ function(configure_libuv)
         set(LIBUV_BUILD_TESTS OFF CACHE BOOL "" FORCE)
         set(LIBUV_BUILD_BENCH OFF CACHE BOOL "" FORCE)
         set(LIBUV_BUILD_SHARED OFF CACHE BOOL "" FORCE)
-        FetchContent_Declare(asciichat_libuv
+        asciichat_fetchcontent_declare(asciichat_libuv
             BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/libuv"
             EXCLUDE_FROM_ALL
             GIT_REPOSITORY https://github.com/libuv/libuv.git

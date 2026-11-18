@@ -23,7 +23,7 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE
             # Upstream's DLL exports also apply to GNU-style Clang with the MSVC ABI.
             set(ABSL_BUILD_MONOLITHIC_SHARED_LIBS ${BUILD_SHARED_LIBS})
         endif()
-        FetchContent_Declare(asciichat_abseil
+        asciichat_fetchcontent_declare(asciichat_abseil
             BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/abseil"
             EXCLUDE_FROM_ALL
             URL https://github.com/abseil/abseil-cpp/archive/refs/tags/20250814.1.tar.gz

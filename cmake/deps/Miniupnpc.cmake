@@ -47,7 +47,7 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
         endif()
         set(UPNPC_BUILD_TESTS OFF)
         set(UPNPC_BUILD_SAMPLE OFF)
-        FetchContent_Declare(asciichat_miniupnpc
+        asciichat_fetchcontent_declare(asciichat_miniupnpc
             BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/miniupnpc"
             EXCLUDE_FROM_ALL
             URL https://github.com/miniupnp/miniupnp/archive/refs/tags/miniupnpc_2_2_7.tar.gz

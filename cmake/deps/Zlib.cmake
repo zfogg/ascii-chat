@@ -21,7 +21,7 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
     function(asciichat_build_zlib)
         asciichat_dependency_defaults()
         set(ZLIB_BUILD_EXAMPLES OFF)
-        FetchContent_Declare(asciichat_zlib
+        asciichat_fetchcontent_declare(asciichat_zlib
             BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/zlib"
             EXCLUDE_FROM_ALL
             URL https://zlib.net/fossils/zlib-1.3.1.tar.gz

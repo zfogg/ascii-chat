@@ -1,0 +1,162 @@
+# Dependency inventory for the ascii-chat CMake graph.
+#
+# `cache` is relative to ASCIICHAT_DEPS_CACHE_DIR.  `host: true` means the
+# artifact is built for the machine running CMake, not for the application
+# target (for example, Recast's source transformer).
+version: 1
+
+dependencies:
+  - name: abseil
+    source: https://github.com/abseil/abseil-cpp
+    version: 20240116.2
+    cache: fetchcontent-*/asciichat_abseil-src
+    target: asciichat-abseil
+    host: false
+    musl: true
+  - name: bearssl
+    source: https://www.bearssl.org/git/BearSSL
+    version: 0.6
+    cache: bearssl
+    target: asciichat-bearssl
+    host: false
+    musl: true
+  - name: ffmpeg
+    source: https://ffmpeg.org
+    version: project-pinned
+    cache: build/installed/ffmpeg
+    target: asciichat-ffmpeg
+    host: false
+    musl: true
+  - name: fftw
+    source: https://www.fftw.org
+    version: 3.3.10
+    cache: build/fftw-src
+    target: asciichat-fftw
+    host: false
+    musl: true
+  - name: freetype
+    source: https://freetype.org
+    version: 2.13.3
+    cache: fetchcontent-*/asciichat_freetype-src
+    target: asciichat-freetype
+    host: false
+    musl: true
+  - name: gotel
+    source: https://github.com/zfogg/gotel
+    version: git-submodule
+    cache: gotel-*
+    target: asciichat-gotel
+    host: false
+    musl: true
+  - name: libdatachannel
+    source: https://github.com/paullouisageneau/libdatachannel
+    version: project-pinned
+    cache: fetchcontent-*/asciichat_libdatachannel-src
+    target: asciichat-libdatachannel
+    host: false
+    musl: true
+  - name: libplatform
+    source: https://github.com/zfogg/libplatform
+    version: git-submodule
+    cache: submodule
+    target: asciichat-libplatform
+    host: false
+    musl: true
+  - name: libuv
+    source: https://github.com/libuv/libuv
+    version: project-pinned
+    cache: fetchcontent-*/asciichat_libuv-src
+    target: asciichat-libuv
+    host: false
+    musl: true
+  - name: libvterm
+    source: https://github.com/neovim/libvterm
+    version: 0.3.3
+    cache: fetchcontent-*/libvterm-src
+    target: asciichat-vterm
+    host: false
+    musl: true
+  - name: libwebsockets
+    source: https://github.com/warmcat/libwebsockets
+    version: project-pinned
+    cache: fetchcontent-*/asciichat_libwebsockets-src
+    target: asciichat-libwebsockets
+    host: false
+    musl: true
+  - name: mimalloc
+    source: https://github.com/microsoft/mimalloc
+    version: project-pinned
+    cache: fetchcontent-*/asciichat_mimalloc-src
+    target: asciichat-mimalloc
+    host: false
+    musl: true
+  - name: nghttp2
+    source: https://github.com/nghttp2/nghttp2
+    version: project-pinned
+    cache: fetchcontent-*/asciichat_nghttp2-src
+    target: asciichat-nghttp2
+    host: false
+    musl: true
+  - name: nghttp3
+    source: https://github.com/ngtcp2/nghttp3
+    version: project-pinned
+    cache: asciichat-nghttp3-*
+    target: asciichat-nghttp3
+    host: false
+    musl: true
+  - name: ngtcp2
+    source: https://github.com/ngtcp2/ngtcp2
+    version: project-pinned
+    cache: asciichat-ngtcp2-*
+    target: asciichat-ngtcp2
+    host: false
+    musl: true
+  - name: openssl
+    source: https://www.openssl.org
+    version: 4.1.0-musl / system-native
+    cache: musl/openssl-4.1.0
+    target: asciichat-openssl
+    host: false
+    musl: true
+  - name: opus
+    source: https://opus-codec.org
+    version: 1.5.2
+    cache: fetchcontent-*/asciichat_opus-src
+    target: asciichat-opus
+    host: false
+    musl: true
+  - name: recast
+    source: https://github.com/zfogg/recast
+    version: git-submodule
+    cache: host-tools/recast-llvm23
+    target: recast-native
+    host: true
+    musl: false
+  - name: utf8proc
+    source: https://github.com/JuliaStrings/utf8proc
+    version: git-submodule
+    cache: submodule
+    target: asciichat-utf8proc
+    host: false
+    musl: true
+  - name: webrtc-aec3
+    source: project-pinned
+    version: project-pinned
+    cache: fetchcontent-*/webrtc_aec3-src
+    target: asciichat-webrtc-aec3
+    host: false
+    musl: true
+  - name: zlib
+    source: https://zlib.net
+    version: project-pinned
+    cache: fetchcontent-*/asciichat_zlib-src
+    target: asciichat-zlib
+    host: false
+    musl: true
+  - name: zstd
+    source: https://github.com/facebook/zstd
+    version: project-pinned
+    cache: fetchcontent-*/asciichat_zstd-src
+    target: asciichat-zstd
+    host: false
+    musl: true

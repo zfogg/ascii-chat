@@ -34,7 +34,7 @@ if(EMSCRIPTEN OR PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
         if(EMSCRIPTEN)
             set(ZSTD_MULTITHREAD_SUPPORT OFF)
         endif()
-        FetchContent_Declare(asciichat_zstd
+        asciichat_fetchcontent_declare(asciichat_zstd
             BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/zstd"
             EXCLUDE_FROM_ALL
             URL https://github.com/meta/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz

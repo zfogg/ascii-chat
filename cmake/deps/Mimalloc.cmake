@@ -30,7 +30,7 @@ if(NOT TARGET mimalloc AND NOT TARGET mimalloc-static)
             set(MI_LOCAL_DYNAMIC_TLS ON)
             set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
         endif()
-        FetchContent_Declare(asciichat_mimalloc
+        asciichat_fetchcontent_declare(asciichat_mimalloc
             GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
             GIT_TAG v2.2.4 GIT_SHALLOW TRUE
             BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/mimalloc"

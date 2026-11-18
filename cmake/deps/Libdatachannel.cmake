@@ -50,11 +50,11 @@ function(asciichat_build_libdatachannel)
     set(_asciichat_libdatachannel_source
         "${ASCIICHAT_DEPS_CACHE_DIR}/asciichat_libdatachannel-src")
     if(EXISTS "${_asciichat_libdatachannel_source}/CMakeLists.txt")
-        FetchContent_Declare(asciichat_libdatachannel
+        asciichat_fetchcontent_declare(asciichat_libdatachannel
             SOURCE_DIR "${_asciichat_libdatachannel_source}"
             BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libdatachannel-build")
     else()
-        FetchContent_Declare(asciichat_libdatachannel
+        asciichat_fetchcontent_declare(asciichat_libdatachannel
             BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libdatachannel-build"
             GIT_REPOSITORY https://github.com/paullouisageneau/libdatachannel.git
             GIT_TAG v0.22.5 GIT_SHALLOW TRUE

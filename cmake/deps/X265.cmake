@@ -56,7 +56,7 @@ if(USE_MUSL)
         set(ENABLE_CLI OFF)
         set(ENABLE_ASSEMBLY OFF)
         set(ENABLE_LIBNUMA OFF)
-        FetchContent_Declare(asciichat_x265
+        asciichat_fetchcontent_declare(asciichat_x265
             BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/x265"
             URL "https://bitbucket.org/multicoreware/x265_git/get/${X265_VERSION}.tar.gz"
             URL_HASH "SHA256=${X265_HASH}" DOWNLOAD_EXTRACT_TIMESTAMP TRUE EXCLUDE_FROM_ALL)
