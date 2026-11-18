@@ -62,6 +62,24 @@ else()
         GIT_TAG f0865335e0c90b872ad2d4b40d2590509439f1fe
         SOURCE_DIR "${_asciichat_sequel_source}")
 endif()
+set(_asciichat_otlp_c_source "${ASCIICHAT_DEPS_CACHE_DIR}/otlp_c-src")
+if(EXISTS "${_asciichat_otlp_c_source}/CMakeLists.txt")
+    FetchContent_Declare(otlp_c SOURCE_DIR "${_asciichat_otlp_c_source}")
+else()
+    FetchContent_Declare(otlp_c
+        GIT_REPOSITORY https://github.com/riboseinc/otlp-c.git
+        GIT_TAG 0798449d66331c3953b8ba9354164cfbf2f3bdaf
+        SOURCE_DIR "${_asciichat_otlp_c_source}")
+endif()
+set(_asciichat_gotel_nghttp2_source "${ASCIICHAT_DEPS_CACHE_DIR}/gotel_nghttp2-src")
+if(EXISTS "${_asciichat_gotel_nghttp2_source}/CMakeLists.txt")
+    FetchContent_Declare(gotel_nghttp2 SOURCE_DIR "${_asciichat_gotel_nghttp2_source}")
+else()
+    FetchContent_Declare(gotel_nghttp2
+        GIT_REPOSITORY https://github.com/nghttp2/nghttp2.git
+        GIT_TAG 43b29f991403b5419dd0bea2840581078ead9bf8
+        SOURCE_DIR "${_asciichat_gotel_nghttp2_source}")
+endif()
 
 # Keep Gotel and its fetched otlp-c/Sequel build trees in the persistent
 # dependency cache. Generated Gotel sources are emitted into this same stable
