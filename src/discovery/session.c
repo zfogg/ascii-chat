@@ -2052,7 +2052,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
     // These states are handled during discovery_session_start(), not in the process loop
     // If we reach here, something went wrong - sleep and wait
     log_debug("State %d should be handled by discovery_session_start", session->state);
-  discovery_sleep_ns(timeout_ns);
+    discovery_sleep_ns(timeout_ns);
     break;
 
   default:

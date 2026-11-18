@@ -40,11 +40,17 @@ void ui_scrollbar_render(frame_buffer_t *out, int row, int col, int height, size
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid scrollbar output or geometry");
     return;
   }
-  frame_buffer_append(out, "\033" "7", 2);
+  frame_buffer_append(out,
+                      "\033"
+                      "7",
+                      2);
   for (int i = 0; i < height; ++i) {
     char cell[UI_SCROLLBAR_CELL_BUFFER_SIZE];
     ui_scrollbar_cell(cell, sizeof(cell), (size_t)i, (size_t)height, total, visible, offset);
     frame_buffer_printf(out, "\033[%d;%dH%s", row + i, col, cell);
   }
-  frame_buffer_append(out, "\033" "8", 2);
+  frame_buffer_append(out,
+                      "\033"
+                      "8",
+                      2);
 }
