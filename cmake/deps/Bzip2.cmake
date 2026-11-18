@@ -17,6 +17,7 @@
 # =============================================================================
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}bzip2${ColorReset} from source (iOS cross-compile)...")
+    include(ExternalProject)
 
     set(BZIP2_PREFIX "${IOS_DEPS_CACHE_DIR}/bzip2")
     set(BZIP2_LIBRARY "${BZIP2_PREFIX}/lib/libbz2.a")
@@ -54,22 +55,21 @@ if(PLATFORM_IOS)
             message(FATAL_ERROR "Failed to extract bzip2")
         endif()
 
-        message(STATUS "  Building bzip2 for iOS...")
-        execute_process(
-            COMMAND bash -c "cd '${BZIP2_BUILD_DIR}/bzip2-1.0.8' && \
-                    env CC=clang \
-                    CFLAGS='-fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0' \
-                    make -j && \
-                    mkdir -p '${BZIP2_PREFIX}/lib' '${BZIP2_PREFIX}/include' && \
-                    cp libbz2.a '${BZIP2_PREFIX}/lib/' && \
-                    cp bzlib.h '${BZIP2_PREFIX}/include/'"
-            RESULT_VARIABLE BUILD_RESULT
-            OUTPUT_VARIABLE BUILD_OUTPUT
-            ERROR_VARIABLE BUILD_ERROR
-        )
-        if(NOT BUILD_RESULT EQUAL 0)
-            message(FATAL_ERROR "bzip2 iOS build failed:\n${BUILD_ERROR}")
-        endif()
+        ExternalProject_Add(bzip2-ios
+            SOURCE_DIR "${BZIP2_BUILD_DIR}/bzip2-1.0.8"
+            CONFIGURE_COMMAND ""
+            BUILD_COMMAND ${CMAKE_COMMAND} -E env
+                "CC=clang"
+                "CFLAGS=-fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0"
+                make -j
+            INSTALL_COMMAND ${CMAKE_COMMAND} -E make_directory
+                    "${BZIP2_PREFIX}/lib" "${BZIP2_PREFIX}/include"
+                COMMAND ${CMAKE_COMMAND} -E copy
+                    "${BZIP2_BUILD_DIR}/bzip2-1.0.8/libbz2.a" "${BZIP2_LIBRARY}"
+                COMMAND ${CMAKE_COMMAND} -E copy
+                    "${BZIP2_BUILD_DIR}/bzip2-1.0.8/bzlib.h" "${BZIP2_INCLUDE_DIR}/bzlib.h"
+            BUILD_BYPRODUCTS "${BZIP2_LIBRARY}"
+            LOG_BUILD TRUE LOG_INSTALL TRUE LOG_OUTPUT_ON_FAILURE TRUE)
     else()
         message(STATUS "  ${BoldBlue}bzip2${ColorReset} library found in iOS cache: ${BoldMagenta}${BZIP2_LIBRARY}${ColorReset}")
     endif()
@@ -81,6 +81,9 @@ if(PLATFORM_IOS)
             IMPORTED_LOCATION "${BZIP2_LIBRARY}"
             INTERFACE_INCLUDE_DIRECTORIES "${BZIP2_INCLUDE_DIR}"
         )
+    endif()
+    if(TARGET bzip2-ios)
+        add_dependencies(BZip2::BZip2 bzip2-ios)
     endif()
     if(NOT TARGET asciichat-bzip2)
         add_library(asciichat-bzip2 INTERFACE)
