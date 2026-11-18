@@ -204,7 +204,7 @@ runs:
       id: sccache-restore
       uses: actions/cache/restore@v4
       with:
-        path: .sccache
+        path: ${{ runner.temp }}/sccache
         # Use computed key from cache-keys step (github.ref_name not available in composite actions)
         key: ${{ steps.cache-keys.outputs.sccache-key || steps.cache-keys-win.outputs.sccache-key }}
         restore-keys: |
@@ -215,15 +215,16 @@ runs:
       if: inputs.os != 'windows'
       shell: bash
       run: |
-        mkdir -p .sccache
-        echo "SCCACHE_DIR=${{ github.workspace }}/.sccache" >> $GITHUB_ENV
+        mkdir -p "$RUNNER_TEMP/sccache"
+        echo "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> $GITHUB_ENV
 
     - name: Configure sccache directory (Windows)
       if: inputs.os == 'windows'
       shell: pwsh
       run: |
-        New-Item -ItemType Directory -Force -Path .sccache | Out-Null
-        Add-Content -Path $env:GITHUB_ENV -Value "SCCACHE_DIR=${{ github.workspace }}\.sccache"
+        $sccacheDir = Join-Path $env:RUNNER_TEMP 'sccache'
+        New-Item -ItemType Directory -Force -Path $sccacheDir | Out-Null
+        Add-Content -Path $env:GITHUB_ENV -Value "SCCACHE_DIR=$sccacheDir"
 
     # Restore build directory for incremental builds
     # Same key per branch - Ninja handles rebuilding only changed files
