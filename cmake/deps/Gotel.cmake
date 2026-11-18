@@ -189,19 +189,15 @@ if(USE_MUSL AND NOT TARGET nghttp2_static)
     endif()
 endif()
 
+set(_asciichat_gotel_parent_c_flags "${CMAKE_C_FLAGS}")
+if(UNIX)
+    string(APPEND CMAKE_C_FLAGS " -D_POSIX_C_SOURCE=200809L")
+endif()
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                  "${_asciichat_gotel_cache_dir}/build"
                  EXCLUDE_FROM_ALL)
-
-# nghttp2's C23 build otherwise hides clock_gettime and CLOCK_MONOTONIC on
-# glibc systems because the pinned source does not request the POSIX feature
-# set explicitly.
-foreach(_asciichat_nghttp2_target IN ITEMS nghttp2_shared nghttp2_static)
-    if(TARGET ${_asciichat_nghttp2_target})
-        target_compile_definitions(${_asciichat_nghttp2_target} PRIVATE
-            _POSIX_C_SOURCE=200809L)
-    endif()
-endforeach()
+set(CMAKE_C_FLAGS "${_asciichat_gotel_parent_c_flags}")
+unset(_asciichat_gotel_parent_c_flags)
 
 # Keep the produced libraries beside the cached Gotel build, rather than in
 # the parent application's build tree. This makes the cache self-contained
