@@ -31,12 +31,22 @@ if(USE_MUSL OR IOS OR EMSCRIPTEN)
 endif()
 
 if(WIN32)
-    find_package(FFTW3 CONFIG REQUIRED)
-    find_package(FFTW3f CONFIG REQUIRED)
-    set(FFTW_LIBRARIES FFTW3::fftw3)
-    set(FFTW_SYS_LIBRARIES FFTW3::fftw3)
-    set(FFTW_FLOAT_LIBRARY FFTW3::fftw3f)
-    get_target_property(FFTW_INCLUDE_DIRS FFTW3::fftw3 INTERFACE_INCLUDE_DIRECTORIES)
+    # The vcpkg FFTW port exposes archives but no FFTW3Config.cmake file.
+    find_path(FFTW_INCLUDE_DIR NAMES fftw3.h PATHS "${VCPKG_INCLUDE_PATH}" REQUIRED)
+    find_library(_fftw3_library NAMES fftw3 PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    find_library(_fftw3f_library NAMES fftw3f PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    add_library(asciichat-fftw-system UNKNOWN IMPORTED GLOBAL)
+    set_target_properties(asciichat-fftw-system PROPERTIES
+        IMPORTED_LOCATION "${_fftw3_library}"
+        INTERFACE_INCLUDE_DIRECTORIES "${FFTW_INCLUDE_DIR}")
+    add_library(asciichat-fftw-float-system UNKNOWN IMPORTED GLOBAL)
+    set_target_properties(asciichat-fftw-float-system PROPERTIES
+        IMPORTED_LOCATION "${_fftw3f_library}"
+        INTERFACE_INCLUDE_DIRECTORIES "${FFTW_INCLUDE_DIR}")
+    set(FFTW_LIBRARIES asciichat-fftw-system)
+    set(FFTW_SYS_LIBRARIES asciichat-fftw-system)
+    set(FFTW_FLOAT_LIBRARY asciichat-fftw-float-system)
+    set(FFTW_INCLUDE_DIRS "${FFTW_INCLUDE_DIR}")
     set(FFTW_SYS_INCLUDE_DIRS ${FFTW_INCLUDE_DIRS})
     set(FFTW_FOUND TRUE)
     return()
