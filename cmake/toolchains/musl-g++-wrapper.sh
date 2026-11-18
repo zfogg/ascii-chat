@@ -2,14 +2,17 @@
 set -eu
 
 repo_root="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
-toolchain_root="${ASCII_CHAT_DEPS_CACHE_ROOT:-${repo_root}/.deps-cache/wsl/Ubuntu}"
+toolchain_root="${ASCII_CHAT_DEPS_CACHE_ROOT:-${repo_root}/.deps-cache}"
 gcc_root=""
-for candidate in "$toolchain_root"/alpine-gcc "$toolchain_root"/*/alpine-gcc; do
+for candidate in "$toolchain_root"/alpine-gcc; do
   if [ -x "$candidate/usr/bin/g++" ]; then
     gcc_root="$candidate"
     break
   fi
 done
+if [ -z "$gcc_root" ]; then
+  gcc_root="$(find "$toolchain_root" -type f -path '*/alpine-gcc/usr/bin/g++' -print -quit 2>/dev/null | sed 's#/usr/bin/g++$##')"
+fi
 
 if [ -z "$gcc_root" ]; then
   echo "ascii-chat: cached Alpine GCC suite was not found under $toolchain_root" >&2
