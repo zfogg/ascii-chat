@@ -46,7 +46,8 @@ if(PLATFORM_IOS OR USE_MUSL)
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         PREFIX "${CMAKE_CURRENT_BINARY_DIR}/_deps/fontconfig"
         CONFIGURE_COMMAND ${_fontconfig_env} <SOURCE_DIR>/configure
-            --prefix=${FONTCONFIG_PREFIX} --disable-docs --enable-static --disable-shared
+            --prefix=${FONTCONFIG_PREFIX} --disable-docs --disable-cache-build
+            --enable-static --disable-shared
             --with-baseconfigdir=${FONTCONFIG_PREFIX}/etc/fonts ${_fontconfig_host}
         BUILD_COMMAND ${_fontconfig_env} make -j8
         INSTALL_COMMAND ${_fontconfig_env} make install
