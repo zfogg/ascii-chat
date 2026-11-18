@@ -70,6 +70,21 @@ const app_callbacks_t *app_callbacks_get(void);
  * Call a void(void) callback and return bool
  * Usage: bool result = APP_CALLBACK_BOOL(should_exit)
  */
+#if defined(_MSC_VER)
+static inline bool app_callback_bool(bool (*callback)(void)) {
+  return callback ? callback() : false;
+}
+
+static inline uint64_t app_callback_uint64(uint64_t (*callback)(void)) {
+  return callback ? callback() : 0ULL;
+}
+
+#define APP_CALLBACK_BOOL(callback_name) \
+  app_callback_bool(app_callbacks_get() ? app_callbacks_get()->callback_name : NULL)
+
+#define APP_CALLBACK_UINT64(callback_name) \
+  app_callback_uint64(app_callbacks_get() ? app_callbacks_get()->callback_name : NULL)
+#else
 #define APP_CALLBACK_BOOL(callback_name)                           \
   ({                                                               \
     const app_callbacks_t *__cb = app_callbacks_get();             \
@@ -85,6 +100,7 @@ const app_callbacks_t *app_callbacks_get(void);
     const app_callbacks_t *__cb = app_callbacks_get();            \
     (__cb && __cb->callback_name) ? __cb->callback_name() : 0ULL; \
   })
+#endif
 
 /**
  * Call a void(unsigned int) callback
