@@ -550,6 +550,9 @@ ascii_chat_add_face_detector(ascii-chat-video)
 # Link external dependencies (FFmpeg, freetype, fontconfig)
 # Module dependencies (util, platform, core, simd) are resolved through OBJECT library merging
 target_link_libraries(ascii-chat-video PRIVATE asciichat-fftw-float)
+if(FFTW_INCLUDE_DIRS)
+    target_include_directories(ascii-chat-video PRIVATE ${FFTW_INCLUDE_DIRS})
+endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # V4L2 capture uses swscale and needs generated FFmpeg headers before compiling.
     target_link_libraries(ascii-chat-runtime INTERFACE asciichat-ffmpeg)
