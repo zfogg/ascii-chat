@@ -156,6 +156,7 @@ if(NOT USE_MUSL)
     # A package-manager target is already configured on Windows/vcpkg. Reuse
     # it when present; otherwise the gRPC subproject populates the pinned
     # source checkout below.
+    find_package(nghttp2 CONFIG QUIET)
     if(TARGET nghttp2::nghttp2)
         set(GOTEL_NGHTTP2_TARGET nghttp2::nghttp2 CACHE STRING
             "Existing nghttp2 target for gotel gRPC" FORCE)
