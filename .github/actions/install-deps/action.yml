@@ -446,19 +446,19 @@ runs:
           Write-Host "Using existing MSYS2 installation: $existingMsys2"
           Add-Content -Path $env:GITHUB_ENV -Value "MSYS2_ROOT=$existingMsys2"
         }
-        elseif (-not (Get-Command 7z -ErrorAction SilentlyContinue) -and
-                -not (Get-Command 7zz -ErrorAction SilentlyContinue) -and
-                -not (Get-Command tar -ErrorAction SilentlyContinue)) {
+        elseif (-not (Get-Command 7z.exe -ErrorAction SilentlyContinue)) {
           winget install --id 7zip.7zip --exact --scope machine --silent --accept-package-agreements --accept-source-agreements
           if ($LASTEXITCODE -ne 0) { throw '7-Zip provisioning failed' }
           foreach ($path in @('C:\Program Files\7-Zip', 'C:\Program Files (x86)\7-Zip')) {
-            if (Test-Path -LiteralPath $path) { Add-Content -Path $env:GITHUB_PATH -Value $path }
-          }
-          if (-not (Get-Command 7z -ErrorAction SilentlyContinue) -and
-              -not (Get-Command 7zz -ErrorAction SilentlyContinue)) {
-            throw '7-Zip was installed but no usable extractor was found on PATH'
+            if (Test-Path -LiteralPath (Join-Path $path '7z.exe')) {
+              $env:Path = "$path;$env:Path"
+              Add-Content -Path $env:GITHUB_PATH -Value $path
+            }
           }
         }
+        $sevenZip = Get-Command 7z.exe -ErrorAction SilentlyContinue
+        if (-not $sevenZip) { throw '7z.exe is required before Scoop installs MSYS2' }
+        Write-Host "Using Scoop extractor: $($sevenZip.Source)"
 
         function Ensure-Scoop {
           if (Get-Command scoop -ErrorAction SilentlyContinue) {
@@ -541,6 +541,8 @@ runs:
         $packages = $basePackages + $extra
 
         Ensure-Scoop
+        scoop config use_external_7zip true
+        if ($LASTEXITCODE -ne 0) { throw 'Failed to enable Scoop external 7-Zip extraction' }
         Ensure-ScoopBucket -Bucket 'main'
         Ensure-ScoopBucket -Bucket 'extras'
         foreach ($pkg in $packages) {

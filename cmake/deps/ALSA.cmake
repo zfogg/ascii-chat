@@ -17,7 +17,10 @@ if(USE_MUSL)
 
     include(ExternalProject)
 
-    set(ALSA_PREFIX "${MUSL_DEPS_DIR_STATIC}/alsa-lib")
+    # Keep the corrected musl build isolated from archives produced before
+    # header isolation was added; the old installed libasound.a must not
+    # satisfy the cache check below.
+    set(ALSA_PREFIX "${MUSL_DEPS_DIR_STATIC}/alsa-lib-musl-v2")
     # Bump the build directory when configure flags change so stale glibc
     # configure results cannot be reused by a musl release build.
     set(ALSA_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/alsa-lib-build-musl-v2")
