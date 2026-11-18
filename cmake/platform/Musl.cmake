@@ -81,20 +81,17 @@ function(configure_musl_post_project)
     # Using clang directly with musl for proper static-PIE support.
     # See: https://github.com/rust-lang/rust/issues/95926
 
-    # Use Clang's compiler-rt builtins archive for the musl runtime.
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
-        set(_compiler_rt_arch "aarch64")
-    else()
-        set(_compiler_rt_arch "x86_64")
-    endif()
+    # Ask the selected, target-aware Clang where compiler-rt actually lives.
+    # Debian's libclang-rt packages do not use one stable resource-dir layout
+    # across LLVM versions and architectures.
     execute_process(
-        COMMAND "${CMAKE_C_COMPILER}" --print-resource-dir
-        OUTPUT_VARIABLE CLANG_RESOURCE_DIR
+        COMMAND "${CMAKE_C_COMPILER}" "--target=${MUSL_TARGET}" -rtlib=compiler-rt -print-libgcc-file-name
+        OUTPUT_VARIABLE CLANG_BUILTINS_PATH
         OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE _clang_builtins_result
     )
-    set(CLANG_BUILTINS_PATH "${CLANG_RESOURCE_DIR}/lib/linux/libclang_rt.builtins-${_compiler_rt_arch}.a")
-    if(NOT EXISTS "${CLANG_BUILTINS_PATH}")
-        message(FATAL_ERROR "Clang compiler-rt builtins archive was not found: ${CLANG_BUILTINS_PATH}")
+    if(NOT _clang_builtins_result EQUAL 0 OR NOT EXISTS "${CLANG_BUILTINS_PATH}")
+        message(FATAL_ERROR "Clang did not return an existing target compiler-rt builtins archive: '${CLANG_BUILTINS_PATH}'")
     endif()
     set(MUSL_COMPILER_RT_PATH "${CLANG_BUILTINS_PATH}" CACHE FILEPATH "Clang compiler-rt builtins archive for musl static executables" FORCE)
 
@@ -431,12 +428,9 @@ function(configure_musl_post_project)
         else()
             message(FATAL_ERROR "Unsupported architecture for Clang compiler-rt: ${CMAKE_SYSTEM_PROCESSOR}")
         endif()
-        find_file(ASCIICHAT_COMPILER_RT_BUILTINS
-            NAMES "libclang_rt.builtins-${_asciichat_compiler_rt_arch}.a"
-            PATHS "${_asciichat_clang_resource_dir}/lib/linux"
-            NO_DEFAULT_PATH)
-        if(NOT ASCIICHAT_COMPILER_RT_BUILTINS)
-            message(FATAL_ERROR "Clang compiler-rt builtins archive was not found under ${_asciichat_clang_resource_dir}/lib/linux")
+        set(ASCIICHAT_COMPILER_RT_BUILTINS "${MUSL_COMPILER_RT_PATH}")
+        if(NOT EXISTS "${ASCIICHAT_COMPILER_RT_BUILTINS}")
+            message(FATAL_ERROR "Clang compiler-rt builtins archive does not exist: ${ASCIICHAT_COMPILER_RT_BUILTINS}")
         endif()
         set(CMAKE_C_STANDARD_LIBRARIES
             "\"${ASCIICHAT_COMPILER_RT_BUILTINS}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\""
