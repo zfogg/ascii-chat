@@ -1284,13 +1284,7 @@ else()
     # Link mimalloc into shared library (required for SAFE_MALLOC macros)
     # Use force_load/whole-archive to export all mimalloc symbols from the shared library
     if(USE_MIMALLOC)
-        if(TARGET mimalloc-shared)
-            # System mimalloc is a shared library - link normally (no --whole-archive)
-            # Symbols stay in separate .so, not embedded in our library
-            target_link_libraries(ascii-chat-shared PRIVATE asciichat-mimalloc)
-        else()
-            target_link_libraries(ascii-chat-shared PRIVATE asciichat-mimalloc)
-        endif()
+        target_link_libraries(ascii-chat-shared PRIVATE asciichat-mimalloc)
     endif()
     if(PLATFORM_DARWIN)
         target_link_libraries(ascii-chat-shared PRIVATE
@@ -1603,9 +1597,7 @@ endif()
 
 # Link mimalloc
 if(USE_MIMALLOC)
-    if(TARGET mimalloc-static)
-        target_link_libraries(ascii-chat-static INTERFACE mimalloc-static)
-    elseif(TARGET asciichat-mimalloc)
+    if(TARGET asciichat-mimalloc)
         target_link_libraries(ascii-chat-static INTERFACE asciichat-mimalloc)
     endif()
 endif()

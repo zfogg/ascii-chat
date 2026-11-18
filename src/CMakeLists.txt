@@ -514,11 +514,8 @@ endif()
 
 if(USE_MIMALLOC)
     message(STATUS "ascii-chat linking mimalloc through asciichat-mimalloc")
-    if(TARGET mimalloc-static)
-        add_dependencies(ascii-chat mimalloc-static)
-    endif()
-    if(TARGET mimalloc-shared)
-        add_dependencies(ascii-chat mimalloc-shared)
+    if(TARGET asciichat-mimalloc)
+        add_dependencies(ascii-chat asciichat-mimalloc)
     endif()
 
     # Static mimalloc must appear after the object/static libraries that use
