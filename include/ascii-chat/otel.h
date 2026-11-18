@@ -3,6 +3,8 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <ascii-chat/stats/stats.h>
+#include <sqlite3.h>
+#include <gotel/sqlite.h>
 typedef enum {
 #define ASCII_OTEL_OPERATION(id, name, realtime) ASCII_OTEL_##id,
 #include <ascii-chat/otel_operations.def>
