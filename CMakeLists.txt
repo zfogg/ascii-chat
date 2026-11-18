@@ -426,6 +426,17 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND
       "${CMAKE_SOURCE_DIR}/deps/recast"
       "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build"
       EXCLUDE_FROM_ALL)
+    # Recast is a host-side build tool used by custom commands.  Keep its
+    # executable at one path for every Visual Studio configuration so
+    # $<TARGET_FILE:recast> cannot select Debug while a Release build is
+    # running the transformer.
+    set_target_properties(recast PROPERTIES
+      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+      RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/bin"
+      RUNTIME_OUTPUT_DIRECTORY_DEV "${CMAKE_BINARY_DIR}/bin"
+      RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/bin"
+      RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_BINARY_DIR}/bin"
+      RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_BINARY_DIR}/bin")
     # A native build uses the Recast target created above.  Do not let a
     # stale RECAST_NATIVE_BINARY cache entry from an older configuration
     # override that target and fail configure before the tool can be built.
