@@ -44,11 +44,11 @@ outputs:
     description: "Whether the Windows vcpkg cache was hit"
     value: ${{ steps.vcpkg-cache.outputs.cache-hit }}
   ccache-key:
-    description: "Cache key for ccache (computed by cache-keys step)"
-    value: ${{ steps.cache-keys.outputs.ccache-key || steps.cache-keys-win.outputs.ccache-key }}
+    description: "Cache key for the local sccache directory (compatibility output name)"
+    value: ${{ steps.cache-keys.outputs.sccache-key || steps.cache-keys-win.outputs.sccache-key }}
   ccache-hit:
-    description: "Whether ccache was hit"
-    value: ${{ steps.ccache-restore.outputs.cache-hit }}
+    description: "Whether the local sccache directory was hit"
+    value: ${{ steps.sccache-restore.outputs.cache-hit }}
   build-cache-key:
     description: "Cache key for build directory (computed by cache-keys step)"
     value: ${{ steps.cache-keys.outputs.build-cache-key || steps.cache-keys-win.outputs.build-cache-key }}
@@ -145,12 +145,12 @@ runs:
         # Versioned keys invalidate incompatible dependency caches.
         # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
         echo "cmake-cache-key=${os}-${arch}-cmake-deps-v19-${deps_hash}-${install_hash}" >> $GITHUB_OUTPUT
-        echo "ccache-key=${os}-${arch}-ccache-v2" >> $GITHUB_OUTPUT
+        echo "sccache-key=${os}-${arch}-sccache-v1" >> $GITHUB_OUTPUT
         echo "build-cache-key=${os}-${arch}-build-v10" >> $GITHUB_OUTPUT
 
         echo "Computed cache keys:"
         echo "  cmake: ${os}-${arch}-cmake-deps-v19-${deps_hash}-${install_hash}"
-        echo "  ccache: ${os}-${arch}-ccache-v2"
+        echo "  sccache: ${os}-${arch}-sccache-v1"
         echo "  build: ${os}-${arch}-build-v10"
 
     - name: Compute cache keys (Windows)
@@ -179,12 +179,12 @@ runs:
         # Versioned keys invalidate incompatible dependency caches.
         # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
         Add-Content -Path $env:GITHUB_OUTPUT -Value "cmake-cache-key=${os}-${arch}-cmake-deps-v19-${depsHash}-${installHash}"
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "ccache-key=${os}-${arch}-ccache-v2"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "sccache-key=${os}-${arch}-sccache-v1"
         Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v10"
 
         Write-Host "Computed cache keys:"
         Write-Host "  cmake: ${os}-${arch}-cmake-deps-v18-${depsHash}-${installHash}"
-        Write-Host "  ccache: ${os}-${arch}-ccache-v2"
+        Write-Host "  sccache: ${os}-${arch}-sccache-v1"
         Write-Host "  build: ${os}-${arch}-build-v10"
 
     - name: Restore CMake dependency cache (All platforms)
@@ -198,36 +198,32 @@ runs:
         # v8: Fix cache timing - cache is now saved by workflows AFTER cmake configure
         key: ${{ steps.cache-keys.outputs.cmake-cache-key || steps.cache-keys-win.outputs.cmake-cache-key }}
 
-    # Restore ccache for incremental compilation across CI runs
+    # Restore the local sccache directory for incremental compilation across CI runs
     # Key includes branch name so each branch has its own cache, with fallback to any branch's cache
-    - name: Restore ccache (All platforms)
-      id: ccache-restore
+    - name: Restore sccache directory (All platforms)
+      id: sccache-restore
       uses: actions/cache/restore@v4
       with:
-        path: .ccache
+        path: .sccache
         # Use computed key from cache-keys step (github.ref_name not available in composite actions)
-        key: ${{ steps.cache-keys.outputs.ccache-key || steps.cache-keys-win.outputs.ccache-key }}
+        key: ${{ steps.cache-keys.outputs.sccache-key || steps.cache-keys-win.outputs.sccache-key }}
         restore-keys: |
-          ${{ runner.os }}-${{ runner.arch }}-ccache-v2-
+          ${{ runner.os }}-${{ runner.arch }}-sccache-v1-
 
-    # Set CCACHE_DIR to workspace-relative path for consistent caching
-    - name: Configure ccache directory (Unix)
+    # Set SCCACHE_DIR to a workspace-relative path for consistent caching
+    - name: Configure sccache directory (Unix)
       if: inputs.os != 'windows'
       shell: bash
       run: |
-        mkdir -p .ccache
-        echo "CCACHE_DIR=${{ github.workspace }}/.ccache" >> $GITHUB_ENV
-        echo "CCACHE_MAXSIZE=500M" >> $GITHUB_ENV
-        echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+        mkdir -p .sccache
+        echo "SCCACHE_DIR=${{ github.workspace }}/.sccache" >> $GITHUB_ENV
 
-    - name: Configure ccache directory (Windows)
+    - name: Configure sccache directory (Windows)
       if: inputs.os == 'windows'
       shell: pwsh
       run: |
-        New-Item -ItemType Directory -Force -Path .ccache | Out-Null
-        Add-Content -Path $env:GITHUB_ENV -Value "CCACHE_DIR=${{ github.workspace }}\.ccache"
-        Add-Content -Path $env:GITHUB_ENV -Value "CCACHE_MAXSIZE=500M"
-        Add-Content -Path $env:GITHUB_ENV -Value "CCACHE_COMPRESS=1"
+        New-Item -ItemType Directory -Force -Path .sccache | Out-Null
+        Add-Content -Path $env:GITHUB_ENV -Value "SCCACHE_DIR=${{ github.workspace }}\.sccache"
 
     # Restore build directory for incremental builds
     # Same key per branch - Ninja handles rebuilding only changed files

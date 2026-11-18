@@ -440,15 +440,15 @@ jobs:
           echo "=== Musl toolchain/link flags ==="
           grep -E 'CMAKE_(C|EXE_LINKER)_FLAGS|CMAKE_SYSROOT|CMAKE_C_COMPILER' build_release/CMakeCache.txt 2>/dev/null || true
 
-      - name: Print ccache stats
+      - name: Print sccache stats
         if: success()
-        run: ccache --show-stats || true
+        run: sccache --show-stats || true
 
-      - name: Save ccache
+      - name: Save sccache directory
         if: success()
         uses: actions/cache/save@v4
         with:
-          path: .ccache
+          path: .sccache
           key: ${{ steps.install-deps.outputs.ccache-key }}
 
       - name: Save build directory
@@ -697,15 +697,15 @@ jobs:
           fi
           echo "Verified static libasciichat.a in $archive"
 
-      - name: Print ccache stats
+      - name: Print sccache stats
         if: success()
-        run: ccache --show-stats || true
+        run: sccache --show-stats || true
 
-      - name: Save ccache
+      - name: Save sccache directory
         if: success()
         uses: actions/cache/save@v4
         with:
-          path: .ccache
+          path: .sccache
           key: ${{ steps.install-deps.outputs.ccache-key }}
 
       - name: Save build directory
@@ -948,16 +948,16 @@ jobs:
           }
           Write-Host "Runtime archive contains no DLL dependencies; development archive contains libasciichat.a"
 
-      - name: Print ccache stats
+      - name: Print sccache stats
         if: success()
         shell: bash
-        run: ccache --show-stats || true
+        run: sccache --show-stats || true
 
-      - name: Save ccache
+      - name: Save sccache directory
         if: success()
         uses: actions/cache/save@v4
         with:
-          path: .ccache
+          path: .sccache
           key: ${{ steps.install-deps.outputs.ccache-key }}
 
       - name: Save build directory
