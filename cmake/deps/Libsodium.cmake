@@ -224,6 +224,7 @@ if(USE_MUSL)
     set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
     set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
     set(LIBSODIUM_BUILD_TARGET libsodium-musl)
+    file(MAKE_DIRECTORY "${LIBSODIUM_PREFIX}/include")
     add_library(asciichat-libsodium STATIC IMPORTED GLOBAL)
     set_target_properties(asciichat-libsodium PROPERTIES
         IMPORTED_LOCATION "${LIBSODIUM_PREFIX}/lib/libsodium.a"
@@ -272,6 +273,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE AND NOT USE_MUSL A
     set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
     set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
     set(LIBSODIUM_BUILD_TARGET libsodium-linux)
+    file(MAKE_DIRECTORY "${LIBSODIUM_PREFIX}/include")
     add_library(asciichat-libsodium STATIC IMPORTED GLOBAL)
     set_target_properties(asciichat-libsodium PROPERTIES
         IMPORTED_LOCATION "${LIBSODIUM_PREFIX}/lib/libsodium.a"
