@@ -436,7 +436,7 @@ uintptr_t thread_to_key(platform_thread_t thread);
 #ifndef NDEBUG
 #define NAMED_REGISTER_RWLOCK(lock, name, parent_ptr) named_register((uintptr_t)(const void *)(lock), (name), "rwlock", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_RWLOCK(lock, name, parent_ptr) ((void)(lock), (void)(parent_ptr), (name))
+#define NAMED_REGISTER_RWLOCK(lock, name, parent_ptr) ((void)(lock), (void)(name), (void)(parent_ptr))
 #endif
 
 /**

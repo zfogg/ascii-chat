@@ -2055,8 +2055,8 @@ asciichat_error_t audio_read_samples(audio_context_t *ctx, float *buffer, int nu
   }
 
   // audio_ring_buffer_read now returns number of samples read, not error code
-  size_t samples_read = audio_ring_buffer_read(ctx->capture_buffer, buffer, (size_t)num_samples);
-  return (samples_read >= 0) ? ASCIICHAT_OK : ERROR_AUDIO;
+  (void)audio_ring_buffer_read(ctx->capture_buffer, buffer, (size_t)num_samples);
+  return ASCIICHAT_OK;
 }
 
 asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer, int num_samples) {
