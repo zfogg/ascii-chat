@@ -11,7 +11,7 @@ function(asciichat_build_expat)
     set(EXPAT_BUILD_TESTS OFF)
     set(EXPAT_BUILD_TOOLS OFF)
     FetchContent_Declare(asciichat_expat
-            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_expat"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/expat"
         URL https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE EXCLUDE_FROM_ALL)
     FetchContent_MakeAvailable(asciichat_expat)

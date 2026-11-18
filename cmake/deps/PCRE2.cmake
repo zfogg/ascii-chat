@@ -45,7 +45,7 @@ if(EMSCRIPTEN OR PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             set(PCRE2_SUPPORT_JIT OFF)
         endif()
         FetchContent_Declare(asciichat_pcre2
-            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/asciichat_pcre2"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/pcre2"
             EXCLUDE_FROM_ALL
             URL https://github.com/PCRE2Project/pcre2/archive/refs/tags/pcre2-10.47.tar.gz
             URL_HASH SHA256=409c443549b13b216da40049850a32f3e6c57d4224ab11553ab5a786878a158e
