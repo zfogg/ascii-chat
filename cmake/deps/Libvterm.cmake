@@ -11,8 +11,8 @@ if(EMSCRIPTEN OR WIN32 OR USE_MUSL OR PLATFORM_IOS OR ASCIICHAT_BUILD_DEPS_FROM_
             GIT_REPOSITORY https://github.com/neovim/libvterm.git
             GIT_TAG v0.3.3 GIT_SHALLOW TRUE)
         find_package(Perl REQUIRED)
-        FetchContent_MakeAvailable(libvterm-src)
-        set(_vterm_source "${libvterm-src_SOURCE_DIR}")
+        FetchContent_MakeAvailable(libvterm)
+        set(_vterm_source "${libvterm_SOURCE_DIR}")
         set(_vterm_binary "${ASCIICHAT_DEPS_CACHE_DIR}/libvterm")
         file(MAKE_DIRECTORY "${_vterm_binary}/encoding")
         file(GLOB _tables CONFIGURE_DEPENDS "${_vterm_source}/src/encoding/*.tbl")

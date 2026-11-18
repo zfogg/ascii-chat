@@ -20,13 +20,6 @@ function(configure_libuv)
             message(FATAL_ERROR
                 "libuv was found, but its CMake package exported neither libuv::uv nor libuv::uv_a")
         endif()
-        if(NOT TARGET asciichat-libuv)
-            add_library(asciichat-libuv UNKNOWN IMPORTED GLOBAL)
-            set_target_properties(asciichat-libuv PROPERTIES
-                IMPORTED_LOCATION "${ASCIICHAT_LIBUV_LIBRARY}"
-                INTERFACE_INCLUDE_DIRECTORIES "${ASCIICHAT_LIBUV_INCLUDE_DIR}")
-        endif()
-        set(ASCIICHAT_LIBUV_TARGET asciichat-libuv)
     elseif(USE_MUSL)
         include(FetchContent)
         set(LIBUV_BUILD_TESTS OFF CACHE BOOL "" FORCE)
