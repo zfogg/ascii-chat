@@ -81,14 +81,14 @@ if(PLATFORM_IOS)
         endif()
 
         # Create an imported library target
-        add_library(bearssl_static STATIC IMPORTED GLOBAL)
-        set_target_properties(bearssl_static PROPERTIES
+        add_library(asciichat-bearssl-archive STATIC IMPORTED GLOBAL)
+        set_target_properties(asciichat-bearssl-archive PROPERTIES
             IMPORTED_LOCATION "${BEARSSL_LIB}"
         )
 
         if(NOT TARGET asciichat-bearssl)
             add_library(asciichat-bearssl INTERFACE)
-            target_link_libraries(asciichat-bearssl INTERFACE bearssl_static)
+            target_link_libraries(asciichat-bearssl INTERFACE asciichat-bearssl-archive)
             target_include_directories(asciichat-bearssl INTERFACE "${BEARSSL_SOURCE_DIR}/inc")
         endif()
     else()
@@ -143,17 +143,17 @@ if(USE_MUSL)
         endif()
 
         # Create an imported library target that matches what BearSSL.cmake creates
-        add_library(bearssl_static STATIC IMPORTED GLOBAL)
-        set_target_properties(bearssl_static PROPERTIES
+        add_library(asciichat-bearssl-archive STATIC IMPORTED GLOBAL)
+        set_target_properties(asciichat-bearssl-archive PROPERTIES
             IMPORTED_LOCATION "${BEARSSL_LIB}"
         )
-        target_include_directories(bearssl_static INTERFACE
+        target_include_directories(asciichat-bearssl-archive INTERFACE
             "${BEARSSL_SOURCE_DIR}/inc"
         )
 
         if(NOT TARGET asciichat-bearssl)
             add_library(asciichat-bearssl INTERFACE)
-            target_link_libraries(asciichat-bearssl INTERFACE bearssl_static)
+            target_link_libraries(asciichat-bearssl INTERFACE asciichat-bearssl-archive)
             target_include_directories(asciichat-bearssl INTERFACE "${BEARSSL_SOURCE_DIR}/inc")
         endif()
     else()
@@ -174,11 +174,11 @@ find_path(BEARSSL_SYSTEM_INC NAMES bearssl.h
 
 if(BEARSSL_SYSTEM_LIB AND BEARSSL_SYSTEM_INC)
     # Use system-installed BearSSL (from Docker or system package manager)
-    add_library(bearssl_static STATIC IMPORTED)
-    set_target_properties(bearssl_static PROPERTIES
+    add_library(asciichat-bearssl-archive STATIC IMPORTED)
+    set_target_properties(asciichat-bearssl-archive PROPERTIES
         IMPORTED_LOCATION "${BEARSSL_SYSTEM_LIB}"
     )
-    target_include_directories(bearssl_static INTERFACE "${BEARSSL_SYSTEM_INC}")
+    target_include_directories(asciichat-bearssl-archive INTERFACE "${BEARSSL_SYSTEM_INC}")
 
     # Try to get version from system package manager
     execute_process(
@@ -279,11 +279,11 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
             message(STATUS "  ${BoldGreen}BearSSL${ColorReset} library built and cached successfully")
 
             # Create a dummy target so dependencies work
-            add_custom_target(bearssl_build)
+            add_custom_target(asciichat-bearssl-build)
         else()
             message(STATUS "${BoldGreen}BearSSL${ColorReset} library found in cache: ${BoldCyan}${BEARSSL_LIB}${ColorReset}")
             # Create a dummy target so dependencies work
-            add_custom_target(bearssl_build)
+            add_custom_target(asciichat-bearssl-build)
         endif()
 
     else()
@@ -344,24 +344,24 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
         endif()
 
         # Create a dummy target so dependencies work (library already built at configure time)
-        add_custom_target(bearssl_build)
+        add_custom_target(asciichat-bearssl-build)
     endif()
 
     # Create an imported library that links to the custom command output
-    add_library(bearssl_static STATIC IMPORTED GLOBAL)
-    set_target_properties(bearssl_static PROPERTIES
+    add_library(asciichat-bearssl-archive STATIC IMPORTED GLOBAL)
+    set_target_properties(asciichat-bearssl-archive PROPERTIES
         IMPORTED_LOCATION "${BEARSSL_LIB}"
     )
-    target_include_directories(bearssl_static INTERFACE
+    target_include_directories(asciichat-bearssl-archive INTERFACE
         "${BEARSSL_SOURCE_DIR}/inc"
     )
     if(NOT TARGET asciichat-bearssl)
         add_library(asciichat-bearssl INTERFACE)
-        target_link_libraries(asciichat-bearssl INTERFACE bearssl_static)
+        target_link_libraries(asciichat-bearssl INTERFACE asciichat-bearssl-archive)
         target_include_directories(asciichat-bearssl INTERFACE "${BEARSSL_SOURCE_DIR}/inc")
     endif()
     # Make sure the library is built before anything tries to link against it
-    add_dependencies(bearssl_static bearssl_build)
+    add_dependencies(asciichat-bearssl-archive asciichat-bearssl-build)
 
 
     # Get version from git submodule
