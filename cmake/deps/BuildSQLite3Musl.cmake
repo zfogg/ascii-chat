@@ -19,7 +19,7 @@ execute_process(
         -DSQLITE_ENABLE_JSON1
         -Ufcntl64
         -Dfcntl64=fcntl
-        -O3 -fPIC "${SQLITE3_WRAPPER}" -o "${SQLITE3_OBJECT}"
+        -O3 -fPIC -c "${SQLITE3_WRAPPER}" -o "${SQLITE3_OBJECT}"
     RESULT_VARIABLE _compile_result
     OUTPUT_VARIABLE _compile_output
     ERROR_VARIABLE _compile_error)
