@@ -18,6 +18,10 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: release-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CC: clang
   CXX: clang++
