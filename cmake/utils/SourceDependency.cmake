@@ -9,6 +9,11 @@ list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../find")
 # beneath the selected configuration cache.
 function(asciichat_fetchcontent_declare name)
     set(_arguments ${ARGN})
+    list(FIND _arguments SOURCE_DIR _source_dir_index)
+    if(_source_dir_index EQUAL -1)
+        list(APPEND _arguments SOURCE_DIR
+            "${ASCIICHAT_DEPS_CACHE_DIR}/src/${name}")
+    endif()
     list(FIND _arguments BINARY_DIR _binary_dir_index)
     if(_binary_dir_index EQUAL -1)
         list(APPEND _arguments BINARY_DIR
