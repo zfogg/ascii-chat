@@ -86,6 +86,14 @@ find_dependency_library(
     HOMEBREW_PKG miniupnpc
     STATIC_LIB_NAME libminiupnpc.a
 )
+set(_asciichat_miniupnpc_found "${MINIUPNPC_FOUND}")
+set(_asciichat_miniupnpc_link "${MINIUPNPC_LIBRARIES}")
+if(NOT _asciichat_miniupnpc_include)
+    set(_asciichat_miniupnpc_include "${MINIUPNPC_INCLUDE_DIRS}")
+endif()
+unset(MINIUPNPC_FOUND)
+unset(MINIUPNPC_LIBRARIES)
+unset(MINIUPNPC_INCLUDE_DIRS)
 
 # If miniupnpc is found, define HAVE_MINIUPNPC for the C code
 if(_asciichat_miniupnpc_found)
