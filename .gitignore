@@ -4,6 +4,7 @@
 /bin/mmmbed.exe
 /build/*
 /node_modules/
+/.venv/
 /ascii_chat.egg-info/
 /.claude/settings.local.json
 
