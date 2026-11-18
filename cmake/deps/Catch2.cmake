@@ -42,7 +42,7 @@ if(BUILD_CATCH2_TESTS)
         set(CATCH_BUILD_TESTING OFF CACHE BOOL "" FORCE)
         set(CATCH_INSTALL_DOCS OFF CACHE BOOL "" FORCE)
         set(CATCH_INSTALL_HELPERS OFF CACHE BOOL "" FORCE)
-        FetchContent_Declare(catch2
+    asciichat_fetchcontent_declare(catch2
             GIT_REPOSITORY https://github.com/catchorg/Catch2.git
             GIT_TAG v3.12.0
             GIT_SHALLOW TRUE)

@@ -62,7 +62,7 @@ if(USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             set(ALSA_INCLUDE_DIR "${ALSA_PREFIX}/include")
             set(ALSA_LIBRARY "${ALSA_PREFIX}/lib/libasound.a")
         endif()
-        FetchContent_Declare(asciichat_portaudio
+        asciichat_fetchcontent_declare(asciichat_portaudio
             BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/portaudio"
             EXCLUDE_FROM_ALL
             URL https://github.com/PortAudio/portaudio/archive/refs/tags/v19.7.0.tar.gz

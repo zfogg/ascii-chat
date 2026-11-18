@@ -39,7 +39,7 @@ if(EMSCRIPTEN OR PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
         if(EMSCRIPTEN)
             set(OPUS_DISABLE_INTRINSICS ON)
         endif()
-        FetchContent_Declare(asciichat_opus
+        asciichat_fetchcontent_declare(asciichat_opus
             BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/opus"
             EXCLUDE_FROM_ALL
             URL https://github.com/xiph/opus/releases/download/v1.5.2/opus-1.5.2.tar.gz

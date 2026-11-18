@@ -68,7 +68,7 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE OR ASCIICHAT_REQ
         set(PNG_FOUND FALSE)
         set(HARFBUZZ_FOUND FALSE)
         set(BROTLIDEC_FOUND FALSE)
-        FetchContent_Declare(asciichat_freetype
+        asciichat_fetchcontent_declare(asciichat_freetype
             BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/freetype"
             EXCLUDE_FROM_ALL
             URL ${_freetype_url}

@@ -124,7 +124,7 @@ if(DEFINED EMSCRIPTEN)
             file(REMOVE_RECURSE "${_libsodium_source_dir}")
         endif()
     endif()
-    FetchContent_Declare(libsodium-wasm-src
+    asciichat_fetchcontent_declare(libsodium-wasm-src
         URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
         URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE

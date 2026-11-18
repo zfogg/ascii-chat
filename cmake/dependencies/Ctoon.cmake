@@ -9,7 +9,7 @@ set(CTOON_BUILD_EXAMPLES OFF CACHE BOOL "Disable CToon examples in ascii-chat" F
 set(CTOON_BUILD_DOCS OFF CACHE BOOL "Disable CToon documentation in ascii-chat" FORCE)
 
 if(NOT TARGET ctoon::ctoon)
-    FetchContent_Declare(
+    asciichat_fetchcontent_declare(
         ctoon
         GIT_REPOSITORY https://github.com/MohammadRaziei/ctoon.git
         GIT_TAG v0.9.0

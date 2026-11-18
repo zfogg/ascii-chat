@@ -107,7 +107,7 @@ function(asciichat_build_libwebsockets)
     set(LWS_WITH_SOCKS5 OFF)
     set(LWS_WITHOUT_DAEMONIZE ON)
     set(LWS_IPV6 ON)
-    FetchContent_Declare(asciichat_libwebsockets
+    asciichat_fetchcontent_declare(asciichat_libwebsockets
         BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/libwebsockets"
         URL https://github.com/warmcat/libwebsockets/archive/4cb71af648294663ebd38550ccf47b29adec7974.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE)

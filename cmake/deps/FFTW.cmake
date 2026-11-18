@@ -11,7 +11,7 @@ if(USE_MUSL OR IOS OR EMSCRIPTEN)
         set(ENABLE_LONG_DOUBLE OFF)
         set(DISABLE_FORTRAN ON)
         set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-        FetchContent_Declare(asciichat_fftw
+        asciichat_fetchcontent_declare(asciichat_fftw
             SOURCE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/fftw-src"
             BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/fftw-build"
             EXCLUDE_FROM_ALL
@@ -95,7 +95,7 @@ if(NOT FFTW_FLOAT_LIBRARY)
     set(ENABLE_LONG_DOUBLE OFF)
     set(DISABLE_FORTRAN ON)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-    FetchContent_Declare(asciichat_fftw_float
+    asciichat_fetchcontent_declare(asciichat_fftw_float
         SOURCE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/fftw-float-src"
         BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/fftw-float-build"
         EXCLUDE_FROM_ALL

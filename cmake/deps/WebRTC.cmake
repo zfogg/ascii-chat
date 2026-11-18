@@ -19,7 +19,7 @@ function(asciichat_build_aec3)
     # the caller's dependency mode for Debug/Dev; static release-like targets
     # already select BUILD_SHARED_LIBS=OFF at the preset level.
     set(CMAKE_CXX_STANDARD 17)
-    FetchContent_Declare(webrtc_aec3
+    asciichat_fetchcontent_declare(webrtc_aec3
         BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc-aec3"
         URL https://github.com/zhixingheyixsh/webrtc_AEC3/archive/c1dbdb9924f59d9b3c09189673286665d55f6a5e.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
