@@ -11,14 +11,9 @@ endif()
 set(GOTEL_BUILD_TEST_SUPPORT ${BUILD_TESTS} CACHE BOOL
     "Build reusable telemetry test helpers" FORCE)
 set(GOTEL_WITH_SQLITE ON CACHE BOOL "Build SQLite telemetry adapter" FORCE)
-# Keep the optional gRPC adapter disabled in the application build. The
-# pinned gotel/otlp-c sources expose overlapping HTTP request symbols when
-# combined with the application's HTTP exporter on Windows; telemetry uses
-# OTLP/HTTP here and nghttp2 remains available to the native HTTP server.
-# Keep Gotel's optional gRPC telemetry transport disabled.  Its pinned adapter
-# rewrites the HTTP source staging path and is not needed by ascii-chat's HTTP
-#/2 server.
-set(GOTEL_WITH_GRPC OFF CACHE BOOL "Build native OTLP/gRPC telemetry transport" FORCE)
+# gRPC is part of the application's telemetry contract and must be built on
+# every native configuration.
+set(GOTEL_WITH_GRPC ON CACHE BOOL "Build native OTLP/gRPC telemetry transport" FORCE)
 set(GOTEL_UTF8PROC_TARGET utf8proc CACHE STRING
     "Use ascii-chat's utf8proc target" FORCE)
 
@@ -59,7 +54,9 @@ else()
 endif()
 
 # Keep Gotel and its fetched otlp-c/Sequel build trees in the persistent
-# dependency cache. This is separate from the main build directory.
+# dependency cache. Generated Gotel sources are emitted into this same stable
+# tree so the shared Debug dependency build does not depend on the parent
+# application's binary directory.
 set(_asciichat_gotel_cache_dir "${ASCIICHAT_DEPS_CACHE_DIR}/gotel")
 file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 
@@ -272,12 +269,12 @@ endif()
 string(REPLACE "${_otel_inflight_step}"
     "\t\t\tif (otlp_atomic_load_int(&e->shutdown_requested, OTLP_MEMORY_ORDER_ACQUIRE)) {\n\t\t\t\totlp_http_request_free(e->in_flight);\n\t\t\t\te->in_flight = NULL;\n\t\t\t\te->in_flight_count = 0;\n\t\t\t\twork_done = true;\n\t\t\t\tcontinue;\n\t\t\t}\n${_otel_inflight_step}"
     _otel_exporter "${_otel_exporter}")
-file(CONFIGURE OUTPUT "${CMAKE_BINARY_DIR}/generated/otlp_exporter.c"
+file(CONFIGURE OUTPUT "${_asciichat_gotel_cache_dir}/generated/otlp_exporter.c"
     CONTENT "${_otel_exporter}" @ONLY)
 get_target_property(_otel_sources otlp_c SOURCES)
 list(FILTER _otel_sources EXCLUDE REGEX "(^|/)exporter\\.c$")
 set_property(TARGET otlp_c PROPERTY SOURCES "${_otel_sources}")
-target_sources(otlp_c PRIVATE "${CMAKE_BINARY_DIR}/generated/otlp_exporter.c")
+target_sources(otlp_c PRIVATE "${_asciichat_gotel_cache_dir}/generated/otlp_exporter.c")
 
 set(BUILD_SHARED_LIBS ${_asciichat_parent_shared_libs})
 set(FETCHCONTENT_UPDATES_DISCONNECTED

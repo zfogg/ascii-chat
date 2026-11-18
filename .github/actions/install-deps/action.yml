@@ -56,6 +56,21 @@ outputs:
 runs:
   using: "composite"
   steps:
+    # Shared compiler cache setup for every workflow that uses install-deps.
+    # Mozilla's action uses the GitHub Actions cache backend for sccache.
+    - name: Enable sccache compiler cache
+      uses: mozilla-actions/sccache-action@v0.0.11
+      with:
+        version: "v0.19.0"
+
+    - name: Export sccache build environment
+      shell: bash
+      run: |
+        echo "SCCACHE_GHA_ENABLED=true" >> "$GITHUB_ENV"
+        echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> "$GITHUB_ENV"
+        echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> "$GITHUB_ENV"
+        echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+
     # =========================================================================
     # CMake 4.2.0 Installation (macOS and Windows only)
     # =========================================================================

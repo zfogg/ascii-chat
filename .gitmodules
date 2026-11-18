@@ -57,3 +57,6 @@
 [submodule "deps/ascii-chat-deps/rnnoise"]
 	path = deps/ascii-chat-deps/rnnoise
 	url = https://github.com/xiph/rnnoise.git
+[submodule "deps/cmake-utils"]
+	path = deps/cmake-utils
+	url = https://github.com/zfogg/cmake-utils.git

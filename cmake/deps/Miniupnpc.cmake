@@ -20,7 +20,7 @@
 # Outputs (variables set by this file):
 #   - MINIUPNPC_LIBRARIES: Libraries to link against
 #   - MINIUPNPC_INCLUDE_DIRS: Include directories
-#   - MINIUPNPC_FOUND: Whether miniupnpc was found (not required, gracefully degrades)
+#   - MINIUPNPC_FOUND: Whether miniupnpc was found (required for native builds)
 # =============================================================================
 
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/FindDependency.cmake)
@@ -71,8 +71,8 @@ if(APPLE AND NOT USE_MUSL)
     endif()
 endif()
 
-# Note: miniupnpc is OPTIONAL. If not found, UPnP support is disabled but the build continues.
-# This allows the code to gracefully degrade to WebRTC fallback for NAT traversal.
+# miniupnpc is required for every native build. NAT traversal fallback is a
+# runtime behavior, not permission to ship a binary without the dependency.
 find_dependency_library(
     NAME MINIUPNPC
     VCPKG_NAMES miniupnpc
@@ -80,7 +80,6 @@ find_dependency_library(
     PKG_CONFIG miniupnpc
     HOMEBREW_PKG miniupnpc
     STATIC_LIB_NAME libminiupnpc.a
-    OPTIONAL
 )
 
 # If miniupnpc is found, define HAVE_MINIUPNPC for the C code
@@ -166,6 +165,8 @@ if(MINIUPNPC_FOUND)
             message(STATUS "  NAT-PMP: ${HOMEBREW_PREFIX}/opt/libnatpmp")
         endif()
     endif()
-else()
-    message(STATUS "miniupnpc not found: UPnP/NAT-PMP will be disabled (graceful fallback to WebRTC)")
+endif()
+
+if(NOT MINIUPNPC_FOUND)
+    message(FATAL_ERROR "miniupnpc is required for native builds")
 endif()
