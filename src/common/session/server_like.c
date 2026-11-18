@@ -150,7 +150,7 @@ static void *status_screen_thread_func(void *arg) {
     uint64_t frame_end = platform_get_monotonic_time_us();
     uint64_t frame_time = frame_end - frame_start;
     if (frame_time < frame_interval_us) {
-      platform_sleep_us(frame_interval_us - frame_time);
+      platform_sleep_us((unsigned int)(frame_interval_us - frame_time));
     }
   }
 
@@ -326,7 +326,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
   if (upnp_requested && ipv4_listener) {
     log_info("UPnP status: discovering (TCP port %d)", port);
     asciichat_errno_scope_t mapping_scope = errno_scope_begin();
-    asciichat_error_t upnp_result = nat_upnp_open(port, config->upnp.description, &g_upnp_ctx);
+    asciichat_error_t upnp_result = nat_upnp_open((uint16_t)port, config->upnp.description, &g_upnp_ctx);
     if (upnp_result == ASCIICHAT_OK && !nat_upnp_matches_bind_address(g_upnp_ctx, tcp_config.ipv4_address)) {
       log_warn("NAT: gateway mapping does not target the bound IPv4 listener; removing it");
       nat_upnp_close(&g_upnp_ctx);
@@ -361,7 +361,7 @@ asciichat_error_t session_server_like_run(const session_server_like_config_t *co
       log_warn("mDNS disabled - LAN discovery will not be available");
     } else if (config->mdns.service_name) {
       // Immediate advertisement if service_name is provided
-      session_server_like_mdns_advertise(config->mdns.service_name, config->mdns.service_type, port, NULL, 0);
+      session_server_like_mdns_advertise(config->mdns.service_name, config->mdns.service_type, (uint16_t)port, NULL, 0);
     }
   }
 
