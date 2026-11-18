@@ -6,6 +6,12 @@ set(ASCIICHAT_RNNOISE_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/rnnoi
 set(ASCIICHAT_RNNOISE_BUILD_DIR "${CMAKE_BINARY_DIR}/rnnoise-build")
 set(ASCIICHAT_RNNOISE_INSTALL_DIR "${CMAKE_BINARY_DIR}/rnnoise-install")
 
+# Reuse the centrally discovered shell.  Passing an undefined RNNOISE_SHELL
+# through ExternalProject otherwise produces an empty command on Windows.
+if(NOT ASCIICHAT_RNNOISE_SHELL)
+    set(ASCIICHAT_RNNOISE_SHELL "${ASCIICHAT_BASH_EXECUTABLE}")
+endif()
+
 # Imported targets validate their interface include directories during CMake
 # generation. RNNoise creates this directory during ExternalProject install,
 # so create the empty staging directory up front as well.
