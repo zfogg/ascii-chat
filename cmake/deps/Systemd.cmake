@@ -66,6 +66,8 @@ ExternalProject_Add(asciichat-util-linux-musl
         CC=${_util_linux_cc}
         CFLAGS=${_util_linux_cflags}
         LDFLAGS=${_util_linux_ldflags}
+        ac_cv_func_getttynam=no
+        ac_cv_func_scandirat=no
         "${UTIL_LINUX_SOURCE}/configure"
         --host=${MUSL_TARGET}
         --prefix=${UTIL_LINUX_PREFIX}

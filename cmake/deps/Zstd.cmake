@@ -51,6 +51,9 @@ if(EMSCRIPTEN OR PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             # for glibc's qsort_r signature. musl has no qsort_r; undefine
             # the inherited glibc feature macro so zstd uses its qsort path.
             target_compile_options(${_target} PRIVATE -U_GNU_SOURCE)
+            set_source_files_properties(
+                "${asciichat_zstd_SOURCE_DIR}/lib/dictBuilder/cover.c"
+                PROPERTIES COMPILE_DEFINITIONS __ANDROID__)
         endif()
         target_include_directories(${_target} PUBLIC "$<BUILD_INTERFACE:${asciichat_zstd_SOURCE_DIR}/lib>")
         add_library(zstd::libzstd ALIAS ${_target})
