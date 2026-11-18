@@ -157,12 +157,20 @@ elseif(APPLE)
     message(STATUS "${BoldGreen}✓${ColorReset} FreeType2: ${FREETYPE_LIBRARIES}")
 
 elseif(WIN32)
-    # Windows: Use vcpkg
-    find_package(freetype CONFIG REQUIRED)
-    # Set FREETYPE_LIBRARIES for compatibility with lib/CMakeLists.txt
-    set(FREETYPE_LIBRARIES freetype)
-    # Get include dirs from the target
-    get_target_property(FREETYPE_INCLUDE_DIRS freetype INTERFACE_INCLUDE_DIRECTORIES)
+    # The vcpkg FreeType port may not expose its config through the staged
+    # prefix. Discover the archive and headers directly and publish one target.
+    find_path(_asciichat_freetype_include NAMES ft2build.h
+        PATHS "${VCPKG_INCLUDE_PATH}" REQUIRED)
+    find_library(_asciichat_freetype_library NAMES freetype
+        PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    add_library(asciichat-freetype UNKNOWN IMPORTED GLOBAL)
+    set_target_properties(asciichat-freetype PROPERTIES
+        IMPORTED_LOCATION "${_asciichat_freetype_library}"
+        INTERFACE_INCLUDE_DIRECTORIES
+            "${_asciichat_freetype_include};${_asciichat_freetype_include}/freetype2")
+    set(FREETYPE_LIBRARIES asciichat-freetype)
+    set(FREETYPE_INCLUDE_DIRS
+        "${_asciichat_freetype_include};${_asciichat_freetype_include}/freetype2")
 
     message(STATUS "${BoldGreen}✓${ColorReset} FreeType2: vcpkg")
 
