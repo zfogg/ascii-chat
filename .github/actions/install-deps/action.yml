@@ -215,7 +215,7 @@ runs:
       if: inputs.os == 'macos'
       uses: actions/cache/restore@v4
       with:
-        path: ~/Library/Caches/Mozilla.sccache
+        path: ~/.cache/sccache
         # Use computed key from cache-keys step (github.ref_name not available in composite actions)
         key: ${{ steps.cache-keys.outputs.sccache-key || steps.cache-keys-win.outputs.sccache-key }}
         restore-keys: |
@@ -226,7 +226,7 @@ runs:
       if: inputs.os == 'windows'
       uses: actions/cache/restore@v4
       with:
-        path: ~/AppData/Local/Mozilla/sccache
+        path: ~/AppData/Local/Temp/sccache
         key: ${{ steps.cache-keys.outputs.sccache-key || steps.cache-keys-win.outputs.sccache-key }}
         restore-keys: |
           ${{ runner.os }}-${{ runner.arch }}-sccache-v1-
