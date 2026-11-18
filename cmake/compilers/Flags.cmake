@@ -624,7 +624,7 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             else()
                 # Musl doesn't provide __*_chk fortify wrappers
                 # Use -Wp, prefix to pass directly to preprocessor, overriding makepkg's -Wp,-D_FORTIFY_SOURCE=3
-                target_compile_options(asciichat-project-options INTERFACE "-Wp,-U_FORTIFY_SOURCE" "-Wp,-D_FORTIFY_SOURCE=0")
+                target_compile_options(asciichat-project-options INTERFACE "-Wp,-U_FORTIFY_SOURCE")
             endif()
         endif()
 

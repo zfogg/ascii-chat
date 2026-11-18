@@ -96,7 +96,7 @@ function(configure_musl_post_project)
     if(NOT CMAKE_C_COMPILER MATCHES "musl-gcc" AND NOT CMAKE_C_COMPILER_TARGET STREQUAL MUSL_TARGET)
         message(FATAL_ERROR "The musl compiler toolchain was not loaded. Configure a fresh build tree with cmake --fresh.")
     endif()
-    target_compile_definitions(asciichat-project-options INTERFACE USE_MUSL _FORTIFY_SOURCE=0)
+    target_compile_definitions(asciichat-project-options INTERFACE USE_MUSL)
     target_compile_options(asciichat-project-options INTERFACE -U_FORTIFY_SOURCE)
 
     # Compiler target, CRT startup files and search boundaries belong to the toolchain.
@@ -453,7 +453,7 @@ function(configure_musl_post_project)
 
     # Disable fortify source for our code (musl doesn't support it)
     # Note: We now use Alpine's musl-native libc++ which doesn't have fortify calls
-    target_compile_options(asciichat-project-options INTERFACE -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
+    target_compile_options(asciichat-project-options INTERFACE -U_FORTIFY_SOURCE)
 
     # Disable precompiled headers
     set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON CACHE BOOL "Disable PCH for musl" FORCE)
