@@ -148,8 +148,8 @@ static struct log_system_t {
     .filename = {0},
     .current_size = {0},
     .terminal_output_enabled = {.impl = 1}, /* true */
-    .force_stderr = {0},            /* false */
-    .terminal_locked = {0},         /* false */
+    .force_stderr = {0},                    /* false */
+    .terminal_locked = {0},                 /* false */
     .terminal_owner_thread = {0},
     .level_manually_set = {0}, /* false */
     .flush_delay_ms = {0},
