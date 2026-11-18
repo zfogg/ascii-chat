@@ -97,20 +97,28 @@ endif()
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
 
-# Check if we're using vcpkg (CMAKE_TOOLCHAIN_FILE points to vcpkg)
-if(DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg")
+# Windows must never fall through to Strawberry Perl's pkg-config. Prefer the
+# staged vcpkg config target, then resolve the staged headers/library directly.
+if(WIN32)
     # Use vcpkg's portaudio - our overlay port enables ALSA for device enumeration
-    message(STATUS "PortAudio: Using vcpkg (overlay port with ALSA support)")
-    # Try CMake config first, then fall back to pkg-config
+    message(STATUS "PortAudio: Using staged Windows package")
     find_package(portaudio CONFIG QUIET)
-    if(NOT portaudio_FOUND)
-        include(FindPkgConfig)
-        pkg_check_modules(portaudio REQUIRED portaudio-2.0)
-        if(NOT TARGET portaudio)
-            add_library(portaudio INTERFACE IMPORTED)
-            target_include_directories(portaudio INTERFACE ${portaudio_INCLUDE_DIRS})
-            target_link_libraries(portaudio INTERFACE ${portaudio_LIBRARIES})
+    if(NOT TARGET portaudio AND NOT TARGET portaudio_static)
+        find_path(_portaudio_include_dir NAMES portaudio.h
+            PATHS "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include"
+                  "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/include"
+            NO_DEFAULT_PATH)
+        find_library(_portaudio_library NAMES portaudio portaudio_static
+            PATHS "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib"
+                  "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/lib"
+            NO_DEFAULT_PATH)
+        if(NOT _portaudio_include_dir OR NOT _portaudio_library)
+            message(FATAL_ERROR "Windows PortAudio was not found in the staged vcpkg triplet; refusing pkg-config fallback")
         endif()
+        add_library(portaudio-vcpkg UNKNOWN IMPORTED)
+        set_target_properties(portaudio-vcpkg PROPERTIES
+            IMPORTED_LOCATION "${_portaudio_library}"
+            INTERFACE_INCLUDE_DIRECTORIES "${_portaudio_include_dir}")
     endif()
     # vcpkg provides 'portaudio' target (not portaudio_static as of vcpkg 2024+)
     if(TARGET portaudio_static)
@@ -119,11 +127,25 @@ if(DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg")
     elseif(TARGET portaudio)
         set(PORTAUDIO_LIBRARIES portaudio)
         get_target_property(PORTAUDIO_INCLUDE_DIRS portaudio INTERFACE_INCLUDE_DIRECTORIES)
+    elseif(TARGET portaudio-vcpkg)
+        set(PORTAUDIO_LIBRARIES portaudio-vcpkg)
+        get_target_property(PORTAUDIO_INCLUDE_DIRS portaudio-vcpkg INTERFACE_INCLUDE_DIRECTORIES)
     else()
         message(FATAL_ERROR "PortAudio found via vcpkg but no usable target (portaudio or portaudio_static)")
     endif()
     set(PORTAUDIO_FOUND TRUE)
-    message(STATUS "Found PORTAUDIO via vcpkg: ${PORTAUDIO_LIBRARIES}")
+    message(STATUS "Found PORTAUDIO via staged Windows package: ${PORTAUDIO_LIBRARIES}")
+elseif(DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg")
+    find_package(portaudio CONFIG QUIET)
+    if(NOT TARGET portaudio AND NOT TARGET portaudio_static)
+        message(FATAL_ERROR "PortAudio vcpkg config did not provide a usable target")
+    endif()
+    if(TARGET portaudio_static)
+        set(PORTAUDIO_LIBRARIES portaudio_static)
+    else()
+        set(PORTAUDIO_LIBRARIES portaudio)
+    endif()
+    set(PORTAUDIO_FOUND TRUE)
 else()
     # Use system PortAudio
     # On macOS Release builds: prefer static library when BUILD_SHARED_LIBS is OFF
