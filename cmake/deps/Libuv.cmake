@@ -52,6 +52,10 @@ function(configure_libuv)
             GIT_REPOSITORY https://github.com/libuv/libuv.git
             GIT_TAG v1.51.0
             GIT_SHALLOW TRUE)
+        # We need the populated source directory to patch libuv's provider
+        # selector before its subdirectory is configured.  CMake 4.4 makes
+        # the legacy populate call fatal unless this policy is scoped here.
+        cmake_policy(SET CMP0169 OLD)
         FetchContent_Populate(asciichat_libuv)
         # libuv's exported-target selector incorrectly keys off the parent
         # BUILD_SHARED_LIBS value, although its build options use
