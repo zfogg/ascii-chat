@@ -87,7 +87,13 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE OR ASCIICHAT_REQ
         set(FREETYPE_PREFIX "${_prefix}" PARENT_SCOPE)
     endfunction()
     asciichat_build_freetype()
-    set(FREETYPE_LIBRARIES freetype)
+    if(NOT TARGET asciichat-freetype)
+        add_library(asciichat-freetype INTERFACE)
+        target_link_libraries(asciichat-freetype INTERFACE freetype)
+        target_include_directories(asciichat-freetype INTERFACE
+            "${asciichat_freetype_BINARY_DIR}/include"
+            "${asciichat_freetype_SOURCE_DIR}/include")
+    endif()
     return()
 endif()
 

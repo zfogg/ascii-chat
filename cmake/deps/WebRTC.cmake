@@ -99,3 +99,13 @@ endfunction()
 asciichat_build_aec3()
 add_library(webrtc_audio_processing INTERFACE)
 target_link_libraries(webrtc_audio_processing INTERFACE AudioProcess aec3 api base)
+if(NOT TARGET asciichat-webrtc-aec3)
+    add_library(asciichat-webrtc-aec3 INTERFACE)
+    target_link_libraries(asciichat-webrtc-aec3 INTERFACE webrtc_audio_processing)
+    target_include_directories(asciichat-webrtc-aec3 INTERFACE
+        "${WEBRTC_AEC3_SOURCE_DIR}"
+        "${WEBRTC_AEC3_SOURCE_DIR}/base"
+        "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil"
+        "${WEBRTC_AEC3_SOURCE_DIR}/api"
+        "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/include")
+endif()
