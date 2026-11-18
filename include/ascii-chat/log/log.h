@@ -32,21 +32,9 @@
 // Use atomic.h API for all platforms (C and C++)
 // atomic_t is available in both C and C++ contexts
 #define LOG_ATOMIC_UINT64 atomic_t
-#ifdef NDEBUG
-#define LOG_ATOMIC_UINT64_INIT(val) {.impl = (uint64_t)0}
-#else
-// In debug mode, atomic_t has debug fields that need initialization
-#define LOG_ATOMIC_UINT64_INIT(val)   \
-  {.impl = (uint64_t)0,               \
-   .change_count = (uint64_t)0,       \
-   .last_store_time_ns = (uint64_t)0, \
-   .last_load_time_ns = (uint64_t)0,  \
-   .store_count = (uint64_t)0,        \
-   .load_count = (uint64_t)0,         \
-   .cas_count = (uint64_t)0,          \
-   .cas_success_count = (uint64_t)0,  \
-   .fetch_count = (uint64_t)0}
-#endif
+// Value initialization is valid for both the C and C++ representations of
+// libplatform's atomic_t, including C++ std::atomic members.
+#define LOG_ATOMIC_UINT64_INIT(val) {}
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
