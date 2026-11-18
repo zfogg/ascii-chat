@@ -44,7 +44,7 @@ set(_systemd_cxx "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
 set(_systemd_cflags "--target=${MUSL_TARGET} ${MUSL_KERNEL_CFLAGS}")
 set(_systemd_ldflags "--target=${MUSL_TARGET} -fuse-ld=lld -static")
 
-ExternalProject_Add(asciichat-systemd
+ExternalProject_Add(asciichat-systemd-build
     SOURCE_DIR "${SYSTEMD_SOURCE}"
     BINARY_DIR "${SYSTEMD_BUILD}"
     CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env
@@ -62,11 +62,11 @@ ExternalProject_Add(asciichat-systemd
     BUILD_BYPRODUCTS "${SYSTEMD_PREFIX}/lib/libsystemd.a"
     USES_TERMINAL_CONFIGURE TRUE USES_TERMINAL_BUILD TRUE USES_TERMINAL_INSTALL TRUE)
 
-add_library(asciichat-systemd-static STATIC IMPORTED GLOBAL)
-set_target_properties(asciichat-systemd-static PROPERTIES
+add_library(asciichat-systemd STATIC IMPORTED GLOBAL)
+set_target_properties(asciichat-systemd PROPERTIES
     IMPORTED_LOCATION "${SYSTEMD_PREFIX}/lib/libsystemd.a"
     INTERFACE_INCLUDE_DIRECTORIES "${SYSTEMD_PREFIX}/include")
-add_dependencies(asciichat-systemd-static asciichat-systemd)
+add_dependencies(asciichat-systemd asciichat-systemd-build)
 set(LIBSYSTEMD_INCLUDE_DIRS "${SYSTEMD_PREFIX}/include")
-set(LIBSYSTEMD_LIBRARIES asciichat-systemd-static)
+set(LIBSYSTEMD_LIBRARIES asciichat-systemd)
 set(LIBSYSTEMD_FOUND TRUE)

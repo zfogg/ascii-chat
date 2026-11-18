@@ -336,6 +336,13 @@ macro(_find_llvm_tool VAR_NAME)
             DOC "LLVM tool"
         )
     endif()
+    # Finally honor the process PATH.  This is the source of truth for tools
+    # such as llvm-nm when LLVM was installed by the user's environment.
+    if(NOT ${VAR_NAME})
+        find_program(${VAR_NAME}
+            NAMES ${_tool_names}
+            DOC "LLVM tool from PATH")
+    endif()
     unset(_tool_names)
 endmacro()
 

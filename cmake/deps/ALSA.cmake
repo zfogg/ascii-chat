@@ -31,8 +31,14 @@ if(USE_MUSL)
             STAMP_DIR ${ALSA_BUILD_DIR}/stamps
             UPDATE_DISCONNECTED 1
             BUILD_ALWAYS 0
-            CONFIGURE_COMMAND env CC=${ASCIICHAT_CLANG_EXECUTABLE} CFLAGS=${MUSL_KERNEL_CFLAGS} <SOURCE_DIR>/configure --host=${MUSL_TARGET} --prefix=${ALSA_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
-            BUILD_COMMAND env CC=${ASCIICHAT_CLANG_EXECUTABLE} CFLAGS="--target=${MUSL_TARGET} -fPIC" make -j
+            CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env
+                "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
+                "CFLAGS=--target=${MUSL_TARGET} -fPIC"
+                <SOURCE_DIR>/configure --host=${MUSL_TARGET} --prefix=${ALSA_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
+            BUILD_COMMAND ${CMAKE_COMMAND} -E env
+                "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
+                "CFLAGS=--target=${MUSL_TARGET} -fPIC"
+                make -j
             INSTALL_COMMAND make install
             BUILD_BYPRODUCTS ${ALSA_PREFIX}/lib/libasound.a
             LOG_DOWNLOAD TRUE

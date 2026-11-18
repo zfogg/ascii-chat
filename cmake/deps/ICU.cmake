@@ -101,6 +101,29 @@ elseif(UNIX AND NOT APPLE)
     pkg_check_modules(ASCIICHAT_ICU REQUIRED IMPORTED_TARGET icu-uc>=60)
     set(ICU_VERSION "${ASCIICHAT_ICU_VERSION}")
     target_link_libraries(asciichat-icu INTERFACE PkgConfig::ASCIICHAT_ICU)
+elseif(WIN32)
+    # The staged vcpkg ICU config can leave imported locations pointing at a
+    # different installation. Publish stable imported targets from this
+    # build's include/lib prefix instead.
+    find_path(_asciichat_icu_include NAMES unicode/utypes.h
+        PATHS "${VCPKG_INCLUDE_PATH}" REQUIRED)
+    find_library(_asciichat_icu_uc NAMES icuuc PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    find_library(_asciichat_icu_data NAMES icudt PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    if(NOT TARGET ICU::uc)
+        add_library(ICU::uc UNKNOWN IMPORTED GLOBAL)
+        set_target_properties(ICU::uc PROPERTIES
+            IMPORTED_LOCATION "${_asciichat_icu_uc}"
+            INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_icu_include}")
+    endif()
+    if(NOT TARGET ICU::data)
+        add_library(ICU::data UNKNOWN IMPORTED GLOBAL)
+        set_target_properties(ICU::data PROPERTIES
+            IMPORTED_LOCATION "${_asciichat_icu_data}"
+            INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_icu_include}")
+    endif()
+    set(ICU_VERSION "78.1")
+    target_include_directories(asciichat-icu INTERFACE "${_asciichat_icu_include}")
+    target_link_libraries(asciichat-icu INTERFACE ICU::uc ICU::data)
 else()
     if(APPLE AND HOMEBREW_PREFIX)
         list(PREPEND CMAKE_PREFIX_PATH "${HOMEBREW_PREFIX}/opt/icu4c")

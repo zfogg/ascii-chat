@@ -48,7 +48,6 @@ set(APP_SRCS ${APP_SRCS} PARENT_SCOPE)
 # =============================================================================
 # Executables Module
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/utils/CoreDependencies.cmake)
 # This module creates the main executable target
 #
 # Prerequisites:
@@ -80,6 +79,7 @@ if(WIN32)
 endif()
 target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LIBUV_TARGET} ${YYJSON_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
 target_link_libraries(ascii-chat PRIVATE libflags::flags)
+target_link_libraries(ascii-chat PRIVATE asciichat-rnnoise)
 target_include_directories(ascii-chat PRIVATE ${YYJSON_INCLUDE_DIRS})
 
 # Clang with compiler-rt does not always add the system unwinder when linking
@@ -132,7 +132,7 @@ elseif(NOT BUILD_SHARED_LIBS OR USE_MUSL)
     # musl, and Windows release configurations.
     add_dependencies(ascii-chat generate_version)
     target_link_libraries(ascii-chat PRIVATE ascii-chat-runtime-objects)
-    get_core_deps_libraries(CORE_LIBS)
+    set(CORE_LIBS asciichat-core-dependencies)
     target_link_libraries(ascii-chat PRIVATE ${CORE_LIBS} ${BEARSSL_LIBRARIES})
     if(FFMPEG_LIBRARIES)
         target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LIBRARIES})
@@ -203,7 +203,7 @@ elseif(BUILD_SHARED_LIBS AND NOT USE_MUSL)
     if(WIN32)
         # Import library is in bin directory with the DLL
         target_link_directories(ascii-chat PRIVATE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-        get_core_deps_libraries(CORE_LIBS)
+        set(CORE_LIBS asciichat-core-dependencies)
         target_link_libraries(ascii-chat PRIVATE
             ${WS2_32_LIB} ${USER32_LIB} ${ADVAPI32_LIB} ${DBGHELP_LIB}
             ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB}
@@ -237,7 +237,7 @@ elseif(BUILD_SHARED_LIBS AND NOT USE_MUSL)
         target_link_libraries(ascii-chat PRIVATE delayimp)
     else()
         # Unix: Also need explicit dependencies when linking against shared library
-        get_core_deps_libraries(CORE_LIBS)
+        set(CORE_LIBS asciichat-core-dependencies)
         target_link_libraries(ascii-chat PRIVATE
             ${CORE_LIBS}
         )

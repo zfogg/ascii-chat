@@ -181,4 +181,21 @@ macro(find_dependency_library)
             message(WARNING "Could not find ${BoldYellow}${_DEP_NAME}${ColorReset} - will continue without it")
         endif()
     endif()
+
+    # Every dependency discovered through this helper exposes one stable,
+    # target-only interface.  Consumers must not need to know whether the
+    # provider came from vcpkg, pkg-config, Homebrew, or an imported archive.
+    if(${_DEP_NAME}_FOUND)
+        string(TOLOWER "${_DEP_NAME}" _dep_target_name)
+        set(_dep_target "asciichat-${_dep_target_name}")
+        if(NOT TARGET "${_dep_target}")
+            add_library("${_dep_target}" INTERFACE)
+            if(${_DEP_NAME}_LIBRARIES)
+                target_link_libraries("${_dep_target}" INTERFACE ${${_DEP_NAME}_LIBRARIES})
+            endif()
+            if(${_DEP_NAME}_INCLUDE_DIRS)
+                target_include_directories("${_dep_target}" INTERFACE ${${_DEP_NAME}_INCLUDE_DIRS})
+            endif()
+        endif()
+    endif()
 endmacro()

@@ -45,7 +45,6 @@ if(PLATFORM_IOS OR EMSCRIPTEN)
     return()
 endif()
 
-
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
 if(USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
     function(asciichat_build_portaudio)
@@ -166,5 +165,17 @@ else()
         set(PORTAUDIO_INCLUDE_DIRS ${PORTAUDIO_INCLUDE_DIRS})
         set(PORTAUDIO_FOUND TRUE)
         message(STATUS "Found PORTAUDIO via pkg-config: ${PORTAUDIO_LIBRARIES}")
+    endif()
+endif()
+
+# Stable target consumed by application code. Keep provider-specific variables
+# local to this module; callers link the interface target.
+if(NOT TARGET asciichat-portaudio)
+    add_library(asciichat-portaudio INTERFACE)
+    if(PORTAUDIO_LIBRARIES)
+        target_link_libraries(asciichat-portaudio INTERFACE ${PORTAUDIO_LIBRARIES})
+    endif()
+    if(PORTAUDIO_INCLUDE_DIRS)
+        target_include_directories(asciichat-portaudio INTERFACE ${PORTAUDIO_INCLUDE_DIRS})
     endif()
 endif()

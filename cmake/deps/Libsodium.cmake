@@ -210,8 +210,14 @@ if(USE_MUSL)
         BUILD_ALWAYS 0
         # For shared library support, ALL object files must be compiled with -fPIC.
         # Use --with-pic to force position-independent code generation.
-        CONFIGURE_COMMAND env CC=${ASCIICHAT_CLANG_EXECUTABLE} CFLAGS="--target=${MUSL_TARGET}" <SOURCE_DIR>/configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared --with-pic
-        BUILD_COMMAND env CC=${ASCIICHAT_CLANG_EXECUTABLE} make -j
+        CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env
+            "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
+            "CFLAGS=--target=${MUSL_TARGET} -fPIC"
+            <SOURCE_DIR>/configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared --with-pic
+        BUILD_COMMAND ${CMAKE_COMMAND} -E env
+            "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
+            "CFLAGS=--target=${MUSL_TARGET} -fPIC"
+            make -j
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
         LOG_DOWNLOAD TRUE
@@ -224,6 +230,13 @@ if(USE_MUSL)
     set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
     set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
     set(LIBSODIUM_BUILD_TARGET libsodium-musl)
+    file(MAKE_DIRECTORY "${LIBSODIUM_PREFIX}/include")
+    add_library(asciichat-libsodium STATIC IMPORTED GLOBAL)
+    set_target_properties(asciichat-libsodium PROPERTIES
+        IMPORTED_LOCATION "${LIBSODIUM_PREFIX}/lib/libsodium.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${LIBSODIUM_PREFIX}/include")
+    add_dependencies(asciichat-libsodium libsodium-musl)
+    set(LIBSODIUM_LIBRARIES asciichat-libsodium)
     set(LIBSODIUM_FOUND TRUE)
     return()
 endif()
@@ -266,6 +279,13 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE AND NOT USE_MUSL A
     set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
     set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
     set(LIBSODIUM_BUILD_TARGET libsodium-linux)
+    file(MAKE_DIRECTORY "${LIBSODIUM_PREFIX}/include")
+    add_library(asciichat-libsodium STATIC IMPORTED GLOBAL)
+    set_target_properties(asciichat-libsodium PROPERTIES
+        IMPORTED_LOCATION "${LIBSODIUM_PREFIX}/lib/libsodium.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${LIBSODIUM_PREFIX}/include")
+    add_dependencies(asciichat-libsodium libsodium-linux)
+    set(LIBSODIUM_LIBRARIES asciichat-libsodium)
     return()
 endif()
 

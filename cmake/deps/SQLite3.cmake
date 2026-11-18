@@ -207,8 +207,11 @@ endif()
 # Try pkg-config first (more reliable for getting library paths)
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
-    pkg_check_modules(SQLITE3 QUIET sqlite3)
+    pkg_check_modules(SQLITE3 QUIET IMPORTED_TARGET sqlite3)
     if(SQLITE3_FOUND)
+        if(TARGET PkgConfig::SQLITE3)
+            set(SQLITE3_LIBRARIES PkgConfig::SQLITE3)
+        endif()
         # pkg-config returns a bare `-lsqlite3` on Windows even when it has
         # resolved the actual vcpkg library.  Preserve the absolute path so
         # clang/lld does not turn it into the invalid `-lsqlite3.lib`.

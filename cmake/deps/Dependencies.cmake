@@ -33,6 +33,7 @@
 # Windows: vcpkg Package Manager Configuration
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Vcpkg.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslToolchainTarget.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Libuv.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Utf8proc.cmake)
 
@@ -157,6 +158,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Catch2.cmake)
 
 # Platform-specific system libraries (Windows, macOS frameworks, Linux libs)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/PlatformLibraries.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/CoreTargets.cmake)
 
 if(NOT EMSCRIPTEN)
     foreach(_required_dependency

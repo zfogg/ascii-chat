@@ -239,7 +239,6 @@ add_subdirectory(${LIB_DIR}/tooling ${CMAKE_BINARY_DIR}/lib/tooling)
 # =============================================================================
 
 include(CheckCCompilerFlag)
-include(${CMAKE_SOURCE_DIR}/cmake/utils/CoreDependencies.cmake)
 
 # Check for warning flags that may not exist in older Clang versions
 # -Wno-unterminated-string-initialization was added in Clang 20
@@ -673,7 +672,7 @@ endif()
 
 # Now create the module with WebRTC includes in scope
 create_ascii_chat_module(ascii-chat-audio "${AUDIO_SRCS}")
-target_link_libraries(ascii-chat-audio PRIVATE ascii-chat-rnnoise)
+target_link_libraries(ascii-chat-audio PRIVATE asciichat-rnnoise)
 
 # Add library search directories for pkg-config found libraries
 if(PORTAUDIO_LIBRARY_DIRS)
@@ -684,7 +683,8 @@ if(OPUS_LIBRARY_DIRS)
 endif()
 
 # For OBJECT libs, link external deps only
-target_link_libraries(ascii-chat-audio PRIVATE ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES} webrtc_audio_processing)
+target_link_libraries(ascii-chat-audio PRIVATE
+    asciichat-portaudio asciichat-opus webrtc_audio_processing)
 
 # Link platform-specific audio libraries
 # macOS: CoreAudio, AudioUnit, AudioToolbox (required for static portaudio)
@@ -1052,7 +1052,7 @@ target_link_libraries(ascii-chat-shared PUBLIC ${ASCIICHAT_LIBPLATFORM_TARGET})
     if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
     endif()
-    target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES} libflags::flags ascii-chat-rnnoise)
+target_link_libraries(ascii-chat-shared PRIVATE ${UTF8PROC_LIBRARIES} libflags::flags asciichat-rnnoise)
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
     endif()
@@ -1328,7 +1328,7 @@ target_link_libraries(ascii-chat-shared PUBLIC ${ASCIICHAT_LIBPLATFORM_TARGET})
 
     # Add system library dependencies (only for shared library, which is not built for musl)
     if(WIN32)
-    get_core_deps_libraries(CORE_LIBS)
+    set(CORE_LIBS asciichat-core-dependencies)
     target_link_libraries(ascii-chat-shared PRIVATE
         ${WS2_32_LIB} ${USER32_LIB} ${ADVAPI32_LIB} ${DBGHELP_LIB}
         ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB}
@@ -1361,7 +1361,7 @@ target_link_libraries(ascii-chat-shared PUBLIC ${ASCIICHAT_LIBPLATFORM_TARGET})
 else()
     # Non-musl builds use normal dependencies
     # Note: Core dependencies are PkgConfig::* IMPORTED targets that include library paths automatically
-    get_core_deps_libraries(CORE_LIBS)
+    set(CORE_LIBS asciichat-core-dependencies)
 
     # Check for JACK (required if PortAudio was built with JACK support)
     find_package(PkgConfig REQUIRED)

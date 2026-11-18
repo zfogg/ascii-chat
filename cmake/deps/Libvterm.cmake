@@ -7,7 +7,7 @@ if(EMSCRIPTEN OR WIN32 OR USE_MUSL OR PLATFORM_IOS OR ASCIICHAT_BUILD_DEPS_FROM_
    OR (APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS))
     function(asciichat_build_vterm)
         asciichat_dependency_defaults()
-        FetchContent_Declare(libvterm-src
+        FetchContent_Declare(libvterm
             GIT_REPOSITORY https://github.com/neovim/libvterm.git
             GIT_TAG v0.3.3 GIT_SHALLOW TRUE)
         find_package(Perl REQUIRED)

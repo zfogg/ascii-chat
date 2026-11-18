@@ -189,20 +189,26 @@ endif()
 # Windows: Use vcpkg-provided FFmpeg
 # =============================================================================
 if(WIN32)
-    # vcpkg's package describes both static archives and DLL import libraries.
-    if(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
-        set(_asciichat_vcpkg_ffmpeg_module_dir
-            "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/share/ffmpeg")
-        if(EXISTS "${_asciichat_vcpkg_ffmpeg_module_dir}/FindFFMPEG.cmake")
-            list(PREPEND CMAKE_MODULE_PATH "${_asciichat_vcpkg_ffmpeg_module_dir}")
-        endif()
-        unset(_asciichat_vcpkg_ffmpeg_module_dir)
+    # The vcpkg FFmpeg port does not ship an FFMPEGConfig.cmake package. Find
+    # its headers and libraries directly and expose the canonical project
+    # target instead of asking CMake's package search to invent a config.
+    find_path(FFMPEG_INCLUDE_DIR NAMES libavformat/avformat.h
+        PATHS "${VCPKG_INCLUDE_PATH}" REQUIRED)
+    set(_ffmpeg_windows_libs)
+    foreach(_ffmpeg_lib avformat avcodec avutil swscale swresample)
+        find_library(_ffmpeg_${_ffmpeg_lib}_library NAMES ${_ffmpeg_lib}
+            PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+        list(APPEND _ffmpeg_windows_libs "${_ffmpeg_${_ffmpeg_lib}_library}")
+    endforeach()
+    if(NOT TARGET asciichat-ffmpeg)
+        add_library(asciichat-ffmpeg INTERFACE IMPORTED GLOBAL)
+        set_target_properties(asciichat-ffmpeg PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INCLUDE_DIR}"
+            INTERFACE_LINK_LIBRARIES "${_ffmpeg_windows_libs}")
     endif()
-    find_package(FFMPEG REQUIRED)
-    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-        list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "^-l(pthreads|pthread|m|atomic)$")
-        list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "^-pthread$")
-    endif()
+    set(FFMPEG_INCLUDE_DIRS "${FFMPEG_INCLUDE_DIR}")
+    set(FFMPEG_LIBRARIES asciichat-ffmpeg)
+    set(FFMPEG_FOUND TRUE)
     return()
 endif()
 
@@ -477,7 +483,7 @@ if(NOT FFMPEG_FOUND OR NOT FFMPEG_LIBRARIES)
     endif()
 
     # Find FFmpeg components
-    pkg_check_modules(FFMPEG
+    pkg_check_modules(FFMPEG IMPORTED_TARGET
         libavformat
         libavcodec
         libavutil
@@ -499,7 +505,9 @@ if(NOT FFMPEG_FOUND OR NOT FFMPEG_LIBRARIES)
     # pkg_check_modules sets FFMPEG_LIBRARIES (library names), FFMPEG_LIBRARY_DIRS (paths), and FFMPEG_LDFLAGS (full flags)
     # We use FFMPEG_LINK_LIBRARIES which pkg-config creates from the above and is the proper way to link
     # If not available, fall back to FFMPEG_LDFLAGS which includes all necessary -L and -l flags
-    if(FFMPEG_LINK_LIBRARIES)
+    if(TARGET PkgConfig::FFMPEG)
+        set(FFMPEG_LIBRARIES PkgConfig::FFMPEG)
+    elseif(FFMPEG_LINK_LIBRARIES)
         set(FFMPEG_LIBRARIES ${FFMPEG_LINK_LIBRARIES})
     else()
         # Fallback to full linker flags (includes both -L and -l flags)
@@ -520,3 +528,10 @@ endif()
 
 # Variables FFMPEG_LIBRARIES, FFMPEG_INCLUDE_DIRS, and FFMPEG_FOUND are available
 # SourceFiles.cmake will conditionally include media source files when FFMPEG_FOUND is true
+if(FFMPEG_FOUND AND NOT TARGET asciichat-ffmpeg)
+    add_library(asciichat-ffmpeg INTERFACE)
+    target_link_libraries(asciichat-ffmpeg INTERFACE ${FFMPEG_LIBRARIES})
+    if(FFMPEG_INCLUDE_DIRS)
+        target_include_directories(asciichat-ffmpeg INTERFACE ${FFMPEG_INCLUDE_DIRS})
+    endif()
+endif()
