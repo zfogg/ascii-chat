@@ -125,7 +125,7 @@ elseif(APPLE)
 
     # Homebrew's dylib is versioned to the installed formula and is not a
     # suitable runtime dependency for a portable Release executable.
-    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
         find_file(FREETYPE_STATIC_ARCHIVE NAMES libfreetype.a
             PATHS "${HOMEBREW_PREFIX}/opt/freetype/lib" /usr/local/opt/freetype/lib /opt/homebrew/opt/freetype/lib
             NO_DEFAULT_PATH)
@@ -163,10 +163,20 @@ elseif(WIN32)
         PATHS "${VCPKG_INCLUDE_PATH}" REQUIRED)
     find_library(_asciichat_freetype_library NAMES freetype
         PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    find_library(_asciichat_png_library NAMES png16 libpng16
+        PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    find_library(_asciichat_brotli_decode_library NAMES brotlidec
+        PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    find_library(_asciichat_brotli_common_library NAMES brotlicommon
+        PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    find_library(_asciichat_bzip2_library NAMES bz2 bzip2
+        PATHS "${VCPKG_LIB_PATH}" REQUIRED)
     add_library(asciichat-freetype UNKNOWN IMPORTED GLOBAL)
     set_target_properties(asciichat-freetype PROPERTIES
         IMPORTED_LOCATION "${_asciichat_freetype_library}"
-        INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_freetype_include}")
+        INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_freetype_include}"
+        INTERFACE_LINK_LIBRARIES
+            "${_asciichat_png_library};${_asciichat_brotli_decode_library};${_asciichat_brotli_common_library};${_asciichat_bzip2_library}")
     set(FREETYPE_LIBRARIES asciichat-freetype)
     set(FREETYPE_INCLUDE_DIRS "${_asciichat_freetype_include}")
 

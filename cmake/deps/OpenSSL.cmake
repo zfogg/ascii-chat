@@ -507,7 +507,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
     # Release packages should not retain a runtime dependency on the build
     # machine's OpenSSL dylib or its install path. Debug/dev builds keep shared
     # OpenSSL for faster iteration.
-    if(NOT ASCIICHAT_SHARED_DEPS AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
+    if(NOT BUILD_SHARED_LIBS AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
         set(OPENSSL_BUILD_SHARED OFF)
     else()
         set(OPENSSL_BUILD_SHARED ON)
@@ -753,7 +753,7 @@ endif()
 # macOS Release: Use the versioned source-build cache when available
 # =============================================================================
 set(_OPENSSL_STATIC_FOUND FALSE)
-if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
     set(_OPENSSL_HOMEBREW_PATH "")
     set(OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-${ASCIICHAT_OPENSSL_SOURCE_VERSION}/usr/local")
     set(OPENSSL_LIBDIR "lib")

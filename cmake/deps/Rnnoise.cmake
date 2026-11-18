@@ -50,6 +50,19 @@ elseif(NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
   list(APPEND _rnnoise_cc_args -DRNNOISE_CC=${ASCIICHAT_CLANG_EXECUTABLE})
 endif()
 
+if(WIN32)
+    # Do not add the ELF-only -fPIC flag to the native Windows autotools build,
+    # and prevent a stale process-level CFLAGS value from being forwarded.
+    set(ENV{CFLAGS} "")
+    set(_rnnoise_build_command
+        "${CMAKE_COMMAND}" -E env
+        "CFLAGS=-DM_PI=3.14159265358979323846"
+        "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
+else()
+    set(_rnnoise_build_command
+        "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
+endif()
+
 ExternalProject_Add(ascii-chat-rnnoise-build
     SOURCE_DIR "${ASCIICHAT_RNNOISE_SOURCE_DIR}"
     BINARY_DIR "${ASCIICHAT_RNNOISE_BUILD_DIR}"
@@ -107,3 +120,4 @@ unset(_rnnoise_library)
 unset(_rnnoise_import_library)
 unset(_rnnoise_cc_args)
 unset(_rnnoise_cc_wrapper)
+unset(_rnnoise_build_command)

@@ -126,8 +126,8 @@ if(DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg")
     message(STATUS "Found PORTAUDIO via vcpkg: ${PORTAUDIO_LIBRARIES}")
 else()
     # Use system PortAudio
-    # On macOS Release builds: prefer static library when ASCIICHAT_SHARED_DEPS is OFF
-    if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    # On macOS Release builds: prefer static library when BUILD_SHARED_LIBS is OFF
+    if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
         find_library(PORTAUDIO_STATIC_LIB
             NAMES libportaudio.a
             PATHS

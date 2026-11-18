@@ -432,10 +432,6 @@ if(RECAST_BACKEND STREQUAL "NATIVE" AND TARGET recast)
   if(NOT TARGET recast-native)
     add_executable(recast-native ALIAS recast)
   endif()
-  set(RECAST_NATIVE_BINARY
-      "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build/bin/recast${CMAKE_EXECUTABLE_SUFFIX}"
-      CACHE FILEPATH
-      "Recast host executable" FORCE)
 endif()
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Query.cmake)

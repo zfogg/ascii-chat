@@ -17,8 +17,21 @@ function(configure_libuv)
         elseif(TARGET libuv::uv_a)
             set(ASCIICHAT_LIBUV_TARGET libuv::uv_a)
         else()
-            message(FATAL_ERROR
-                "libuv was found, but its CMake package exported neither libuv::uv nor libuv::uv_a")
+            # Older/restored vcpkg packages may not export CMake targets.
+            # Preserve the direct-import fallback used by master.
+            find_path(ASCIICHAT_LIBUV_INCLUDE_DIR NAMES uv.h
+                PATHS "${VCPKG_INCLUDE_PATH}" PATH_SUFFIXES uv REQUIRED)
+            if(BUILD_SHARED_LIBS)
+                find_library(ASCIICHAT_LIBUV_LIBRARY NAMES uv PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+            else()
+                find_library(ASCIICHAT_LIBUV_LIBRARY NAMES uv_a uv PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+            endif()
+            add_library(asciichat-libuv UNKNOWN IMPORTED GLOBAL)
+            set_target_properties(asciichat-libuv PROPERTIES
+                IMPORTED_LOCATION "${ASCIICHAT_LIBUV_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${ASCIICHAT_LIBUV_INCLUDE_DIR}"
+                INTERFACE_LINK_LIBRARIES userenv)
+            set(ASCIICHAT_LIBUV_TARGET asciichat-libuv)
         endif()
     elseif(USE_MUSL)
         include(FetchContent)

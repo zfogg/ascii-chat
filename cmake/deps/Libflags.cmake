@@ -42,13 +42,15 @@ set(LIBFLAGS_UTF8PROC_SOURCE_DIR "" CACHE PATH
 # target instead of creating a second copy in the embedded dependency.
 set(LIBPLATFORM_UTF8PROC_TARGET utf8proc CACHE STRING
     "utf8proc target supplied by ascii-chat" FORCE)
-set(_ascii_chat_libflags_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src")
-FetchContent_Declare(libflags
-    GIT_REPOSITORY https://github.com/zfogg/libflags.git
-    GIT_TAG main
-    SOURCE_DIR "${_ascii_chat_libflags_source}")
-set(_ascii_chat_saved_build_shared_libs "${BUILD_SHARED_LIBS}")
-set(BUILD_SHARED_LIBS OFF)
+set(_ascii_chat_libflags_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src-${CMAKE_BUILD_TYPE}")
+if(EXISTS "${_ascii_chat_libflags_source}/CMakeLists.txt")
+    FetchContent_Declare(libflags SOURCE_DIR "${_ascii_chat_libflags_source}")
+else()
+    FetchContent_Declare(libflags
+        GIT_REPOSITORY https://github.com/zfogg/libflags.git
+        GIT_TAG main
+        SOURCE_DIR "${_ascii_chat_libflags_source}")
+endif()
 FetchContent_MakeAvailable(libflags)
 if(USE_MUSL AND TARGET flags)
     # libflags needs libplatform at link time, but its public dependency edge
@@ -76,7 +78,5 @@ if(TARGET libflags::flags)
     endif()
     unset(_libflags_real_target)
 endif()
-set(BUILD_SHARED_LIBS "${_ascii_chat_saved_build_shared_libs}")
-unset(_ascii_chat_saved_build_shared_libs)
 unset(_ascii_chat_libflags_source)
 unset(_asciichat_libflags_pcre2_include_dirs)

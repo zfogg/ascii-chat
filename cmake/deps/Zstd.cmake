@@ -58,7 +58,7 @@ endif()
 
 # macOS Release: Prefer Homebrew's static archive to avoid a runtime dependency
 # on the build machine's zstd dylib version.
-if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
     include(FindPkgConfig)
     pkg_check_modules(ZSTD_PKG REQUIRED libzstd)
     find_library(ZSTD_STATIC_LIBRARY
@@ -80,6 +80,30 @@ if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
     endif()
     set(ZSTD_FOUND TRUE)
     message(STATUS "${BoldGreen}✓${ColorReset} zstd (static): ${ZSTD_STATIC_LIBRARY}")
+    return()
+endif()
+
+if(WIN32)
+    find_path(_asciichat_zstd_include NAMES zstd.h
+        PATHS "${VCPKG_INCLUDE_PATH}" REQUIRED)
+    find_library(_asciichat_zstd_library NAMES zstd
+        PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+    add_library(asciichat-zstd-system UNKNOWN IMPORTED GLOBAL)
+    set_target_properties(asciichat-zstd-system PROPERTIES
+        IMPORTED_LOCATION "${_asciichat_zstd_library}"
+        INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_zstd_include}")
+    add_library(asciichat-zstd INTERFACE)
+    target_link_libraries(asciichat-zstd INTERFACE asciichat-zstd-system)
+    if(NOT TARGET zstd::libzstd)
+        add_library(zstd::libzstd ALIAS asciichat-zstd)
+    endif()
+    if(NOT TARGET zstd::zstd)
+        add_library(zstd::zstd ALIAS asciichat-zstd)
+    endif()
+    set(ZSTD_LIBRARIES asciichat-zstd)
+    set(ZSTD_INCLUDE_DIRS "${_asciichat_zstd_include}")
+    set(ZSTD_FOUND TRUE)
+    message(STATUS "${BoldGreen}✓${ColorReset} zstd (vcpkg): ${_asciichat_zstd_library}")
     return()
 endif()
 
