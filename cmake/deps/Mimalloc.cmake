@@ -44,7 +44,6 @@ if(NOT TARGET mimalloc AND NOT TARGET mimalloc-static)
                 endif()
             endif()
         endforeach()
-        set(MIMALLOC_SOURCE_DIR "${asciichat_mimalloc_SOURCE_DIR}" PARENT_SCOPE)
     endfunction()
     asciichat_build_mimalloc()
 endif()
@@ -61,6 +60,10 @@ endif()
 get_target_property(_mimalloc_actual ${_mimalloc_target} ALIASED_TARGET)
 if(NOT _mimalloc_actual)
     set(_mimalloc_actual ${_mimalloc_target})
+endif()
+get_target_property(_mimalloc_source_dir ${_mimalloc_target} SOURCE_DIR)
+if(_mimalloc_source_dir STREQUAL "_mimalloc_source_dir-NOTFOUND")
+    set(_mimalloc_source_dir)
 endif()
 get_target_property(_mimalloc_type ${_mimalloc_target} TYPE)
 if(_mimalloc_type STREQUAL "SHARED_LIBRARY")
@@ -85,7 +88,7 @@ if(NOT TARGET asciichat-mimalloc)
 endif()
 if(NOT _mimalloc_include_dirs)
     find_path(_mimalloc_include_dirs NAMES mimalloc.h
-        HINTS "${MIMALLOC_SOURCE_DIR}/include"
+        HINTS "${_mimalloc_source_dir}/include"
         REQUIRED)
 endif()
 
@@ -93,10 +96,10 @@ endif()
 # macOS, Homebrew can add a newer mimalloc include directory globally; allowing
 # that header to win over the cached source headers produces mixed-version
 # errors inside mimalloc itself.
-if(MIMALLOC_SOURCE_DIR AND EXISTS "${MIMALLOC_SOURCE_DIR}/include/mimalloc.h")
-    set(_mimalloc_include_dirs "${MIMALLOC_SOURCE_DIR}/include")
+if(_mimalloc_source_dir AND EXISTS "${_mimalloc_source_dir}/include/mimalloc.h")
+    set(_mimalloc_include_dirs "${_mimalloc_source_dir}/include")
     target_include_directories(${_mimalloc_target} BEFORE PRIVATE
-        "${MIMALLOC_SOURCE_DIR}/include")
+        "${_mimalloc_source_dir}/include")
 endif()
 if(_mimalloc_include_dirs)
     target_include_directories(asciichat-mimalloc INTERFACE ${_mimalloc_include_dirs})
