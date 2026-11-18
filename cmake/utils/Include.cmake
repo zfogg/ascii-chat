@@ -82,8 +82,8 @@ function(configure_include_directories)
         # paths even when -nostdlibinc is active.
         string(REGEX REPLACE "(^| )(-I|-isystem[ ]+)/usr/include([^ ]*)?( |$)" " " CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
         string(REGEX REPLACE "(^| )(-I|-isystem[ ]+)/usr/include([^ ]*)?( |$)" " " CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-        string(APPEND CMAKE_C_FLAGS " -I${MUSL_INCLUDE_DIR}")
-        string(APPEND CMAKE_CXX_FLAGS " -I${MUSL_INCLUDE_DIR}")
+        string(APPEND CMAKE_C_FLAGS " -isystem ${MUSL_INCLUDE_DIR}")
+        string(APPEND CMAKE_CXX_FLAGS " -isystem ${MUSL_INCLUDE_DIR}")
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "C compiler flags" FORCE)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "C++ compiler flags" FORCE)
         # Keep the target libc ahead of any transitive pkg-config include

@@ -18,7 +18,13 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
             " -isystem ${MUSL_GCC_BUILTIN_INCLUDE_DIR}"
             " -isystem ${MUSL_GCC_FIXED_INCLUDE_DIR}")
     else()
-        string(APPEND _c " -nostdlibinc -isystem ${MUSL_INCLUDE_DIR}")
+        execute_process(COMMAND "${CMAKE_C_COMPILER}" -print-resource-dir
+            OUTPUT_VARIABLE _asciichat_clang_resource_dir
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if(NOT _asciichat_clang_resource_dir)
+            message(FATAL_ERROR "Unable to determine Clang resource include directory")
+        endif()
+        string(APPEND _c " -nostdlibinc -isystem ${_asciichat_clang_resource_dir}/include -isystem ${MUSL_INCLUDE_DIR}")
     endif()
     if(KERNEL_HEADERS_DIR)
         string(APPEND _c " -isystem ${KERNEL_HEADERS_DIR}")
@@ -37,7 +43,10 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
         endif()
         string(APPEND _cxx " -isystem ${MUSL_INCLUDE_DIR}")
     else()
-        string(APPEND _cxx " -idirafter ${MUSL_INCLUDE_DIR}")
+        # Clang otherwise appends the host multiarch C headers after the
+        # target triple's search path.  Keep libc++ headers enabled while
+        # making musl the only C-library header provider.
+        string(APPEND _cxx " -nostdlibinc -isystem ${MUSL_INCLUDE_DIR}")
     endif()
     if(KERNEL_HEADERS_DIR)
         string(APPEND _cxx " -idirafter ${KERNEL_HEADERS_DIR}")
@@ -53,6 +62,12 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
         string(APPEND _cxx " -isystem ${ALPINE_LIBCXX_INCLUDE_DIR}")
     else()
         string(APPEND _cxx " -isystem /usr/include/c++/v1 -D_LIBCPP_HAS_MUSL_LIBC=1 -D_LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE=1")
+    endif()
+    if(NOT _asciichat_gcc_toolchain)
+        # Clang's resource headers include a stddef.h of their own.  Keep
+        # libc++'s wrapper ahead of that directory so include_next reaches
+        # the musl wrapper and defines nullptr_t correctly.
+        string(APPEND _cxx " -isystem ${_asciichat_clang_resource_dir}/include")
     endif()
     # Clang diagnoses precedence and duplicate-platform-macro patterns in the
     # external musl headers; keep these diagnostics out of project output.

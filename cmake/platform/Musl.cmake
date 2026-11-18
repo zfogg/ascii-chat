@@ -235,6 +235,34 @@ function(configure_musl_post_project)
         if(EXISTS "${ALPINE_LIBCXX_DIR}/usr/include/c++/v1")
             set(ALPINE_LIBCXX_INCLUDE_DIR "${ALPINE_LIBCXX_DIR}/usr/include/c++/v1" CACHE PATH "Alpine libc++ headers")
             message(STATUS "  Alpine libc++ headers: ${ALPINE_LIBCXX_INCLUDE_DIR}")
+            # The toolchain is initialized before the Alpine runtime cache is
+            # staged, so its bootstrap flags may contain the host libc++ path.
+            # Remove it once the target headers are available; mixing the host
+            # and musl libc++ trees breaks libc math-header feature macros.
+            string(REGEX REPLACE "[ ]*-isystem[ ]+/usr/include/c\\+\\+/v1" ""
+                CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+            # The initial toolchain pass may have used the old fallback flag
+            # before the musl headers were staged.  Do not leave that weaker
+            # search mode in the cache: it permits Clang to append host
+            # multiarch C headers after the musl include directory.
+            string(REPLACE "-idirafter ${MUSL_INCLUDE_DIR}"
+                "-nostdlibinc -isystem ${MUSL_INCLUDE_DIR}"
+                CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+            # libc++ uses include_next for the C-library wrappers.  Put its
+            # headers before musl's explicit C headers and disable Clang's
+            # implicit host include search so include_next cannot reach glibc.
+            string(REGEX REPLACE "-nostdlibinc[ ]*-isystem[ ]*${MUSL_INCLUDE_DIR}" ""
+                CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+            string(REGEX REPLACE "-nostdinc\\+\\+" ""
+                CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+            execute_process(COMMAND "${CMAKE_CXX_COMPILER}" -print-resource-dir
+                OUTPUT_VARIABLE _asciichat_clang_resource_dir
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+            string(REGEX REPLACE "[ ]*-isystem[ ]+[^ ]*/lib/clang/[0-9.]+/include" ""
+                CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+            string(APPEND CMAKE_CXX_FLAGS " -nostdinc -isystem ${ALPINE_LIBCXX_INCLUDE_DIR} -isystem ${_asciichat_clang_resource_dir}/include -isystem ${MUSL_INCLUDE_DIR}")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING
+                "C++ compiler flags" FORCE)
         endif()
         set(LLVM_RUNTIME_SOURCE "Alpine Linux (musl-native)")
         set(_asciichat_libcxx_found TRUE)

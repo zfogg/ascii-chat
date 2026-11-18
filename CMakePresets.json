@@ -216,7 +216,8 @@
       "inherits": "base-release",
       "cacheVariables": {
         "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
-        "USE_MUSL": "OFF"
+        "USE_MUSL": "OFF",
+        "ASCIICHAT_ENFORCE_STATIC_RELEASE": "OFF"
       }
     },
     {
