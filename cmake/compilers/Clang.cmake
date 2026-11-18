@@ -281,16 +281,21 @@ function(configure_clang_pre_project)
         if(NOT CMAKE_CXX_COMPILER)
             message(STATUS "${BoldYellow}C${ColorReset} compiler already set: ${BoldCyan}${CMAKE_C_COMPILER}${ColorReset}")
 
-            # Derive CXX compiler from the existing C compiler
-            if(CMAKE_C_COMPILER MATCHES "clang\\.exe$")
-                string(REPLACE "clang.exe" "clang++.exe" CLANGXX_EXECUTABLE "${CMAKE_C_COMPILER}")
-            elseif(CMAKE_C_COMPILER MATCHES "clang(-[0-9]+)?$")
-                set(CLANGXX_EXECUTABLE "${CMAKE_C_COMPILER}++")
+            # Derive CXX from the selected C compiler without assuming that a
+            # version suffix follows clang++ (clang-23 pairs with clang++-23).
+            get_filename_component(COMPILER_DIR "${CMAKE_C_COMPILER}" DIRECTORY)
+            get_filename_component(COMPILER_NAME "${CMAKE_C_COMPILER}" NAME)
+            if(COMPILER_NAME MATCHES "^clang(-[0-9]+)?$")
+                set(CLANGXX_NAMES "clang++${CMAKE_MATCH_1}" clang++)
+            elseif(COMPILER_NAME MATCHES "^clang\\.exe$")
+                set(CLANGXX_NAMES clang++.exe clang++)
             else()
-                get_filename_component(COMPILER_DIR "${CMAKE_C_COMPILER}" DIRECTORY)
-                if(EXISTS "${COMPILER_DIR}/clang++${CMAKE_EXECUTABLE_SUFFIX}")
-                    set(CLANGXX_EXECUTABLE "${COMPILER_DIR}/clang++${CMAKE_EXECUTABLE_SUFFIX}")
-                endif()
+                set(CLANGXX_NAMES clang++ clang++.exe)
+            endif()
+            find_program(CLANGXX_EXECUTABLE NAMES ${CLANGXX_NAMES}
+                HINTS "${COMPILER_DIR}" NO_DEFAULT_PATH)
+            if(NOT CLANGXX_EXECUTABLE)
+                find_program(CLANGXX_EXECUTABLE NAMES ${CLANGXX_NAMES})
             endif()
 
             if(CLANGXX_EXECUTABLE AND EXISTS "${CLANGXX_EXECUTABLE}")
