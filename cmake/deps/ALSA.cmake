@@ -6,9 +6,8 @@
 # For musl builds: Built from source
 # For native builds: Uses system package manager
 #
-# Outputs (variables set by this file):
-#   - ALSA_LIBRARIES: ALSA libraries to link (PARENT_SCOPE)
-#   - ALSA_INCLUDE_DIRS: ALSA include directories (PARENT_SCOPE)
+# Output:
+#   - asciichat-alsa: canonical interface target
 # =============================================================================
 
 # Musl build: Build from source in MuslDependencies.cmake
@@ -61,8 +60,8 @@ if(USE_MUSL)
     endif()
 
     # Set ALSA variables for PortAudio to find
-    set(ALSA_LIBRARIES "${ALSA_PREFIX}/lib/libasound.a")
-    set(ALSA_INCLUDE_DIRS "${ALSA_PREFIX}/include")
+    set(_asciichat_alsa_libraries "${ALSA_PREFIX}/lib/libasound.a")
+    set(_asciichat_alsa_include_dirs "${ALSA_PREFIX}/include")
     if(NOT TARGET asciichat-alsa)
         add_library(asciichat-alsa INTERFACE)
         target_link_libraries(asciichat-alsa INTERFACE "${ALSA_PREFIX}/lib/libasound.a")
@@ -76,28 +75,22 @@ endif()
 if(UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
     # Linux/BSD: Use system package managers
     find_package(PkgConfig REQUIRED)
-    pkg_check_modules(ALSA alsa REQUIRED)
+    pkg_check_modules(_asciichat_alsa alsa REQUIRED)
 
-    set(ALSA_LIBRARIES ${ALSA_LDFLAGS})
-    set(ALSA_INCLUDE_DIRS ${ALSA_INCLUDE_DIRS})
     if(NOT TARGET asciichat-alsa)
         add_library(asciichat-alsa INTERFACE)
-        target_link_libraries(asciichat-alsa INTERFACE ${ALSA_LDFLAGS})
-        target_include_directories(asciichat-alsa INTERFACE ${ALSA_INCLUDE_DIRS})
+        target_link_libraries(asciichat-alsa INTERFACE ${_asciichat_alsa_LDFLAGS})
+        target_include_directories(asciichat-alsa INTERFACE ${_asciichat_alsa_INCLUDE_DIRS})
     endif()
 
-    message(STATUS "${BoldGreen}✓${ColorReset} ALSA: ${ALSA_LDFLAGS}")
+    message(STATUS "${BoldGreen}✓${ColorReset} ALSA: ${_asciichat_alsa_LDFLAGS}")
 
 elseif(APPLE OR EMSCRIPTEN)
     # ALSA is Linux-only and is not used by the browser audio path.
     message(STATUS "${BoldYellow}⚠${ColorReset} ALSA is Linux-only, skipping for this platform")
-    set(ALSA_LIBRARIES "")
-    set(ALSA_INCLUDE_DIRS "")
 
 elseif(WIN32)
     message(STATUS "${BoldYellow}⚠${ColorReset} ALSA is Linux/macOS only, skipping for Windows")
-    set(ALSA_LIBRARIES "")
-    set(ALSA_INCLUDE_DIRS "")
 
 else()
     message(FATAL_ERROR "Unsupported platform for ALSA")
