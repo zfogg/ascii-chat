@@ -670,6 +670,13 @@ if(TARGET webrtc_audio_processing)
     endif()
 endif()
 
+# WebRTC AEC3's Windows time source uses timeGetTime from winmm.  Keep this
+# system-library requirement attached to the external WebRTC base target so
+# every consumer, including its DLL, receives the import library.
+if(WIN32 AND TARGET base)
+    target_link_libraries(base PUBLIC winmm)
+endif()
+
 # Now create the module with WebRTC includes in scope
 create_ascii_chat_module(ascii-chat-audio "${AUDIO_SRCS}")
 target_link_libraries(ascii-chat-audio PRIVATE asciichat-rnnoise)

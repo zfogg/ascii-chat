@@ -47,8 +47,17 @@ endif()
 # the DLL, while llvm-nm reports defined symbols from Unix objects/libraries.
 get_filename_component(_symbol_tool_name "${SYMBOL_TOOL}" NAME)
 if(_symbol_tool_name MATCHES "^(dumpbin|dumpbin\.exe)$")
+    get_filename_component(_library_extension "${LIBRARY}" EXT)
+    if(_library_extension MATCHES "^[.]dll$")
+        set(_dumpbin_mode /exports)
+    else()
+        # CMake's TARGET_LINKER_FILE is an MSVC import library (.lib) for a
+        # DLL target.  /exports only accepts the PE image; /linkermember is
+        # the compiler-native listing for the corresponding import library.
+        set(_dumpbin_mode /linkermember:1)
+    endif()
     execute_process(
-        COMMAND "${SYMBOL_TOOL}" /exports "${LIBRARY}"
+        COMMAND "${SYMBOL_TOOL}" ${_dumpbin_mode} "${LIBRARY}"
         OUTPUT_VARIABLE NM_OUTPUT
         ERROR_VARIABLE NM_ERROR
         RESULT_VARIABLE NM_RESULT)
@@ -70,7 +79,12 @@ endif()
 set(MISSING_SYMBOLS "")
 foreach(SYMBOL ${SYMBOLS})
     if(_symbol_export_format)
-        string(FIND "${NM_OUTPUT}" " ${SYMBOL} =" FOUND_EXPORT)
+        string(REGEX MATCH "(^|[\r\n ])${SYMBOL}([\r\n ]|$)" _found_export "${NM_OUTPUT}")
+        if(_found_export)
+            set(FOUND_EXPORT 0)
+        else()
+            set(FOUND_EXPORT -1)
+        endif()
         if(FOUND_EXPORT EQUAL -1)
             list(APPEND MISSING_SYMBOLS "${SYMBOL}")
         endif()

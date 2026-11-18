@@ -76,16 +76,24 @@ function(configure_libsodium_bcrypt_pbkdf)
     set(DEP_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf")
     set(PATCHES_DIR "${CMAKE_SOURCE_DIR}/cmake/deps/patches")
 
-    # Apply patch #0: UBSAN fix (all platforms)
-    apply_patch(
-        TARGET_DIR "${DEP_DIR}"
-        PATCH_FILE "${PATCHES_DIR}/libsodium-bcrypt-pbkdf-0-fix-ubsan.patch"
-        PATCH_NUM 0
-        DESCRIPTION "Fix undefined behavior sanitizer warnings"
-        ASSUME_UNCHANGED
-            src/openbsd-compat/blowfish.c
-            src/openbsd-compat/bcrypt_pbkdf.c
-    )
+    # The zfogg fork now carries this fix in its source. Keep the patch for
+    # older checkout states, but do not try to reapply it when the fork has
+    # already integrated the BLOWFISH_FUNC marker.
+    file(READ "${DEP_DIR}/src/openbsd-compat/blowfish.c" _blowfish_source)
+    string(FIND "${_blowfish_source}" "BLOWFISH_FUNC" _blowfish_fix_offset)
+    if(_blowfish_fix_offset EQUAL -1)
+        apply_patch(
+            TARGET_DIR "${DEP_DIR}"
+            PATCH_FILE "${PATCHES_DIR}/libsodium-bcrypt-pbkdf-0-fix-ubsan.patch"
+            PATCH_NUM 0
+            DESCRIPTION "Fix undefined behavior sanitizer warnings"
+            ASSUME_UNCHANGED
+                src/openbsd-compat/blowfish.c
+                src/openbsd-compat/bcrypt_pbkdf.c
+        )
+    else()
+        message(STATUS "libsodium-bcrypt-pbkdf UBSAN fix already present in source")
+    endif()
 
     # Verify the source files exist
     if(NOT EXISTS "${DEP_DIR}/src/openbsd-compat/blowfish.c")
