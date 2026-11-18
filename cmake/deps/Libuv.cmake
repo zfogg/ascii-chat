@@ -68,7 +68,10 @@ function(configure_libuv)
             "if(LIBUV_BUILD_SHARED)\n  set(LIB_SELECTED uv)"
             _asciichat_libuv_cmake_text "${_asciichat_libuv_cmake_text}")
         file(WRITE "${_asciichat_libuv_cmake}" "${_asciichat_libuv_cmake_text}")
-        FetchContent_MakeAvailable(asciichat_libuv)
+        add_subdirectory(
+            "${asciichat_libuv_SOURCE_DIR}"
+            "${asciichat_libuv_BINARY_DIR}"
+            EXCLUDE_FROM_ALL)
         # musl does not provide the glibc three-argument pthread name APIs.
         # Keep libuv's optional thread-name helpers buildable and let callers
         # receive UV_ENOSYS for the unsupported operation.
