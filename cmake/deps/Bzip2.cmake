@@ -74,8 +74,6 @@ if(PLATFORM_IOS)
         message(STATUS "  ${BoldBlue}bzip2${ColorReset} library found in iOS cache: ${BoldMagenta}${BZIP2_LIBRARY}${ColorReset}")
     endif()
 
-    set(BZIP2_FOUND TRUE)
-
     # Create imported target
     if(NOT TARGET BZip2::BZip2)
         add_library(BZip2::BZip2 STATIC IMPORTED GLOBAL)
@@ -128,8 +126,6 @@ if(USE_MUSL)
         add_custom_target(bzip2-musl)
     endif()
 
-    set(BZIP2_FOUND TRUE)
-
     # Create imported target for bzip2 to match system find_package behavior
     if(NOT TARGET BZip2::BZip2)
         add_library(BZip2::BZip2 STATIC IMPORTED GLOBAL)
@@ -160,20 +156,17 @@ endif()
 # Try to find bzip2 via CMake config first, then fall back to pkg-config
 find_package(BZip2 QUIET CONFIG)
 
-if(NOT BZIP2_FOUND)
+if(NOT TARGET BZip2::BZip2)
     # Fall back to pkg-config if CMake config not found
     include(FindPkgConfig)
-    pkg_check_modules(BZIP2 REQUIRED bzip2)
+    pkg_check_modules(_asciichat_bzip2 REQUIRED IMPORTED_TARGET bzip2)
+    add_library(BZip2::BZip2 INTERFACE IMPORTED)
+    target_link_libraries(BZip2::BZip2 INTERFACE PkgConfig::_asciichat_bzip2)
 
 endif()
 
 # Some distro BZip2 config files report success without publishing the
 # conventional target.  Normalize both discovery paths to one target.
-if(NOT TARGET BZip2::BZip2)
-    add_library(BZip2::BZip2 INTERFACE IMPORTED)
-    target_include_directories(BZip2::BZip2 SYSTEM INTERFACE ${BZIP2_INCLUDE_DIRS})
-    target_link_libraries(BZip2::BZip2 INTERFACE ${BZIP2_LIBRARIES})
-endif()
 if(NOT TARGET asciichat-bzip2)
     add_library(asciichat-bzip2 INTERFACE)
     target_link_libraries(asciichat-bzip2 INTERFACE BZip2::BZip2)
