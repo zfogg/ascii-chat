@@ -211,7 +211,7 @@ char *ascii_glyph_render(const image_t *image, ascii_color_t mode, const simd_ce
       return NULL;
     }
     for (const uint8_t *p = (const uint8_t *)palette; *p;) {
-      size_t length;
+      size_t length = 1;
       int index = glyph_palette_index(p, &length);
       if (!allowed[index]) {
         allowed[index] = true;
