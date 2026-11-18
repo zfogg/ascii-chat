@@ -155,3 +155,81 @@ dependencies:
     cache: "${ASCIICHAT_DEPS_CACHE_DIR}/libexecinfo"
     target: asciichat-libexecinfo
     role: target
+  expat:
+    source: source-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/build/expat"
+    target: asciichat-expat
+    role: target
+  freetype:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/build/freetype"
+    target: asciichat-freetype
+    role: target
+  fontconfig:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/fontconfig"
+    target: asciichat-fontconfig
+    role: target
+  libuv:
+    source: source-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/build/libuv"
+    target: asciichat-libuv
+    role: target
+  mimalloc:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/build/mimalloc"
+    target: asciichat-mimalloc
+    role: target
+  utf8proc:
+    source: submodule-or-cache
+    version: submodule
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/utf8proc"
+    target: asciichat-utf8proc
+    role: target
+  yyjson:
+    source: submodule-or-cache
+    version: submodule
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/yyjson"
+    target: asciichat-yyjson
+    role: target
+  ngtcp2:
+    source: submodule-or-cache
+    version: submodule
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/ngtcp2"
+    target: asciichat-ngtcp2
+    role: target
+  nghttp3:
+    source: submodule-or-cache
+    version: submodule
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/nghttp3"
+    target: asciichat-nghttp3
+    role: target
+  nghttp2:
+    source: source-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/build/nghttp2"
+    target: asciichat-nghttp2
+    role: target
+  quic:
+    source: source-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/build/quic"
+    target: asciichat-quic
+    role: target
+  x264:
+    source: source-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/build/x264"
+    target: asciichat-x264
+    role: target
+  x265:
+    source: source-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/build/x265"
+    target: asciichat-x265
+    role: target
