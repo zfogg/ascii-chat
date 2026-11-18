@@ -432,8 +432,10 @@ endif()
 set(RECAST_SOURCE_HOOK ascii_panic_defer_source)
 get_target_property(_asciichat_sqlite_includes asciichat-sqlite3
     INTERFACE_INCLUDE_DIRECTORIES)
+get_target_property(_asciichat_libflags_includes asciichat-libflags
+    INTERFACE_INCLUDE_DIRECTORIES)
 set(RECAST_EXTRA_INCLUDE_DIRS ${_asciichat_sqlite_includes}
-    "${libflags_SOURCE_DIR}/include")
+    ${_asciichat_libflags_includes})
 recast_targets(${_defer_targets})
 unset(RECAST_SOURCE_HOOK)
 enable_testing()

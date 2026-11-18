@@ -27,7 +27,6 @@ function(configure_include_directories)
         ${CMAKE_SOURCE_DIR}/lib      # Private implementation headers (if any remain)
         ${CMAKE_SOURCE_DIR}/src      # Application headers
         ${CMAKE_SOURCE_DIR}/src/common # Co-located ascii-chat option headers
-        ${libflags_SOURCE_DIR}/include # Public libflags headers for tooling and consumers
     )
     # Windows: Add compat directory for POSIX header stubs (unistd.h, etc.)
     if(WIN32)
@@ -37,6 +36,7 @@ function(configure_include_directories)
     # Code uses: #include <ascii-chat-deps/uthash/src/uthash.h>
     # Also includes utf8proc: #include <ascii-chat-deps/utf8proc/utf8proc.h>
     target_include_directories(asciichat-project-includes SYSTEM INTERFACE ${CMAKE_SOURCE_DIR}/deps)
+    target_link_libraries(asciichat-project-includes INTERFACE asciichat-libflags)
 
     # Add dependency include directories (matching pkg-config approach)
     if(WIN32)

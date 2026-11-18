@@ -670,7 +670,6 @@ foreach(_core_target IN LISTS _CORE_MODULE_TARGETS)
     target_include_directories(${_core_target} PRIVATE
         ${CMAKE_SOURCE_DIR}/src/common
         ${CMAKE_SOURCE_DIR}/lib
-        "${libflags_SOURCE_DIR}/include"
     )
     target_compile_definitions(${_core_target} PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
     target_link_libraries(${_core_target} PRIVATE
