@@ -101,6 +101,7 @@ endif()
 # Handle musl builds - BearSSL is built from source
 if(USE_MUSL)
     message(STATUS "Configuring ${BoldBlue}BearSSL${ColorReset} from source...")
+    include(ExternalProject)
 
     set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
     set(BEARSSL_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/bearssl-build")
@@ -110,34 +111,19 @@ if(USE_MUSL)
         if(NOT EXISTS "${BEARSSL_LIB}")
             message(STATUS "  BearSSL library not found in cache, building from source...")
             file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
-
-            # Clean any previous build to avoid leftover targets
-            execute_process(
-                COMMAND make clean
-                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
-                OUTPUT_QUIET
-                ERROR_QUIET
-            )
-
-            # Build the static library target with parallel jobs for faster builds
-            # For musl: disable getentropy() (not in musl), force /dev/urandom, disable fortification
-            execute_process(
-                COMMAND make -j lib CC=${ASCIICHAT_CLANG_EXECUTABLE} AR=${CMAKE_AR} CFLAGS=${ASCIICHAT_MUSL_TARGET_FLAG}\ -DBR_USE_GETENTROPY=0\ -DBR_USE_URANDOM=1\ -U_FORTIFY_SOURCE\ -D_FORTIFY_SOURCE=0\ -fno-stack-protector\ -fPIC
-                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
-                RESULT_VARIABLE BEARSSL_MAKE_RESULT
-                OUTPUT_VARIABLE BEARSSL_MAKE_OUTPUT
-                ERROR_VARIABLE BEARSSL_MAKE_ERROR
-                OUTPUT_QUIET
-            )
-
-            if(BEARSSL_MAKE_RESULT EQUAL 0)
-                # Copy library to cache
-                file(COPY "${BEARSSL_SOURCE_DIR}/build/libbearssl.a"
-                     DESTINATION "${BEARSSL_BUILD_DIR}")
-                message(STATUS "  ${BoldBlue}BearSSL${ColorReset} library built and cached successfully")
-            else()
-                message(FATAL_ERROR "BearSSL build failed with exit code ${BEARSSL_MAKE_RESULT}\nOutput: ${BEARSSL_MAKE_OUTPUT}\nError: ${BEARSSL_MAKE_ERROR}")
-            endif()
+            ExternalProject_Add(asciichat-bearssl-musl
+                SOURCE_DIR "${BEARSSL_SOURCE_DIR}"
+                CONFIGURE_COMMAND ""
+                BUILD_COMMAND make -j lib
+                    "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
+                    "AR=${CMAKE_AR}"
+                    "CFLAGS=${ASCIICHAT_MUSL_TARGET_FLAG} -DBR_USE_GETENTROPY=0 -DBR_USE_URANDOM=1 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector -fPIC"
+                INSTALL_COMMAND ${CMAKE_COMMAND} -E make_directory "${BEARSSL_BUILD_DIR}"
+                    COMMAND ${CMAKE_COMMAND} -E copy
+                        "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" "${BEARSSL_LIB}"
+                BUILD_BYPRODUCTS "${BEARSSL_LIB}"
+                LOG_BUILD TRUE LOG_INSTALL TRUE LOG_OUTPUT_ON_FAILURE TRUE)
+            message(STATUS "  ${BoldBlue}BearSSL${ColorReset} build scheduled through ExternalProject")
         else()
             message(STATUS "  ${BoldBlue}BearSSL${ColorReset} library found in cache: ${BoldMagenta}${BEARSSL_LIB}${ColorReset}")
         endif()
@@ -150,6 +136,9 @@ if(USE_MUSL)
         target_include_directories(asciichat-bearssl-archive INTERFACE
             "${BEARSSL_SOURCE_DIR}/inc"
         )
+        if(TARGET asciichat-bearssl-musl)
+            add_dependencies(asciichat-bearssl-archive asciichat-bearssl-musl)
+        endif()
 
         if(NOT TARGET asciichat-bearssl)
             add_library(asciichat-bearssl INTERFACE)
