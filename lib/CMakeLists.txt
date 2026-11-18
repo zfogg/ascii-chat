@@ -1805,17 +1805,17 @@ target_link_libraries(ascii-chat-lib INTERFACE
 
 # FFTW symbols are used unconditionally by the native audio module.
 target_link_libraries(ascii-chat-audio PRIVATE asciichat-fftw)
-target_link_libraries(ascii-chat-audio PRIVATE ${FFTW_FLOAT_LIBRARY})
+target_link_libraries(ascii-chat-audio PRIVATE asciichat-fftw-float)
 if(TARGET ascii-chat-shared)
     target_link_libraries(ascii-chat-shared PRIVATE asciichat-fftw)
-    target_link_libraries(ascii-chat-shared PRIVATE ${FFTW_FLOAT_LIBRARY})
+    target_link_libraries(ascii-chat-shared PRIVATE asciichat-fftw-float)
     if(TARGET FFTW3::fftw3f)
         target_link_libraries(ascii-chat-shared PRIVATE FFTW3::fftw3f)
     endif()
 endif()
 target_link_libraries(ascii-chat-static INTERFACE asciichat-fftw)
-target_link_libraries(ascii-chat-static INTERFACE ${FFTW_FLOAT_LIBRARY})
-target_link_libraries(ascii-chat-runtime PRIVATE ${FFTW_FLOAT_LIBRARY})
+target_link_libraries(ascii-chat-static INTERFACE asciichat-fftw-float)
+target_link_libraries(ascii-chat-runtime PRIVATE asciichat-fftw-float)
 
 if(NOT EMSCRIPTEN)
     if(NOT TARGET gotel::gotel)
