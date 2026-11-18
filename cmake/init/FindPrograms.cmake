@@ -323,26 +323,12 @@ macro(_find_llvm_tool VAR_NAME)
             DOC "LLVM tool"
         )
     endif()
-    # Some Windows package shims expose the executable only with its .exe
-    # suffix, while find_program's cached search can retain an earlier miss.
-    # Probe the selected LLVM directories directly as the final shared fallback.
+    # Finally honor the process PATH.  This is the source of truth for tools
+    # such as llvm-nm when LLVM was installed by the user's environment.
     if(NOT ${VAR_NAME})
-        foreach(_llvm_tool_dir IN LISTS ASCIICHAT_LLVM_TOOL_SEARCH_PATHS)
-            foreach(_llvm_tool_name IN LISTS _tool_names)
-                if(EXISTS "${_llvm_tool_dir}/${_llvm_tool_name}")
-                    set(${VAR_NAME} "${_llvm_tool_dir}/${_llvm_tool_name}" CACHE FILEPATH
-                        "LLVM tool" FORCE)
-                    break()
-                elseif(WIN32 AND EXISTS "${_llvm_tool_dir}/${_llvm_tool_name}.exe")
-                    set(${VAR_NAME} "${_llvm_tool_dir}/${_llvm_tool_name}.exe" CACHE FILEPATH
-                        "LLVM tool" FORCE)
-                    break()
-                endif()
-            endforeach()
-            if(${VAR_NAME})
-                break()
-            endif()
-        endforeach()
+        find_program(${VAR_NAME}
+            NAMES ${_tool_names}
+            DOC "LLVM tool from PATH")
     endif()
     unset(_tool_names)
 endmacro()
