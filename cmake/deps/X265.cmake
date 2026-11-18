@@ -22,13 +22,11 @@ set(X265_HASH "7d23cdcdbd510728202c0dfbf7c51eda26a395de2096c504c2b10d6035711102"
 # Windows: x265 not needed (vcpkg FFmpeg is built without libx265)
 # =============================================================================
 if(WIN32)
-    set(X265_FOUND FALSE)
     message(STATUS "⚠ x265 not needed on Windows (vcpkg FFmpeg uses built-in codecs)")
     return()
 endif()
 
 if(EMSCRIPTEN)
-    set(X265_FOUND FALSE)
     message(STATUS "⚠ x265 not needed for Emscripten web targets")
     return()
 endif()
@@ -42,7 +40,6 @@ if(USE_MUSL)
     # references from x265's C++ sources. Clang's musl libc++ path remains
     # supported; GCC+musl uses FFmpeg's built-in codecs instead.
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        set(X265_FOUND FALSE)
         message(STATUS "x265 disabled for GCC musl builds (host C++ runtime is not musl-compatible)")
         return()
     endif()
@@ -81,11 +78,13 @@ if(USE_MUSL)
                 -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../scripts/FixX265PkgConfig.cmake"
             DEPENDS x265-static VERBATIM)
         set(X265_PREFIX "${_prefix}" PARENT_SCOPE)
-        set(X265_INCLUDE_DIRS "${asciichat_x265_SOURCE_DIR}/source;${asciichat_x265_BINARY_DIR}" PARENT_SCOPE)
+        set(ASCIICHAT_X265_INCLUDE_DIRS "${asciichat_x265_SOURCE_DIR}/source;${asciichat_x265_BINARY_DIR}" PARENT_SCOPE)
     endfunction()
     asciichat_build_x265()
-    set(X265_LIBRARIES x265-static)
-    set(X265_FOUND TRUE)
+    if(NOT TARGET asciichat-x265)
+        add_library(asciichat-x265 INTERFACE)
+        target_link_libraries(asciichat-x265 INTERFACE x265-static)
+    endif()
     return()
 endif()
 
@@ -93,28 +92,30 @@ endif()
 # Non-musl: Use system package via pkg-config
 # =============================================================================
 include(FindPkgConfig)
-pkg_check_modules(X265 REQUIRED x265)
+pkg_check_modules(_asciichat_x265 REQUIRED x265)
 
 if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
-    find_library(X265_STATIC_LIBRARY
+    find_library(_asciichat_x265_static_library
         NAMES libx265.a
-        PATHS ${X265_LIBRARY_DIRS}
+        PATHS ${_asciichat_x265_LIBRARY_DIRS}
         NO_DEFAULT_PATH
     )
-    if(NOT X265_STATIC_LIBRARY)
+    if(NOT _asciichat_x265_static_library)
         message(FATAL_ERROR "Static x265 is required for portable macOS Release builds")
     endif()
-    set(X265_LIBRARIES "${X265_STATIC_LIBRARY}")
-    message(STATUS "${BoldGreen}✓${ColorReset} x265 (static): ${X265_STATIC_LIBRARY}")
+    set(_asciichat_x265_link "${_asciichat_x265_static_library}")
+    message(STATUS "${BoldGreen}✓${ColorReset} x265 (static): ${_asciichat_x265_static_library}")
 else()
-    set(X265_LIBRARIES ${X265_LDFLAGS})
+    set(_asciichat_x265_link ${_asciichat_x265_LDFLAGS})
     message(STATUS "${BoldGreen}✓${ColorReset} x265 found")
 endif()
 
 if(NOT TARGET x265::x265)
     add_library(x265::x265 INTERFACE IMPORTED)
-    target_include_directories(x265::x265 SYSTEM INTERFACE ${X265_INCLUDE_DIRS})
-    target_link_libraries(x265::x265 INTERFACE ${X265_LIBRARIES})
+    target_include_directories(x265::x265 SYSTEM INTERFACE ${_asciichat_x265_INCLUDE_DIRS})
+    target_link_libraries(x265::x265 INTERFACE ${_asciichat_x265_link})
 endif()
-
-set(X265_FOUND TRUE)
+if(NOT TARGET asciichat-x265)
+    add_library(asciichat-x265 INTERFACE)
+    target_link_libraries(asciichat-x265 INTERFACE x265::x265)
+endif()
