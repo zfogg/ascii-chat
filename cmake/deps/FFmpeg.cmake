@@ -14,6 +14,8 @@ option(ASCIICHAT_USE_SYSTEM_FFMPEG
     "Use system FFmpeg when all required pkg-config modules are available"
     ON)
 
+function(asciichat_configure_ffmpeg)
+
 # iOS build: Build from source for iOS cross-compilation
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}FFmpeg${ColorReset} from source (iOS cross-compile)...")
@@ -548,12 +550,16 @@ if(NOT FFMPEG_FOUND OR NOT FFMPEG_LIBRARIES)
     message(STATUS "  - FFMPEG_LINK_LIBRARIES: ${FFMPEG_LINK_LIBRARIES}")
 endif()
 
-# Variables FFMPEG_LIBRARIES, FFMPEG_INCLUDE_DIRS, and FFMPEG_FOUND are available
-# SourceFiles.cmake will conditionally include media source files when FFMPEG_FOUND is true
 if(FFMPEG_FOUND AND NOT TARGET asciichat-ffmpeg)
     add_library(asciichat-ffmpeg INTERFACE)
     target_link_libraries(asciichat-ffmpeg INTERFACE ${FFMPEG_LIBRARIES})
     if(FFMPEG_INCLUDE_DIRS)
         target_include_directories(asciichat-ffmpeg INTERFACE ${FFMPEG_INCLUDE_DIRS})
     endif()
+    if(FFMPEG_LIBRARY_DIRS)
+        target_link_directories(asciichat-ffmpeg INTERFACE ${FFMPEG_LIBRARY_DIRS})
+    endif()
 endif()
+endfunction()
+
+asciichat_configure_ffmpeg()

@@ -115,12 +115,6 @@ if(UNIX AND NOT APPLE)
     endif()
 endif()
 
-# The executable's mode sources call FFmpeg directly. pkg-config can return
-# bare library names, so carry its search directories to every link branch.
-if(FFMPEG_LIBRARY_DIRS)
-    target_link_directories(ascii-chat PRIVATE ${FFMPEG_LIBRARY_DIRS})
-endif()
-
 if(ASCIICHAT_ENABLE_UNITY_BUILDS)
     set_target_properties(ascii-chat PROPERTIES UNITY_BUILD ON)
 endif()
@@ -255,7 +249,6 @@ elseif(BUILD_SHARED_LIBS AND NOT USE_MUSL)
         # Link against FFmpeg libraries (set by FFmpeg.cmake for all build types)
         if(TARGET asciichat-ffmpeg)
             target_link_libraries(ascii-chat PRIVATE asciichat-ffmpeg)
-            target_link_directories(ascii-chat PRIVATE ${FFMPEG_LIBRARY_DIRS})
         endif()
         # Link WebRTC audio processing for echo cancellation
         if(TARGET asciichat-webrtc-aec3)
