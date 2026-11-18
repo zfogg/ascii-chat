@@ -1,5 +1,5 @@
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/options/colorscheme.h>
+#include <options/colorscheme.h>
 /**
  * @file media/render/renderer.c
  * @ingroup media
@@ -8,7 +8,7 @@
 #include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/media/ffmpeg_encoder.h>
 #include <libplatform/font.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/log/log.h>
 #include <libplatform/terminal.h>
 #include <libplatform/memory.h>

@@ -33,10 +33,10 @@ static_assert(ERROR_INVALID_STATE != WIN32_ERROR_INVALID_STATE);
 #endif
 
 #ifndef CHECK
-#define CHECK(expr)                                                                                                                                                                                    \
-  do {                                                                                                                                                                                                 \
-    if (!(expr))                                                                                                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "Test failed: %s at line %d", #expr, __LINE__);                                                                                                                    \
+#define CHECK(expr)                                                                 \
+  do {                                                                              \
+    if (!(expr))                                                                    \
+      FATAL(ERROR_ASSERTION_FAILED, "Test failed: %s at line %d", #expr, __LINE__); \
   } while (0)
 #endif
 

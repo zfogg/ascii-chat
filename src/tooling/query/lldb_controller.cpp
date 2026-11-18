@@ -125,8 +125,7 @@ bool LLDBController::attach(pid_t pid) {
 
   process_ = target_.Attach(attach_info, error);
   if (!process_.IsValid() || error.Fail()) {
-    setError("Failed to attach to PID " + std::to_string(pid) + ": " +
-             std::string(error.GetCString() ? error.GetCString() : "unknown error"));
+    setError("Failed to attach to PID " + std::to_string(pid) + ": " + std::string(error.GetCString() ? error.GetCString() : "unknown error"));
     debugger_.DeleteTarget(target_);
     return false;
   }
@@ -157,8 +156,7 @@ bool LLDBController::attachByName(const std::string &process_name, bool wait_for
 
   process_ = target_.Attach(attach_info, error);
   if (!process_.IsValid() || error.Fail()) {
-    setError("Failed to attach to process '" + process_name +
-             "': " + std::string(error.GetCString() ? error.GetCString() : "unknown error"));
+    setError("Failed to attach to process '" + process_name + "': " + std::string(error.GetCString() ? error.GetCString() : "unknown error"));
     debugger_.DeleteTarget(target_);
     return false;
   }
@@ -447,8 +445,7 @@ std::optional<FrameInfo> LLDBController::getFrame(uint32_t frame_index) const {
 // Variable Reading
 // =============================================================================
 
-std::optional<VariableInfo> LLDBController::readVariable(const std::string &name, uint32_t frame_index,
-                                                         uint32_t expand_depth) const {
+std::optional<VariableInfo> LLDBController::readVariable(const std::string &name, uint32_t frame_index, uint32_t expand_depth) const {
   lldb::SBFrame frame = getFrameInternal(frame_index);
   if (!frame.IsValid()) {
     return std::nullopt;
@@ -458,8 +455,7 @@ std::optional<VariableInfo> LLDBController::readVariable(const std::string &name
   // First, check if it's a path expression (has dots or arrows)
   lldb::SBValue value;
 
-  if (name.find('.') != std::string::npos || name.find("->") != std::string::npos ||
-      name.find('[') != std::string::npos) {
+  if (name.find('.') != std::string::npos || name.find("->") != std::string::npos || name.find('[') != std::string::npos) {
     // Path expression - use GetValueForVariablePath
     value = frame.GetValueForVariablePath(name.c_str());
   } else {
@@ -479,8 +475,7 @@ std::optional<VariableInfo> LLDBController::readVariable(const std::string &name
   return valueToInfo(value, expand_depth);
 }
 
-std::vector<VariableInfo> LLDBController::listVariables(uint32_t frame_index, bool include_args, bool include_locals,
-                                                        bool include_statics) const {
+std::vector<VariableInfo> LLDBController::listVariables(uint32_t frame_index, bool include_args, bool include_locals, bool include_statics) const {
   std::vector<VariableInfo> result;
 
   lldb::SBFrame frame = getFrameInternal(frame_index);
@@ -604,8 +599,7 @@ bool LLDBController::waitForBreakpoint(uint32_t timeout_ms) {
     if (new_state == lldb::eStateStopped) {
       clearError();
       return true;
-    } else if (new_state == lldb::eStateExited || new_state == lldb::eStateCrashed ||
-               new_state == lldb::eStateDetached) {
+    } else if (new_state == lldb::eStateExited || new_state == lldb::eStateCrashed || new_state == lldb::eStateDetached) {
       setError("Process exited/crashed while waiting for breakpoint");
       return false;
     }
@@ -616,8 +610,7 @@ bool LLDBController::waitForBreakpoint(uint32_t timeout_ms) {
 // Expression Evaluation
 // =============================================================================
 
-std::optional<VariableInfo> LLDBController::evaluateExpression(const std::string &expression,
-                                                               uint32_t frame_index) const {
+std::optional<VariableInfo> LLDBController::evaluateExpression(const std::string &expression, uint32_t frame_index) const {
   lldb::SBFrame frame = getFrameInternal(frame_index);
   if (!frame.IsValid()) {
     return std::nullopt;

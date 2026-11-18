@@ -14,8 +14,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   (void)fmt;
 }
 
-asciichat_error_t errno_set_with_message(asciichat_error_t code, const char *file, int line, const char *function,
-                                         const char *format, ...) {
+asciichat_error_t errno_set_with_message(asciichat_error_t code, const char *file, int line, const char *function, const char *format, ...) {
   (void)file;
   (void)line;
   (void)function;
@@ -23,8 +22,7 @@ asciichat_error_t errno_set_with_message(asciichat_error_t code, const char *fil
   return code;
 }
 
-void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int line, const char *function,
-                                  const char *format, ...) {
+void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int line, const char *function, const char *format, ...) {
   (void)code;
   (void)file;
   (void)line;
@@ -33,8 +31,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   abort();
 }
 
-const char *named_register(uintptr_t key, const char *base_name, const char *type, const char *format_spec,
-                           const char *file, int line, const char *func, uintptr_t parent_key) {
+const char *named_register(uintptr_t key, const char *base_name, const char *type, const char *format_spec, const char *file, int line, const char *func, uintptr_t parent_key) {
   (void)parent_key;
   (void)key;
   (void)type;

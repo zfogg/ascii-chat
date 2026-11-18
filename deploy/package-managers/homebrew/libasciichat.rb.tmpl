@@ -1,0 +1,44 @@
+class Libasciichat < Formula
+  desc "Reusable C library for ascii-chat applications"
+  homepage "https://ascii-chat.com"
+  license "MIT"
+
+  if Hardware::CPU.arm?
+    url "{{ .Env.LIB_MAC_ARM64_URL }}"
+    sha256 "{{ .Env.LIB_MAC_ARM64_SHA256 }}"
+  else
+    url "{{ .Env.LIB_MAC_X64_URL }}"
+    sha256 "{{ .Env.LIB_MAC_X64_SHA256 }}"
+  end
+
+  depends_on "ffmpeg"
+  depends_on "fftw"
+  depends_on "fontconfig"
+  depends_on "freetype"
+  depends_on "icu4c"
+  depends_on "libde265"
+  depends_on "libpng"
+  depends_on "libsodium"
+  depends_on "libwebsockets"
+  depends_on "mimalloc"
+  depends_on "miniupnpc"
+  depends_on "nghttp2"
+  depends_on "openssl@3"
+  depends_on "opus"
+  depends_on "pcre2"
+  depends_on "portaudio"
+  depends_on "sqlite"
+  depends_on "x265"
+  depends_on "yyjson"
+  depends_on "zstd"
+
+  def install
+    prefix.install Dir["*"]
+  end
+
+  test do
+    assert_path_exists include/"ascii-chat/api.h"
+    assert_path_exists lib/"pkgconfig/libasciichat.pc"
+    assert_path_exists lib/"cmake/ascii-chat/ascii-chat-config.cmake"
+  end
+end

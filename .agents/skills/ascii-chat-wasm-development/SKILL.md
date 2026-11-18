@@ -1,6 +1,6 @@
 ---
 name: ascii-chat-wasm-development
-description: Develop, debug, review, and build ascii-chat's Emscripten/WASM browser modules, Embind APIs, shared web renderer, and browser transports. Use when work crosses src/web, lib/platform/wasm, web/packages/shared, web/web, or the CMake WASM targets.
+description: Develop, debug, review, and build ascii-chat's Emscripten/WASM browser modules, Embind APIs, shared web renderer, and browser transports. Use when work crosses src/web, the libplatform WASM backend, web/packages/shared, web/web, or the CMake WASM targets.
 metadata:
   short-description: ascii-chat browser WASM development
 ---
@@ -29,7 +29,7 @@ Before changing code, inspect the current tree and run `git status --short
 - `src/web/bindings/`: Embind translation units. These are the deliberate
   JavaScript ABI, not a place to expose every C function. Generated TypeScript
   declarations live separately under `web/packages/shared/src/wasm/generated/`.
-- `lib/platform/wasm/`: browser implementations of platform services and
+- `deps/ascii-chat-deps/libplatform/lib/wasm/`: browser implementations of platform services and
   stubs. `stubs/` supplies APIs that make sense for native CLI code but not in
   a browser. `ffmpeg_decoder.c` and `lib/video/webcam/wasm/webcam_wasm.c` are
   examples of browser-specific media/platform paths.
@@ -124,7 +124,7 @@ extraction, `lib/options/colorscheme.c` and `lib/options/parsing/parsers.c`
 excluding native-only behavior, `lib/network/tcp/transport.c` excluding
 native socket paths, `src/common/session/host.c` excluding blocking/native
 host work, and `lib/debug/backtrace.c`/`lib/debug/mutex.c` relying on WASM
-stubs. Prefer an existing `lib/platform/wasm/` implementation or stub to a
+stubs. Prefer an existing libplatform WASM implementation or stub to a
 new preprocessor island. If a public API must still exist, provide a safe WASM
 stub with the same signature and explicit browser semantics.
 

@@ -1,10 +1,9 @@
 /**
 @page systemd systemd integration
 
-ascii-chat can run under systemd on Linux. The packaged units use journald for
-stdout and stderr, disable terminal-only startup UI and update checks, and set
-`/dev/null` as the explicit application log sink. This discard sink does not
-open a file.
+ascii-chat can run under systemd on Linux. The application sends logs directly
+to journald and disables terminal-only startup UI and update checks. The
+packaged units discard stdout and stderr.
 
 When systemd provides `NOTIFY_SOCKET`, the process sends `READY=1` and startup
 `STATUS=` notifications. Support is optional at runtime, so the same binary
@@ -12,5 +11,25 @@ works outside systemd. Install the packaged units with
 `scripts/install-systemd-confs.sh`; pass `--user` for user services and
 `--uninstall` to remove them. System-wide changes require root.
 
-The API profile uses the existing server mode; there is no separate API mode.
+@section systemd_mcp MCP HTTP server
+
+The `ascii-chat-mcp-server.service` unit runs `ascii-chat mcp-server --transport=http`.
+It serves `/mcp` on `127.0.0.1:27228` and `[::1]:27228` by default.
+
+For a user session, install and enable the unit with:
+@code{.sh}
+./scripts/install-systemd-confs.sh --user
+systemctl --user enable --now ascii-chat-mcp-server.service
+journalctl --user -u ascii-chat-mcp-server.service -f
+@endcode
+
+For a system-wide service, install the units and enable the MCP unit with:
+@code{.sh}
+sudo ./scripts/install-systemd-confs.sh
+sudo systemctl enable --now ascii-chat-mcp-server.service
+sudo journalctl -u ascii-chat-mcp-server.service -f
+@endcode
+
+Set `ASCII_CHAT_BINARY` when running the installer to select an absolute
+executable path. See @ref md_docs_2mcp for HTTP transport options.
 */

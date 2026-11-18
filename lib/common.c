@@ -23,13 +23,13 @@
 #include <ascii-chat/log/asan.h>
 #include <ascii-chat/buffer.h>
 #include <ascii-chat/video/ascii/palette.h>
-#include <ascii-chat/video/ascii/common.h>  // For simd_caches_destroy_all()
-#include <ascii-chat/options/colorscheme.h> // For colorscheme_destroy()
-#include <ascii-chat/util/time.h>           // For timer_system_destroy()
+#include <ascii-chat/video/ascii/common.h> // For simd_caches_destroy_all()
+#include <options/colorscheme.h>           // For colorscheme_destroy()
+#include <ascii-chat/util/time.h>          // For timer_system_destroy()
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/crypto/known_hosts.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>         // For RCU-based options access
+#include <options/options.h>
+#include <options/rcu.h>                    // For RCU-based options access
 #include <ascii-chat/discovery/strings.h>   // For RCU-based options access
 #include <ascii-chat/debug/sync.h>          // Synchronization diagnostics lifecycle
 #include <ascii-chat/debug/mutex.h>         // For mutex_stack_cleanup
@@ -54,7 +54,7 @@
  * ============================================================================
  */
 
-// These globals are used by lib/platform/terminal.c to detect --color flag
+// These globals are used by libplatform's terminal implementation to detect --color flag
 // during early execution phases (e.g., when --help is processed before
 // options are fully parsed and published to RCU)
 // ASCIICHAT_API is required for proper DLL export on Windows
@@ -151,6 +151,8 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client, bo
       return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize named.");
     }
     debug_memory_ensure_init();
+    static const char *const ascii_chat_libraries[] = {"libasciichat", NULL};
+    symbol_cache_set_project_modules("ascii-chat", ascii_chat_libraries);
     symbol_cache_init();
 #endif
 

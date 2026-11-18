@@ -17,6 +17,10 @@ typedef enum {
 } ascii_otel_metric_t;
 #ifndef __EMSCRIPTEN__
 #include <gotel/gotel.h>
+#include <gotel/sqlite.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 /**
  * @brief ascii otel scope is intentionally a small, concrete record. Fields such as `scope`, `retained`, `previous`
  * give callers the identity and current value they need. It is normally borrowed from, or owned by, the surrounding
@@ -67,11 +71,11 @@ int ascii_otel_sqlite_prepare(sqlite3 *db, const char *sql, sqlite3_stmt **state
 #define ASCII_OTEL_ATTR_STRING(key, value) ascii_otel_scope_string(&otel_scope, key, value)
 #define ASCII_OTEL_ATTR_INT(key, value) ascii_otel_scope_int(&otel_scope, key, value)
 #define ASCII_OTEL_PACKET(type, size, action, transport) ascii_otel_packet(&otel_scope, type, size, action, transport)
-#define ASCII_OTEL_SCOPE_PARENT(id, parent)                                                                                                                                                            \
-  ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0};                                                                                                                  \
+#define ASCII_OTEL_SCOPE_PARENT(id, parent)                                           \
+  ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0}; \
   ascii_otel_scope_parent(&otel_scope, ASCII_OTEL_##id, parent)
-#define ASCII_OTEL_SCOPE(id)                                                                                                                                                                           \
-  ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0};                                                                                                                  \
+#define ASCII_OTEL_SCOPE(id)                                                          \
+  ascii_otel_scope_t otel_scope __attribute__((cleanup(ascii_otel_scope_end))) = {0}; \
   ascii_otel_scope_begin(&otel_scope, ASCII_OTEL_##id)
 #else
 #define ASCII_OTEL_ATTR_STRING(key, value) ((void)(key), (void)(value))
@@ -90,7 +94,11 @@ int ascii_otel_sqlite_prepare(sqlite3 *db, const char *sql, sqlite3_stmt **state
 #define ASCII_OTEL_SCOPE(id) ((void)0)
 #endif
 
+#ifdef __cplusplus
+}
+#endif
+
 // Test executables may link the ordinary library; never initialize its exporter.
-#if !defined(ASCIICHAT_OTEL_IMPLEMENTATION) && (defined(TESTING) || defined(CRITERION_TEST) || defined(__CRITERION__))
+#if !defined(ASCIICHAT_OTEL_IMPLEMENTATION) && defined(TESTING)
 #define ascii_otel_init(mode, argc, argv) ((void)(mode), (void)(argc), (void)(argv), ASCIICHAT_OK)
 #endif

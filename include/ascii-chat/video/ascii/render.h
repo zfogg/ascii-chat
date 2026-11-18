@@ -7,68 +7,31 @@
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/video/ascii/simd/cells.h>
+#include <ascii-chat/video/ascii/render/render.h>
 
-/** Shared terminal-cell contract for every ISA and scalar fallback.
- * Palettes use complete UTF-8 glyphs from cache64. Runs never cross rows.
- * Background mode sets a contrasting foreground. Colored rows finish with
- * SGR reset before newline; monochrome rows carry no SGR or erase sequences.
- * The returned buffer is owned by the caller and freed with SAFE_FREE.
- * ISA entry points select their vector stages; callers must check CPU support.
- */
-typedef enum { ASCII_COLOR_NONE, ASCII_COLOR_16, ASCII_COLOR_256, ASCII_COLOR_TRUE } ascii_color_t;
-
-/** A renderer-owned history; one instance must not be shared by independent streams. */
-/**
- * @brief For ascii stabilizer, this is the live record that ties `cells`, `width`, `height`, `configuration` together.
- * The owning code creates it, updates it while work is active, and releases its handles and pointed-to storage before
- * freeing the record.
- */
-/**
- * @brief ascii temporal cell keeps the values that move through the subsystem: `glyph`, `color`, `background`,
- * `source_owner`. Some members are pointers into caller- or subsystem-owned memory, so lifetime follows the API that
- * populated them rather than the struct copy itself.
- */
-typedef struct {
-  uint8_t samples[16];
-  uint8_t rgb_samples[3][16];
-  uint32_t glyph;
-  uint32_t color;
-  uint32_t background;
-  uint64_t source_owner;
-  bool valid;
-} ascii_temporal_cell_t;
-
-typedef struct {
-  ascii_temporal_cell_t *cells;
-  size_t width, height;
-  uint64_t configuration;
-  uint64_t elapsed_ns;
-  uint64_t last_timestamp_ns;
-  uint64_t fixed_step_ns;
-} ascii_stabilizer_t;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Prepare history for a viewport and rendering contract, resetting it on change. */
-asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height,
-                                           uint64_t configuration);
+asciichat_error_t ascii_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height, uint64_t configuration);
 void ascii_stabilizer_reset(ascii_stabilizer_t *state);
 /** Select history for the current thread until the previous target is restored. */
 ascii_stabilizer_t *ascii_stabilizer_set_target(ascii_stabilizer_t *state);
 /** Choose a glyph using current and previous candidate errors and patch motion. */
-uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate,
-                                 uint64_t candidate_error, uint64_t previous_error, uint32_t color, uint64_t elapsed_ns,
+uint32_t ascii_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate, uint64_t candidate_error, uint64_t previous_error, uint32_t color, uint64_t elapsed_ns,
                                  uint32_t *stabilized_color);
-char *ascii_render(const image_t *image, const char *palette, ascii_color_t color, bool background, bool dither,
-                   const simd_cells_t *ops);
+char *ascii_render(const image_t *image, const char *palette, ascii_color_t color, bool background, bool dither, const simd_cells_t *ops);
 
 bool ascii_glyph_palette_supported(const char *palette);
 char *ascii_render_glyph_match(const image_t *image, ascii_color_t color, const simd_cells_t *ops, const char *palette);
-char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t color, const simd_cells_t *ops,
-                                    const char *palette, bool background);
+char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t color, const simd_cells_t *ops, const char *palette, bool background);
 
 /** Two source rows per terminal row; the supplied backend processes both rows. */
-char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int stride_bytes, ascii_color_t color,
-                              const simd_cells_t *ops);
+char *ascii_render_halfblocks(const uint8_t *rgb, int width, int height, int stride_bytes, ascii_color_t color, const simd_cells_t *ops);
 
+#ifndef ASCII_FRAME_DECLARED
+#define ASCII_FRAME_DECLARED
 /** Prepared row storage shared by ISA-owned processing loops. No pixel work occurs here. */
 /**
  * @brief When code needs to work with ascii frame, it keeps `output`, `output_target`, `width`, `source_height` here
@@ -91,8 +54,7 @@ typedef struct {
   _Alignas(64) uint32_t inline_scratch[ASCII_INLINE_SCRATCH_COLUMNS * ASCII_SCRATCH_PLANES];
 } ascii_frame_t;
 asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, const char *palette);
-void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows,
-                          const simd_cells_t *ops);
+void ascii_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows, const simd_cells_t *ops);
 char *ascii_frame_finish(ascii_frame_t *frame);
 #define DECLARE_ASCII_PROCESSOR(isa) char *render_ascii_cells_##isa(const image_t *, const char *, ascii_color_t, bool)
 DECLARE_ASCII_PROCESSOR(sse2);
@@ -102,8 +64,7 @@ DECLARE_ASCII_PROCESSOR(neon);
 DECLARE_ASCII_PROCESSOR(sve);
 #undef DECLARE_ASCII_PROCESSOR
 
-asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb, int width, int height, int *stride,
-                                        ascii_color_t mode);
+asciichat_error_t ascii_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb, int width, int height, int *stride, ascii_color_t mode);
 void ascii_frame_emit_halfrow(ascii_frame_t *frame, ascii_color_t mode, bool more_rows, const simd_cells_t *ops);
 #define DECLARE_HALF_PROCESSOR(isa) char *render_halfblocks_##isa(const uint8_t *, int, int, int, ascii_color_t)
 DECLARE_HALF_PROCESSOR(sse2);
@@ -117,3 +78,8 @@ DECLARE_HALF_PROCESSOR(sve);
  * Returns the prior target so capability conversion can restore its scope.
  */
 outbuf_t *ascii_render_set_output_target(outbuf_t *target);
+#endif
+
+#ifdef __cplusplus
+}
+#endif

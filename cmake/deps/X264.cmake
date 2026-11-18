@@ -28,6 +28,14 @@ if(WIN32)
     return()
 endif()
 
+# Emscripten's web builds do not link the native FFmpeg encoder path.  Do not
+# require a host x264 pkg-config module when generating the browser targets.
+if(EMSCRIPTEN)
+    set(X264_FOUND FALSE)
+    message(STATUS "⚠ x264 not needed for Emscripten web targets")
+    return()
+endif()
+
 # =============================================================================
 # musl: Build from source
 # =============================================================================

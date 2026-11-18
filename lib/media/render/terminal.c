@@ -24,7 +24,7 @@
 #include <libplatform/memory.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/uthash.h>
 #include <ascii-chat/font.h>
 #include <ascii-chat/video/ascii/zalgo.h>

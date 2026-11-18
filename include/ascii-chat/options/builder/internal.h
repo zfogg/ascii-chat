@@ -16,6 +16,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Initial capacities for dynamic arrays
 #define INITIAL_DESCRIPTOR_CAPACITY 32
 #define INITIAL_DEPENDENCY_CAPACITY 16
@@ -60,3 +64,7 @@ void ensure_owned_strings_capacity(options_builder_t *builder);
 // Internal lookup (in lifecycle.c)
 const option_descriptor_t *find_option(const options_config_t *config, const char *long_name);
 bool is_option_set(const options_config_t *config, const void *options_struct, const char *option_name);
+
+#ifdef __cplusplus
+}
+#endif

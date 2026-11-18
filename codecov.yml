@@ -114,7 +114,7 @@ component_management:
         - "include/ascii-chat/ui/"
     - component_id: options
       name: Options and Configuration
-      paths: ["lib/options/", "include/ascii-chat/options/"]
+      paths: ["lib/options/*.c", "src/common/"]
     - component_id: observability
       name: Logging, Statistics and Debugging
       paths:
@@ -126,7 +126,7 @@ component_management:
         - "include/ascii-chat/debug/"
     - component_id: platform
       name: Platform Abstraction
-      paths: ["lib/platform/", "include/ascii-chat/platform/"]
+      paths: ["os/", "include/libplatform/"]
     - component_id: utilities
       name: Utilities and Data Structures
       paths:

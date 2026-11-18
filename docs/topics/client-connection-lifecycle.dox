@@ -71,7 +71,7 @@
  * `ASCII_CHAT_TEST_CLIENT_FAIL_STAGE` selects an acquisition checkpoint in Debug
  * builds only. It has no effect in release builds.
  *
- * The Criterion-free `session-connections` test runs two live TCP owners with
+ * The Catch2-free `session-connections` test runs two live TCP owners with
  * blocked receive workers, stops one while checking that the other keeps receiving,
  * injects a failed join, checks controlling-thread cleanup, and unwinds partial
  * startup. `participant-media` exercises discovery participant failures, repeated

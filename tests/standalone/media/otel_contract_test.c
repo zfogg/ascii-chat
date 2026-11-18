@@ -1,17 +1,30 @@
-/** Exercise the real application adapter with an in-process Gotel host.
- * Including the implementation gives this fixture access to its private host;
- * normal TESTING initialization stays disabled and no worker or socket starts. */
-#include "../../../lib/otel.c"
+/** Exercise the real application adapter with an in-process Gotel host. */
+#include <ascii-chat/otel.h>
 #include <gotel/testing.h>
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/network/rate_limit/rate_limit.h>
 #include "../../../lib/discovery/queries.h"
 
+extern void ascii_otel_test_set_host(gotel_host_t *value);
+extern unsigned ascii_otel_test_reader_count(void);
+extern gotel_scope_t *ascii_otel_test_command_scope(void);
+static const gotel_operation_t operations[] = {
+#define ASCII_OTEL_OPERATION(id, name, realtime) {name, realtime},
+#include <ascii-chat/otel_operations.def>
+#undef ASCII_OTEL_OPERATION
+};
+static const double metric_bounds[] = {.0001, .001, .005, .01, .025, .05, .1, .25, .5, 1, 2, 5, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 1000000};
+static const gotel_metric_t metrics[] = {
+#define ASCII_OTEL_METRIC(id, name, type, unit) {name, unit, OTLP_METRIC_##type, metric_bounds, sizeof(metric_bounds) / sizeof(metric_bounds[0])},
+#include <ascii-chat/otel_metrics.def>
+#undef ASCII_OTEL_METRIC
+};
+
 #ifndef CHECK
-#define CHECK(value)                                                                                                   \
-  do {                                                                                                                 \
-    if (!(value))                                                                                                      \
-      FATAL(ERROR_ASSERTION_FAILED, "%s", #value);                                                                     \
+#define CHECK(value)                               \
+  do {                                             \
+    if (!(value))                                  \
+      FATAL(ERROR_ASSERTION_FAILED, "%s", #value); \
   } while (0)
 #endif
 
@@ -42,25 +55,25 @@ static gotel_host_t *start(double rate) {
   CHECK(gotel_test_create(&options, &result) == OTLP_OK);
   if (capture)
     CHECK(gotel_test_capture_attach(result, capture) == OTLP_OK);
-  atomic_ptr_store(&host, result);
+  ascii_otel_test_set_host(result);
   return result;
 }
 
 static void finish(gotel_host_t *h) {
-  CHECK(current_scope == NULL);
-  CHECK(atomic_load(&readers) == 0);
+  CHECK(ascii_otel_test_reader_count() == 0);
   CHECK(gotel_drain(h) == OTLP_OK);
-  atomic_ptr_store(&host, NULL);
+  ascii_otel_test_set_host(NULL);
   gotel_destroy(h);
 }
 
 static void bounded_sampling(void) {
   gotel_host_t *h = start(0);
-  gotel_begin(h, &command_scope, ASCII_OTEL_CLI, NULL);
+  gotel_scope_t *command_scope = ascii_otel_test_command_scope();
+  gotel_begin(h, command_scope, ASCII_OTEL_CLI, NULL);
   ascii_otel_scope_t operation = {0}, child = {0};
   ascii_otel_scope_begin(&operation, ASCII_OTEL_HTTP);
   CHECK(operation.scope.context.sampled);
-  CHECK(memcmp(operation.scope.context.trace_id, command_scope.context.trace_id, 16) != 0);
+  CHECK(memcmp(operation.scope.context.trace_id, command_scope->context.trace_id, 16) != 0);
   ascii_otel_scope_begin(&child, ASCII_OTEL_FFMPEG_VIDEO_DECODE);
   CHECK(child.scope.context.sampled);
   CHECK(memcmp(child.scope.context.trace_id, operation.scope.context.trace_id, 16) == 0);
@@ -83,8 +96,8 @@ static void bounded_sampling(void) {
   CHECK(memcmp(child.scope.context.trace_id, transferred.trace_id, 16) == 0);
   CHECK(memcmp(child.scope.parent_span_id, transferred.span_id, 8) == 0);
   ascii_otel_scope_end(&child);
-  CHECK(memcmp(gotel_current_context().span_id, command_scope.context.span_id, 8) == 0);
-  gotel_end(&command_scope);
+  CHECK(memcmp(gotel_current_context().span_id, command_scope->context.span_id, 8) == 0);
+  gotel_end(command_scope);
   finish(h);
 }
 
@@ -113,19 +126,17 @@ static void sqlite_prepare_contract(void) {
   gotel_host_t *h = start(1);
   sqlite3 *db = NULL;
   CHECK(sqlite3_open(":memory:", &db) == SQLITE_OK);
-  const gotel_query_t queries[] = {{"BoundValue", "SELECT ?"},
-                                   {"Malformed", "SELECT 'fixture-secret"},
-                                   {"LiteralValue", "SELECT 17, 'fixture-literal-secret'"}};
+  const gotel_query_t queries[] = {{"BoundValue", "SELECT ?"}, {"Malformed", "SELECT 'fixture-secret"}, {"LiteralValue", "SELECT 17, 'fixture-literal-secret'"}};
   ascii_otel_sqlite(db, queries, 3);
   sqlite3_stmt *statement = NULL;
   CHECK(ascii_otel_sqlite_prepare(db, queries[0].sql, &statement) == SQLITE_OK);
   otlp_exporter_stats_t stats = {0};
-  CHECK(gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 0);
+  CHECK((gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 0));
   CHECK(sqlite3_bind_text(statement, 1, "fixture-bound-secret", -1, SQLITE_STATIC) == SQLITE_OK);
   CHECK(sqlite3_step(statement) == SQLITE_ROW);
   CHECK(strcmp((const char *)sqlite3_column_text(statement, 0), "fixture-bound-secret") == 0);
   CHECK(sqlite3_finalize(statement) == SQLITE_OK);
-  CHECK(gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 1);
+  CHECK((gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 1));
   CHECK(ascii_otel_sqlite_prepare(db, queries[2].sql, &statement) == SQLITE_OK);
   CHECK(sqlite3_step(statement) == SQLITE_ROW);
   CHECK(sqlite3_column_int(statement, 0) == 17);
@@ -133,8 +144,8 @@ static void sqlite_prepare_contract(void) {
   CHECK(sqlite3_finalize(statement) == SQLITE_OK);
   statement = NULL;
   CHECK(ascii_otel_sqlite_prepare(db, queries[1].sql, &statement) == SQLITE_ERROR);
-  CHECK(statement == NULL && sqlite3_errcode(db) == SQLITE_ERROR);
-  CHECK(gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 3);
+  CHECK((statement == NULL && sqlite3_errcode(db) == SQLITE_ERROR));
+  CHECK((gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 3));
   CHECK(sqlite3_close(db) == SQLITE_OK);
   finish(h);
 }
@@ -146,11 +157,11 @@ static void retained_budget(void) {
   for (unsigned i = 0; i < 105; ++i)
     ascii_otel_error_code(ERROR_NETWORK_PROTOCOL, "protocol fixture");
   otlp_exporter_stats_t stats = {0};
-  CHECK(gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 100);
-  CHECK(!operation.scope.context.sampled && operation.scope.span == NULL);
+  CHECK((gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 100));
+  CHECK((!operation.scope.context.sampled && operation.scope.span == NULL));
   CHECK(gotel_test_clock_advance(NS_PER_SEC_INT) == OTLP_OK);
   ascii_otel_error_code(ERROR_NETWORK_PROTOCOL, "protocol fixture");
-  CHECK(gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 101);
+  CHECK((gotel_stats(h, &stats) == OTLP_OK && stats.emitted == 101));
   ascii_otel_scope_end(&operation);
   finish(h);
 }
@@ -189,7 +200,7 @@ static void catalog_contract(void) {
     CHECK(statement != NULL);
     for (int parameter = 1; parameter <= sqlite3_bind_parameter_count(statement); ++parameter) {
       const char *name = sqlite3_bind_parameter_name(statement, parameter);
-      CHECK(name != NULL && name[0] == ':');
+      CHECK((name != NULL && name[0] == ':'));
       int index = sqlite3_bind_parameter_index(statement, name);
       CHECK(index == parameter);
       CHECK(sqlite3_bind_null(statement, index) == SQLITE_OK);
@@ -226,13 +237,12 @@ static void catalog_contract(void) {
   int previous_limit = sqlite3_limit(db, SQLITE_LIMIT_LENGTH, 4096);
   sqlite3_stmt *oversized_stmt = NULL;
   CHECK(ascii_otel_sqlite_prepare(db, database_queries[DATABASE_QUERY_UpdateHost].sql, &oversized_stmt) == SQLITE_OK);
-  CHECK(sqlite3_bind_text(oversized_stmt, sqlite3_bind_parameter_index(oversized_stmt, ":host_address"), oversized, -1,
-                          SQLITE_STATIC) == SQLITE_TOOBIG);
+  CHECK(sqlite3_bind_text(oversized_stmt, sqlite3_bind_parameter_index(oversized_stmt, ":host_address"), oversized, -1, SQLITE_STATIC) == SQLITE_TOOBIG);
   CHECK(sqlite3_finalize(oversized_stmt) == SQLITE_OK);
   CHECK(database_session_update_host(db, joined.session_id, joined.participant_id, oversized, 1234, 1) != ASCIICHAT_OK);
   sqlite3_limit(db, SQLITE_LIMIT_LENGTH, previous_limit);
   session_entry_t *session = database_session_find_by_id(db, joined.session_id);
-  CHECK(session != NULL && !session->host_established);
+  CHECK((session != NULL && !session->host_established));
   session_entry_destroy(session);
   CHECK(database_session_leave(db, joined.session_id, joined.participant_id) == ASCIICHAT_OK);
 
@@ -259,7 +269,7 @@ static void catalog_contract(void) {
 }
 
 int main(int argc, char **argv) {
-  CHECK(argc == 1 || argc == 2);
+  CHECK((argc == 1 || argc == 2));
   log_init(NULL, LOG_ERROR, false, false);
   if (argc == 2) {
     capture = gotel_test_capture_create(OTEL_CONTRACT_CAPTURE_MAX_BYTES);
@@ -273,7 +283,7 @@ int main(int argc, char **argv) {
   if (capture) {
     const uint8_t *data = NULL;
     size_t bytes = 0;
-    CHECK(gotel_test_capture_read(capture, &data, &bytes) == OTLP_OK && bytes > 0);
+    CHECK((gotel_test_capture_read(capture, &data, &bytes) == OTLP_OK && bytes > 0));
     FILE *output = NULL;
 #ifdef _WIN32
     CHECK(fopen_s(&output, argv[1], "wb") == 0);

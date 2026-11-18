@@ -31,8 +31,7 @@ int main(int argc, char **argv) {
   // Exercise the same binary at actual kernel-selected SVE vector lengths.
   if (argc == 3) {
     unsigned long vl = strtoul(argv[2], NULL, 10);
-    if (!(features & CPU_FEATURE_SVE) || vl == 0 || vl > 256 || vl % 16 != 0 ||
-        prctl(PR_SVE_SET_VL, vl, 0, 0, 0) != (int)vl)
+    if (!(features & CPU_FEATURE_SVE) || vl == 0 || vl > 256 || vl % 16 != 0 || prctl(PR_SVE_SET_VL, vl, 0, 0, 0) != (int)vl)
       return 6;
   }
   if (features & CPU_FEATURE_SVE)

@@ -3,6 +3,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define MEDIA_PLAYLIST_MAX_ITEMS 64
 #define MEDIA_PLAYLIST_PATH_MAX 256
 
@@ -24,3 +28,7 @@ asciichat_error_t media_playlist_parse(const char *text, media_playlist_t *list)
 asciichat_error_t media_playlist_format(const media_playlist_t *list, char *text, size_t capacity);
 /** Find an adjacent item without wrapping at playlist boundaries. */
 bool media_playlist_adjacent(const media_playlist_t *list, int direction, size_t *index);
+
+#ifdef __cplusplus
+}
+#endif

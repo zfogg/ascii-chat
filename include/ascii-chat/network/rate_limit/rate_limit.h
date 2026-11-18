@@ -40,6 +40,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief One sliding-window rate-limit policy
  * @brief Backend callbacks implementing rate-limit checks, recording, cleanup, and destruction
@@ -90,8 +94,7 @@ typedef struct rate_limiter_s rate_limiter_t;
  * exposing either implementation's state.
  */
 typedef struct {
-  asciichat_error_t (*check)(void *backend_data, const char *ip_address, rate_event_type_t event_type,
-                             const rate_limit_config_t *config, bool *allowed);
+  asciichat_error_t (*check)(void *backend_data, const char *ip_address, rate_event_type_t event_type, const rate_limit_config_t *config, bool *allowed);
 
   asciichat_error_t (*record)(void *backend_data, const char *ip_address, rate_event_type_t event_type);
 
@@ -165,8 +168,7 @@ void rate_limiter_destroy(rate_limiter_t *limiter);
  * @param[out] allowed True if event is allowed, false if rate limited
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t rate_limiter_check(rate_limiter_t *limiter, const char *ip_address, rate_event_type_t event_type,
-                                     const rate_limit_config_t *config, bool *allowed);
+asciichat_error_t rate_limiter_check(rate_limiter_t *limiter, const char *ip_address, rate_event_type_t event_type, const rate_limit_config_t *config, bool *allowed);
 
 /**
  * @brief Record a rate limit event
@@ -203,3 +205,7 @@ asciichat_error_t rate_limiter_prune(rate_limiter_t *limiter, uint32_t max_age_s
  * @return Event type name string (e.g., "session_create", "connection")
  */
 const char *rate_limiter_event_type_string(rate_event_type_t event_type);
+
+#ifdef __cplusplus
+}
+#endif

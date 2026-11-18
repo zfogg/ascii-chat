@@ -13,6 +13,38 @@ endif()
 option(ASCIICHAT_USE_SYSTEM_OPENSSL
     "Use the host OpenSSL when it provides the required QUIC-capable API"
     ON)
+
+include(CheckSymbolExists)
+include(CMakePushCheckState)
+
+function(asciichat_openssl_has_quic_tls_api out_var)
+    cmake_push_check_state(RESET)
+    set(CMAKE_REQUIRED_INCLUDES "${OPENSSL_INCLUDE_DIR}")
+    if(OPENSSL_SSL_LIBRARY)
+        set(CMAKE_REQUIRED_LIBRARIES "${OPENSSL_SSL_LIBRARY};${OPENSSL_CRYPTO_LIBRARY}")
+    endif()
+    unset(ASCIICHAT_SYSTEM_OPENSSL_QUIC_TLS_API CACHE)
+    check_symbol_exists(SSL_set_quic_tls_cbs "openssl/ssl.h" ASCIICHAT_SYSTEM_OPENSSL_QUIC_TLS_API)
+    cmake_pop_check_state()
+    set(${out_var} "${ASCIICHAT_SYSTEM_OPENSSL_QUIC_TLS_API}" PARENT_SCOPE)
+endfunction()
+
+# CMake keeps explicit OpenSSL paths in the cache across reconfiguration.  A
+# stale dependency cache must not make a later configure fail before the
+# system/source discovery below gets a chance to recover.
+foreach(_asciichat_openssl_path_var
+        OPENSSL_ROOT_DIR
+        OPENSSL_INCLUDE_DIR
+        OPENSSL_CRYPTO_LIBRARY
+        OPENSSL_SSL_LIBRARY)
+    if(DEFINED ${_asciichat_openssl_path_var}
+       AND NOT EXISTS "${${_asciichat_openssl_path_var}}")
+        unset(${_asciichat_openssl_path_var} CACHE)
+        unset(${_asciichat_openssl_path_var})
+    endif()
+endforeach()
+unset(_asciichat_openssl_path_var)
+
 # Handle iOS builds - OpenSSL is built from source at configure time
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}OpenSSL${ColorReset} from source (iOS cross-compile)...")
@@ -187,22 +219,97 @@ if(PLATFORM_IOS)
     return()
 endif()
 
-# Docker and distribution development builds can use the system library when
-# it is new enough.  Release packages continue to use the pinned source build
-# unless this option is explicitly enabled.
+# Native non-musl builds use the system OpenSSL. The system must provide the
+# QUIC TLS API required by ngtcp2; do not silently substitute a source build.
 if(ASCIICHAT_USE_SYSTEM_OPENSSL AND NOT USE_MUSL AND NOT WIN32)
+    # Prefer pkg-config when the distribution provides an OpenSSL module. Some
+    # distributions, including Arch installations without the development
+    # metadata package, provide usable headers/libraries without openssl.pc;
+    # fall back to CMake's finder in that case.
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
         pkg_check_modules(ASCIICHAT_SYSTEM_OPENSSL QUIET openssl>=3.0)
     endif()
+
+    # System mode must not inherit paths to a previous source-built OpenSSL
+    # from a reused build directory.
+    unset(OPENSSL_ROOT_DIR CACHE)
+    unset(OPENSSL_INCLUDE_DIR CACHE)
+    unset(OPENSSL_CRYPTO_LIBRARY CACHE)
+    unset(OPENSSL_SSL_LIBRARY CACHE)
     if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
+        unset(ASCIICHAT_SYSTEM_OPENSSL_SSL_LIBRARY CACHE)
+        unset(ASCIICHAT_SYSTEM_OPENSSL_CRYPTO_LIBRARY CACHE)
+        if(EXISTS "${ASCIICHAT_SYSTEM_OPENSSL_LIBDIR}/libssl.so")
+            set(ASCIICHAT_SYSTEM_OPENSSL_SSL_LIBRARY
+                "${ASCIICHAT_SYSTEM_OPENSSL_LIBDIR}/libssl.so")
+            set(ASCIICHAT_SYSTEM_OPENSSL_CRYPTO_LIBRARY
+                "${ASCIICHAT_SYSTEM_OPENSSL_LIBDIR}/libcrypto.so")
+        else()
+            find_file(ASCIICHAT_SYSTEM_OPENSSL_SSL_LIBRARY
+                NAMES libssl.so libssl.dylib libssl.dll.a
+                HINTS ${ASCIICHAT_SYSTEM_OPENSSL_LIBRARY_DIRS}
+                REQUIRED)
+            find_file(ASCIICHAT_SYSTEM_OPENSSL_CRYPTO_LIBRARY
+                NAMES libcrypto.so libcrypto.dylib libcrypto.dll.a
+                HINTS ${ASCIICHAT_SYSTEM_OPENSSL_LIBRARY_DIRS}
+                REQUIRED)
+        endif()
+        set(OPENSSL_INCLUDE_DIR "${ASCIICHAT_SYSTEM_OPENSSL_INCLUDE_DIRS}" CACHE PATH
+            "OpenSSL include directory discovered through pkg-config" FORCE)
+        set(OPENSSL_SSL_LIBRARY "${ASCIICHAT_SYSTEM_OPENSSL_SSL_LIBRARY}" CACHE FILEPATH
+            "OpenSSL SSL library discovered through pkg-config" FORCE)
+        set(OPENSSL_CRYPTO_LIBRARY "${ASCIICHAT_SYSTEM_OPENSSL_CRYPTO_LIBRARY}" CACHE FILEPATH
+            "OpenSSL Crypto library discovered through pkg-config" FORCE)
+    endif()
+    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
+        if(NOT TARGET OpenSSL::Crypto)
+            add_library(OpenSSL::Crypto UNKNOWN IMPORTED GLOBAL)
+            set_target_properties(OpenSSL::Crypto PROPERTIES
+                IMPORTED_LOCATION "${OPENSSL_CRYPTO_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}")
+        endif()
+        if(NOT TARGET OpenSSL::SSL)
+            add_library(OpenSSL::SSL UNKNOWN IMPORTED GLOBAL)
+            set_target_properties(OpenSSL::SSL PROPERTIES
+                IMPORTED_LOCATION "${OPENSSL_SSL_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}"
+                INTERFACE_LINK_LIBRARIES OpenSSL::Crypto)
+        endif()
+        set(OPENSSL_VERSION "${ASCIICHAT_SYSTEM_OPENSSL_VERSION}")
+        asciichat_openssl_has_quic_tls_api(_ASCIICHAT_SYSTEM_OPENSSL_QUIC_OK)
+        if(_ASCIICHAT_SYSTEM_OPENSSL_QUIC_OK)
+            set(OPENSSL_FOUND TRUE)
+            message(STATUS "Using system OpenSSL ${OPENSSL_VERSION} (pkg-config)")
+            return()
+        endif()
+        message(FATAL_ERROR
+            "System OpenSSL ${OPENSSL_VERSION} lacks SSL_set_quic_tls_cbs. "
+            "Upgrade the system OpenSSL to 3.6.0 or newer before configuring ascii-chat.")
+    endif()
+    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND AND ASCIICHAT_SYSTEM_OPENSSL_PREFIX)
+        find_package(OpenSSL 3.0 QUIET COMPONENTS SSL Crypto
+            HINTS "${ASCIICHAT_SYSTEM_OPENSSL_PREFIX}" /usr)
+    else()
         find_package(OpenSSL 3.0 QUIET COMPONENTS SSL Crypto)
     endif()
-    if(ASCIICHAT_SYSTEM_OPENSSL_FOUND AND OpenSSL_FOUND)
-        message(STATUS "Using system OpenSSL ${OPENSSL_VERSION}")
-        return()
+    if(OpenSSL_FOUND)
+        asciichat_openssl_has_quic_tls_api(_ASCIICHAT_SYSTEM_OPENSSL_QUIC_OK)
+        if(_ASCIICHAT_SYSTEM_OPENSSL_QUIC_OK)
+            if(ASCIICHAT_SYSTEM_OPENSSL_FOUND)
+                message(STATUS "Using system OpenSSL ${ASCIICHAT_SYSTEM_OPENSSL_VERSION} (pkg-config)")
+            else()
+                message(STATUS "Using system OpenSSL ${OPENSSL_VERSION} (CMake discovery)")
+            endif()
+            return()
+        endif()
+        message(FATAL_ERROR
+            "System OpenSSL ${OPENSSL_VERSION} lacks SSL_set_quic_tls_cbs. "
+            "Upgrade the system OpenSSL to 3.6.0 or newer before configuring ascii-chat.")
     endif()
-    message(STATUS "System OpenSSL is missing or too old; using pinned source build")
+    message(FATAL_ERROR
+        "A system OpenSSL with SSL_set_quic_tls_cbs is required. "
+        "Install or upgrade to OpenSSL 3.6.0 or newer before configuring ascii-chat.")
 endif()
 
 # Handle musl builds - OpenSSL is built from source at configure time
@@ -387,6 +494,19 @@ endif()
 # from the dependency cache.  The musl and iOS branches above remain separate
 # because those targets do not have a usable host OpenSSL installation.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT USE_MUSL)
+    # Restored CMake caches can refer to dependency files absent on this
+    # runner. Clear those stale entries before asking CMake to rediscover the
+    # host OpenSSL installation.
+    foreach(_openssl_path OPENSSL_ROOT_DIR OPENSSL_INCLUDE_DIR OPENSSL_SSL_LIBRARY OPENSSL_CRYPTO_LIBRARY)
+        set(_openssl_probe_path "${${_openssl_path}}")
+        if(_openssl_path STREQUAL "OPENSSL_INCLUDE_DIR")
+            string(APPEND _openssl_probe_path "/openssl/ssl.h")
+        endif()
+        if(DEFINED ${_openssl_path} AND NOT "${${_openssl_path}}" STREQUAL "" AND NOT EXISTS "${_openssl_probe_path}")
+            unset(${_openssl_path} CACHE)
+            unset(${_openssl_path})
+        endif()
+    endforeach()
     find_package(OpenSSL REQUIRED)
     message(STATUS "  ${BoldBlue}OpenSSL${ColorReset} found (system): ${OPENSSL_SSL_LIBRARY}")
     return()
@@ -407,6 +527,13 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
     set(OPENSSL_SOURCE_DIR "${OPENSSL_BUILD_DIR}/src/openssl")
     set(OPENSSL_TARGET_STAMP "${OPENSSL_BUILD_DIR}/.target")
     set(OPENSSL_NO_ASM OFF)
+    # Emscripten cannot load host shared objects and cannot use OpenSSL's
+    # architecture-specific Linux assembly.  Treat the browser build as a
+    # static, no-assembly generic target even when the surrounding build is a
+    # shared/development configuration.
+    if(EMSCRIPTEN)
+        set(OPENSSL_NO_ASM ON)
+    endif()
     # Release packages should not retain a runtime dependency on the build
     # machine's OpenSSL dylib or its install path. Debug/dev builds keep shared
     # OpenSSL for faster iteration.
@@ -414,6 +541,9 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
         set(OPENSSL_BUILD_SHARED OFF)
     else()
         set(OPENSSL_BUILD_SHARED ON)
+    endif()
+    if(EMSCRIPTEN)
+        set(OPENSSL_BUILD_SHARED OFF)
     endif()
 
     set(OPENSSL_CONFIGURE_PREFIX "${OPENSSL_PREFIX}")

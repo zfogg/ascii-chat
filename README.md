@@ -100,6 +100,28 @@ paru -S ascii-chat-git       # Runtime binary from git
 paru -S libasciichat-git     # Development libraries from git
 ```
 
+**Windows (Scoop):**
+
+```powershell
+scoop bucket add ascii-chat https://github.com/zfogg/ascii-chat-scoop
+scoop install ascii-chat/ascii-chat
+```
+
+Scoop selects the matching x64 or ARM64 portable release. The development
+library is also available as `ascii-chat/libasciichat`.
+
+**Windows (Npackd):**
+
+Add the publisher repository once, then install the package:
+
+```powershell
+ncl add-repo --url https://raw.githubusercontent.com/zfogg/npackd-repository/main/repository.xml
+ncl add ascii-chat
+```
+
+On ARM64, use `ascii-chat-arm64`. Development packages are `libasciichat` and
+`libasciichat-arm64`.
+
 **All Platforms:**
 
 - All downloads: [GitHub Releases](https://github.com/zfogg/ascii-chat/releases)
@@ -532,7 +554,7 @@ ascii-chat is built on operating system code and several libraries.
 - [**FreeType2**](https://freetype.org/) - Font rasterization for `--render-file` glyph rendering
 - [**fontconfig**](https://www.freedesktop.org/wiki/Software/fontconfig/) - Font resolution and configuration for `--render-file`
 - [**libexecinfo**](https://github.com/termux/libexecinfo) - Backtrace support for musl builds (musl only)
-- [**Criterion**](https://criterion.readthedocs.io/en/master/) - C test framework (Unix test builds only)
+- [**Catch2 v3**](https://catch2.github.io/) - Cross-platform C++ test framework and benchmark runner
 - [**ssh-agent**](https://linux.die.net/man/1/ssh-agent) - SSH key agent authentication (optional)
 - [**gpg-agent**](https://linux.die.net/man/1/gpg-agent) - GPG key agent authentication (optional)
 
@@ -592,25 +614,24 @@ The documentation is automatically generated from source code using Doxygen and 
 
 #### Testing Framework
 
-- **Framework**: [libcriterion](https://criterion.readthedocs.io/en/master/)
-- **Coverage**: CI publishes one Codecov upload after all seven Ubuntu and macOS unit, integration, and performance reports are present, with completed CTest results and nonzero Criterion cases. Download the `complete-coverage` artifact for the original reports and a summary of executed-line coverage. Completed runs contribute coverage even when assertions fail; those failures remain visible in the test checks. The badge uses Codecov's coverage metric, which counts partially covered branches as uncovered lines; it can be lower than gcovr's executed-line percentage.
+- **Framework**: [Catch2 v3](https://catch2.github.io/), with CTest discovery, tags, sections, generators, matchers, and benchmarks
+- **Coverage**: CI publishes test JUnit XML from `build/Testing/xml/`, CTest results, and the instrumented coverage data to Codecov. Completed runs contribute coverage even when assertions fail; those failures remain visible in the test checks. The badge uses Codecov's coverage metric, which counts partially covered branches as uncovered lines; it can be lower than gcovr's executed-line percentage.
 - **Performance**: SIMD performance tests with aggressive speedup expectations (1-4x)
 - **Memory Checking**: Comprehensive sanitizer support via `-b debug` for detecting memory issues, undefined behavior, and more
 
-Tests are run using CMake's ctest tool, which integrates with Criterion for parallel execution and XML output.
+Tests are run using CMake's CTest tool, which discovers Catch2 cases, schedules them in parallel, and collects JUnit XML.
 
 #### Quick Start
 
 - Have the dependencies installed.
 - Choose:
-  1. Linux or macOS: Use ctest directly
-  2. Windows: Use Docker: `./tests/scripts/run-docker-tests.ps1`
+  1. Windows, Linux, or macOS: Use the checked-in CMake preset and CTest directly
 
 #### Test Types
 
 - **Unit Tests**: Test individual components in isolation
 - **Integration Tests**: Test component interactions and full workflows
-- **Performance Tests**: Benchmark stuff like SIMD vs scalar implementations
+- **Benchmarks**: Catch2 benchmarks for SIMD and rendering performance under `tests/benchmarks/`
 
 #### Running Tests with ctest
 
@@ -636,24 +657,24 @@ ctest --test-dir build -R "buffer-ownership" --output-on-failure
 ctest --test-dir build -N
 ```
 
-#### Windows Docker Testing
+#### Windows Testing
 
-On Windows, since Criterion is POSIX-based, tests must be run in a Docker container. Use the PowerShell wrapper script:
+Catch2 v3 is supported by the native Windows Clang build. Use the same CTest labels as Linux and macOS:
 
 ```powershell
 # Run all tests
-./tests/scripts/run-docker-tests.ps1
+./tests/tools/run-docker-tests.ps1
 
 # Run specific test category
-./tests/scripts/run-docker-tests.ps1 unit
-./tests/scripts/run-docker-tests.ps1 integration
-./tests/scripts/run-docker-tests.ps1 performance
+./tests/tools/run-docker-tests.ps1 unit
+./tests/tools/run-docker-tests.ps1 integration
+./tests/tools/run-docker-tests.ps1 performance
 
 # Run tests matching a pattern
-./tests/scripts/run-docker-tests.ps1 -Filter "*buffer*"
+./tests/tools/run-docker-tests.ps1 -Filter "*buffer*"
 
 # INFO: powershell doesn't like when you pass -Verbose to a script - use -VerboseOutput
-./tests/scripts/run-docker-tests.ps1 unit options -VerboseOutput
+./tests/tools/run-docker-tests.ps1 unit options -VerboseOutput
 
 ```
 
@@ -671,11 +692,11 @@ You can also run individual test executables directly:
 ```bash
 # Configure with tests enabled and build the desired test targets
 cmake --preset default -B build -DBUILD_TESTS=ON
-cmake --build build --target test_unit_mixer test_performance_ascii_simd
+cmake --build build --target unit_tests benchmarks
 
 # Run individual tests
-build/bin/test_unit_mixer --verbose
-build/bin/test_performance_ascii_simd --filter "*monochrome*"
+ctest --test-dir build -R "unit\." --output-on-failure
+build/bin/benchmarks "[benchmark]"
 ```
 
 ## TODO

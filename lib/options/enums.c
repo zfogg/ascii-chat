@@ -2,8 +2,8 @@
  * @file enums.c
  * @brief Enum views backed by the option registry metadata.
  */
-#include <ascii-chat/options/enums.h>
-#include <ascii-chat/options/registry.h>
+#include <options/enums.h>
+#include <options/registry/registry.h>
 #include <ascii-chat/common.h>
 
 const enum_to_string_entry_t *options_get_enum_entries(const char *option_name, size_t *entry_count) {

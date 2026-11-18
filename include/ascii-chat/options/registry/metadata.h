@@ -9,6 +9,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Log level metadata
 extern const char *g_log_level_values[];
 extern const int g_log_level_integers[];
@@ -70,3 +74,7 @@ extern const char *g_speakers_examples[];
 extern const char *g_seek_examples[];
 
 extern const char *g_completion_shell_values[];
+
+#ifdef __cplusplus
+}
+#endif

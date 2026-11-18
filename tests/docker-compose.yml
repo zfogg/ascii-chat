@@ -32,10 +32,8 @@ services:
       - ccache-data:/ccache
 
       # Dependency cache volume for FetchContent and musl builds
-      # CMakeLists.txt automatically uses .deps-cache/docker/ when TESTING=1
-      # Volume mounted at root to preserve .patch_applied files and docker/ subdirectory
-      # Path structure: .deps-cache/docker/<BuildType>/ and .deps-cache/docker/<BuildType>/musl/
-      - deps-cache-data:/app/.deps-cache
+      # CMakeLists.txt stores Docker dependencies under .deps-cache/docker/<arch>/
+      - ../.deps-cache/docker:/app/.deps-cache/docker
 
     # Some host security policies require ptrace for LeakSanitizer.
     cap_add:
@@ -73,7 +71,7 @@ services:
 
       # Test configuration
       - TESTING=1
-      - CRITERION_TEST=1
+      - TESTING=1
 
       # Security: Skip known_hosts checking for integration tests
       - ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1
@@ -99,7 +97,7 @@ services:
       - ../docker_out:/tmp/out
       - build-data-ubuntu:/app/build_docker
       - ccache-data-ubuntu:/ccache
-      - deps-cache-data-ubuntu:/app/.deps-cache
+      - ../.deps-cache/docker:/app/.deps-cache/docker
 
     cap_add:
       - SYS_PTRACE
@@ -125,7 +123,7 @@ services:
       - CMAKE_GENERATOR=Ninja
       - CMAKE_BUILD_TYPE=Debug
       - TESTING=1
-      - CRITERION_TEST=1
+      - TESTING=1
       - ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1
       - ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
       - ASAN_OPTIONS=detect_leaks=1
@@ -152,9 +150,9 @@ services:
     volumes:
       - ..:/app
       - build-data:/app/build_docker
-      - deps-cache-data:/app/.deps-cache
+      - ../.deps-cache/docker:/app/.deps-cache/docker
 
-# Named volumes for persistent caching
+# Named volumes for persistent build and ccache storage
 volumes:
   # Arch Linux volumes
   build-data:
@@ -171,27 +169,8 @@ volumes:
     #   device: ${PWD}/.docker-ccache
     #   o: bind
 
-  deps-cache-data:
-    driver: local
-    # Stores FetchContent dependencies (mimalloc, bearssl, etc.) and musl builds
-    # Also stores .patch_applied files at root level
-    # Separated from ccache for easier management and cleanup
-    # Path structure inside container: /app/.deps-cache/amd64/<BuildType>/
-    # (DOCKER_OS=amd64 env var selects architecture-specific cache)
-    # Optional: specify host path for easier access
-    # driver_opts:
-    #   type: none
-    #   device: ${PWD}/.deps-cache
-    #   o: bind
-
-  # Ubuntu volumes (separate to avoid cross-arch binary conflicts)
   build-data-ubuntu:
     driver: local
 
   ccache-data-ubuntu:
     driver: local
-
-  deps-cache-data-ubuntu:
-    driver: local
-    # Path structure inside container: /app/.deps-cache/arm64/<BuildType>/
-    # (DOCKER_OS selects the architecture-specific dependency cache)

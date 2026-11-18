@@ -54,8 +54,7 @@ void face_follow_observe(face_follow_state_t *state, const face_follow_detection
 void face_follow_tick(face_follow_state_t *state, double now, bool enabled);
 
 /** The caller supplies a 0x9000-byte result buffer and packed BGR input. */
-void face_follow_detect(unsigned char *results, unsigned char *bgr, int width, int height,
-                        face_follow_detection_t *faces, size_t capacity, size_t *count);
+void face_follow_detect(unsigned char *results, unsigned char *bgr, int width, int height, face_follow_detection_t *faces, size_t capacity, size_t *count);
 
 #ifdef __cplusplus
 }

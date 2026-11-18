@@ -24,6 +24,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // NOTE: This is a low-level hash utility. To avoid circular dependencies with
 // asciichat_errno.h and common.h, we don't log errors here. Invalid inputs return 0.
 
@@ -48,9 +52,9 @@
 #define FNV1A_INIT(hash) uint64_t hash = FNV1A_32_OFFSET_BASIS;
 
 /** @brief FNV-1a 32-bit hash macro for a single byte */
-#define FNV1A_32_HASH(hash, byte)                                                                                      \
-  do {                                                                                                                 \
-    (hash) = (((hash) ^ (uint64_t)(byte)) * FNV1A_32_PRIME) & FNV1A_32_MASK;                                           \
+#define FNV1A_32_HASH(hash, byte)                                            \
+  do {                                                                       \
+    (hash) = (((hash) ^ (uint64_t)(byte)) * FNV1A_32_PRIME) & FNV1A_32_MASK; \
   } while (0)
 
 /* ============================================================================
@@ -158,3 +162,7 @@ static inline uint32_t fnv1a_hash_uint64(uint64_t value) {
 }
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

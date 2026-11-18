@@ -16,6 +16,15 @@
  * block sizes and in-place buffers, with no allocations or locks in the hot path.
  * Gain metering follows the sample clock so changing callback sizes does not change
  * the result. Spectral AGC/compression replace their traditional equivalents.
+ * The embedded BSD-licensed RNNoise model is also available for 48 kHz capture.
+ * It runs after native AEC3 on complete 480-sample mono frames; stereo capture
+ * derives one suppression envelope and applies it to both channels. The model
+ * is compiled into the audio library, so the realtime path never loads a model
+ * file or performs filesystem/network work. Other sample rates retain the
+ * existing spectral path.
+ * Client-like modes expose this independently as `--reduce-noise` (enabled by
+ * default) or `--reduce-noise=false`; `ASCII_CHAT_REDUCE_NOISE` is the matching
+ * environment variable. Test audio continues to bypass microphone enhancement.
  *
  * The native client first runs AEC3 using its actual speaker playback reference,
  * then calls the shared processor. Browser microphone capture requests native
@@ -141,7 +150,7 @@
  * frequency accuracy, gating, compression, EQ bounds, pitch correction, gain control,
  * non-finite input, reset, empty-mixer locking, recipient isolation, and the existing
  * AEC3/capture chain. Benchmarks include Python call overhead and report wall time,
- * not whole-application CPU utilization. Criterion is not supported on Windows.
+ * not whole-application CPU utilization. Catch2 is not supported on Windows.
  *
  * For physical recording, list device indices with `uv run --extra audio python -m sounddevice`, obtain
  * the attributed speech fixture described in the evidence README, then run:

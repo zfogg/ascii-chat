@@ -10,6 +10,10 @@
 #include <libplatform/keyboard.h>
 #include <ascii-chat/video/anim/controller.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  */
 /** Host-independent session views. Hosts own scheduling, input and side effects. */
@@ -64,8 +68,7 @@ terminal_size_t ui_session_size(const ui_session_t *session);
  * cleanup path. snapshots and serialize access to a session; callbacks must not recurse into its renderer. The runtime
  * owns selection policy, transitions and animation.
  */
-typedef void (*ui_session_draw_fn)(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation,
-                                   void *context);
+typedef void (*ui_session_draw_fn)(frame_buffer_t *output, terminal_size_t size, const animation_sample_t *animation, void *context);
 typedef struct {
   int screen;
   terminal_size_t minimum;
@@ -103,3 +106,7 @@ void ui_session_logs_render(frame_buffer_t *output, terminal_size_t size, ui_ses
 bool ui_session_logs_key(keyboard_key_t key);
 /** Attach this instance to the module's existing C logger. Detaches on destruction. */
 void ui_session_capture_logs(ui_session_t *session);
+
+#ifdef __cplusplus
+}
+#endif

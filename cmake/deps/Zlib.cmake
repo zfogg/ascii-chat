@@ -92,4 +92,14 @@ if(NOT ZLIB_FOUND)
     endif()
 endif()
 
+# Some fallback providers (notably pkg-config) expose only ZLIB_LIBRARIES.
+# Keep the legacy singular variable used by the application and clear any
+# stale NOTFOUND cache value left by CMake's module-mode probe.
+if(DEFINED ZLIB_LIBRARIES AND NOT ZLIB_LIBRARIES STREQUAL "")
+    if(NOT DEFINED ZLIB_LIBRARY OR ZLIB_LIBRARY MATCHES "-NOTFOUND$")
+        set(ZLIB_LIBRARY "${ZLIB_LIBRARIES}")
+        set(ZLIB_LIBRARY "${ZLIB_LIBRARIES}" CACHE STRING "zlib libraries" FORCE)
+    endif()
+endif()
+
 message(STATUS "${BoldGreen}✓${ColorReset} zlib found")

@@ -21,6 +21,10 @@
 #include "../../options/manpage.h"
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Merge auto-generated options into section content
  *
@@ -120,3 +124,7 @@ asciichat_error_t manpage_merger_generate_synopsis(const char *mode_name, char *
 void manpage_merger_free_content(char *content);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

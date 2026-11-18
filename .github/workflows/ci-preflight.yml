@@ -48,7 +48,9 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Install clang-format
-        run: sudo apt-get update && sudo apt-get install --yes clang-format
+        run: |
+          python3 -m pip install --user --break-system-packages clang-format==23.1.5
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Check changed C and C++ formatting
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}

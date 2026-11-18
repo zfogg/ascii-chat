@@ -4,12 +4,45 @@
 #include <ascii-chat/tui/keyboard_help.h>
 #include <ascii-chat/tui/session.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
+#include <options/runtime.h>
 #include "session/display.h"
 #include <string.h>
 
 static atomic_int g_help_parent = -1;
 static atomic_int g_help_previous = -1;
+static char *g_help_text;
+static terminal_size_t g_help_size;
+static terminal_size_t g_help_minimum;
+static int g_help_cached_parent = -1;
+static uint64_t g_help_revision;
+
+static char *keyboard_help_text(terminal_size_t size, terminal_size_t *minimum) {
+  int parent = keyboard_help_parent_screen();
+  uint64_t revision = options_revision();
+  if (!g_help_text || g_help_size.cols != size.cols || g_help_size.rows != size.rows || g_help_cached_parent != parent || g_help_revision != revision) {
+    terminal_size_t rendered_minimum;
+    char *text = ui_session_context_help_render(size, (ui_screen_t)parent, &rendered_minimum);
+    if (!text)
+      return NULL;
+    SAFE_FREE(g_help_text);
+    g_help_text = text;
+    g_help_size = size;
+    g_help_minimum = rendered_minimum;
+    g_help_cached_parent = parent;
+    g_help_revision = revision;
+  }
+  if (minimum)
+    *minimum = g_help_minimum;
+  return g_help_text;
+}
+
+static void render_help_snapshot(terminal_size_t size, const void *data) {
+  int fd = *(const int *)data;
+  char *text = keyboard_help_text(size, NULL);
+  if (text)
+    ui_controller_write(fd, text, strlen(text));
+}
 int keyboard_help_previous_interactive(void) {
   return atomic_load(&g_help_previous);
 }
@@ -38,10 +71,13 @@ const char *keyboard_help_screen_name(int parent) {
   }
 }
 
+<<<<<<< HEAD
 static asciichat_error_t present_help_snapshot(int fd, terminal_size_t minimum, const char *text, size_t length) {
   return ui_controller_present(UI_SCREEN_HELP, fd, minimum, text, length);
 }
 
+=======
+>>>>>>> origin/master
 void keyboard_help_toggle_terminal(int fd) {
   int parent =
       ui_controller_current_screen() == UI_SCREEN_HELP ? keyboard_help_parent_screen() : ui_controller_current_screen();
@@ -62,6 +98,7 @@ void keyboard_help_toggle_terminal(int fd) {
     render_size.rows = 24;
   }
   terminal_size_t minimum;
+<<<<<<< HEAD
   char *text = ui_session_context_help_render(render_size, (ui_screen_t)keyboard_help_parent_screen(), &minimum);
   if (!text)
     return;
@@ -74,6 +111,13 @@ void keyboard_help_toggle_terminal(int fd) {
   }
   SAFE_FREE(text);
   return;
+=======
+  char *text = keyboard_help_text(ui_controller_size(), &minimum);
+  if (!text)
+    return;
+  if (!GET_OPTION(snapshot_mode))
+    (void)ui_controller_submit(UI_SCREEN_HELP, fd, minimum, render_help_snapshot, &fd, sizeof(fd));
+>>>>>>> origin/master
 }
 
 void keyboard_help_toggle(session_display_ctx_t *ctx) {

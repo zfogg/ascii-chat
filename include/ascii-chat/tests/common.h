@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 /**
  * @file tests/common.h
  * @brief Common test utilities and environment detection
@@ -7,25 +11,20 @@
  * @addtogroup testing
  * @{
  *
- * This header provides common utilities and helpers for writing ascii-chat tests.
- * It includes standard test headers, platform detection, and environment checks
- * to help tests run reliably across different environments (CI, Docker, WSL).
+ * This header provides only environment and executable-path helpers for tests.
+ * Test files include their own Catch2 and project headers directly.
  *
  * CORE FEATURES:
  * ==============
  * - Test environment detection (CI, Docker, WSL)
- * - Standard test framework includes (Criterion)
- * - Common project headers and utilities
- * - Platform-specific includes (POSIX/Windows)
+ * - Platform-specific environment checks (POSIX/Windows)
  * - Headless environment detection for webcam tests
  *
  * TEST ENVIRONMENT:
  * ================
- * This header automatically includes:
- * - Criterion test framework
- * - Project common headers
- * - Test logging utilities
- * - Platform-specific system headers
+ * This header includes only the C library headers required by its inline
+ * environment helpers. Catch2, logging, and project APIs are intentionally
+ * included by each test that uses them.
  *
  * HEADLESS ENVIRONMENT DETECTION:
  * ===============================
@@ -34,8 +33,7 @@
  *
  * @note This header must be included before any test code that uses
  *       the test environment detection functions.
- * @note All test files should include this header for consistent
- *       test infrastructure.
+ * @note Include this header only when a test needs one of these helpers.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date August 2025
@@ -47,6 +45,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef _WIN32
+#ifndef F_OK
+#define F_OK 0
+#endif
+#endif
+
 // Standard C headers
 #include <stdio.h>
 #include <stdlib.h>
@@ -57,15 +61,6 @@
 #include <unistd.h> // For unlink(), access(), etc.
 #endif
 #include <sys/stat.h> // For stat(), struct stat
-
-// Now include Criterion which will pull in system headers
-#include <criterion/criterion.h>
-
-// Project headers - use relative paths from tests directory
-#include "../common.h"
-#include "../log/log.h"
-#include "../tests/logging.h"
-#include "test_env.h"
 
 // =============================================================================
 // Test Environment Detection
@@ -95,7 +90,7 @@
  * @code
  * Test(my_suite, webcam_test) {
  *   if (test_is_in_headless_environment()) {
- *     cr_skip_test("Skipping webcam test in headless environment");
+ *     SKIP("Skipping webcam test in headless environment");
  *   }
  *   // ... perform webcam test ...
  * }
@@ -107,7 +102,9 @@ static inline bool test_is_in_headless_environment(void) {
     return true;
   }
 
-  // Check for Docker
+  // Docker and WSL detection use POSIX paths and are not applicable to native
+  // Windows test processes.
+#ifndef _WIN32
   if (access("/.dockerenv", F_OK) == 0) {
     return true;
   }
@@ -124,6 +121,7 @@ static inline bool test_is_in_headless_environment(void) {
     }
     (void)fclose(version_file);
   }
+#endif
 
   return false;
 }
@@ -166,47 +164,10 @@ static inline bool test_is_in_headless_environment(void) {
  * }
  * @endcode
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
 const char *test_get_binary_path(void);
-
-// =============================================================================
-// Test Options Helpers (for RCU pattern)
-// =============================================================================
-
-#include "../options/rcu.h"
-
-/**
- * @brief Helper to set test_pattern option in tests
- */
-static inline void test_set_test_pattern(bool value) {
-  options_set_bool("test_pattern", value);
+#ifdef __cplusplus
 }
-
-/**
- * @brief Helper to set flip_x option in tests
- */
-static inline void test_set_flip_x(bool value) {
-  options_set_bool("flip_x", value);
-}
-
-/**
- * @brief Helper to set flip_y option in tests
- */
-static inline void test_set_flip_y(bool value) {
-  options_set_bool("flip_y", value);
-}
-
-/**
- * @brief Helper to set width option in tests
- */
-static inline void test_set_width(unsigned short int value) {
-  options_set_int("width", (int)value);
-}
-
-/**
- * @brief Helper to set height option in tests
- */
-static inline void test_set_height(unsigned short int value) {
-  options_set_int("height", (int)value);
-}
-
-/** @} */
+#endif

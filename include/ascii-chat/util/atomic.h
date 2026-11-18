@@ -36,6 +36,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Check if the global server should exit.
  * Requires g_should_exit to be declared as atomic_t in the compilation unit.
@@ -170,8 +174,7 @@
  * }
  * @endcode
  */
-#define ATOMIC_CAS_BOOL(ptr, expected, new_value)                                                                      \
-  atomic_compare_exchange_strong((atomic_t *)(ptr), &(expected), (new_value))
+#define ATOMIC_CAS_BOOL(ptr, expected, new_value) atomic_compare_exchange_strong((atomic_t *)(ptr), &(expected), (new_value))
 
 /**
  * Compare and swap operation for unsigned 32-bit atomics.
@@ -189,8 +192,7 @@
  * }
  * @endcode
  */
-#define ATOMIC_CAS_UINT32(ptr, expected, new_value)                                                                    \
-  atomic_compare_exchange_strong((atomic_uint32_t *)(ptr), (expected), (new_value))
+#define ATOMIC_CAS_UINT32(ptr, expected, new_value) atomic_compare_exchange_strong((atomic_uint32_t *)(ptr), (expected), (new_value))
 
 /**
  * Atomically add to an unsigned 32-bit value.
@@ -222,4 +224,8 @@
  */
 #define ATOMIC_SUB_UINT32(ptr, delta) atomic_fetch_sub((atomic_uint32_t *)(ptr), (delta))
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif

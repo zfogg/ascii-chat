@@ -365,14 +365,14 @@ typedef enum { AUDIO_CAPTURE_SOURCE_AUTO = 0, AUDIO_CAPTURE_SOURCE_MIC = 1, AUDI
 #define OPT_COLOR_SCHEME_NAME_DEFAULT "pastel"
 
 /** @brief Default log format string - release mode (simple format with timestamp, level, and message) */
-#define OPT_LOG_TEMPLATE_DEFAULT_RELEASE                                                                                                                                                               \
-  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                                                                                                            \
+#define OPT_LOG_TEMPLATE_DEFAULT_RELEASE                                                    \
+  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] " \
   "%colored_message"
 
 /** @brief Default log format string - debug mode (verbose with thread name, file relative path, line, and function) */
-#define OPT_LOG_TEMPLATE_DEFAULT_DEBUG                                                                                                                                                                 \
-  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                                                                                                            \
-  "[thread/%color(GREY, %tname)] %color(DEBUG, %file_relative):%color(GREY, %line)@%color(DEV, %func)(): "                                                                                             \
+#define OPT_LOG_TEMPLATE_DEFAULT_DEBUG                                                                     \
+  "[%color(*, %H):%color(*, %M):%color(*, %S).%color(*, %ms)] [%color(*, %level_aligned)] "                \
+  "[thread/%color(GREY, %tname)] %color(DEBUG, %file_relative):%color(GREY, %line)@%color(DEV, %func)(): " \
   "%colored_message"
 
 /** @brief Default log template string (selected based on build mode)
@@ -563,6 +563,10 @@ typedef enum { AUDIO_CAPTURE_SOURCE_AUTO = 0, AUDIO_CAPTURE_SOURCE_MIC = 1, AUDI
 
 /** @brief Default WebSocket port for server mode (integer) */
 #define OPT_WEBSOCKET_PORT_SERVER_DEFAULT 27226
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** @brief Default WebSocket port for discovery-service mode (integer) */
 #define OPT_WEBSOCKET_PORT_ACDS_DEFAULT 27227
@@ -812,7 +816,6 @@ static const int default_max_clients_value = OPT_MAX_CLIENTS_DEFAULT;
 static const int default_reconnect_attempts_value = OPT_RECONNECT_ATTEMPTS_DEFAULT;
 static const int default_discovery_port_value = OPT_ACDS_PORT_INT_DEFAULT;
 static const bool default_discovery_value = OPT_ACDS_DEFAULT;
-static const bool default_webrtc_value = OPT_WEBRTC_DEFAULT;
 static const bool default_enable_upnp_value = OPT_ENABLE_UPNP_DEFAULT;
 static const bool default_lan_discovery_value = OPT_LAN_DISCOVERY_DEFAULT;
 static const bool default_prefer_webrtc_value = OPT_PREFER_WEBRTC_DEFAULT;
@@ -824,7 +827,6 @@ static const bool default_webrtc_skip_host_value = OPT_WEBRTC_SKIP_HOST_DEFAULT;
 
 static const int default_webrtc_ice_timeout_ms_value = OPT_WEBRTC_ICE_TIMEOUT_MS_DEFAULT;
 
-static const int default_webrtc_reconnect_attempts_value = OPT_WEBRTC_RECONNECT_ATTEMPTS_DEFAULT;
 static const bool default_media_loop_value = OPT_MEDIA_LOOP_DEFAULT;
 static const bool default_pause_value = OPT_PAUSE_DEFAULT;
 static const double default_media_seek_value = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT;
@@ -1031,11 +1033,8 @@ typedef struct options_state {
   char mcp_transport[OPTIONS_BUFF_SIZE];            ///< MCP transport: stdio or http
   char http_origin[OPTIONS_BUFF_SIZE];              ///< Allowed HTTP Origin
   int discovery_port;                               ///< discovery server port (default: 27225)
-  char discovery_service_url[OPTIONS_BUFF_SIZE];    ///< discovery server WebSocket URL (ws:// or wss://, mutually
-                                                    ///< exclusive with discovery_port)
   char discovery_service_key[OPTIONS_BUFF_SIZE];    ///< discovery server public key for trust verification (SSH/GPG key or
                                                     ///< HTTPS URL)
-  bool webrtc;                                      ///< Enable WebRTC mode for discovery session (default: true, P2P WebRTC)
   char discovery_database_path[OPTIONS_BUFF_SIZE];  ///< discovery database file path (default:
                                                     ///< ~/.ascii-chat/discovery.db)
 
@@ -1107,6 +1106,7 @@ typedef struct options_state {
   bool audio_spectral;
   bool audio_spectral_mixer; ///< Explicit post-mix processing; disabled by default
   bool audio_spectral_gate;
+  bool reduce_noise; ///< Apply neural microphone noise reduction in client-like modes
   bool audio_multiband;
   bool audio_adaptive_eq;
   int audio_fft_size;
@@ -1203,7 +1203,6 @@ typedef struct options_state {
   bool webrtc_disable_turn;                    ///< --webrtc-disable-turn: Disable Stage 3 (TURN), use STUN only
   bool webrtc_skip_host;                       ///< --webrtc-skip-host: Skip host candidates, force STUN/TURN only
   int webrtc_ice_timeout_ms;                   ///< --webrtc-ice-timeout: ICE gathering timeout in milliseconds (default: 10000)
-  int webrtc_reconnect_attempts;               ///< --webrtc-reconnect-attempts: Number of retry attempts (default: 3)
 
   // ============================================================================
   // WebRTC Connectivity Options (ACDS mode only)
@@ -1325,14 +1324,20 @@ const terminal_options_t *options_terminal_settings_ptr(void);
  *
  * @ingroup options
  */
-#define GET_OPTION(field)                                                                                                                                                                              \
-  ({                                                                                                                                                                                                   \
-    const options_t *_opts = options_get();                                                                                                                                                            \
-    if (!_opts) {                                                                                                                                                                                      \
-      log_warn("GET_OPTION(" #field ") called but options not initialized");                                                                                                                           \
-    }                                                                                                                                                                                                  \
-    static typeof(((options_t *)0)->field) _default = {0};                                                                                                                                             \
-    (_opts ? (_opts->field) : _default);                                                                                                                                                               \
+#ifdef __cplusplus
+#define ASCIICHAT_OPTION_FIELD_TYPE(field) decltype(((options_t *)0)->field)
+#else
+#define ASCIICHAT_OPTION_FIELD_TYPE(field) typeof(((options_t *)0)->field)
+#endif
+
+#define GET_OPTION(field)                                                    \
+  ({                                                                         \
+    const options_t *_opts = options_get();                                  \
+    if (!_opts) {                                                            \
+      log_warn("GET_OPTION(" #field ") called but options not initialized"); \
+    }                                                                        \
+    static ASCIICHAT_OPTION_FIELD_TYPE(field) _default = {0};                \
+    (_opts ? (_opts->field) : _default);                                     \
   })
 
 /**
@@ -1417,7 +1422,7 @@ const char *options_get_help_text(asciichat_mode_t mode, const char *option_name
  *
  * @ingroup options
  */
-extern const float weight_red;
+extern ASCIICHAT_API const float weight_red;
 
 /** @brief Green weight for luminance calculation
  *
@@ -1427,7 +1432,7 @@ extern const float weight_red;
  *
  * @ingroup options
  */
-extern const float weight_green;
+extern ASCIICHAT_API const float weight_green;
 
 /** @brief Blue weight for luminance calculation
  *
@@ -1437,7 +1442,7 @@ extern const float weight_green;
  *
  * @ingroup options
  */
-extern const float weight_blue;
+extern ASCIICHAT_API const float weight_blue;
 
 /** @brief Red channel lookup table
  *
@@ -1877,12 +1882,18 @@ void update_dimensions_for_full_height(options_t *opts);
  * @brief Snapshot mode global timing variables
  * Used to track actual duration when snapshot mode is active
  */
-extern bool g_snapshot_first_frame_rendered;
-extern uint64_t g_snapshot_first_frame_rendered_ns; // Timestamp when first frame was rendered (nanoseconds)
-extern uint64_t g_snapshot_first_capture_ns;        // Timestamp when first frame was captured (nanoseconds)
-extern uint64_t g_snapshot_actual_duration_ms;      // Actual wall-clock duration in ms when snapshot timeout reached
+extern ASCIICHAT_API bool g_snapshot_first_frame_rendered;
+extern ASCIICHAT_API uint64_t g_snapshot_first_frame_rendered_ns; // Timestamp when first frame was rendered (nanoseconds)
+extern uint64_t g_snapshot_first_capture_ns;                      // Timestamp when first frame was captured (nanoseconds)
+extern uint64_t g_snapshot_actual_duration_ms;                    // Actual wall-clock duration in ms when snapshot timeout reached
 
 /** @} */
 
 /** Resolve source defaults without turning them into a user selection. */
-void options_resolve_flip_x(options_t *opts);
+void options_resolve_flip_x(options_t *opts, bool explicitly_set);
+
+asciichat_error_t options_validate_libflags(options_t *options);
+
+#ifdef __cplusplus
+}
+#endif

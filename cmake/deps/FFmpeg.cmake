@@ -10,6 +10,9 @@
 
 set(FFMPEG_VERSION "7.1.3")
 set(FFMPEG_HASH "f0bf043299db9e3caacb435a712fc541fbb07df613c4b893e8b77e67baf3adbe")
+option(ASCIICHAT_USE_SYSTEM_FFMPEG
+    "Use system FFmpeg when all required pkg-config modules are available"
+    ON)
 
 # iOS build: Build from source for iOS cross-compilation
 if(PLATFORM_IOS)
@@ -205,7 +208,8 @@ endif()
 # built-in codecs (no external codec dependencies like svt-av1, dav1d, x264, x265, etc.)
 # Musl builds always compile everything from source via MuslDependencies.cmake
 # =============================================================================
-if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS
+   AND NOT ASCIICHAT_USE_SYSTEM_FFMPEG)
     include(ProcessorCount)
     ProcessorCount(NPROC)
     if(NPROC EQUAL 0)
@@ -278,12 +282,30 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
         message(STATUS "  Configuring FFmpeg...")
 
         # Determine architecture-specific flags
-        if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+        if(EMSCRIPTEN)
+            # Browser targets only decode media; avoid requiring host NASM and
+            # native H.264/H.265 encoder packages in the Emscripten sysroot.
+            set(FFMPEG_ARCH_FLAGS --disable-asm --disable-x86asm)
+            set(FFMPEG_CODEC_FLAGS
+                --enable-encoder=png,mjpeg,pcm_s16le)
+            set(FFMPEG_COMPRESSION_FLAGS --enable-zlib)
+            message(STATUS "  Emscripten: disabling native asm and external encoders")
+        elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
             # x86_64: Disable asm to avoid nasm/yasm dependency
             set(FFMPEG_ARCH_FLAGS --disable-asm)
+            set(FFMPEG_CODEC_FLAGS
+                --enable-encoder=libx264,libx265
+                --enable-libx264
+                --enable-libx265)
+            set(FFMPEG_COMPRESSION_FLAGS --enable-zlib --enable-bzlib)
             message(STATUS "  Architecture: x86_64 (disabling asm)")
         else()
             set(FFMPEG_ARCH_FLAGS "")
+            set(FFMPEG_CODEC_FLAGS
+                --enable-encoder=libx264,libx265
+                --enable-libx264
+                --enable-libx265)
+            set(FFMPEG_COMPRESSION_FLAGS --enable-zlib --enable-bzlib)
             message(STATUS "  Architecture: ${CMAKE_SYSTEM_PROCESSOR}")
         endif()
 
@@ -319,14 +341,11 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
                 --enable-protocol=file
                 --enable-demuxer=mov,matroska,avi,gif,image2,mp3,wav,flac,ogg
                 --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg,mp3,aac,flac,vorbis,opus,pcm_s16le
-                --enable-encoder=libx264,libx265
-                --enable-libx264
-                --enable-libx265
+                ${FFMPEG_CODEC_FLAGS}
                 --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video,aac,mpegaudio
                 --enable-swscale
                 --enable-swresample
-                --enable-zlib
-                --enable-bzlib
+                ${FFMPEG_COMPRESSION_FLAGS}
                 ${FFMPEG_ARCH_FLAGS}
             WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
             RESULT_VARIABLE CONFIG_RESULT

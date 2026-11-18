@@ -164,7 +164,7 @@ function(configure_llvm_pre_project)
     # Homebrew's LLVM doesn't include static libraries. For CI builds, set
     # ASCIICHAT_LIBCXX_STATIC_ROOT to point to official LLVM release binaries.
     # If static libc++ is not available, skip this step and use dynamic linking.
-    if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+    if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
         if(ASCIICHAT_LIBCXX_STATIC_ROOT)
             set(_libcxx_root "${ASCIICHAT_LIBCXX_STATIC_ROOT}")
         else()
@@ -185,7 +185,7 @@ function(configure_llvm_pre_project)
             message(STATUS "${BoldGreen}Static libc++${ColorReset} from: ${BoldCyan}${_libcxx_root}/lib${ColorReset}")
         else()
             message(STATUS "${BoldYellow}Static libc++ not found${ColorReset} at ${_libcxx_root}/lib/libc++.a")
-            message(STATUS "${BoldYellow}Homebrew LLVM detected${ColorReset} - using dynamic libc++ instead (force ASCIICHAT_SHARED_DEPS=ON for static)")
+        message(STATUS "${BoldYellow}Homebrew LLVM detected${ColorReset} - using dynamic libc++ instead (set BUILD_SHARED_LIBS=ON for shared dependencies)")
         endif()
     endif()
 
@@ -275,6 +275,20 @@ endfunction()
 # =============================================================================
 
 function(configure_llvm_post_project)
+    # Keep Clang's unwinder selection tied to the LLVM installation selected
+    # above. Do not silently pick an unrelated library from the host search
+    # path when the compiler is Clang.
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND UNIX AND NOT APPLE)
+        find_library(ASCIICHAT_LLVM_LIBUNWIND
+            NAMES unwind
+            PATHS "${LLVM_ROOT_PREFIX}/lib"
+            NO_DEFAULT_PATH)
+        if(ASCIICHAT_LLVM_LIBUNWIND)
+            set(ASCIICHAT_LLVM_LIBUNWIND "${ASCIICHAT_LLVM_LIBUNWIND}" PARENT_SCOPE)
+            message(STATUS "${BoldGreen}Using LLVM libunwind${ColorReset}: ${BoldCyan}${ASCIICHAT_LLVM_LIBUNWIND}${ColorReset}")
+        endif()
+    endif()
+
     if(NOT APPLE)
         return()
     endif()
@@ -375,20 +389,20 @@ function(configure_llvm_post_project)
     set(_need_llvm_libs FALSE)
     if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
         set(_need_llvm_libs TRUE)
-    elseif(APPLE AND ASCIICHAT_SHARED_DEPS)
-        # macOS Release with SHARED_DEPS: need LLVM library paths for dynamic linking
+    elseif(APPLE AND BUILD_SHARED_LIBS)
+        # macOS Release with shared libraries: need LLVM library paths for dynamic linking
         set(_need_llvm_libs TRUE)
-        message(STATUS "${BoldGreen}Including${ColorReset} LLVM library paths for macOS Release+SHARED_DEPS build (LLVM libc++ for ABI compatibility)")
-    elseif(APPLE AND NOT ASCIICHAT_SHARED_DEPS)
+        message(STATUS "${BoldGreen}Including${ColorReset} LLVM library paths for macOS Release with shared libraries (LLVM libc++ for ABI compatibility)")
+    elseif(APPLE AND NOT BUILD_SHARED_LIBS)
         # macOS Release without shared dependencies uses the platform runtimes.
         set(_need_llvm_libs FALSE)
         message(STATUS "${BoldYellow}Skipping${ColorReset} Homebrew LLVM runtime paths for static macOS Release build")
     elseif(APPLE)
         set(_need_llvm_libs TRUE)
         message(STATUS "${BoldGreen}Including${ColorReset} LLVM library paths for macOS Release build (static libc++ unavailable)")
-    elseif(ASCIICHAT_SHARED_DEPS)
+    elseif(BUILD_SHARED_LIBS)
         set(_need_llvm_libs TRUE)
-        message(STATUS "${BoldGreen}Including${ColorReset} LLVM library paths for Release+SHARED_DEPS build (Homebrew libc++ for ABI compatibility)")
+        message(STATUS "${BoldGreen}Including${ColorReset} LLVM library paths for Release with shared libraries (Homebrew libc++ for ABI compatibility)")
     endif()
 
     if(_need_llvm_libs AND NOT PLATFORM_IOS)
@@ -430,7 +444,7 @@ function(configure_llvm_post_project)
         message(STATUS "${BoldYellow}Skipping${ColorReset} LLVM library paths for Release build (using system libc++/libunwind)")
     endif()
 
-    # Add LLVM library paths to rpath for Debug/Dev builds or SHARED_DEPS builds (for dynamic linking)
+    # Add LLVM library paths to rpath for Debug/Dev builds or shared-library builds (for dynamic linking)
     if(_need_llvm_libs)
         set(LLVM_RPATH_UNWIND "")
         set(LLVM_RPATH_CXX "")

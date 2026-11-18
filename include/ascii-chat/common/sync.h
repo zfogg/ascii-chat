@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file platform/init.h
+ * @file common/sync.h
  * @brief Platform initialization and static synchronization helpers
  * @ingroup platform
  * @addtogroup platform
@@ -20,6 +20,10 @@
 #include <libplatform/rwlock.h>
 #include <libplatform/cond.h>
 #include "../debug/named.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // ============================================================================
 // Static Initialization Helpers
@@ -148,8 +152,7 @@ static inline void static_mutex_lock_named(static_mutex_t *m, const char *name) 
   int state = __atomic_load_n(&m->initialized, __ATOMIC_ACQUIRE);
   if (state != 2) {
     int expected = state;
-    if (state >= 0 &&
-        __atomic_compare_exchange_n(&m->initialized, &expected, -1, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+    if (state >= 0 && __atomic_compare_exchange_n(&m->initialized, &expected, -1, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
       if (state == 0)
         mutex_init(&m->mutex, name);
       else
@@ -317,3 +320,7 @@ static inline void static_cond_broadcast(static_cond_t *c) {
 // ============================================================================
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

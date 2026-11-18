@@ -2,7 +2,7 @@
 
 #include "visualization_internal.h"
 
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/common/sync.h>
 #include <ascii-chat/debug/named.h>
 #include <libplatform/memory.h>
@@ -15,7 +15,7 @@
 #define FFT_SIZE 1024
 #define FFT_MAX_COLUMNS MAX_TERMINAL_WIDTH
 #define FFT_CACHE_CELLS (MAX_TERMINAL_WIDTH * MAX_TERMINAL_HEIGHT * 2)
-#define FFT_REFRESH_NS (NS_PER_SEC_INT / 60)
+#define FFT_REFRESH_NS 0
 
 static static_mutex_t fft_cache_mutex = STATIC_MUTEX_INIT;
 static struct {
@@ -32,7 +32,7 @@ static struct {
 static static_mutex_t fftw_mutex = STATIC_MUTEX_INIT;
 static float fftwf_input[FFT_MAX_COLUMNS * FFT_SIZE];
 static fftwf_complex fftwf_output[FFT_MAX_COLUMNS * (FFT_SIZE / 2 + 1)];
-static fftwf_plan fftwf_forward;
+static fftwf_plan fftwf_forward[FFT_MAX_COLUMNS + 1];
 extern static_mutex_t audio_fftw_planner_lock;
 static float fft_window[FFT_SIZE];
 static bool fft_window_ready;
@@ -89,29 +89,32 @@ asciichat_error_t audio_visualization_fft_init(void) {
       fft_window[i] = 0.5f - 0.5f * cosf(6.28318530718f * (float)i / (float)(FFT_SIZE - 1));
     fft_window_ready = true;
   }
-  if (!fftwf_forward) {
-    int n[] = {FFT_SIZE};
-    int howmany = FFT_MAX_COLUMNS;
-    int inembed[] = {FFT_SIZE};
-    int onembed[] = {FFT_SIZE / 2 + 1};
-    static_mutex_lock(&audio_fftw_planner_lock);
-    fftwf_forward = fftwf_plan_many_dft_r2c(1, n, howmany, fftwf_input, inembed, 1, FFT_SIZE, fftwf_output, onembed, 1, FFT_SIZE / 2 + 1, FFTW_ESTIMATE);
-    static_mutex_unlock(&audio_fftw_planner_lock);
-  }
-  bool ready = fftwf_forward != NULL;
   static_mutex_unlock(&fftw_mutex);
-  return ready ? ASCIICHAT_OK : SET_ERRNO(ERROR_MEMORY, "Cannot create FFTW frequency display plan");
+  return ASCIICHAT_OK;
 }
 
 static bool visualization_fft_batch(const float *const input, unsigned int columns, float *power_spectrum) {
   static_mutex_lock(&fftw_mutex);
-  if (!fftwf_forward) {
+  if (columns == 0 || columns > FFT_MAX_COLUMNS) {
+    static_mutex_unlock(&fftw_mutex);
+    return false;
+  }
+  if (!fftwf_forward[columns]) {
+    int n[] = {FFT_SIZE};
+    int inembed[] = {FFT_SIZE};
+    int onembed[] = {FFT_SIZE / 2 + 1};
+    static_mutex_lock(&audio_fftw_planner_lock);
+    fftwf_forward[columns] = fftwf_plan_many_dft_r2c(1, n, (int)columns, fftwf_input, inembed, 1, FFT_SIZE, fftwf_output, onembed, 1, FFT_SIZE / 2 + 1, FFTW_ESTIMATE);
+    static_mutex_unlock(&audio_fftw_planner_lock);
+  }
+  fftwf_plan plan = fftwf_forward[columns];
+  if (!plan) {
     static_mutex_unlock(&fftw_mutex);
     return false;
   }
   for (size_t i = 0; i < (size_t)columns * FFT_SIZE; i++)
     fftwf_input[i] = input[i];
-  fftwf_execute(fftwf_forward);
+  fftwf_execute(plan);
   const float normalization = (float)FFT_SIZE * 0.25f;
   for (size_t column = 0; column < columns; column++)
     for (size_t i = 0; i <= FFT_SIZE / 2; i++) {

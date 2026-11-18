@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.30)
+cmake_policy(SET CMP0131 NEW)
 
 # The project has intentionally forced cache assignments for platform and
 # dependency setup. Keep those assignments from making every Ninja build
@@ -19,50 +20,19 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
 # =============================================================================
 # Dependency Cache (must come early in the configuration process)
 # =============================================================================
-# Centralized dependency cache configuration
-# This section must run AFTER BuildTypes.cmake is included (where CMAKE_BUILD_TYPE is set)
-# Docker builds use .deps-cache/<arch>/ (amd64 or arm64), native builds use .deps-cache/
-# Musl dependencies are stored in musl/ subdirectory
-
-# Check if running in Docker (set by Dockerfile with ENV TESTING=1)
-# DOCKER_OS should be set to architecture (amd64 or arm64) to prevent cross-arch binary conflicts
-# Note: Use FORCE to ensure computed paths always reflect current CMAKE_SOURCE_DIR and CMAKE_BUILD_TYPE
-# Only compute cache root if not already passed from parent build
-if(NOT DEFINED ASCIICHAT_DEPS_CACHE_ROOT OR ASCIICHAT_DEPS_CACHE_ROOT STREQUAL "")
-    if(DEFINED ENV{DOCKER_OS})
-        set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/$ENV{DOCKER_OS}" CACHE PATH "Root directory for dependency cache (Docker $ENV{DOCKER_OS})" FORCE)
-    elseif(EXISTS "/.dockerenv")
-        message(WARNING "Running in Docker without DOCKER_OS set - using generic 'docker' cache path. Set DOCKER_OS=amd64 or DOCKER_OS=arm64 to avoid cross-arch conflicts.")
-        set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/docker" CACHE PATH "Root directory for dependency cache (Docker)" FORCE)
-    else()
-        set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache" CACHE PATH "Root directory for dependency cache (native)" FORCE)
-    endif()
-endif()
-
-# Build-type-specific cache directory
-# Note: Only compute if not already passed from parent build (e.g., auxiliary build)
-# This allows the auxiliary CMake build to use the same cache as the parent
-if(NOT DEFINED ASCIICHAT_DEPS_CACHE_DIR OR ASCIICHAT_DEPS_CACHE_DIR STREQUAL "")
-    set(ASCIICHAT_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type" FORCE)
-endif()
+# Platform roots, configuration directories, and FetchContent share one owner.
+include(${CMAKE_SOURCE_DIR}/cmake/init/DependencyCache.cmake)
 
 # Web-specific build-type cache directory for WASM/Emscripten builds
 # Keeps web dependencies separate from native build dependencies
 if(NOT DEFINED WEB_DEPS_CACHE_DIR OR WEB_DEPS_CACHE_DIR STREQUAL "" OR WEB_DEPS_CACHE_DIR MATCHES "[/\\\\]_deps[/\\\\]legacy[/\\\\]")
-    set(WEB_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/web/${CMAKE_BUILD_TYPE}" CACHE PATH "Web dependency cache for current build type" FORCE)
-endif()
-
-# Shared source download cache for FetchContent (not build-type-qualified)
-# All platforms (iOS, musl, WASM, native) share the same source files via one FETCHCONTENT_BASE_DIR
-# Build artifacts go into ${ASCIICHAT_DEPS_CACHE_DIR}/<dep>/ (build-type-qualified) as needed
-if(NOT DEFINED FETCHCONTENT_BASE_DIR OR FETCHCONTENT_BASE_DIR STREQUAL "")
-    set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/src" CACHE PATH "FetchContent source cache" FORCE)
+    set(WEB_DEPS_CACHE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache/wasm/${CMAKE_BUILD_TYPE}" CACHE PATH "WASM dependency cache for current build type" FORCE)
 endif()
 
 # Web-specific source cache for FetchContent (keeps web sources separate)
-# Sources are shared across build types but kept in web/ subdirectory
+# Sources are shared across build types but kept in wasm/ subdirectory
 if(NOT DEFINED WEB_FETCHCONTENT_BASE_DIR OR WEB_FETCHCONTENT_BASE_DIR STREQUAL "")
-    set(WEB_FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/web/src" CACHE PATH "Web FetchContent source cache" FORCE)
+    set(WEB_FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache/wasm/src" CACHE PATH "WASM FetchContent source cache" FORCE)
 endif()
 
 # Validate paths are not empty (which would create directories at root /)
@@ -296,6 +266,15 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslDep.cmake)
 # Dependencies.cmake orchestrates including them all
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Dependencies.cmake)
 
+# A later dependency's module-mode zlib probe can leave the legacy singular
+# cache variable at NOTFOUND even when pkg-config supplied ZLIB_LIBRARIES.
+# Normalize it after all dependency modules have run, before targets consume it.
+if(DEFINED ZLIB_LIBRARIES AND NOT ZLIB_LIBRARIES STREQUAL "")
+    if(NOT DEFINED ZLIB_LIBRARY OR ZLIB_LIBRARY MATCHES "-NOTFOUND$")
+        set(ZLIB_LIBRARY "${ZLIB_LIBRARIES}" CACHE STRING "zlib libraries" FORCE)
+    endif()
+endif()
+
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Tomlc17.cmake)
 configure_tomlc17()
 
@@ -377,15 +356,14 @@ add_custom_command(
     VERBATIM
 )
 
-# Add generated source directly to the ascii-chat-core target.
-# CORE_SRCS was already consumed by create_ascii_chat_module() inside lib/CMakeLists.txt,
-# so list(APPEND CORE_SRCS ...) would be too late. target_sources() adds to the
-# already-created target instead.
+# Add generated source directly to the options target.
+# The former catch-all core target has been split into focused
+# infrastructure modules; manpage embedding belongs to options.
 set_source_files_properties(
     "${MANPAGE_TEMPLATE_EMBEDDED}"
     PROPERTIES GENERATED TRUE
 )
-target_sources(ascii-chat-core PRIVATE "${MANPAGE_TEMPLATE_EMBEDDED}")
+target_sources(ascii-chat-options PRIVATE "${MANPAGE_TEMPLATE_EMBEDDED}")
 
 # Define resource paths for development builds
 # Point to BINARY_DIR where configured templates are located (not SOURCE_DIR raw templates)
@@ -400,89 +378,10 @@ foreach(_package_manager HOMEBREW SCOOP AUR)
     endif()
 endforeach()
 
-# The transformer is a host executable even when the application is cross-built.
-set(DEFER_SOURCE_ROOT "${CMAKE_SOURCE_DIR}" CACHE PATH "Root of sources to transform")
-set(DEFER_SOURCE_DIRS "include;lib;src;tests" CACHE STRING "Source directories to transform")
-set(DEFER_NATIVE_BINARY "" CACHE FILEPATH "Path to a standalone defer-tool host executable")
-set(DEFER_VERSION "v0.1.1" CACHE STRING "Standalone defer release")
-if(USE_MUSL AND NOT DEFER_TARGET_TRIPLE)
-    set(DEFER_TARGET_TRIPLE "${MUSL_TARGET}" CACHE STRING "Target triple passed to defer-tool" FORCE)
-endif()
-if(NOT DEFER_NATIVE_BINARY)
-    string(TOLOWER "${CMAKE_HOST_SYSTEM_PROCESSOR}" _defer_cpu)
-    if(_defer_cpu MATCHES "^(amd64|x86_64|x64)$")
-        set(_defer_arch amd64)
-    elseif(_defer_cpu MATCHES "^(arm64|aarch64)$")
-        set(_defer_arch arm64)
-    else()
-        message(FATAL_ERROR "Unsupported defer host architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}; set DEFER_NATIVE_BINARY")
-    endif()
-    if(CMAKE_HOST_WIN32)
-        set(_defer_platform windows)
-        set(_defer_suffix .exe)
-    elseif(CMAKE_HOST_APPLE)
-        set(_defer_platform macos)
-        set(_defer_suffix "")
-    elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
-        execute_process(COMMAND ldd --version OUTPUT_VARIABLE _defer_ldd ERROR_VARIABLE _defer_ldd_error)
-        if("${_defer_ldd}${_defer_ldd_error}" MATCHES "[Mm]usl")
-            set(_defer_platform linux-musl)
-        else()
-            set(_defer_platform linux-glibc)
-        endif()
-        set(_defer_suffix "")
-    else()
-        message(FATAL_ERROR "Unsupported defer host: ${CMAKE_HOST_SYSTEM_NAME}; set DEFER_NATIVE_BINARY")
-    endif()
-    set(_defer_archive "defer-${_defer_platform}-${_defer_arch}.zip")
-    if(ASCIICHAT_DEPS_CACHE_ROOT)
-        set(_defer_cache_root "${ASCIICHAT_DEPS_CACHE_ROOT}/defer-tool")
-    else()
-        set(_defer_cache_root "${CMAKE_BINARY_DIR}/_deps/defer")
-    endif()
-    set(_defer_cache "${_defer_cache_root}/${DEFER_VERSION}/${_defer_platform}-${_defer_arch}")
-    set(_defer_executable "${_defer_cache}/bin/defer-tool${_defer_suffix}")
-    if(NOT EXISTS "${_defer_executable}")
-        file(MAKE_DIRECTORY "${_defer_cache}")
-        set(_defer_url "https://github.com/zfogg/defer/releases/download/${DEFER_VERSION}")
-        file(DOWNLOAD "${_defer_url}/SHA256SUMS.txt" "${_defer_cache}/SHA256SUMS.txt" STATUS _defer_status TLS_VERIFY ON)
-        list(GET _defer_status 0 _defer_error)
-        if(NOT _defer_error EQUAL 0)
-            message(FATAL_ERROR "Cannot download defer ${DEFER_VERSION} checksums: ${_defer_status}; set DEFER_NATIVE_BINARY to a host executable")
-        endif()
-        file(STRINGS "${_defer_cache}/SHA256SUMS.txt" _defer_checksums REGEX "${_defer_archive}$")
-        if(NOT _defer_checksums MATCHES "^([0-9a-fA-F]+)[ \t]+\\*?${_defer_archive}$")
-            message(FATAL_ERROR "Missing checksum for ${_defer_archive}")
-        endif()
-        set(_defer_hash "${CMAKE_MATCH_1}")
-        file(DOWNLOAD "${_defer_url}/${_defer_archive}" "${_defer_cache}/${_defer_archive}"
-            EXPECTED_HASH "SHA256=${_defer_hash}" TLS_VERIFY ON STATUS _defer_status SHOW_PROGRESS)
-        list(GET _defer_status 0 _defer_error)
-        if(NOT _defer_error EQUAL 0)
-            message(FATAL_ERROR "Cannot download defer release: ${_defer_status}")
-        endif()
-        file(ARCHIVE_EXTRACT INPUT "${_defer_cache}/${_defer_archive}" DESTINATION "${_defer_cache}")
-    endif()
-    # ZIP timestamps can be interpreted in the host's local time zone and
-    # land in the future. Ninja would then rerun unchanged batches until that
-    # time passes, even though the transformer preserves unchanged outputs.
-    if(EXISTS "${_defer_executable}")
-        file(TIMESTAMP "${_defer_executable}" _defer_executable_time "%s" UTC)
-        string(TIMESTAMP _defer_now "%s" UTC)
-        if(_defer_executable_time GREATER _defer_now)
-            file(TOUCH "${_defer_executable}")
-        endif()
-    endif()
-    set(DEFER_NATIVE_BINARY "${_defer_executable}")
-endif()
-if(NOT EXISTS "${DEFER_NATIVE_BINARY}")
-    message(FATAL_ERROR "defer-tool host executable not found: ${DEFER_NATIVE_BINARY}")
-endif()
-set(_defer_config "${CMAKE_SOURCE_DIR}/deps/defer/Defer.cmake")
-if(NOT EXISTS "${_defer_config}")
-    message(FATAL_ERROR "The defer submodule is missing; run git submodule update --init deps/defer")
-endif()
-include("${_defer_config}")
+include("${CMAKE_SOURCE_DIR}/deps/recast/Recast.cmake")
+add_subdirectory("${CMAKE_SOURCE_DIR}/deps/recast" "${CMAKE_BINARY_DIR}/recast-build" EXCLUDE_FROM_ALL)
+file(COPY "${CMAKE_SOURCE_DIR}/include/ascii-chat"
+     DESTINATION "${CMAKE_BINARY_DIR}/recast_headers/include")
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Query.cmake)
 ascii_panic_prepare()
@@ -519,9 +418,9 @@ if(USE_MUSL AND TARGET ffmpeg-musl)
     add_dependencies("${_target}" ffmpeg-musl)
   endforeach()
 endif()
-set(DEFER_SOURCE_HOOK ascii_panic_defer_source)
-defer_targets(${_defer_targets})
-unset(DEFER_SOURCE_HOOK)
+set(RECAST_SOURCE_HOOK ascii_panic_defer_source)
+recast_targets(${_defer_targets})
+unset(RECAST_SOURCE_HOOK)
 enable_testing()
 if(TARGET ascii-chat)
     add_test(NAME ascii-chat-version COMMAND $<TARGET_FILE:ascii-chat> --version)
@@ -540,7 +439,7 @@ if(BUILD_WEB)
     if(NOT EMSCRIPTEN_TOOLCHAIN_FILE)
         add_subdirectory(${CMAKE_SOURCE_DIR}/src/web ${CMAKE_BINARY_DIR}/web)
         get_property(_defer_web_targets DIRECTORY "${CMAKE_SOURCE_DIR}/src/web" PROPERTY BUILDSYSTEM_TARGETS)
-        defer_targets(${_defer_web_targets})
+        recast_targets(${_defer_web_targets})
     endif()
 else()
     message(STATUS "Web components ${BoldYellow}disabled${ColorReset} (BUILD_WEB=OFF)")
@@ -570,9 +469,8 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
             -DASCIICHAT_DEPS_CACHE_ROOT=${ASCIICHAT_DEPS_CACHE_ROOT}
             -DASCIICHAT_DEPS_CACHE_DIR=${WEB_DEPS_CACHE_DIR}
             -DPARENT_CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
-            "-DDEFER_SOURCE_ROOT=${CMAKE_SOURCE_DIR}"
-            "-DDEFER_NATIVE_BINARY=${DEFER_NATIVE_BINARY}"
-            "-DDEFER_CONFIG_FILE=${_defer_config}"
+            "-DRECAST_SOURCE_ROOT=${CMAKE_SOURCE_DIR}"
+            "-DRECAST_NATIVE_BINARY=${RECAST_NATIVE_BINARY}"
         )
         if(ASCIICHAT_MSYS2_ROOT)
             list(APPEND WASM_CMAKE_ARGS "-DASCIICHAT_MSYS2_ROOT=${ASCIICHAT_MSYS2_ROOT}")
@@ -611,7 +509,7 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt)
   endif()
   add_subdirectory(${CMAKE_SOURCE_DIR}/tests ${CMAKE_BINARY_DIR}/tests)
   get_property(_defer_test_targets DIRECTORY "${CMAKE_SOURCE_DIR}/tests" PROPERTY BUILDSYSTEM_TARGETS)
-  defer_targets(${_defer_test_targets})
+  recast_targets(${_defer_test_targets})
 endif()
 
 # Explicit local telemetry probe; never built or run by the test suite.
@@ -639,6 +537,9 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/docs)
   include(${CMAKE_SOURCE_DIR}/cmake/install/Documentation.cmake)
 endif()
 include(${CMAKE_SOURCE_DIR}/cmake/install/Install.cmake)
+if(TARGET install AND TARGET recast-materialized-headers)
+    add_dependencies(install recast-materialized-headers)
+endif()
 include(${CMAKE_SOURCE_DIR}/cmake/install/SystemConfig.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tools/CustomTargets.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/utils/StatusMessages.cmake)

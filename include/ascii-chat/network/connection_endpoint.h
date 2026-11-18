@@ -15,6 +15,10 @@
 
 #include "../asciichat_errno.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
   CONNECTION_ENDPOINT_TCP = 0,
   CONNECTION_ENDPOINT_WEBSOCKET = 1,
@@ -46,7 +50,13 @@ typedef struct {
  * Bare hostnames are treated as TCP endpoints and use default_port when the
  * input does not specify a port.
  */
-asciichat_error_t connection_endpoint_resolve(const char *input, uint16_t default_port,
-                                              connection_endpoint_t *endpoint_out);
+asciichat_error_t connection_endpoint_resolve(const char *input, uint16_t default_port, connection_endpoint_t *endpoint_out);
+
+/** Build an equivalent endpoint URL with an explicitly overridden port. */
+asciichat_error_t connection_endpoint_override_port(const char *input, uint16_t port, char *output, size_t output_size);
 
 const char *connection_endpoint_protocol_name(connection_endpoint_protocol_t protocol);
+
+#ifdef __cplusplus
+}
+#endif

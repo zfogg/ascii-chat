@@ -88,6 +88,10 @@ extern char ascii_palette[];
 // Include image.h for image_t type definition
 #include <ascii-chat/video/rgba/image.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Subsystem Initialization Functions
  * @{
@@ -572,3 +576,7 @@ char *get_lum_palette(void);
 #define ascii_zzz() time_sleep_ns(ASCII_SLEEP_NS)
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

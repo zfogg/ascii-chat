@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file util/parsing.h
  * @brief 🔍 Safe Parsing Utilities
@@ -139,8 +143,7 @@ asciichat_error_t parse_long(const char *str, long *out_value, long min_value, l
  * @param max_value Maximum allowed value (inclusive)
  * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid input or out of range
  */
-asciichat_error_t parse_ulong(const char *str, unsigned long *out_value, unsigned long min_value,
-                              unsigned long max_value);
+asciichat_error_t parse_ulong(const char *str, unsigned long *out_value, unsigned long min_value, unsigned long max_value);
 
 /**
  * @brief Parse unsigned long long integer with range validation
@@ -150,8 +153,7 @@ asciichat_error_t parse_ulong(const char *str, unsigned long *out_value, unsigne
  * @param max_value Maximum allowed value (inclusive)
  * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid input or out of range
  */
-asciichat_error_t parse_ulonglong(const char *str, unsigned long long *out_value, unsigned long long min_value,
-                                  unsigned long long max_value);
+asciichat_error_t parse_ulonglong(const char *str, unsigned long long *out_value, unsigned long long min_value, unsigned long long max_value);
 
 /**
  * @brief Parse port number (1-65535) from string
@@ -184,3 +186,7 @@ asciichat_error_t parse_int32(const char *str, int32_t *out_value, int32_t min_v
 asciichat_error_t parse_uint32(const char *str, uint32_t *out_value, uint32_t min_value, uint32_t max_value);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

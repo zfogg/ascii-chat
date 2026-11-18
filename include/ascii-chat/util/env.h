@@ -9,6 +9,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Pop the first response from ASCII_CHAT_QUESTION_PROMPT_RESPONSE stack
  *
@@ -43,3 +47,7 @@ bool env_has_prompt_response(void);
 bool env_validate_prompt_response_format(void);
 
 #endif // ASCIICHAT_UTIL_ENV_H
+
+#ifdef __cplusplus
+}
+#endif

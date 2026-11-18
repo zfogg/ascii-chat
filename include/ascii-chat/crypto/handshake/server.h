@@ -10,6 +10,10 @@
 #include "../../crypto/handshake/common.h"
 #include "../../network/acip/transport.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name Server Handshake Protocol
  * @{
@@ -65,9 +69,7 @@ asciichat_error_t crypto_handshake_server_send_parameters(crypto_handshake_conte
  * @note Packet must be received by ACIP handler before calling this function
  * @note State transition: CRYPTO_HANDSHAKE_KEY_EXCHANGE -> CRYPTO_HANDSHAKE_AUTHENTICATING
  */
-asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, acip_transport_t *transport,
-                                                         packet_type_t packet_type, const uint8_t *payload,
-                                                         size_t payload_len);
+asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_context_t *ctx, acip_transport_t *transport, packet_type_t packet_type, const uint8_t *payload, size_t payload_len);
 
 /**
  * @brief Server: Process auth response and complete handshake
@@ -84,8 +86,10 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
  * @note Packet must be received by ACIP handler before calling this function
  * @note State transition: CRYPTO_HANDSHAKE_AUTHENTICATING -> CRYPTO_HANDSHAKE_READY
  */
-asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *ctx, acip_transport_t *transport,
-                                                   packet_type_t packet_type, const uint8_t *payload,
-                                                   size_t payload_len);
+asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *ctx, acip_transport_t *transport, packet_type_t packet_type, const uint8_t *payload, size_t payload_len);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

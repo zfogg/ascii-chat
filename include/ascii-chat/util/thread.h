@@ -53,6 +53,10 @@
 #include <string.h>
 #include <libplatform/thread.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Check if a thread has been created.
  *
@@ -94,12 +98,12 @@
  * THREAD_CREATE_OR_RETURN_VOID(g_worker_thread, worker_func, NULL, "Failed to create worker");
  * @endcode
  */
-#define THREAD_CREATE_OR_RETURN_VOID(thread_var, func, arg, error_msg)                                                 \
-  do {                                                                                                                 \
-    if (platform_thread_create(&(thread_var), (func), (arg)) != 0) {                                                          \
-      log_error("%s", (error_msg));                                                                                    \
-      return;                                                                                                          \
-    }                                                                                                                  \
+#define THREAD_CREATE_OR_RETURN_VOID(thread_var, func, arg, error_msg) \
+  do {                                                                 \
+    if (platform_thread_create(&(thread_var), (func), (arg)) != 0) {   \
+      log_error("%s", (error_msg));                                    \
+      return;                                                          \
+    }                                                                  \
   } while (0)
 
 /**
@@ -143,3 +147,7 @@
  * @endcode
  */
 #define THREAD_CLEAR_HANDLE(thread_var) memset(&(thread_var), 0, sizeof(thread_var))
+
+#ifdef __cplusplus
+}
+#endif

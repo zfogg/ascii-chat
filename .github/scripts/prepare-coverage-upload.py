@@ -15,10 +15,14 @@ EXPECTED_ARTIFACTS = (
     "test-results-Linux-debug",
     "test-results-Linux-release",
     "test-results-macOS-release",
+    "test-results-Windows-debug",
+    "test-results-Windows-release",
     "integration-test-results-Linux",
     "integration-test-results-macOS",
-    "performance-test-results-Linux",
-    "performance-test-results-macOS",
+    "integration-test-results-Windows",
+    "benchmark-test-results-Linux",
+    "benchmark-test-results-macOS",
+    "benchmark-test-results-Windows",
 )
 
 
@@ -38,12 +42,12 @@ def prepare(directory):
         cases = ET.parse(junit[0]).findall(".//testcase")
         if not cases:
             raise ValueError(f"No tests ran for {name}; refusing partial upload")
-        criterion_cases = sum(len(ET.parse(path).findall(".//testcase"))
-                              for path in (directory / name).rglob("criterion-xml/*.xml"))
-        if not criterion_cases:
-            raise ValueError(f"No Criterion cases ran for {name}; refusing zero-test coverage upload")
+        test_cases = sum(len(ET.parse(path).findall(".//testcase"))
+                         for path in (directory / name).rglob("Testing/xml/*.xml"))
+        if not test_cases:
+            raise ValueError(f"No test cases ran for {name}; refusing zero-test coverage upload")
         shards[name] = {"covered": covered, "valid": valid, "test_binaries": len(cases),
-                        "criterion_cases": criterion_cases}
+                        "test_cases": test_cases}
         reports.append(report)
         for entry in ET.parse(report).findall(".//class"):
             filename = entry.get("filename")
@@ -81,7 +85,7 @@ def main():
             output.write("files=" + ",".join(report.as_posix() for report in reports) + "\n")
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as output:
-            output.write("## Complete coverage upload\n\nAll seven coverage shards are present.\n\n")
+            output.write("## Complete coverage upload\n\nAll eleven coverage shards are present.\n\n")
             for label in ("production", "application", "all"):
                 if label not in summary:
                     continue

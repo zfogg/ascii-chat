@@ -10,6 +10,10 @@ void ui_input_poll_sync(void);
 #include <libplatform/question.h>
 #include <ascii-chat/tui/controller.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Input policy is separate from presentation. Covered controls are consumed and discarded. */
 keyboard_key_t ui_input_read_key(ui_screen_t screen);
 keyboard_key_t ui_input_wait_key(ui_screen_t screen, unsigned timeout_ms);
@@ -45,5 +49,8 @@ typedef struct {
 
 /** Collect paste boundaries and optional application-classified text bursts.
  * Once ready, the caller consumes/clears paste before reading another event. */
-keyboard_key_t tui_input_events_read(tui_input_events_t *state, keyboard_key_t (*read_key)(void),
-                                     bool (*classify_paste)(const char *));
+keyboard_key_t tui_input_events_read(tui_input_events_t *state, keyboard_key_t (*read_key)(void), bool (*classify_paste)(const char *));
+
+#ifdef __cplusplus
+}
+#endif

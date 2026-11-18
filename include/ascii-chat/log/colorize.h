@@ -18,6 +18,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Colorize a log message for terminal output
  *
@@ -35,5 +39,9 @@ const char *colorize_log_message(const char *message);
 
 /** Apply an already-selected color policy without querying the terminal. */
 const char *colorize_log_message_with_color(const char *message, bool enabled);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -21,6 +21,35 @@
 #include <limits.h>
 #include <ascii-chat/video/ascii/simd/cells.h>
 
+/* Keep the compatibility matcher self-contained while the production
+ * renderer uses the split common/stabilizer implementation. */
+#define ascii_render_set_output_target ascii_legacy_render_set_output_target
+#define ascii_stabilizer_set_target ascii_legacy_stabilizer_set_target
+#define ascii_stabilizer_reset ascii_legacy_stabilizer_reset
+#define ascii_stabilizer_prepare ascii_legacy_stabilizer_prepare
+#define ascii_stabilizer_choose ascii_legacy_stabilizer_choose
+#define ascii_frame_init ascii_legacy_frame_init
+#define ascii_frame_emit_row ascii_legacy_frame_emit_row
+#define ascii_frame_finish ascii_legacy_frame_finish
+#define ascii_half_frame_init ascii_legacy_half_frame_init
+#define ascii_frame_emit_halfrow ascii_legacy_frame_emit_halfrow
+#define ascii_render ascii_legacy_render
+#define ascii_render_halfblocks ascii_legacy_render_halfblocks
+
+outbuf_t *ascii_legacy_render_set_output_target(outbuf_t *target);
+ascii_stabilizer_t *ascii_legacy_stabilizer_set_target(ascii_stabilizer_t *state);
+void ascii_legacy_stabilizer_reset(ascii_stabilizer_t *state);
+asciichat_error_t ascii_legacy_stabilizer_prepare(ascii_stabilizer_t *state, size_t width, size_t height, uint64_t configuration);
+uint32_t ascii_legacy_stabilizer_choose(ascii_temporal_cell_t *cell, const uint8_t samples[16], uint32_t candidate, uint64_t candidate_error, uint64_t previous_error, uint32_t color,
+                                        uint64_t elapsed_ns, uint32_t *stabilized_color);
+asciichat_error_t ascii_legacy_frame_init(ascii_frame_t *frame, const image_t *image, const char *palette);
+void ascii_legacy_frame_emit_row(ascii_frame_t *frame, ascii_color_t mode, bool background, bool more_rows, const simd_cells_t *ops);
+char *ascii_legacy_frame_finish(ascii_frame_t *frame);
+asciichat_error_t ascii_legacy_half_frame_init(ascii_frame_t *frame, const uint8_t *rgb, int width, int height, int *stride, ascii_color_t mode);
+void ascii_legacy_frame_emit_halfrow(ascii_frame_t *frame, ascii_color_t mode, bool more_rows, const simd_cells_t *ops);
+char *ascii_legacy_render(const image_t *image, const char *palette, ascii_color_t mode, bool background, bool dither, const simd_cells_t *ops);
+char *ascii_legacy_render_halfblocks(const uint8_t *rgb, int width, int height, int stride, ascii_color_t mode, const simd_cells_t *ops);
+
 static _Thread_local outbuf_t *g_output_target;
 #define ASCII_RENDER_WORKSPACE_POOL_SIZE 4
 static _Thread_local uint32_t g_scratch_workspace[ASCII_RENDER_WORKSPACE_POOL_SIZE][IMAGE_MAX_WIDTH * ASCII_SCRATCH_PLANES];
@@ -308,8 +337,9 @@ asciichat_error_t ascii_frame_init(ascii_frame_t *frame, const image_t *image, c
     return ERROR_INVALID_PARAM;
   prepare_output(frame, capacity, target);
   frame->width = (size_t)image->w;
-  if (g_stabilizer_target && g_stabilizer_target->cells && g_stabilizer_target->width == (size_t)image->w && g_stabilizer_target->height == (size_t)image->h)
-    frame->stabilizer = g_stabilizer_target;
+  ascii_stabilizer_t *stabilizer_target = ascii_stabilizer_target();
+  if (stabilizer_target && stabilizer_target->cells && stabilizer_target->width == (size_t)image->w && stabilizer_target->height == (size_t)image->h)
+    frame->stabilizer = stabilizer_target;
   for (size_t i = 0; i < 64; ++i)
     memcpy(frame->table + i, cache->cache64[i].utf8_bytes, cache->cache64[i].byte_len);
   frame->scratch = acquire_scratch(frame->inline_scratch, bytes);
@@ -563,6 +593,15 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
     return NULL;
   }
   bool allowed[GLYPH_COUNT] = {false};
+  bool use_chroma_shape = false;
+  if (mode == ASCII_COLOR_TRUE && palette) {
+    for (const uint8_t *p = (const uint8_t *)palette; *p; ++p) {
+      if (*p >= 0x80) {
+        use_chroma_shape = true;
+        break;
+      }
+    }
+  }
   int candidates[GLYPH_COUNT];
   // Restrict the atlas to unique palette entries before scoring any cells.
   size_t candidate_count = 0;
@@ -633,7 +672,8 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
           int red = (a.r + b.r + c.r + d.r) / 4;
           int green = (a.g + b.g + c.g + d.g) / 4;
           int blue = (a.b + b.b + c.b + d.b) / 4;
-          patch[i] = (uint8_t)((77 * red + 150 * green + 29 * blue) >> 8);
+          uint8_t luma = (uint8_t)((77 * red + 150 * green + 29 * blue) >> 8);
+          patch[i] = (uint8_t)(luma + (luma * (255 - luma) + 256) / 512);
           samples[0][i] = (int16_t)red;
           samples[1][i] = (int16_t)green;
           samples[2][i] = (int16_t)blue;
@@ -664,6 +704,23 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
           continue;
         int dot = shape_correlation(centered_samples, glyphs[c].centered);
         uint64_t error = (uint64_t)(tone_error + sample_energy + glyphs[c].energy - 2 * dot);
+        if (use_chroma_shape) {
+          // Luminance alone cannot distinguish equal-luminance chromatic
+          // regions. Use the strongest color-channel shape correlation as a
+          // secondary signal so vertical and horizontal boundaries retain
+          // their orientation in true-colour output.
+          int chroma_dot = 0;
+          for (int channel = 0; channel < 3; ++channel) {
+            int channel_mean = sums[channel] / 16;
+            int channel_dot = 0;
+            for (int i = 0; i < 16; ++i)
+              channel_dot += (samples[channel][i] - channel_mean) * glyphs[c].centered[i];
+            if (abs(channel_dot) > abs(chroma_dot))
+              chroma_dot = channel_dot;
+          }
+          uint64_t chroma_bonus = (uint64_t)(abs(chroma_dot) / 8);
+          error = chroma_bonus < error ? error - chroma_bonus : 0;
+        }
         if (is_previous) {
           previous_error = error;
           previous_index = c;
@@ -717,7 +774,7 @@ char *ascii_render_glyph_match_mode(const image_t *image, ascii_color_t mode, co
         ops->quantize(frame.packed, frame.fg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
         ops->quantize(frame.index, frame.bg, frame.width, mode == ASCII_COLOR_16 ? 16 : 256);
       }
-      emit_prepared_row(&frame.output, mode, ops, frame.glyph, frame.fg, frame.bg, frame.width);
+      ascii_emit_prepared_row(&frame.output, mode, ops, frame.glyph, frame.fg, frame.bg, frame.width);
       emit_row_end(&frame.output, true, y + 1 < cells.h);
       ++frame.row;
     } else {

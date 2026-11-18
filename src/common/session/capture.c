@@ -32,7 +32,7 @@
 #include <ascii-chat/tui/controller.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/media/source.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/face_follow_image.h>
 #include <ascii-chat/util/time.h>

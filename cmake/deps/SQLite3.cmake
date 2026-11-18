@@ -173,6 +173,34 @@ if(USE_VCPKG AND VCPKG_ROOT)
     endif()
 endif()
 
+# The vcpkg toolchain can be loaded before ascii-chat establishes its
+# persistent install root. Prefer the explicitly configured dependency cache
+# before falling back to pkg-config, which otherwise returns only `sqlite3`
+# and loses the absolute Windows library path.
+if(WIN32 AND ASCIICHAT_DEPS_CACHE_ROOT AND VCPKG_TARGET_TRIPLET)
+    find_library(_asciichat_sqlite3_release NAMES sqlite3 libsqlite3
+        PATHS "${ASCIICHAT_DEPS_CACHE_ROOT}/vcpkg/${VCPKG_TARGET_TRIPLET}/lib"
+        NO_DEFAULT_PATH)
+    find_library(_asciichat_sqlite3_debug NAMES sqlite3 libsqlite3
+        PATHS "${ASCIICHAT_DEPS_CACHE_ROOT}/vcpkg/${VCPKG_TARGET_TRIPLET}/debug/lib"
+        NO_DEFAULT_PATH)
+    find_path(_asciichat_sqlite3_include NAMES sqlite3.h
+        PATHS "${ASCIICHAT_DEPS_CACHE_ROOT}/vcpkg/${VCPKG_TARGET_TRIPLET}/include"
+        NO_DEFAULT_PATH)
+    if(_asciichat_sqlite3_release AND _asciichat_sqlite3_debug AND _asciichat_sqlite3_include)
+        include(${CMAKE_SOURCE_DIR}/cmake/utils/SelectLibraryConfig.cmake)
+        asciichat_select_library_config(
+            RELEASE_LIB ${_asciichat_sqlite3_release}
+            DEBUG_LIB   ${_asciichat_sqlite3_debug}
+            OUTPUT      SQLITE3_LIBRARIES
+        )
+        set(SQLITE3_FOUND TRUE)
+        set(SQLITE3_INCLUDE_DIRS "${_asciichat_sqlite3_include}")
+        message(STATUS "Found ${BoldGreen}SQLite3${ColorReset} in dependency cache: ${_asciichat_sqlite3_release}${_asciichat_sqlite3_debug}")
+        return()
+    endif()
+endif()
+
 # =============================================================================
 # Fallback: System SQLite3 via pkg-config or find_package
 # =============================================================================
@@ -182,6 +210,13 @@ find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
     pkg_check_modules(SQLITE3 QUIET sqlite3)
     if(SQLITE3_FOUND)
+        # pkg-config returns a bare `-lsqlite3` on Windows even when it has
+        # resolved the actual vcpkg library.  Preserve the absolute path so
+        # clang/lld does not turn it into the invalid `-lsqlite3.lib`.
+        if(WIN32 AND DEFINED pkgcfg_lib_SQLITE3_sqlite3
+           AND EXISTS "${pkgcfg_lib_SQLITE3_sqlite3}")
+            set(SQLITE3_LIBRARIES "${pkgcfg_lib_SQLITE3_sqlite3}")
+        endif()
         message(STATUS "Found ${BoldGreen}SQLite3${ColorReset} via pkg-config: ${SQLITE3_VERSION}")
         return()
     endif()

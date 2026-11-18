@@ -2,6 +2,10 @@
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/crypto/handshake/common.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum { NETWORK_PROTOCOL_MEDIA, NETWORK_PROTOCOL_DISCOVERY } network_protocol_t;
 
 /** Wire profiles preserve deployed media and discovery handshakes. Credentials
@@ -24,12 +28,14 @@ typedef struct {
   unsigned step;
 } network_negotiation_t;
 
-asciichat_error_t network_negotiation_receive(network_negotiation_t *, acip_transport_t *, packet_type_t, const void *,
-                                              size_t);
+asciichat_error_t network_negotiation_receive(network_negotiation_t *, acip_transport_t *, packet_type_t, const void *, size_t);
 
 /** Drive a client wire profile using connection-owned security storage.
  * A single absolute deadline covers negotiation; the caller retains transport
  * and credentials until cancellation and all users have drained.
  */
-asciichat_error_t network_client_negotiate(acip_transport_t *, crypto_handshake_context_t *, uint8_t mode,
-                                           network_protocol_t protocol);
+asciichat_error_t network_client_negotiate(acip_transport_t *, crypto_handshake_context_t *, uint8_t mode, network_protocol_t protocol);
+
+#ifdef __cplusplus
+}
+#endif

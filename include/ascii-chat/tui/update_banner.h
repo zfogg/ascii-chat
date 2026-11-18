@@ -18,6 +18,10 @@
 #include <ascii-chat/network/update_checker.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct session_display_ctx;
 
 /**
@@ -90,3 +94,7 @@ bool update_banner_is_checking(void);
 bool update_banner_is_overlay_open(void);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

@@ -12,7 +12,7 @@
 #include <ascii-chat/crypto/sizes.h>
 #include <ascii-chat/crypto/https_keys.h>
 #include <ascii-chat/common.h>
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/string.h>
 #include <libplatform/process.h>

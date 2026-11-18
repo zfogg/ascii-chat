@@ -26,6 +26,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Opaque frame buffer handle
  */
@@ -168,3 +172,7 @@ void frame_buffer_set_screen_output_fd(int fd);
  * @return File descriptor (STDOUT_FILENO or STDERR_FILENO)
  */
 int frame_buffer_get_screen_output_fd(void);
+
+#ifdef __cplusplus
+}
+#endif

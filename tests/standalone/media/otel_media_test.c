@@ -7,15 +7,15 @@
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/util/time.h>
 #include <libplatform/system.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>
+#include <options/options.h>
+#include <options/rcu.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
 #include <libavcodec/avcodec.h>
-#define CHECK(value)                                                                                                   \
-  do {                                                                                                                 \
-    if (!(value))                                                                                                      \
-      FATAL(ERROR_ASSERTION_FAILED, "%s", #value);                                                                     \
+#define CHECK(value)                               \
+  do {                                             \
+    if (!(value))                                  \
+      FATAL(ERROR_ASSERTION_FAILED, "%s", #value); \
   } while (0)
 static void emit_severity(int level, const char *format, ...) {
   va_list args;
@@ -55,10 +55,10 @@ int main(void) {
     if (!frame)
       platform_sleep_ms(1);
   }
-  CHECK(frame && frame->w == 16 && frame->h == 16);
+  CHECK((frame && frame->w == 16 && frame->h == 16));
   ffmpeg_decoder_destroy(media);
   media = ffmpeg_decoder_create(audio_path);
-  CHECK(media != NULL && ffmpeg_decoder_has_audio(media));
+  CHECK((media != NULL && ffmpeg_decoder_has_audio(media)));
   float samples[128];
   CHECK(ffmpeg_decoder_read_audio_samples(media, samples, 128) > 0);
   CHECK(ffmpeg_decoder_seek_to_timestamp(media, 0) == ASCIICHAT_OK);
@@ -102,7 +102,7 @@ int main(void) {
       uint16_t width = 0, height = 0;
       size_t size = sizeof(decoded);
       CHECK(h265_decode(decoder, packet, packet_size, &width, &height, decoded, &size) == ASCIICHAT_OK);
-      CHECK(width == 32 && height == 32 && size == 1024);
+      CHECK((width == 32 && height == 32 && size == 1024));
       h265_decoder_destroy(decoder);
     }
     h265_encoder_destroy(encoder);

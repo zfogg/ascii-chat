@@ -1,18 +1,17 @@
 /**
- * @file options_state.c
+ * @file runtime.c
  * @brief 🔒 RCU-based thread-safe options state implementation
  */
 
-#include <ascii-chat/options/rcu.h>
-#include <ascii-chat/options/runtime.h>
-#include <ascii-chat/options/validation.h>
+#include <options/rcu.h>
+#include <options/runtime.h>
+#include <options/validation.h>
+#include <libflags/explicit.h>
 #include <math.h>
 #include <yyjson.h>
 #include <limits.h>
-#include <ascii-chat/options/schema.h>
-#include <ascii-chat/options/registry/core.h>
+#include <options/registry/core.h>
 #include <ascii-chat/options/registry/common.h>
-#include <ascii-chat/options/builder.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
@@ -129,7 +128,6 @@ static const options_t g_default_options = (options_t){
     .discovery_server = OPT_STRING_EMPTY_DEFAULT,
     .discovery_service_key = OPT_STRING_EMPTY_DEFAULT,
     .discovery_database_path = OPT_STRING_EMPTY_DEFAULT,
-    .webrtc = OPT_WEBRTC_DEFAULT,
 
     // ========================================================================
     // LAN Discovery & WebRTC Options
@@ -148,7 +146,6 @@ static const options_t g_default_options = (options_t){
     .webrtc_disable_turn = OPT_WEBRTC_DISABLE_TURN_DEFAULT,
     .webrtc_skip_host = OPT_WEBRTC_SKIP_HOST_DEFAULT,
     .webrtc_ice_timeout_ms = OPT_WEBRTC_ICE_TIMEOUT_MS_DEFAULT,
-    .webrtc_reconnect_attempts = OPT_WEBRTC_RECONNECT_ATTEMPTS_DEFAULT,
 
     // ========================================================================
     // WebRTC Connectivity Options (ACDS mode)
@@ -193,7 +190,6 @@ static const options_t g_default_options = (options_t){
     .test_pattern = OPT_TEST_PATTERN_DEFAULT,
     .no_audio_mixer = OPT_NO_AUDIO_MIXER_DEFAULT,
     .stabilize = true,
-    .stabilize_explicit = false,
     .renderer = ASCII_RENDERER_DEFAULT,
     .stretch = OPT_STRETCH_DEFAULT,
     .flip_x = OPT_FLIP_X_DEFAULT,
@@ -209,7 +205,6 @@ static const options_t g_default_options = (options_t){
     .render_mode = OPT_RENDER_MODE_DEFAULT,
     .show_capabilities = OPT_SHOW_CAPABILITIES_DEFAULT,
     .fps = OPT_FPS_DEFAULT,
-    .fps_explicitly_set = false,
     .palette_type = OPT_PALETTE_TYPE_DEFAULT,
     .palette_custom = OPT_STRING_EMPTY_DEFAULT,
     .palette_custom_set = OPT_PALETTE_CUSTOM_SET_DEFAULT,
@@ -228,6 +223,7 @@ static const options_t g_default_options = (options_t){
     .audio_spectral = true,
     .audio_spectral_mixer = false,
     .audio_spectral_gate = true,
+    .reduce_noise = true,
     .audio_enabled = OPT_AUDIO_ENABLED_DEFAULT,
     .audio_source = OPT_AUDIO_SOURCE_DEFAULT,
     .audio_capture_source = OPT_AUDIO_CAPTURE_SOURCE_DEFAULT,
@@ -270,8 +266,6 @@ static const options_t g_default_options = (options_t){
     // Remaining Options (zero-initialized by default)
     // ========================================================================
     .reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT,
-    .splash_screen_explicitly_set = OPT_SPLASH_SCREEN_EXPLICITLY_SET_DEFAULT,
-    .status_screen_explicitly_set = OPT_STATUS_SCREEN_EXPLICITLY_SET_DEFAULT,
     .no_check_update = OPT_NO_CHECK_UPDATE_DEFAULT,
 
     // All remaining array fields (identity_keys, num_identity_keys, etc.)
@@ -460,10 +454,6 @@ asciichat_error_t options_state_set(const options_t *opts) {
   options_t *next = SAFE_MALLOC(sizeof(*next), options_t *);
   *next = *opts;
   options_t *previous = atomic_ptr_load(&g_options);
-  if (previous->flip_x_explicit && !next->flip_x_explicit)
-    next->flip_x = previous->flip_x;
-  next->flip_x_explicit |= previous->flip_x_explicit;
-  options_resolve_flip_x(next);
   atomic_ptr_store(&g_options, next);
   ++g_revision;
   g_origin = OPTIONS_ORIGIN_CONFIG;
@@ -477,6 +467,8 @@ void options_state_destroy(void) {
   if (!lifecycle_is_initialized(&g_options_lifecycle)) {
     return;
   }
+
+  flags_explicit_state_destroy();
 
   /* Shutdown lifecycle to mark as no longer initialized */
   lifecycle_shutdown(&g_options_lifecycle);
@@ -493,18 +485,11 @@ void options_state_destroy(void) {
   // Free all deferred structs
   deferred_free_all();
 
-  // Cleanup schema (frees all dynamically allocated config strings)
-  config_schema_destroy();
-
   // Destroy dynamically created mutexes
   mutex_destroy(&g_options_write_mutex);
   mutex_destroy(&g_deferred_free_mutex);
 
   log_debug("Options state shutdown complete");
-}
-
-void options_cleanup_schema(void) {
-  config_schema_destroy();
 }
 
 const options_t *options_get(void) {
@@ -534,6 +519,8 @@ const options_t *options_get(void) {
 const terminal_options_t *options_terminal_settings_ptr(void) {
   static terminal_options_t settings;
   const options_t *options = options_get();
+  if (!options)
+    return NULL;
   settings = (terminal_options_t){
       .color = (terminal_color_setting_t)options->color,
       .color_mode = options->color_mode,
@@ -583,7 +570,6 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(no_compress, OPTIONS_VALUE_BOOL, "no-compress"),
     FIELD(encode_audio, OPTIONS_VALUE_BOOL, "encode-audio"),
     FIELD(flip_x, OPTIONS_VALUE_BOOL, "flip-x"),
-    FIELD(flip_x_explicit, OPTIONS_VALUE_BOOL, "flip-x-explicit"),
     FIELD(media_input, OPTIONS_VALUE_BOOL, "media-input"),
     FIELD(flip_y, OPTIONS_VALUE_BOOL, "flip-y"),
     FIELD(face_follow, OPTIONS_VALUE_BOOL, "face-follow"),
@@ -606,7 +592,6 @@ static const runtime_field_t runtime_fields[] = {
     FIELD(discovery, OPTIONS_VALUE_BOOL, "discovery"),
     FIELD(discovery_expose_ip, OPTIONS_VALUE_BOOL, "discovery-expose-ip"),
     FIELD(discovery_insecure, OPTIONS_VALUE_BOOL, "discovery-insecure"),
-    FIELD(webrtc, OPTIONS_VALUE_BOOL, "webrtc"),
     FIELD(lan_discovery, OPTIONS_VALUE_BOOL, "lan-discovery"),
     FIELD(no_mdns_advertise, OPTIONS_VALUE_BOOL, "no-mdns-advertise"),
     FIELD(prefer_webrtc, OPTIONS_VALUE_BOOL, "prefer-webrtc"),
@@ -731,8 +716,6 @@ static asciichat_error_t edit_candidate(options_t *candidate, const options_edit
   const runtime_field_t *field = find_field(edit->name);
   if (!field || field->type != edit->type)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unknown option or wrong type: %s", edit->name ? edit->name : "(null)");
-  if (!strcmp(field->name, "flip_x_explicit"))
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Horizontal flip selection state is read-only");
   char *ptr = (char *)candidate + field->offset;
   switch (edit->type) {
   case OPTIONS_VALUE_INT: {
@@ -759,8 +742,6 @@ static asciichat_error_t edit_candidate(options_t *candidate, const options_edit
       memcpy(ptr, &integer, sizeof(integer));
     } else
       memcpy(ptr, &value, sizeof(value));
-    if (!strcmp(field->name, "flip_x"))
-      candidate->flip_x_explicit = true;
     // An animation selection is one coherent change, including its exclusions.
     if (value &&
         (!strcmp(field->name, "matrix_rain") || !strcmp(field->name, "waveform") || !strcmp(field->name, "fft"))) {
@@ -841,10 +822,17 @@ asciichat_error_t options_prepare_patch(const options_t *current, const options_
     animation_changed |= !strcmp(name, "matrix_rain") || !strcmp(name, "waveform") || !strcmp(name, "fft");
     stabilize_changed |= !strcmp(name, "stabilize");
   }
-  if (stabilize_changed)
-    candidate->stabilize_explicit = true;
-  else if (animation_changed && !candidate->stabilize_explicit)
+  if (animation_changed && !stabilize_changed)
     candidate->stabilize = !(candidate->waveform || candidate->fft);
+  bool orientation_changed = false;
+  bool flip_x_set_in_patch = false;
+  for (size_t i = 0; i < patch->count; ++i) {
+    const char *name = patch->edits[i].name;
+    orientation_changed |= !strcmp(name, "media_input") || !strcmp(name, "waveform") || !strcmp(name, "fft");
+    flip_x_set_in_patch |= !strcmp(name, "flip_x");
+  }
+  if (orientation_changed && !flip_x_set_in_patch && !flags_explicit_state_was_set("flip-x"))
+    candidate->flip_x = !candidate->media_input && !candidate->waveform && !candidate->fft;
   for (size_t i = 0; i < patch->count; ++i) {
     asciichat_error_t error = validate_field(find_field(patch->edits[i].name), candidate);
     if (error != ASCIICHAT_OK)
@@ -853,8 +841,6 @@ asciichat_error_t options_prepare_patch(const options_t *current, const options_
   asciichat_error_t palette_error = validate_glyph_palette(candidate);
   if (palette_error != ASCIICHAT_OK)
     return palette_error;
-  candidate->flip_x_explicit |= current->flip_x_explicit;
-  options_resolve_flip_x(candidate);
   return ASCIICHAT_OK;
 }
 
@@ -878,6 +864,10 @@ asciichat_error_t options_apply_patch(const options_patch_t *patch, options_patc
     deferred_free_add(current);
     ++g_revision;
     g_origin = patch->origin;
+    for (size_t i = 0; i < patch->count; ++i) {
+      if (!strcmp(patch->edits[i].name, "flip_x"))
+        flags_explicit_state_set("flip-x", true);
+    }
     if (result)
       *result = (options_patch_result_t){.revision = g_revision, .changed = true};
   } else
@@ -1042,12 +1032,20 @@ char *options_values_json(const options_t *values, bool remote_only) {
   yyjson_mut_doc_set_root(doc, root);
   for (size_t i = 0; i < sizeof(runtime_fields) / sizeof(*runtime_fields); ++i) {
     const runtime_field_t *field = &runtime_fields[i];
+<<<<<<< HEAD
     bool exposed = remote_only ? options_remote_render_field(field->name) : true;
     // The local iOS settings editor uses the non-remote snapshot to expose the
     // complete editable runtime registry. This marker is derived state and is
     // intentionally not patchable.
     if (!remote_only && !strcmp(field->name, "flip_x_explicit"))
       exposed = false;
+=======
+    bool exposed = options_remote_render_field(field->name);
+    if (!remote_only && (!strcmp(field->name, "flip_x") || !strcmp(field->name, "media_input") || !strcmp(field->name, "flip_y") || !strcmp(field->name, "waveform") || !strcmp(field->name, "fft") ||
+                         !strcmp(field->name, "fps_counter") || !strcmp(field->name, "audio_source") || !strcmp(field->name, "speakers_volume") || !strcmp(field->name, "microphone_sensitivity") ||
+                         !strcmp(field->name, "audio_enabled")))
+      exposed = true;
+>>>>>>> origin/master
     if (!exposed)
       continue;
     const char *ptr = (const char *)values + field->offset;
@@ -1067,6 +1065,14 @@ char *options_values_json(const options_t *values, bool remote_only) {
       break;
     }
   }
+  /*
+   * The effective flip value is source-dependent: webcam input is mirrored
+   * automatically until the user explicitly chooses an orientation. Expose
+   * that provenance beside the effective value so browser clients can echo
+   * engine-owned changes without turning them into an explicit preference.
+   */
+  if (!remote_only)
+    yyjson_mut_obj_add_bool(doc, root, "flip_x_explicit", flags_explicit_state_was_set("flip-x"));
   char *json = yyjson_mut_write_opts(doc, 0, &runtime_json_allocator, NULL, NULL);
   yyjson_mut_doc_free(doc);
   return json;

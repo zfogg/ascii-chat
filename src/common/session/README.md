@@ -747,7 +747,7 @@ Host and participant both provide callback-based interfaces for integration with
 
 - **Crypto Protocol**: `docs/crypto.md` - Detailed cryptographic handshake
 - **Network Protocol**: `lib/network/` - ACIP packet protocol
-- **Platform Abstraction**: `lib/platform/` - Cross-platform internals
+- **Platform Abstraction**: `libplatform` - Cross-platform internals
 - **Media Resolution**: `lib/media/` - FFmpeg/yt-dlp integration
 
 ### Participant media lifecycle

@@ -50,7 +50,7 @@ set_tests_properties(simd-invalid-override PROPERTIES ENVIRONMENT "ASCII_CHAT_SI
 option(TEST_EMISSION "Build isolated production renderer tests (Linux)" OFF)
 if(TEST_EMISSION)
     if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        message(FATAL_ERROR "TEST_EMISSION uses the Linux standalone runtime; use Criterion on other Unix platforms")
+        message(FATAL_ERROR "TEST_EMISSION uses the Linux standalone runtime; use Catch2 on other Unix platforms")
     endif()
     add_executable(emission-test ../unit/video/ascii_emission_test.c emission_runtime.c)
     target_compile_definitions(emission-test PRIVATE NDEBUG _GNU_SOURCE ASCII_EMISSION_STANDALONE)

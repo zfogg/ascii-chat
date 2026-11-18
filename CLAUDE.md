@@ -277,7 +277,7 @@ an assertion.
 
 ### C cleanup with defer
 
-Include `<defer.h>` and use `defer(action);` for
+Include `<recast/defer.h>` and use `defer(action);` for
 block-scoped cleanup. CMake transforms C and Objective-C sources and supported header functions;
 C++ uses scope guards. Use the C development skill and `docs/topics/defer.dox`
 for scope, header discovery, restrictions, diagnostics, and build requirements.
@@ -600,22 +600,25 @@ free(buffer);
 
 Memory reports show at program exit in debug builds. Red numbers indicate leaks.
 
-## Platform Abstraction Layer (lib/platform)
+## Platform Abstraction Layer (libplatform)
 
-Cross-platform support via abstraction:
+Cross-platform operating-system support is provided by the standalone
+`libplatform` dependency, checked out under `deps/ascii-chat-deps/libplatform`
+and configured by `cmake/dependencies/Libplatform.cmake`. Its public headers
+are included as `<libplatform/...>`; do not add a second platform abstraction
+under this repository's `lib/` tree.
 
-- **lib/platform/posix/** - Linux/macOS implementations
-- **lib/platform/windows/** - Windows implementations
-- **lib/platform/abstraction.h** - Platform-independent API
+libplatform provides the shared APIs for threads, mutexes, rwlocks, condition
+variables, atomics, sockets, filesystems, processes, signals, timing,
+terminals, keyboards, memory mapping, backtraces, symbolization, diagnostics,
+and platform startup/shutdown. It supports Windows, Linux, Apple platforms,
+and WebAssembly through common, POSIX, Windows, Linux, macOS, and WASM
+implementations.
 
-Key abstractions:
-
-- Threads: `platform_thread_t`, `platform_thread_create()`
-- Mutexes: `mutex_t`, `mutex_init/lock/unlock()`
-- Sockets: `socket_t`, `socket_close()`, `INVALID_SOCKET_VALUE`
-- Safe wrappers: `SAFE_GETENV()`, `SAFE_STRERROR()`, `platform_open()`
-
-Always use abstraction layer functions, never direct POSIX/Windows APIs.
+Use libplatform APIs and the existing `platform_*`/`mutex_*` abstractions in
+application code; do not call platform-specific POSIX or Win32 APIs directly.
+The repository-local `os/` directory contains ascii-chat-specific operating
+system integration: `os/wakeup.cpp` and the `os/wasm/` stubs.
 
 ## Session Management (lib/session)
 
@@ -728,7 +731,7 @@ Stream URLs extracted by yt-dlp are cached for 30 seconds to avoid repeated subp
 
 - **lib/media/yt_dlp.c/h** - yt-dlp subprocess integration with caching
 - **lib/media/source.c** - Smart routing logic and media source creation
-- **include/ascii-chat/options/options.h** - `yt_dlp_options` STRING option
+- **src/common/options/options.h** - `yt_dlp_options` STRING option
 
 ## Cryptographic Protocol
 
@@ -858,14 +861,14 @@ ascii-chat/
 │   ├── common/                 # Shared code and utilities used by multiple modes
 │   ├── session/                # Session initialization and lifecycle management across modes
 │   ├── tooling/                # Development and debugging tools integrated into the binary
+│   ├── mcp-server/              # MCP server mode and tool transport
+│   ├── api-server/              # HTTP API server mode
 │   └── web/                    # Web components and WebRTC integration for browser-based clients
 ├── lib/                        # Core reusable libraries for all modes
-│   ├── platform/               # Cross-platform abstractions (threads, mutexes, sockets, file I/O)
-│   │   ├── linux/              # Linux-specific implementations using POSIX APIs and system calls
-│   │   ├── macos/              # macOS-specific implementations using Cocoa and Darwin APIs
-│   │   ├── windows/            # Windows-specific implementations using Win32 APIs
-│   │   ├── posix/              # POSIX-compliant implementations for Unix-like systems
-│   │   └── wasm/               # WebAssembly implementations for browser environments
+│   ├── os/                     # ascii-chat-specific OS integration and WASM stubs
+│   ├── terminal/               # Terminal capability and output support
+│   ├── tui/                    # Interactive terminal UI controllers and screens
+│   ├── stats/                  # Runtime statistics and telemetry state
 │   ├── session/                # Session management UI including splash screens, status displays, and help overlays
 │   ├── crypto/                 # Encryption, authentication, SSH key parsing, and cryptographic handshakes
 │   │   ├── ssh/                # SSH key parsing, format detection, and serialization utilities
@@ -908,12 +911,15 @@ ascii-chat/
 │   │   └── query/              # Query and introspection tools for runtime analysis
 │   ├── tests/                  # Shared test utilities and fixtures for the test suite
 │   ├── uthash/                 # Hash table implementation library (vendored dependency)
-│   ├── cmake/                  # CMake support libraries and configuration helpers
 │   └── pkgconfig/              # pkg-config definition files for library installation
 ├── cmake/                      # Build system configuration and utilities
-│   ├── dependencies/           # CMake modules for finding/configuring external libraries (PCRE2, FFmpeg, etc.)
+│   ├── dependencies/           # CMake modules for finding/configuring external libraries (including libplatform)
 │   ├── targets/                # Build target definitions and custom commands for code generation
 │   ├── tools/                  # CMake utility scripts for template substitution and binary embedding
+│   ├── deps/                   # Dependency configuration and source-build helpers
+│   ├── find/                   # CMake package and program discovery helpers
+│   ├── probes/                 # Compiler and platform capability probes
+│   ├── tooling/                # Build-time tooling integration
 │   ├── platform/               # Platform-specific CMake configuration (Windows, macOS, Linux)
 │   ├── compiler/               # Compiler detection and flag configuration for Clang
 │   ├── toolchains/             # CMake toolchain files for cross-compilation and build environments
@@ -924,7 +930,7 @@ ascii-chat/
 │   └── scripts/                # CMake-invoked scripts for build-time operations
 ├── include/                    # Public header files organized by module
 │   └── ascii-chat/             # Main header directory with subdirectories mirroring lib/ structure
-├── tests/                      # Criterion test suite with unit and integration tests for all modules
+├── tests/                      # Catch2 v3 test suite with unit, contract, integration, and benchmark tests
 │   └── unit/                   # Unit tests for individual modules organized by component
 ├── docs/                       # Protocol documentation, architecture guides, and usage examples
 ├── deploy/                     # Deployment configurations for ACDS, coturn, and cloud infrastructure
@@ -951,17 +957,15 @@ ctest --test-dir build --label-regex "^unit$" --output-on-failure
 ctest --test-dir build -R "crypto_handshake" --output-on-failure
 ```
 
-**Note**: On Intel macOS (not ARM), use Docker for Criterion tests:
+**Note**: Native Catch2 tests run on Intel and ARM macOS through the same CMake/CTest workflow:
 
 ```bash
 docker-compose -f ./tests/docker-compose.yml run --rm ascii-chat-tests bash -c 'build_docker/bin/test_unit_crypto_handshake'
 ```
 
 On Linux run the tests directly.
-On Windows Criterion isn't supported.
-
-When running Criterion test binaries, run individual tests inside of a test suite by using a filter like `--filter
-"*my_test_name_filter*"` (don't forget the asterisks).
+On Windows Catch2 v3 is supported by the native Clang build. Run individual
+cases with a Catch2 expression, for example `unit_tests "[crypto]~[slow]"`.
 
 ## Development Best Practices
 
@@ -1083,7 +1087,7 @@ Requirements vary by platform and build target:
   unavailable; follow its dependency module's platform-specific checks.
 - mimalloc is controlled by `USE_MIMALLOC` and is skipped on iOS.
 - libexecinfo supplies backtrace support for musl builds.
-- Criterion is a test dependency on supported Unix platforms, not Windows.
+- Catch2 v3 is a native test dependency on Windows, Linux, and macOS.
 - Platform libraries, source-build support libraries, and codec dependencies
   are selected by the corresponding CMake modules. Native, WASM, iOS,
   static, and shared builds do not all link the same libraries.
@@ -1194,7 +1198,7 @@ cmake --build build
 ## Resources
 
 - **Crypto Protocol**: `docs/crypto.md`
-- **Platform Abstraction**: `lib/platform/README.md`
+- **Platform Abstraction**: standalone `libplatform` dependency under `deps/ascii-chat-deps/libplatform/`
 - **Build System**: `cmake/` directory
 
 ## Shared limits

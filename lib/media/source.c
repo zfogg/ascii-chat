@@ -16,7 +16,7 @@
 #include <ascii-chat/media/yt_dlp.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/video/rgba/image.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -541,7 +541,7 @@ static image_t *read_test_pattern(media_source_t *source) {
   } else if (test_pattern_resize(source->test_pattern, width, height) != ASCIICHAT_OK)
     return NULL;
   double elapsed = (double)time_elapsed_ns(source->test_start_ns, time_get_ns()) / 1000000.0;
-  if (test_pattern_render(source->test_pattern, GET_OPTION(test_pattern_index), elapsed, false) != ASCIICHAT_OK)
+  if (test_pattern_render(source->test_pattern, GET_OPTION(test_pattern_index), elapsed, true) != ASCIICHAT_OK)
     return NULL;
   return test_pattern_image(source->test_pattern);
 }

@@ -31,6 +31,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name HTTPS Key Fetching
  * @{
@@ -183,8 +187,7 @@ asciichat_error_t fetch_gitlab_gpg_keys(const char *username, char ***keys_out, 
  *
  * @ingroup keys
  */
-asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t response_len, char ***keys_out,
-                                               size_t *num_keys, size_t max_keys);
+asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t response_len, char ***keys_out, size_t *num_keys, size_t max_keys);
 
 /**
  * @brief Parse GPG keys from HTTPS response text
@@ -217,8 +220,7 @@ asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t
  *
  * @ingroup keys
  */
-asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t response_len, char ***keys_out,
-                                               size_t *num_keys, size_t max_keys);
+asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t response_len, char ***keys_out, size_t *num_keys, size_t max_keys);
 
 /** @} */
 
@@ -308,5 +310,9 @@ asciichat_error_t build_github_gpg_url(const char *username, char *url_out, size
  * @ingroup keys
  */
 asciichat_error_t build_gitlab_gpg_url(const char *username, char *url_out, size_t url_size);
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */

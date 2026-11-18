@@ -48,6 +48,10 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // =============================================================================
 // Build Type Detection
 // =============================================================================
@@ -139,3 +143,7 @@ int get_manpage_content(FILE **out_file, const char **out_content, size_t *out_l
 void release_manpage_resources(FILE *file);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

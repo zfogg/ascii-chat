@@ -28,6 +28,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // =============================================================================
 // ACIP Packet Classification Helpers
 // =============================================================================
@@ -39,8 +43,7 @@
  * @return true if packet contains media data
  */
 static inline bool acip_is_media_packet(uint16_t type) {
-  return (type == PACKET_TYPE_ASCII_FRAME || type == PACKET_TYPE_IMAGE_FRAME || type == PACKET_TYPE_AUDIO_BATCH ||
-          type == PACKET_TYPE_AUDIO_OPUS_BATCH);
+  return (type == PACKET_TYPE_ASCII_FRAME || type == PACKET_TYPE_IMAGE_FRAME || type == PACKET_TYPE_AUDIO_BATCH || type == PACKET_TYPE_AUDIO_OPUS_BATCH);
 }
 
 /**
@@ -50,10 +53,8 @@ static inline bool acip_is_media_packet(uint16_t type) {
  * @return true if packet is control/signaling
  */
 static inline bool acip_is_control_packet(uint16_t type) {
-  return (type == PACKET_TYPE_CLIENT_JOIN || type == PACKET_TYPE_CLIENT_LEAVE || type == PACKET_TYPE_STREAM_START ||
-          type == PACKET_TYPE_STREAM_STOP || type == PACKET_TYPE_PING || type == PACKET_TYPE_PONG ||
-          type == PACKET_TYPE_CLEAR_CONSOLE || type == PACKET_TYPE_SERVER_STATE ||
-          type == PACKET_TYPE_CLIENT_CAPABILITIES || type == PACKET_TYPE_PROTOCOL_VERSION);
+  return (type == PACKET_TYPE_CLIENT_JOIN || type == PACKET_TYPE_CLIENT_LEAVE || type == PACKET_TYPE_STREAM_START || type == PACKET_TYPE_STREAM_STOP || type == PACKET_TYPE_PING ||
+          type == PACKET_TYPE_PONG || type == PACKET_TYPE_CLEAR_CONSOLE || type == PACKET_TYPE_SERVER_STATE || type == PACKET_TYPE_CLIENT_CAPABILITIES || type == PACKET_TYPE_PROTOCOL_VERSION);
 }
 
 /**
@@ -73,8 +74,7 @@ static inline bool acip_is_crypto_packet(uint16_t type) {
  * @return true if packet contains text/error messages
  */
 static inline bool acip_is_message_packet(uint16_t type) {
-  return (type == PACKET_TYPE_SIZE_MESSAGE || type == PACKET_TYPE_AUDIO_MESSAGE || type == PACKET_TYPE_TEXT_MESSAGE ||
-          type == PACKET_TYPE_ERROR_MESSAGE || type == PACKET_TYPE_REMOTE_LOG);
+  return (type == PACKET_TYPE_SIZE_MESSAGE || type == PACKET_TYPE_AUDIO_MESSAGE || type == PACKET_TYPE_TEXT_MESSAGE || type == PACKET_TYPE_ERROR_MESSAGE || type == PACKET_TYPE_REMOTE_LOG);
 }
 
 // =============================================================================
@@ -143,3 +143,7 @@ static inline size_t acip_get_min_packet_size(uint16_t type) {
  * @return String name or "UNKNOWN"
  */
 const char *acip_packet_type_name(uint16_t type);
+
+#ifdef __cplusplus
+}
+#endif

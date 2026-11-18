@@ -17,6 +17,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Parse man page sections from a FILE handle
  *
@@ -68,8 +72,7 @@ asciichat_error_t manpage_parser_parse_file(FILE *f, parsed_section_t **out_sect
  *
  * @ingroup options_manpage
  */
-asciichat_error_t manpage_parser_parse_memory(const char *content, size_t content_len, parsed_section_t **out_sections,
-                                              size_t *out_count);
+asciichat_error_t manpage_parser_parse_memory(const char *content, size_t content_len, parsed_section_t **out_sections, size_t *out_count);
 
 /**
  * @brief Free parsed sections array
@@ -97,7 +100,10 @@ void manpage_parser_free_sections(parsed_section_t *sections, size_t count);
  *
  * @ingroup options_manpage
  */
-const parsed_section_t *manpage_parser_find_section(const parsed_section_t *sections, size_t count,
-                                                    const char *section_name);
+const parsed_section_t *manpage_parser_find_section(const parsed_section_t *sections, size_t count, const char *section_name);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

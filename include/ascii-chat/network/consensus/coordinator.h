@@ -23,6 +23,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Election callback function type
  *
@@ -53,9 +57,7 @@ typedef struct consensus_coordinator consensus_coordinator_t;
  * @param out_coordinator Output coordinator handle (caller must destroy)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_coordinator_create(const uint8_t my_id[SESSION_ID_SIZE],
-                                               const consensus_topology_t *topology,
-                                               consensus_election_func_t election_func, void *election_context,
+asciichat_error_t consensus_coordinator_create(const uint8_t my_id[SESSION_ID_SIZE], const consensus_topology_t *topology, consensus_election_func_t election_func, void *election_context,
                                                consensus_coordinator_t **out_coordinator);
 
 /**
@@ -94,8 +96,7 @@ asciichat_error_t consensus_coordinator_process(consensus_coordinator_t *coordin
  * @param new_topology New topology handle (not owned, must remain valid)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_coordinator_on_ring_members(consensus_coordinator_t *coordinator,
-                                                        const consensus_topology_t *new_topology);
+asciichat_error_t consensus_coordinator_on_ring_members(consensus_coordinator_t *coordinator, const consensus_topology_t *new_topology);
 
 /**
  * @brief Handle STATS_COLLECTION_START packet
@@ -108,8 +109,7 @@ asciichat_error_t consensus_coordinator_on_ring_members(consensus_coordinator_t 
  * @param deadline_ns Unix nanosecond deadline for this round
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_coordinator_on_collection_start(consensus_coordinator_t *coordinator, uint32_t round_id,
-                                                            uint64_t deadline_ns);
+asciichat_error_t consensus_coordinator_on_collection_start(consensus_coordinator_t *coordinator, uint32_t round_id, uint64_t deadline_ns);
 
 /**
  * @brief Handle STATS_UPDATE packet (metrics relayed from another participant)
@@ -123,9 +123,7 @@ asciichat_error_t consensus_coordinator_on_collection_start(consensus_coordinato
  * @param num_metrics Count of metrics in packet
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_coordinator_on_stats_update(consensus_coordinator_t *coordinator,
-                                                        const uint8_t sender_id[SESSION_ID_SIZE],
-                                                        const participant_metrics_t *metrics, uint8_t num_metrics);
+asciichat_error_t consensus_coordinator_on_stats_update(consensus_coordinator_t *coordinator, const uint8_t sender_id[SESSION_ID_SIZE], const participant_metrics_t *metrics, uint8_t num_metrics);
 
 /**
  * @brief Handle ELECTION_RESULT packet
@@ -138,9 +136,7 @@ asciichat_error_t consensus_coordinator_on_stats_update(consensus_coordinator_t 
  * @param backup_id Elected backup UUID
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_coordinator_on_election_result(consensus_coordinator_t *coordinator,
-                                                           const uint8_t host_id[SESSION_ID_SIZE],
-                                                           const uint8_t backup_id[SESSION_ID_SIZE]);
+asciichat_error_t consensus_coordinator_on_election_result(consensus_coordinator_t *coordinator, const uint8_t host_id[SESSION_ID_SIZE], const uint8_t backup_id[SESSION_ID_SIZE]);
 
 /**
  * @brief Get currently elected host
@@ -154,9 +150,7 @@ asciichat_error_t consensus_coordinator_on_election_result(consensus_coordinator
  * @param out_backup_id Output 16-byte backup UUID (caller provides buffer)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t consensus_coordinator_get_current_host(const consensus_coordinator_t *coordinator,
-                                                         uint8_t out_host_id[SESSION_ID_SIZE],
-                                                         uint8_t out_backup_id[SESSION_ID_SIZE]);
+asciichat_error_t consensus_coordinator_get_current_host(const consensus_coordinator_t *coordinator, uint8_t out_host_id[SESSION_ID_SIZE], uint8_t out_backup_id[SESSION_ID_SIZE]);
 
 /**
  * @brief Get current coordinator state
@@ -190,3 +184,7 @@ int consensus_coordinator_get_metrics_count(const consensus_coordinator_t *coord
 /** Session-owned observations; this callback must not perform blocking I/O. */
 typedef asciichat_error_t (*consensus_metrics_provider_fn)(void *, const uint8_t[16], participant_metrics_t *);
 void consensus_coordinator_set_metrics_provider(consensus_coordinator_t *, consensus_metrics_provider_fn, void *);
+
+#ifdef __cplusplus
+}
+#endif

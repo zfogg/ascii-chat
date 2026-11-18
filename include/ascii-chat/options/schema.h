@@ -16,6 +16,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "../common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include "../options/options.h"
 #include "../options/builder.h"
 
@@ -79,8 +83,7 @@ typedef struct {
   } constraints;
 
   // Mode-aware default getter (for options with mode-specific defaults)
-  const void *(*mode_default_getter)(
-      asciichat_mode_t mode); ///< Get mode-specific default value (NULL if not mode-aware)
+  const void *(*mode_default_getter)(asciichat_mode_t mode); ///< Get mode-specific default value (NULL if not mode-aware)
   /**
    * @brief Option metadata for config file parsing
    */
@@ -132,3 +135,7 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
  * @note This should be called during shutdown to prevent memory leaks
  */
 void config_schema_destroy(void);
+
+#ifdef __cplusplus
+}
+#endif

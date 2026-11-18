@@ -2998,11 +2998,11 @@
  * - Test on all platforms (Windows, Linux, macOS)
  * - Test edge cases and error conditions
  * - Verify thread safety where applicable
- * - Use Criterion test framework
+ * - Use Catch2 test framework
  *
  * Example test structure:
  * ```c
- * #include <criterion/criterion.h>
+ * #include <Catch2/Catch2.h>
  * #include "platform/foo.h"
  *
  * Test(foo, initialization) {
@@ -3042,7 +3042,7 @@
  * - pthreads Programming: https://computing.llnl.gov/tutorials/pthreads/
  *
  * **Related Topics**:
- * - @ref topic_testing "Testing with Criterion" - How to test platform code
+ * - @ref topic_testing "Testing with Catch2" - How to test platform code
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date September 2025

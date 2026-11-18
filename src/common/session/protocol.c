@@ -1,4 +1,4 @@
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/audio/limits.h>
 #include "session/protocol.h"
 #include "session/frame_validation.h"
@@ -12,8 +12,8 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/audio/audio.h>
 #include <string.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/rcu.h>
+#include <options/options.h>
+#include <options/rcu.h>
 #include <ascii-chat/network/terminal_capabilities.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/video/ascii/palette.h>

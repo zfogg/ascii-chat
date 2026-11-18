@@ -34,6 +34,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name GPG Key Parsing
  * @{
@@ -293,3 +297,7 @@ asciichat_error_t format_gpg_key_display(const char *gpg_key_text, char *output,
 asciichat_error_t extract_gpg_key_comment(const char *gpg_key_text, char *comment_out, size_t comment_size);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

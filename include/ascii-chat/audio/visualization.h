@@ -2,6 +2,10 @@
 
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
   AUDIO_VISUALIZATION_SOURCE_MIC = 0,
   AUDIO_VISUALIZATION_SOURCE_MEDIA,
@@ -24,3 +28,7 @@ void audio_visualization_submit_stereo(audio_visualization_source_t source, cons
 
 /* Read the latest samples from one source, or combine the source groups. */
 void audio_visualization_read(audio_visualization_source_t source, float *samples, size_t count);
+
+#ifdef __cplusplus
+}
+#endif

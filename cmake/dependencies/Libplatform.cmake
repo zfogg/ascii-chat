@@ -10,9 +10,9 @@
 # root.
 get_filename_component(_ascii_chat_repo_root "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 
-if(USE_MUSL OR ASCIICHAT_STATIC_DEPS)
+if(USE_MUSL OR NOT BUILD_SHARED_LIBS)
     set(_ascii_chat_libplatform_shared OFF)
-elseif(ASCIICHAT_SHARED_DEPS)
+elseif(BUILD_SHARED_LIBS)
     set(_ascii_chat_libplatform_shared ON)
 elseif(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
     set(_ascii_chat_libplatform_shared ON)
@@ -24,6 +24,19 @@ set(LIBPLATFORM_BUILD_SHARED "${_ascii_chat_libplatform_shared}" CACHE BOOL
     "Build libplatform as a shared library" FORCE)
 set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
     "Disable standalone libplatform tests in ascii-chat" FORCE)
+
+if(NOT TARGET utf8proc)
+    add_library(utf8proc STATIC
+        "${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc/utf8proc.c")
+    target_include_directories(utf8proc PUBLIC
+        "${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc")
+    target_compile_definitions(utf8proc PUBLIC UTF8PROC_STATIC=1)
+    set_target_properties(utf8proc PROPERTIES
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+        POSITION_INDEPENDENT_CODE ON)
+endif()
+set(LIBPLATFORM_UTF8PROC_TARGET utf8proc CACHE STRING
+    "utf8proc target shared with ascii-chat" FORCE)
 
 # Use the checked-out submodule directly.  Reusing a cached source tree can
 # mix headers and implementations from different libplatform revisions.
@@ -48,38 +61,92 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_ENABLE_COVERAGE)
 else()
     string(REPLACE "\\" "/" _ascii_chat_source_root "${CMAKE_SOURCE_DIR}")
 endif()
-target_compile_definitions(libplatform-objects PRIVATE
+target_compile_definitions(libplatform PRIVATE
     LIBPLATFORM_SOURCE_ROOT="${_ascii_chat_source_root}")
-target_include_directories(libplatform-objects PRIVATE
-    ${_ascii_chat_repo_root}/include
-    ${_ascii_chat_repo_root}/deps
-    ${_ascii_chat_repo_root}/deps/ascii-chat-deps/yyjson/src
-    ${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc)
+if(USE_MUSL AND TARGET libplatform-objects)
+    target_compile_definitions(libplatform-objects PRIVATE USE_MUSL=1)
+endif()
+if(UNIX AND NOT APPLE)
+    foreach(_libplatform_target IN ITEMS libplatform libplatform-objects)
+        if(TARGET ${_libplatform_target})
+            target_compile_definitions(${_libplatform_target} PRIVATE _GNU_SOURCE _XOPEN_SOURCE=700)
+        endif()
+    endforeach()
+endif()
+
+# Coverage is an application-level instrumentation option.  Do not propagate
+# its profile runtime into the shared libplatform DSO: executables own the
+# coverage runtime and export its symbols, while DSOs must remain
+# uninstrumented or lld rejects their unresolved gcov references.
+if(ASCIICHAT_ENABLE_COVERAGE)
+    foreach(_libplatform_coverage_target IN ITEMS libplatform libplatform-objects)
+        if(TARGET ${_libplatform_coverage_target})
+            target_compile_options(${_libplatform_coverage_target} PRIVATE
+                -fno-profile-instr-generate
+                -fno-profile-arcs
+                -fno-test-coverage)
+        endif()
+    endforeach()
+    if(TARGET libplatform)
+        target_link_options(libplatform PRIVATE
+            -fno-profile-instr-generate
+            -fno-profile-arcs
+            -fno-test-coverage)
+    endif()
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
+    target_compile_definitions(libplatform PRIVATE DEBUG_MEMORY)
+endif()
 if(LIBSODIUM_INCLUDE_DIRS)
-    target_include_directories(libplatform-objects PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
+    foreach(_libplatform_target IN ITEMS libplatform libplatform-objects)
+        if(TARGET ${_libplatform_target})
+            target_include_directories(${_libplatform_target} PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
+        endif()
+    endforeach()
 endif()
 if(EMSCRIPTEN)
-    target_compile_options(libplatform-objects PRIVATE -pthread -matomics -mbulk-memory)
+    foreach(_libplatform_target IN ITEMS libplatform libplatform-objects)
+        if(TARGET ${_libplatform_target})
+            target_compile_options(${_libplatform_target} PRIVATE -pthread -matomics -mbulk-memory)
+            # The current libplatform WASM compatibility layer still uses a
+            # small set of ascii-chat error and utility declarations. Keep
+            # those headers private to this transitional WASM build boundary;
+            # native libplatform targets remain independent of ascii-chat.
+            target_include_directories(${_libplatform_target} PRIVATE
+                "${_ascii_chat_repo_root}/include"
+                "${_ascii_chat_repo_root}/deps"
+                "${_ascii_chat_repo_root}/deps/ascii-chat-deps/yyjson/src"
+                "${_ascii_chat_repo_root}/deps/ascii-chat-deps/utf8proc")
+        endif()
+    endforeach()
+endif()
+
+# Clang/lld can infer the exported data section as read-only when a Windows
+# DLL exports mutable C globals (notably getopt's optind/optarg state). Keep
+# the section writable so both the CLI and Catch2 tests can reset getopt.
+if(WIN32 AND TARGET libplatform)
+    target_link_options(libplatform PRIVATE "LINKER:SHELL:/SECTION:.data,RW")
 endif()
 
 
 # libplatform's POSIX helpers use interfaces such as fileno() that musl hides
 # from strict C mode unless the feature-test macros are enabled on the target.
 if(UNIX AND NOT APPLE)
-    target_compile_definitions(libplatform-objects PRIVATE _GNU_SOURCE)
+    target_compile_definitions(libplatform PRIVATE _GNU_SOURCE)
     if(DEFINED KERNEL_HEADERS_DIR AND EXISTS "${KERNEL_HEADERS_DIR}")
-        target_include_directories(libplatform-objects PRIVATE "${KERNEL_HEADERS_DIR}")
+        target_include_directories(libplatform PRIVATE "${KERNEL_HEADERS_DIR}")
     endif()
     if(DEFINED FONTCONFIG_INCLUDE_DIRS)
-        target_include_directories(libplatform-objects PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
+        target_include_directories(libplatform PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
     endif()
     if(DEFINED LIBEXECINFO_INCLUDE_DIRS)
-        target_include_directories(libplatform-objects PRIVATE ${LIBEXECINFO_INCLUDE_DIRS})
+        target_include_directories(libplatform PRIVATE ${LIBEXECINFO_INCLUDE_DIRS})
     endif()
 endif()
 
 if(FONTCONFIG_LINK_LIBRARIES)
-    target_include_directories(libplatform-objects PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
+    target_include_directories(libplatform PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
     target_link_libraries(libplatform PUBLIC ${FONTCONFIG_LINK_LIBRARIES})
 endif()
 

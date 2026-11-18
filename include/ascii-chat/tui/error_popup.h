@@ -4,6 +4,10 @@
 #include <ascii-chat/ui/frame_buffer.h>
 #include <libplatform/terminal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Error notifications are an overlay, independent of the selected application screen. */
 bool ui_error_popup_visible(void);
 uint64_t ui_error_popup_revision(void);
@@ -17,3 +21,7 @@ void ui_error_popup_reset(void);
 void ui_error_popup_preserve(int fd, terminal_size_t size);
 /** Write preserved terminal output after shutdown diagnostics, without allocating or using options. */
 void ui_error_popup_flush(void);
+
+#ifdef __cplusplus
+}
+#endif

@@ -19,6 +19,10 @@
 #include <libplatform/terminal.h>
 #include <ascii-chat/ui/frame_buffer.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Forward declaration of session_log_buffer_t */
 typedef struct session_log_buffer session_log_buffer_t;
 
@@ -74,8 +78,7 @@ typedef struct {
  */
 void terminal_screen_render(const terminal_screen_config_t *config);
 /** Compose the existing status/splash UI without terminal I/O. */
-void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const terminal_screen_config_t *config,
-                             session_log_buffer_t *logs);
+void terminal_screen_compose(frame_buffer_t *output, terminal_size_t size, const terminal_screen_config_t *config, session_log_buffer_t *logs);
 
 /**
  * @brief Clean up terminal screen resources
@@ -153,3 +156,7 @@ bool terminal_screen_logs_help_too_small(void);
 
 /** Recompose log-viewer help above modal error notifications. */
 void terminal_screen_logs_render_help(frame_buffer_t *output, terminal_size_t size);
+
+#ifdef __cplusplus
+}
+#endif

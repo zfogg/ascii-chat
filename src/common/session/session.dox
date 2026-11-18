@@ -748,7 +748,7 @@
  * - **Cryptography**: lib/crypto/ (encryption implementation)
  * - **Network Protocol**: lib/network/ (ACIP packet protocol)
  * - **Media**: lib/media/ (FFmpeg/yt-dlp integration)
- * - **Platform**: lib/platform/ (cross-platform abstractions)
+ * - **Platform**: libplatform (cross-platform abstractions)
  *
  * @{
  * @}

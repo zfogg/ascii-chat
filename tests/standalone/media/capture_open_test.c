@@ -6,17 +6,17 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/audio/recording.h>
-#include <ascii-chat/options/rcu.h>
+#include <options/rcu.h>
 #include <libplatform/thread.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/face_follow_image.h>
 #include <math.h>
 
-#define CHECK(expr)                                                                                                    \
-  do {                                                                                                                 \
-    if (!(expr))                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                   \
+#define CHECK(expr)                                                  \
+  do {                                                               \
+    if (!(expr))                                                     \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr); \
   } while (0)
 static audio_context_t audio;
 static bool audio_running, fail_audio_start;
@@ -50,15 +50,14 @@ static asciichat_error_t test_audio_start(audio_context_t *ctx) {
   return ASCIICHAT_OK;
 }
 static void test_destroy(media_source_t *source) {
-  CHECK(!audio_running || audio.capture_media_source != source);
+  CHECK((!audio_running || audio.capture_media_source != source));
   ++destroyed;
   media_source_destroy(source);
 }
 static void test_face_destroy(face_follow_image_t *context) {
   CHECK(context == NULL);
 }
-static image_t *test_face_process(face_follow_image_t **context, image_t *source, double now, bool enabled, bool debug,
-                                  int width, int height) {
+static image_t *test_face_process(face_follow_image_t **context, image_t *source, double now, bool enabled, bool debug, int width, int height) {
   (void)context;
   (void)now;
   (void)enabled;
@@ -93,8 +92,7 @@ static void finish_load(session_capture_ctx_t *ctx) {
 }
 #ifndef NDEBUG
 static mutex_t *prefetch_mutex, *recording_mutex;
-static void find_prefetch(uintptr_t key, uint64_t generation, const char *name, const char *type, const char *file,
-                          int line, void *data) {
+static void find_prefetch(uintptr_t key, uint64_t generation, const char *name, const char *type, const char *file, int line, void *data) {
   (void)generation;
   (void)file;
   (void)line;
@@ -128,7 +126,7 @@ static void check_recording_fast_path(void) {
 #ifndef NDEBUG
   size_t required = 0;
   bool complete = false;
-  CHECK(named_registry_try_snapshot(SIZE_MAX, &required, &complete, find_prefetch, NULL) == ASCIICHAT_OK && complete);
+  CHECK((named_registry_try_snapshot(SIZE_MAX, &required, &complete, find_prefetch, NULL) == ASCIICHAT_OK && complete));
   CHECK(recording_mutex);
   uint64_t locks = recording_mutex->lock_count;
 #endif
@@ -167,7 +165,7 @@ static void check_recording_fast_path(void) {
 
 static void check_atomic_pause(void) {
   media_source_t *source = media_source_create(MEDIA_SOURCE_TEST, NULL);
-  CHECK(source && !media_source_is_paused(source));
+  CHECK((source && !media_source_is_paused(source)));
   media_source_pause(source);
   CHECK(media_source_is_paused(source));
   CHECK(media_source_read_video(source) == NULL);
@@ -246,7 +244,7 @@ static void check_paused_recording(const char *path) {
   media_source_pause(ctx->source);
   for (unsigned i = 0; i < 3; ++i) {
     frame = session_capture_read_frame(ctx);
-    CHECK(frame && frame->pixels);
+    CHECK((frame && frame->pixels));
     CHECK(session_capture_frame_serial(ctx) == serial);
     CHECK(!session_capture_at_end(ctx));
   }
@@ -270,7 +268,7 @@ static unsigned drain_video(ffmpeg_decoder_t *decoder) {
     if (status == FFMPEG_FRAME_EOF)
       return frames;
     if (status == FFMPEG_FRAME_READY) {
-      CHECK(frame && frame->pixels);
+      CHECK((frame && frame->pixels));
       ++frames;
     } else {
       platform_sleep_ms(1);
@@ -286,7 +284,7 @@ static void check_prefetch_notifications(const char *path) {
   size_t required = 0;
   bool complete = false;
   prefetch_mutex = NULL;
-  CHECK(named_registry_try_snapshot(SIZE_MAX, &required, &complete, find_prefetch, NULL) == ASCIICHAT_OK && complete);
+  CHECK((named_registry_try_snapshot(SIZE_MAX, &required, &complete, find_prefetch, NULL) == ASCIICHAT_OK && complete));
   CHECK(prefetch_mutex);
   uint64_t locks = prefetch_mutex->lock_count;
 #endif
@@ -325,7 +323,7 @@ static void check_prefetch_notifications(const char *path) {
     held = ffmpeg_decoder_read_video_frame(decoder);
     platform_sleep_ms(1);
   }
-  CHECK(held && held->pixels);
+  CHECK((held && held->pixels));
   held->pixels[0].r ^= 0xff;
   rgb_pixel_t retained = held->pixels[0];
   CHECK(ffmpeg_decoder_seek_to_timestamp(decoder, 0) == ASCIICHAT_OK);
@@ -409,9 +407,9 @@ int main(int argc, char **argv) {
   media_source_t *initial = ctx->source;
   CHECK(session_capture_open_media(ctx, argv[1]) == ASCIICHAT_OK);
   finish_load(ctx);
-  CHECK(ctx->source != initial && stops == 1 && starts == 1);
-  CHECK(audio.capture_media_source == ctx->source && audio_running && audio.playback_only);
-  CHECK(!ctx->last_media_frame && !ctx->face_follow && ctx->next_frame_deadline_ns == 0);
+  CHECK((ctx->source != initial && stops == 1 && starts == 1));
+  CHECK((audio.capture_media_source == ctx->source && audio_running && audio.playback_only));
+  CHECK((!ctx->last_media_frame && !ctx->face_follow && ctx->next_frame_deadline_ns == 0));
   CHECK(atomic_load_bool(&ctx->awaiting_presentation));
   uint64_t epoch = session_capture_source_epoch(ctx);
   CHECK(epoch > 0);
@@ -426,24 +424,24 @@ int main(int argc, char **argv) {
   session_capture_complete_open(ctx, epoch);
   CHECK(ctx->loader_created);
   finish_load(ctx);
-  CHECK(ctx->source == active && stops == 1);
+  CHECK((ctx->source == active && stops == 1));
   CHECK(session_capture_open_media(ctx, "cancel") == ASCIICHAT_OK);
   CHECK(session_capture_cancel_open(ctx));
   finish_load(ctx);
-  CHECK(ctx->source == active && audio_running && stops == 1);
+  CHECK((ctx->source == active && audio_running && stops == 1));
   for (unsigned i = 0; i < 6; ++i) {
     CHECK(session_capture_open_media(ctx, argv[1]) == ASCIICHAT_OK);
     finish_load(ctx);
-    CHECK(audio.capture_media_source == ctx->source && audio_running);
+    CHECK((audio.capture_media_source == ctx->source && audio_running));
   }
-  CHECK(stops == 7 && starts == 7);
+  CHECK((stops == 7 && starts == 7));
   CHECK(destroyed >= 7);
   active = ctx->source;
   fail_audio_start = true;
   CHECK(session_capture_open_media(ctx, argv[1]) == ASCIICHAT_OK);
   finish_load(ctx);
-  CHECK(ctx->source == active && audio.capture_media_source == active && audio_running);
-  CHECK(starts == 9 && stops == 9);
+  CHECK((ctx->source == active && audio.capture_media_source == active && audio_running));
+  CHECK((starts == 9 && stops == 9));
   // A playlist uses the same loader and audio handoff as a single replacement.
   // Revisiting an item creates a fresh decoder at the start.
   media_playlist_t list = {0};
@@ -453,28 +451,28 @@ int main(int argc, char **argv) {
   CHECK(media_playlist_format(&list, quoted, sizeof(quoted)) == ASCIICHAT_OK);
   CHECK(session_capture_open_playlist(ctx, quoted) == ASCIICHAT_OK);
   finish_load(ctx);
-  CHECK(ctx->playlist.count == 2 && ctx->playlist.index == 0);
+  CHECK((ctx->playlist.count == 2 && ctx->playlist.index == 0));
   active = ctx->source;
   CHECK(session_capture_open_media(ctx, "fail") == ASCIICHAT_OK);
   finish_load(ctx);
-  CHECK(!ctx->advance_failed && ctx->playlist.count == 2 && ctx->playlist.index == 0);
+  CHECK((!ctx->advance_failed && ctx->playlist.count == 2 && ctx->playlist.index == 0));
   CHECK(session_capture_open_media(ctx, "cancel") == ASCIICHAT_OK);
   CHECK(session_capture_cancel_open(ctx));
   finish_load(ctx);
-  CHECK(!ctx->advance_failed && ctx->playlist.index == 0);
+  CHECK((!ctx->advance_failed && ctx->playlist.index == 0));
   CHECK(capture_load_playlist(ctx, &ctx->playlist, 1, true) == ASCIICHAT_OK);
   finish_load(ctx);
-  CHECK(ctx->playlist.index == 1 && ctx->source != active);
+  CHECK((ctx->playlist.index == 1 && ctx->source != active));
   CHECK(media_source_get_position(ctx->source) < 0.1);
   CHECK(capture_load_playlist(ctx, &ctx->playlist, 0, false) == ASCIICHAT_OK);
   finish_load(ctx);
-  CHECK(ctx->playlist.index == 0 && media_source_get_position(ctx->source) < 0.1);
+  CHECK((ctx->playlist.index == 0 && media_source_get_position(ctx->source) < 0.1));
   media_playlist_t bad_next = ctx->playlist;
   snprintf(bad_next.paths[1], sizeof(bad_next.paths[1]), "%s", "fail");
   active = ctx->source;
   CHECK(capture_load_playlist(ctx, &bad_next, 1, true) == ASCIICHAT_OK);
   finish_load(ctx);
-  CHECK(ctx->advance_failed && ctx->source == active && ctx->playlist.index == 0);
+  CHECK((ctx->advance_failed && ctx->source == active && ctx->playlist.index == 0));
   session_capture_set_audio_context(ctx, NULL);
   audio_running = false;
   audio.capture_media_source = NULL;

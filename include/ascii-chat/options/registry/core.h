@@ -15,32 +15,40 @@
 /* Existing buffer budgets in bytes, including NUL for text storage. */
 #define OPTIONS_REGISTRY_CAPACITY 2048
 
-#include "common.h"
+#include <ascii-chat/options/registry/common.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/builder.h>
 #include <stdbool.h>
 #include <stddef.h>
 
-// ============================================================================
-// Global Registry Data (defined in registry.c)
-// ============================================================================
+#ifdef __cplusplus
+             extern "C" {
+#endif
 
-// Unified view of all registry entries
-extern registry_entry_t g_options_registry[OPTIONS_REGISTRY_CAPACITY];
-extern size_t g_registry_size;
-extern bool g_metadata_populated;
+  // ============================================================================
+  // Global Registry Data (defined in registry.c)
+  // ============================================================================
 
-// Category builders array - maps categories to their entry arrays
-extern category_builder_t g_category_builders[];
+  // Unified view of all registry entries
+  extern registry_entry_t g_options_registry[OPTIONS_REGISTRY_CAPACITY];
+  extern size_t g_registry_size;
+  extern bool g_metadata_populated;
 
-// ============================================================================
-// Internal Helper Functions (implemented in core.c)
-// ============================================================================
+  // Category builders array - maps categories to their entry arrays
+  extern category_builder_t g_category_builders[];
 
-void registry_init_from_builders(void);
-asciichat_error_t registry_validate_unique_options(void);
-void registry_init_size(void);
-const registry_entry_t *registry_find_entry_by_name(const char *long_name);
-const registry_entry_t *registry_find_entry_by_short(char short_name);
-option_descriptor_t registry_entry_to_descriptor(const registry_entry_t *entry);
-bool registry_entry_applies_to_mode(const registry_entry_t *entry, asciichat_mode_t mode, bool for_binary_help);
+  // ============================================================================
+  // Internal Helper Functions (implemented in core.c)
+  // ============================================================================
+
+  void registry_init_from_builders(void);
+  asciichat_error_t registry_validate_unique_options(void);
+  void registry_init_size(void);
+  const registry_entry_t *registry_find_entry_by_name(const char *long_name);
+  const registry_entry_t *registry_find_entry_by_short(char short_name);
+  option_descriptor_t registry_entry_to_descriptor(const registry_entry_t *entry);
+  bool registry_entry_applies_to_mode(const registry_entry_t *entry, asciichat_mode_t mode, bool for_binary_help);
+
+#ifdef __cplusplus
+}
+#endif

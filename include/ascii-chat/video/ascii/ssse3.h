@@ -19,6 +19,10 @@
 #include <stdbool.h>
 #include <ascii-chat/video/rgba/image.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if SIMD_SUPPORT_SSSE3
 
 /**
@@ -70,4 +74,8 @@ char *rgb_to_16color_halfblocks_ssse3(const uint8_t *rgb, int width, int height,
 
 #if SIMD_SUPPORT_SSSE3
 char *rgb_to_halfblocks_ssse3(const uint8_t *rgb, int width, int height, int stride, const char *palette);
+#endif
+
+#ifdef __cplusplus
+}
 #endif

@@ -1,5 +1,5 @@
 /**
- * @file platform/api.h
+ * @file api.h
  * @brief DLL export/import macros for cross-platform symbol visibility
  * @ingroup platform
  * @addtogroup platform
@@ -37,6 +37,10 @@
  */
 
 #pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifdef _WIN32
 #ifdef BUILDING_ASCIICHAT_DLL
@@ -83,3 +87,7 @@
 #endif
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

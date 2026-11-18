@@ -19,7 +19,7 @@ def main():
         return fn
 
 
-    values = function("options_registry_get_enum_values", c.POINTER(c.c_char_p),
+    values = function("registry_get_enum_values", c.POINTER(c.c_char_p),
                       c.c_char_p, c.c_void_p, c.POINTER(c.c_size_t))
     suggest = function("asciichat_suggest_enum_value", c.c_char_p, c.c_char_p, c.c_char_p)
     is_enum = function("options_is_enum_option", c.c_bool, c.c_char_p)

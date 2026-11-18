@@ -22,7 +22,9 @@ with tempfile.TemporaryDirectory(prefix="ascii-chat-quic-tls-") as temporary:
         "cmake_minimum_required(VERSION 3.20)\n"
         "project(quic_tls_probe C)\n"
         "add_library(OpenSSL::SSL INTERFACE IMPORTED)\n"
+        "add_library(OpenSSL::Crypto INTERFACE IMPORTED)\n"
         'set_target_properties(OpenSSL::SSL PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/fake")\n'
+        'set_target_properties(OpenSSL::Crypto PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/fake")\n'
         f'include("{module}")\n'
         "asciichat_check_quic_tls()\n",
         encoding="utf-8",

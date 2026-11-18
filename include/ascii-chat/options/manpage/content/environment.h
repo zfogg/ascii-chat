@@ -13,6 +13,10 @@
 #include <stdio.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Generate ENVIRONMENT VARIABLES section content
  *
@@ -41,8 +45,7 @@ char *manpage_content_generate_environment(const options_config_t *config);
  *
  * @ingroup options_manpage
  */
-char *manpage_content_generate_environment_with_manual(const options_config_t *config, const char **manual_vars,
-                                                       size_t manual_count, const char **manual_descs);
+char *manpage_content_generate_environment_with_manual(const options_config_t *config, const char **manual_vars, size_t manual_count, const char **manual_descs);
 
 /**
  * @brief Free generated environment content
@@ -52,3 +55,7 @@ char *manpage_content_generate_environment_with_manual(const options_config_t *c
  * @ingroup options_manpage
  */
 void manpage_content_free_environment(char *content);
+
+#ifdef __cplusplus
+}
+#endif

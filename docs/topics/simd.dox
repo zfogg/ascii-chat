@@ -43,7 +43,7 @@
  * ## Tests
  *
  * The standalone suite uses the production detector, selector, and kernels without
- * requiring the application's media dependencies or Criterion:
+ * requiring the application's media dependencies or Catch2:
  *
  * ```sh
  * cmake -S tests/simd -B build_simd -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Release

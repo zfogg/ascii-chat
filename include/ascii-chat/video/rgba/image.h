@@ -57,6 +57,10 @@
 #include <ascii-chat/common.h>
 #include <libplatform/terminal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Keep dependency structures at their normal alignment; only image types are packed.
 #ifdef _WIN32
 #pragma pack(push, 1)
@@ -128,7 +132,7 @@ typedef struct {
  *
  * @ingroup video
  */
-typedef struct {
+typedef struct image {
   int w;               ///< Image width in pixels (must be > 0)
   int h;               ///< Image height in pixels (must be > 0)
   rgb_pixel_t *pixels; ///< Pixel data array (width * height RGB pixels, row-major order)
@@ -613,6 +617,10 @@ char *rgb_to_ansi_bg(int r, int g, int b);
 void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
 
 #ifdef _WIN32
 #pragma pack(pop)

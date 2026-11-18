@@ -21,7 +21,7 @@ G('settings','Change controls & settings','Control & recovery','CLI + browser','
  'Separate local rendering preferences from values that must reach the host, and find device/private-link state.',
  'If a widget updates without changing output, follow its state-to-WASM setter and any capability/settings packet. URL state alone does not prove C has applied the value.',[
  C('resolve','Resolve values','Native options and browser URL state enter different adapters before C runtime use.',
- P(L+'options/options.c','options_init','Resolve native configuration','Mode defaults, configuration/environment values, explicit arguments, validation, and publication happen in the option system.',L+'options/config/config.c'),
+ P(L+'options/core.c','options_init','Resolve native configuration','Mode defaults, configuration/environment values, explicit arguments, validation, and publication happen in the option system.',L+'options/config/config.c'),
  P(W+'hooks/useUrlState.ts','useUrlState','Manage URL-backed settings','Shared links and refresh restoration are explicit state operations. Restoring a link does not grant device permission again.',W+'utils/urlState.ts'),
  P(W+'utils/urlState.ts',None,'Serialize shareable state','The utility omits default scalar values and handles dedicated fragment fields for private values. Inspect it before changing invitation links.')),
  C('apply','Apply live settings','React values become C options through explicit adapters.',

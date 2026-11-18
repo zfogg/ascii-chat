@@ -2,13 +2,17 @@
 
 #include <ascii-chat/common.h>
 #include <libplatform/atomic.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <libplatform/filesystem.h>
 #include <libplatform/thread.h>
 #include <libplatform/mutex.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define HTTP_RENDERER_MAX_OUTPUT (8u * 1024u * 1024u)
 
@@ -143,3 +147,7 @@ void http_renderer_reap(http_renderer_t *renderer, bool all);
 void http_renderer_stop(http_renderer_t *renderer);
 void http_renderer_destroy(http_renderer_t **renderer);
 void http_renderer_job_wait(http_renderer_job_t *job);
+
+#ifdef __cplusplus
+}
+#endif

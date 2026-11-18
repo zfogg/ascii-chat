@@ -1,0 +1,12 @@
+{
+  "version": "{{ .Env.VERSION }}",
+  "description": "The reusable C library behind ascii-chat: encrypted ACIP networking, media, audio, rendering, and cross-platform terminal primitives.",
+  "homepage": "https://ascii-chat.com",
+  "license": "MIT",
+  "architecture": {
+    "64bit": { "url": "{{ .Env.LIB_X64_URL }}", "hash": "{{ .Env.LIB_X64_SHA256 }}" },
+    "arm64": { "url": "{{ .Env.LIB_ARM64_URL }}", "hash": "{{ .Env.LIB_ARM64_SHA256 }}" }
+  },
+  "extract_dir": "libasciichat",
+  "checkver": { "github": "https://github.com/{{ .Env.REPOSITORY }}" }
+}

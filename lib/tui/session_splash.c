@@ -9,7 +9,7 @@
 #include <ascii-chat/tui/invitation.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/tui/update_banner.h>
 #include <ascii-chat/util/string.h>

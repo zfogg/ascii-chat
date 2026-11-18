@@ -3,7 +3,7 @@
 #include "protocol.h"
 #include "main.h"
 #include <ascii-chat/network/acip/send.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/util/time.h>
 
 static asciichat_error_t server_connection_open(network_connection_t *connection, void *arg) {

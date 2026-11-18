@@ -30,11 +30,11 @@
 #include <libplatform/system.h>   // For FILE_PERM_* constants
 #include <libplatform/terminal.h> // For platform_isatty()
 #include <libplatform/filesystem.h>
-#include <libplatform/question.h>       // For platform_prompt_yes_no
-#include <ascii-chat/options/options.h> // For opt_snapshot_mode
+#include <libplatform/question.h> // For platform_prompt_yes_no
+#include <options/options.h>      // For opt_snapshot_mode
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
-#include <defer.h>
+#include <recast/defer.h>
 
 // Global variable to cache the expanded known_hosts path
 static char *g_known_hosts_path_cache = NULL;

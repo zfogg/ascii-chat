@@ -99,17 +99,17 @@ class CoverageReportTests(unittest.TestCase):
                     self.assertEqual(coverage_report.find_llvm_cov(self.root), str(llvm_cov))
 
     @unittest.skipUnless(shutil.which("clang") and shutil.which("cmake") and shutil.which("ninja"), "Requires CMake, Ninja and Clang")
-    def test_project_ipo_defaults_preserve_criterion_target_opt_out(self):
+    def test_project_ipo_defaults_preserve_Catch2_target_opt_out(self):
         module = Path(__file__).resolve().parents[2] / "cmake/compiler/ProjectSettings.cmake"
         (self.root / "cmake/compiler").mkdir(parents=True)
         shutil.copy(module.parent / "CPUDetection.cmake", self.root / "cmake/compiler/CPUDetection.cmake")
         (self.root / "main.c").write_text("int main(void) { return 0; }\n")
         (self.root / "tests").mkdir()
         (self.root / "tests/CMakeLists.txt").write_text(
-            'add_executable(criterion_fixture ../main.c)\n'
-            'set_target_properties(criterion_fixture PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF '
+            'add_executable(Catch2_fixture ../main.c)\n'
+            'set_target_properties(Catch2_fixture PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF '
             'INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF)\n'
-            'set_property(TARGET criterion_fixture PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)\n'
+            'set_property(TARGET Catch2_fixture PROPERTY ASCIICHAT_KEEP_TEST_REGISTRATION TRUE)\n'
             'add_executable(general_opt_out ../main.c)\n'
             'set_property(TARGET general_opt_out PROPERTY INTERPROCEDURAL_OPTIMIZATION OFF)\n'
         )
@@ -123,8 +123,8 @@ class CoverageReportTests(unittest.TestCase):
             'asciichat_finalize_project_settings()\n'
             'get_target_property(normal_release ascii-chat INTERPROCEDURAL_OPTIMIZATION_RELEASE)\n'
             'get_target_property(normal_relwithdebinfo ascii-chat INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO)\n'
-            'get_target_property(test_release criterion_fixture INTERPROCEDURAL_OPTIMIZATION_RELEASE)\n'
-            'get_target_property(test_relwithdebinfo criterion_fixture INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO)\n'
+            'get_target_property(test_release Catch2_fixture INTERPROCEDURAL_OPTIMIZATION_RELEASE)\n'
+            'get_target_property(test_relwithdebinfo Catch2_fixture INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO)\n'
             'get_target_property(general general_opt_out INTERPROCEDURAL_OPTIMIZATION)\n'
             'file(WRITE "${CMAKE_BINARY_DIR}/ipo.txt" '
             '"${normal_release};${normal_relwithdebinfo};${test_release};${test_relwithdebinfo};${general}")\n'
@@ -133,7 +133,7 @@ class CoverageReportTests(unittest.TestCase):
         subprocess.run(["cmake", "-S", str(self.root), "-B", str(build), "-G", "Ninja",
                         f"-DCMAKE_C_COMPILER={shutil.which('clang')}", "-DCMAKE_BUILD_TYPE=Release"], check=True)
         self.assertEqual((build / "ipo.txt").read_text(), "TRUE;TRUE;OFF;OFF;OFF")
-        for target, stripped in (("ascii-chat", True), ("criterion_fixture", False)):
+        for target, stripped in (("ascii-chat", True), ("Catch2_fixture", False)):
             commands = subprocess.check_output(["ninja", "-C", str(build), "-t", "commands", target], text=True)
             self.assertEqual("-Wl,--gc-sections" in commands, stripped)
 
@@ -186,14 +186,14 @@ class CoverageReportTests(unittest.TestCase):
         self.assertEqual((build / "settings.txt").read_text(), "ON;Debug")
         self.assertEqual(preserved.read_text(), "keep")
 
-    @unittest.skipUnless(shutil.which("clang") and shutil.which("cmake") and shutil.which("ninja") and shutil.which("pkg-config"), "Requires CMake, Ninja, Clang and OpenSSL development files")
+    @unittest.skipUnless(shutil.which("clang") and shutil.which("cmake") and shutil.which("ninja") and shutil.which("pkg-config") and sys.platform != "win32", "Requires CMake, Ninja, Clang and OpenSSL development files")
     def test_missing_cached_openssl_paths_are_rediscovered_and_link(self):
         module = Path(__file__).resolve().parents[2] / "cmake/deps/OpenSSL.cmake"
         (self.root / "main.c").write_text('#include <openssl/crypto.h>\nint main(void) { return OpenSSL_version_num() == 0; }\n')
         (self.root / "CMakeLists.txt").write_text(
             'cmake_minimum_required(VERSION 3.20)\nproject(fixture C)\n'
-            'set(ASCIICHAT_SHARED_DEPS ON)\n'
             f'include("{module.as_posix()}")\n'
+            'find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto)\n'
             'add_executable(fixture main.c)\n'
             'target_link_libraries(fixture OpenSSL::SSL OpenSSL::Crypto)\n'
         )
@@ -232,7 +232,7 @@ class CoverageReportTests(unittest.TestCase):
             if enabled == "OFF":
                 self.assertEqual(output, "lib/main.c")
             else:
-                self.assertEqual(output, str(source))
+                self.assertEqual(output.replace("\\", "/"), source.as_posix())
                 coverage_report.generate(self.root, build, self.report)
                 entry = ET.parse(self.report).find('.//class[@filename="lib/main.c"]')
                 self.assertIsNotNone(entry)

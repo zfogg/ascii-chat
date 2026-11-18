@@ -13,6 +13,10 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <libplatform/filesystem.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // ── Platform renderer ─────────────────────────────────────────────────────
 
 typedef struct terminal_renderer_s terminal_renderer_t;
@@ -66,8 +70,7 @@ typedef struct render_file_ctx_s render_file_ctx_t;
 
 // Create: allocates renderer + FFmpeg encoder.
 // cols/rows from terminal size; fps/theme from GET_OPTION().
-asciichat_error_t render_file_create(const char *output_path, int cols, int rows, int fps, int theme,
-                                     render_file_ctx_t **out);
+asciichat_error_t render_file_create(const char *output_path, int cols, int rows, int fps, int theme, render_file_ctx_t **out);
 
 // Feed one ANSI frame string — renders pixels then writes to encoder, synced with audio.
 // captured_ns is the wall-clock timestamp (in nanoseconds) when the frame was captured
@@ -85,3 +88,7 @@ void render_file_begin_drain(render_file_ctx_t *ctx, uint64_t total, bool total_
 
 // Flush encoder and close file.  Always frees *ctx regardless of error.
 asciichat_error_t render_file_destroy(render_file_ctx_t *ctx);
+
+#ifdef __cplusplus
+}
+#endif

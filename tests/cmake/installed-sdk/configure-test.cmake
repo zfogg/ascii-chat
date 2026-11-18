@@ -13,7 +13,7 @@ file(MAKE_DIRECTORY "${_original}/include/ascii-chat" "${_original}/lib/cmake/as
 set(ASCIICHAT_LIB_VERSION 0.3.0)
 set(PROJECT_VERSION 0.13.5)
 set(USE_MIMALLOC OFF)
-set(ASCIICHAT_SHARED_DEPS ON)
+set(BUILD_SHARED_LIBS ON)
 if(WIN32)
     set(CMAKE_SHARED_LIBRARY_SUFFIX .dll)
     file(TOUCH "${_original}/bin/asciichat.dll" "${_original}/lib/asciichat.lib")

@@ -5,10 +5,10 @@
 #include <shellapi.h>
 #include <wchar.h>
 
-#define CHECK(expr)                                                                                                                                                                                    \
-  do {                                                                                                                                                                                                 \
-    if (!(expr))                                                                                                                                                                                       \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr);                                                                                                                                   \
+#define CHECK(expr)                                                  \
+  do {                                                               \
+    if (!(expr))                                                     \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expr); \
   } while (0)
 static bool opened, files;
 static UINT file_count;
@@ -61,20 +61,20 @@ int main(void) {
   char output[1024];
   text = L"https://example.com/video.mp4";
   CHECK(platform_clipboard_read(output, sizeof(output)) == ASCIICHAT_OK);
-  CHECK(strcmp(output, "https://example.com/video.mp4") == 0 && !opened);
+  CHECK((strcmp(output, "https://example.com/video.mp4") == 0 && !opened));
   text = L"C:\\Videos\\caf\u00e9 movie.mp4";
   files = true;
   file_count = 1;
   CHECK(platform_clipboard_read(output, sizeof(output)) == ASCIICHAT_OK);
-  CHECK(strcmp(output, "\"C:\\Videos\\caf\xc3\xa9 movie.mp4\"") == 0 && !opened);
+  CHECK((strcmp(output, "\"C:\\Videos\\caf\xc3\xa9 movie.mp4\"") == 0 && !opened));
   file_count = 2;
-  CHECK(platform_clipboard_read(output, sizeof(output)) == ASCIICHAT_OK && !opened);
+  CHECK((platform_clipboard_read(output, sizeof(output)) == ASCIICHAT_OK && !opened));
   CHECK(strchr(output, '\n'));
   files = false;
-  CHECK(platform_clipboard_read(output, 4) != ASCIICHAT_OK && !opened);
+  CHECK((platform_clipboard_read(output, 4) != ASCIICHAT_OK && !opened));
   CLEAR_ERRNO();
   text = NULL;
-  CHECK(platform_clipboard_read(output, sizeof(output)) != ASCIICHAT_OK && !opened);
+  CHECK((platform_clipboard_read(output, sizeof(output)) != ASCIICHAT_OK && !opened));
   CLEAR_ERRNO();
   return 0;
 }

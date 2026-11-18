@@ -4,14 +4,13 @@
 #include <ascii-chat/network/acip/acds_client.h>
 #include <string.h>
 
-#define CHECK(expression)                                                                                              \
-  do {                                                                                                                 \
-    if (!(expression))                                                                                                 \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expression);                                             \
+#define CHECK(expression)                                                  \
+  do {                                                                     \
+    if (!(expression))                                                     \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #expression); \
   } while (0)
 
-static nghttp3_ssize keep_open(nghttp3_conn *conn, int64_t stream_id, nghttp3_vec *vec, size_t count, uint32_t *flags,
-                               void *context, void *stream_context) {
+static nghttp3_ssize keep_open(nghttp3_conn *conn, int64_t stream_id, nghttp3_vec *vec, size_t count, uint32_t *flags, void *context, void *stream_context) {
   (void)conn;
   (void)stream_id;
   (void)vec;
@@ -27,8 +26,7 @@ typedef struct {
   bool fin;
   bool settings;
 } client_state_t;
-static int recv_header(nghttp3_conn *conn, int64_t stream_id, int32_t token, nghttp3_rcbuf *name, nghttp3_rcbuf *value,
-                       uint8_t flags, void *context, void *stream_context) {
+static int recv_header(nghttp3_conn *conn, int64_t stream_id, int32_t token, nghttp3_rcbuf *name, nghttp3_rcbuf *value, uint8_t flags, void *context, void *stream_context) {
   (void)conn;
   (void)stream_id;
   (void)token;
@@ -63,9 +61,8 @@ static void pump_server(http_server_http3_t *server, nghttp3_conn *client) {
     if (stream < 0)
       return;
     for (size_t j = 0; j < count; ++j) {
-      nghttp3_ssize read =
-          nghttp3_conn_read_stream2(client, stream, vectors[j].base, vectors[j].len, fin && j + 1 == count, 0);
-      CHECK(read >= 0 && (size_t)read == vectors[j].len);
+      nghttp3_ssize read = nghttp3_conn_read_stream2(client, stream, vectors[j].base, vectors[j].len, fin && j + 1 == count, 0);
+      CHECK((read >= 0 && (size_t)read == vectors[j].len));
       bytes += vectors[j].len;
     }
     CHECK(http_server_http3_wrote(server, stream, bytes) == ASCIICHAT_OK);
@@ -85,8 +82,7 @@ static void pump_client(nghttp3_conn *client, http_server_http3_t *server) {
     size_t bytes = 0;
     for (nghttp3_ssize j = 0; j < count; ++j) {
       size_t consumed = 0;
-      CHECK(http_server_http3_read(server, stream, vectors[j].base, vectors[j].len, fin && j + 1 == count, 0,
-                                   &consumed) == ASCIICHAT_OK);
+      CHECK((http_server_http3_read(server, stream, vectors[j].base, vectors[j].len, fin && j + 1 == count, 0, &consumed) == ASCIICHAT_OK));
       CHECK(consumed == vectors[j].len);
       bytes += vectors[j].len;
     }
@@ -114,8 +110,7 @@ static void pump_client_delayed_settings(nghttp3_conn *client, http_server_http3
         delayed_length += vectors[j].len;
       } else {
         size_t consumed = 0;
-        CHECK(http_server_http3_read(server, stream, vectors[j].base, vectors[j].len, fin && j + 1 == count, 0,
-                                     &consumed) == ASCIICHAT_OK);
+        CHECK((http_server_http3_read(server, stream, vectors[j].base, vectors[j].len, fin && j + 1 == count, 0, &consumed) == ASCIICHAT_OK));
         CHECK(consumed == vectors[j].len);
       }
       bytes += vectors[j].len;
@@ -123,7 +118,7 @@ static void pump_client_delayed_settings(nghttp3_conn *client, http_server_http3
     CHECK(nghttp3_conn_add_write_offset(client, stream, bytes) == 0);
     CHECK(nghttp3_conn_add_ack_offset(client, stream, bytes) == 0);
   }
-  CHECK(delayed_length > 0 && !http_server_http3_accepted(server, NULL));
+  CHECK((delayed_length > 0 && !http_server_http3_accepted(server, NULL)));
   size_t consumed = 0;
   CHECK(http_server_http3_read(server, 2, delayed, delayed_length, false, 0, &consumed) == ASCIICHAT_OK);
   CHECK(consumed == delayed_length);
@@ -134,8 +129,7 @@ static void exchange(unsigned scenario) {
   http_server_http3_t *server = NULL;
   CHECK(http_server_http3_create("https://client.example", "/acip", 3, 7, 11, NULL, NULL, &server) == ASCIICHAT_OK);
   client_state_t capture = {0};
-  nghttp3_callbacks callbacks = {
-      .recv_header = recv_header, .end_headers = end_headers, .recv_settings2 = recv_settings};
+  nghttp3_callbacks callbacks = {.recv_header = recv_header, .end_headers = end_headers, .recv_settings2 = recv_settings};
   nghttp3_settings settings;
   nghttp3_settings_default(&settings);
   settings.h3_datagram = 1;
@@ -149,9 +143,8 @@ static void exchange(unsigned scenario) {
   CHECK(capture.settings);
   if (scenario != 5)
     pump_client(client, server);
-  const nghttp3_nv headers[] = {NV(":method", "CONNECT"),           NV(":scheme", "https"),
-                                NV(":authority", "server.example"), NV(":path", "/acip"),
-                                NV(":protocol", "webtransport"),    NV("origin", "https://client.example")};
+  const nghttp3_nv headers[] = {NV(":method", "CONNECT"), NV(":scheme", "https"),          NV(":authority", "server.example"),
+                                NV(":path", "/acip"),     NV(":protocol", "webtransport"), NV("origin", "https://client.example")};
   nghttp3_nv request[sizeof(headers) / sizeof(headers[0])];
   memcpy(request, headers, sizeof(request));
   static const char other[] = "https://untrusted.example";
@@ -176,7 +169,7 @@ static void exchange(unsigned scenario) {
   CHECK(http_server_http3_accepted(server, &session_id) == allowed);
   CHECK(capture.status == (allowed ? 200 : 403));
   if (allowed)
-    CHECK(session_id == 0 && !capture.fin);
+    CHECK((session_id == 0 && !capture.fin));
   nghttp3_conn_del(client);
   http_server_http3_destroy(&server);
 }
@@ -198,7 +191,7 @@ static void test_output_contract(void) {
   bool fin;
   size_t count;
   CHECK(http_server_http3_write(server, &stream, &fin, vectors, 2, &count) == ASCIICHAT_OK);
-  CHECK(stream == 3 && !fin && count == 1 && vectors[0].len > 4);
+  CHECK((stream == 3 && !fin && count == 1 && vectors[0].len > 4));
   size_t length = vectors[0].len, first = length / 2;
   size_t offset = 0;
   CHECK(read_varint(vectors[0].base, length, &offset) == 0);
@@ -216,7 +209,7 @@ static void test_output_contract(void) {
     if (id == 0x33)
       datagrams = value == 1;
   }
-  CHECK(draft02 && draft07 && datagrams);
+  CHECK((draft02 && draft07 && datagrams));
   CHECK(http_server_http3_write(server, &stream, &fin, vectors, 2, &count) == ERROR_INVALID_STATE);
   CHECK(http_server_http3_wrote(server, 7, first) == ERROR_INVALID_PARAM);
   CHECK(http_server_http3_wrote(server, 3, length + 1) == ERROR_INVALID_PARAM);
@@ -224,7 +217,7 @@ static void test_output_contract(void) {
   CHECK(http_server_http3_ack(server, 3, first + 1) == ERROR_INVALID_PARAM);
   CHECK(http_server_http3_ack(server, 3, first) == ASCIICHAT_OK);
   CHECK(http_server_http3_write(server, &stream, &fin, vectors, 2, &count) == ASCIICHAT_OK);
-  CHECK(stream == 3 && vectors[0].len == length - first);
+  CHECK((stream == 3 && vectors[0].len == length - first));
   CHECK(http_server_http3_wrote(server, 3, length - first) == ASCIICHAT_OK);
   CHECK(http_server_http3_ack(server, 3, length - first) == ASCIICHAT_OK);
   http_server_http3_destroy(&server);
@@ -243,24 +236,21 @@ static void test_discovered_endpoint(void) {
   memcpy(extension + 10, url, sizeof(url) - 1);
   acds_protocol_t protocol = {.state = ACDS_JOINING, .require_webrtc = true};
   CHECK(acds_protocol_receive(&protocol, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(response)) == ASCIICHAT_OK);
-  CHECK(protocol.quic_port == 27224 && strcmp(protocol.webtransport_url, url) == 0);
+  CHECK((protocol.quic_port == 27224 && strcmp(protocol.webtransport_url, url) == 0));
   protocol = (acds_protocol_t){.state = ACDS_JOINING};
   CHECK(acds_protocol_receive(&protocol, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(joined)) == ASCIICHAT_OK);
-  CHECK(!protocol.quic_port && !protocol.webtransport_url[0]);
+  CHECK((!protocol.quic_port && !protocol.webtransport_url[0]));
   for (size_t length = sizeof(joined) + 1; length < sizeof(response); ++length) {
     protocol = (acds_protocol_t){.state = ACDS_JOINING};
-    CHECK(acds_protocol_receive(&protocol, PACKET_TYPE_ACIP_SESSION_JOINED, response, length) ==
-          ERROR_NETWORK_PROTOCOL);
+    CHECK(acds_protocol_receive(&protocol, PACKET_TYPE_ACIP_SESSION_JOINED, response, length) == ERROR_NETWORK_PROTOCOL);
   }
   extension[4] = 2;
   protocol = (acds_protocol_t){.state = ACDS_JOINING};
-  CHECK(acds_protocol_receive(&protocol, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(response)) ==
-        ERROR_NETWORK_PROTOCOL);
+  CHECK(acds_protocol_receive(&protocol, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(response)) == ERROR_NETWORK_PROTOCOL);
   extension[4] = 1;
   extension[10] = 'w';
   protocol = (acds_protocol_t){.state = ACDS_JOINING};
-  CHECK(acds_protocol_receive(&protocol, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(response)) ==
-        ERROR_NETWORK_PROTOCOL);
+  CHECK(acds_protocol_receive(&protocol, PACKET_TYPE_ACIP_SESSION_JOINED, response, sizeof(response)) == ERROR_NETWORK_PROTOCOL);
 }
 
 static void test_transport_metadata_codec(void) {
@@ -268,13 +258,10 @@ static void test_transport_metadata_codec(void) {
   char url[512];
   uint16_t port = 99;
   size_t length = 0;
-  CHECK(acds_transport_metadata_decode(NULL, 0, &port, url, sizeof(url)) == ASCIICHAT_OK && !port && !url[0]);
-  CHECK(acds_transport_metadata_encode(30001, "https://example.test:443/acip", bytes, sizeof(bytes), &length) ==
-        ASCIICHAT_OK);
-  CHECK(acds_transport_metadata_decode(bytes, length, &port, url, sizeof(url)) == ASCIICHAT_OK && port == 30001 &&
-        !strcmp(url, "https://example.test:443/acip"));
-  CHECK(acds_transport_metadata_decode(bytes, length + 1, &port, url, sizeof(url)) == ERROR_NETWORK_PROTOCOL && !port &&
-        !url[0]);
+  CHECK((acds_transport_metadata_decode(NULL, 0, &port, url, sizeof(url)) == ASCIICHAT_OK && !port && !url[0]));
+  CHECK(acds_transport_metadata_encode(30001, "https://example.test:443/acip", bytes, sizeof(bytes), &length) == ASCIICHAT_OK);
+  CHECK((acds_transport_metadata_decode(bytes, length, &port, url, sizeof(url)) == ASCIICHAT_OK && port == 30001 && !strcmp(url, "https://example.test:443/acip")));
+  CHECK((acds_transport_metadata_decode(bytes, length + 1, &port, url, sizeof(url)) == ERROR_NETWORK_PROTOCOL && !port && !url[0]));
   bytes[4] = 2;
   CHECK(acds_transport_metadata_decode(bytes, length, &port, url, sizeof(url)) == ERROR_NETWORK_PROTOCOL);
   bytes[4] = 1;
@@ -283,8 +270,7 @@ static void test_transport_metadata_codec(void) {
   bytes[5] = 0;
   bytes[12] = 0;
   CHECK(acds_transport_metadata_decode(bytes, length, &port, url, sizeof(url)) == ERROR_NETWORK_PROTOCOL);
-  CHECK(acds_transport_metadata_encode(1, "http://example.test/acip", bytes, sizeof(bytes), &length) ==
-        ERROR_INVALID_PARAM);
+  CHECK(acds_transport_metadata_encode(1, "http://example.test/acip", bytes, sizeof(bytes), &length) == ERROR_INVALID_PARAM);
   CHECK(acds_transport_metadata_encode(1, "https://example.test/acip", bytes, 10, &length) == ERROR_INVALID_PARAM);
 }
 

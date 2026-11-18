@@ -9,6 +9,10 @@
 #include <ascii-chat/log/log.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Write a log entry as a JSON object to the json output fd.
  *
@@ -42,8 +46,7 @@
  *
  * @see log_set_json_output() - Set the JSON output file descriptor
  */
-void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const char *file, int line, const char *func,
-                    const char *message);
+void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const char *file, int line, const char *func, const char *message);
 
 /**
  * @brief Set the JSON output file descriptor.
@@ -75,3 +78,7 @@ void log_set_json_output(int fd);
  * @param message Log message (must not be NULL)
  */
 void log_json_async_safe(int fd, log_level_t level, const char *file, int line, const char *func, const char *message);
+
+#ifdef __cplusplus
+}
+#endif

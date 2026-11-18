@@ -1,6 +1,6 @@
 #include <ascii-chat/audio/visualization.h>
 
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/common/sync.h>
 #include <libplatform/memory.h>
 #include <ascii-chat/video/ascii/palette.h>
@@ -157,16 +157,27 @@ char *visualization_encode(const char *cells, const unsigned char *colors, bool 
   const char *palette = palette_type == PALETTE_CUSTOM ? GET_OPTION(palette_custom) : (builtin ? builtin->chars : PALETTE_CHARS_STANDARD);
   if (!palette || !*palette)
     palette = PALETTE_CHARS_STANDARD;
+  /*
+   * Audio visualizations already contain their final intensity characters.
+   * Do not run the expensive image glyph matcher/palette path for them: it
+   * adds work without adding information and can collapse the visualization
+   * frame rate when --renderer glyph is enabled.  Keep the selected renderer
+   * for normal video frames; this fast path only applies to these generated
+   * visualization grids.
+   */
+  bool use_visualization_glyphs = GET_OPTION(renderer) == ASCII_RENDERER_GLYPH;
   const char *characters[256];
   size_t lengths[256], count = 0;
-  for (const char *p = palette; *p && count < 256;) {
-    uint32_t codepoint;
-    int length = utf8_decode((const uint8_t *)p, &codepoint);
-    if (length <= 0)
-      break;
-    characters[count] = p;
-    lengths[count++] = (size_t)length;
-    p += length;
+  if (!use_visualization_glyphs) {
+    for (const char *p = palette; *p && count < 256;) {
+      uint32_t codepoint;
+      int length = utf8_decode((const uint8_t *)p, &codepoint);
+      if (length <= 0)
+        break;
+      characters[count] = p;
+      lengths[count++] = (size_t)length;
+      p += length;
+    }
   }
   bool half = mode == RENDER_MODE_HALF_BLOCK;
   unsigned int rows = half ? height / 2 : height;
@@ -206,6 +217,8 @@ char *visualization_encode(const char *cells, const unsigned char *colors, bool 
           out = visualization_color(out, color, mode == RENDER_MODE_BACKGROUND, color_mode);
         if (mode == RENDER_MODE_BACKGROUND && use_color) {
           *out++ = ' ';
+        } else if (use_visualization_glyphs) {
+          *out++ = ch;
         } else if (count) {
           unsigned int luminance = 2126u * color[0] + 7152u * color[1] + 722u * color[2];
           size_t index = (luminance * (count - 1) + 1275000u) / 2550000u;

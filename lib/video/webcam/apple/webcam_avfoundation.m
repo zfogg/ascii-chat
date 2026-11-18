@@ -15,7 +15,7 @@
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/image.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 
 // AVFoundation timeout configuration
 #define AVFOUNDATION_FRAME_TIMEOUT_NS 500000000         // 500ms timeout (adjustable for slow cameras)
@@ -63,9 +63,7 @@
   [super dealloc];
 }
 
-- (void)captureOutput:(AVCaptureOutput *)output
-    didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
-           fromConnection:(AVCaptureConnection *)connection {
+- (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
   // Check if delegate is still active to prevent callbacks during cleanup
   if (!self.isActive) {
     return;
@@ -166,17 +164,15 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     AVCaptureDevice *device = nil;
 
     NSArray *deviceTypes = getSupportedDeviceTypes();
-    AVCaptureDeviceDiscoverySession *discoverySession =
-        [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:deviceTypes
-                                                               mediaType:AVMediaTypeVideo
-                                                                position:AVCaptureDevicePositionUnspecified];
+    AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:deviceTypes
+                                                                                                               mediaType:AVMediaTypeVideo
+                                                                                                                position:AVCaptureDevicePositionUnspecified];
 
     NSArray *devices = discoverySession.devices;
 
     for (AVCaptureDevice *device in devices) {
       NSUInteger idx = [devices indexOfObject:device];
-      log_debug("Found device %lu: %s (type: %s)", (unsigned long)idx, [device.localizedName UTF8String],
-                [device.deviceType UTF8String]);
+      log_debug("Found device %lu: %s (type: %s)", (unsigned long)idx, [device.localizedName UTF8String], [device.deviceType UTF8String]);
     }
 
     if (device_index < [devices count]) {
@@ -275,8 +271,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
         for (AVCaptureDeviceFormat *format in captureDevice.formats) {
           for (AVFrameRateRange *range in format.videoSupportedFrameRateRanges) {
-            if (range.minFrameRate <= target_fps && range.maxFrameRate >= target_fps &&
-                (!bestFormat || range.maxFrameRate < bestRange.maxFrameRate)) {
+            if (range.minFrameRate <= target_fps && range.maxFrameRate >= target_fps && (!bestFormat || range.maxFrameRate < bestRange.maxFrameRate)) {
               bestFormat = format;
               bestRange = range;
             }
@@ -288,11 +283,9 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
             captureDevice.activeFormat = bestFormat;
             captureDevice.activeVideoMinFrameDuration = CMTimeMake(1, (int32_t)target_fps);
             captureDevice.activeVideoMaxFrameDuration = CMTimeMake(1, (int32_t)target_fps);
-            log_info("AVFoundation: Configured for %u FPS (device supports %.0f - %.0f FPS)", target_fps,
-                     bestRange.minFrameRate, bestRange.maxFrameRate);
+            log_info("AVFoundation: Configured for %u FPS (device supports %.0f - %.0f FPS)", target_fps, bestRange.minFrameRate, bestRange.maxFrameRate);
           } @catch (NSException *exception) {
-            log_warn("AVFoundation: Device rejected %u FPS configuration: %s; using its default frame rate", target_fps,
-                     [[exception reason] UTF8String]);
+            log_warn("AVFoundation: Device rejected %u FPS configuration: %s; using its default frame rate", target_fps, [[exception reason] UTF8String]);
           }
         } else {
           // Device doesn't support requested FPS - find the maximum FPS available
@@ -313,12 +306,9 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
               captureDevice.activeFormat = maxFormat;
               captureDevice.activeVideoMinFrameDuration = CMTimeMake(1, actual_fps);
               captureDevice.activeVideoMaxFrameDuration = CMTimeMake(1, actual_fps);
-              log_warn("Device does not support %u FPS - using maximum available %.0f FPS", target_fps,
-                       maxRange.maxFrameRate);
+              log_warn("Device does not support %u FPS - using maximum available %.0f FPS", target_fps, maxRange.maxFrameRate);
             } @catch (NSException *exception) {
-              log_warn(
-                  "AVFoundation: Device rejected maximum frame rate configuration: %s; using its default frame rate",
-                  [[exception reason] UTF8String]);
+              log_warn("AVFoundation: Device rejected maximum frame rate configuration: %s; using its default frame rate", [[exception reason] UTF8String]);
             }
           } else {
             log_warn("Could not determine device FPS capabilities, using device default");
@@ -355,8 +345,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     if (dispatch_semaphore_wait(context->delegate.frameSemaphore, timeout) == 0) {
       context->width = context->delegate.frameWidth;
       context->height = context->delegate.frameHeight;
-      log_debug("AVFoundation webcam initialized: %dx%d, delegate isActive=%d", context->width, context->height,
-                context->delegate.isActive);
+      log_debug("AVFoundation webcam initialized: %dx%d, delegate isActive=%d", context->width, context->height, context->delegate.isActive);
     } else {
       log_error("Timeout waiting for first frame");
       [context->session stopRunning];
@@ -382,8 +371,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
  *
  * @return true if conversion succeeded, false otherwise
  */
-static BOOL convert_pixel_buffer_to_rgb24(CVPixelBufferRef pixelBuffer, rgb_pixel_t *dest_pixels, int width,
-                                          int height) {
+static BOOL convert_pixel_buffer_to_rgb24(CVPixelBufferRef pixelBuffer, rgb_pixel_t *dest_pixels, int width, int height) {
   OSType pixelFormat = CVPixelBufferGetPixelFormatType(pixelBuffer);
 
   if (CVPixelBufferLockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly) != kCVReturnSuccess) {
@@ -578,8 +566,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     // Wait for a frame (configurable timeout for different camera speeds)
     dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, AVFOUNDATION_FRAME_TIMEOUT_NS);
     if (dispatch_semaphore_wait(ctx->delegate.frameSemaphore, timeout) != 0) {
-      log_error("No webcam frame available within timeout: %0.2f seconds",
-                AVFOUNDATION_FRAME_TIMEOUT_NS / NSEC_PER_SEC);
+      log_error("No webcam frame available within timeout: %0.2f seconds", AVFOUNDATION_FRAME_TIMEOUT_NS / NSEC_PER_SEC);
       return NULL; // No frame available within timeout
     }
 
@@ -693,10 +680,9 @@ asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsign
   @autoreleasepool {
     // Get all video capture devices using the helper that handles deprecated types
     NSArray *deviceTypes = getSupportedDeviceTypes();
-    AVCaptureDeviceDiscoverySession *discoverySession =
-        [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:deviceTypes
-                                                               mediaType:AVMediaTypeVideo
-                                                                position:AVCaptureDevicePositionUnspecified];
+    AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:deviceTypes
+                                                                                                               mediaType:AVMediaTypeVideo
+                                                                                                                position:AVCaptureDevicePositionUnspecified];
 
     NSArray<AVCaptureDevice *> *av_devices = discoverySession.devices;
     NSUInteger device_count = [av_devices count];
@@ -707,8 +693,7 @@ asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsign
     }
 
     // Allocate device array
-    webcam_device_info_t *devices =
-        SAFE_CALLOC((size_t)device_count, sizeof(webcam_device_info_t), webcam_device_info_t *);
+    webcam_device_info_t *devices = SAFE_CALLOC((size_t)device_count, sizeof(webcam_device_info_t), webcam_device_info_t *);
     if (!devices) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate device info array");
     }

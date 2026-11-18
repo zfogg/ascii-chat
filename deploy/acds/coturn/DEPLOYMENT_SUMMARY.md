@@ -30,22 +30,6 @@
 
 ---
 
-## Security Credentials
-
-**⚠️ SAVE THESE - They are NOT stored anywhere else!**
-
-### TURN Server Credentials
-
-```
-Primary User:
-  Username: ascii
-  Password: 0aa9917b4dad1b01631e87a32b875e09
-
-Secondary User:
-  Username: webrtc
-  Password: 8d9ed3956272058a6460c93084b83afb
-```
-
 **Configuration File**: `/opt/ascii-chat/deploy/acds/coturn/turnserver.conf`
 
 ---
@@ -86,10 +70,8 @@ The ascii-chat codebase now includes these servers by default:
 **TURN Server**:
 
 - `turn:turn.ascii-chat.com:3478`
-- Username: `ascii`
-- Password: `0aa9917b4dad1b01631e87a32b875e09`
 
-**Code Location**: `lib/options/presets.c:540-554`
+**Code Location**: `src/common/options/registry_network.c`
 
 **Environment Variables** (optional overrides):
 
@@ -178,7 +160,6 @@ stunclient stun.ascii-chat.com 3478
 ```bash
 # Using turnutils_uclient (included in coturn)
 docker exec -it ascii-chat-coturn turnutils_uclient \
-  -u ascii -w 0aa9917b4dad1b01631e87a32b875e09 \
   -v turn.ascii-chat.com
 ```
 
@@ -193,8 +174,6 @@ const pc = new RTCPeerConnection({
     { urls: "stun:stun.l.google.com:19302" },
     {
       urls: "turn:turn.ascii-chat.com:3478",
-      username: "ascii",
-      credential: "0aa9917b4dad1b01631e87a32b875e09",
     },
   ],
 });
@@ -282,7 +261,7 @@ docker stats ascii-chat-coturn
 └── coturn.service              # Systemd service unit
 
 Repository changes:
-├── lib/options/presets.c       # Updated STUN/TURN defaults
+├── src/common/options/registry_network.c     # Updated STUN/TURN defaults
 └── deploy/acds/coturn/         # All deployment files
 ```
 

@@ -80,6 +80,10 @@
 #include <libplatform/cond.h>
 #include <libplatform/thread.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Forward declaration
 /**
  * @brief One queued function call waiting for a thread-pool worker
@@ -112,7 +116,7 @@ typedef struct thread_pool_work_entry {
  * Nodes are linked from the pool and are freed with the pool's thread list.
  */
 struct thread_pool_entry {
-  platform_thread_t thread;               ///< Thread handle
+  platform_thread_t thread;                ///< Thread handle
   int stop_id;                             ///< Cleanup order (lower = stop first, -1 = unordered)
   void *(*thread_func)(void *);            ///< Thread function
   void *thread_arg;                        ///< Thread argument
@@ -205,8 +209,7 @@ void thread_pool_destroy(thread_pool_t *pool);
  * @param work_arg Argument passed to work function
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, void *(*work_func)(void *),
-                                         void *work_arg);
+asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, void *(*work_func)(void *), void *work_arg);
 
 /**
  * @brief Spawn a worker thread in the pool
@@ -235,8 +238,7 @@ asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, 
  * @param thread_name Thread name for debugging (max 63 chars, NULL=auto-generate)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t thread_pool_spawn(thread_pool_t *pool, void *(*thread_func)(void *), void *thread_arg, int stop_id,
-                                    const char *thread_name);
+asciichat_error_t thread_pool_spawn(thread_pool_t *pool, void *(*thread_func)(void *), void *thread_arg, int stop_id, const char *thread_name);
 
 /**
  * @brief Stop all threads in the pool in stop_id order
@@ -300,3 +302,7 @@ bool thread_pool_has_threads(const thread_pool_t *pool);
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t thread_pool_interrupt_all(thread_pool_t *pool, int sig);
+
+#ifdef __cplusplus
+}
+#endif

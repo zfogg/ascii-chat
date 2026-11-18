@@ -24,6 +24,10 @@
 
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Shutdown check callback function type
  * @return true if shutdown has been requested, false otherwise
@@ -58,3 +62,7 @@ void shutdown_request(void);
 bool shutdown_is_requested(void);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

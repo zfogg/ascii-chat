@@ -5,6 +5,10 @@
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/connection_endpoint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct network_connection network_connection_t;
 typedef struct network_server network_server_t;
 typedef struct quic_endpoint quic_endpoint_t;
@@ -65,8 +69,7 @@ const network_server_config_t *network_server_config(network_server_t *);
 asciichat_error_t network_server_adopt(network_server_t *, acip_transport_t *, const char *peer, bool secure);
 /** Adopt a connected transport before application authentication. The caller
  * retains it on failure; on success the server owns it and drives negotiation. */
-asciichat_error_t network_server_adopt_negotiating(network_server_t *, acip_transport_t *, const char *peer,
-                                                   bool secure);
+asciichat_error_t network_server_adopt_negotiating(network_server_t *, acip_transport_t *, const char *peer, bool secure);
 
 /** Iteration pins connections and application state, without holding registry
  * locks across callbacks or sends. The callback must not wait for server shutdown.
@@ -90,8 +93,7 @@ asciichat_error_t network_connection_prepare_security(network_connection_t *, bo
 asciichat_error_t network_connection_adopt(acip_transport_t *, network_connection_t **);
 /** Wrap a connected transport before application negotiation. Ownership
  * transfers only on success. The caller drives negotiation before run(). */
-asciichat_error_t network_connection_adopt_negotiating(acip_transport_t *, const char *peer, bool secure,
-                                                       network_connection_t **);
+asciichat_error_t network_connection_adopt_negotiating(acip_transport_t *, const char *peer, bool secure, network_connection_t **);
 
 /** Shared outbound establishment. Native TCP is adopted into the event backend;
  * @brief For network connect config, this is the live record that ties `timeout_ms`, `callback_data`, `tls_ca_file`,
@@ -116,9 +118,7 @@ typedef struct {
 /** A NULL config uses backend defaults and the application's exit callback.
  * A supplied config preserves its timeout, including zero, and also checks its
  * cancellation callback before dialing and while waiting for establishment. */
-asciichat_error_t network_connection_open(const char *name, const char *address, uint16_t default_port,
-                                          const network_connect_config_t *, network_connection_t **,
-                                          connection_endpoint_t *);
+asciichat_error_t network_connection_open(const char *name, const char *address, uint16_t default_port, const network_connect_config_t *, network_connection_t **, connection_endpoint_t *);
 void network_connection_destroy(network_connection_t **);
 
 uint8_t network_connection_crypto_mode(network_connection_t *);
@@ -127,3 +127,7 @@ uint8_t network_connection_crypto_mode(network_connection_t *);
  * that worker before destroy; this call retains all resources on return.
  */
 asciichat_error_t network_connection_run(network_connection_t *, const network_connection_callbacks_t *, void *);
+
+#ifdef __cplusplus
+}
+#endif

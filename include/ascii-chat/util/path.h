@@ -46,6 +46,10 @@
 
 #include "../common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Path Constants
  * ============================================================================
@@ -377,3 +381,7 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
 void path_cleanup_thread_locals(void);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

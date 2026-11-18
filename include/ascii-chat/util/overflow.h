@@ -46,6 +46,10 @@
 
 #include "../common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Overflow Prediction Functions
  * ============================================================================
@@ -244,3 +248,7 @@ static inline asciichat_error_t checked_size_mul3(size_t width, size_t height, s
 #define SIZE_ADD_SAFE(a, b) (size_add_would_overflow(a, b) ? SIZE_MAX : (a) + (b))
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

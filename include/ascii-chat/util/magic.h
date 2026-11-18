@@ -9,6 +9,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* ============================================================================
  * Magic Number Definitions
  * ============================================================================ */
@@ -39,3 +43,7 @@
 #define MARK_FRAME_FREED(frame) ((frame)->magic = MAGIC_FRAME_FREED)
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

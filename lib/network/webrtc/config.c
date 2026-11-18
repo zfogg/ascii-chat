@@ -3,7 +3,7 @@
 #include <libplatform/system.h>
 #include <libplatform/terminal.h>
 #include <ascii-chat/util/string.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <string.h>
 
 asciichat_error_t webrtc_turn_servers_parse(const char *csv_urls, const char *username, const char *credential, turn_server_t *servers, size_t capacity, size_t *count_out) {

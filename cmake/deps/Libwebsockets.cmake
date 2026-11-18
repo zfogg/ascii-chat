@@ -1,5 +1,11 @@
 # Installed packages retain their own static/shared dependency configuration.
-if((WIN32 OR ASCIICHAT_SHARED_DEPS) AND NOT ASCIICHAT_BUILD_DEPS_FROM_SOURCE AND NOT PLATFORM_IOS AND NOT USE_MUSL)
+option(ASCIICHAT_USE_SYSTEM_LIBWEBSOCKETS
+    "Use system libwebsockets when the package is available"
+    ON)
+if((WIN32 OR ASCIICHAT_SHARED_DEPS OR ASCIICHAT_USE_SYSTEM_LIBWEBSOCKETS)
+   AND NOT ASCIICHAT_BUILD_DEPS_FROM_SOURCE
+   AND NOT PLATFORM_IOS
+   AND NOT USE_MUSL)
     # Try CMake config first, then fall back to pkg-config
     find_package(libwebsockets QUIET CONFIG)
     if(NOT libwebsockets_FOUND)
@@ -69,6 +75,14 @@ function(asciichat_build_libwebsockets)
     set(LWS_WITHOUT_EXTENSIONS OFF)
     set(LWS_WITH_ZLIB ON)
     set(LWS_WITH_BUNDLED_ZLIB OFF)
+    # libwebsockets' CMake uses the legacy singular variable when it links
+    # its target.  pkg-config may populate only ZLIB_LIBRARIES, while a prior
+    # FindZLIB probe can leave ZLIB_LIBRARY cached as NOTFOUND.
+    if(DEFINED ZLIB_LIBRARIES AND NOT ZLIB_LIBRARIES STREQUAL "")
+        if(NOT DEFINED ZLIB_LIBRARY OR ZLIB_LIBRARY MATCHES "-NOTFOUND$")
+            set(ZLIB_LIBRARY "${ZLIB_LIBRARIES}" CACHE STRING "zlib libraries" FORCE)
+        endif()
+    endif()
     set(LWS_WITH_SOCKS5 OFF)
     set(LWS_WITH_SPAWN OFF CACHE BOOL "Disable libwebsockets subprocess support on iOS" FORCE)
     if(PLATFORM_IOS)

@@ -53,9 +53,9 @@ respectively.
 
 Validation included the default Windows Clang/ASan build, the native probe,
 clang-format, and the no-export integration test (six media flag/endpoint
-overrides plus MCP stdio/HTTP produced zero OTLP requests). Criterion unit tests
-cover wrapper return-code preservation on supported Unix platforms; Criterion
-is unavailable on Windows.
+overrides plus MCP stdio/HTTP produced zero OTLP requests). The native Catch2
+unit/contract suites cover wrapper return-code preservation across the supported
+platforms, including Windows.
 
 Producer audit found no pre-existing running ascii-chat service. The main native
 executable was rebuilt against Gotel `v0.13.0` commit

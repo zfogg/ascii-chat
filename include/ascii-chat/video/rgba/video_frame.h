@@ -73,16 +73,15 @@
  * @date October 2025
  */
 
-// C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
-#if defined(__cplusplus) && defined(_WIN32)
-#include <atomic>
-#else
 #include <libplatform/atomic.h>
-#endif
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
 #include <ascii-chat/common/buffer_sizes.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* ============================================================================
  * Video Frame Constants
@@ -460,3 +459,7 @@ void simple_frame_swap_update(simple_frame_swap_t *sfs, const void *data, size_t
 const video_frame_t *simple_frame_swap_get(simple_frame_swap_t *sfs);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

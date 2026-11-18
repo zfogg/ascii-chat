@@ -36,6 +36,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name GPG Signing Operations
  * @{
@@ -101,8 +105,7 @@
  *
  * @ingroup crypto
  */
-int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message_len, uint8_t *signature_out,
-                      size_t *signature_len_out);
+int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message_len, uint8_t *signature_out, size_t *signature_len_out);
 
 /**
  * @brief Sign message with GPG and extract raw Ed25519 signature
@@ -170,9 +173,12 @@ int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message
  *
  * @ingroup crypto
  */
-int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
-                              uint8_t signature_out[ED25519_SIGNATURE_SIZE]);
+int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len, uint8_t signature_out[ED25519_SIGNATURE_SIZE]);
 
 /** @} */
 
 /** @} */ /* crypto */
+
+#ifdef __cplusplus
+}
+#endif

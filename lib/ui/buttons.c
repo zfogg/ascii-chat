@@ -1,9 +1,9 @@
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <ascii-chat/ui/buttons.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/display.h>
-#include <ascii-chat/options/colorscheme.h>
+#include <options/colorscheme.h>
 
 int ui_buttons_key(ui_buttons_t *s, const ui_button_t *b, size_t n, keyboard_key_t key) {
   if (!s || !b || !n) {

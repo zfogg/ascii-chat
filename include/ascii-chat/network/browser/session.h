@@ -12,8 +12,7 @@ typedef struct browser_session browser_session_t;
 extern "C" {
 #endif
 
-browser_session_t *browser_session_create(bool server, int encryption, const char *password, const uint8_t *identity,
-                                          const uint8_t *expected_key);
+browser_session_t *browser_session_create(bool server, int encryption, const char *password, const uint8_t *identity, const uint8_t *expected_key);
 asciichat_error_t browser_session_start(browser_session_t *peer);
 void browser_session_set_connected(browser_session_t *peer, bool connected);
 void browser_session_destroy(browser_session_t *peer);
@@ -31,13 +30,10 @@ size_t browser_session_received_size(browser_session_t *peer);
 asciichat_error_t browser_session_tick(browser_session_t *peer);
 asciichat_error_t browser_session_quic_begin(browser_session_t *peer);
 asciichat_error_t browser_session_security_init(browser_session_t *peer);
-asciichat_error_t browser_session_security_packet(browser_session_t *peer, bool seal, uint32_t channel,
-                                                  uint32_t delivery, const uint8_t *packet, size_t length,
-                                                  uint8_t *output, size_t capacity, size_t *out_length,
-                                                  uint64_t *sequence);
+asciichat_error_t browser_session_security_packet(browser_session_t *peer, bool seal, uint32_t channel, uint32_t delivery, const uint8_t *packet, size_t length, uint8_t *output, size_t capacity,
+                                                  size_t *out_length, uint64_t *sequence);
 asciichat_error_t browser_session_security_tick(browser_session_t *peer);
-asciichat_error_t browser_session_security_output(browser_session_t *peer, uint8_t *output, size_t capacity,
-                                                  size_t *length, uint32_t *channel);
+asciichat_error_t browser_session_security_output(browser_session_t *peer, uint8_t *output, size_t capacity, size_t *length, uint32_t *channel);
 double browser_session_security_epoch(browser_session_t *peer);
 
 #ifdef __cplusplus

@@ -16,6 +16,10 @@
 
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Calculate the visible display width of text with ANSI escape codes
  *
@@ -104,3 +108,7 @@ int display_center_vertical(int content_height, int terminal_height);
  * @ingroup util
  */
 int display_height(const char *text, int terminal_width);
+
+#ifdef __cplusplus
+}
+#endif

@@ -32,6 +32,10 @@
 
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name HTTPS Client
  * @{
@@ -78,3 +82,7 @@
 char *https_get(const char *hostname, const char *path);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

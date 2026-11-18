@@ -1,5 +1,7 @@
 #pragma once
 
+#include <libflags/builder.h>
+
 /**
  * @defgroup config Config Module
  * @ingroup module_core
@@ -58,6 +60,10 @@
 #include "../common.h"
 #include "../options/options.h" // For asciichat_mode_t
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Load configuration from TOML file and apply to global options
  * @param is_client `true` if loading client configuration, `false` for server configuration
@@ -104,8 +110,7 @@
  *
  * @ingroup config
  */
-asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const char *config_path, bool strict,
-                                        options_t *opts);
+asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const char *config_path, bool strict, options_t *opts);
 
 /**
  * @brief Load system config first, then user config (user config overrides system)
@@ -127,6 +132,8 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
  * @ingroup config
  */
 asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bool strict, options_t *opts);
+
+flags_schema_builder_t *options_config_build_flags_schema(option_mode_bitmask_t mode_mask);
 
 /**
  * @brief Create default configuration file with all default values
@@ -150,3 +157,7 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bo
 asciichat_error_t config_create_default(const char *config_path);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

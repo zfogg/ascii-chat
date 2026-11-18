@@ -1,8 +1,8 @@
 #include <libplatform/terminal.h>
 #include <libplatform/system.h>
 #include <libplatform/filesystem.h>
-#include <ascii-chat/options/rcu.h>
-#include <ascii-chat/options/options.h>
+#include <options/rcu.h>
+#include <options/options.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
@@ -19,10 +19,10 @@
 #include <ascii-chat/tui/keyboard_help.h>
 #include "../../../src/common/session/display.h"
 
-#define REQUIRE(condition)                                                                                                                                                                             \
-  do {                                                                                                                                                                                                 \
-    if (!(condition))                                                                                                                                                                                  \
-      return SET_ERRNO(ERROR_INVALID_STATE, "Terminal contract failed: %s", #condition);                                                                                                               \
+#define REQUIRE(condition)                                                               \
+  do {                                                                                   \
+    if (!(condition))                                                                    \
+      return SET_ERRNO(ERROR_INVALID_STATE, "Terminal contract failed: %s", #condition); \
   } while (0)
 
 static bool wait_for_screen(ui_screen_t screen) {
@@ -125,16 +125,16 @@ static asciichat_error_t probe(const char *mode) {
     REQUIRE(is_valid_tty_path(platform_ttyname(0)));
     REQUIRE(!is_valid_tty_path("/tmp/not-a-terminal"));
     REQUIRE(terminal_get_size_fd(0, &size) == ASCIICHAT_OK);
-    REQUIRE(size.cols == 91 && size.rows == 37);
+    REQUIRE((size.cols == 91 && size.rows == 37));
     size = (terminal_size_t){0};
     REQUIRE(terminal_get_size(&size) == ASCIICHAT_OK);
-    REQUIRE(size.cols == 91 && size.rows == 37);
+    REQUIRE((size.cols == 91 && size.rows == 37));
     unsigned short width = 0, height = 0;
     REQUIRE(get_terminal_size(&width, &height) == ASCIICHAT_OK);
-    REQUIRE(width == 91 && height == 37);
+    REQUIRE((width == 91 && height == 37));
     REQUIRE(terminal_get_size_fd(0, NULL) == ERROR_INVALID_PARAM);
     REQUIRE(terminal_get_size_fd(-1, &size) == ERROR_TERMINAL);
-    REQUIRE(size.cols == 0 && size.rows == 0);
+    REQUIRE((size.cols == 0 && size.rows == 0));
   } else if (strcmp(mode, "controls") == 0) {
     REQUIRE(terminal_clear_screen() == ASCIICHAT_OK);
     REQUIRE(terminal_move_cursor(2, 4) == ASCIICHAT_OK);
@@ -152,11 +152,11 @@ static asciichat_error_t probe(const char *mode) {
     REQUIRE(terminal_set_echo(false) == ASCIICHAT_OK);
     REQUIRE(platform_write_all(1, "READY", 5) == 5);
     char acknowledgement = 0;
-    REQUIRE(platform_read(0, &acknowledgement, 1) == 1 && acknowledgement == 'x');
+    REQUIRE((platform_read(0, &acknowledgement, 1) == 1 && acknowledgement == 'x'));
     REQUIRE(terminal_set_raw_mode(false) == ASCIICHAT_OK);
     REQUIRE(terminal_set_echo(true) == ASCIICHAT_OK);
     REQUIRE(platform_write_all(1, "RESTORED", 8) == 8);
-    REQUIRE(platform_read(0, &acknowledgement, 1) == 1 && acknowledgement == 'y');
+    REQUIRE((platform_read(0, &acknowledgement, 1) == 1 && acknowledgement == 'y'));
   } else if (strcmp(mode, "password") == 0 || strcmp(mode, "password-cancel") == 0 || strcmp(mode, "password-box") == 0) {
     char password[32];
     int result = strcmp(mode, "password-box") == 0 ? prompt_password("Test passphrase", password, sizeof(password)) : prompt_password_simple("Test passphrase", password, sizeof(password));
@@ -279,10 +279,10 @@ static asciichat_error_t probe(const char *mode) {
     bool result = terminal_query_background_color(&r, &g, &b);
     if (strcmp(mode, "background") == 0) {
       REQUIRE(result);
-      REQUIRE(r == 0x12 && g == 0x34 && b == 0x56);
+      REQUIRE((r == 0x12 && g == 0x34 && b == 0x56));
     } else {
       REQUIRE(!result);
-      REQUIRE(r == 17 && g == 34 && b == 51);
+      REQUIRE((r == 17 && g == 34 && b == 51));
     }
   } else
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unknown terminal probe");

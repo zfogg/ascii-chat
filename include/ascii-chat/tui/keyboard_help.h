@@ -30,6 +30,10 @@
 
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct session_display_ctx session_display_ctx_t;
 
 /* ============================================================================
@@ -163,3 +167,7 @@ bool keyboard_help_check_signal_cancel(void);
 
 /** Interactive selection retained beneath help, including when errors cover it. */
 int keyboard_help_previous_interactive(void);
+
+#ifdef __cplusplus
+}
+#endif

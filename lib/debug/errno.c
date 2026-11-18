@@ -1,6 +1,6 @@
 #include <ascii-chat/debug/errno.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <libplatform/thread.h>
 #include <libplatform/cond.h>
 #include <libplatform/atomic.h>
@@ -97,7 +97,7 @@ asciichat_error_t debug_errno_start_thread(void) {
   atomic_store_bool_impl(&g_debug_errno_cleaning, false);
   options_t *opts = options_get();
   if (opts) {
-    if (IS_OPTION_EXPLICIT(debug_errno_stacks_time, opts))
+    if (opts->debug_errno_stacks_time > 0.0)
       debug_errno_print_delayed((uint64_t)(opts->debug_errno_stacks_time * NS_PER_SEC_INT));
   }
 #ifndef EMSCRIPTEN_BUILD

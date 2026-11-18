@@ -1,0 +1,9 @@
+PackageIdentifier: ascii-chat
+PackageVersion: {{ .Env.VERSION }}
+Installers:
+- Architecture: x64
+  InstallerType: wix
+  InstallerUrl: {{ .Env.MSI_URL }}
+  InstallerSha256: {{ .Env.MSI_SHA256 }}
+ManifestType: installer
+ManifestVersion: 1.10.0

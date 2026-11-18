@@ -155,9 +155,11 @@ endif()
 #
 # Separate cache directories for different build configurations:
 # - .deps-cache/<BuildType>/           : Native builds (normal glibc/system libc)
+# - .deps-cache/wasm/<BuildType>/         : WASM/Emscripten builds
+# - .deps-cache/wsl/<Distro>/<BuildType>/ : WSL builds, isolated per distro
 # - .deps-cache/musl/                  : Native musl builds
-# - .deps-cache/docker/<BuildType>/    : Docker builds
-# - .deps-cache/docker/musl/           : Docker musl builds
+# - .deps-cache/docker/<Arch>/<BuildType>/ : Docker builds, isolated per arch
+# - .deps-cache/docker/<Arch>/musl/        : Docker musl builds
 #
 # Build types need separate caches because dependencies like mimalloc have different
 # configurations (Debug: MI_DEBUG_FULL=ON, Release: MI_DEBUG_FULL=OFF)
@@ -167,9 +169,8 @@ endif()
 # Use centralized dependency cache variables from CMakeLists.txt
 # ASCIICHAT_DEPS_CACHE_ROOT, ASCIICHAT_DEPS_CACHE_DIR, and ASCIICHAT_DEPS_CACHE_MUSL are set in CMakeLists.txt
 
-# FetchContent deps (mimalloc, bearssl, etc.) use the build-type-specific cache
-# Note: Use FORCE since this is computed from ASCIICHAT_DEPS_CACHE_DIR which may change
-set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}" CACHE PATH "FetchContent cache directory" FORCE)
+# DependencyCache.cmake already sets FetchContent's source/build directory.
+# Do not override its layout a second time during initialization.
 
 # Note: MUSL_DEPS_DIR_STATIC is set in Musl.cmake's configure_musl_post_project()
 # after USE_MUSL is defined (can't be set here since this runs before project())
@@ -200,13 +201,14 @@ endif()
 # Keep vcpkg's installed packages beside the other persistent dependency
 # artifacts. The installed tree contains both Debug and Release libraries for
 # the selected triplet, so the triplet remains the next path component.
-if(WIN32 AND USE_VCPKG AND NOT DEFINED VCPKG_INSTALLED_DIR)
+if(WIN32 AND USE_VCPKG)
     set(VCPKG_INSTALLED_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/vcpkg" CACHE PATH
         "Persistent vcpkg installed dependency tree" FORCE)
 endif()
 
-# A completed generation already has an installed dependency tree. Avoid taking
-# vcpkg's global install lock on every subsequent CMake regeneration.
+# vcpkg manifest mode is intentionally left enabled. It is idempotent when the
+# manifest is already satisfied, and must remain enabled so a cleared or
+# incomplete cache is repopulated during a normal preset configure.
 option(ASCIICHAT_VCPKG_REFRESH "Install or update vcpkg dependencies during configuration" OFF)
 if(EXISTS "${CMAKE_BINARY_DIR}/CMakeCache.txt" AND EXISTS "${CMAKE_BINARY_DIR}/cmake_install.cmake" AND NOT ASCIICHAT_VCPKG_REFRESH)
     set(VCPKG_MANIFEST_INSTALL OFF)
@@ -215,7 +217,7 @@ endif()
 # vcpkg chooses and installs its triplet during project(), so select the static
 # release triplet before loading the toolchain rather than in dependency setup.
 if(CMAKE_HOST_WIN32 AND (NOT CMAKE_SYSTEM_NAME OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
-   AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+   AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIBS)
     if(NOT DEFINED VCPKG_TARGET_TRIPLET AND NOT DEFINED ENV{VCPKG_TARGET_TRIPLET})
         if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
             set(_asciichat_vcpkg_arch arm64)
@@ -241,7 +243,8 @@ if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
         # We handle DLL copying ourselves using cmd /c in PostBuild.cmake
         set(VCPKG_APPLOCAL_DEPS OFF CACHE BOOL "Disable vcpkg automatic DLL copying" FORCE)
 
-        set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+        set(CMAKE_TOOLCHAIN_FILE
+            "${CMAKE_SOURCE_DIR}/cmake/toolchains/Vcpkg.cmake" CACHE STRING "")
         message(STATUS "Using ${BoldGreen}vcpkg${ColorReset} toolchain from environment: ${BoldBlue}$ENV{VCPKG_ROOT}${ColorReset}")
         message(STATUS "Disabled vcpkg applocal.ps1 - using ${BoldCyan}cmd /c xcopy${ColorReset} for DLL copying")
     endif()

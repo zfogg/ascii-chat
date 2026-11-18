@@ -1,5 +1,9 @@
 #pragma once
 #include <ascii-chat/ui/popup.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef struct {
   const char *keys; /* NULL denotes a section heading. */
   const char *description;
@@ -29,3 +33,7 @@ terminal_size_t ui_help_menu_measure(const ui_help_menu_t *menu);
 bool ui_help_menu_render(frame_buffer_t *output, terminal_size_t size, const ui_help_menu_t *menu);
 /** Key tokens are yellow; spaces, slashes, parentheses and pipes stay uncolored. */
 void ui_help_keys(char *output, size_t capacity, const char *keys);
+
+#ifdef __cplusplus
+}
+#endif

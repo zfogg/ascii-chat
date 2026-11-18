@@ -16,7 +16,7 @@
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/string.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <libplatform/terminal.h>
 #include <string.h>
 #include <stdio.h>
@@ -207,12 +207,11 @@ const char *ui_session_render(ui_session_t *s, const ui_session_view_t *view, ui
   if (covered)
     ui_too_small_render(s->frame, s->size, view->minimum);
   else {
-    // Media frames are continuously redrawn and may follow another UI screen
-    // that intentionally showed the editing cursor. Reassert the terminal
-    // cursor state through the platform abstraction so it cannot flash
-    // between ASCII frames.
+    // Hide the cursor in the submitted media frame, before moving it to draw
+    // the art. A separate stdout write can be reordered against presentation,
+    // and cached visibility becomes stale when another screen shows the cursor.
     if (view->screen == UI_SCREEN_MEDIA)
-      (void)terminal_cursor_hide();
+      frame_buffer_append(s->frame, "\033[?25l", 6);
     if (view->screen == UI_SCREEN_HELP) {
       int top = (s->size.rows - view->minimum.rows) / 2;
       terminal_color_mode_t mode = GET_OPTION(color_mode);

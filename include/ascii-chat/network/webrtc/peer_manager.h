@@ -76,8 +76,7 @@ typedef enum {
  * - Use it for ACIP communication
  * - Call acip_transport_destroy() to free it
  */
-typedef void (*webrtc_transport_ready_callback_t)(acip_transport_t *transport,
-                                                  const uint8_t participant_id[SESSION_ID_SIZE], void *user_data);
+typedef void (*webrtc_transport_ready_callback_t)(acip_transport_t *transport, const uint8_t participant_id[SESSION_ID_SIZE], void *user_data);
 
 /**
  * @brief Callback when ICE candidate gathering is unusually slow
@@ -90,8 +89,7 @@ typedef void (*webrtc_transport_ready_callback_t)(acip_transport_t *transport,
  * timeout. Trickle ICE may still connect the peer, so this callback does not
  * imply that the peer connection will be closed.
  */
-typedef void (*webrtc_gathering_timeout_callback_t)(const uint8_t participant_id[SESSION_ID_SIZE], uint32_t timeout_ms,
-                                                    uint64_t elapsed_ms, void *user_data);
+typedef void (*webrtc_gathering_timeout_callback_t)(const uint8_t participant_id[SESSION_ID_SIZE], uint32_t timeout_ms, uint64_t elapsed_ms, void *user_data);
 
 /**
  * @brief Peer manager configuration
@@ -122,9 +120,7 @@ typedef struct {
  *
  * Implementation should send PACKET_TYPE_ACIP_WEBRTC_SDP via ACDS.
  */
-typedef asciichat_error_t (*webrtc_send_sdp_callback_t)(const uint8_t session_id[SESSION_ID_SIZE],
-                                                        const uint8_t recipient_id[SESSION_ID_SIZE],
-                                                        const char *sdp_type, const char *sdp, void *user_data);
+typedef asciichat_error_t (*webrtc_send_sdp_callback_t)(const uint8_t session_id[SESSION_ID_SIZE], const uint8_t recipient_id[SESSION_ID_SIZE], const char *sdp_type, const char *sdp, void *user_data);
 
 /**
  * @brief Callback to send ICE candidate via ACDS signaling
@@ -137,9 +133,8 @@ typedef asciichat_error_t (*webrtc_send_sdp_callback_t)(const uint8_t session_id
  *
  * Implementation should send PACKET_TYPE_ACIP_WEBRTC_ICE via ACDS.
  */
-typedef asciichat_error_t (*webrtc_send_ice_callback_t)(const uint8_t session_id[SESSION_ID_SIZE],
-                                                        const uint8_t recipient_id[SESSION_ID_SIZE],
-                                                        const char *candidate, const char *mid, void *user_data);
+typedef asciichat_error_t (*webrtc_send_ice_callback_t)(const uint8_t session_id[SESSION_ID_SIZE], const uint8_t recipient_id[SESSION_ID_SIZE], const char *candidate, const char *mid,
+                                                        void *user_data);
 
 /**
  * @brief Hooks that deliver local SDP offers/answers and ICE candidates to ACDS.
@@ -167,9 +162,7 @@ typedef struct {
  * - ICE candidate exchange
  * - ACIP transport wrapping when DataChannel opens
  */
-asciichat_error_t webrtc_peer_manager_create(const webrtc_peer_manager_config_t *config,
-                                             const webrtc_signaling_callbacks_t *signaling_callbacks,
-                                             webrtc_peer_manager_t **manager_out);
+asciichat_error_t webrtc_peer_manager_create(const webrtc_peer_manager_config_t *config, const webrtc_signaling_callbacks_t *signaling_callbacks, webrtc_peer_manager_t **manager_out);
 
 /**
  * @brief Destroy peer manager and close all connections
@@ -225,14 +218,11 @@ asciichat_error_t webrtc_peer_manager_handle_ice(webrtc_peer_manager_t *manager,
  *
  * Creator role uses webrtc_peer_manager_handle_sdp() to accept offers instead.
  */
-asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, const uint8_t session_id[SESSION_ID_SIZE],
-                                              const uint8_t participant_id[SESSION_ID_SIZE]);
+asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, const uint8_t session_id[SESSION_ID_SIZE], const uint8_t participant_id[SESSION_ID_SIZE]);
 
 /** Return the current state for a participant's peer connection. */
-bool webrtc_peer_manager_get_state(webrtc_peer_manager_t *manager, const uint8_t participant_id[SESSION_ID_SIZE],
-                                   webrtc_state_t *state_out);
-asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager,
-                                                  const uint8_t participant_id[SESSION_ID_SIZE]);
+bool webrtc_peer_manager_get_state(webrtc_peer_manager_t *manager, const uint8_t participant_id[SESSION_ID_SIZE], webrtc_state_t *state_out);
+asciichat_error_t webrtc_peer_manager_remove_peer(webrtc_peer_manager_t *manager, const uint8_t participant_id[SESSION_ID_SIZE]);
 
 // ============================================================================
 // Connection Health Monitoring

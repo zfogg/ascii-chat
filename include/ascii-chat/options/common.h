@@ -171,7 +171,6 @@ const char *format_available_modes(option_mode_bitmask_t mode_bitmask);
  * }
  * @endcode
  */
-int strtoint_safe(const char *str);
 
 /**
  * @brief Standard option parsing error return
@@ -209,8 +208,7 @@ static inline asciichat_error_t option_error_invalid(void) {
  * }
  * @endcode
  */
-char *validate_required_argument(const char *optarg, char *argbuf, size_t argbuf_size, const char *option_name,
-                                 asciichat_mode_t mode);
+char *validate_required_argument(const char *optarg, char *argbuf, size_t argbuf_size, const char *option_name, asciichat_mode_t mode);
 
 /**
  * @brief Validate a positive integer value
@@ -402,8 +400,7 @@ char *strip_equals_prefix(const char *opt_value, char *buffer, size_t buffer_siz
  * SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value);
  * @endcode
  */
-char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name,
-                            asciichat_mode_t mode);
+char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name, asciichat_mode_t mode);
 
 /**
  * @brief Read password from stdin with prompt
@@ -579,7 +576,6 @@ asciichat_error_t parse_log_level_option(const char *value_str, options_t *opts)
  * }
  * @endcode
  */
-void update_dimensions_for_full_height(options_t *opts);
 
 /**
  * @brief Update dimensions to current terminal size
@@ -602,7 +598,6 @@ void update_dimensions_for_full_height(options_t *opts);
  * log_info("Terminal dimensions: %dx%d", opt_width, opt_height);
  * @endcode
  */
-void update_dimensions_to_terminal_size(options_t *opts);
 
 /**
  * @brief Print project links with link emoji and colored styling

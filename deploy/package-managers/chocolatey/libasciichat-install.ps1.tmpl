@@ -1,0 +1,4 @@
+$arm64 = $env:PROCESSOR_ARCHITEW6432 -eq 'ARM64'
+$url = if ($arm64) { '{{ .Env.LIB_ARM64_URL }}' } else { '{{ .Env.LIB_X64_URL }}' }
+$hash = if ($arm64) { '{{ .Env.LIB_ARM64_SHA256 }}' } else { '{{ .Env.LIB_X64_SHA256 }}' }
+Install-ChocolateyZipPackage -PackageName 'libasciichat' -Url $url -UnzipLocation (Join-Path (Get-ToolsLocation) 'libasciichat') -Checksum $hash -ChecksumType 'sha256'

@@ -48,7 +48,7 @@ function(ascii_panic_instrument_source out_var target source relative compiled)
     endif()
     if(NOT target MATCHES "^ascii-chat(-|$)" OR target STREQUAL "ascii-chat-panic" OR
        relative MATCHES "^lib/(debug|video/simd)/" OR
-       relative MATCHES "^lib/platform/(system\\.c|(posix|windows)/(system|mutex|thread)\\.c)$")
+       relative MATCHES "^deps/ascii-chat-deps/libplatform/lib/(system\\.c|(posix|windows)/(system|mutex|thread)\\.c)$")
         return()
     endif()
     set(_root "${CMAKE_BINARY_DIR}/panic_transformed/${target}")

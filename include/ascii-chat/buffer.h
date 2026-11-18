@@ -6,6 +6,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Owned, aligned payloads for synchronous and asynchronous media pipelines.
  *
@@ -92,11 +96,11 @@ bool buffer_is_unique(const void *data);
 /** Low-level release for ownership passed by value. Prefer buffer_release(). */
 void buffer_unref(const void *data);
 /** Release and clear a typed pointer lvalue; evaluates the lvalue once. */
-#define buffer_release(data)                                                                                           \
-  do {                                                                                                                 \
-    __typeof__(&(data)) buffer_slot__ = &(data);                                                                       \
-    buffer_unref(*buffer_slot__);                                                                                      \
-    *buffer_slot__ = NULL;                                                                                             \
+#define buffer_release(data)                     \
+  do {                                           \
+    __typeof__(&(data)) buffer_slot__ = &(data); \
+    buffer_unref(*buffer_slot__);                \
+    *buffer_slot__ = NULL;                       \
   } while (0)
 
 /** Worker-owned reusable storage. Zero-initialize; never share a workspace. */
@@ -119,3 +123,7 @@ void buffer_system_cleanup(void);
 buffer_domain_t *buffer_default_domain(void);
 /** Small, bounded control messages may use the reserved process allowance. */
 buffer_domain_t *buffer_control_domain(void);
+
+#ifdef __cplusplus
+}
+#endif

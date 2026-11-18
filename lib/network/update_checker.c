@@ -10,7 +10,7 @@
 #define NETWORK_UPDATE_CHECKER_SUGGESTION_BUFFER_SIZE 512
 
 #include <ascii-chat/network/update_checker.h>
-#include <defer.h>
+#include <recast/defer.h>
 #include <ascii-chat/network/http/client/client.h>
 #include <ascii-chat/network/dns.h>
 #include <ascii-chat/version.h>
@@ -68,7 +68,15 @@ static char *get_cache_file_path(void) {
   if (override_dir && override_dir[0]) {
     SAFE_STRDUP(config_dir, override_dir);
   } else {
-    config_dir = get_config_dir();
+    /* libplatform returns this string from the platform allocator. Copy it
+     * into ascii-chat-owned storage before the common cleanup path, because
+     * SAFE_FREE may use mimalloc while libplatform deliberately uses the
+     * regular C allocator. */
+    char *platform_config_dir = get_config_dir();
+    if (platform_config_dir) {
+      SAFE_STRDUP(config_dir, platform_config_dir);
+      free(platform_config_dir);
+    }
   }
   if (!config_dir) {
     log_error("Failed to get config directory for update check cache");

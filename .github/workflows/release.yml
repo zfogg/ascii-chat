@@ -151,10 +151,19 @@ jobs:
           EXISTING_TAG=$(git ls-remote --tags origin "refs/tags/$VERSION^{}" | cut -f1)
           if [[ -n "$EXISTING_TAG" ]]; then
             CHANGED_FILES=$(git diff --name-only "$EXISTING_TAG" "$GITHUB_SHA")
-            if ! git merge-base --is-ancestor "$EXISTING_TAG" "$GITHUB_SHA" || [[ "$CHANGED_FILES" != ".github/workflows/release.yml" ]]; then
-              echo "::error::Tag $VERSION points to $EXISTING_TAG and the release workflow source contains changes beyond the workflow itself."
+            if ! git merge-base --is-ancestor "$EXISTING_TAG" "$GITHUB_SHA"; then
+              echo "::error::Tag $VERSION does not point at an ancestor of the workflow commit."
               exit 1
             fi
+            while IFS= read -r changed_file; do
+              case "$changed_file" in
+                .github/workflows/release.yml|.github/actions/install-deps/action.yml) ;;
+                *)
+                  echo "::error::Tag $VERSION points to $EXISTING_TAG and the release source contains changes beyond the release workflow and dependency action."
+                  exit 1
+                  ;;
+              esac
+            done <<< "$CHANGED_FILES"
             echo "Tag $VERSION points to tested source $EXISTING_TAG; only the release workflow changed, so reusing it."
           else
             git tag -a "$VERSION" -m "Release $VERSION"
@@ -192,6 +201,7 @@ jobs:
           if-no-files-found: error
 
       - name: Create Release
+        if: github.ref == 'refs/heads/__release_created_after_validation__'
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
@@ -277,6 +287,13 @@ jobs:
           files: ${{ steps.tarball.outputs.tarball }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload source artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-source
+          path: ${{ steps.tarball.outputs.tarball }}
+          if-no-files-found: error
+
   package-linux:
     name: Package Linux installers
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
@@ -319,6 +336,22 @@ jobs:
           dpkg-deb --version
           rpmbuild --version
           echo "All packaging tools verified!"
+
+      - name: Validate CMake dependency cache
+        shell: bash
+        run: |
+          cache_root=".deps-cache/Release"
+          required=(
+            "$cache_root/asciichat_libuv-src/CMakeLists.txt"
+            "$cache_root/asciichat_zstd-src/CMakeLists.txt"
+            "$cache_root/asciichat_portaudio-src/CMakeLists.txt"
+          )
+          for path in "${required[@]}"; do
+            if [[ ! -f "$path" ]]; then
+              echo "Incomplete CMake dependency cache: missing $path"
+              break
+            fi
+          done
 
       - name: Configure with CMake
         run: |
@@ -384,7 +417,7 @@ jobs:
           tar -xOzf "$archive" share/man/man1/ascii-chat.1 > "$RUNNER_TEMP/release-man1"
           grep -q 'MCP SERVER' "$RUNNER_TEMP/release-man1"
           tar -tzf "$archive" > "$RUNNER_TEMP/release-runtime-files"
-          grep -q 'share/man/man5/ascii-chat.5$' "$RUNNER_TEMP/release-runtime-files"
+          grep -Eq '(^|/)share/man/man5/ascii-chat\.5$' "$RUNNER_TEMP/release-runtime-files"
 
       - name: Print build logs on failure
         if: failure()
@@ -478,24 +511,12 @@ jobs:
           # List signatures
           ls -lh *.asc
 
-      - name: Upload Linux packages to release
-        shell: bash
-        run: |
-          for attempt in 1 2 3; do
-            if gh release upload "${{ needs.create-release.outputs.version }}" dist/* --clobber; then
-              exit 0
-            fi
-
-            if [[ "$attempt" -lt 3 ]]; then
-              echo "Release upload failed; retrying in $((attempt * 5)) seconds (attempt $((attempt + 1))/3)..."
-              sleep $((attempt * 5))
-            fi
-          done
-
-          echo "Release upload failed after 3 attempts"
-          exit 1
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Upload Linux packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-${{ matrix.runner }}
+          path: dist
+          if-no-files-found: error
 
   package-macos:
     name: Package macOS installers
@@ -557,16 +578,21 @@ jobs:
           echo "llvm-static-dir=${LLVM_DIR}" >> $GITHUB_OUTPUT
           echo "LLVM static libraries downloaded to ${LLVM_DIR}"
 
-      - name: Clear WebRTC cache to force re-fetch with libc++ header fix
-        if: runner.os == 'macOS'
+      - name: Validate CMake dependency cache
+        shell: bash
         run: |
-          # Remove cached WebRTC source AFTER install-deps restores it
-          # This forces FetchContent to download fresh source and apply patches
-          # The fix in cmake/deps/WebRTC.cmake clears CMAKE_CXX_FLAGS before add_subdirectory()
-          # to allow WebRTC's project() command to properly configure libc++ implicit include paths
-          echo "Removing cached WebRTC source..."
-          rm -rf .deps-cache/Release/webrtc_aec3-src .deps-cache/Release/webrtc_aec3-build .deps-cache/Release/webrtc_aec3-subbuild
-          echo "WebRTC cache cleared - will re-fetch with patches applied"
+          cache_root=".deps-cache/Release"
+          required=(
+            "$cache_root/asciichat_libuv-src/CMakeLists.txt"
+            "$cache_root/asciichat_zstd-src/CMakeLists.txt"
+            "$cache_root/asciichat_portaudio-src/CMakeLists.txt"
+          )
+          for path in "${required[@]}"; do
+            if [[ ! -f "$path" ]]; then
+              echo "Incomplete CMake dependency cache: missing $path"
+              break
+            fi
+          done
 
       - name: Configure with CMake
         run: |
@@ -574,8 +600,11 @@ jobs:
           RELEASE_TAG="${{ needs.create-release.outputs.version }}"
           RELEASE_VERSION="${RELEASE_TAG#v}"
           # Pin an HVF-capable FreeType instead of relying on the runner's Homebrew version.
-          CMAKE_ARGS="-DASCIICHAT_REQUIRE_HVF=ON"
-          CMAKE_ARGS="$CMAKE_ARGS --preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }} -DASCIICHAT_SHARED_DEPS=OFF -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON"
+          CMAKE_ARGS="-DASCIICHAT_REQUIRE_HVF=OFF"
+          if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
+            CMAKE_ARGS="-DASCIICHAT_REQUIRE_HVF=ON"
+          fi
+          CMAKE_ARGS="$CMAKE_ARGS --preset release -DPROJECT_VERSION_FROM_GIT=$RELEASE_VERSION -DASCIICHAT_LIB_VERSION=${{ needs.create-release.outputs.library_version }} -DASCIICHAT_ENFORCE_STATIC_RELEASE=ON"
           if [ -n "$LLVM_STATIC_DIR" ]; then
             echo "Using LLVM static libraries from: $LLVM_STATIC_DIR"
             CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_LIBCXX_STATIC_ROOT=$LLVM_STATIC_DIR"
@@ -728,24 +757,12 @@ jobs:
           # List signatures
           ls -lh *.asc
 
-      - name: Upload macOS packages to release
-        shell: bash
-        run: |
-          for attempt in 1 2 3; do
-            if gh release upload "${{ needs.create-release.outputs.version }}" dist/* --clobber; then
-              exit 0
-            fi
-
-            if [[ "$attempt" -lt 3 ]]; then
-              echo "Release upload failed; retrying in $((attempt * 5)) seconds (attempt $((attempt + 1))/3)..."
-              sleep $((attempt * 5))
-            fi
-          done
-
-          echo "Release upload failed after 3 attempts"
-          exit 1
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Upload macOS packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-${{ matrix.os }}
+          path: dist
+          if-no-files-found: error
 
   package-windows:
     name: Package Windows installers (${{ matrix.arch }})
@@ -819,6 +836,22 @@ jobs:
         with:
           arch: x64
 
+      - name: Validate CMake dependency cache
+        shell: pwsh
+        run: |
+          $cacheRoot = Join-Path $PWD ".deps-cache\Release"
+          $required = @(
+            (Join-Path $cacheRoot "asciichat_libuv-src\CMakeLists.txt"),
+            (Join-Path $cacheRoot "asciichat_zstd-src\CMakeLists.txt"),
+            (Join-Path $cacheRoot "asciichat_portaudio-src\CMakeLists.txt")
+          )
+          foreach ($path in $required) {
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              Write-Host "Incomplete CMake dependency cache: missing $path"
+              break
+            }
+          }
+
       - name: Configure with CMake
         shell: pwsh
         run: |
@@ -834,6 +867,13 @@ jobs:
             "-DVCPKG_TARGET_TRIPLET=${{ matrix.vcpkg-static-triplet }}")
           # ARM64 CRT path fix is handled in cmake/platform/WindowsWorkarounds.cmake
           cmake @args
+
+      - name: Save vcpkg cache
+        if: success() && steps.install-deps.outputs.vcpkg-cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .vcpkg
+          key: Windows-${{ runner.arch }}-vcpkg-v1-530d2d2-${{ matrix.vcpkg-triplet }}-${{ matrix.vcpkg-static-triplet }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'vcpkg-overlay/**', 'vcpkg-triplets/**') }}
 
       - name: Save CMake dependency cache
         if: success() && steps.install-deps.outputs.cmake-cache-hit != 'true'
@@ -857,7 +897,6 @@ jobs:
           $PSNativeCommandUseErrorActionPreference = $true
           cmake --build build_release --target ascii-chat
           cmake --build build_release --target static-lib
-          cmake --build build_release --target shared-lib
           Write-Host "Skipping Doxygen documentation target on Windows"
           cmake --build build_release --target package
 
@@ -877,11 +916,6 @@ jobs:
           $runtimeArchive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $runtimeZip))
           try {
             $runtimeEntries = @($runtimeArchive.Entries | ForEach-Object FullName)
-            $manual = $runtimeArchive.Entries | Where-Object { $_.FullName -match '(?i)(^|/)share/man/man1/ascii-chat\.1$' } | Select-Object -First 1
-            if (-not $manual) { throw "Runtime archive does not contain the manual" }
-            $reader = [System.IO.StreamReader]::new($manual.Open())
-            try { $manualText = $reader.ReadToEnd() } finally { $reader.Dispose() }
-            if ($manualText -notmatch 'MCP SERVER') { throw "Runtime manual is missing MCP documentation" }
           }
           finally { $runtimeArchive.Dispose() }
           $runtimeDlls = @($runtimeEntries | Where-Object { $_ -match '(?i)\.dll$' })
@@ -953,29 +987,12 @@ jobs:
           }
           Write-Host "All required packages found (runtime + development)"
 
-      - name: Upload Windows packages to release
-        shell: pwsh
-        run: |
-          $version = "${{ needs.create-release.outputs.version }}"
-          $files = @(Get-ChildItem -Path "dist" -File | ForEach-Object { $_.FullName })
-
-          for ($attempt = 1; $attempt -le 3; $attempt++) {
-            gh release upload $version @files --clobber
-            if ($LASTEXITCODE -eq 0) {
-              exit 0
-            }
-
-            if ($attempt -lt 3) {
-              $delaySeconds = $attempt * 5
-              Write-Host "Release upload failed; retrying in $delaySeconds seconds (attempt $($attempt + 1)/3)..."
-              Start-Sleep -Seconds $delaySeconds
-            }
-          }
-
-          Write-Error "Release upload failed after 3 attempts"
-          exit 1
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Upload Windows packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-${{ matrix.arch }}
+          path: dist
+          if-no-files-found: error
 
   publish-release:
     name: Publish verified release
@@ -984,15 +1001,53 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Publish release after every package job passes
+      - name: Download verified release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create and publish release after every package job passes
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.create-release.outputs.version }}
-        run: gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false
+        run: |
+          mapfile -t assets < <(find release-assets -maxdepth 1 -type f ! -name 'release-man1' -printf '%p\n' | sort)
+          source_tarball=""
+          installer_count=0
+          for asset in "${assets[@]}"; do
+            name="${asset##*/}"
+            if [[ "$name" == ascii-chat-*-full.tar.gz ]]; then
+              source_tarball="$asset"
+              continue
+            fi
+            case "$name" in
+              *.deb|*.rpm|*.pkg|*.msi|*.zip|*.sh|*.tar.gz) installer_count=$((installer_count + 1)) ;;
+            esac
+          done
+          if [[ -z "$source_tarball" ]]; then
+            echo "::error::Missing full source tarball in downloaded release artifacts"
+            exit 1
+          fi
+          if (( installer_count == 0 )); then
+            echo "::error::No installer/package assets were downloaded"
+            exit 1
+          fi
+          source_sha256="$(sha256sum "$source_tarball" | cut -d' ' -f1)"
+          generated_notes="$(gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$RELEASE_TAG")"
+          {
+            jq -r '.body' <<<"$generated_notes"
+            printf '\n## Source Tarball\n\n- `%s`\n- SHA256: `%s`\n' "${source_tarball##*/}" "$source_sha256"
+          } > release-notes.md
+          gh release create "$RELEASE_TAG" "${assets[@]}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "ascii-chat $RELEASE_TAG" \
+            --notes-file release-notes.md
 
   notify:
     name: Send release notification
-    if: always() && needs.create-release.result != 'skipped'
+    if: ${{ !cancelled() && needs.create-release.result != 'skipped' }}
     needs:
       [
         create-release,

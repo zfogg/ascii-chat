@@ -24,7 +24,7 @@
 #   3. Libsodium.cmake - libsodium cryptography library
 #   4. Portaudio.cmake - portaudio audio I/O library
 #   5. BearSSL.cmake - BearSSL SSL/TLS library
-#   6. Criterion.cmake - Criterion test framework (Unix only)
+#   6. Catch2.cmake - Catch2 v3 test framework
 #   7. WindowsSDK.cmake - Windows SDK detection (Windows + Clang only)
 #   8. PlatformLibraries.cmake - Platform-specific system libraries
 # =============================================================================
@@ -34,6 +34,7 @@
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Vcpkg.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Libuv.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Utf8proc.cmake)
 
 # =============================================================================
 # Platform-Specific Configuration (EARLY - needed by other dependencies)
@@ -63,6 +64,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Portaudio.cmake)
 
 # Opus - Audio codec for real-time compression
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Opus.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Rnnoise.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/FFTW.cmake)
 
 # WebRTC Audio Processing - Production-grade echo cancellation with AEC3
@@ -71,6 +73,10 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/WebRTC.cmake)
 
 # OpenSSL - SSL/TLS library (required by libdatachannel, libwebsockets, and TURN credentials)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/OpenSSL.cmake)
+# Zlib - Compression library (required by ngtcp2 and libwebsockets)
+# Configure it before QUIC so the isolated ngtcp2 project receives the same
+# include and library selections as the parent build.
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Zlib.cmake)
 if(NOT EMSCRIPTEN)
     include(${CMAKE_SOURCE_DIR}/cmake/deps/Quic.cmake)
     asciichat_configure_quic()
@@ -81,9 +87,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/BearSSL.cmake)
 
 # libdatachannel - WebRTC DataChannels for P2P ACIP transport
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Libdatachannel.cmake)
-
-# Zlib - Compression library (required by libwebsockets, especially for musl builds)
-include(${CMAKE_SOURCE_DIR}/cmake/deps/Zlib.cmake)
 
 # libwebsockets - WebSocket transport for browser clients (uses zlib for compression and mbedTLS for WSS)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Libwebsockets.cmake)
@@ -105,6 +108,20 @@ configure_mdns()
 # yyjson - Fast JSON library for structured logging
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Yyjson.cmake)
 configure_yyjson()
+
+# Configure the shared libplatform target before libflags.  libflags must
+# reuse this target rather than creating a second copy of libplatform inside
+# its FetchContent build tree.
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libplatform.cmake)
+
+# libflags consumes the application's selected PCRE2, yyjson, tomlc17, and
+# libplatform targets. Configure it only after those providers exist so an
+# ascii-chat build never creates duplicate private copies of those libraries.
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Libflags.cmake)
+
+# gotel consumes the already-selected SQLite, PCRE2, OpenSSL, and platform
+# targets; configure it after those providers and before project libraries.
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Gotel.cmake)
 
 # x264 - H.264/AVC encoder (needed by FFmpeg for libx264 support)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/X264.cmake)
@@ -130,8 +147,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Libvterm.cmake)
 # =============================================================================
 # Test Dependencies
 # =============================================================================
-# Criterion test framework and related dependencies (Unix only)
-include(${CMAKE_SOURCE_DIR}/cmake/deps/Criterion.cmake)
+# Catch2 v3 test framework
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Catch2.cmake)
 
 # =============================================================================
 # Platform-Specific Configuration (LATE)
@@ -139,6 +156,3 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Criterion.cmake)
 
 # Platform-specific system libraries (Windows, macOS frameworks, Linux libs)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/PlatformLibraries.cmake)
-
-# Native telemetry is an explicit dependency; browser builds keep no-op hooks.
-include(${CMAKE_SOURCE_DIR}/cmake/deps/Gotel.cmake)

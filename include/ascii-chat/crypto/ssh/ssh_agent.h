@@ -33,6 +33,10 @@
 #include "../../crypto/key_types.h"
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name SSH Agent Detection
  * @{
@@ -96,13 +100,13 @@ bool ssh_agent_is_available(void);
  * @note Key format: Only Ed25519 keys are supported.
  *       Returns error if key type is not KEY_TYPE_ED25519.
  *
- * @note Key addition: Uses SSH agent protocol directly via `lib/platform/pipe.h` abstraction:
+ * @note Key addition: Uses SSH agent protocol directly via `libplatform/pipe.h` abstraction:
  *       - Connects to agent via Unix domain socket (POSIX) or named pipe (Windows)
  *       - Sends SSH2_AGENTC_ADD_IDENTITY (17) message with key material
  *       - Receives SSH_AGENT_SUCCESS (6) response on success
  *       - No temporary files or external commands required
  *
- * @note Platform abstraction: Uses `lib/platform/pipe.h` for cross-platform communication:
+ * @note Platform abstraction: Uses `libplatform/pipe.h` for cross-platform communication:
  *       - POSIX: Unix domain socket via `SSH_AUTH_SOCK` environment variable
  *       - Windows: Named pipe via `SSH_AUTH_SOCK` or default `\\.\pipe\openssh-ssh-agent`
  *
@@ -131,7 +135,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
  * @note Agent requirement: SSH agent must be running and accessible.
  *       Returns false if agent is not available.
  *
- * @note Key listing: Uses SSH agent protocol directly via `lib/platform/pipe.h` abstraction:
+ * @note Key listing: Uses SSH agent protocol directly via `libplatform/pipe.h` abstraction:
  *       - Connects to agent via Unix domain socket (POSIX) or named pipe (Windows)
  *       - Sends SSH2_AGENTC_REQUEST_IDENTITIES (11) message
  *       - Receives SSH2_AGENT_IDENTITIES_ANSWER (12) response with key list
@@ -140,7 +144,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
  * @note Key matching: Compares raw Ed25519 public keys (32 bytes) directly.
  *       No fingerprint computation required - direct byte comparison.
  *
- * @note Platform abstraction: Uses `lib/platform/pipe.h` for cross-platform communication:
+ * @note Platform abstraction: Uses `libplatform/pipe.h` for cross-platform communication:
  *       - POSIX: Unix domain socket via `SSH_AUTH_SOCK` environment variable
  *       - Windows: Named pipe via `SSH_AUTH_SOCK` or default `\\.\pipe\openssh-ssh-agent`
  *
@@ -190,7 +194,10 @@ asciichat_error_t ssh_agent_get_key(const public_key_t *public_key, private_key_
  *
  * @ingroup crypto
  */
-asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *message, size_t message_len,
-                                 uint8_t signature[ED25519_SIGNATURE_SIZE]);
+asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *message, size_t message_len, uint8_t signature[ED25519_SIGNATURE_SIZE]);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

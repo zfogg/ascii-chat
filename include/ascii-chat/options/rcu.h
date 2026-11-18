@@ -88,6 +88,10 @@
 #include <stdbool.h>
 #include <libplatform/atomic.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Initialize RCU options system
  *
@@ -187,3 +191,7 @@ size_t options_retired_snapshot_count(void);
  * Safe to call multiple times or if schema was never built.
  */
 void options_cleanup_schema(void);
+
+#ifdef __cplusplus
+}
+#endif

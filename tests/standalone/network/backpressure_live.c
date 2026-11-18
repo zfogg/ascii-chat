@@ -16,10 +16,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CHECK(x)                                                                                                       \
-  do {                                                                                                                 \
-    if (!(x))                                                                                                          \
-      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #x);                                                      \
+#define CHECK(x)                                                  \
+  do {                                                            \
+    if (!(x))                                                     \
+      FATAL(ERROR_ASSERTION_FAILED, "line %d: %s", __LINE__, #x); \
   } while (0)
 #define META_COUNT 8192
 
@@ -54,8 +54,7 @@ struct fixture {
   size_t meta_next;
   uint64_t start, generated[3], delivered[3], controls[3], keyframes[3], rejected, age_max[3], age_sum[3];
   size_t peak_queue, peak_backend;
-  uint64_t last_delivered_age, last_audio_sequence, steady_frames, steady_age_sum, next_read, wake_due,
-      recovery_requests;
+  uint64_t last_delivered_age, last_audio_sequence, steady_frames, steady_age_sum, next_read, wake_due, recovery_requests;
   AVCodecContext *codec;
   AVFrame *decoded;
   AVPacket *packet;
@@ -106,7 +105,7 @@ static asciichat_error_t received(const void *data, size_t length, void *arg) {
       const AVCodec *codec = avcodec_find_decoder(f->codec_id);
       CHECK(codec);
       f->codec = avcodec_alloc_context3(codec);
-      CHECK(f->codec && avcodec_open2(f->codec, codec, NULL) >= 0);
+      CHECK((f->codec && avcodec_open2(f->codec, codec, NULL) >= 0));
     }
     CHECK(f->codec);
     CHECK(av_new_packet(f->packet, (int)(length - sizeof(header) - 5)) == 0);
@@ -114,8 +113,8 @@ static asciichat_error_t received(const void *data, size_t length, void *arg) {
     CHECK(avcodec_send_packet(f->codec, f->packet) >= 0);
     av_packet_unref(f->packet);
     CHECK(avcodec_receive_frame(f->codec, f->decoded) == 0);
-    CHECK(f->decoded->decode_error_flags == 0 && !(f->decoded->flags & AV_FRAME_FLAG_CORRUPT));
-    CHECK(f->decoded->width == 160 && f->decoded->height == 90);
+    CHECK((f->decoded->decode_error_flags == 0 && !(f->decoded->flags & AV_FRAME_FLAG_CORRUPT)));
+    CHECK((f->decoded->width == 160 && f->decoded->height == 90));
     av_frame_unref(f->decoded);
   }
   uint64_t age = time_get_ns() - captured;
@@ -196,21 +195,17 @@ static void candidate(webrtc_peer_connection_t *pc, const char *ice, const char 
   char foundation[128], protocol[32], ip[128];
   unsigned component, priority, port;
   int consumed = 0;
-  CHECK(sscanf(ice, "%127s %u %31s %u %127s %u%n", foundation, &component, protocol, &priority, ip, &port, &consumed) ==
-        6);
+  CHECK(sscanf(ice, "%127s %u %31s %u %127s %u%n", foundation, &component, protocol, &priority, ip, &port, &consumed) == 6);
   if (strcmp(protocol, "UDP") && strcmp(protocol, "udp"))
     return;
   mutex_lock(&endpoint->fixture->mutex);
-  endpoint->address = (struct sockaddr_in){.sin_family = AF_INET,
-                                           .sin_port = HOST_TO_NET_U16((uint16_t)port),
-                                           .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
+  endpoint->address = (struct sockaddr_in){.sin_family = AF_INET, .sin_port = HOST_TO_NET_U16((uint16_t)port), .sin_addr.s_addr = HOST_TO_NET_U32(INADDR_LOOPBACK)};
   mutex_unlock(&endpoint->fixture->mutex);
   struct sockaddr_in relay;
   socklen_t size = sizeof(relay);
   CHECK(socket_getsockname(endpoint->fixture->relay, (struct sockaddr *)&relay, &size) == 0);
   char rewritten[2048];
-  safe_snprintf(rewritten, sizeof(rewritten), "%s %u %s %u 127.0.0.1 %u%s", foundation, component, protocol, priority,
-                NET_TO_HOST_U16(relay.sin_port), ice + consumed);
+  safe_snprintf(rewritten, sizeof(rewritten), "%s %u %s %u 127.0.0.1 %u%s", foundation, component, protocol, priority, NET_TO_HOST_U16(relay.sin_port), ice + consumed);
   CHECK(webrtc_add_remote_candidate(endpoint->other->pc, rewritten, mid) == ASCIICHAT_OK);
 }
 
@@ -244,10 +239,9 @@ static void *relay_loop(void *arg) {
     socklen_t length = sizeof(source);
     ssize_t n = socket_recvfrom(f->relay, buffer, sizeof(buffer), 0, (struct sockaddr *)&source, &length);
     if (n > 0) {
-      CHECK(n <= 2048 && count < 1024);
+      CHECK((n <= 2048 && count < 1024));
       mutex_lock(&f->mutex);
-      struct sockaddr_in target =
-          source.sin_port == f->endpoints[0].address.sin_port ? f->endpoints[1].address : f->endpoints[0].address;
+      struct sockaddr_in target = source.sin_port == f->endpoints[0].address.sin_port ? f->endpoints[1].address : f->endpoints[0].address;
       mutex_unlock(&f->mutex);
       datagram_t *entry = &pending[(head + count++) % 1024];
       entry->target = target;
@@ -405,8 +399,7 @@ static void setup(fixture_t *f, const char *transport, bool slow) {
   } else if (!strcmp(transport, "websocket")) {
     socket_t reserve = bound_socket(SOCK_STREAM, &address);
     socket_close(reserve);
-    static const struct lws_protocols protocols[] = {{"acip", websocket_callback, 0, 512 * 1024, 0, NULL, 0},
-                                                     LWS_PROTOCOL_LIST_TERM};
+    static const struct lws_protocols protocols[] = {{"acip", websocket_callback, 0, 512 * 1024, 0, NULL, 0}, LWS_PROTOCOL_LIST_TERM};
     struct lws_context_creation_info info = {0};
     info.port = NET_TO_HOST_U16(address.sin_port);
     info.protocols = protocols;
@@ -454,10 +447,9 @@ static void setup(fixture_t *f, const char *transport, bool slow) {
     CHECK(webrtc_create_datachannel(f->endpoints[0].pc, "acip", &f->endpoints[0].dc) == ASCIICHAT_OK);
     CHECK(webrtc_create_offer(f->endpoints[0].pc) == ASCIICHAT_OK);
     uint64_t start = time_get_ns();
-    while ((!atomic_load_bool(&f->endpoints[0].opened) || !atomic_load_bool(&f->endpoints[1].opened)) &&
-           time_get_ns() - start < 15 * NS_PER_SEC_INT)
+    while ((!atomic_load_bool(&f->endpoints[0].opened) || !atomic_load_bool(&f->endpoints[1].opened)) && time_get_ns() - start < 15 * NS_PER_SEC_INT)
       platform_sleep_ms(5);
-    CHECK(atomic_load_bool(&f->endpoints[0].opened) && atomic_load_bool(&f->endpoints[1].opened));
+    CHECK((atomic_load_bool(&f->endpoints[0].opened) && atomic_load_bool(&f->endpoints[1].opened)));
     for (int i = 0; i < 2; ++i) {
       size_t max_message_size = 0;
       CHECK(webrtc_datachannel_get_max_message_size(f->endpoints[i].dc, &max_message_size) == ASCIICHAT_OK);
@@ -465,8 +457,7 @@ static void setup(fixture_t *f, const char *transport, bool slow) {
     }
     char local[1024], remote[1024], foundation[128], protocol[32], ip[128];
     unsigned component, priority, port;
-    CHECK(rtcGetSelectedCandidatePair(webrtc_get_rtc_id(f->endpoints[0].pc), local, sizeof(local), remote,
-                                      sizeof(remote)) >= 0);
+    CHECK(rtcGetSelectedCandidatePair(webrtc_get_rtc_id(f->endpoints[0].pc), local, sizeof(local), remote, sizeof(remote)) >= 0);
     CHECK(sscanf(remote, "%127s %u %31s %u %127s %u", foundation, &component, protocol, &priority, ip, &port) == 6);
     CHECK(port == NET_TO_HOST_U16(address.sin_port));
     f->sender = acip_webrtc_transport_create(f->endpoints[0].pc, f->endpoints[0].dc, NULL);
@@ -523,16 +514,13 @@ int main(int argc, char **argv) {
   healthy->packet = av_packet_alloc();
   f->decoded = av_frame_alloc();
   f->packet = av_packet_alloc();
-  h265_encoder_t *encoder =
-      encoded ? video_encoder_create(!strcmp(encoding, "h264") ? VIDEO_CODEC_H264 : VIDEO_CODEC_H265, 160, 90) : NULL;
-  CHECK(!encoded || encoder);
+  h265_encoder_t *encoder = encoded ? video_encoder_create(!strcmp(encoding, "h264") ? VIDEO_CODEC_H264 : VIDEO_CODEC_H265, 160, 90) : NULL;
+  CHECK((!encoded || encoder));
   size_t capacity = 160 * 90 * 3 + 65536;
   uint8_t *rgb = SAFE_MALLOC(160 * 90 * 3, uint8_t *), *payload = SAFE_MALLOC(capacity, uint8_t *);
   uint64_t frame_number = 0;
   uint64_t audio_sequence = 0;
-  uint16_t type = !encoded                    ? PACKET_TYPE_IMAGE_FRAME
-                  : !strcmp(encoding, "h264") ? PACKET_TYPE_IMAGE_FRAME_H264
-                                              : PACKET_TYPE_IMAGE_FRAME_H265;
+  uint16_t type = !encoded ? PACKET_TYPE_IMAGE_FRAME : !strcmp(encoding, "h264") ? PACKET_TYPE_IMAGE_FRAME_H264 : PACKET_TYPE_IMAGE_FRAME_H265;
   FILE *csv = fopen(argv[3], "w");
   CHECK(csv);
   fputs("elapsed_s,phase,application_bytes,backend_bytes,backend_reserved_bytes,oldest_queued_frame_ms,delivered_"
@@ -608,7 +596,7 @@ int main(int argc, char **argv) {
     healthy->meta[healthy->meta_next++ % META_COUNT] = (frame_meta_t){crc, captured};
     mutex_unlock(&healthy->mutex);
     asciichat_error_t healthy_result = packet_send_via_transport(healthy->sender, type, payload, length, 0);
-    CHECK(healthy_result == ASCIICHAT_OK || healthy_result == ERROR_BUFFER_FULL);
+    CHECK((healthy_result == ASCIICHAT_OK || healthy_result == ERROR_BUFFER_FULL));
     if (healthy_result != ASCIICHAT_OK)
       CLEAR_ERRNO();
     asciichat_error_t result = packet_send_via_transport(f->sender, type, payload, length, 0);
@@ -633,11 +621,9 @@ int main(int argc, char **argv) {
     if (stats.backend_bytes > f->peak_backend)
       f->peak_backend = stats.backend_bytes;
     mutex_lock(&f->mutex);
-    fprintf(csv, "%.6f,%d,%zu,%zu,%zu,%.3f,%llu,%llu,%.3f\n", (double)(now - f->start) / NS_PER_SEC_INT, stage,
-            stats.application_bytes, stats.backend_bytes, stats.backend_reserved_bytes,
-            (double)stats.oldest_frame_age_ns / NS_PER_MS_INT,
-            (unsigned long long)(f->delivered[0] + f->delivered[1] + f->delivered[2]),
-            (unsigned long long)stats.dropped, (double)f->last_delivered_age / NS_PER_MS_INT);
+    fprintf(csv, "%.6f,%d,%zu,%zu,%zu,%.3f,%llu,%llu,%.3f\n", (double)(now - f->start) / NS_PER_SEC_INT, stage, stats.application_bytes, stats.backend_bytes, stats.backend_reserved_bytes,
+            (double)stats.oldest_frame_age_ns / NS_PER_MS_INT, (unsigned long long)(f->delivered[0] + f->delivered[1] + f->delivered[2]), (unsigned long long)stats.dropped,
+            (double)f->last_delivered_age / NS_PER_MS_INT);
     mutex_unlock(&f->mutex);
   }
   atomic_store_bool(&f->gated, false);
@@ -653,38 +639,31 @@ int main(int argc, char **argv) {
   mutex_lock(&f->mutex);
   mutex_lock(&healthy->mutex);
   CHECK(stats.dropped + f->rejected > 0);
-  CHECK(f->delivered[0] > 0 && f->delivered[2] > 0 && f->controls[2] > 0);
-  CHECK(f->steady_frames > 0 && f->last_delivered_age < 250 * NS_PER_MS_INT);
+  CHECK((f->delivered[0] > 0 && f->delivered[2] > 0 && f->controls[2] > 0));
+  CHECK((f->steady_frames > 0 && f->last_delivered_age < 250 * NS_PER_MS_INT));
   CHECK(f->steady_age_sum / f->steady_frames < 250 * NS_PER_MS_INT);
   CHECK(f->controls[1] > 0);
   if (encoded)
-    CHECK(f->keyframes[2] > 0 && stats.recovery_frames > 1 && f->recovery_requests > 0);
+    CHECK((f->keyframes[2] > 0 && stats.recovery_frames > 1 && f->recovery_requests > 0));
   fclose(csv);
   log_error("RESULT transport=%s codec=%s peak_queue=%zu peak_backend=%zu dropped=%llu rejected=%llu baseline_fps=%.2f "
             "recovery_fps=%.2f baseline_age_ms=%.2f recovery_age_ms=%.2f recovery_max_age_ms=%.2f "
             "recovery_keyframes=%llu controls=%llu",
-            transport, encoding, f->peak_queue, f->peak_backend, (unsigned long long)stats.dropped,
-            (unsigned long long)f->rejected, (double)f->delivered[0] / 2, (double)f->delivered[2] / recovery_seconds,
-            (double)f->age_sum[0] / (double)f->delivered[0] / NS_PER_MS_INT,
-            (double)f->age_sum[2] / (double)f->delivered[2] / NS_PER_MS_INT, (double)f->age_max[2] / NS_PER_MS_INT,
-            (unsigned long long)f->keyframes[2], (unsigned long long)f->controls[2]);
-  log_error("HEALTHY transport=%s codec=%s baseline_fps=%.2f saturation_fps=%.2f recovery_fps=%.2f", transport,
-            encoding, (double)healthy->delivered[0] / 2, (double)healthy->delivered[1] / 3.0,
+            transport, encoding, f->peak_queue, f->peak_backend, (unsigned long long)stats.dropped, (unsigned long long)f->rejected, (double)f->delivered[0] / 2,
+            (double)f->delivered[2] / recovery_seconds, (double)f->age_sum[0] / (double)f->delivered[0] / NS_PER_MS_INT, (double)f->age_sum[2] / (double)f->delivered[2] / NS_PER_MS_INT,
+            (double)f->age_max[2] / NS_PER_MS_INT, (unsigned long long)f->keyframes[2], (unsigned long long)f->controls[2]);
+  log_error("HEALTHY transport=%s codec=%s baseline_fps=%.2f saturation_fps=%.2f recovery_fps=%.2f", transport, encoding, (double)healthy->delivered[0] / 2, (double)healthy->delivered[1] / 3.0,
             (double)healthy->delivered[2] / recovery_seconds);
-  CHECK(healthy->delivered[0] > 0 && healthy->delivered[1] > 0 && healthy->delivered[2] > 0);
-  log_error("SOURCE baseline_fps=%.2f saturation_fps=%.2f recovery_fps=%.2f", (double)f->generated[0] / 2,
-            (double)f->generated[1] / 3, (double)f->generated[2] / recovery_seconds);
+  CHECK((healthy->delivered[0] > 0 && healthy->delivered[1] > 0 && healthy->delivered[2] > 0));
+  log_error("SOURCE baseline_fps=%.2f saturation_fps=%.2f recovery_fps=%.2f", (double)f->generated[0] / 2, (double)f->generated[1] / 3, (double)f->generated[2] / recovery_seconds);
   CHECK(healthy->delivered[1] >= f->generated[1] * 0.90);
   if (!strcmp(transport, "webrtc")) {
-    log_error("RELAY forwarded=%llu throttled=%llu", (unsigned long long)atomic_load_u64(&f->relayed),
-              (unsigned long long)atomic_load_u64(&f->throttled));
+    log_error("RELAY forwarded=%llu throttled=%llu", (unsigned long long)atomic_load_u64(&f->relayed), (unsigned long long)atomic_load_u64(&f->throttled));
     CHECK(atomic_load_u64(&f->throttled) > 0);
   }
   log_error("DURATION baseline_s=2 throttle_s=3 recovery_s=%.6f steady_s=%.6f", recovery_seconds, steady_seconds);
-  log_error("STEADY fps=%.2f age_ms=%.2f controls_during_throttle=%llu recovery_requests=%llu",
-            (double)f->steady_frames / steady_seconds,
-            (double)f->steady_age_sum / (double)f->steady_frames / NS_PER_MS_INT, (unsigned long long)f->controls[1],
-            (unsigned long long)f->recovery_requests);
+  log_error("STEADY fps=%.2f age_ms=%.2f controls_during_throttle=%llu recovery_requests=%llu", (double)f->steady_frames / steady_seconds,
+            (double)f->steady_age_sum / (double)f->steady_frames / NS_PER_MS_INT, (unsigned long long)f->controls[1], (unsigned long long)f->recovery_requests);
   mutex_unlock(&healthy->mutex);
   mutex_unlock(&f->mutex);
   // Destroy with valid queued output. Replaying a dependent encoded packet
@@ -705,8 +684,7 @@ int main(int argc, char **argv) {
   }
   if (!strcmp(transport, "webrtc")) {
     CHECK(f->sender->methods->close(f->sender) == ASCIICHAT_OK);
-    packet_header_t header = {
-        .magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME), .length = 0};
+    packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC), .type = HOST_TO_NET_U16(PACKET_TYPE_IMAGE_FRAME), .length = 0};
     socket_buffer_t buffer = {&header, sizeof(header)};
     uint64_t closed_at = time_get_ns();
     for (;;) {

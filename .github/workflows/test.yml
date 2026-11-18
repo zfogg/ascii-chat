@@ -104,7 +104,7 @@ jobs:
       - run: uv sync --frozen
       - run: uv run --frozen python .github/scripts/test_generate_coverage.py
       - run: uv run --frozen python .github/scripts/test_prepare_coverage_upload.py
-      - run: uv run --frozen python .github/scripts/test_criterion_to_junit.py
+      - run: uv run --frozen python .github/scripts/test_catch2_junit.py
 
   unit-tests:
     needs: preflight
@@ -113,7 +113,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
+        os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15","windows-latest"]' || '["ubuntu-latest"]') }}
         build_type: [debug, release]
         # Coverage excludes compiler-generated sanitizer guards. Keep an
         # independent Ubuntu Debug sanitizer run with the same unit suites.
@@ -123,6 +123,9 @@ jobs:
         include:
           - os: ubuntu-latest
             build_type: sanitizers
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Checkout code
@@ -135,9 +138,14 @@ jobs:
       - name: Install dependencies with caching
         uses: ./.github/actions/install-deps
         with:
-          os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
-          extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr libc6-dbg' || 'gcovr' }}
+          os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}
+          extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr libc6-dbg' || '' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          cache-dependency-glob: "{pyproject.toml,uv.lock}"
 
       - name: Install Python test dependencies
         run: uv python install 3.15 && uv sync --frozen
@@ -152,7 +160,7 @@ jobs:
       - name: Clean test executables and libraries only
         run: |
           rm -f build/coverage.xml build/Testing/ctest-results.xml
-          rm -rf build/Testing/criterion-xml
+          rm -rf build/Testing/xml
           # Only clean test executables and old libraries
           # Keep CMakeCache.txt and CMakeFiles to preserve configure cache across build type changes
           rm -rf build/bin/test_*
@@ -165,7 +173,7 @@ jobs:
 
           # Use Homebrew LLVM on macOS for better standards support
           # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
-          if [ "${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}" = "macos" ]; then
+          if [ "${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}" = "macos" ]; then
             if [ -d "/opt/homebrew/opt/llvm" ]; then
               HOMEBREW_PREFIX="/opt/homebrew"
             elif [ -d "/usr/local/opt/llvm" ]; then
@@ -187,9 +195,8 @@ jobs:
           echo "Building with CMake build type: ${BUILD_TYPE}"
           cmake_args=(
             -DBUILD_TESTS=ON
-            -DPython3_EXECUTABLE="${{ github.workspace }}//.venv/bin/python"
+            -DPython3_EXECUTABLE="${{ startsWith(matrix.os, 'windows') && format('{0}/.venv/Scripts/python.exe', github.workspace) || format('{0}/.venv/bin/python', github.workspace) }}"
             -DUSE_MUSL=OFF
-            -DASCIICHAT_FORCE_CRITERION_TESTS=ON
             -DASCIICHAT_ENABLE_ANALYZERS=OFF
             -DASCIICHAT_ENABLE_COVERAGE=${{ matrix.build_type == 'sanitizers' && 'OFF' || 'ON' }}
             -DASCIICHAT_ENABLE_SANITIZERS=${{ matrix.build_type == 'sanitizers' && 'ON' || 'OFF' }}
@@ -201,9 +208,6 @@ jobs:
 
           if [ "${BUILD_TYPE}" = "Release" ]; then
             cmake_args+=(-DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF)
-            # Force Criterion tests in Release mode for CI testing
-            # Must use ASCIICHAT_FORCE_CRITERION_TESTS (cache option) not BUILD_CRITERION_TESTS (regular variable)
-            cmake_args+=(-DASCIICHAT_FORCE_CRITERION_TESTS=ON)
             # Skip hardening validation (linker checks may fail in CI environment)
             cmake_args+=(-DASCIICHAT_SKIP_HARDENING_VALIDATION=ON)
           fi
@@ -235,7 +239,10 @@ jobs:
 
       - name: Build test suite
         run: |
-          cmake --build build --target all tests tests-criterion-build
+          # Unit jobs only need the shared production objects and the unit
+          # executable. The aggregate `tests` target also builds integration,
+          # benchmark, and platform fixture binaries.
+          cmake --build build --target unit_tests
 
           echo "Test executables built:"
           ls -la build/bin/test_* 2>/dev/null || echo "No test executables found in build/bin/"
@@ -263,7 +270,7 @@ jobs:
           # Run unit tests (filtered by label)
           set -o pipefail
           # CTest schedules isolated test processes across available cores.
-          ctest --test-dir build --label-regex "^unit$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee unit-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}-${{ matrix.build_type }}.log
+          ctest --test-dir build --label-regex "^unit$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee unit-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}-${{ matrix.build_type }}.log
 
           echo "Unit tests completed successfully"
 
@@ -275,7 +282,7 @@ jobs:
         if: always() && matrix.build_type != 'sanitizers'
         uses: ./.github/actions/generate-coverage
         with:
-          os-type: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+          os-type: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}
 
       - name: Save build caches
         if: always()
@@ -316,9 +323,9 @@ jobs:
         if: always()
         with:
           test-type: unit
-          os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+          os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}
           build-type: ${{ matrix.build_type }}
-          criterion-xml-dir: build/Testing/criterion-xml
+          test-xml-dir: build/Testing/xml
           coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
           upload-coverage: "false"
@@ -333,7 +340,7 @@ jobs:
             build/coverage.xml
             build/Testing/ctest-results.xml
             build/Testing/python-*.xml
-            build/Testing/criterion-xml/*.xml
+            build/Testing/xml/*.xml
           retention-days: 7
 
   integration-tests:
@@ -343,11 +350,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
+        os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15","windows-latest"]' || '["ubuntu-latest"]') }}
         instrumentation: [coverage]
         include:
           - os: ubuntu-latest
             instrumentation: sanitizers
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Checkout code
@@ -360,9 +370,14 @@ jobs:
       - name: Install dependencies with caching
         uses: ./.github/actions/install-deps
         with:
-          os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
-          extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr pulseaudio pulseaudio-utils' || 'gcovr' }}
+          os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}
+          extra-packages: ${{ startsWith(matrix.os, 'ubuntu') && 'lcov gcovr pulseaudio pulseaudio-utils' || '' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          cache-dependency-glob: "{pyproject.toml,uv.lock}"
 
       - name: Cache build, dependencies, and ccache
         id: cache-build
@@ -380,7 +395,7 @@ jobs:
       - name: Clear stale integration executables and libraries
         run: |
           rm -f build/coverage.xml build/Testing/ctest-results.xml
-          rm -rf build/Testing/criterion-xml
+          rm -rf build/Testing/xml
           # macOS debug symbol bundles matching these paths are directories.
           rm -rf build/bin/test_* build/bin/ascii-chat build/bin/ascii-chat.dSYM build/lib/libasciichat*
 
@@ -392,7 +407,7 @@ jobs:
           echo "Configuring integration tests with ${{ matrix.instrumentation }}..."
           # Use Homebrew LLVM on macOS for better standards support
           # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
-          if [ "${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}" = "macos" ]; then
+          if [ "${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}" = "macos" ]; then
             if [ -d "/opt/homebrew/opt/llvm" ]; then
               HOMEBREW_PREFIX="/opt/homebrew"
             elif [ -d "/usr/local/opt/llvm" ]; then
@@ -412,14 +427,12 @@ jobs:
           cmake --fresh -B build --preset github --debug-output \
             -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DPython3_EXECUTABLE="${{ github.workspace }}//.venv/bin/python" \
+            -DPython3_EXECUTABLE="${{ startsWith(matrix.os, 'windows') && format('{0}/.venv/Scripts/python.exe', github.workspace) || format('{0}/.venv/bin/python', github.workspace) }}" \
             -DASCIICHAT_ENABLE_COVERAGE=${{ matrix.instrumentation == 'coverage' && 'ON' || 'OFF' }} \
             -DASCIICHAT_ENABLE_SANITIZERS=${{ matrix.instrumentation == 'sanitizers' && 'ON' || 'OFF' }} \
             -DBUILD_TESTS=ON \
-            -DASCIICHAT_FORCE_CRITERION_TESTS=ON \
             -DUSE_MUSL=OFF \
             -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF \
-            -DASCIICHAT_SHARED_DEPS=ON \
             -DCMAKE_C_FLAGS="-std=c2x" \
             -DCMAKE_VERBOSE_MAKEFILE=ON
 
@@ -459,17 +472,17 @@ jobs:
 
       - name: Build and run integration tests
         run: |
-          cmake --build build --target all tests tests-criterion-build
-          if [ "${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}" = "macos" ]; then
+          cmake --build build --target ascii-chat tests
+          if [ "${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}" = "macos" ]; then
             export ASAN_SYMBOLIZER_PATH="$(brew --prefix llvm)/bin/llvm-symbolizer"
           fi
           ctest --test-dir build -R '^test_unit_debug_memory_concurrency$' --output-on-failure
           set -o pipefail
 
           # Run integration tests via ctest preset
-          # Criterion generates detailed XML in build/Testing/criterion-xml/
+          # Test adapters generate detailed XML in build/Testing/xml/
           # Keep Python WebRTC smoke tests available locally without running them in CI.
-          ctest --test-dir build --label-regex "^integration$" --exclude-regex '^(discovery-webrtc|python-discovery-webrtc|discovery-stereo-audio|discovery-audio)$' --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee integration-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
+          ctest --test-dir build --label-regex "^integration$" --exclude-regex '^(discovery-webrtc|python-discovery-webrtc|discovery-stereo-audio|discovery-audio)$' --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee integration-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}.log
 
           echo "Integration tests completed successfully"
 
@@ -481,7 +494,7 @@ jobs:
         if: always() && matrix.instrumentation == 'coverage'
         uses: ./.github/actions/generate-coverage
         with:
-          os-type: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+          os-type: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}
 
       - name: Save build cache (integration-tests)
         if: always()
@@ -506,8 +519,8 @@ jobs:
         if: always() && matrix.instrumentation == 'coverage'
         with:
           test-type: integration
-          os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
-          criterion-xml-dir: build/Testing/criterion-xml
+          os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}
+          test-xml-dir: build/Testing/xml
           coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
           upload-coverage: "false"
@@ -522,7 +535,7 @@ jobs:
             build/coverage.xml
             build/Testing/ctest-results.xml
             build/Testing/python-*.xml
-            build/Testing/criterion-xml/*.xml
+            build/Testing/xml/*.xml
             build/backpressure/
             build/Testing/mdns-terminal/
             build/mirror-lazy-audio/
@@ -534,14 +547,14 @@ jobs:
             /tmp/client_test*.log
           retention-days: 7
 
-  performance-tests:
+  benchmarks:
     needs: preflight
-    name: Performance Tests
+    name: Benchmark Tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15"]' || '["ubuntu-latest"]') }}
+        os: ${{ fromJSON((github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) && '["ubuntu-latest","macos-15","windows-latest"]' || '["ubuntu-latest"]') }}
 
     steps:
       - name: Checkout code
@@ -554,7 +567,7 @@ jobs:
       - name: Install dependencies with caching
         uses: ./.github/actions/install-deps
         with:
-          os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+          os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache build, dependencies, and ccache
@@ -566,15 +579,15 @@ jobs:
       - name: Clean test executables and libraries only
         run: |
           rm -f build/coverage.xml build/Testing/ctest-results.xml
-          rm -rf build/Testing/criterion-xml
+          rm -rf build/Testing/xml
           # Only clean test executables and old libraries
           # Keep CMakeCache.txt and CMakeFiles to preserve configure cache
           rm -rf build/bin/test_*
           rm -rf build/lib/*.a
 
-      - name: Configure performance tests with coverage
+      - name: Configure Benchmark Tests with coverage
         run: |
-          # Configure performance tests with Release mode + coverage for accurate performance
+          # Configure Benchmark Tests with Release mode + coverage for accurate benchmarks
           # Use Homebrew LLVM on macOS for better standards support
           # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
           if [ "${{ startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}" = "macos" ]; then
@@ -594,18 +607,18 @@ jobs:
             CLANGXX_BIN="clang++"
           fi
 
-          echo "Configuring performance tests with Release optimization and coverage instrumentation..."
+          echo "Configuring Benchmark Tests with Release optimization and coverage instrumentation..."
           cmake_args=(
             --preset github
             -DCMAKE_C_COMPILER="${CLANG_BIN}"
             -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}"
             -DCMAKE_BUILD_TYPE=Release
+            -DBUILD_TESTS=ON
             -DASCIICHAT_ENABLE_COVERAGE=ON
             -DASCIICHAT_ENABLE_SANITIZERS=OFF
             -DCMAKE_C_FLAGS="-std=c2x -O3"
             -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF
             -DUSE_MUSL=OFF
-            -DASCIICHAT_SHARED_DEPS=ON
             # Skip hardening validation - coverage builds embed .gcda paths in binary
             -DASCIICHAT_SKIP_HARDENING_VALIDATION=ON
           )
@@ -614,7 +627,7 @@ jobs:
           rm -rf build/
           cmake -B build -G Ninja "${cmake_args[@]}"
 
-      - name: Save configure cache (performance-tests)
+      - name: Save configure cache (benchmark-tests)
         if: always()
         uses: ./.github/actions/cache-build-save
         with:
@@ -635,24 +648,24 @@ jobs:
       - name: Clear cached coverage counters
         run: find build -name '*.gcda' -type f -delete
 
-      - name: Build performance tests
+      - name: Build Benchmark Tests
         run: |
-          cmake --build build
-          echo "Performance test executables built:"
-          ls -la build/bin/test_performance_* 2>/dev/null || echo "No performance test executables found"
+          cmake --build build --target benchmarks
+          echo "Benchmarks test executables built:"
+          ls -la build/bin/benchmarks 2>/dev/null || echo "No Catch2 benchmark executable found"
 
-      - name: Run performance tests
+      - name: Run Benchmark Tests
         run: |
-          echo "Running performance tests..."
+          echo "Running Benchmark Tests..."
 
-          # Run performance tests via ctest preset
-          # Criterion generates detailed XML in build/Testing/criterion-xml/
+          # Run Benchmark Tests via ctest preset
+          # Test adapters generate detailed XML in build/Testing/xml/
           set -o pipefail
-          ctest --test-dir build --label-regex "^performance$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
+          ctest --test-dir build --label-regex "^benchmarks$" --no-tests=error --output-junit Testing/ctest-results.xml --output-on-failure --parallel | tee benchmarks-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}.log
 
-          echo "Performance tests completed successfully"
+          echo "Benchmark Tests completed successfully"
 
-      - name: Save build cache (performance-tests)
+      - name: Save build cache (benchmark-tests)
         if: always()
         uses: ./.github/actions/cache-build-save
         with:
@@ -670,39 +683,39 @@ jobs:
           ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
           ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
-      - name: Generate coverage report for performance tests
+      - name: Generate coverage report for Benchmark Tests
         if: always()
         uses: ./.github/actions/generate-coverage
         with:
-          os-type: ${{ startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}
+          os-type: ${{ startsWith(matrix.os, 'windows') && 'windows' || startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}
 
       - name: Publish Test Results and Coverage
         uses: ./.github/actions/publish-test-results
         if: always()
         with:
-          test-type: performance
-          os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
-          criterion-xml-dir: build/Testing/criterion-xml
+          test-type: benchmarks
+          os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || startsWith(matrix.os, 'windows') && 'windows' || 'macos' }}
+          test-xml-dir: build/Testing/xml
           coverage-files: "build/coverage.xml"
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
           upload-coverage: "false"
 
-      - name: Upload performance test artifacts
+      - name: Upload benchmarks test artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: performance-test-results-${{ runner.os }}
+          name: benchmark-test-results-${{ runner.os }}
           path: |
-            performance-tests-*.log
+            benchmark-tests-*.log
             build/coverage.xml
             build/Testing/ctest-results.xml
             build/Testing/python-*.xml
-            build/Testing/criterion-xml/*.xml
+            build/Testing/xml/*.xml
           retention-days: 7
 
   coverage:
     name: Publish complete coverage
-    needs: [unit-tests, integration-tests, performance-tests]
+    needs: [unit-tests, integration-tests, benchmarks]
     if: ${{ always() && !cancelled() && (github.event_name != 'workflow_dispatch' || inputs.full_matrix == true) }}
     runs-on: ubuntu-latest
     steps:
@@ -712,7 +725,7 @@ jobs:
         with:
           pattern: "*test-results-*"
           path: coverage-reports
-      - name: Require all seven coverage reports
+      - name: Require all eleven coverage reports
         id: coverage
         run: uv run --frozen python .github/scripts/prepare-coverage-upload.py coverage-reports
       - name: Preserve complete coverage inputs and summary
@@ -722,7 +735,7 @@ jobs:
           path: |
             coverage-reports/**/coverage.xml
             coverage-reports/**/ctest-results.xml
-            coverage-reports/**/criterion-xml/*.xml
+            coverage-reports/**/Testing/xml/*.xml
             coverage-reports/summary.json
           retention-days: 7
       - name: Install pinned Codecov CLI

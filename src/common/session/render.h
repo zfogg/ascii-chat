@@ -86,7 +86,7 @@ typedef void (*session_sleep_for_frame_fn)(void *user_data);
  */
 typedef void (*session_keyboard_handler_fn)(session_capture_ctx_t *capture, int key, void *user_data);
 
-// Snapshot mode timing globals are declared in include/ascii-chat/options/options.h
+// Snapshot mode timing globals are declared in include/options.h
 // so they can be accessed from both src and lib code
 
 /**

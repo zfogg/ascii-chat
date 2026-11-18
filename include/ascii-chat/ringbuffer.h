@@ -78,6 +78,10 @@
 #include <libplatform/mutex.h>
 #include "util/magic.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Audio ring buffer for real-time audio streaming
  * @brief Lock-free ring buffer structure
@@ -561,8 +565,7 @@ void framebuffer_clear(framebuffer_t *fb);
  *
  * @ingroup ringbuffer
  */
-bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, size_t frame_size,
-                                   uint32_t source_client_id, uint32_t frame_sequence, uint32_t timestamp);
+bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, size_t frame_size, uint32_t source_client_id, uint32_t frame_sequence, uint32_t timestamp);
 
 /**
  * @brief Read a multi-source frame from the buffer
@@ -598,3 +601,7 @@ bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame
 bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

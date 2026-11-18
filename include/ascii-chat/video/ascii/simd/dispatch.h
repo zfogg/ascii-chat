@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <libplatform/cpu.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** RGB24 to rounded BT.601 luminance. Exactly count pixels are read/written. */
 typedef void (*simd_luminance_fn)(const uint8_t *rgb, uint8_t *out, size_t count);
 /**
@@ -27,3 +31,7 @@ void simd_luminance_ssse3(const uint8_t *rgb, uint8_t *out, size_t count);
 void simd_luminance_avx2(const uint8_t *rgb, uint8_t *out, size_t count);
 void simd_luminance_neon(const uint8_t *rgb, uint8_t *out, size_t count);
 void simd_luminance_sve(const uint8_t *rgb, uint8_t *out, size_t count);
+
+#ifdef __cplusplus
+}
+#endif

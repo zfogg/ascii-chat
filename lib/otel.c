@@ -17,7 +17,7 @@
 #include <ascii-chat/network/acip/messages.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/common/protocol_constants.h>
-#include <ascii-chat/options/options.h>
+#include <options/options.h>
 #include <libplatform/thread.h>
 #include <libplatform/process.h>
 #include <libplatform/system.h>
@@ -122,6 +122,16 @@ static _Thread_local ascii_otel_scope_t *current_scope;
 static uint64_t shutdown_timeout_ns;
 static atomic_uint_fast64_t exporter_retries, exporter_batches;
 static atomic_size_t exporter_queue_capacity;
+void ascii_otel_test_set_host(gotel_host_t *value) {
+  atomic_ptr_store(&host, value);
+}
+unsigned ascii_otel_test_reader_count(void) {
+  return atomic_load(&readers);
+}
+gotel_scope_t *ascii_otel_test_command_scope(void) {
+  return &command_scope;
+}
+
 static void exporter_event(void *context, const otlp_event_t *event) {
   (void)context;
   if (event->code == OTLP_EVT_RETRY_ARMED)
@@ -180,17 +190,17 @@ ascii_otel_metric_t ascii_otel_stats_metric(stats_record_kind_t kind, unsigned i
     return ASCII_OTEL_METRIC_COUNT;
   ascii_otel_metric_t metric;
   switch (((unsigned)kind << 16) | id) {
-#define ASCII_STATS_COUNTER(id, metric_id, name, unit)                                                                                                                                                 \
-  case (STATS_RECORD_COUNTER << 16) | STATS_COUNTER_##id:                                                                                                                                              \
-    metric = ASCII_OTEL_METRIC_##metric_id;                                                                                                                                                            \
+#define ASCII_STATS_COUNTER(id, metric_id, name, unit)    \
+  case (STATS_RECORD_COUNTER << 16) | STATS_COUNTER_##id: \
+    metric = ASCII_OTEL_METRIC_##metric_id;               \
     break;
-#define ASCII_STATS_GAUGE(id, metric_id, name, unit)                                                                                                                                                   \
-  case (STATS_RECORD_GAUGE << 16) | STATS_GAUGE_##id:                                                                                                                                                  \
-    metric = ASCII_OTEL_METRIC_##metric_id;                                                                                                                                                            \
+#define ASCII_STATS_GAUGE(id, metric_id, name, unit)  \
+  case (STATS_RECORD_GAUGE << 16) | STATS_GAUGE_##id: \
+    metric = ASCII_OTEL_METRIC_##metric_id;           \
     break;
-#define ASCII_STATS_DURATION(id, metric_id, name, unit)                                                                                                                                                \
-  case (STATS_RECORD_DURATION << 16) | STATS_DURATION_##id:                                                                                                                                            \
-    metric = ASCII_OTEL_METRIC_##metric_id;                                                                                                                                                            \
+#define ASCII_STATS_DURATION(id, metric_id, name, unit)     \
+  case (STATS_RECORD_DURATION << 16) | STATS_DURATION_##id: \
+    metric = ASCII_OTEL_METRIC_##metric_id;                 \
     break;
 #include <ascii-chat/stats/telemetry.def>
 #undef ASCII_STATS_COUNTER
@@ -515,8 +525,6 @@ static const gotel_command_rule_t command_argument_rules[] = {
     {"--tls-key", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--tls-key-password", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--discovery-service", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
-    {"--discovery-service-port", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
-    {"--discovery-service-url", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--stun-servers", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--turn-servers", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
     {"--turn-username", GOTEL_COMMAND_VALUE_REQUIRED, GOTEL_COMMAND_REDACT},
@@ -534,6 +542,8 @@ asciichat_error_t ascii_otel_init(const char *mode, int argc, char **argv) {
   if (is_test_environment())
     return ASCIICHAT_OK;
   const options_t *o = options_get();
+  if (!o)
+    return ASCIICHAT_OK;
   const char *endpoint = o->otel_endpoint;
   if (!endpoint || endpoint[0] == '\0')
     return ASCIICHAT_OK;

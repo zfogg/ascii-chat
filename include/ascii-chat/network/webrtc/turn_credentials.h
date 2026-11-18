@@ -16,6 +16,10 @@
 #ifndef ASCIICHAT_NETWORKING_WEBRTC_TURN_CREDENTIALS_H
 #define ASCIICHAT_NETWORKING_WEBRTC_TURN_CREDENTIALS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Storage capacities in elements; text buffers include the terminating NUL. */
 #define NETWORK_WEBRTC_TURN_CREDENTIALS_USERNAME_BUFFER_SIZE 128
 #define NETWORK_WEBRTC_TURN_CREDENTIALS_PASSWORD_BUFFER_SIZE 128
@@ -32,9 +36,8 @@
  */
 typedef struct {
   char username[NETWORK_WEBRTC_TURN_CREDENTIALS_USERNAME_BUFFER_SIZE]; /**< Format: "timestamp:session_id" */
-  char
-      password[NETWORK_WEBRTC_TURN_CREDENTIALS_PASSWORD_BUFFER_SIZE]; /**< Base64-encoded HMAC-SHA1(secret, username) */
-  time_t expires_at;                                                  /**< Unix timestamp when credentials expire */
+  char password[NETWORK_WEBRTC_TURN_CREDENTIALS_PASSWORD_BUFFER_SIZE]; /**< Base64-encoded HMAC-SHA1(secret, username) */
+  time_t expires_at;                                                   /**< Unix timestamp when credentials expire */
 } turn_credentials_t;
 
 /**
@@ -66,8 +69,7 @@ typedef struct {
  * }
  * @endcode
  */
-asciichat_error_t turn_generate_credentials(const char *session_id, const char *secret, uint32_t validity_seconds,
-                                            turn_credentials_t *out_credentials);
+asciichat_error_t turn_generate_credentials(const char *session_id, const char *secret, uint32_t validity_seconds, turn_credentials_t *out_credentials);
 
 /**
  * @brief Check if TURN credentials have expired
@@ -76,5 +78,9 @@ asciichat_error_t turn_generate_credentials(const char *session_id, const char *
  * @return true if expired, false if still valid
  */
 bool turn_credentials_expired(const turn_credentials_t *credentials);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // ASCIICHAT_NETWORKING_WEBRTC_TURN_CREDENTIALS_H

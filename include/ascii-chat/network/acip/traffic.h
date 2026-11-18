@@ -2,6 +2,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
   ACIP_TRAFFIC_CONTROL,
   ACIP_TRAFFIC_AUDIO,
@@ -26,3 +30,7 @@ typedef struct {
 
 /** Classify a plaintext ACIP packet type before any transport encryption. */
 acip_traffic_class_t acip_packet_traffic_class(uint16_t type);
+
+#ifdef __cplusplus
+}
+#endif
