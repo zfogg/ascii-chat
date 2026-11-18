@@ -47,6 +47,15 @@ function(asciichat_build_aec3)
         string(REPLACE "add_compile_options(-w)  # Suppress all warnings" "" _aec3_cmake "${_aec3_cmake}")
         file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${_aec3_cmake}")
     endif()
+    if(WIN32)
+        # The fetched project enables global PIC, which CMake translates to
+        # ELF's -fPIC even for clang-cl/GNU-style Clang targeting Windows.
+        file(READ "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" _aec3_cmake)
+        string(REPLACE "set(CMAKE_POSITION_INDEPENDENT_CODE ON)"
+            "set(CMAKE_POSITION_INDEPENDENT_CODE OFF)" _aec3_cmake "${_aec3_cmake}")
+        file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${_aec3_cmake}")
+        set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
+    endif()
     add_subdirectory("${webrtc_aec3_SOURCE_DIR}" "${webrtc_aec3_BINARY_DIR}")
     # Upstream uses private directory includes; publish the public audio API.
     target_include_directories(AudioProcess PUBLIC
