@@ -70,7 +70,12 @@ int mcp_server_main(void) {
     uv_fs_req_cleanup(&resolved);
   }
   log_set_terminal_output(s->policy.hosted);
-  unsigned available_cpus = uv_available_parallelism();
+  uv_cpu_info_t *cpu_info = NULL;
+  int cpu_count = 0;
+  unsigned available_cpus = 1;
+  if (uv_cpu_info(&cpu_info, &cpu_count) == 0 && cpu_count > 0)
+    available_cpus = (unsigned)cpu_count;
+  uv_free_cpu_info(cpu_info, cpu_count);
   if (!available_cpus)
     available_cpus = 1;
   if (!s->policy.max_jobs || s->policy.max_jobs > available_cpus)
