@@ -196,22 +196,9 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
 # nghttp2's C23 build otherwise hides clock_gettime and CLOCK_MONOTONIC on
 # glibc systems because the pinned source does not request the POSIX feature
 # set explicitly.
-foreach(_asciichat_nghttp2_target IN ITEMS nghttp2 nghttp2_static)
+foreach(_asciichat_nghttp2_target IN ITEMS nghttp2_shared nghttp2_static)
     if(TARGET ${_asciichat_nghttp2_target})
-        set(_asciichat_nghttp2_real_target ${_asciichat_nghttp2_target})
-        while(TARGET ${_asciichat_nghttp2_real_target})
-            get_target_property(_asciichat_nghttp2_alias
-                ${_asciichat_nghttp2_real_target} ALIASED_TARGET)
-            if(NOT _asciichat_nghttp2_alias OR
-               _asciichat_nghttp2_alias MATCHES "-NOTFOUND$")
-                break()
-            endif()
-            if(_asciichat_nghttp2_alias STREQUAL _asciichat_nghttp2_real_target)
-                break()
-            endif()
-            set(_asciichat_nghttp2_real_target ${_asciichat_nghttp2_alias})
-        endwhile()
-        target_compile_definitions(${_asciichat_nghttp2_real_target} PRIVATE
+        target_compile_definitions(${_asciichat_nghttp2_target} PRIVATE
             _POSIX_C_SOURCE=200809L)
     endif()
 endforeach()
