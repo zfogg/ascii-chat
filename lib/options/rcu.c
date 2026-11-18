@@ -87,7 +87,7 @@ static pid_t g_init_pid = -1;
  * @see options_state_init() - Initializes g_options, this becomes fallback
  * @see options_state_destroy() - Clears g_options, this becomes fallback again
  */
-static const options_t g_default_options = (options_t){
+static const options_t g_default_options = {
     // ========================================================================
     // Mode Detection (auto-detected, default here is uninitialized)
     // ========================================================================
@@ -346,7 +346,7 @@ static void deferred_free_all(void) {
 static void options_rcu_atfork_child(void) {
   /* Reset the lifecycle state to allow reinitialization after fork */
   /* This is safe because lifecycle_t is just an atomic int, can be reset directly */
-  __c11_atomic_store(&g_options_lifecycle.state, LIFECYCLE_UNINITIALIZED, __ATOMIC_RELEASE);
+  atomic_store_explicit(&g_options_lifecycle.state, LIFECYCLE_UNINITIALIZED, memory_order_release);
 
   /* Reset the atomic options pointer to avoid dangling references */
   /* The parent's allocated memory is not accessible/valid in the child */
@@ -514,6 +514,10 @@ const options_t *options_get(void) {
   }
 
   return current;
+}
+
+void options_warn_uninitialized(void) {
+  log_warn("GET_OPTION called but options not initialized");
 }
 
 const terminal_options_t *options_terminal_settings_ptr(void) {

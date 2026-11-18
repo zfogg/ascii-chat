@@ -23,7 +23,11 @@ int main(void) { ${expression}; return 0; }" ASCIICHAT_CAN_COMPILE_${isa})
     set(ENABLE_SIMD_${isa} ${ASCIICHAT_CAN_COMPILE_${isa}} PARENT_SCOPE)
 endfunction()
 
-if(ASCIICHAT_IS_X86_64)
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    # The SIMD translation units currently use GCC/Clang vector extensions.
+    # Keep native MSVC builds on the portable scalar backend until equivalent
+    # MSVC kernels are available.
+elseif(ASCIICHAT_IS_X86_64)
     asciichat_check_simd(SSE2 "-msse2" emmintrin.h "(void)_mm_setzero_si128()")
     asciichat_check_simd(SSSE3 "-mssse3" tmmintrin.h "(void)_mm_shuffle_epi8(_mm_setzero_si128(), _mm_setzero_si128())")
     asciichat_check_simd(AVX2 "-mavx2" immintrin.h "(void)_mm256_setzero_si256()")

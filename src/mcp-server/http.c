@@ -108,7 +108,7 @@ static void shared_http_request(http_request_t *request, http_response_t *respon
     }
     uv_file file = rc;
     rc = uv_fs_fstat(NULL, &fs, file, NULL);
-    size_t size = rc == 0 && fs.statbuf.st_size >= 0 ? (size_t)fs.statbuf.st_size : 0;
+    size_t size = rc == 0 ? (size_t)fs.statbuf.st_size : 0;
     uv_fs_req_cleanup(&fs);
     if (!size || size > MCP_MAX_DOWNLOAD) {
       uv_fs_close(NULL, &fs, file, NULL);

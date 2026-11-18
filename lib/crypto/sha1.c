@@ -37,7 +37,12 @@
 #endif
 #endif
 
-#define rol(value, bits) __builtin_rotateleft32((uint32_t)(value), (bits))
+static inline uint32_t sha1_rotate_left32(uint32_t value, unsigned int bits) {
+  bits &= 31U;
+  return (uint32_t)((value << bits) | (value >> ((32U - bits) & 31U)));
+}
+
+#define rol(value, bits) sha1_rotate_left32((uint32_t)(value), (unsigned int)(bits))
 
 /* blk0() and blk() perform the initial expand. */
 /* I got the idea of expanding during the round function from SSLeay */
@@ -67,7 +72,7 @@
 
 /* Hash a single 512-bit block. This is the core of the algorithm. */
 
-void SHA1Transform(uint32_t state[5], const unsigned char buffer[SHA1_BLOCK_LENGTH]) {
+void SHA1Transform(uint32_t state[5], const unsigned char *buffer) {
   uint32_t a, b, c, d, e;
   typedef union {
     unsigned char c[SHA1_BLOCK_LENGTH];

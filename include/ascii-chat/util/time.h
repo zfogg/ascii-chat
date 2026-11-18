@@ -315,6 +315,7 @@ bool timer_start(const char *name);
  * @ingroup module_utilities
  */
 double timer_stop(const char *name);
+double timer_stop_formatted(const char *name_fmt, ...);
 
 /**
  * @brief Check if timing system is initialized
@@ -355,7 +356,7 @@ bool timer_is_initialized(void);
       snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), "%s_tid%llu", _timer_name_buf, (unsigned long long)thread_current_id()); \
       (void)timer_start(_timer_name_with_tid);                                                                                              \
     }                                                                                                                                       \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * @brief Start a timer without thread ID (for cross-thread timers)
@@ -376,7 +377,7 @@ bool timer_is_initialized(void);
       snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__); \
       (void)timer_start(_timer_name_buf);                                          \
     }                                                                              \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * @brief Stop a cross-thread timer and return elapsed time
@@ -415,18 +416,7 @@ bool timer_is_initialized(void);
  * @return Elapsed time in nanoseconds, or -1.0 if timer not found
  * @ingroup module_utilities
  */
-#define STOP_TIMER(name_fmt, ...)                                                                                                           \
-  ({                                                                                                                                        \
-    double _elapsed = -1.0;                                                                                                                 \
-    if (timer_is_initialized()) {                                                                                                           \
-      char _timer_name_buf[UTIL_TIME_TIMER_NAME_BUFFER_SIZE];                                                                               \
-      char _timer_name_with_tid[UTIL_TIME_TIMER_NAME_WITH_TID_BUFFER_SIZE];                                                                 \
-      snprintf(_timer_name_buf, sizeof(_timer_name_buf), name_fmt, ##__VA_ARGS__);                                                          \
-      snprintf(_timer_name_with_tid, sizeof(_timer_name_with_tid), "%s_tid%llu", _timer_name_buf, (unsigned long long)thread_current_id()); \
-      _elapsed = timer_stop(_timer_name_with_tid);                                                                                          \
-    }                                                                                                                                       \
-    _elapsed;                                                                                                                               \
-  })
+#define STOP_TIMER(name_fmt, ...) timer_stop_formatted(name_fmt, ##__VA_ARGS__)
 
 // ============================================================================
 // Time Formatting API
@@ -633,7 +623,7 @@ int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t 
       time_pretty((uint64_t)_elapsed_ns, -1, _duration_str, sizeof(_duration_str));           \
       log_##log_level(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                        \
     }                                                                                         \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * @brief Stop a timer and log the result with rate limiting
@@ -675,7 +665,7 @@ int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t 
         }                                                                                        \
       }                                                                                          \
     }                                                                                            \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 // ============================================================================
 // Adaptive Sleep System

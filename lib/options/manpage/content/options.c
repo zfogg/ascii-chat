@@ -126,7 +126,7 @@ char *manpage_content_generate_options(const options_config_t *config) {
       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
 
       // Write option flags
-      if (desc->short_name && desc->short_name != '\0') {
+      if (desc->short_name != '\0') {
         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B \\-%c, \\-\\-%s", desc->short_name, desc->long_name);
       } else {
         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B \\-\\-%s", desc->long_name);

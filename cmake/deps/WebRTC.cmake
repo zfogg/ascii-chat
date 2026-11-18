@@ -38,6 +38,28 @@ function(asciichat_build_aec3)
     endif()
     set(WEBRTC_AEC3_SOURCE_DIR "${webrtc_aec3_SOURCE_DIR}")
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/patch-webrtc-aec3-cmake.cmake")
+    if(MSVC)
+        # Older cached AEC3 source trees may already contain the upstream
+        # GNU-only flag edits from an earlier configure. Remove those source
+        # edits before adding the subproject so cl.exe sees only native flags.
+        file(READ "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" _aec3_cmake)
+        string(REPLACE "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -fvisibility=hidden\")" "" _aec3_cmake "${_aec3_cmake}")
+        string(REPLACE "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -std=c++17\")" "" _aec3_cmake "${_aec3_cmake}")
+        string(REPLACE "add_compile_options(-w)  # Suppress all warnings" "" _aec3_cmake "${_aec3_cmake}")
+        file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${_aec3_cmake}")
+    endif()
+    if(WIN32)
+        # The fetched project enables global PIC, which CMake translates to
+        # ELF's -fPIC even for clang-cl/GNU-style Clang targeting Windows.
+        file(READ "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" _aec3_cmake)
+        string(REPLACE "set(CMAKE_POSITION_INDEPENDENT_CODE ON)"
+            "set(CMAKE_POSITION_INDEPENDENT_CODE OFF)" _aec3_cmake "${_aec3_cmake}")
+        string(REPLACE "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -fvisibility=hidden -fPIC -pthread -std=c++17\")"
+            "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -fvisibility=hidden -pthread -std=c++17\")"
+            _aec3_cmake "${_aec3_cmake}")
+        file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${_aec3_cmake}")
+        set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
+    endif()
     add_subdirectory("${webrtc_aec3_SOURCE_DIR}" "${webrtc_aec3_BINARY_DIR}")
     # Upstream uses private directory includes; publish the public audio API.
     target_include_directories(AudioProcess PUBLIC
@@ -51,7 +73,12 @@ function(asciichat_build_aec3)
     else()
         target_compile_definitions(AudioProcess PUBLIC WEBRTC_POSIX)
     endif()
-    set_target_properties(AudioProcess aec3 api base PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    # Windows object files are position-independent by default; Clang's
+    # Windows driver rejects the ELF-only -fPIC flag emitted by CMake for this
+    # property. Keep PIC for ELF/Mach-O targets only.
+    if(NOT WIN32)
+        set_target_properties(AudioProcess aec3 api base PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    endif()
     # MSVC's C++ container annotations must match the consuming ASan objects.
     if(WIN32 AND "-fsanitize=address" IN_LIST ASCIICHAT_SANITIZER_COMPILE_FLAGS)
         foreach(_target AudioProcess aec3 api base)
@@ -71,4 +98,4 @@ function(asciichat_build_aec3)
 endfunction()
 asciichat_build_aec3()
 add_library(webrtc_audio_processing INTERFACE)
-target_link_libraries(webrtc_audio_processing INTERFACE AudioProcess)
+target_link_libraries(webrtc_audio_processing INTERFACE AudioProcess aec3 api base)

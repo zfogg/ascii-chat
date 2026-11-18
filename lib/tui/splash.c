@@ -247,7 +247,7 @@ bool splash_should_display(bool is_intro) {
     bool splash_screen_opt = GET_OPTION(splash_screen);
     bool splash_explicitly_set = flags_explicit_state_was_set("splash-screen");
     bool is_snapshot = GET_OPTION(snapshot_mode);
-    bool has_media = (GET_OPTION(media_url) && strlen(GET_OPTION(media_url)) > 0) || (GET_OPTION(media_file) && strlen(GET_OPTION(media_file)) > 0);
+    bool has_media = strlen(GET_OPTION(media_url)) > 0 || strlen(GET_OPTION(media_file)) > 0;
 
     // Show splash if enabled, but in snapshot mode only if:
     // 1. Has media file/URL, OR

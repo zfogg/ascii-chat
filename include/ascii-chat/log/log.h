@@ -22,29 +22,20 @@
  */
 
 #pragma once
+#ifndef ASCII_CHAT_LOG_LOG_H
+#define ASCII_CHAT_LOG_LOG_H
 
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/log/color.h>
 
 #include <stdarg.h>
 #include <libplatform/atomic.h>
 // Use atomic.h API for all platforms (C and C++)
 // atomic_t is available in both C and C++ contexts
 #define LOG_ATOMIC_UINT64 atomic_t
-#ifdef NDEBUG
-#define LOG_ATOMIC_UINT64_INIT(val) {.impl = (uint64_t)0}
-#else
-// In debug mode, atomic_t has debug fields that need initialization
-#define LOG_ATOMIC_UINT64_INIT(val)   \
-  {.impl = (uint64_t)0,               \
-   .change_count = (uint64_t)0,       \
-   .last_store_time_ns = (uint64_t)0, \
-   .last_load_time_ns = (uint64_t)0,  \
-   .store_count = (uint64_t)0,        \
-   .load_count = (uint64_t)0,         \
-   .cas_count = (uint64_t)0,          \
-   .cas_success_count = (uint64_t)0,  \
-   .fetch_count = (uint64_t)0}
-#endif
+// Value initialization is valid for both the C and C++ representations of
+// libplatform's atomic_t, including C++ std::atomic members.
+#define LOG_ATOMIC_UINT64_INIT(val) {}
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
@@ -60,6 +51,10 @@ typedef struct session_log_buffer session_log_buffer_t;
 
 /* Include log types (must be before network/log.h to avoid circular dependency) */
 #include "types.h"
+
+static inline bool log_only_enabled(unsigned bitmask, log_level_t level) {
+  return (bitmask & LOG_BIT(level)) != 0;
+}
 
 #include "../network/log.h"
 
@@ -135,25 +130,6 @@ typedef struct {
 } log_buffer_entry_t;
 
 /* Implementation details (g_log struct, color arrays) are in logging.c */
-
-/**
- * @brief Color enum for logging - indexes into color arrays
- * @ingroup logging
- *
- * Values through RESET index into level_colors arrays; WHITE is resolved separately.
- * Order matches DEV, DEBUG, WARN, INFO, ERROR, FATAL, GREY, RESET.
- */
-typedef enum {
-  LOG_COLOR_DEV = 0,   /**< Blue - DEV messages */
-  LOG_COLOR_DEBUG = 1, /**< Cyan - DEBUG messages */
-  LOG_COLOR_INFO = 2,  /**< Green - INFO messages */
-  LOG_COLOR_WARN = 3,  /**< Yellow - WARN messages */
-  LOG_COLOR_ERROR = 4, /**< Red - ERROR messages */
-  LOG_COLOR_FATAL = 5, /**< Magenta - FATAL messages */
-  LOG_COLOR_GREY = 6,  /**< Grey - for neutral messages or labels */
-  LOG_COLOR_RESET = 7, /**< Reset to default */
-  LOG_COLOR_WHITE = 8  /**< White text, independent of the accent palette */
-} log_color_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -557,11 +533,11 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
  *
  * @ingroup logging
  */
-#define log_only(bitmask, level, ...) \
-  ({                                  \
-    if ((bitmask) & LOG_BIT(level))   \
-      log_as(level, __VA_ARGS__);     \
-  })
+#define log_only(bitmask, level, ...)         \
+  do {                                        \
+    if (log_only_enabled((bitmask), (level))) \
+      log_as(level, __VA_ARGS__);             \
+  } while (asciichat_macro_block_continue())
 
 /**
  * @brief Log a DEV message (most verbose, development only)
@@ -716,7 +692,7 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
         log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                 \
       }                                                                              \
     }                                                                                \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #else
 #define log_every(log_level, interval_us, fmt, ...)                                  \
   do {                                                                               \
@@ -728,7 +704,7 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
         log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);  \
       }                                                                              \
     }                                                                                \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #endif
 
 /**
@@ -784,7 +760,7 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
     if (_log_nth_new % (uint64_t)(n) == 0) {                               \
       log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);         \
     }                                                                      \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #else
 #define log_nth(log_level, n, fmt, ...)                                           \
   do {                                                                            \
@@ -795,7 +771,7 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
     if (_log_nth_new % (uint64_t)(n) == 0) {                                      \
       log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__); \
     }                                                                             \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #endif
 
 /**
@@ -824,7 +800,7 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
       atomic_store_u64(&_log_once_counter, 1);                              \
       log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);          \
     }                                                                       \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #else
 #define log_once(log_level, fmt, ...)                                             \
   do {                                                                            \
@@ -834,7 +810,7 @@ asciichat_error_t log_net_message(struct acip_transport *transport, log_level_t 
       atomic_store_u64(&_log_once_counter, 1);                                    \
       log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__); \
     }                                                                             \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 #endif
 
 /**
@@ -1069,3 +1045,5 @@ void *log_get_template(void);
 #endif
 
 /** @} */ /* logging */
+
+#endif /* ASCII_CHAT_LOG_LOG_H */

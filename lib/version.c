@@ -27,7 +27,7 @@ __attribute__((used, section("__TEXT,__version"))) const char ascii_chat_version
 #elif defined(__linux__)
 // Linux ELF format: standard .section_name format
 __attribute__((used, section(".ascii_chat"))) const char ascii_chat_custom_section[] = ASCII_CHAT_DOT_ASCII_CHAT_STRING;
-__attribute__((used, section(".comment"))) const char ascii_chat_comment_string[] = ASCII_CHAT_DOT_COMMENT_STRING;
+__attribute__((used, section(".ascii_chat"))) const char ascii_chat_comment_string[] = ASCII_CHAT_DOT_COMMENT_STRING;
 __attribute__((used, section(".version"))) const char ascii_chat_version_string[] = ASCII_CHAT_VERSION_FULL;
 #define ASCII_CHAT_VERSION_GETTERS
 #endif

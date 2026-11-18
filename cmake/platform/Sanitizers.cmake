@@ -260,19 +260,36 @@ function(configure_asan_ubsan_sanitizers)
             # Linux - includes LeakSanitizer
             # Use -shared-libsan to link sanitizer runtimes as shared libraries
             # This is required when the main binary loads shared libraries that are also sanitized
-            list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS
-                -fsanitize=address
-                -fsanitize=undefined
-                -fsanitize=leak
-                -fsanitize=integer
-                -fsanitize=nullability
-                -fsanitize=implicit-conversion
-                -fsanitize=float-divide-by-zero
-                -fsanitize-address-use-after-scope
-                -fno-omit-frame-pointer
-                -fno-optimize-sibling-calls
-                -shared-libsan
-            )
+            if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+                # GCC does not implement Clang's integer, nullability, or
+                # implicit-conversion sanitizer groups.
+                list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS
+                    -fsanitize=address
+                    -fsanitize=undefined
+                    -fsanitize=leak
+                    -fno-omit-frame-pointer
+                    -fno-optimize-sibling-calls
+                )
+                list(APPEND ASCIICHAT_SANITIZER_LINK_FLAGS
+                    -fsanitize=address
+                    -fsanitize=undefined
+                    -fsanitize=leak
+                )
+            else()
+                list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS
+                    -fsanitize=address
+                    -fsanitize=undefined
+                    -fsanitize=leak
+                    -fsanitize=integer
+                    -fsanitize=nullability
+                    -fsanitize=implicit-conversion
+                    -fsanitize=float-divide-by-zero
+                    -fsanitize-address-use-after-scope
+                    -fno-omit-frame-pointer
+                    -fno-optimize-sibling-calls
+                    -shared-libsan
+                )
+            endif()
             # Find the clang runtime library directory for rpath
             # First try --print-runtime-dir (may return non-existent path on some systems)
             execute_process(
@@ -433,12 +450,41 @@ function(apply_sanitizers_to_target TARGET_NAME)
         return()
     endif()
 
-    # Apply compile options
-    target_compile_options(${TARGET_NAME} PRIVATE ${ASCIICHAT_SANITIZER_COMPILE_FLAGS})
+    # Remove stale Clang-only sanitizer suppressions from the common project
+    # options target before they propagate to GCC targets.
+    if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND TARGET asciichat-project-options)
+        get_target_property(_asciichat_project_options
+            asciichat-project-options INTERFACE_COMPILE_OPTIONS)
+        if(_asciichat_project_options)
+            list(FILTER _asciichat_project_options EXCLUDE REGEX
+                "implicit-conversion|nullability|sanitize=integer")
+            set_property(TARGET asciichat-project-options PROPERTY
+                INTERFACE_COMPILE_OPTIONS "${_asciichat_project_options}")
+        endif()
+    endif()
+
+    # Apply compile options.  A reused build can retain target-local flags
+    # produced by an earlier Clang configure, so filter Clang-only sanitizer
+    # groups at the application boundary as well as during configuration.
+    set(_asciichat_sanitizer_compile_flags ${ASCIICHAT_SANITIZER_COMPILE_FLAGS})
+    set(_asciichat_sanitizer_link_flags ${ASCIICHAT_SANITIZER_LINK_FLAGS})
+    if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        get_target_property(_asciichat_target_compile_options
+            ${TARGET_NAME} COMPILE_OPTIONS)
+        if(_asciichat_target_compile_options)
+            list(FILTER _asciichat_target_compile_options EXCLUDE REGEX
+                "implicit-conversion|nullability|sanitize=integer")
+            set_property(TARGET ${TARGET_NAME} PROPERTY COMPILE_OPTIONS
+                "${_asciichat_target_compile_options}")
+        endif()
+        list(FILTER _asciichat_sanitizer_compile_flags EXCLUDE REGEX "implicit-conversion|nullability|sanitize=integer")
+        list(FILTER _asciichat_sanitizer_link_flags EXCLUDE REGEX "implicit-conversion|nullability|sanitize=integer|shared-libsan")
+    endif()
+    target_compile_options(${TARGET_NAME} PRIVATE ${_asciichat_sanitizer_compile_flags})
 
     # Apply link options
-    if(ASCIICHAT_SANITIZER_LINK_FLAGS)
-        target_link_options(${TARGET_NAME} PRIVATE ${ASCIICHAT_SANITIZER_LINK_FLAGS})
+    if(_asciichat_sanitizer_link_flags)
+        target_link_options(${TARGET_NAME} PRIVATE ${_asciichat_sanitizer_link_flags})
     endif()
 
     # Windows-specific: Link ASan import library FIRST (must be earliest in import table)

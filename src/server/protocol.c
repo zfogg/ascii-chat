@@ -1402,9 +1402,9 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
   // Note: audio_ring_buffer_write returns error code, not sample count
   // Buffer overflow warnings are logged inside audio_ring_buffer_write if buffer is full
   if (client->incoming_audio_buffer && total_decoded > 0) {
-    asciichat_error_t result = audio_ring_buffer_write(client->incoming_audio_buffer, decoded_samples, total_decoded);
-    if (result != ASCIICHAT_OK) {
-      log_error("Client %s: Failed to write decoded audio to buffer: %s", client->client_id, asciichat_error_format(NULL, result));
+    asciichat_error_t write_result = audio_ring_buffer_write(client->incoming_audio_buffer, decoded_samples, total_decoded);
+    if (write_result != ASCIICHAT_OK) {
+      log_error("Client %s: Failed to write decoded audio to buffer: %s", client->client_id, asciichat_error_format(NULL, write_result));
     }
   }
 
@@ -1547,7 +1547,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
     mutex_unlock(&client->client_state_mutex);
     return;
   }
-  client->render_settings.fps_limit = GET_OPTION(fps) > 0 ? GET_OPTION(fps) : DEFAULT_MAX_FPS;
+  client->render_settings.fps_limit = (uint16_t)(GET_OPTION(fps) > 0 ? GET_OPTION(fps) : DEFAULT_MAX_FPS);
   asciichat_error_t result = acip_render_settings_capabilities(&client->render_settings, &packet);
   if (result == ASCIICHAT_OK) {
     publish_render_settings(client);
@@ -1630,8 +1630,8 @@ void handle_size_packet(client_info_t *client, const void *data, size_t len) {
   const size_packet_t *size_pkt = (const size_packet_t *)data;
 
   // Extract and validate new dimensions
-  uint16_t width = NET_TO_HOST_U16(size_pkt->width);
-  uint16_t height = NET_TO_HOST_U16(size_pkt->height);
+  uint16_t width = NET_TO_HOST_U16((uint16_t)size_pkt->width);
+  uint16_t height = NET_TO_HOST_U16((uint16_t)size_pkt->height);
 
   VALIDATE_NONZERO(client, width, "width", "SIZE");
   VALIDATE_NONZERO(client, height, "height", "SIZE");

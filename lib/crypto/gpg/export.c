@@ -434,7 +434,7 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   const char *len_start = q_marker + 4;
 
   // Parse the length (e.g., "33:")
-  char *colon = strchr(len_start, ':');
+  const char *colon = strchr(len_start, ':');
   if (!colon) {
     log_error("Malformed S-expression: missing colon after length");
     return -1;

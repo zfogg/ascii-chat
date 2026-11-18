@@ -1,5 +1,5 @@
 # =============================================================================
-# LLVM Toolchain Configuration Module
+# Clang Toolchain Configuration Module
 # =============================================================================
 # Determines LLVM root directory in ONE place using llvm-config.
 # Trusts the PATH ordering: user ensures desired llvm-config is found first.
@@ -13,15 +13,15 @@
 # - LLVM tools (llvm-ar, llvm-ranlib)
 #
 # Functions:
-#   - configure_llvm_pre_project(): Sets up compiler before project()
-#   - configure_llvm_post_project(): Sets up library paths after project()
+#   - configure_clang_pre_project(): Sets up compiler before project()
+#   - configure_clang_post_project(): Sets up library paths after project()
 #   - find_llvm_tools(): Finds llvm-ar and llvm-ranlib
-#   - fix_llvm_ranlib(): Fixes LLVM ranlib not being called automatically (after project())
+#   - fix_clang_ranlib(): Fixes the Clang archive tool not being called automatically (after project())
 #
 # Prerequisites:
-#   - configure_llvm_pre_project() must run before project()
-#   - configure_llvm_post_project() must run after project()
-#   - fix_llvm_ranlib() must run after project()
+#   - configure_clang_pre_project() must run before project()
+#   - configure_clang_post_project() must run after project()
+#   - fix_clang_ranlib() must run after project()
 # =============================================================================
 
 # =============================================================================
@@ -31,12 +31,37 @@
 # Trust the PATH: user ensures desired llvm-config is in PATH first
 # =============================================================================
 
-function(configure_llvm_pre_project)
+function(configure_clang_pre_project)
+    # FindPrograms runs before project(), so CMAKE_C_COMPILER_ID is not
+    # available yet.  Seed the centralized tool variables from the compiler
+    # selected by the CMake preset when necessary.
+    if(NOT ASCIICHAT_CLANG_EXECUTABLE AND CMAKE_C_COMPILER)
+        find_program(_selected_clang NAMES "${CMAKE_C_COMPILER}")
+        if(_selected_clang)
+            set(ASCIICHAT_CLANG_EXECUTABLE "${_selected_clang}" CACHE FILEPATH
+                "Selected Clang compiler" FORCE)
+        elseif(EXISTS "${CMAKE_C_COMPILER}")
+            set(ASCIICHAT_CLANG_EXECUTABLE "${CMAKE_C_COMPILER}" CACHE FILEPATH
+                "Selected Clang compiler" FORCE)
+        endif()
+    endif()
+    if(NOT ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE AND CMAKE_CXX_COMPILER)
+        find_program(_selected_clangxx NAMES "${CMAKE_CXX_COMPILER}")
+        if(_selected_clangxx)
+            set(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE "${_selected_clangxx}" CACHE FILEPATH
+                "Selected Clang C++ compiler" FORCE)
+        elseif(EXISTS "${CMAKE_CXX_COMPILER}")
+            set(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE "${CMAKE_CXX_COMPILER}" CACHE FILEPATH
+                "Selected Clang C++ compiler" FORCE)
+        endif()
+    endif()
+
     # Check for ccache and use it if available (from centralized FindPrograms.cmake)
     if(NOT CMAKE_C_COMPILER_LAUNCHER AND ASCIICHAT_CCACHE_EXECUTABLE)
         set(CMAKE_C_COMPILER_LAUNCHER "${ASCIICHAT_CCACHE_EXECUTABLE}" CACHE STRING "C compiler launcher" FORCE)
     else()
-        if(DEFINED CMAKE_C_COMPILER_LAUNCHER AND CMAKE_C_COMPILER_LAUNCHER MATCHES "ccache")
+        if(DEFINED CMAKE_C_COMPILER_LAUNCHER AND
+                CMAKE_C_COMPILER_LAUNCHER MATCHES "(^|[;/])ccache(\\.exe)?($|[; ])")
             message(STATUS "${BoldYellow}ccache${ColorReset} not found; clearing compiler launcher.")
             unset(CMAKE_C_COMPILER_LAUNCHER CACHE)
         endif()
@@ -119,6 +144,16 @@ function(configure_llvm_pre_project)
     endif()
 
     message(STATUS "${BoldGreen}Found LLVM${ColorReset} at: ${BoldCyan}${LLVM_ROOT_PREFIX}${ColorReset}")
+
+    # A selected Clang toolchain is a complete suite, not just a compiler.
+    # Fail during configure if the archive, symbol, object, or archive-index
+    # tools are missing instead of allowing a later link/package step to fail.
+    asciichat_require_tool(ASCIICHAT_CLANG_EXECUTABLE "clang")
+    asciichat_require_tool(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE "clang++")
+    asciichat_require_tool(ASCIICHAT_LLVM_AR_EXECUTABLE "llvm-ar")
+    asciichat_require_tool(ASCIICHAT_LLVM_RANLIB_EXECUTABLE "llvm-ranlib")
+    asciichat_require_tool(ASCIICHAT_LLVM_NM_EXECUTABLE "llvm-nm")
+    asciichat_require_tool(ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE "llvm-objdump")
 
     # Get LLVM CMake directories for find_package()
     set(LLVM_CMAKEDIR "")
@@ -274,7 +309,7 @@ endfunction()
 # This section must run after project() to configure linking
 # =============================================================================
 
-function(configure_llvm_post_project)
+function(configure_clang_post_project)
     # Keep Clang's unwinder selection tied to the LLVM installation selected
     # above. Do not silently pick an unrelated library from the host search
     # path when the compiler is Clang.
@@ -531,7 +566,7 @@ endfunction()
 #   - Must run after project()
 # =============================================================================
 
-function(fix_llvm_ranlib)
+function(fix_clang_ranlib)
     if(WIN32 AND CMAKE_C_COMPILER MATCHES "clang-cl" AND ASCIICHAT_LLVM_LIB_EXECUTABLE)
         # llvm-lib creates the COFF archive and index in one invocation.
         set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> /nologo /out:<TARGET> <OBJECTS>")

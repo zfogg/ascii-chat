@@ -65,6 +65,7 @@
 #include <ascii-chat/util/env.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/string.h>
+#include <libplatform/util/string.h>
 
 // Common headers for version info and initialization
 #include <libplatform/atomic.h>
@@ -681,7 +682,7 @@ int main(int argc, char *argv[]) {
 
   // Load color scheme early (from config files and CLI) before logging initialization
   // This allows logging to use the correct colors from the start
-  options_colorscheme_init_early(argc, argv);
+  options_colorscheme_init_early(argc, (const char *const *)argv);
 
   // Parse --color-scheme from argv early to set logging colors for help output
   const char *colorscheme_name = "pastel"; // default
@@ -964,7 +965,7 @@ int main(int argc, char *argv[]) {
         }
       } else {
         // File doesn't end with .log - just append .json
-        snprintf(json_filename_buf, sizeof(json_filename_buf), "%s.json", final_log_file);
+        snprintf(json_filename_buf, sizeof(json_filename_buf), "%.*s.json", (int)(sizeof(json_filename_buf) - sizeof(".json")), final_log_file);
       }
     }
     final_log_file = json_filename_buf;

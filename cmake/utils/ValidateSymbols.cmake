@@ -1,14 +1,14 @@
 # =============================================================================
 # Symbol Validation Utility
 # =============================================================================
-# Validates that expected symbols exist in built libraries using llvm-nm
+# Validates that expected symbols exist using the selected toolchain's symbol tool.
 #
 # Usage:
-#   cmake -DLLVM_NM=<path> -DLIBRARY=<path> -DSYMBOLS="sym1,sym2,sym3" \
+#   cmake -DSYMBOL_TOOL=<path> -DLIBRARY=<path> -DSYMBOLS="sym1,sym2,sym3" \
 #         [-DINTERNAL_SYMBOLS="sym4,sym5"] -P ValidateSymbols.cmake
 #
 # Parameters:
-#   LLVM_NM          - Path to llvm-nm executable
+#   SYMBOL_TOOL      - Path to the selected symbol/export tool
 #   LIBRARY          - Path to the library file to check
 #   SYMBOLS          - Comma-separated list of required exported symbol names (T/D/B/R)
 #   INTERNAL_SYMBOLS - (Optional) Comma-separated list of internal symbols (t/d/b/r)
@@ -18,8 +18,8 @@
 #   Exits with error if any symbol is missing
 # =============================================================================
 
-if(NOT LLVM_NM)
-    message(FATAL_ERROR "LLVM_NM not specified")
+if(NOT SYMBOL_TOOL)
+    message(FATAL_ERROR "SYMBOL_TOOL not specified")
 endif()
 
 if(NOT LIBRARY)
@@ -43,21 +43,53 @@ if(NOT EXISTS "${LIBRARY}")
     message(FATAL_ERROR "Library not found: ${LIBRARY}")
 endif()
 
-# Run llvm-nm to get all symbols
-execute_process(
-    COMMAND "${LLVM_NM}" --defined-only "${LIBRARY}"
-    OUTPUT_VARIABLE NM_OUTPUT
-    ERROR_VARIABLE NM_ERROR
-    RESULT_VARIABLE NM_RESULT
-)
+# Run the active platform's symbol tool. MSVC's dumpbin reports exports from
+# the DLL, while llvm-nm reports defined symbols from Unix objects/libraries.
+get_filename_component(_symbol_tool_name "${SYMBOL_TOOL}" NAME)
+if(_symbol_tool_name MATCHES "^(dumpbin|dumpbin\.exe)$")
+    get_filename_component(_library_extension "${LIBRARY}" EXT)
+    if(_library_extension MATCHES "^[.]dll$")
+        set(_dumpbin_mode /exports)
+    else()
+        # CMake's TARGET_LINKER_FILE is an MSVC import library (.lib) for a
+        # DLL target.  /exports only accepts the PE image; /linkermember is
+        # the compiler-native listing for the corresponding import library.
+        set(_dumpbin_mode /linkermember:1)
+    endif()
+    execute_process(
+        COMMAND "${SYMBOL_TOOL}" ${_dumpbin_mode} "${LIBRARY}"
+        OUTPUT_VARIABLE NM_OUTPUT
+        ERROR_VARIABLE NM_ERROR
+        RESULT_VARIABLE NM_RESULT)
+    set(_symbol_export_format TRUE)
+else()
+    execute_process(
+        COMMAND "${SYMBOL_TOOL}" --defined-only "${LIBRARY}"
+        OUTPUT_VARIABLE NM_OUTPUT
+        ERROR_VARIABLE NM_ERROR
+        RESULT_VARIABLE NM_RESULT)
+    set(_symbol_export_format FALSE)
+endif()
 
 if(NOT NM_RESULT EQUAL 0)
-    message(FATAL_ERROR "llvm-nm failed on ${LIBRARY}:\n${NM_ERROR}")
+    message(FATAL_ERROR "${SYMBOL_TOOL} failed on ${LIBRARY}:\n${NM_ERROR}")
 endif()
 
 # Check each required exported symbol (uppercase T/D/B/R = global/exported)
 set(MISSING_SYMBOLS "")
 foreach(SYMBOL ${SYMBOLS})
+    if(_symbol_export_format)
+        string(REGEX MATCH "(^|[\r\n ])${SYMBOL}([\r\n ]|$)" _found_export "${NM_OUTPUT}")
+        if(_found_export)
+            set(FOUND_EXPORT 0)
+        else()
+            set(FOUND_EXPORT -1)
+        endif()
+        if(FOUND_EXPORT EQUAL -1)
+            list(APPEND MISSING_SYMBOLS "${SYMBOL}")
+        endif()
+        continue()
+    endif()
     # Symbol should appear as " T symbol" or " D symbol" etc. in nm output
     # Use simple string FIND - symbol names are unique enough
     # Look for " T symbolname" or " D symbolname" pattern
@@ -81,7 +113,7 @@ endforeach()
 if(MISSING_SYMBOLS)
     message(FATAL_ERROR "Symbol validation FAILED for ${LIBRARY}\n"
         "Missing exported symbols: ${MISSING_SYMBOLS}\n"
-        "Run 'llvm-nm --defined-only ${LIBRARY}' to see available symbols")
+        "Run '${SYMBOL_TOOL} --defined-only ${LIBRARY}' to see available symbols")
 endif()
 
 # Check each required internal symbol (lowercase t/d/b/r = local/internal)
@@ -119,6 +151,6 @@ endforeach()
 if(MISSING_INTERNAL_SYMBOLS)
     message(FATAL_ERROR "Symbol validation FAILED for ${LIBRARY}\n"
         "Missing internal symbols: ${MISSING_INTERNAL_SYMBOLS}\n"
-        "Run 'llvm-nm --defined-only ${LIBRARY}' to see available symbols")
+        "Run '${SYMBOL_TOOL} --defined-only ${LIBRARY}' to see available symbols")
 endif()
 

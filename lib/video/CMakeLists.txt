@@ -78,6 +78,11 @@ set(SIMD_SRCS
 list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/ascii/simd/dispatch.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/simd/cells.c)
 foreach(isa SSE2 SSSE3 AVX2 NEON SVE)
+    # The SIMD kernels use GCC/Clang vector extensions. MSVC uses the scalar
+    # implementation until an equivalent native vector backend is added.
+    if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+        continue()
+    endif()
     if(NOT ENABLE_SIMD_${isa})
         continue()
     endif()

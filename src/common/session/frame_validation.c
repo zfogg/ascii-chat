@@ -229,7 +229,7 @@ asciichat_error_t frame_render_contract_encode(const acip_render_settings_t *set
   size_t n = strnlen(settings->palette, sizeof(settings->palette));
   if (!n || n > 255)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rendered frame contract palette");
-  uint32_t fields[] = {HOST_TO_NET_U32(FRAME_RENDER_CONTRACT_SCHEMA), HOST_TO_NET_U32(settings->revision), HOST_TO_NET_U32(settings->caps.render_mode), HOST_TO_NET_U32(effects), HOST_TO_NET_U32(n)};
+  uint32_t fields[] = {HOST_TO_NET_U32(FRAME_RENDER_CONTRACT_SCHEMA), HOST_TO_NET_U32(settings->revision), HOST_TO_NET_U32(settings->caps.render_mode), HOST_TO_NET_U32(effects), HOST_TO_NET_U32((uint32_t)n)};
   memcpy(wire, fields, sizeof(fields));
   memcpy(wire + sizeof(fields), settings->palette, n);
   *length = sizeof(fields) + n;

@@ -40,6 +40,7 @@ function(copy_windows_dlls TARGET_NAME)
         # so the debugger can load symbols for the complete process.  Static
         # libraries contribute their symbols to the executable PDB and do not
         # need a separate runtime PDB.
+        if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
         foreach(_source_runtime_target IN ITEMS
                 ${TARGET_NAME} ascii-chat-shared
                 gotel gotel_cxx otlp_c libplatform sequel flags libflags-tomlc17
@@ -57,6 +58,7 @@ function(copy_windows_dlls TARGET_NAME)
                 endif()
             endif()
         endforeach()
+        endif()
 
         # BearSSL is normally built by its Make/NMake project and may not
         # appear as a CMake target.  If that build exposes a DLL directory,
@@ -301,6 +303,9 @@ function(check_static_linking TARGET_NAME)
         if(UNIX AND NOT APPLE)
             set(PLATFORM "linux")
             set(STATIC_AUDIT_TOOL "${ASCIICHAT_LLVM_READELF_EXECUTABLE}")
+            if(NOT STATIC_AUDIT_TOOL)
+                find_program(STATIC_AUDIT_TOOL NAMES llvm-readelf readelf)
+            endif()
         elseif(WIN32)
             set(PLATFORM "windows")
             set(STATIC_AUDIT_TOOL "${ASCIICHAT_LLVM_READOBJ_EXECUTABLE}")

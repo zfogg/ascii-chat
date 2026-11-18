@@ -521,7 +521,7 @@ static asciichat_error_t client_like_create_network_capture(const session_client
     log_debug("Network mode detected - using network capture (no local media source)");
     uint64_t net_cap_start = time_get_ns();
     state->capture = session_network_capture_create(state->capture_config.target_fps);
-    double net_cap_ms = time_ns_to_ms(time_elapsed_ns(net_cap_start, time_get_ns()));
+    double net_cap_ms = (double)time_ns_to_ms(time_elapsed_ns(net_cap_start, time_get_ns()));
     log_debug("★ INIT_CHECKPOINT: Network capture created in %.1f ms", net_cap_ms);
     if (!state->capture) {
       return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize network capture context");
@@ -591,7 +591,7 @@ static asciichat_error_t client_like_create_local_capture(client_like_state_t *s
     log_debug("Mirror mode detected - creating mirror capture after splash screen");
     uint64_t mirror_cap_start = time_get_ns();
     state->capture = session_mirror_capture_create(&state->capture_config);
-    double mirror_cap_ms = time_ns_to_ms(time_elapsed_ns(mirror_cap_start, time_get_ns()));
+    double mirror_cap_ms = (double)time_ns_to_ms(time_elapsed_ns(mirror_cap_start, time_get_ns()));
     log_debug("★ INIT_CHECKPOINT: Mirror capture created in %.1f ms (after splash)", mirror_cap_ms);
     if (!state->capture) {
       return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize mirror capture source");
@@ -889,7 +889,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   client_like_state_t state = {0};
   asciichat_error_t result = ASCIICHAT_OK;
   {
-    ASCII_OTEL_SCOPE(SESSION_INITIALIZE);
+    ASCII_OTEL_SCOPE_AS(otel_initialize_scope, SESSION_INITIALIZE);
     client_like_setup_terminal_logging();
     result = client_like_setup_keepawake();
     if (result != ASCIICHAT_OK) {

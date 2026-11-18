@@ -204,21 +204,12 @@ For detailed build instructions, configuration options, and troubleshooting, see
 See [Dependency builds](docs/dependency-builds.md) for upstream CMake targets,
 static and shared linkage, and the source dependency smoke tests.
 
-### Regenerating discovery SQL
+### Discovery SQL
 
 Discovery and rate-limit queries live in `lib/discovery/sql/` and
-`lib/network/rate_limit/sql/`. After editing them, run:
-
-```sh
-make sql-generate
-make sql-check
-```
-
-These targets initialize the pinned mmmbed submodule if needed and build
-`bin/mmmbed` (`bin/mmmbed.exe` on Windows) when missing or when its source
-changes. Build caches are kept separately for each host OS and architecture.
-The generated header is `lib/discovery/queries_generated.h`;
-commit it with the SQL changes. The binary and intermediate build files are
+`lib/network/rate_limit/sql/`. The generated catalog is checked in at
+`lib/discovery/queries_generated.h` and must be updated alongside query changes.
+The binary and intermediate build files are
 ignored by Git. Mmmbed uses its pinned Sequel Go dependency to format SQL, so
 contributors generate the same output without a separate Sequel executable.
 

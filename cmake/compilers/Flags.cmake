@@ -105,6 +105,12 @@ endfunction()
 function(configure_base_compiler_flags)
     configure_toolchain_capabilities()
 
+    if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+        target_compile_options(asciichat-project-options INTERFACE
+            /W4 /permissive- /D_CRT_SECURE_NO_WARNINGS /experimental:c11atomics)
+        return()
+    endif()
+
     # If CLANG_RESOURCE_DIR is set (when building LibTooling tools like defer),
     # pass it to the compiler so clang can find its builtin headers
     if(DEFINED CLANG_RESOURCE_DIR AND CLANG_RESOURCE_DIR)
@@ -239,22 +245,20 @@ endfunction()
 # Args:
 #   BUILD_TYPE - "Debug", "Dev", or "Sanitize"
 function(configure_debug_build_flags BUILD_TYPE)
-    # Dev is the optimized, sanitizer-free developer build. Keep full debug
-    # symbols and diagnostics, but do not turn the renderer into an O0 build:
-    # audio visualizations are computed on the presentation thread and their
-    # unoptimized FFT/waveform paths cannot sustain the configured frame rate.
-    if(BUILD_TYPE STREQUAL "Dev")
-        target_compile_options(asciichat-project-options INTERFACE -g2 -O2 -DDEBUG)
-    else()
-        # Enhanced debug info with macro definitions
-        target_compile_options(asciichat-project-options INTERFACE -g3 -O0 -DDEBUG)
-
-        # Better debugging experience
-        target_compile_options(asciichat-project-options INTERFACE
-            -fno-inline                           # Disable inlining for easier stepping
-            -fno-eliminate-unused-debug-types     # Keep all debug types
-        )
+    if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+        target_compile_definitions(asciichat-project-options INTERFACE DEBUG)
+        target_compile_options(asciichat-project-options INTERFACE /Od)
+        target_link_options(asciichat-project-options INTERFACE /DEBUG:FULL)
+        return()
     endif()
+    # Enhanced debug info with macro definitions
+    target_compile_options(asciichat-project-options INTERFACE -g3 -O0 -DDEBUG)
+
+    # Better debugging experience
+    target_compile_options(asciichat-project-options INTERFACE
+        -fno-inline                           # Disable inlining for easier stepping
+        -fno-eliminate-unused-debug-types     # Keep all debug types
+    )
 
     # Clang-specific debug enhancements
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
@@ -296,7 +300,7 @@ endfunction()
 # The detect_x86_64_level() function is now in CPUDetection.cmake
 # Include it to get access to the function
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/compiler/CPUDetection.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compilers/CPUDetection.cmake)
 
 # Configure release build optimization flags
 # Args:
@@ -311,6 +315,17 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     set(WITH_DEBUG_INFO FALSE)
     if(ARGC GREATER 5)
         set(WITH_DEBUG_INFO ${ARGV5})
+    endif()
+
+    if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+        target_compile_definitions(asciichat-project-options INTERFACE NDEBUG)
+        target_compile_options(asciichat-project-options INTERFACE $<$<CONFIG:RelWithDebInfo>:/O2> $<$<CONFIG:Release>:/O2> /Oi /GL)
+        target_link_options(asciichat-project-options INTERFACE /OPT:REF /OPT:ICF)
+        if(WITH_DEBUG_INFO)
+            target_compile_options(asciichat-project-options INTERFACE /Z7)
+            target_link_options(asciichat-project-options INTERFACE /DEBUG:FULL)
+        endif()
+        return()
     endif()
 
     target_compile_definitions(asciichat-project-options INTERFACE NDEBUG)
@@ -520,7 +535,11 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     # Dead Code Elimination (all platforms)
     # =============================================================================
     # Requires -ffunction-sections -fdata-sections to separate each function/data into sections
-    target_compile_options(asciichat-project-options INTERFACE -ffunction-sections -fdata-sections)
+    if(MSVC)
+        target_compile_options(asciichat-project-options INTERFACE /Gy /Gw)
+    else()
+        target_compile_options(asciichat-project-options INTERFACE -ffunction-sections -fdata-sections)
+    endif()
 
     if(PLATFORM_LINUX)
         # GNU ld: Use --gc-sections to remove unused sections
@@ -606,7 +625,7 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             else()
                 # Musl doesn't provide __*_chk fortify wrappers
                 # Use -Wp, prefix to pass directly to preprocessor, overriding makepkg's -Wp,-D_FORTIFY_SOURCE=3
-                target_compile_options(asciichat-project-options INTERFACE "-Wp,-U_FORTIFY_SOURCE" "-Wp,-D_FORTIFY_SOURCE=0")
+                target_compile_options(asciichat-project-options INTERFACE "-Wp,-U_FORTIFY_SOURCE")
             endif()
         endif()
 
@@ -620,6 +639,10 @@ endfunction()
 
 # Configure coverage instrumentation (can be combined with any build type)
 function(configure_coverage_flags)
+    if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+        message(WARNING "Coverage instrumentation is not supported by the MSVC toolchain")
+        return()
+    endif()
     message(STATUS "Coverage instrumentation enabled")
     target_compile_definitions(asciichat-project-options INTERFACE COVERAGE_BUILD)
     target_compile_options(asciichat-project-options INTERFACE --coverage -fprofile-arcs -ftest-coverage)

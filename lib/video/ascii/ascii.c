@@ -274,12 +274,12 @@ char *ascii_convert_with_capabilities_workspace(image_t *original, const ssize_t
   return ascii_convert_with_buffers(original, width, height, caps, use_aspect_ratio, stretch, palette_chars, contain, workspace, NULL);
 }
 
-char *ascii_convert_with_buffers(image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
+char *ascii_convert_with_buffers(const image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
                                  const char *palette_chars, const bool contain, image_t **workspace, outbuf_t *output) {
   return ascii_convert_with_buffers_stabilized(original, width, height, caps, use_aspect_ratio, stretch, palette_chars, contain, workspace, output, NULL);
 }
 
-char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
+char *ascii_convert_with_buffers_stabilized(const image_t *original, const ssize_t width, const ssize_t height, const terminal_capabilities_t *caps, const bool use_aspect_ratio, const bool stretch,
                                             const char *palette_chars, const bool contain, image_t **workspace, outbuf_t *output, ascii_stabilizer_t *stabilizer) {
   if (original == NULL || caps == NULL) {
     log_error("Invalid parameters for ascii_convert_with_capabilities");
@@ -426,12 +426,12 @@ char *ascii_convert_with_buffers_stabilized(image_t *original, const ssize_t wid
     for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
       configuration ^= values[i];
       // FNV multiplication intentionally wraps modulo 2^64.
-      (void)__builtin_mul_overflow(configuration, 1099511628211ULL, &configuration);
+      configuration *= 1099511628211ULL;
     }
     if (palette_chars) {
       for (const unsigned char *p = (const unsigned char *)palette_chars; *p; ++p) {
         configuration ^= *p;
-        (void)__builtin_mul_overflow(configuration, 1099511628211ULL, &configuration);
+        configuration *= 1099511628211ULL;
       }
     }
     size_t history_height = (size_t)height * (caps->render_mode == RENDER_MODE_HALF_BLOCK ? 2u : 1u);

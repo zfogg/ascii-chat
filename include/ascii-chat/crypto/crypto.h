@@ -828,7 +828,7 @@ bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonc
  *
  * @ingroup crypto
  */
-crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size, size_t *packet_len_out);
+crypto_result_t crypto_create_auth_challenge(crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size, size_t *packet_len_out);
 
 /**
  * @brief Process authentication challenge packet

@@ -1,26 +1,38 @@
 # Native network I/O uses epoll, kqueue or IOCP through libuv. Browser transports
 # own their event loops and do not link this native dependency.
-if(NOT EMSCRIPTEN)
+function(configure_libuv)
+    if(EMSCRIPTEN)
+        return()
+    endif()
+
     if(WIN32)
-        # vcpkg's libuv port does not provide a CMake package config. Discover
-        # the installed headers/archive directly and publish one project target.
-        find_path(ASCIICHAT_LIBUV_INCLUDE_DIR NAMES uv.h
-            PATHS "${VCPKG_INCLUDE_PATH}" PATH_SUFFIXES uv REQUIRED)
-        if(BUILD_SHARED_LIBS)
-            find_library(ASCIICHAT_LIBUV_LIBRARY NAMES uv PATHS "${VCPKG_LIB_PATH}" REQUIRED)
-        else()
-            find_library(ASCIICHAT_LIBUV_LIBRARY NAMES uv_a uv PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+        if(NOT USE_VCPKG)
+            message(FATAL_ERROR
+                "Windows builds require the restored vcpkg libuv package; "
+                "enable USE_VCPKG and restore the selected triplet in the dependency cache")
         endif()
-        # vcpkg's archive does not carry its Windows system closure when it is
-        # imported directly (uv__getpwuid_r uses Userenv.dll).
-        if(NOT TARGET asciichat-libuv)
+        find_package(libuv CONFIG REQUIRED)
+        if(BUILD_SHARED_LIBS AND TARGET libuv::uv)
+            set(ASCIICHAT_LIBUV_TARGET libuv::uv)
+        elseif(TARGET libuv::uv_a)
+            set(ASCIICHAT_LIBUV_TARGET libuv::uv_a)
+        else()
+            # Older/restored vcpkg packages may not export CMake targets.
+            # Preserve the direct-import fallback used by master.
+            find_path(ASCIICHAT_LIBUV_INCLUDE_DIR NAMES uv.h
+                PATHS "${VCPKG_INCLUDE_PATH}" PATH_SUFFIXES uv REQUIRED)
+            if(BUILD_SHARED_LIBS)
+                find_library(ASCIICHAT_LIBUV_LIBRARY NAMES uv PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+            else()
+                find_library(ASCIICHAT_LIBUV_LIBRARY NAMES uv_a uv PATHS "${VCPKG_LIB_PATH}" REQUIRED)
+            endif()
             add_library(asciichat-libuv UNKNOWN IMPORTED GLOBAL)
             set_target_properties(asciichat-libuv PROPERTIES
                 IMPORTED_LOCATION "${ASCIICHAT_LIBUV_LIBRARY}"
                 INTERFACE_INCLUDE_DIRECTORIES "${ASCIICHAT_LIBUV_INCLUDE_DIR}"
                 INTERFACE_LINK_LIBRARIES userenv)
+            set(ASCIICHAT_LIBUV_TARGET asciichat-libuv)
         endif()
-        set(ASCIICHAT_LIBUV_TARGET asciichat-libuv)
     elseif(USE_MUSL)
         include(FetchContent)
         set(LIBUV_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -55,7 +67,11 @@ if(NOT EMSCRIPTEN)
         # A musl target triple alone still finds the host's glibc headers.
         # Keep Clang's builtin headers, but select musl and the isolated Linux
         # headers explicitly so libuv does not reference glibc-only symbols.
-        target_compile_options(uv_a PRIVATE -nostdlibinc)
+        # GCC uses -nostdinc from the shared musl toolchain flags; it does not
+        # accept Clang's -nostdlibinc spelling.
+        if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER MATCHES "(^|[/\\\\])clang(\\.exe)?$")
+            target_compile_options(uv_a PRIVATE -nostdlibinc)
+        endif()
         # Consumers compile sources that include <uv.h>; propagate the musl
         # and kernel header roots through the static target.
         target_include_directories(uv_a SYSTEM PUBLIC
@@ -84,4 +100,13 @@ if(NOT EMSCRIPTEN)
             set(ASCIICHAT_LIBUV_TARGET asciichat-libuv-static)
         endif()
     endif()
-endif()
+
+    if(NOT ASCIICHAT_LIBUV_TARGET)
+        message(FATAL_ERROR "libuv configuration did not produce a link target")
+    endif()
+
+    set(ASCIICHAT_LIBUV_TARGET "${ASCIICHAT_LIBUV_TARGET}" PARENT_SCOPE)
+    set(ASCIICHAT_LIBUV_INCLUDE_DIRS "${ASCIICHAT_LIBUV_INCLUDE_DIRS}" PARENT_SCOPE)
+endfunction()
+
+configure_libuv()

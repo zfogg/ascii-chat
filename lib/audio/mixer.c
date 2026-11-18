@@ -113,8 +113,8 @@ int ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
   duck->gain = NULL;
 
   // Calculate time constants
-  float attack_tau = (float)duck->attack_ns / NS_PER_SEC;
-  float release_tau = (float)duck->release_ns / NS_PER_SEC;
+  float attack_tau = (float)duck->attack_ns / (float)NS_PER_SEC;
+  float release_tau = (float)duck->release_ns / (float)NS_PER_SEC;
   duck->attack_coeff = expf(-1.0f / (attack_tau * sample_rate + 1e-12f));
   duck->release_coeff = expf(-1.0f / (release_tau * sample_rate + 1e-12f));
 

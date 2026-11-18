@@ -385,7 +385,7 @@ list(FILTER _runtime_sources INCLUDE REGEX "${_core_runtime_regex}")
 list(APPEND _runtime_sources ${LIB_DIR}/video/ascii/palette.c)
 create_ascii_chat_module(ascii-chat-runtime "${_runtime_sources}")
 
-target_link_libraries(ascii-chat-runtime INTERFACE asciichat-libplatform)
+target_link_libraries(ascii-chat-runtime INTERFACE ${ASCIICHAT_LIBPLATFORM_TARGET})
 target_include_directories(ascii-chat-runtime INTERFACE
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/lib
@@ -508,9 +508,9 @@ set_property(SOURCE
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/neon/color.c"
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/sve/luminance.c"
     "${CMAKE_SOURCE_DIR}/lib/video/ascii/sve/color.c"
-    APPEND PROPERTY
-    # -finline cancels Debug's -fno-inline; -finline-functions alone does not.
-    COMPILE_OPTIONS "$<$<CONFIG:Debug>:-O2;-finline>")
+    APPEND PROPERTY COMPILE_OPTIONS
+    "$<$<AND:$<CONFIG:Debug>,$<NOT:$<C_COMPILER_ID:MSVC>>>:-O2;-finline>"
+)
 # The core module's Debug precompiled header uses -O0 and cannot be reused by
 # this optimized source with Clang.
 set_source_files_properties("${CMAKE_SOURCE_DIR}/src/common/session/frame_validation.c"
@@ -561,7 +561,9 @@ target_link_libraries(ascii-chat-video PRIVATE asciichat-vterm)
 target_link_libraries(ascii-chat-video PRIVATE asciichat-freetype)
 
 # Fontconfig for font selection in render-file
-target_link_libraries(ascii-chat-video PRIVATE asciichat-fontconfig)
+if(TARGET asciichat-fontconfig)
+    target_link_libraries(ascii-chat-video PRIVATE asciichat-fontconfig)
+endif()
 
 # Mark generated font files as generated (for OBJECT libraries, must be before module creation)
 set_source_files_properties(
@@ -591,9 +593,17 @@ if(TARGET webrtc_audio_processing)
     endif()
 endif()
 
+# WebRTC AEC3's Windows time source uses timeGetTime from winmm.  Keep this
+# system-library requirement attached to the external WebRTC base target so
+# every consumer, including its DLL, receives the import library.
+if(WIN32 AND TARGET base)
+    target_link_libraries(base PUBLIC winmm)
+endif()
+
 # Now create the module with WebRTC includes in scope
 create_ascii_chat_module(ascii-chat-audio "${AUDIO_SRCS}")
 target_link_libraries(ascii-chat-audio PRIVATE asciichat-rnnoise)
+add_dependencies(ascii-chat-audio ascii-chat-rnnoise-build)
 
 # For OBJECT libs, link external deps only
 target_link_libraries(ascii-chat-audio PRIVATE
@@ -680,7 +690,8 @@ endif()
 target_link_libraries(ascii-chat-logging PRIVATE OpenSSL::SSL)
 
 if(NOT EMSCRIPTEN)
-    target_link_libraries(ascii-chat-runtime PRIVATE asciichat-libuv)
+    target_link_libraries(ascii-chat-runtime PRIVATE ${ASCIICHAT_LIBUV_TARGET})
+    target_link_libraries(ascii-chat-ui PRIVATE ${ASCIICHAT_LIBUV_TARGET})
 endif()
 if(PLATFORM_LINUX AND NOT USE_MUSL)
     target_link_libraries(ascii-chat-runtime PRIVATE asciichat-systemd)
@@ -934,7 +945,7 @@ add_library(ascii-chat-shared SHARED
     )
     # Consumers of the shared object also call platform APIs directly (tests,
     # tooling, and small probes), so keep libplatform transitively visible.
-    target_link_libraries(ascii-chat-shared PUBLIC libplatform::libplatform)
+target_link_libraries(ascii-chat-shared PUBLIC ${ASCIICHAT_LIBPLATFORM_TARGET})
     if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
     endif()
@@ -1037,19 +1048,6 @@ target_link_libraries(ascii-chat-shared PRIVATE asciichat-utf8proc asciichat-lib
                 INSTALL_RPATH_USE_LINK_PATH TRUE
             )
         endif()
-    endif()
-
-    # Windows: Explicitly set import library location for Windows
-    if(WIN32)
-        # Both clang-cl and clang --target=...-windows-msvc produce MSVC
-        # compatible import libraries. The GNU-style clang driver used by the
-        # LLVM toolchain still needs the .lib name consumed by the executable.
-        if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER MATCHES "clang-cl")
-            set(ASCIICHAT_WINDOWS_IMPORT_LIBRARY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
-        else()
-            set(ASCIICHAT_WINDOWS_IMPORT_LIBRARY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.dll.a")
-        endif()
-        target_link_options(ascii-chat-shared PRIVATE "LINKER:/implib:${ASCIICHAT_WINDOWS_IMPORT_LIBRARY}")
     endif()
 
     # Auto-generate .def file from OBJECT libraries
@@ -1177,8 +1175,8 @@ target_link_libraries(ascii-chat-shared PRIVATE asciichat-utf8proc asciichat-lib
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-portaudio)
     endif()
 
-    # Link libsystemd (required for keepawake)
-    if(NOT USE_MUSL)
+    # Link libsystemd (required for keepawake) on Linux only.
+    if(PLATFORM_LINUX AND NOT USE_MUSL)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-systemd)
     endif()
 
@@ -1318,7 +1316,9 @@ endif()
 # Link FreeType2 and Fontconfig for font rendering
 # Use PUBLIC to ensure these are transitively linked when linking static library
 target_link_libraries(ascii-chat-shared PRIVATE asciichat-freetype)
-target_link_libraries(ascii-chat-shared PRIVATE asciichat-fontconfig)
+if(TARGET asciichat-fontconfig)
+    target_link_libraries(ascii-chat-shared PRIVATE asciichat-fontconfig)
+endif()
 
 # Link vterm for terminal emulation
 target_link_libraries(ascii-chat-shared PRIVATE asciichat-vterm)
@@ -1398,10 +1398,12 @@ else()
 endif()
 
 if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
-    # On Windows, check the import library (.lib) since DLLs don't expose symbols to llvm-nm
-    # On Unix, check the shared object directly
+    # LLVM's nm reports the exported symbols from the Windows import library,
+    # while a PE DLL itself is not an object-symbol table. Keep the generated
+    # export definition and validate the import library with the selected
+    # compiler family's tool suite.
     if(WIN32)
-        set(SHARED_LIB_TO_VALIDATE "${ASCIICHAT_WINDOWS_IMPORT_LIBRARY}")
+        set(SHARED_LIB_TO_VALIDATE "$<TARGET_LINKER_FILE:ascii-chat-shared>")
     else()
         set(SHARED_LIB_TO_VALIDATE "$<TARGET_FILE:ascii-chat-shared>")
     endif()
@@ -1409,7 +1411,7 @@ if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
     # Build the validation command with optional internal symbols
     set(_VALIDATE_CMD
         ${CMAKE_COMMAND}
-        -DLLVM_NM=${ASCIICHAT_SYMBOL_NM_EXECUTABLE}
+        -DSYMBOL_TOOL=${ASCIICHAT_SYMBOL_NM_EXECUTABLE}
         -DLIBRARY=${SHARED_LIB_TO_VALIDATE}
         -DSYMBOLS=${ASCIICHAT_SYMBOLS_CSV}
     )
@@ -1489,7 +1491,11 @@ foreach(MODULE ${STATIC_LIB_MODULES})
 endforeach()
 
 # Use file(GENERATE) to expand generator expressions at build time
-set(OBJECT_LIST_FILE "${CMAKE_CURRENT_BINARY_DIR}/static_lib_objects.txt")
+if(CMAKE_CONFIGURATION_TYPES)
+    set(OBJECT_LIST_FILE "${CMAKE_CURRENT_BINARY_DIR}/static_lib_objects-$<CONFIG>.txt")
+else()
+    set(OBJECT_LIST_FILE "${CMAKE_CURRENT_BINARY_DIR}/static_lib_objects.txt")
+endif()
 file(GENERATE
     OUTPUT ${OBJECT_LIST_FILE}
     CONTENT "${OBJECT_EXPR_LIST}"
@@ -1540,7 +1546,7 @@ add_dependencies(ascii-chat-static-lib build-ascii-chat-static-lib)
 # Create an INTERFACE library for dependency propagation
 # (IMPORTED libraries can't have INTERFACE_LINK_LIBRARIES in older CMake)
 add_library(ascii-chat-static INTERFACE)
-target_link_libraries(ascii-chat-static INTERFACE asciichat-libplatform asciichat-utf8proc asciichat-icu asciichat-rnnoise)
+target_link_libraries(ascii-chat-static INTERFACE ${ASCIICHAT_LIBPLATFORM_TARGET} ${UTF8PROC_LIBRARIES} asciichat-icu asciichat-rnnoise)
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-static INTERFACE asciichat-quic)
 endif()
@@ -1572,13 +1578,15 @@ target_link_libraries(ascii-chat-static INTERFACE
     asciichat-sqlite3
     webrtc_audio_processing
     asciichat-freetype
-    asciichat-fontconfig
     asciichat-vterm
     asciichat-libdatachannel
     asciichat-libwebsockets
     OpenSSL::SSL
     OpenSSL::Crypto
 )
+if(TARGET asciichat-fontconfig)
+    target_link_libraries(ascii-chat-static INTERFACE asciichat-fontconfig)
+endif()
 
 # Link mimalloc
 if(USE_MIMALLOC)
@@ -1650,8 +1658,11 @@ else()
     else()
         # Non-musl builds: link the C++ standard library
         target_link_libraries(ascii-chat-static INTERFACE c++)
-        # The combined archive includes the platform keepawake implementation.
+        # The combined archive includes the platform keepawake implementation
+        # on Linux; systemd is not available on Windows or Darwin.
+        if(PLATFORM_LINUX)
         target_link_libraries(ascii-chat-static INTERFACE asciichat-systemd)
+        endif()
     endif()
 endif()
 
@@ -1690,7 +1701,7 @@ if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
     add_custom_command(
         OUTPUT ${STATIC_LIB_OUTPUT}.validated
         COMMAND ${CMAKE_COMMAND}
-            -DLLVM_NM=${ASCIICHAT_SYMBOL_NM_EXECUTABLE}
+            -DSYMBOL_TOOL=${ASCIICHAT_SYMBOL_NM_EXECUTABLE}
             -DLIBRARY=${STATIC_LIB_OUTPUT}
             -DSYMBOLS=${ASCIICHAT_SYMBOLS_CSV}
             -P ${CMAKE_SOURCE_DIR}/cmake/utils/ValidateSymbols.cmake
@@ -1706,7 +1717,7 @@ if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
         VERBATIM
     )
 else()
-    message(STATUS "Symbol validation: ${BoldYellow}disabled${ColorReset} (llvm-nm not found)")
+    message(STATUS "Symbol validation: ${BoldYellow}disabled${ColorReset} (selected symbol tool not found)")
     # User-friendly 'static-lib' target - builds the static library (no validation)
     add_custom_target(static-lib
         DEPENDS ${STATIC_LIB_OUTPUT}

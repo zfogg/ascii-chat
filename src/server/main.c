@@ -74,7 +74,7 @@
 #ifdef _WIN32
 #include <io.h>
 #else
-#include <unistd.h> // For write(), STDERR_FILENO (signal handler), dup(), dup2()
+#include <unistd.h> // For write() and STDERR_FILENO in the signal handler
 #include <fcntl.h>  // For open() and O_WRONLY
 #endif
 
@@ -1231,8 +1231,8 @@ static void server_status_fn(void *user_data, ui_status_t *out_status) {
     return;
   }
 
-  ui_status_gather(tcp, g_session_string, network_server_config(tcp)->ipv4_address, network_server_config(tcp)->ipv6_address, GET_OPTION(port), g_server_start_time, "Server", g_session_is_mdns_only,
-                   out_status);
+  ui_status_gather(tcp, g_session_string, network_server_config(tcp)->ipv4_address, network_server_config(tcp)->ipv6_address, (uint16_t)GET_OPTION(port), g_server_start_time, "Server",
+                   g_session_is_mdns_only, out_status);
 }
 
 /* ============================================================================
@@ -1424,7 +1424,7 @@ static void __attribute__((unused)) server_prepare_discovery_request(acds_sessio
   }
 
   params->capabilities = 0x03; // Video + Audio
-  params->max_participants = GET_OPTION(max_clients);
+  params->max_participants = (uint8_t)GET_OPTION(max_clients);
   log_debug("ACDS: max_clients option value = %d", GET_OPTION(max_clients));
 
   // Set password if configured
@@ -1472,7 +1472,7 @@ static void __attribute__((unused)) server_prepare_discovery_request(acds_sessio
   } else {
     SAFE_STRNCPY(params->server_address, bind_addr, sizeof(params->server_address));
   }
-  params->server_port = port;
+  params->server_port = (uint16_t)port;
   if (GET_OPTION(quic_bind_address)[0] || (GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))
     params->quic_port = (uint16_t)(GET_OPTION(quic_port) ? GET_OPTION(quic_port) : port);
   if ((GET_OPTION(webtransport_bind_address)[0] || GET_OPTION(webtransport_origin)[0]))

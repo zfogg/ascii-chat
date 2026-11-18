@@ -100,7 +100,7 @@ keyboard_key_t tui_input_events_read(tui_input_events_t *s, keyboard_key_t (*rea
       s->ready = true;
       return KEY_PASTE;
     }
-    char text[ASCII_CHAT_UTF8_BUFFER_SIZE];
+    char text[8];
     size_t bytes = keyboard_text_encode(key, text);
     if (s->pasting) {
       // Paste payloads remain raw UTF-8 bytes until whole-paste validation.
@@ -656,7 +656,7 @@ static asciichat_error_t input_prompt(const char *prompt, char *buffer, size_t m
     // Validate the whole paste before editing so rejection cannot leave a partial password.
     if (key == KEY_PASTE || key == 22) {
       char pasted[TUI_INPUT_PASTED_BUFFER_SIZE] = {0};
-      asciichat_error_t pasted_result = key == 22 ? platform_clipboard_read(pasted, sizeof(pasted)) : ui_input_take_paste(pasted, sizeof(pasted));
+      asciichat_error_t pasted_result = key == 22 ? (asciichat_error_t)platform_clipboard_read(pasted, sizeof(pasted)) : ui_input_take_paste(pasted, sizeof(pasted));
       if (pasted_result == ASCIICHAT_OK) {
         if (key == 22) {
           size_t write = 0;

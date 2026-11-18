@@ -66,7 +66,7 @@ string(REPLACE
 # Make platform-aware: -fPIC and -pthread are Unix-only flags
 string(REPLACE
     "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -fvisibility=hidden -fPIC -pthread\")"
-    "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -fvisibility=hidden\")\nif(UNIX)\n  set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -fPIC -pthread\")\nendif()\nset(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -std=c++17\")\nset(CMAKE_CXX_STANDARD 17)\nset(CMAKE_CXX_STANDARD_REQUIRED ON)"
+    "if(MSVC)\n  set(CMAKE_CXX_STANDARD 17)\n  set(CMAKE_CXX_STANDARD_REQUIRED ON)\nelse()\n  set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -fvisibility=hidden -fPIC -pthread -std=c++17\")\n  set(CMAKE_CXX_STANDARD 17)\n  set(CMAKE_CXX_STANDARD_REQUIRED ON)\nendif()"
     CMAKE_CONTENT
     "${CMAKE_CONTENT}"
 )
@@ -89,7 +89,28 @@ message(STATUS "Patched WebRTC AEC3 CMakeLists.txt - updated cmake version and C
 # =============================================================================
 # Patch 2: audio_processing/CMakeLists.txt - Conditionally compile SSE
 # =============================================================================
-# Make SSE compilation conditional based on ascii-chat's SIMD configuration
+# Make SSE compilation conditional based on ascii-chat's SIMD configuration.
+# Recent AEC3 snapshots omit this file even though the top-level project still
+# unconditionally adds the audio_processing directory. Create the component
+# target from the source layout in that case, then apply the same architecture
+# handling used for older snapshots.
+if(NOT EXISTS "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/CMakeLists.txt")
+    file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/CMakeLists.txt" [=[
+file(GLOB AUDIO_PROCESS_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/utility/*.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resampler/*.cc")
+if(ASCIICHAT_TARGET_ARM64)
+    list(FILTER AUDIO_PROCESS_SOURCES EXCLUDE REGEX "(ooura_fft_sse2|sinc_resampler_sse)\\.cc$")
+endif()
+add_library(AudioProcess STATIC ${AUDIO_PROCESS_SOURCES})
+target_include_directories(AudioProcess PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../)
+]=])
+    message(STATUS "Created missing WebRTC AEC3 audio_processing/CMakeLists.txt")
+endif()
 file(READ "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/CMakeLists.txt" AP_CMAKE_CONTENT)
 
 # Add api and base to EXTRA_LIBS (needed for AudioProcess dependencies)
@@ -281,7 +302,7 @@ if(absl_FOUND)
     message(STATUS "WebRTC AEC3: Using system Abseil")
 
     # Build base library WITHOUT bundled Abseil sources
-    add_library(base
+    add_library(base STATIC
             rtc_base/checks.cc
             rtc_base/time_utils.cc
             rtc_base/logging.cc
@@ -315,7 +336,7 @@ else()
     include_directories("${PROJECT_SOURCE_DIR}/base/abseil")
 
     # Build base library WITH bundled Abseil sources
-    add_library(base
+    add_library(base STATIC
             rtc_base/checks.cc
             rtc_base/time_utils.cc
             rtc_base/logging.cc
@@ -336,6 +357,8 @@ else()
             abseil/absl/strings/ascii.cc
             )
 endif()
+if(WIN32)
+    target_link_libraries(base PUBLIC winmm)
 
 # cpu_features.cc exports the WebRTC dispatch variables consumed by the
 # audio-processing library.  The upstream project applies hidden visibility
@@ -344,6 +367,7 @@ endif()
 if(TARGET base)
     set_source_files_properties(system_wrappers/source/cpu_features.cc
         PROPERTIES COMPILE_OPTIONS "-fvisibility=default")
+endif()
 endif()
 ]=])
 
@@ -640,28 +664,7 @@ string(REPLACE
 file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${CMAKE_CONTENT_FINAL}")
 
 # =============================================================================
-# Patch 15: Main CMakeLists.txt - Add -w to suppress all warnings
-# =============================================================================
-# Add -w compile option globally for all WebRTC compilation
-
-file(READ "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" CMAKE_CONTENT_WARNINGS)
-
-string(REPLACE
-    "set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)"
-    "set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_compile_options(-w)  # Suppress all warnings"
-    CMAKE_CONTENT_WARNINGS
-    "${CMAKE_CONTENT_WARNINGS}"
-)
-
-file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${CMAKE_CONTENT_WARNINGS}")
-
-message(STATUS "Patched WebRTC AEC3 CMakeLists.txt - added -w to suppress all warnings")
-
-# =============================================================================
-# Patch 16: Abseil random library - Fix ARM64 processor detection
+# Patch 15: Abseil random library - Fix ARM64 processor detection
 # =============================================================================
 # Abseil's AbseilConfigureCopts.cmake sets ABSL_RANDOM_RANDEN_COPTS based on
 # CMAKE_SYSTEM_PROCESSOR using STREQUAL for exact match.

@@ -47,7 +47,7 @@ typedef struct {
    */
 } quic_transport_t;
 
-static const acip_transport_methods_t quic_methods;
+static acip_transport_methods_t quic_methods;
 
 asciichat_error_t quic_transport_peer_address(acip_transport_t *transport, struct sockaddr_storage *address, socklen_t *length) {
   if (!transport || transport->methods != &quic_methods || !address || !length)
@@ -444,20 +444,20 @@ static void quic_destroy_impl(acip_transport_t *transport) {
   if (quic->lane)
     cond_destroy(&quic->security_changed);
 }
-static const acip_transport_methods_t quic_methods = {.send = quic_send,
-                                                      .sendv_ex = quic_sendv_ex,
-                                                      .recv = quic_recv,
-                                                      .close = quic_close,
-                                                      .interrupt = quic_interrupt,
-                                                      .get_type = quic_type,
-                                                      .get_socket = quic_socket,
-                                                      .is_connected = quic_connected,
-                                                      .has_pending_data = quic_pending,
-                                                      .queued_bytes = quic_queued,
-                                                      .get_capabilities = quic_capabilities,
-                                                      .consume_keyframe_request = quic_consume_keyframe_request,
-                                                      .validate_send_options = quic_validate_options,
-                                                      .destroy_impl = quic_destroy_impl};
+static acip_transport_methods_t quic_methods = {.send = quic_send,
+                                                .sendv_ex = quic_sendv_ex,
+                                                .recv = quic_recv,
+                                                .close = quic_close,
+                                                .interrupt = quic_interrupt,
+                                                .get_type = quic_type,
+                                                .get_socket = quic_socket,
+                                                .is_connected = quic_connected,
+                                                .has_pending_data = quic_pending,
+                                                .queued_bytes = quic_queued,
+                                                .get_capabilities = quic_capabilities,
+                                                .consume_keyframe_request = quic_consume_keyframe_request,
+                                                .validate_send_options = quic_validate_options,
+                                                .destroy_impl = quic_destroy_impl};
 
 static asciichat_error_t attach_transport(quic_connection_t *connection, crypto_context_t *crypto, mutex_t *lane, bool lane_held, void (*wake)(void *), void *wake_context,
                                           void (*on_destroy)(acip_transport_t *, void *), void *destroy_context, acip_transport_t **out) {

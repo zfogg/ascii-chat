@@ -75,6 +75,7 @@ if(UNIX AND NOT APPLE)
 
     # pkg_check_modules already sets FONTCONFIG_LDFLAGS to proper linker flags
     # (-L/path/to/lib -lfontconfig), so use it as-is
+    set(FONTCONFIG_LINK_LIBRARIES ${FONTCONFIG_LDFLAGS})
 
     message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: ${FONTCONFIG_LDFLAGS}")
 
@@ -130,4 +131,14 @@ elseif(WIN32)
 
 else()
     message(FATAL_ERROR "Unsupported platform for Fontconfig")
+endif()
+
+# Keep the dependency target contract identical for system and source-built
+# fontconfig. CoreTargets consumes this stable target name on Unix platforms.
+if((UNIX OR APPLE) AND NOT TARGET asciichat-fontconfig)
+    add_library(asciichat-fontconfig INTERFACE)
+    target_link_libraries(asciichat-fontconfig INTERFACE ${FONTCONFIG_LINK_LIBRARIES})
+    if(FONTCONFIG_INCLUDE_DIRS)
+        target_include_directories(asciichat-fontconfig INTERFACE ${FONTCONFIG_INCLUDE_DIRS})
+    endif()
 endif()

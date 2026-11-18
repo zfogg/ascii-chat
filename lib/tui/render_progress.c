@@ -34,7 +34,7 @@ typedef struct {
   size_t length;
   size_t destination_length;
   // The NUL-terminated destination follows the NUL-terminated preview.
-  char frame[];
+  char frame[1];
   /**
    * @brief This is the handoff point for progress snapshot. Callers fill `started_ns`, `completed`, `total`,
    * `total_known` before passing it on; consumers read the values during the operation and return ownership only where

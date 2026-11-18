@@ -47,7 +47,11 @@ set(GOTEL_SQLITE_TARGET asciichat-gotel-sqlite CACHE STRING
     "Use ascii-chat's SQLite3 dependency" FORCE)
 
 # Keep the vendored C++ facade aligned with ascii-chat's C++26 toolchain.
-set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    set(GOTEL_CXX_STANDARD 23 CACHE STRING "C++ standard for the gotel facade" FORCE)
+else()
+    set(GOTEL_CXX_STANDARD 26 CACHE STRING "C++ standard for the gotel facade" FORCE)
+endif()
 
 # Gotel declares Sequel in its nested CMake project. Predeclare the persistent
 # cache checkout here so reconfiguring another parent build directory does not
@@ -85,7 +89,13 @@ endif()
 # dependency cache. Generated Gotel sources are emitted into this same stable
 # tree so the shared Debug dependency build does not depend on the parent
 # application's binary directory.
-set(_asciichat_gotel_cache_dir "${ASCIICHAT_DEPS_CACHE_DIR}/gotel")
+string(REGEX REPLACE "[^A-Za-z0-9_.-]" "-" _asciichat_gotel_generator_cache "${CMAKE_GENERATOR}")
+string(REGEX REPLACE "[^A-Za-z0-9_.-]" "-" _asciichat_gotel_compiler_cache "${CMAKE_C_COMPILER_ID}")
+if(NOT _asciichat_gotel_compiler_cache)
+    set(_asciichat_gotel_compiler_cache default)
+endif()
+set(_asciichat_gotel_cache_dir
+    "${ASCIICHAT_DEPS_CACHE_DIR}/gotel-${_asciichat_gotel_compiler_cache}-${_asciichat_gotel_generator_cache}")
 file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 
 # Gotel's gRPC adapter accepts an existing nghttp2 target. Prefer the target
@@ -160,10 +170,13 @@ if(DEFINED FETCHCONTENT_BASE_DIR)
     set(_asciichat_fetchcontent_base_dir_was_defined TRUE)
     set(_asciichat_parent_fetchcontent_base_dir "${FETCHCONTENT_BASE_DIR}")
 endif()
-# Child dependencies are siblings in the shared dependency cache.  Using the
-# Gotel directory as FetchContent's global root incorrectly nests unrelated
-# projects such as mimalloc below `gotel/`.
-set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}" CACHE PATH
+# Child dependencies are siblings in the compiler/generator-specific
+# FetchContent cache. Using the unqualified build-type root lets incompatible
+# MSVC and Clang subbuilds reuse the same CMake cache.
+if(NOT _asciichat_parent_fetchcontent_base_dir)
+    set(_asciichat_parent_fetchcontent_base_dir "${ASCIICHAT_DEPS_CACHE_DIR}")
+endif()
+set(FETCHCONTENT_BASE_DIR "${_asciichat_parent_fetchcontent_base_dir}" CACHE PATH
     "Persistent dependency source/build cache" FORCE)
 
 if(USE_MUSL AND NOT TARGET nghttp2_static)

@@ -110,7 +110,7 @@ function(ascii_query_finalize)
         if(WIN32)
             include(${CMAKE_SOURCE_DIR}/cmake/utils/CopyDLL.cmake)
 
-            # Use LLVM_ROOT_PREFIX from LLVM.cmake (single source of truth)
+            # Use LLVM_ROOT_PREFIX from the Clang configuration (single source of truth)
             if(LLVM_ROOT_PREFIX)
                 set(_llvm_bindir "${LLVM_ROOT_PREFIX}/bin")
                 message(STATUS "Query tool: Using LLVM bindir from LLVM_ROOT_PREFIX: ${_llvm_bindir}")

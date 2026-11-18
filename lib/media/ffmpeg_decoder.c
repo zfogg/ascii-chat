@@ -230,7 +230,7 @@ static stdin_buffer_t *stdin_buffer_read_all(void) {
   sb->size = 0;
 
   // Read stdin in 64KB chunks
-  const size_t chunk_size = 65536;
+  enum { chunk_size = 65536 };
   uint8_t chunk_buffer[chunk_size];
   size_t total_capacity = 0;
   int chunk_count = 0;
@@ -1759,7 +1759,7 @@ double ffmpeg_decoder_get_position(ffmpeg_decoder_t *decoder) {
   }
 
   // Prefer sample-based position tracking (continuous, works before frames are decoded)
-  if (decoder->audio_sample_rate > 0 && decoder->audio_samples_read >= 0) {
+  if (decoder->audio_sample_rate > 0) {
     return (double)decoder->audio_samples_read / (double)decoder->audio_sample_rate;
   }
 

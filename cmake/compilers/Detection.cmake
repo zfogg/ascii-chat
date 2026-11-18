@@ -136,26 +136,10 @@ if(WIN32 AND CMAKE_C_SIMULATE_ID STREQUAL "MSVC" AND NOT DEFINED CMAKE_MSVC_RUNT
 endif()
 
 # =============================================================================
-# Warn if MSVC is detected (but allow build to continue)
+# Report the selected MSVC toolchain
 # =============================================================================
-# This check happens after project() has determined the compiler ID
+# This check happens after project() has determined the compiler ID.
 if(CMAKE_C_COMPILER_ID MATCHES "MSVC")
-    message(WARNING "
-╔═══════════════════════════════════════════════════════════════════════════╗
-║                          ⚠️  COMPILER WARNING ⚠️                          ║
-╠═══════════════════════════════════════════════════════════════════════════╣
-║                                                                           ║
-║  MSVC detected. This project is designed for and tested with Clang/GCC.  ║
-║                                                                           ║
-║  MSVC is NOT officially supported and may cause build failures.           ║
-║                                                                           ║
-║  Recommended: Install Clang and use:                                      ║
-║    - Windows: scoop install llvm                                          ║
-║    - Or use: cmake -DCMAKE_C_COMPILER=clang -B build                      ║
-║                                                                           ║
-║  The build will continue but may fail or produce unexpected results.     ║
-║                                                                           ║
-╚═══════════════════════════════════════════════════════════════════════════╝
-")
+    message(STATUS "Using native MSVC compiler ${CMAKE_C_COMPILER_VERSION}")
 endif()
 

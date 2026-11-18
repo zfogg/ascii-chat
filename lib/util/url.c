@@ -291,7 +291,11 @@ asciichat_error_t url_parse(const char *url, url_parts_t *parts_out) {
       return result;
     }
     SAFE_FREE(parts_out->host);
-    SAFE_STRDUP(parts_out->host, ascii);
+    const size_t ascii_len = strlen(ascii) + 1;
+    parts_out->host = SAFE_MALLOC(ascii_len, char *);
+    if (!parts_out->host)
+      return SET_ERRNO(ERROR_MEMORY, "Unable to duplicate normalized hostname");
+    SAFE_MEMCPY(parts_out->host, ascii_len, ascii, ascii_len);
   }
   return ASCIICHAT_OK;
 }

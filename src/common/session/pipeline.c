@@ -215,6 +215,8 @@ static pipeline_frame_t *make_frame_copy(const image_t *src, frame_slot_t *slots
   }
   if (!f)
     f = SAFE_CALLOC(1, sizeof(*f), pipeline_frame_t *);
+  if (!f)
+    return NULL;
   if (!f->pixels) {
     f->pixels = buffer_alloc(NULL, bytes);
     if (!f->pixels) {

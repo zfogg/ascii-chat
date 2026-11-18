@@ -9,7 +9,7 @@
 #
 # Outputs:
 #   - USE_MIMALLOC option configured based on build type and musl
-#   - USE_CCACHE disabled for musl builds
+#   - USE_CCACHE remains available for musl builds
 # =============================================================================
 
 # Option to use mimalloc (must be defined early so build type flags can check it)
@@ -52,7 +52,6 @@ endif()
 
 # musl builds configuration
 if(USE_MUSL)
-    set(USE_CCACHE OFF CACHE BOOL "Disable ccache when using musl" FORCE)
     # Note: Sanitizers are automatically disabled for musl+mimalloc builds
     # in configure_sanitizers() - no need to change build type
 endif()

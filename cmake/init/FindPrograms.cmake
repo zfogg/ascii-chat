@@ -169,7 +169,7 @@ else()
     set(_BASH_SEARCH_PATHS /bin /usr/bin /usr/sbin)
 endif()
 
-# Export LLVM search paths for use by other modules (e.g., LLVM.cmake)
+# Export LLVM search paths for use by other modules (e.g., Clang.cmake)
 set(ASCIICHAT_LLVM_SEARCH_PATHS "${_LLVM_SEARCH_PATHS}" CACHE INTERNAL "LLVM search paths")
 unset(_LLVM_SEARCH_PATHS)
 
@@ -312,6 +312,25 @@ macro(_find_llvm_tool VAR_NAME)
                 DOC "LLVM tool (fallback from PATH)"
             )
         endif()
+        # Some distributions package the linker separately from LLVM and
+        # expose it only through PATH (for example, lld-21 in /usr/bin while
+        # llvm-config reports /usr/lib/llvm-23/bin).  Accept only that linker
+        # fallback; all other LLVM tools must remain from one installation.
+        if(VAR_NAME STREQUAL "ASCIICHAT_LLD_EXECUTABLE" AND NOT ${VAR_NAME})
+            if(UNIX AND NOT APPLE)
+                find_program(${VAR_NAME}
+                    NAMES ${_tool_names}
+                    PATHS /usr/bin /usr/local/bin
+                    NO_DEFAULT_PATH
+                    DOC "LLVM linker from the system tool directories"
+                )
+            else()
+                find_program(${VAR_NAME}
+                    NAMES ${_tool_names}
+                    DOC "LLVM linker from the system PATH"
+                )
+            endif()
+        endif()
     else()
         # Fallback mode: search PATH (from environment) first, then known locations
         find_program(${VAR_NAME}
@@ -435,10 +454,23 @@ _find_llvm_tool(ASCIICHAT_LLVM_STRIP_EXECUTABLE llvm-strip)
 _find_llvm_tool(ASCIICHAT_LLVM_AR_EXECUTABLE llvm-ar)
 _find_llvm_tool(ASCIICHAT_LLVM_RANLIB_EXECUTABLE llvm-ranlib)
 _find_llvm_tool(ASCIICHAT_LLVM_NM_EXECUTABLE llvm-nm)
-_find_llvm_tool(ASCIICHAT_LLVM_READELF_EXECUTABLE llvm-readelf)
+_find_llvm_tool(ASCIICHAT_LLVM_READELF_EXECUTABLE llvm-readelf readelf)
 _find_llvm_tool(ASCIICHAT_LLVM_READOBJ_EXECUTABLE llvm-readobj)
-_find_llvm_tool(ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE llvm-objdump)
-_find_llvm_tool(ASCIICHAT_LLVM_STRINGS_EXECUTABLE llvm-strings)
+_find_llvm_tool(ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE llvm-objdump objdump)
+_find_llvm_tool(ASCIICHAT_LLVM_STRINGS_EXECUTABLE llvm-strings strings)
+
+# LLVM's binary-analysis utilities are not shipped by every Clang package.
+# The platform tools are ABI-compatible for these read-only inspections, so
+# retain the LLVM tool when present and fall back to the system implementation
+# when a valid LLVM installation does not provide it.
+if(NOT ASCIICHAT_LLVM_READELF_EXECUTABLE AND UNIX AND NOT APPLE)
+    find_program(ASCIICHAT_LLVM_READELF_EXECUTABLE NAMES readelf
+        DOC "ELF reader for binary validation")
+endif()
+if(NOT ASCIICHAT_LLVM_STRINGS_EXECUTABLE AND UNIX)
+    find_program(ASCIICHAT_LLVM_STRINGS_EXECUTABLE NAMES strings
+        DOC "String extractor for binary path validation")
+endif()
 
 # =============================================================================
 # Windows-specific LLVM tools - clang-cl, llvm-lib
@@ -631,6 +663,17 @@ elseif(WIN32)
 else()
     # Linux/Unix
     _find_llvm_tool(ASCIICHAT_LLD_EXECUTABLE ld.lld lld)
+    # The LLVM helper may not run during the early compiler/bootstrap phase,
+    # while musl still requires a linker during that same configure.  Probe
+    # the standard installation directories directly as a final LLD-only
+    # fallback.
+    if(NOT ASCIICHAT_LLD_EXECUTABLE)
+        find_program(ASCIICHAT_LLD_EXECUTABLE
+            NAMES ld.lld lld ld.lld-23 ld.lld-22 ld.lld-21 ld.lld-20 ld.lld-19
+            PATHS /usr/bin /usr/local/bin
+            NO_DEFAULT_PATH
+            DOC "System LLD linker")
+    endif()
 endif()
 
 # =============================================================================
@@ -803,7 +846,7 @@ endif()
 # =============================================================================
 
 # clang is required for all builds (ascii-chat is a Clang-only project)
-if(NOT ASCIICHAT_CLANG_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT ASCIICHAT_CLANG_EXECUTABLE)
     message(FATAL_ERROR "clang not found. Install LLVM/Clang:\n"
         "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
         "  macOS:   brew install llvm\n"
@@ -811,7 +854,7 @@ if(NOT ASCIICHAT_CLANG_EXECUTABLE)
 endif()
 
 # clang++ is required for C++ dependencies and tooling
-if(NOT ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
     message(FATAL_ERROR "clang++ not found. Required for C++ dependencies and tooling. Install LLVM/Clang:\n"
         "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
         "  macOS:   brew install llvm\n"
@@ -820,14 +863,14 @@ endif()
 
 # llvm-config identifies the LLVM installation on Unix. Windows binaries can
 # be located from the compiler path when llvm-config.exe is unavailable.
-if(NOT WIN32 AND NOT ASCIICHAT_LLVM_CONFIG_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT WIN32 AND NOT ASCIICHAT_LLVM_CONFIG_EXECUTABLE)
     message(FATAL_ERROR "llvm-config not found. Required to identify LLVM on Unix. Install LLVM:\n"
         "  macOS:   brew install llvm\n"
         "  Linux:   sudo apt install llvm  OR  sudo pacman -S llvm")
 endif()
 
 # llvm-ar is required for static library archiving
-if(NOT ASCIICHAT_LLVM_AR_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT ASCIICHAT_LLVM_AR_EXECUTABLE)
     message(FATAL_ERROR "llvm-ar not found. Install LLVM:\n"
         "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
         "  macOS:   brew install llvm\n"
@@ -835,7 +878,7 @@ if(NOT ASCIICHAT_LLVM_AR_EXECUTABLE)
 endif()
 
 # llvm-ranlib is required for static library indexing
-if(NOT ASCIICHAT_LLVM_RANLIB_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT ASCIICHAT_LLVM_RANLIB_EXECUTABLE)
     message(FATAL_ERROR "llvm-ranlib not found. Install LLVM:\n"
         "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
         "  macOS:   brew install llvm\n"
@@ -843,13 +886,13 @@ if(NOT ASCIICHAT_LLVM_RANLIB_EXECUTABLE)
 endif()
 
 # Windows-specific: llvm-lib is required for BearSSL static library
-if(WIN32 AND NOT ASCIICHAT_LLVM_LIB_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND WIN32 AND NOT ASCIICHAT_LLVM_LIB_EXECUTABLE)
     message(FATAL_ERROR "llvm-lib not found (required for BearSSL on Windows). Install LLVM:\n"
         "  winget install LLVM.LLVM  OR  scoop install llvm")
 endif()
 
 # Windows-specific: clang-cl is required for BearSSL build
-if(WIN32 AND NOT ASCIICHAT_CLANG_CL_EXECUTABLE)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND WIN32 AND NOT ASCIICHAT_CLANG_CL_EXECUTABLE)
     message(FATAL_ERROR "clang-cl not found (required for BearSSL on Windows). Install LLVM:\n"
         "  winget install LLVM.LLVM  OR  scoop install llvm")
 endif()

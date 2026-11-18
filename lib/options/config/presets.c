@@ -91,16 +91,16 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   static char session_buf10[SESSION_STRING_BUFFER_SIZE];
 
   // Fallback strings if generation fails
-  char *example_session_string1 = "adjective-noun-noun";
-  char *example_session_string2 = "adjective-noun-noun";
-  char *example_session_string3 = "adjective-noun-noun";
-  char *example_session_string4 = "adjective-noun-noun";
-  char *example_session_string5 = "adjective-noun-noun";
-  char *example_session_string6 = "adjective-noun-noun";
-  char *example_session_string7 = "adjective-noun-noun";
-  char *example_session_string8 = "adjective-noun-noun";
-  char *example_session_string9 = "adjective-noun-noun";
-  char *example_session_string10 = "adjective-noun-noun";
+  const char *example_session_string1 = "adjective-noun-noun";
+  const char *example_session_string2 = "adjective-noun-noun";
+  const char *example_session_string3 = "adjective-noun-noun";
+  const char *example_session_string4 = "adjective-noun-noun";
+  const char *example_session_string5 = "adjective-noun-noun";
+  const char *example_session_string6 = "adjective-noun-noun";
+  const char *example_session_string7 = "adjective-noun-noun";
+  const char *example_session_string8 = "adjective-noun-noun";
+  const char *example_session_string9 = "adjective-noun-noun";
+  const char *example_session_string10 = "adjective-noun-noun";
 
   // Generate session strings for examples (sodium_init called as needed by acds_string_generate)
   acds_string_generate(session_buf1, sizeof(session_buf1));
@@ -367,7 +367,7 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   // --loop requires --file (can't loop network streams)
   options_builder_add_dependency_requires(b, "loop", "file", "Option --loop requires --file");
 
-  const options_config_t *config = options_builder_build(b);
+  options_config_t *config = options_builder_build(b);
   options_builder_destroy(b);
   return config;
 }

@@ -84,8 +84,8 @@ asciichat_error_t crypto_record_open_sequence(crypto_record_t *state, unsigned t
     *sequence_out = 0;
   if (!ready(state) || delivery > CRYPTO_RECORD_DATAGRAM || (traffic_class != CRYPTO_RECORD_ANY_CHANNEL && !valid_flow(traffic_class, delivery)))
     return SET_ERRNO(ERROR_INVALID_STATE, "Record decryption is not ready for this flow");
-  if (!packet || length < CRYPTO_RECORD_EPOCH_SIZE + state->crypto->nonce_size + state->crypto->mac_size ||
-      length > CRYPTO_RECORD_EPOCH_SIZE + CRYPTO_MAX_PLAINTEXT_SIZE + state->crypto->nonce_size + state->crypto->mac_size)
+  const size_t record_overhead = CRYPTO_RECORD_EPOCH_SIZE + (size_t)state->crypto->nonce_size + (size_t)state->crypto->mac_size;
+  if (!packet || length < record_overhead || length > CRYPTO_RECORD_EPOCH_SIZE + CRYPTO_MAX_PLAINTEXT_SIZE + (size_t)state->crypto->nonce_size + (size_t)state->crypto->mac_size)
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid Record encrypted packet size");
   const uint8_t *cipher = packet;
   size_t cipher_length = length;

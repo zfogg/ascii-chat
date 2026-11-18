@@ -228,7 +228,7 @@ size_t fps_counter_format(fps_counter_t *counter, char *buffer, size_t capacity,
   // terminal's rightmost column.
   if (counter->visible && columns >= 11 && (redrawn || value != counter->last_fps) && buffer && capacity > 0) {
     const char *style = counter->dark_background ? "\033[97;40m" : "\033[30;47m";
-    int length = snprintf(buffer, capacity, "\0337\033[1;%dH%sFPS:%3d/%3u\033[0m\0338", columns - 10, style, value, counter->effective_fps);
+    int length = snprintf(buffer, capacity, "\033" "7\033[1;%dH%sFPS:%3d/%3u\033[0m\033" "8", columns - 10, style, value, counter->effective_fps);
     if (length > 0 && (size_t)length < capacity) {
       counter->last_fps = value;
       output_length = (size_t)length;

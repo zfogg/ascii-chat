@@ -56,7 +56,7 @@ asciichat_error_t image_calc_rgb_size(size_t width, size_t height, size_t *out_s
   }
 
   // Calculate pixel count first
-  size_t pixel_count;
+  size_t pixel_count = 0;
   asciichat_error_t err = image_calc_pixel_count(width, height, &pixel_count);
   if (err != ASCIICHAT_OK) {
     return err;
@@ -72,14 +72,14 @@ asciichat_error_t image_calc_total_allocation(size_t width, size_t height, size_
   }
 
   // Calculate pixel count first with overflow checking
-  size_t pixel_count;
+  size_t pixel_count = 0;
   asciichat_error_t err = image_calc_pixel_count(width, height, &pixel_count);
   if (err != ASCIICHAT_OK) {
     return err;
   }
 
   // Calculate pixel buffer size
-  size_t pixel_buffer_size;
+  size_t pixel_buffer_size = 0;
   err = image_calc_pixel_buffer_size(pixel_count, bytes_per_pixel, &pixel_buffer_size);
   if (err != ASCIICHAT_OK) {
     return err;

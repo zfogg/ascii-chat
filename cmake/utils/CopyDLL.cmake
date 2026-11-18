@@ -146,19 +146,21 @@ function(stage_dlls_for_target)
         set(_comment "Staging ${_dll_count} runtime files")
     endif()
 
-    # Use one process for the directory batch. Declared outputs also avoid
-    # rechecking unchanged runtime files after every executable relink.
-    add_custom_command(
-        OUTPUT ${_outputs}
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_sources} "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/"
-        COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${_outputs}
-        DEPENDS ${_sources}
-        COMMENT "${_comment}"
-        VERBATIM
-    )
-
-    string(MD5 _copy_id "${ARG_TARGET};${ARG_SOURCE_DIR};${ARG_NAMES}")
-    set(_copy_target "${ARG_TARGET}-stage-runtime-${_copy_id}")
-    add_custom_target(${_copy_target} DEPENDS ${_outputs})
+    # Use one process for each source/output batch. Multiple executable targets
+    # commonly request the same vcpkg runtime set; sharing this target prevents
+    # parallel copy processes from racing while staging the same DLLs.
+    string(MD5 _copy_id "${CMAKE_RUNTIME_OUTPUT_DIRECTORY};${ARG_SOURCE_DIR};${ARG_NAMES}")
+    set(_copy_target "asciichat-stage-runtime-${_copy_id}")
+    if(NOT TARGET ${_copy_target})
+        add_custom_command(
+            OUTPUT ${_outputs}
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_sources} "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/"
+            COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${_outputs}
+            DEPENDS ${_sources}
+            COMMENT "${_comment}"
+            VERBATIM
+        )
+        add_custom_target(${_copy_target} DEPENDS ${_outputs})
+    endif()
     add_dependencies(${ARG_TARGET} ${_copy_target})
 endfunction()

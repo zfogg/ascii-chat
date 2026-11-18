@@ -107,7 +107,9 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
                         set(_pch_cache_launcher_enabled TRUE)
                     endif()
                 endforeach()
-                if(_pch_cache_launcher_enabled)
+                if(_pch_cache_launcher_enabled AND
+                   (CMAKE_C_COMPILER_ID MATCHES "Clang|AppleClang" OR
+                    CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang"))
                     target_compile_options(${_pch_target} PRIVATE
                         "$<$<COMPILE_LANGUAGE:C,CXX>:-Xclang>"
                         "$<$<COMPILE_LANGUAGE:C,CXX>:-fno-pch-timestamp>")

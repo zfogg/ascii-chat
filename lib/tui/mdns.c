@@ -133,7 +133,7 @@ typedef struct {
   bool live;
   ui_selectable_list_t list;
   char input[TUI_MDNS_INPUT_BUFFER_SIZE];
-  ui_mdns_server_t servers[];
+  ui_mdns_server_t servers[1];
 } mdns_snapshot_t;
 
 #define MDNS_LIVE_CAPACITY 128

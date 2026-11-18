@@ -256,8 +256,8 @@ void action_show_capabilities_immediate(void) {
   // Use detected terminal size (immediate execution doesn't have parsed options yet)
   terminal_size_t size;
   terminal_get_size(&size);
-  unsigned short width = size.cols;
-  unsigned short height = size.rows;
+  unsigned short width = (unsigned short)size.cols;
+  unsigned short height = (unsigned short)size.rows;
 
   log_color_t label_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
   log_color_t string_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
@@ -368,8 +368,8 @@ static void execute_show_capabilities(void) {
 
   // Get width and height from parsed options (respects --width and --height flags)
   const options_t *opts = options_get();
-  unsigned short width = opts ? opts->width : 110;
-  unsigned short height = opts ? opts->height : 70;
+  unsigned short width = opts ? (unsigned short)opts->width : 110;
+  unsigned short height = opts ? (unsigned short)opts->height : 70;
 
   // Color scheme:
   // - Labels: grey

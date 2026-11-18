@@ -13,6 +13,7 @@
 // POSIX-only test utilities for redirecting stdout/stderr
 
 #include <libplatform/filesystem.h>
+#include <libplatform/system.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -44,13 +45,13 @@ int test_logging_disable(bool disable_stdout, bool disable_stderr) {
 
   // Save original file descriptors if we need to redirect them
   if (disable_stdout) {
-    original_stdout_fd = dup(STDOUT_FILENO);
+    original_stdout_fd = platform_dup(STDOUT_FILENO);
     if (original_stdout_fd == -1) {
-      close(dev_null_fd);
+      platform_close(dev_null_fd);
       dev_null_fd = -1;
       return -1;
     }
-    dup2(dev_null_fd, STDOUT_FILENO);
+    (void)platform_dup2(dev_null_fd, STDOUT_FILENO);
     // Reopen stdout to use the redirected file descriptor
     (void)freopen("/dev/null", "w", stdout);
     // Make stdout unbuffered to ensure immediate redirection
@@ -58,19 +59,19 @@ int test_logging_disable(bool disable_stdout, bool disable_stderr) {
   }
 
   if (disable_stderr) {
-    original_stderr_fd = dup(STDERR_FILENO);
+    original_stderr_fd = platform_dup(STDERR_FILENO);
     if (original_stderr_fd == -1) {
       // Clean up stdout if it was redirected
       if (disable_stdout && original_stdout_fd != -1) {
-        dup2(original_stdout_fd, STDOUT_FILENO);
-        close(original_stdout_fd);
+        (void)platform_dup2(original_stdout_fd, STDOUT_FILENO);
+        platform_close(original_stdout_fd);
         original_stdout_fd = -1;
       }
-      close(dev_null_fd);
+      platform_close(dev_null_fd);
       dev_null_fd = -1;
       return -1;
     }
-    dup2(dev_null_fd, STDERR_FILENO);
+    (void)platform_dup2(dev_null_fd, STDERR_FILENO);
     // Reopen stderr to use the redirected file descriptor
     (void)freopen("/dev/null", "w", stderr);
     // Make stderr unbuffered to ensure immediate redirection
@@ -94,29 +95,29 @@ int test_logging_restore(void) {
 
   // Restore original stdout
   if (original_stdout_fd != -1) {
-    dup2(original_stdout_fd, STDOUT_FILENO);
+    (void)platform_dup2(original_stdout_fd, STDOUT_FILENO);
     // Reopen stdout to use the restored file descriptor
     (void)freopen("/dev/stdout", "w", stdout);
     // Restore line buffering for stdout
     (void)setvbuf(stdout, NULL, _IOLBF, 0);
-    close(original_stdout_fd);
+    platform_close(original_stdout_fd);
     original_stdout_fd = -1;
   }
 
   // Restore original stderr
   if (original_stderr_fd != -1) {
-    dup2(original_stderr_fd, STDERR_FILENO);
+    (void)platform_dup2(original_stderr_fd, STDERR_FILENO);
     // Reopen stderr to use the restored file descriptor
     (void)freopen("/dev/stderr", "w", stderr);
     // Restore unbuffered mode for stderr
     (void)setvbuf(stderr, NULL, _IONBF, 0);
-    close(original_stderr_fd);
+    platform_close(original_stderr_fd);
     original_stderr_fd = -1;
   }
 
   // Close /dev/null file descriptor
   if (dev_null_fd != -1) {
-    close(dev_null_fd);
+    platform_close(dev_null_fd);
     dev_null_fd = -1;
   }
 

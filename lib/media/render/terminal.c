@@ -708,7 +708,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
       for (int col = 0; col < RENDER_DEBUG_SIGNATURE_COLUMNS && col < r->cols; col++) {
         VTermScreenCell cell;
         vterm_screen_get_cell(r->vts, (VTermPos){row, col}, &cell);
-        curr_row_sigs[row][col] = (cell.chars[0] >= 32 && cell.chars[0] <= 126) ? cell.chars[0] : '.';
+        curr_row_sigs[row][col] = (char)((cell.chars[0] >= 32 && cell.chars[0] <= 126) ? cell.chars[0] : '.');
       }
       curr_row_sigs[row][RENDER_DEBUG_SIGNATURE_COLUMNS] = 0;
     }
@@ -835,12 +835,12 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
           unsigned pattern = cell.chars[0] - 0x2800;
           int dot_w = r->cell_w / 4 > 0 ? r->cell_w / 4 : 1;
           int dot_h = r->cell_h / 8 > 0 ? r->cell_h / 8 : 1;
-          for (int row = 0; row < 4; row++) {
-            for (int col = 0; col < 2; col++) {
-              if (!(pattern & (1U << dot_bits[row][col])))
+          for (int dot_row = 0; dot_row < 4; dot_row++) {
+            for (int dot_col = 0; dot_col < 2; dot_col++) {
+              if (!(pattern & (1U << dot_bits[dot_row][dot_col])))
                 continue;
-              int left = px + (2 * col + 1) * r->cell_w / 4 - dot_w / 2;
-              int top = py + (2 * row + 1) * r->cell_h / 8 - dot_h / 2;
+              int left = px + (2 * dot_col + 1) * r->cell_w / 4 - dot_w / 2;
+              int top = py + (2 * dot_row + 1) * r->cell_h / 8 - dot_h / 2;
               for (int dy = 0; dy < dot_h; dy++) {
                 for (int dx = 0; dx < dot_w; dx++) {
                   int x = left + dx, y = top + dy;

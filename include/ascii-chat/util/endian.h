@@ -133,7 +133,7 @@ extern "C" {
     for (size_t i = 0; i < (count); i++) {        \
       (arr)[i] = htonl((arr)[i]);                 \
     }                                             \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * Convert an array of 32-bit values from network to host byte order in-place.
@@ -155,7 +155,7 @@ extern "C" {
     for (size_t i = 0; i < (count); i++) {        \
       (arr)[i] = ntohl((arr)[i]);                 \
     }                                             \
-  } while (0)
+  } while (asciichat_macro_block_continue())
 
 /**
  * Unpack a 32-bit value from network byte order.

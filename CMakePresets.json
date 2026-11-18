@@ -16,7 +16,7 @@
       "name": "base-vcpkg",
       "hidden": true,
       "description": "Base configuration for vcpkg-enabled builds",
-      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/Vcpkg.cmake",
       "cacheVariables": {
         "USE_VCPKG": "ON"
       },
@@ -58,7 +58,9 @@
         "ASCIICHAT_ENABLE_CTEST_DASHBOARD": "OFF",
         "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
         "ASCIICHAT_BUILD_WITH_PANIC": "OFF",
-        "ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS": "OFF"
+        "ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS": "OFF",
+        "ASCIICHAT_ENFORCE_STATIC_RELEASE": "ON",
+        "BUILD_SHARED_LIBS": "OFF"
       }
     },
     {
@@ -70,6 +72,103 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_TESTS": "OFF"
       }
+    },
+    {
+      "name": "default-clang",
+      "displayName": "Default (Clang)",
+      "description": "Debug build using the Clang toolchain",
+      "inherits": "default",
+      "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "default-gcc",
+      "displayName": "Default (GCC)",
+      "description": "Debug build using GCC and GNU binutils",
+      "inherits": "default",
+      "cacheVariables": { "CMAKE_C_COMPILER": "gcc", "CMAKE_CXX_COMPILER": "g++" },
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    },
+    {
+      "name": "default-msvc",
+      "displayName": "Default (MSVC)",
+      "description": "Debug build using MSVC and the Visual C++ tools",
+      "inherits": ["default", "base-vcpkg"],
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "dev-clang",
+      "displayName": "Dev (Clang)",
+      "description": "Fast developer build using Clang",
+      "inherits": "dev",
+      "cacheVariables": { "CMAKE_C_COMPILER": "clang", "CMAKE_CXX_COMPILER": "clang++" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "dev-gcc",
+      "displayName": "Dev (GCC)",
+      "description": "Fast developer build using GCC",
+      "inherits": "dev",
+      "cacheVariables": { "CMAKE_C_COMPILER": "gcc", "CMAKE_CXX_COMPILER": "g++" },
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    },
+    {
+      "name": "dev-msvc",
+      "displayName": "Dev (MSVC)",
+      "description": "Fast developer build using MSVC",
+      "inherits": ["dev", "base-vcpkg"],
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "release-clang",
+      "displayName": "Release (Clang)",
+      "description": "Release build using Clang",
+      "inherits": "release",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "USE_MUSL": "ON"
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "release-gcc",
+      "displayName": "Release (GCC)",
+      "description": "Release build using GCC",
+      "inherits": "release",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++",
+        "USE_MUSL": "ON"
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    },
+    {
+      "name": "release-msvc",
+      "displayName": "Release (MSVC)",
+      "description": "Release build using MSVC",
+      "inherits": ["release", "base-vcpkg"],
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl",
+        "ASCIICHAT_ENFORCE_STATIC_RELEASE": "ON",
+        "USE_MUSL": "OFF"
+      },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
       "name": "debug",
@@ -291,6 +390,15 @@
       "description": "Build the recommended sanitized Debug configuration",
       "configurePreset": "default"
     },
+    { "name": "default-clang", "configurePreset": "default-clang" },
+    { "name": "default-gcc", "configurePreset": "default-gcc" },
+    { "name": "default-msvc", "configurePreset": "default-msvc", "configuration": "Debug" },
+    { "name": "dev-clang", "configurePreset": "dev-clang" },
+    { "name": "dev-gcc", "configurePreset": "dev-gcc" },
+    { "name": "dev-msvc", "configurePreset": "dev-msvc", "configuration": "Debug" },
+    { "name": "release-clang", "configurePreset": "release-clang" },
+    { "name": "release-gcc", "configurePreset": "release-gcc" },
+    { "name": "release-msvc", "configurePreset": "release-msvc", "configuration": "Release" },
     {
       "name": "debug",
       "description": "Build the sanitized Debug configuration",

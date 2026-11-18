@@ -95,7 +95,7 @@ function(generate_compilation_database)
     # Clang tooling needs the SDK path
     # to find system headers like stdbool.h
     if(APPLE)
-        # First, try to use the SDK path saved by LLVM.cmake (before it was cleared)
+        # First, try to use the SDK path saved by Clang.cmake (before it was cleared)
         set(_macos_sdk_for_db "")
 
         if(ASCIICHAT_MACOS_SDK_FOR_TOOLS)
@@ -107,7 +107,7 @@ function(generate_compilation_database)
         endif()
 
         # Pass SDK path to the temp cmake build
-        # Note: LLVM.cmake will clear CMAKE_OSX_SYSROOT in main build, but temp build needs it for header detection
+        # Note: Clang.cmake will clear CMAKE_OSX_SYSROOT in main build, but temp build needs it for header detection
         if(_macos_sdk_for_db)
             list(APPEND _cmake_configure_args "-DCMAKE_OSX_SYSROOT=${_macos_sdk_for_db}")
             list(APPEND _cmake_configure_args "-DASCIICHAT_MACOS_SDK_FOR_TOOLS=${_macos_sdk_for_db}")

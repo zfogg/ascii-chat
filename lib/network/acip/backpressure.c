@@ -600,6 +600,10 @@ static asciichat_error_t outbound_submitv(acip_transport_t *transport, const soc
   } else {
     p = SAFE_MALLOC(sizeof(*p), outbound_packet_t *);
   }
+  if (!p) {
+    mutex_unlock(&out->mutex);
+    return SET_ERRNO(ERROR_MEMORY, "Cannot allocate outbound packet");
+  }
   *p = info;
   p->data = storage ? storage : buffer_alloc(info.wait ? buffer_control_domain() : NULL, size);
   if (!p->data) {

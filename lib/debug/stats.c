@@ -117,7 +117,7 @@ asciichat_error_t debug_stats_start_thread(void) {
     return result;
   atomic_store_bool_impl(&g_debug_stats_exiting, false);
   atomic_store_bool_impl(&g_debug_stats_cleaning, false);
-  options_t *opts = options_get();
+  const options_t *opts = options_get();
   if (opts) {
     if (opts->debug_memory_report_interval > 0)
       debug_stats_set_memory_report_interval((uint64_t)(opts->debug_memory_report_interval * NS_PER_SEC_INT));

@@ -15,16 +15,29 @@
 #   - CMAKE_*_OUTPUT_DIRECTORY set
 # =============================================================================
 
-# Language standards (Clang only)
-set(CMAKE_C_STANDARD 23)
+# Language standards. MSVC does not expose C++26 to CMake yet and its C mode
+# is intentionally kept at the C17-compatible dialect supported by cl.exe.
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC" OR CMAKE_C_COMPILER MATCHES "(^|[/\\\\])cl(\.exe)?$")
+    set(CMAKE_C_STANDARD 17)
+    set(CMAKE_CXX_STANDARD 23)
+    set(GOTEL_CXX_STANDARD 23 CACHE STRING "C++ standard for gotel" FORCE)
+elseif(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER MATCHES "(^|[/\\\\])gcc(-[0-9]+)?(\\.exe)?$")
+    # GCC versions commonly available on supported Linux distributions do not
+    # all implement the C++26 dialect yet. Keep GCC on the latest portable
+    # standard while Clang can use C++26 below.
+    set(CMAKE_C_STANDARD 23)
+    set(CMAKE_CXX_STANDARD 23)
+    set(GOTEL_CXX_STANDARD 23 CACHE STRING "C++ standard for gotel" FORCE)
+else()
+    set(CMAKE_C_STANDARD 23)
+    set(CMAKE_CXX_STANDARD 26)
+endif()
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
-
-set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-message(STATUS "Using ${BoldCyan}C23${ColorReset} and ${BoldCyan}C++23${ColorReset} standards")
+message(STATUS "Using ${BoldCyan}C${CMAKE_C_STANDARD}${ColorReset} and ${BoldCyan}C++${CMAKE_CXX_STANDARD}${ColorReset} standards")
 
 # =============================================================================
 # Windows Install Prefix Configuration

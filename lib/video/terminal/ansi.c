@@ -385,7 +385,7 @@ uint8_t rgb_to_16color(uint8_t r, uint8_t g, uint8_t b) {
 
     if (distance < min_distance) {
       min_distance = distance;
-      best_match = i;
+      best_match = (uint8_t)i;
     }
   }
 

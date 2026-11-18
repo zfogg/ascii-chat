@@ -35,7 +35,11 @@
  * @return 1 if should retry, 0 if fatal error
  */
 static int network_handle_send_error(int error) {
-  if (error == EAGAIN || error == EWOULDBLOCK) {
+  if (error == EAGAIN
+#if EWOULDBLOCK != EAGAIN
+      || error == EWOULDBLOCK
+#endif
+  ) {
     return 1; // Retry
   }
   if (error == EPIPE) {
@@ -129,7 +133,7 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, uint64_
     pfd.events = POLLOUT;
     pfd.revents = 0;
 
-    int64_t effective_timeout_ns = network_is_test_environment() ? (100LL * NS_PER_MS_INT) : (int64_t)timeout_ns;
+    int64_t effective_timeout_ns = network_is_test_environment() ? (int64_t)(100LL * NS_PER_MS_INT) : (int64_t)timeout_ns;
     int result = socket_poll(&pfd, 1, effective_timeout_ns);
     if (result <= 0) {
       if (result == 0) {
@@ -356,7 +360,7 @@ asciichat_error_t set_socket_timeout(socket_t sockfd, uint64_t timeout_ns) {
 
   // Set both receive and send timeouts using struct timeval
   struct timeval tv;
-  tv.tv_sec = (time_t)(timeout_ms / 1000);
+  tv.tv_sec = (long)(timeout_ms / 1000);
   tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
 
   // Set receive timeout
