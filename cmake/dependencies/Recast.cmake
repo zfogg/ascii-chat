@@ -16,15 +16,27 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
         set(_recast_host_build "${_recast_host_cache}/recast-llvm23")
         set(_recast_host_link_flags)
         if(UNIX AND NOT APPLE)
+            find_program(_recast_host_lld NAMES ld.lld
+                PATHS /usr/lib/llvm-23/bin /usr/bin NO_DEFAULT_PATH)
+            if(_recast_host_lld)
+                string(APPEND _recast_host_link_flags
+                    " -fuse-ld=${_recast_host_lld}")
+            endif()
             # Ubuntu's shared libLLVM exposes optional backends whose
             # dependencies are not encoded as transitive linker inputs.
             # Recast is a host tool, so link those host libraries explicitly;
             # these flags never enter the target (musl) build.
             set(_recast_host_link_flags)
+            set(_recast_host_system_library_paths
+                "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}"
+                "/lib/${CMAKE_LIBRARY_ARCHITECTURE}"
+                /usr/lib /lib)
             foreach(_recast_host_link_library IN ITEMS
                 ffi z3 z zstd xml2 tinfo icuuc icudata)
                 find_library(_recast_host_link_path
-                    NAMES "${_recast_host_link_library}")
+                    NAMES "${_recast_host_link_library}"
+                    PATHS ${_recast_host_system_library_paths}
+                    NO_DEFAULT_PATH)
                 if(_recast_host_link_path)
                     string(APPEND _recast_host_link_flags
                         " ${_recast_host_link_path}")
@@ -51,6 +63,7 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
                 "-DCMAKE_C_COMPILER=${_recast_host_cc}"
                 "-DCMAKE_CXX_COMPILER=${_recast_host_cxx}"
                 "-DCMAKE_EXE_LINKER_FLAGS=${_recast_host_link_flags}"
+                -DASCIICHAT_RECAST_HOST_LINK_REV=2
                 -DRECAST_BUILD_DOCS=OFF -DBUILD_TESTING=OFF
                 -DRECAST_STATIC_LIBCLANG=OFF
             BUILD_COMMAND "${CMAKE_COMMAND}" --build <BINARY_DIR> --target recast
