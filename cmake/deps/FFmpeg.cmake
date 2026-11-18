@@ -182,12 +182,24 @@ endif()
 # Windows: Use vcpkg-provided FFmpeg
 # =============================================================================
 if(WIN32)
-    # vcpkg's package describes both static archives and DLL import libraries.
-    find_package(FFMPEG REQUIRED)
-    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-        list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "^-l(pthreads|pthread|m|atomic)$")
-        list(FILTER FFMPEG_LIBRARIES EXCLUDE REGEX "^-pthread$")
+    # The vcpkg FFmpeg port does not ship an FFMPEGConfig.cmake package. Find
+    # its headers and libraries directly and expose the canonical project
+    # target instead of asking CMake's package search to invent a config.
+    find_path(FFMPEG_INCLUDE_DIR NAMES libavformat/avformat.h REQUIRED)
+    set(_ffmpeg_windows_libs)
+    foreach(_ffmpeg_lib avformat avcodec avutil swscale swresample)
+        find_library(_ffmpeg_${_ffmpeg_lib}_library NAMES ${_ffmpeg_lib} REQUIRED)
+        list(APPEND _ffmpeg_windows_libs "${_ffmpeg_${_ffmpeg_lib}_library}")
+    endforeach()
+    if(NOT TARGET asciichat-ffmpeg)
+        add_library(asciichat-ffmpeg INTERFACE IMPORTED GLOBAL)
+        set_target_properties(asciichat-ffmpeg PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INCLUDE_DIR}"
+            INTERFACE_LINK_LIBRARIES "${_ffmpeg_windows_libs}")
     endif()
+    set(FFMPEG_INCLUDE_DIRS "${FFMPEG_INCLUDE_DIR}")
+    set(FFMPEG_LIBRARIES asciichat-ffmpeg)
+    set(FFMPEG_FOUND TRUE)
     return()
 endif()
 
