@@ -200,3 +200,11 @@ macro(find_dependency_library)
     endif()
 
 endmacro()
+
+# Target-only entry point.  The discovery macro runs inside this function's
+# scope, so provider variables cannot leak into the parent directory.  The
+# canonical asciichat-${NAME} interface target created by the macro remains
+# available to consumers.
+function(asciichat_find_dependency_target)
+    find_dependency_library(${ARGN})
+endfunction()
