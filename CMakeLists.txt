@@ -478,23 +478,35 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
             set(_asciichat_wasm_recast_binary "${_asciichat_recast_native_binary}")
         endif()
         # The WASM child validates RECAST_NATIVE_BINARY during its own
-        # configure. Build the host tool now on a cold cache; it is independent
-        # of the Emscripten targets and is safe to build from the parent.
+        # configure. Build the host tool in an independent CMake tree: the
+        # parent has not generated its Ninja build files yet at this point.
         if(NOT EXISTS "${_asciichat_wasm_recast_binary}")
-            if(TARGET asciichat-recast-host)
-                set(_asciichat_recast_build_target asciichat-recast-host)
-            elseif(TARGET recast)
-                set(_asciichat_recast_build_target recast)
-            else()
-                message(FATAL_ERROR "WASM configuration requires a native Recast host target")
+            find_program(_asciichat_host_cxx NAMES clang++ c++ g++ REQUIRED)
+            set(_asciichat_wasm_recast_host_build
+                "${ASCIICHAT_DEPS_CACHE_DIR}/recast-wasm-host")
+            execute_process(
+                COMMAND "${CMAKE_COMMAND}" -S "${CMAKE_SOURCE_DIR}/deps/recast"
+                    -B "${_asciichat_wasm_recast_host_build}"
+                    -G "${CMAKE_GENERATOR}"
+                    "-DCMAKE_CXX_COMPILER=${_asciichat_host_cxx}"
+                    "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}"
+                    -DRECAST_BUILD_DOCS=OFF -DBUILD_TESTING=OFF
+                RESULT_VARIABLE _asciichat_recast_configure_result
+                OUTPUT_VARIABLE _asciichat_recast_configure_output
+                ERROR_VARIABLE _asciichat_recast_configure_error)
+            if(NOT _asciichat_recast_configure_result EQUAL 0)
+                message(FATAL_ERROR
+                    "Native Recast host configure failed before WASM configure:\n"
+                    "${_asciichat_recast_configure_output}\n${_asciichat_recast_configure_error}")
             endif()
             execute_process(
-                COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
-                    --target "${_asciichat_recast_build_target}"
-                    --config "${CMAKE_BUILD_TYPE}"
+                COMMAND "${CMAKE_COMMAND}" --build "${_asciichat_wasm_recast_host_build}"
+                    --target recast --config "${CMAKE_BUILD_TYPE}"
                 RESULT_VARIABLE _asciichat_recast_build_result
                 OUTPUT_VARIABLE _asciichat_recast_build_output
                 ERROR_VARIABLE _asciichat_recast_build_error)
+            set(_asciichat_wasm_recast_binary
+                "${_asciichat_wasm_recast_host_build}/bin/recast${CMAKE_EXECUTABLE_SUFFIX}")
             if(NOT _asciichat_recast_build_result EQUAL 0 OR
                NOT EXISTS "${_asciichat_wasm_recast_binary}")
                 message(FATAL_ERROR
