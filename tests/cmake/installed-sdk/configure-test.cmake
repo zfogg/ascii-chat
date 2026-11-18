@@ -9,7 +9,8 @@ get_filename_component(_work "${WORK_DIR}/sdk-config-${_id}" ABSOLUTE)
 set(_original "${_work}/original")
 set(_relocated "${_work}/relocated")
 file(MAKE_DIRECTORY "${_original}/include/ascii-chat" "${_original}/lib/cmake/ascii-chat"
-    "${_original}/lib/cmake/asciichat" "${_original}/bin" "${_work}/consumer")
+    "${_original}/lib/cmake/asciichat"
+    "${_original}/bin" "${_work}/consumer")
 set(ASCIICHAT_LIB_VERSION 0.3.0)
 set(PROJECT_VERSION 0.13.5)
 set(USE_MIMALLOC OFF)
@@ -25,14 +26,14 @@ else()
     file(TOUCH "${_original}/lib/libasciichat.so")
 endif()
 file(TOUCH "${_original}/lib/libasciichat.a")
-configure_package_config_file("${_repo}/lib/cmake/libasciichat.cmake.in"
-    "${_original}/lib/cmake/ascii-chat/ascii-chat-config.cmake"
+configure_package_config_file("${_repo}/lib/cmake/ascii-chatConfig.cmake.in"
+    "${_original}/lib/cmake/ascii-chat/ascii-chatConfig.cmake"
     INSTALL_DESTINATION lib/cmake/ascii-chat)
 configure_file("${_repo}/lib/cmake/asciichatConfig.cmake.in"
     "${_original}/lib/cmake/asciichat/asciichatConfig.cmake" @ONLY)
-write_basic_package_version_file("${_original}/lib/cmake/ascii-chat/ascii-chat-config-version.cmake"
+write_basic_package_version_file("${_original}/lib/cmake/ascii-chat/ascii-chatConfigVersion.cmake"
     VERSION 0.3.0 COMPATIBILITY SameMinorVersion)
-configure_file("${_original}/lib/cmake/ascii-chat/ascii-chat-config-version.cmake"
+configure_file("${_original}/lib/cmake/ascii-chat/ascii-chatConfigVersion.cmake"
     "${_original}/lib/cmake/asciichat/asciichatConfigVersion.cmake" COPYONLY)
 file(COPY "${_original}/" DESTINATION "${_relocated}")
 file(WRITE "${_work}/consumer/CMakeLists.txt" [=[
@@ -41,6 +42,9 @@ project(installed-sdk-config-test LANGUAGES NONE)
 set(CMAKE_DISABLE_FIND_PACKAGE_PkgConfig TRUE)
 find_package(asciichat 0.3 CONFIG REQUIRED COMPONENTS shared)
 find_package(ascii-chat 0.3.0 EXACT CONFIG REQUIRED COMPONENTS shared)
+if(NOT TARGET ascii-chat::libasciichat)
+    message(FATAL_ERROR "The canonical ascii-chat::libasciichat target is missing")
+endif()
 foreach(_property IMPORTED_LOCATION INTERFACE_INCLUDE_DIRECTORIES)
     get_target_property(_paths asciichat::shared ${_property})
     foreach(_path IN LISTS _paths)

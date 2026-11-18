@@ -356,8 +356,8 @@ include(CMakePackageConfigHelpers)
 set(ASCIICHAT_SDK_RUNTIME_PATHS "${CMAKE_BUILD_RPATH}")
 list(REMOVE_ITEM ASCIICHAT_SDK_RUNTIME_PATHS "${CMAKE_BINARY_DIR}" "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
 configure_package_config_file(
-    "${CMAKE_SOURCE_DIR}/lib/cmake/libasciichat.cmake.in"
-    "${CMAKE_BINARY_DIR}/lib/cmake/ascii-chat-config.cmake"
+    "${CMAKE_SOURCE_DIR}/lib/cmake/ascii-chatConfig.cmake.in"
+    "${CMAKE_BINARY_DIR}/lib/cmake/ascii-chatConfig.cmake"
     INSTALL_DESTINATION lib/cmake/ascii-chat)
 configure_file("${CMAKE_SOURCE_DIR}/lib/cmake/asciichatConfig.cmake.in"
     "${CMAKE_BINARY_DIR}/lib/cmake/asciichatConfig.cmake" @ONLY)
@@ -366,17 +366,14 @@ if(ASCIICHAT_LIB_VERSION_MAJOR EQUAL 0)
 else()
     set(_sdk_compatibility SameMajorVersion)
 endif()
-write_basic_package_version_file("${CMAKE_BINARY_DIR}/lib/cmake/ascii-chat-config-version.cmake"
+write_basic_package_version_file("${CMAKE_BINARY_DIR}/lib/cmake/ascii-chatConfigVersion.cmake"
     VERSION "${ASCIICHAT_LIB_VERSION}" COMPATIBILITY ${_sdk_compatibility})
-install(FILES "${CMAKE_BINARY_DIR}/lib/cmake/ascii-chat-config.cmake"
-    "${CMAKE_BINARY_DIR}/lib/cmake/ascii-chat-config-version.cmake"
+install(FILES "${CMAKE_BINARY_DIR}/lib/cmake/ascii-chatConfig.cmake"
+    "${CMAKE_BINARY_DIR}/lib/cmake/ascii-chatConfigVersion.cmake"
     DESTINATION lib/cmake/ascii-chat COMPONENT Development)
-# Retain the old direct-include filename.
-install(FILES "${CMAKE_BINARY_DIR}/lib/cmake/ascii-chat-config.cmake"
-    DESTINATION lib/cmake/ascii-chat RENAME libasciichat.cmake COMPONENT Development)
 install(FILES "${CMAKE_BINARY_DIR}/lib/cmake/asciichatConfig.cmake"
     DESTINATION lib/cmake/asciichat COMPONENT Development)
-install(FILES "${CMAKE_BINARY_DIR}/lib/cmake/ascii-chat-config-version.cmake"
+install(FILES "${CMAKE_BINARY_DIR}/lib/cmake/ascii-chatConfigVersion.cmake"
     DESTINATION lib/cmake/asciichat RENAME asciichatConfigVersion.cmake COMPONENT Development)
 
 # Include the selected small source-built libraries when no installed package
