@@ -78,8 +78,19 @@ find_dependency_library(
 if(PkgConfig_FOUND)
     pkg_get_variable(OPUS_PKG_INCLUDE_DIR opus includedir)
 endif()
-find_path(OPUS_HEADER_INCLUDE_DIR NAMES opus.h
-    HINTS ${OPUS_INCLUDE_DIRS} ${OPUS_PKG_INCLUDE_DIR} PATH_SUFFIXES opus REQUIRED)
+unset(OPUS_HEADER_INCLUDE_DIR CACHE)
+foreach(_opus_include_candidate IN ITEMS
+    ${OPUS_INCLUDE_DIRS} ${OPUS_PKG_INCLUDE_DIR}
+    /usr/include/opus /usr/local/include/opus)
+    if(EXISTS "${_opus_include_candidate}/opus.h")
+        set(OPUS_HEADER_INCLUDE_DIR "${_opus_include_candidate}")
+        break()
+    endif()
+endforeach()
+if(NOT OPUS_HEADER_INCLUDE_DIR)
+    find_path(OPUS_HEADER_INCLUDE_DIR NAMES opus.h
+        HINTS ${OPUS_INCLUDE_DIRS} ${OPUS_PKG_INCLUDE_DIR} REQUIRED)
+endif()
 set(OPUS_INCLUDE_DIRS "${OPUS_HEADER_INCLUDE_DIR}")
 
 if(NOT TARGET asciichat-opus)

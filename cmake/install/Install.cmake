@@ -379,7 +379,7 @@ install(FILES "${CMAKE_BINARY_DIR}/lib/cmake/ascii-chatConfigVersion.cmake"
 # Include the selected small source-built libraries when no installed package
 # exists, rather than pointing SDK consumers back into this build tree.
 set(_sdk_dependency_targets)
-foreach(_dependency IN LISTS VTERM_LDFLAGS UTF8PROC_LIBRARIES MIMALLOC_LIBRARIES)
+foreach(_dependency IN ITEMS asciichat-vterm asciichat-utf8proc asciichat-mimalloc)
     if(TARGET "${_dependency}")
         get_target_property(_alias "${_dependency}" ALIASED_TARGET)
         if(_alias)

@@ -1,0 +1,157 @@
+# ascii-chat dependency build manifest.
+#
+# The module named in `cmake/deps/Dependencies.cmake` owns the target contract;
+# this file records the cache/build boundary so a dependency cannot silently
+# fall back to a second FetchContent tree.
+
+dependencies:
+  libplatform:
+    source: deps/ascii-chat-deps/libplatform
+    version: submodule
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/libplatform"
+    target: asciichat-libplatform
+    role: target
+  libflags:
+    source: deps/ascii-chat-deps/libflags
+    version: submodule
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/libflags"
+    target: asciichat-libflags
+    role: target
+  gotel:
+    source: deps/ascii-chat-deps/gotel
+    version: submodule
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/gotel"
+    target: asciichat-gotel
+    role: target
+  recast:
+    source: deps/recast
+    version: submodule
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/host-tools/recast-llvm23"
+    target: recast-native
+    role: host
+  icu:
+    source: external
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/build/icu"
+    target: asciichat-icu
+    role: target
+  ffmpeg:
+    source: external
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/build/installed/ffmpeg"
+    target: asciichat-ffmpeg
+    role: target
+  zstd:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/zstd"
+    target: asciichat-zstd
+    role: target
+  libsodium:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/libsodium"
+    target: asciichat-libsodium
+    role: target
+  portaudio:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/portaudio"
+    target: asciichat-portaudio
+    role: target
+  opus:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/opus"
+    target: asciichat-opus
+    role: target
+  rnnoise:
+    source: source-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/rnnoise"
+    target: asciichat-rnnoise
+    role: target
+  fftw:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/fftw"
+    target: asciichat-fftw
+    role: target
+  abseil:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/build/abseil"
+    target: asciichat-abseil
+    role: target
+  webrtc-aec3:
+    source: source-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc-aec3"
+    target: asciichat-webrtc-aec3
+    role: target
+  openssl:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/openssl"
+    target: asciichat-openssl
+    role: target
+  systemd:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/systemd"
+    target: asciichat-systemd
+    role: target
+  zlib:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/zlib"
+    target: asciichat-zlib
+    role: target
+  bearssl:
+    source: submodule-or-cache
+    version: submodule
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/bearssl"
+    target: asciichat-bearssl
+    role: target
+  libdatachannel:
+    source: source-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/libdatachannel"
+    target: asciichat-libdatachannel
+    role: target
+  libwebsockets:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/libwebsockets"
+    target: asciichat-libwebsockets
+    role: target
+  miniupnpc:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/miniupnpc"
+    target: asciichat-miniupnpc
+    role: target
+  sqlite3:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/sqlite3"
+    target: asciichat-sqlite3
+    role: target
+  pcre2:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/pcre2"
+    target: asciichat-pcre2
+    role: target
+  libvterm:
+    source: submodule-or-cache
+    version: submodule
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/libvterm"
+    target: asciichat-vterm
+    role: target
+  libexecinfo:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/libexecinfo"
+    target: asciichat-libexecinfo
+    role: target

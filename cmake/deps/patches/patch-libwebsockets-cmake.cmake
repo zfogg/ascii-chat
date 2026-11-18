@@ -7,6 +7,23 @@ string(REPLACE "set(CMAKE_REQUIRED_LIBRARIES \${CMAKE_REQUIRED_LIBRARIES} \${ZLI
 if(NOT _contents STREQUAL _original)
     file(WRITE "${_file}" "${_contents}")
 endif()
+
+# OpenSSL 1.1+ makes these key contexts opaque.  The pinned libwebsockets
+# compatibility probes can fail during a musl cross-compile, so select the
+# modern API paths from the OpenSSL version as well.
+foreach(_relative include/libwebsockets/lws-genhash.h lib/tls/openssl/lws-genec.c lib/tls/openssl/lws-genrsa.c)
+    set(_file "${LWS_SOURCE_DIR}/${_relative}")
+    file(READ "${_file}" _contents)
+    if(NOT _contents MATCHES "asciichat OpenSSL opaque")
+        string(REPLACE "#else\n\tconst EVP_MD *evp_type;"
+            "#else\n/* asciichat OpenSSL opaque HMAC */\n#if defined(OPENSSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100000L\n#define LWS_HAVE_HMAC_CTX_new 1\n#endif\n\tconst EVP_MD *evp_type;"
+            _contents "${_contents}")
+        string(REGEX REPLACE "(#include \"private-lib-tls-openssl.h\")"
+            "\\1\n/* asciichat OpenSSL opaque key */\n#if defined(OPENSSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100000L\n#define LWS_HAVE_ECDSA_SIG_set0 1\n#define LWS_HAVE_RSA_SET0_KEY 1\n#endif"
+            _contents "${_contents}")
+        file(WRITE "${_file}" "${_contents}")
+    endif()
+endforeach()
 foreach(_relative CMakeLists.txt lib/CMakeLists.txt lib/tls/CMakeLists.txt)
     set(_file "${LWS_SOURCE_DIR}/${_relative}")
     file(READ "${_file}" _contents)

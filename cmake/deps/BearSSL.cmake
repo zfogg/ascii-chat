@@ -88,6 +88,11 @@ if(PLATFORM_IOS)
             IMPORTED_LOCATION "${BEARSSL_LIB}"
         )
 
+        if(NOT TARGET asciichat-bearssl)
+            add_library(asciichat-bearssl INTERFACE)
+            target_link_libraries(asciichat-bearssl INTERFACE bearssl_static)
+            target_include_directories(asciichat-bearssl INTERFACE "${BEARSSL_SOURCE_DIR}/inc")
+        endif()
         set(BEARSSL_LIBRARIES bearssl_static)
         set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
         set(BEARSSL_FOUND TRUE)
@@ -122,7 +127,7 @@ if(USE_MUSL)
             # Build the static library target with parallel jobs for faster builds
             # For musl: disable getentropy() (not in musl), force /dev/urandom, disable fortification
             execute_process(
-                COMMAND make -j lib CC=${ASCIICHAT_CLANG_EXECUTABLE} AR=${CMAKE_AR} CFLAGS=--target=${MUSL_TARGET}\ -DBR_USE_GETENTROPY=0\ -DBR_USE_URANDOM=1\ -U_FORTIFY_SOURCE\ -D_FORTIFY_SOURCE=0\ -fno-stack-protector\ -fPIC
+                COMMAND make -j lib CC=${ASCIICHAT_CLANG_EXECUTABLE} AR=${CMAKE_AR} CFLAGS=${ASCIICHAT_MUSL_TARGET_FLAG}\ -DBR_USE_GETENTROPY=0\ -DBR_USE_URANDOM=1\ -U_FORTIFY_SOURCE\ -D_FORTIFY_SOURCE=0\ -fno-stack-protector\ -fPIC
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
                 RESULT_VARIABLE BEARSSL_MAKE_RESULT
                 OUTPUT_VARIABLE BEARSSL_MAKE_OUTPUT
@@ -151,6 +156,11 @@ if(USE_MUSL)
             "${BEARSSL_SOURCE_DIR}/inc"
         )
 
+        if(NOT TARGET asciichat-bearssl)
+            add_library(asciichat-bearssl INTERFACE)
+            target_link_libraries(asciichat-bearssl INTERFACE bearssl_static)
+            target_include_directories(asciichat-bearssl INTERFACE "${BEARSSL_SOURCE_DIR}/inc")
+        endif()
         set(BEARSSL_LIBRARIES bearssl_static)
         set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
         set(BEARSSL_FOUND TRUE)
@@ -362,6 +372,11 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
     target_include_directories(bearssl_static INTERFACE
         "${BEARSSL_SOURCE_DIR}/inc"
     )
+    if(NOT TARGET asciichat-bearssl)
+        add_library(asciichat-bearssl INTERFACE)
+        target_link_libraries(asciichat-bearssl INTERFACE bearssl_static)
+        target_include_directories(asciichat-bearssl INTERFACE "${BEARSSL_SOURCE_DIR}/inc")
+    endif()
     # Make sure the library is built before anything tries to link against it
     add_dependencies(bearssl_static bearssl_build)
 

@@ -308,11 +308,9 @@ function(asciichat_configure_quic)
         message(FATAL_ERROR "Failed to configure nghttp3 (${_nghttp3_configure_result})\n${_nghttp3_configure_stdout}${_nghttp3_configure_stderr}")
     endif()
 
-    if(CMAKE_GENERATOR MATCHES "^Visual Studio")
-        set(_quic_build_tail)
-    else()
-        set(_quic_build_tail -- --quiet)
-    endif()
+    # `--quiet` is not a Ninja option; keep the nested CMake build portable
+    # across Ninja and Visual Studio generators.
+    set(_quic_build_tail)
 
     ExternalProject_Add(asciichat-ngtcp2-build
         SOURCE_DIR "${_ngtcp2_source}"

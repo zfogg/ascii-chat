@@ -41,6 +41,26 @@ endif()
 if(NOT TARGET libplatform::libplatform)
     message(FATAL_ERROR "libplatform did not provide its required libplatform::libplatform target")
 endif()
+
+# libplatform-objects is compiled as a separate object library and therefore
+# does not inherit the final library target's usage requirements.  Propagate
+# the target-only headers explicitly for musl and POSIX support files.
+foreach(_libplatform_compile_target IN ITEMS libplatform libplatform-objects)
+    if(TARGET ${_libplatform_compile_target})
+        if(DEFINED KERNEL_HEADERS_DIR AND EXISTS "${KERNEL_HEADERS_DIR}")
+            target_include_directories(${_libplatform_compile_target} PRIVATE
+                "${KERNEL_HEADERS_DIR}")
+        endif()
+        if(TARGET asciichat-libexecinfo)
+            target_link_libraries(${_libplatform_compile_target} PRIVATE
+                asciichat-libexecinfo)
+        endif()
+        if(TARGET asciichat-fontconfig)
+            target_link_libraries(${_libplatform_compile_target} PRIVATE
+                asciichat-fontconfig)
+        endif()
+    endif()
+endforeach()
 set(ASCIICHAT_LIBPLATFORM_TARGET libplatform::libplatform CACHE INTERNAL
     "Imported libplatform target used by ascii-chat")
 

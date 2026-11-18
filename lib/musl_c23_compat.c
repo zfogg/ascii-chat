@@ -16,7 +16,6 @@
 #include <stdarg.h>
 #include <wchar.h>
 #include <limits.h>
-
 // Declare musl's actual strto* functions using asm labels to bypass glibc's C23
 // header redirect (e.g. strtoul → __isoc23_strtoul), which would cause infinite
 // recursion since this file IS the __isoc23_* implementation.

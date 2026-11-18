@@ -137,7 +137,6 @@ if(WIN32)
     set(CMAKE_HAVE_THREADS_LIBRARY 1 CACHE BOOL "")
     set(CMAKE_USE_WIN32_THREADS_INIT 1 CACHE BOOL "")
     set(CMAKE_USE_PTHREADS_INIT 0 CACHE BOOL "")
-    set(THREADS_FOUND TRUE)
     if(NOT TARGET Threads::Threads)
         add_library(Threads::Threads INTERFACE IMPORTED)
     endif()
@@ -277,15 +276,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslDep.cmake)
 # All dependencies are now modularized into individual .cmake files in cmake/deps/
 # Dependencies.cmake orchestrates including them all
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Dependencies.cmake)
-
-# A later dependency's module-mode zlib probe can leave the legacy singular
-# cache variable at NOTFOUND even when pkg-config supplied ZLIB_LIBRARIES.
-# Normalize it after all dependency modules have run, before targets consume it.
-if(DEFINED ZLIB_LIBRARIES AND NOT ZLIB_LIBRARIES STREQUAL "")
-    if(NOT DEFINED ZLIB_LIBRARY OR ZLIB_LIBRARY MATCHES "-NOTFOUND$")
-        set(ZLIB_LIBRARY "${ZLIB_LIBRARIES}" CACHE STRING "zlib libraries" FORCE)
-    endif()
-endif()
+include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslValidation.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Tomlc17.cmake)
 configure_tomlc17()
@@ -391,65 +382,11 @@ foreach(_package_manager HOMEBREW SCOOP AUR)
 endforeach()
 
 include("${CMAKE_SOURCE_DIR}/deps/recast/Recast.cmake")
-if(RECAST_BACKEND STREQUAL "NATIVE" AND
-   (USE_MUSL OR NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}"))
-  set(BUILD_TESTING OFF CACHE BOOL "Disable Recast tests in ascii-chat" FORCE)
-  set(RECAST_BUILD_DOCS OFF CACHE BOOL "Disable Recast docs in ascii-chat" FORCE)
-  if(USE_MUSL)
-    include(ExternalProject)
-    find_program(_asciichat_host_cxx NAMES g++ c++ REQUIRED)
-    set(_asciichat_recast_build_dir "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build")
-    set(_asciichat_recast_binary
-        "${_asciichat_recast_build_dir}/bin/recast${CMAKE_EXECUTABLE_SUFFIX}")
-    ExternalProject_Add(asciichat-recast-host
-      SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/recast"
-      BINARY_DIR "${_asciichat_recast_build_dir}"
-      CMAKE_ARGS
-        "-DCMAKE_CXX_COMPILER=${_asciichat_host_cxx}"
-        "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}"
-        "-DCMAKE_EXPORT_COMPILE_COMMANDS=OFF"
-        "-DRECAST_BUILD_DOCS=OFF"
-        "-DBUILD_TESTING=OFF"
-      BUILD_COMMAND "${CMAKE_COMMAND}" --build <BINARY_DIR> --target recast --config ${CMAKE_BUILD_TYPE}
-      BUILD_BYPRODUCTS "${_asciichat_recast_binary}"
-      INSTALL_COMMAND ""
-      EXCLUDE_FROM_ALL)
-    add_executable(recast-native IMPORTED GLOBAL)
-    set_target_properties(recast-native PROPERTIES
-      IMPORTED_LOCATION "${_asciichat_recast_binary}")
-    add_dependencies(recast-native asciichat-recast-host)
-    set(RECAST_NATIVE_BINARY
-        "${_asciichat_recast_binary}"
-        CACHE FILEPATH "Recast host executable" FORCE)
-  else()
-    add_subdirectory(
-      "${CMAKE_SOURCE_DIR}/deps/recast"
-      "${ASCIICHAT_DEPS_CACHE_DIR}/recast-build"
-      EXCLUDE_FROM_ALL)
-    # Recast is a host-side build tool used by custom commands.  Keep its
-    # executable at one path for every Visual Studio configuration so
-    # $<TARGET_FILE:recast> cannot select Debug while a Release build is
-    # running the transformer.
-    set_target_properties(recast PROPERTIES
-      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-      RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/bin"
-      RUNTIME_OUTPUT_DIRECTORY_DEV "${CMAKE_BINARY_DIR}/bin"
-      RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/bin"
-      RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_BINARY_DIR}/bin"
-      RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_BINARY_DIR}/bin")
-    # A native build uses the Recast target created above.  Do not let a
-    # stale RECAST_NATIVE_BINARY cache entry from an older configuration
-    # override that target and fail configure before the tool can be built.
-    if(TARGET recast AND RECAST_NATIVE_BINARY AND
-       NOT EXISTS "${RECAST_NATIVE_BINARY}")
-      set(RECAST_NATIVE_BINARY "")
-    endif()
-  endif()
-endif()
-if(RECAST_BACKEND STREQUAL "NATIVE" AND TARGET recast)
-  if(NOT TARGET recast-native)
-    add_executable(recast-native ALIAS recast)
-  endif()
+if(RECAST_BACKEND STREQUAL "NATIVE")
+  # Recast is always a host-side tool. Build it through the shared host-tools
+  # provider for both glibc and musl; never add its executable to the target
+  # build graph.
+  include("${CMAKE_SOURCE_DIR}/cmake/dependencies/Recast.cmake")
 endif()
 # A musl build provisions the host transformer through an ExternalProject.
 # Expose that imported target as `recast` so recast_targets() can depend on it
@@ -493,7 +430,10 @@ if(USE_MUSL AND TARGET ffmpeg-musl)
   endforeach()
 endif()
 set(RECAST_SOURCE_HOOK ascii_panic_defer_source)
-set(RECAST_EXTRA_INCLUDE_DIRS ${SQLITE3_INCLUDE_DIRS} "${libflags_SOURCE_DIR}/include")
+get_target_property(_asciichat_sqlite_includes asciichat-sqlite3
+    INTERFACE_INCLUDE_DIRECTORIES)
+set(RECAST_EXTRA_INCLUDE_DIRS ${_asciichat_sqlite_includes}
+    "${libflags_SOURCE_DIR}/include")
 recast_targets(${_defer_targets})
 if(DEFINED _asciichat_recast_native_binary)
   set(RECAST_NATIVE_BINARY "${_asciichat_recast_native_binary}" CACHE FILEPATH
@@ -590,10 +530,10 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt)
 endif()
 
 # Explicit local telemetry probe; never built or run by the test suite.
-if(TARGET gotel)
+if(TARGET asciichat-gotel)
     add_executable(ascii-chat-sql-diagnostics-probe EXCLUDE_FROM_ALL spaniel/probe.c)
     target_link_libraries(ascii-chat-sql-diagnostics-probe PRIVATE
-        ascii-chat-static ${MIMALLOC_LIBRARIES} ${SQLITE3_LIBRARIES})
+        ascii-chat-static asciichat-mimalloc asciichat-sqlite3)
     target_include_directories(ascii-chat-sql-diagnostics-probe PRIVATE ${CMAKE_BINARY_DIR}/generated)
     apply_sanitizers_to_target(ascii-chat-sql-diagnostics-probe)
     set_target_properties(ascii-chat-sql-diagnostics-probe PROPERTIES
@@ -624,3 +564,4 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/StatusMessages.cmake)
 # Test trigger 1774232744
 
 cmake_language(DEFER CALL asciichat_finalize_project_settings)
+cmake_language(DEFER CALL asciichat_validate_project_musl)

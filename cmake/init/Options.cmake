@@ -137,11 +137,12 @@ set(ASCIICHAT_RELEASE_CPU_CUSTOM_FLAGS "" CACHE STRING "Custom CPU compiler flag
 option(ASCIICHAT_RELEASE_ENABLE_FAST_MATH "Enable aggressive fast-math optimizations in Release builds" OFF)
 option(ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS "Preserve frame pointers in Release builds for better diagnostics" ON)
 
-# Enable analyzers by default for Release builds only (expensive for Debug incremental builds)
-if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+# Static analysis is a developer-time Debug check.  Release builds must not
+# invoke clang-tidy/cppcheck as part of every compilation.
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     option(ASCIICHAT_ENABLE_ANALYZERS "Run clang-tidy and cppcheck during builds" ON)
 else()
-    option(ASCIICHAT_ENABLE_ANALYZERS "Run clang-tidy and cppcheck during builds" OFF)
+    set(ASCIICHAT_ENABLE_ANALYZERS OFF CACHE BOOL "Run clang-tidy and cppcheck during builds" FORCE)
 endif()
 set(ASCIICHAT_CLANG_TIDY "" CACHE STRING "Override clang-tidy executable (leave empty for auto-detect)")
 set(ASCIICHAT_CPPCHECK "" CACHE STRING "Override cppcheck executable (leave empty for auto-detect)")

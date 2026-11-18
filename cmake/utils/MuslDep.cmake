@@ -35,7 +35,7 @@ endif()
 set(KERNEL_HEADERS_DIR "${MUSL_DEPS_DIR_STATIC}/kernel-headers")
 
 # Find and copy kernel headers if needed
-set(KERNEL_HEADER_FOUND FALSE)
+set(_asciichat_kernel_header_found FALSE)
 set(KERNEL_HEADER_SEARCH_PATHS
     "/usr/include/linux"
     "/usr/include/x86_64-linux-gnu/asm"
@@ -45,12 +45,12 @@ set(KERNEL_HEADER_SEARCH_PATHS
 
 foreach(HEADER_PATH ${KERNEL_HEADER_SEARCH_PATHS})
     if(EXISTS "${HEADER_PATH}")
-        set(KERNEL_HEADER_FOUND TRUE)
+        set(_asciichat_kernel_header_found TRUE)
         break()
     endif()
 endforeach()
 
-if(KERNEL_HEADER_FOUND)
+if(_asciichat_kernel_header_found)
     if(NOT EXISTS "${KERNEL_HEADERS_DIR}/linux")
         message(STATUS "Copying kernel headers to ${KERNEL_HEADERS_DIR}...")
         file(MAKE_DIRECTORY "${KERNEL_HEADERS_DIR}")
@@ -88,7 +88,16 @@ if(KERNEL_HEADER_FOUND)
         message(STATUS "Using cached ${BoldBlue}kernel headers${ColorReset} from ${BoldMagenta}${KERNEL_HEADERS_DIR}${ColorReset}")
     endif()
 
-    set(MUSL_KERNEL_CFLAGS "-fPIC -I${KERNEL_HEADERS_DIR}")
+    # Keep configure-time dependency builds on the same target headers as the
+    # CMake toolchain.  Without this, Autoconf projects silently search the
+    # host /usr/include and can emit glibc-only symbols into musl archives.
+    execute_process(
+        COMMAND "${CMAKE_C_COMPILER}" -print-resource-dir
+        OUTPUT_VARIABLE ASCIICHAT_CLANG_RESOURCE_DIR
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY)
+    set(MUSL_KERNEL_CFLAGS
+        "--target=${MUSL_TARGET} -nostdinc -isystem ${ASCIICHAT_CLANG_RESOURCE_DIR}/include -isystem ${MUSL_INCLUDE_DIR} -isystem ${KERNEL_HEADERS_DIR} -fPIC")
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
         # Debian's AArch64 libgcc outlines atomics through lse-init.o, which
         # calls glibc-only __getauxval. Musl exports getauxval instead. Keep

@@ -213,7 +213,8 @@
       "description": "Optimized distributable release build; selects musl on Linux and static vcpkg dependencies on Windows where applicable",
       "inherits": "base-release",
       "cacheVariables": {
-        "ASCIICHAT_ENABLE_ANALYZERS": "OFF"
+        "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
+        "USE_MUSL": "OFF"
       }
     },
     {

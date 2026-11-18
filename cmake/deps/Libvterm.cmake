@@ -53,7 +53,7 @@ if(EMSCRIPTEN OR WIN32 OR USE_MUSL OR PLATFORM_IOS OR ASCIICHAT_BUILD_DEPS_FROM_
             # musl-gcc already selects the target and uses GCC's -nostdinc.
             if(CMAKE_C_COMPILER_ID STREQUAL "Clang"
                OR CMAKE_C_COMPILER MATCHES "(^|[/\\\\])clang(\\.exe)?$")
-                target_compile_options(asciichat-vterm PRIVATE -nostdlibinc "--target=${MUSL_TARGET}")
+                target_compile_options(asciichat-vterm PRIVATE -nostdlibinc "${ASCIICHAT_MUSL_TARGET_FLAG}")
             endif()
             target_include_directories(asciichat-vterm SYSTEM PRIVATE "${MUSL_INCLUDE_DIR}" "${KERNEL_HEADERS_DIR}")
         endif()

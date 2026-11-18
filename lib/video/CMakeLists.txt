@@ -39,7 +39,7 @@ elseif(UNIX)
 endif()
 
 # Media source files (only when FFmpeg is available)
-if(FFMPEG_FOUND)
+if(TARGET asciichat-ffmpeg)
     list(APPEND VIDEO_SRCS
         ${CMAKE_SOURCE_DIR}/lib/media/source.c
         ${CMAKE_SOURCE_DIR}/lib/media/ffmpeg_decoder.c

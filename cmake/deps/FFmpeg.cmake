@@ -159,7 +159,7 @@ if(USE_MUSL)
         PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/ffmpeg"
         CONFIGURE_COMMAND ${_ffmpeg_env} <SOURCE_DIR>/configure
             --prefix=${FFMPEG_PREFIX} --cc=${ASCIICHAT_CLANG_EXECUTABLE}
-            "--extra-cflags=${MUSL_KERNEL_CFLAGS} --target=${MUSL_TARGET} -I${X264_PREFIX}/include -I${X265_PREFIX}/include"
+            "--extra-cflags=${MUSL_KERNEL_CFLAGS} ${ASCIICHAT_MUSL_TARGET_FLAG} -Dfcntl64=fcntl -I${X264_PREFIX}/include -I${X265_PREFIX}/include"
             "--extra-ldflags=${_ffmpeg_ldflags}" "--extra-libs=${_ffmpeg_libs}"
             --enable-static --disable-shared --enable-pic --disable-programs --disable-doc
             --disable-debug --disable-runtime-cpudetect --disable-autodetect

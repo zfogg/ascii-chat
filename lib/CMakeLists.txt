@@ -687,7 +687,9 @@ if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-ui PRIVATE ${ASCIICHAT_LIBUV_TARGET})
 endif()
 
-target_link_libraries(ascii-chat-logging PRIVATE OpenSSL::SSL)
+target_link_libraries(ascii-chat-logging PRIVATE
+    OpenSSL::SSL
+    asciichat-libwebsockets)
 
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-runtime PRIVATE ${ASCIICHAT_LIBUV_TARGET})
@@ -751,6 +753,13 @@ endif()
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
 target_link_libraries(ascii-chat-network PRIVATE asciichat-libuv)
+if(TARGET asciichat-miniupnpc)
+    target_include_directories(ascii-chat-network PRIVATE
+        "$<TARGET_PROPERTY:asciichat-miniupnpc,INTERFACE_INCLUDE_DIRECTORIES>")
+    if(EXISTS "/usr/include/miniupnpc/miniupnpc.h")
+        target_include_directories(ascii-chat-network PRIVATE "/usr/include/miniupnpc")
+    endif()
+endif()
 # Prefer the package target so manifest/vcpkg builds carry the correct
 # include and transitive-link settings on every platform.  Keep the direct
 # search as a fallback for distro/Homebrew installs that do not ship a CMake
@@ -862,7 +871,7 @@ if(NOT BUILDING_OBJECT_LIBS)
     )
     # Link libwebsockets
     # miniupnpc is a required native dependency.
-    target_link_libraries(ascii-chat-network PRIVATE asciichat-miniupnpc)
+    target_link_libraries(ascii-chat-network PUBLIC asciichat-miniupnpc)
         # Also link libnatpmp on macOS
         if(NATPMP_LIBRARY)
             target_include_directories(ascii-chat-network PRIVATE ${NATPMP_INCLUDE_DIR})
@@ -870,7 +879,7 @@ if(NOT BUILDING_OBJECT_LIBS)
         endif()
 else()
     # For OBJECT libs, link external deps only (OpenSSL needed by libdatachannel for TLS/DTLS)
-    target_link_libraries(ascii-chat-network PRIVATE asciichat-pcre2 asciichat-zstd asciichat-sqlite3 asciichat-libdatachannel OpenSSL::Crypto)
+    target_link_libraries(ascii-chat-network PUBLIC asciichat-pcre2 asciichat-zstd asciichat-sqlite3 asciichat-libdatachannel asciichat-miniupnpc OpenSSL::Crypto)
     # Link libwebsockets
     target_link_libraries(ascii-chat-network PRIVATE asciichat-libwebsockets asciichat-miniupnpc)
         # Also link libnatpmp on macOS
@@ -1186,7 +1195,7 @@ target_link_libraries(ascii-chat-shared PRIVATE asciichat-utf8proc asciichat-lib
         OpenSSL::SSL
         OpenSSL::Crypto
     )
-    if(MINIUPNPC_FOUND)
+    if(TARGET asciichat-miniupnpc)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-miniupnpc)
         if(NATPMP_LIBRARY)
             target_include_directories(ascii-chat-shared PRIVATE ${NATPMP_INCLUDE_DIR})
@@ -1227,7 +1236,7 @@ target_link_libraries(ascii-chat-shared PRIVATE asciichat-utf8proc asciichat-lib
     # Link BearSSL (required)
     target_link_libraries(ascii-chat-shared PRIVATE asciichat-bearssl)
     # Link miniupnpc if available (UPnP/NAT-PMP support)
-    if(MINIUPNPC_FOUND)
+    if(TARGET asciichat-miniupnpc)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-miniupnpc)
         if(NATPMP_LIBRARY)
             target_include_directories(ascii-chat-shared PRIVATE ${NATPMP_INCLUDE_DIR})
@@ -1258,7 +1267,7 @@ else()
         asciichat-platform
     )
     # Link miniupnpc if available (UPnP/NAT-PMP support)
-    if(MINIUPNPC_FOUND)
+    if(TARGET asciichat-miniupnpc)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-miniupnpc)
         if(NATPMP_LIBRARY)
             target_link_libraries(ascii-chat-shared PRIVATE ${NATPMP_LIBRARY})
@@ -1309,7 +1318,7 @@ if(TARGET libdatachannel)
 endif()
 
 # Link FFmpeg for media file streaming
-if(FFMPEG_FOUND)
+if(TARGET asciichat-ffmpeg)
     target_link_libraries(ascii-chat-shared PRIVATE asciichat-ffmpeg)
 endif()
 
@@ -1546,7 +1555,7 @@ add_dependencies(ascii-chat-static-lib build-ascii-chat-static-lib)
 # Create an INTERFACE library for dependency propagation
 # (IMPORTED libraries can't have INTERFACE_LINK_LIBRARIES in older CMake)
 add_library(ascii-chat-static INTERFACE)
-target_link_libraries(ascii-chat-static INTERFACE ${ASCIICHAT_LIBPLATFORM_TARGET} ${UTF8PROC_LIBRARIES} asciichat-icu asciichat-rnnoise)
+target_link_libraries(ascii-chat-static INTERFACE asciichat-libplatform asciichat-utf8proc asciichat-icu asciichat-rnnoise)
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-static INTERFACE asciichat-quic)
 endif()
@@ -1598,7 +1607,7 @@ if(USE_MIMALLOC)
 endif()
 
 # Link FFmpeg for media file streaming
-if(FFMPEG_FOUND)
+if(TARGET asciichat-ffmpeg)
     target_link_libraries(ascii-chat-static INTERFACE asciichat-ffmpeg)
 endif()
 
@@ -1682,7 +1691,7 @@ endif()
 # Link required miniupnpc for UPnP/NAT-PMP port mapping
 # This is linked to ascii-chat-network module, but must also be exposed via the
 # INTERFACE library for final executables since libasciichat.a includes upnp.c
-if(MINIUPNPC_FOUND)
+if(TARGET asciichat-miniupnpc)
     target_link_libraries(ascii-chat-static INTERFACE asciichat-miniupnpc)
     # Also link libnatpmp on macOS (separate library for NAT-PMP protocol)
     if(NATPMP_LIBRARY)

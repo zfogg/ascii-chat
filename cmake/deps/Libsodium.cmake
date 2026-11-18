@@ -212,11 +212,11 @@ if(USE_MUSL)
         # Use --with-pic to force position-independent code generation.
         CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env
             "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
-            "CFLAGS=--target=${MUSL_TARGET} -fPIC"
+            "CFLAGS=${ASCIICHAT_MUSL_TARGET_FLAG} -fPIC"
             <SOURCE_DIR>/configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared --with-pic
         BUILD_COMMAND ${CMAKE_COMMAND} -E env
             "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
-            "CFLAGS=--target=${MUSL_TARGET} -fPIC"
+            "CFLAGS=${ASCIICHAT_MUSL_TARGET_FLAG} -fPIC"
             make -j
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a

@@ -21,11 +21,19 @@ if(NOT _ASCIICHAT_COMPILER_MODULE)
     elseif(_asciichat_requested_compiler MATCHES "^(clang|clang.exe|clang-cl|clang-cl.exe)$")
         set(_ASCIICHAT_COMPILER_MODULE CLANG)
     else()
-        find_program(_asciichat_clang clang)
+        # Prefer the selected LLVM installation before PATH.  On Linux the
+        # distro's unversioned clang is often several major versions behind
+        # the project's required toolchain (and can be incompatible with the
+        # checked-in C++ dialect and dependency cache).
+        set(_asciichat_llvm_hints
+            "$ENV{LLVM_ROOT}/bin"
+            "/usr/lib/llvm-23/bin"
+            "/usr/local/llvm-23/bin")
+        find_program(_asciichat_clang clang HINTS ${_asciichat_llvm_hints})
         find_program(_asciichat_gcc gcc)
         if(_asciichat_clang)
             set(CMAKE_C_COMPILER "${_asciichat_clang}" CACHE FILEPATH "C compiler" FORCE)
-            find_program(_asciichat_clangxx clang++)
+            find_program(_asciichat_clangxx clang++ HINTS ${_asciichat_llvm_hints})
             if(NOT _asciichat_clangxx)
                 message(FATAL_ERROR "Clang was found but clang++ is missing")
             endif()

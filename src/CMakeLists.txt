@@ -68,6 +68,27 @@ endif()
 if(BUILD_EXECUTABLES)
 add_executable(ascii-chat ${APP_SRCS})
 
+# Prefer the distribution ABI for system shared libraries at build/run time.
+# Homebrew may appear in the global prefix path, but its libuv can require a
+# newer glibc than the Ubuntu runner.
+if(UNIX AND NOT APPLE)
+    # Do not let CMake derive a runpath from the host prefix path. In
+    # particular, Homebrew's libuv must never outrank Ubuntu's libuv.
+    set_target_properties(ascii-chat PROPERTIES
+        SKIP_BUILD_RPATH TRUE
+        BUILD_WITH_INSTALL_RPATH TRUE
+        INSTALL_RPATH
+        "$ORIGIN/../lib;/usr/local/ffmpeg-9.0.2/lib;/usr/lib/x86_64-linux-gnu;/usr/local/openssl-4.1.0/lib64;${ASCIICHAT_DEPS_CACHE_DIR}/gotel-Clang-Ninja/lib;${ASCIICHAT_DEPS_CACHE_DIR}/asciichat-ngtcp2-Ninja/lib;${ASCIICHAT_DEPS_CACHE_DIR}/asciichat-ngtcp2-Ninja/crypto/ossl;${ASCIICHAT_DEPS_CACHE_DIR}/asciichat-nghttp3-Ninja/lib")
+    target_link_options(ascii-chat PRIVATE
+        "-Wl,-rpath,/usr/local/ffmpeg-9.0.2/lib"
+        "-Wl,-rpath,/usr/local/openssl-4.1.0/lib64"
+        "-Wl,-rpath,/usr/lib/x86_64-linux-gnu"
+        "-Wl,-rpath,${ASCIICHAT_DEPS_CACHE_DIR}/gotel-Clang-Ninja/lib"
+        "-Wl,-rpath,${ASCIICHAT_DEPS_CACHE_DIR}/asciichat-ngtcp2-Ninja/lib"
+        "-Wl,-rpath,${ASCIICHAT_DEPS_CACHE_DIR}/asciichat-ngtcp2-Ninja/crypto/ossl"
+        "-Wl,-rpath,${ASCIICHAT_DEPS_CACHE_DIR}/asciichat-nghttp3-Ninja/lib")
+endif()
+
 # PortAudio's static WDM-KS backend and the Windows SDK strmiids library both
 # provide the same COM GUID constants. Keep strmiids because FFmpeg requires
 # IID_ICodecAPI, and let lld resolve the equivalent duplicate definitions.
@@ -77,10 +98,9 @@ endif()
 if(WIN32)
     target_link_libraries(ascii-chat PRIVATE shell32)
 endif()
-target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LIBUV_TARGET} ${YYJSON_LIBRARIES} ${CTOON_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+target_link_libraries(ascii-chat PRIVATE asciichat-core-dependencies)
 target_link_libraries(ascii-chat PRIVATE libflags::flags)
 target_link_libraries(ascii-chat PRIVATE asciichat-rnnoise)
-target_include_directories(ascii-chat PRIVATE ${YYJSON_INCLUDE_DIRS})
 
 # Clang with compiler-rt does not always add the system unwinder when linking
 # static C++ dependencies such as WebRTC audio processing.
@@ -132,21 +152,17 @@ elseif(NOT BUILD_SHARED_LIBS OR USE_MUSL)
     # musl, and Windows release configurations.
     add_dependencies(ascii-chat generate_version)
     target_link_libraries(ascii-chat PRIVATE ascii-chat-runtime-objects)
-    set(CORE_LIBS asciichat-core-dependencies)
-    target_link_libraries(ascii-chat PRIVATE ${CORE_LIBS} ${BEARSSL_LIBRARIES})
-    if(FFMPEG_LIBRARIES)
-        target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LIBRARIES})
-    endif()
+    target_link_libraries(ascii-chat PRIVATE asciichat-core-dependencies asciichat-bearssl)
 
     if(WIN32)
         # Windows static release: link all dependencies directly
         target_link_libraries(ascii-chat PRIVATE
-            ${LIBSODIUM_LIBRARIES}
-            ${OPUS_LIBRARIES}
-            ${SQLITE3_LIBRARIES}
-            ${PCRE2_LIBRARIES}
-            ${YYJSON_LIBRARIES}
-            ${PORTAUDIO_LIBRARIES}
+            asciichat-libsodium
+            asciichat-opus
+            asciichat-sqlite3
+            asciichat-pcre2
+            asciichat-yyjson
+            asciichat-portaudio
         )
         # zstd
         target_link_libraries(ascii-chat PRIVATE zstd::libzstd)
@@ -156,33 +172,28 @@ elseif(NOT BUILD_SHARED_LIBS OR USE_MUSL)
         target_link_libraries(ascii-chat PRIVATE libdatachannel)
         target_link_libraries(ascii-chat PRIVATE OpenSSL::SSL OpenSSL::Crypto)
         # libwebsockets
-        if(LIBWEBSOCKETS_LIBRARIES)
-            target_link_libraries(ascii-chat PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
-        endif()
+        target_link_libraries(ascii-chat PRIVATE asciichat-libwebsockets)
         # FreeType and Fontconfig
         if(FREETYPE_LIBRARY_DIRS)
             target_link_directories(ascii-chat PRIVATE ${FREETYPE_LIBRARY_DIRS})
         endif()
-        target_link_libraries(ascii-chat PRIVATE ${FREETYPE_LIBRARIES})
-        if(FONTCONFIG_LINK_LIBRARIES)
-            target_link_libraries(ascii-chat PRIVATE ${FONTCONFIG_LINK_LIBRARIES})
+        target_link_libraries(ascii-chat PRIVATE asciichat-freetype)
+        if(TARGET asciichat-fontconfig)
+            target_link_libraries(ascii-chat PRIVATE asciichat-fontconfig)
         endif()
         # vterm
-        if(VTERM_LDFLAGS)
-            target_link_libraries(ascii-chat PRIVATE ${VTERM_LDFLAGS})
-        endif()
+        target_link_libraries(ascii-chat PRIVATE asciichat-vterm)
         # miniupnpc
-        if(MINIUPNPC_FOUND)
-            target_include_directories(ascii-chat PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
-            target_link_libraries(ascii-chat PRIVATE ${MINIUPNPC_LIBRARIES})
+        if(TARGET asciichat-miniupnpc)
+            target_link_libraries(ascii-chat PRIVATE asciichat-miniupnpc)
             if(NATPMP_LIBRARY)
                 target_include_directories(ascii-chat PRIVATE ${NATPMP_INCLUDE_DIR})
                 target_link_libraries(ascii-chat PRIVATE ${NATPMP_LIBRARY})
             endif()
         endif()
         # mimalloc
-        if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
-            target_link_libraries(ascii-chat PRIVATE ${MIMALLOC_LIBRARIES})
+        if(TARGET asciichat-mimalloc)
+            target_link_libraries(ascii-chat PRIVATE asciichat-mimalloc)
         endif()
         # Windows system libraries
         target_link_libraries(ascii-chat PRIVATE
@@ -212,19 +223,17 @@ elseif(BUILD_SHARED_LIBS AND NOT USE_MUSL)
             ${CORE_LIBS}
         )
         # Link BearSSL (required)
-        target_link_libraries(ascii-chat PRIVATE ${BEARSSL_LIBRARIES})
+        target_link_libraries(ascii-chat PRIVATE asciichat-bearssl)
         # Link FFmpeg libraries
-        if(FFMPEG_LIBRARIES)
-            target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LIBRARIES})
-        endif()
+        target_link_libraries(ascii-chat PRIVATE asciichat-ffmpeg)
         # Note: On Windows, we do NOT link webrtc_audio_processing directly to the executable.
         # The shared library (asciichat.dll) already links it, and direct C++ library linkage
         # would pull in MSVCP140D.dll as a direct dependency of the exe, causing ASan bad-free
         # errors during process exit (iostream objects allocated before ASan hooks are active).
 
         # Link mimalloc explicitly - the shared library links it PRIVATE so symbols don't propagate
-        if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
-            target_link_libraries(ascii-chat PRIVATE ${MIMALLOC_LIBRARIES})
+        if(TARGET asciichat-mimalloc)
+            target_link_libraries(ascii-chat PRIVATE asciichat-mimalloc)
         endif()
 
         # Delay-load datachannel.dll to defer loading when it's not needed.
@@ -245,10 +254,10 @@ elseif(BUILD_SHARED_LIBS AND NOT USE_MUSL)
             target_link_libraries(ascii-chat PRIVATE "-framework SystemConfiguration")
         endif()
         # Link BearSSL (required)
-        target_link_libraries(ascii-chat PRIVATE ${BEARSSL_LIBRARIES})
+        target_link_libraries(ascii-chat PRIVATE asciichat-bearssl)
         # Link against FFmpeg libraries (set by FFmpeg.cmake for all build types)
-        if(FFMPEG_LIBRARIES)
-            target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LIBRARIES})
+        if(TARGET asciichat-ffmpeg)
+            target_link_libraries(ascii-chat PRIVATE asciichat-ffmpeg)
             target_link_directories(ascii-chat PRIVATE ${FFMPEG_LIBRARY_DIRS})
         endif()
         # Link WebRTC audio processing for echo cancellation
@@ -256,8 +265,8 @@ elseif(BUILD_SHARED_LIBS AND NOT USE_MUSL)
             target_link_libraries(ascii-chat PRIVATE webrtc_audio_processing)
         endif()
         # Link mimalloc explicitly - the shared library links it PRIVATE so symbols don't propagate
-        if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
-            target_link_libraries(ascii-chat PRIVATE ${MIMALLOC_LIBRARIES})
+        if(TARGET asciichat-mimalloc)
+            target_link_libraries(ascii-chat PRIVATE asciichat-mimalloc)
         endif()
 
         # Suppress linker warnings about duplicate debug symbols in libdatachannel
@@ -372,14 +381,10 @@ endif()
 
 # Include directories for executable (needed for version.h and other generated headers)
 target_include_directories(ascii-chat PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>)
-target_include_directories(ascii-chat PRIVATE ${PCRE2_INCLUDE_DIRS} ${LIBWEBSOCKETS_INCLUDE_DIRS})
 # Add src/common for session headers (allows #include "session/display.h" style)
 target_include_directories(ascii-chat PRIVATE ${CMAKE_SOURCE_DIR}/src/common ${CMAKE_SOURCE_DIR}/lib)
 
 # Add mimalloc include directory for executable (needed for SAFE_MALLOC macros in src/)
-if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
-    target_include_directories(ascii-chat PRIVATE ${MIMALLOC_INCLUDE_DIRS})
-endif()
 
 # Apply sanitizers to executable
 apply_sanitizers_to_target(ascii-chat)
@@ -417,13 +422,15 @@ if(USE_MUSL)
 
     # Link external dependencies (LTO + dead code elimination removes unused code)
     target_link_libraries(ascii-chat PRIVATE
-        ${PORTAUDIO_LIBRARIES}
+        asciichat-portaudio
         ${ALSA_PREFIX}/lib/libasound.a
         ${LIBSODIUM_PREFIX}/lib/libsodium.a
         ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a
-        ${PCRE2_LIBRARIES}
-        ${ZLIB_LIBRARY}
-        ${UTF8PROC_LIBRARIES}
+        asciichat-pcre2
+        asciichat-zlib
+        asciichat-utf8proc
+        asciichat-mimalloc
+        asciichat-miniupnpc
         -lm -lpthread
     )
 
@@ -434,14 +441,14 @@ if(USE_MUSL)
 
     # Link FreeType for font rendering in render-file
     target_link_libraries(ascii-chat PRIVATE
-        ${FREETYPE_LIBRARIES}
+        asciichat-freetype
     )
 
     # Link FFmpeg for media file streaming (musl-built static libraries - required)
-    target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LIBRARIES})
+    target_link_libraries(ascii-chat PRIVATE asciichat-ffmpeg)
 
     # Link libwebsockets for WebSocket transport (musl-built static library - required)
-    target_link_libraries(ascii-chat PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
+    target_link_libraries(ascii-chat PRIVATE asciichat-libwebsockets)
     # libdatachannel and its dependencies (must be linked explicitly for static builds)
     # The libdatachannel INTERFACE target's dependencies don't propagate through
     # the combined static library, so we link them directly here
@@ -517,7 +524,6 @@ endif()
 
 if(USE_MIMALLOC)
     message(STATUS "ascii-chat linking mimalloc: ${ASCIICHAT_MIMALLOC_LINK_LIB}")
-    message(STATUS "ascii-chat MIMALLOC_LIBRARIES raw: ${MIMALLOC_LIBRARIES}")
     if(TARGET mimalloc-static)
         add_dependencies(ascii-chat mimalloc-static)
     endif()
@@ -526,12 +532,10 @@ if(USE_MIMALLOC)
     endif()
 
     # Static mimalloc must appear after the object/static libraries that use
-    # it.  The dependency graph can otherwise place the archive first and
-    # lld will discard it before seeing the mi_* references.
-    if(NOT MIMALLOC_IS_SHARED_LIB AND MIMALLOC_LIBRARIES)
-        target_link_libraries(ascii-chat PRIVATE
-            "$<LINK_GROUP:RESCAN,${MIMALLOC_LIBRARIES}>"
-        )
+    # it. The dependency graph can otherwise place the archive first and lld
+    # will discard it before seeing the mi_* references.
+    if(NOT MIMALLOC_IS_SHARED_LIB AND TARGET asciichat-mimalloc)
+        target_link_libraries(ascii-chat PRIVATE asciichat-mimalloc)
     endif()
 endif()
 
@@ -664,6 +668,14 @@ if((WIN32 OR APPLE) AND BUILD_SHARED_LIBS AND NOT USE_MUSL AND TARGET ascii-chat
     check_static_linking(ascii-chat-shared)
 endif()
 
+if(UNIX AND NOT APPLE)
+    get_target_property(_ascii_chat_build_rpath ascii-chat BUILD_RPATH)
+    if(_ascii_chat_build_rpath)
+        list(FILTER _ascii_chat_build_rpath EXCLUDE REGEX "/home/linuxbrew/")
+        set_property(TARGET ascii-chat PROPERTY BUILD_RPATH "${_ascii_chat_build_rpath}")
+    endif()
+endif()
+
 endif()  # BUILD_EXECUTABLES - close ascii-chat executable block
 
 # =============================================================================
@@ -695,17 +707,14 @@ if(BUILD_WEB AND BUILD_EXECUTABLES)
     )
 
     # Add mimalloc include directory (needed for SAFE_MALLOC macros)
-    if(MIMALLOC_INCLUDE_DIRS)
-        target_include_directories(ascii-chat-strings PRIVATE ${MIMALLOC_INCLUDE_DIRS})
-    endif()
 
     # Compile with optimization
     target_compile_options(ascii-chat-strings PRIVATE -std=c23 -O3)
 
     # Link libsodium - use static when available (musl builds, iOS, etc.)
-    # For musl/static builds, LIBSODIUM_LIBRARIES points to .a file
+    # The canonical libsodium target carries the selected archive.
     # For dynamic builds, it points to .so/.dylib
-    target_link_libraries(ascii-chat-strings PRIVATE ${LIBSODIUM_LIBRARIES})
+    target_link_libraries(ascii-chat-strings PRIVATE asciichat-libsodium)
     if(WIN32)
         target_link_libraries(ascii-chat-strings PRIVATE ${ASCIICHAT_LIBPLATFORM_TARGET})
     endif()

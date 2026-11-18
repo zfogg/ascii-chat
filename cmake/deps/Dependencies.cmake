@@ -117,6 +117,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Ctoon.cmake)
 # Configure the shared libplatform target before libflags.  libflags must
 # reuse this target rather than creating a second copy of libplatform inside
 # its FetchContent build tree.
+include(${CMAKE_SOURCE_DIR}/cmake/deps/FreeType2.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Fontconfig.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libplatform.cmake)
 
 # libflags consumes the application's selected PCRE2, yyjson, tomlc17, and
@@ -140,12 +142,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/FFmpeg.cmake)
 # libexecinfo - Backtrace support (musl only)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Libexecinfo.cmake)
 
-# FreeType2 - Font rasterization for render-file
-include(${CMAKE_SOURCE_DIR}/cmake/deps/FreeType2.cmake)
-
-# Fontconfig - Font configuration for render-file
-include(${CMAKE_SOURCE_DIR}/cmake/deps/Fontconfig.cmake)
-
 # Libvterm - Terminal emulation for render-file (depends on FreeType2/Fontconfig)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Libvterm.cmake)
 
@@ -164,16 +160,12 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/PlatformLibraries.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/CoreTargets.cmake)
 
 if(NOT EMSCRIPTEN)
-    foreach(_required_dependency
-        ABSEIL_FOUND BEARSSL_FOUND FFMPEG_FOUND FFTW_FOUND
-        LIBDATACHANNEL_FOUND LIBSODIUM_FOUND LIBWEBSOCKETS_FOUND
-        MINIUPNPC_FOUND OPENSSL_FOUND OPUS_FOUND PCRE2_FOUND
-        PORTAUDIO_FOUND SQLITE3_FOUND ZLIB_FOUND ZSTD_FOUND)
-        if(NOT ${_required_dependency})
-            message(FATAL_ERROR "Required dependency check failed: ${_required_dependency} is not true")
-        endif()
-    endforeach()
-    foreach(_required_target OpenSSL::SSL OpenSSL::Crypto libdatachannel webrtc_audio_processing)
+    foreach(_required_target
+        asciichat-abseil asciichat-bearssl asciichat-ffmpeg asciichat-fftw
+        asciichat-libdatachannel asciichat-libsodium asciichat-libwebsockets
+        asciichat-miniupnpc asciichat-openssl asciichat-opus asciichat-pcre2
+        asciichat-portaudio asciichat-sqlite3 asciichat-zlib asciichat-zstd
+        OpenSSL::SSL OpenSSL::Crypto webrtc_audio_processing)
         if(NOT TARGET ${_required_target})
             message(FATAL_ERROR "Required dependency target is missing: ${_required_target}")
         endif()

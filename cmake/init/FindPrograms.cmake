@@ -364,6 +364,18 @@ _find_llvm_tool(ASCIICHAT_CLANG_TIDY_EXECUTABLE clang-tidy)
 _find_llvm_tool(ASCIICHAT_CLANG_FORMAT_EXECUTABLE clang-format)
 _find_llvm_tool(ASCIICHAT_SCAN_BUILD_EXECUTABLE scan-build)
 
+# clang-tidy must be from the same LLVM installation as the compiler. A
+# mismatched tidy can reject that compiler's PCH format and break every Debug
+# compile, so leave the optional analyzer disabled instead.
+if(ASCIICHAT_LLVM_BINDIR AND ASCIICHAT_CLANG_TIDY_EXECUTABLE)
+    file(REAL_PATH "${ASCIICHAT_CLANG_TIDY_EXECUTABLE}" _asciichat_tidy_real)
+    file(REAL_PATH "${ASCIICHAT_LLVM_BINDIR}" _asciichat_llvm_bin_real)
+    if(NOT _asciichat_tidy_real MATCHES "^${_asciichat_llvm_bin_real}([/\\\\]|$)")
+        message(WARNING "Ignoring clang-tidy from a different LLVM installation: ${ASCIICHAT_CLANG_TIDY_EXECUTABLE}")
+        set(ASCIICHAT_CLANG_TIDY_EXECUTABLE "" CACHE FILEPATH "clang-tidy from the selected LLVM installation" FORCE)
+    endif()
+endif()
+
 # =============================================================================
 # cppcheck - Static analyzer
 # =============================================================================
@@ -917,10 +929,11 @@ endif()
 function(asciichat_validate_optional_programs)
     # ASCIICHAT_ENABLE_ANALYZERS requires clang-tidy
     if(ASCIICHAT_ENABLE_ANALYZERS AND NOT ASCIICHAT_CLANG_TIDY_EXECUTABLE)
-        message(FATAL_ERROR "ASCIICHAT_ENABLE_ANALYZERS=ON but clang-tidy not found. Install clang-tidy:\n"
+        message(WARNING "Disabling analyzers because a clang-tidy matching the selected LLVM compiler was not found. Install clang-tidy:\n"
             "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
             "  macOS:   brew install llvm\n"
             "  Linux:   sudo apt install clang-tidy  OR  sudo pacman -S clang")
+        set(ASCIICHAT_ENABLE_ANALYZERS OFF CACHE BOOL "Run clang-tidy and cppcheck during builds" FORCE)
     endif()
 
     # ASCIICHAT_BUILD_WITH_PANIC requires bash for panic scripts

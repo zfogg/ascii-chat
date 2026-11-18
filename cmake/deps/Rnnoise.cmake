@@ -17,6 +17,12 @@ endif()
 # so create the empty staging directory up front as well.
 file(MAKE_DIRECTORY "${ASCIICHAT_RNNOISE_INSTALL_DIR}/include")
 
+if(NOT ASCIICHAT_RNNOISE_SHELL)
+    find_program(ASCIICHAT_RNNOISE_SHELL NAMES bash sh REQUIRED)
+endif()
+if(NOT ASCIICHAT_RNNOISE_MAKE)
+    find_program(ASCIICHAT_RNNOISE_MAKE NAMES make gmake REQUIRED)
+endif()
 if(NOT ASCIICHAT_BASH_EXECUTABLE OR NOT ASCIICHAT_MAKE_EXECUTABLE)
     message(FATAL_ERROR "RNNoise requires bash/sh and make to follow its upstream autotools build")
 endif()

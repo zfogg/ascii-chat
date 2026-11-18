@@ -40,11 +40,8 @@ function(ascii_build_tooling_runtime)
                 ${CMAKE_BINARY_DIR}/generated
         )
 
-        # Add mimalloc include directory if enabled
-        # Use MIMALLOC_INCLUDE_DIRS which is already set in Mimalloc.cmake
-        # and handles system, vcpkg, and FetchContent mimalloc installations
-        if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
-            target_include_directories(ascii-panic-runtime PRIVATE ${MIMALLOC_INCLUDE_DIRS})
+        if(TARGET asciichat-mimalloc)
+            target_link_libraries(ascii-panic-runtime PRIVATE asciichat-mimalloc)
         endif()
 
         # Link pthread on Unix (Windows uses platform abstraction)
@@ -71,10 +68,8 @@ function(ascii_build_tooling_runtime)
                 ${CMAKE_BINARY_DIR}/generated
         )
 
-        # Add mimalloc include if enabled (needed for common.h)
-        # Use MIMALLOC_INCLUDE_DIRS which handles system, vcpkg, and FetchContent mimalloc
-        if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
-            target_include_directories(ascii-panic-report PRIVATE ${MIMALLOC_INCLUDE_DIRS})
+        if(TARGET asciichat-mimalloc)
+            target_link_libraries(ascii-panic-report PRIVATE asciichat-mimalloc)
         endif()
 
         # Always use shared library (built from OBJECT libraries for all build types)
@@ -91,9 +86,6 @@ function(ascii_build_tooling_runtime)
     target_link_libraries(ascii-panic-report PRIVATE ${ASCIICHAT_LIBPLATFORM_TARGET})
         apply_sanitizers_to_target(ascii-panic-report)
         # Link mimalloc explicitly - shared library links it PRIVATE so symbols don't propagate
-        if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
-            target_link_libraries(ascii-panic-report PRIVATE ${MIMALLOC_LIBRARIES})
-        endif()
         set_target_properties(ascii-panic-report PROPERTIES OUTPUT_NAME "ascii-panic-report")
     endif()
 

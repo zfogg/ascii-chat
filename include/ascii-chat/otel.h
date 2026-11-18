@@ -19,6 +19,9 @@ typedef enum {
 } ascii_otel_metric_t;
 #ifndef __EMSCRIPTEN__
 #include <gotel/gotel.h>
+#ifdef GOTEL_WITH_SQLITE
+#include <gotel/sqlite.h>
+#endif
 #ifdef __cplusplus
 extern "C" {
 #endif

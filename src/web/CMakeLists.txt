@@ -60,8 +60,7 @@ endif()
 
 # Include all WASM dependency configuration files
 # Each file handles EMSCRIPTEN builds and sets output variables:
-# - FOO_LIBRARIES: libraries to link
-# - FOO_INCLUDE_DIRS: include directories
+# Dependency modules expose imported or interface targets.
 include(FetchContent)
 get_filename_component(_cmake_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../cmake" ABSOLUTE)
 include(${_cmake_dir}/deps/Libsodium.cmake)
@@ -108,12 +107,6 @@ include_directories(
     ${DEPS_ROOT}/ascii-chat-deps/utf8proc
     ${DEPS_ROOT}/ascii-chat-deps/yyjson/src
     ${LIBFLAGS_ROOT}/include
-    # Dependency includes from cmake/deps/*.cmake output variables
-    ${VTERM_INCLUDE_DIRS}  # libvterm
-    ${LIBSODIUM_INCLUDE_DIRS}  # libsodium
-    ${PCRE2_INCLUDE_DIRS}  # pcre2
-    ${OPUS_INCLUDE_DIRS}  # opus
-    ${ZSTD_INCLUDE_DIRS}  # zstd
 )
 if(EMSCRIPTEN)
     include_directories(SYSTEM /home/zfogg/.cache/emscripten/sysroot/include)
@@ -462,19 +455,10 @@ target_link_libraries(wasm-common PUBLIC asciichat-icu)
 target_link_libraries(wasm-common PUBLIC ${ASCIICHAT_LIBPLATFORM_TARGET})
 
 target_link_libraries(wasm-common PRIVATE
-    ${UTF8PROC_LIBRARIES}
-    ${LIBSODIUM_LIBRARIES}
-    ${PCRE2_LIBRARIES}
-    ${VTERM_LDFLAGS}
-)
-
-
-target_include_directories(wasm-common PRIVATE
-    ${LIBSODIUM_INCLUDE_DIRS}
-    ${PCRE2_INCLUDE_DIRS}
-    ${OPUS_INCLUDE_DIRS}
-    ${ZSTD_INCLUDE_DIRS}
-    ${VTERM_INCLUDE_DIRS}
+    asciichat-utf8proc
+    asciichat-libsodium
+    asciichat-pcre2
+    asciichat-vterm
 )
 
 # NOTE: FFmpeg is loaded at runtime via ffmpeg.wasm (npm package)
@@ -517,13 +501,12 @@ target_link_options(mirror-web PRIVATE -pthread -sUSE_PTHREADS=1 "-sPTHREAD_POOL
 
 target_link_libraries(mirror-web PRIVATE
     asciichat-icu
-    ${UTF8PROC_LIBRARIES}
-    ${LIBSODIUM_LIBRARIES}
-    ${PCRE2_LIBRARIES}
-    ${FFTW_LIBRARIES}
-    ${VTERM_LDFLAGS}
+    asciichat-utf8proc
+    asciichat-libsodium
+    asciichat-pcre2
+    asciichat-fftw-float
+    asciichat-vterm
 )
-target_include_directories(mirror-web PRIVATE ${FFTW_INCLUDE_DIRS})
 
 # Apply sanitizers
 apply_sanitizers_to_target(mirror-web)
@@ -598,25 +581,16 @@ endif()
 
 # Add library search paths if needed
 
-# Add include directories for dependencies (needed because wasm-common object files don't auto-inherit INTERFACE_INCLUDE_DIRECTORIES)
-target_include_directories(client-web PRIVATE
-    ${FFTW_INCLUDE_DIRS}
-    ${LIBSODIUM_INCLUDE_DIRS}
-    ${PCRE2_INCLUDE_DIRS}
-    ${OPUS_INCLUDE_DIRS}
-    ${ZSTD_INCLUDE_DIRS}
-)
-
 # Link dependencies for client mode
 target_link_libraries(client-web PRIVATE
     asciichat-icu
-    ${UTF8PROC_LIBRARIES}
-    ${FFTW_LIBRARIES}
-    ${LIBSODIUM_LIBRARIES}
-    ${PCRE2_LIBRARIES}
-    ${OPUS_LIBRARIES}
-    ${ZSTD_LIBRARIES}
-    ${VTERM_LDFLAGS}
+    asciichat-utf8proc
+    asciichat-fftw-float
+    asciichat-libsodium
+    asciichat-pcre2
+    asciichat-opus
+    asciichat-zstd
+    asciichat-vterm
 )
 
 # Apply sanitizers
@@ -745,8 +719,14 @@ add_executable(renderer-web
 )
 target_compile_definitions(renderer-web PRIVATE __EMSCRIPTEN__ EMSCRIPTEN_BUILD=1)
 target_compile_options(renderer-web PRIVATE -pthread -msimd128 -sUSE_FREETYPE=1)
-target_link_libraries(renderer-web PRIVATE asciichat-icu ${UTF8PROC_LIBRARIES} ${LIBSODIUM_LIBRARIES} ${PCRE2_LIBRARIES} ${FFTW_LIBRARIES} ${VTERM_LDFLAGS})
-target_include_directories(renderer-web PRIVATE ${FFTW_INCLUDE_DIRS})
+target_link_libraries(renderer-web PRIVATE
+    asciichat-icu
+    asciichat-utf8proc
+    asciichat-libsodium
+    asciichat-pcre2
+    asciichat-fftw-float
+    asciichat-vterm
+)
 add_custom_command(TARGET renderer-web POST_BUILD
     BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/renderer-bindings.d.ts"
     COMMAND ${CMAKE_COMMAND} -E true)

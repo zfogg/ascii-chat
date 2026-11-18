@@ -53,6 +53,35 @@ if(USE_MUSL)
     set(SQLITE3_PREFIX "${MUSL_DEPS_DIR_STATIC}/sqlite3")
     set(SQLITE3_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/sqlite3-build")
     set(SQLITE3_SOURCE_DIR "${SQLITE3_BUILD_DIR}/src/sqlite3")
+    set(_sqlite3_signature "${MUSL_TARGET};${ASCIICHAT_CLANG_EXECUTABLE};musl-headers-v5;fcntl64=fcntl")
+    set(_sqlite3_signature_file "${SQLITE3_PREFIX}/.asciichat-musl-signature")
+    # Reject archives produced before the musl fcntl compatibility flags were
+    # applied.  The cache is shared across configure runs, so the signature
+    # alone cannot detect an archive that was interrupted or built from an
+    # older source checkout.
+    find_program(_asciichat_sqlite3_nm NAMES llvm-nm nm)
+    if(EXISTS "${SQLITE3_PREFIX}/lib/libsqlite3.a" AND _asciichat_sqlite3_nm)
+        execute_process(
+            COMMAND "${_asciichat_sqlite3_nm}" -u "${SQLITE3_PREFIX}/lib/libsqlite3.a"
+            OUTPUT_VARIABLE _sqlite3_undefined_symbols
+            ERROR_QUIET
+        )
+        if(_sqlite3_undefined_symbols MATCHES "(^|[ \r\n])[^\r\n]*fcntl64([ \r\n]|$)")
+            message(STATUS "  SQLite3 cache contains a glibc fcntl64 reference; rebuilding")
+            file(REMOVE "${SQLITE3_PREFIX}/lib/libsqlite3.a")
+        endif()
+    endif()
+    if(EXISTS "${SQLITE3_PREFIX}/lib/libsqlite3.a" AND EXISTS "${_sqlite3_signature_file}")
+        file(READ "${_sqlite3_signature_file}" _sqlite3_cached_signature)
+        if(NOT _sqlite3_cached_signature STREQUAL "${_sqlite3_signature}")
+            message(STATUS "  SQLite3 cache signature changed; rebuilding the musl archive")
+            file(REMOVE "${SQLITE3_PREFIX}/lib/libsqlite3.a")
+        endif()
+    elseif(EXISTS "${SQLITE3_PREFIX}/lib/libsqlite3.a")
+        message(STATUS "  SQLite3 cache has no musl signature; rebuilding the archive")
+        file(REMOVE "${SQLITE3_PREFIX}/lib/libsqlite3.a")
+    endif()
+    file(WRITE "${_sqlite3_signature_file}" "${_sqlite3_signature}")
 
     # Build SQLite3 synchronously at configure time if not cached
     if(NOT EXISTS "${SQLITE3_PREFIX}/lib/libsqlite3.a")
@@ -97,6 +126,20 @@ if(USE_MUSL)
 
         # Compile SQLite3 to static library
         message(STATUS "  Building SQLite3...")
+        file(REMOVE "${SQLITE3_BUILD_DIR}/sqlite3.o")
+        file(READ "${SQLITE3_SOURCE_DIR}/sqlite3.c" _sqlite3_source)
+        string(REPLACE
+            "#if defined(__GNUC__) && !defined(_GNU_SOURCE)"
+            "#if defined(__GNUC__) && !defined(_GNU_SOURCE) && !defined(__linux__)"
+            _sqlite3_source "${_sqlite3_source}")
+        file(WRITE "${SQLITE3_SOURCE_DIR}/sqlite3.c" "${_sqlite3_source}")
+        # Keep the compatibility mapping local to this third-party translation
+        # unit.  Some SQLite feature/configuration combinations still emit the
+        # large-file entry point as fcntl64 even when the compiler command line
+        # undefines the glibc feature macros; the musl ABI provides it as fcntl.
+        set(_sqlite3_musl_wrapper "${SQLITE3_BUILD_DIR}/sqlite3-musl.c")
+        file(WRITE "${_sqlite3_musl_wrapper}"
+            "#define fcntl64 fcntl\n#include \"${SQLITE3_SOURCE_DIR}/sqlite3.c\"\n")
         file(MAKE_DIRECTORY "${SQLITE3_PREFIX}/lib")
         file(MAKE_DIRECTORY "${SQLITE3_PREFIX}/include")
 
@@ -104,14 +147,17 @@ if(USE_MUSL)
             COMMAND ${CMAKE_COMMAND} -E env
                 CC=${ASCIICHAT_CLANG_EXECUTABLE}
                 CFLAGS=${MUSL_KERNEL_CFLAGS}
-                ${ASCIICHAT_CLANG_EXECUTABLE} --target=${MUSL_TARGET} -c
+                ${ASCIICHAT_CLANG_EXECUTABLE} ${ASCIICHAT_MUSL_TARGET_FLAG} -c
+                -U_GNU_SOURCE
                 -DSQLITE_THREADSAFE=1
                 -DSQLITE_ENABLE_FTS5
                 -DSQLITE_ENABLE_RTREE
                 -DSQLITE_ENABLE_JSON1
+                -Ufcntl64
+                -Dfcntl64=fcntl
                 -O3
                 -fPIC
-                "${SQLITE3_SOURCE_DIR}/sqlite3.c"
+                "${_sqlite3_musl_wrapper}"
                 -o "${SQLITE3_BUILD_DIR}/sqlite3.o"
             RESULT_VARIABLE COMPILE_RESULT
             OUTPUT_VARIABLE COMPILE_OUTPUT
@@ -119,6 +165,20 @@ if(USE_MUSL)
         )
         if(NOT COMPILE_RESULT EQUAL 0)
             message(FATAL_ERROR "Failed to compile SQLite3:\n${COMPILE_ERROR}")
+        endif()
+
+        # Normalize the one large-file spelling that can still be emitted by
+        # SQLite's generated syscall table.  This changes only the undefined
+        # symbol in the musl archive; it does not introduce a glibc object or
+        # runtime dependency.
+        find_program(_asciichat_sqlite3_objcopy NAMES llvm-objcopy objcopy REQUIRED)
+        execute_process(
+            COMMAND "${_asciichat_sqlite3_objcopy}" --redefine-sym fcntl64=fcntl
+                    "${SQLITE3_BUILD_DIR}/sqlite3.o"
+            RESULT_VARIABLE OBJCOPY_RESULT
+            ERROR_VARIABLE OBJCOPY_ERROR)
+        if(NOT OBJCOPY_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to normalize SQLite3 musl symbols:\n${OBJCOPY_ERROR}")
         endif()
 
         # Create static library
@@ -141,8 +201,14 @@ if(USE_MUSL)
         message(STATUS "  ${BoldBlue}SQLite3${ColorReset} library found in cache: ${BoldMagenta}${SQLITE3_PREFIX}/lib/libsqlite3.a${ColorReset}")
     endif()
 
+    if(NOT TARGET asciichat-sqlite3)
+        add_library(asciichat-sqlite3 STATIC IMPORTED GLOBAL)
+        set_target_properties(asciichat-sqlite3 PROPERTIES
+            IMPORTED_LOCATION "${SQLITE3_PREFIX}/lib/libsqlite3.a"
+            INTERFACE_INCLUDE_DIRECTORIES "${SQLITE3_PREFIX}/include")
+    endif()
     set(SQLITE3_FOUND TRUE)
-    set(SQLITE3_LIBRARIES "${SQLITE3_PREFIX}/lib/libsqlite3.a")
+    set(SQLITE3_LIBRARIES asciichat-sqlite3)
     set(SQLITE3_INCLUDE_DIRS "${SQLITE3_PREFIX}/include")
     return()
 endif()
@@ -167,6 +233,15 @@ if(USE_VCPKG AND VCPKG_ROOT)
             OUTPUT      SQLITE3_LIBRARIES
         )
         set(SQLITE3_INCLUDE_DIRS "${SQLITE3_INC}")
+        if(NOT TARGET asciichat-sqlite3)
+            add_library(asciichat-sqlite3 INTERFACE)
+            if(TARGET SQLite3::SQLite3)
+                target_link_libraries(asciichat-sqlite3 INTERFACE SQLite3::SQLite3)
+            else()
+                target_link_libraries(asciichat-sqlite3 INTERFACE "${SQLITE3_LIBRARIES}")
+            endif()
+            target_include_directories(asciichat-sqlite3 INTERFACE "${SQLITE3_INC}")
+        endif()
         message(STATUS "Found ${BoldGreen}SQLite3${ColorReset} via vcpkg: ${SQLITE3_LIB_RELEASE}${SQLITE3_LIB_DEBUG}")
         return()
     endif()
@@ -195,6 +270,11 @@ if(WIN32 AND ASCIICHAT_DEPS_CACHE_ROOT AND VCPKG_TARGET_TRIPLET)
         )
         set(SQLITE3_FOUND TRUE)
         set(SQLITE3_INCLUDE_DIRS "${_asciichat_sqlite3_include}")
+        if(NOT TARGET asciichat-sqlite3)
+            add_library(asciichat-sqlite3 INTERFACE)
+            target_link_libraries(asciichat-sqlite3 INTERFACE "${SQLITE3_LIBRARIES}")
+            target_include_directories(asciichat-sqlite3 INTERFACE "${_asciichat_sqlite3_include}")
+        endif()
         message(STATUS "Found ${BoldGreen}SQLite3${ColorReset} in dependency cache: ${_asciichat_sqlite3_release}${_asciichat_sqlite3_debug}")
         return()
     endif()
@@ -211,6 +291,10 @@ if(PkgConfig_FOUND)
     if(SQLITE3_FOUND)
         if(TARGET PkgConfig::SQLITE3)
             set(SQLITE3_LIBRARIES PkgConfig::SQLITE3)
+            if(NOT TARGET asciichat-sqlite3)
+                add_library(asciichat-sqlite3 INTERFACE)
+                target_link_libraries(asciichat-sqlite3 INTERFACE PkgConfig::SQLITE3)
+            endif()
         endif()
         # pkg-config returns a bare `-lsqlite3` on Windows even when it has
         # resolved the actual vcpkg library.  Preserve the absolute path so
@@ -235,6 +319,13 @@ if(SQLite3_FOUND)
     else()
         set(SQLITE3_LIBRARIES ${SQLite3_LIBRARIES})
     endif()
+    if(NOT TARGET asciichat-sqlite3)
+        add_library(asciichat-sqlite3 INTERFACE)
+        target_link_libraries(asciichat-sqlite3 INTERFACE ${SQLITE3_LIBRARIES})
+        if(SQLite3_INCLUDE_DIRS)
+            target_include_directories(asciichat-sqlite3 INTERFACE "${SQLite3_INCLUDE_DIRS}")
+        endif()
+    endif()
     message(STATUS "Found ${BoldGreen}SQLite3${ColorReset} via find_package: ${SQLite3_VERSION}")
     return()
 endif()
@@ -243,4 +334,8 @@ endif()
 set(SQLITE3_FOUND TRUE)
 set(SQLITE3_LIBRARIES sqlite3)
 set(SQLITE3_INCLUDE_DIRS "")
+if(NOT TARGET asciichat-sqlite3)
+    add_library(asciichat-sqlite3 INTERFACE)
+    target_link_libraries(asciichat-sqlite3 INTERFACE sqlite3)
+endif()
 message(STATUS "Using system ${BoldYellow}SQLite3${ColorReset} (assuming available)")

@@ -16,27 +16,6 @@
 # =============================================================================
 
 function(configure_include_directories)
-    set(_asciichat_sqlite_include_dirs ${SQLITE3_INCLUDE_DIRS})
-    if(USE_MUSL)
-        # Dependency modules add their include variables at different points
-        # in configuration, so sanitize all of them before subdirectories add
-        # their private include paths to concrete targets.
-        get_cmake_property(_asciichat_include_variables VARIABLES)
-        foreach(_asciichat_include_variable IN LISTS _asciichat_include_variables)
-            if(_asciichat_include_variable MATCHES "_INCLUDE_DIRS$")
-                set(_asciichat_include_values ${${_asciichat_include_variable}})
-                list(FILTER _asciichat_include_values EXCLUDE REGEX
-                    "^-I/usr/include([^ ]*)?$|^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
-                # Keep the sanitized value visible to the parent directory and
-                # to subdirectories that add these paths to concrete targets.
-                set(${_asciichat_include_variable} "${_asciichat_include_values}" PARENT_SCOPE)
-            endif()
-        endforeach()
-        # FindSQLite3 may report the host pkg-config include root.  Do not
-        # let that root reintroduce glibc ahead of the musl headers.
-        list(FILTER _asciichat_sqlite_include_dirs EXCLUDE REGEX
-            "^-I/usr/include([^ ]*)?$|^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
-    endif()
     # Base include directories (source tree). Panic-instrumentation-enabled builds prepend
     # instrumented include directories later during ascii_panic_finalize().
     # Note: All installable dependencies are in deps/ascii-chat-deps/
@@ -49,7 +28,6 @@ function(configure_include_directories)
         ${CMAKE_SOURCE_DIR}/src      # Application headers
         ${CMAKE_SOURCE_DIR}/src/common # Co-located ascii-chat option headers
         ${libflags_SOURCE_DIR}/include # Public libflags headers for tooling and consumers
-        ${_asciichat_sqlite_include_dirs} # Public discovery/database declarations
     )
     # Windows: Add compat directory for POSIX header stubs (unistd.h, etc.)
     if(WIN32)
@@ -70,11 +48,6 @@ function(configure_include_directories)
         # Add core dependencies with SYSTEM flag (avoid conflicts)
         target_link_libraries(asciichat-project-includes INTERFACE asciichat-core-dependencies)
 
-        # Add mimalloc include directory for USE_MIMALLOC builds
-        # Use MIMALLOC_INCLUDE_DIRS which handles system vs FetchContent mimalloc
-        if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
-            target_include_directories(asciichat-project-includes BEFORE INTERFACE ${MIMALLOC_INCLUDE_DIRS})
-        endif()
     else()
         # Don't add system include paths when using musl; the Clang target
         # toolchain supplies the selected musl include roots.
@@ -86,8 +59,8 @@ function(configure_include_directories)
             # musl target must not inherit that path: clang would then select
             # glibc headers before the target's musl headers.
             # When using musl, strip /usr/include from all include paths
-            get_target_property(CORE_INCLUDE_DIRS asciichat-core-dependencies INTERFACE_INCLUDE_DIRECTORIES)
-            list(FILTER CORE_INCLUDE_DIRS EXCLUDE REGEX "^-I/usr/include([^ ]*)?$|^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
+            get_target_property(_asciichat_core_includes asciichat-core-dependencies INTERFACE_INCLUDE_DIRECTORIES)
+            list(FILTER _asciichat_core_includes EXCLUDE REGEX "^-I/usr/include([^ ]*)?$|^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
             get_target_property(CORE_COMPILE_OPTIONS asciichat-core-dependencies INTERFACE_COMPILE_OPTIONS)
             if(CORE_COMPILE_OPTIONS)
                 list(FILTER CORE_COMPILE_OPTIONS EXCLUDE REGEX "^-I/usr/include$|^-I/usr/include/.*-linux-gnu(/|$)")
@@ -95,16 +68,8 @@ function(configure_include_directories)
             endif()
             target_link_libraries(asciichat-project-includes INTERFACE asciichat-core-dependencies)
 
-            # Strip /usr/include from BearSSL as well
-            if(BEARSSL_INCLUDE_DIRS)
-                list(FILTER BEARSSL_INCLUDE_DIRS EXCLUDE REGEX "^-I/usr/include([^ ]*)?$|^/usr/include$|^/usr/include/.*-linux-gnu(/|$)")
-            endif()
-
-            # Add the musl-built library include paths
-            target_include_directories(asciichat-project-includes INTERFACE
-                ${CORE_INCLUDE_DIRS}
-                ${BEARSSL_INCLUDE_DIRS}
-            )
+            # Dependency include directories are carried by their imported
+            # targets; do not copy legacy include variables into consumers.
         endif()
     endif()
 
@@ -126,7 +91,7 @@ function(configure_include_directories)
         target_include_directories(asciichat-project-includes BEFORE INTERFACE
             "${MUSL_INCLUDE_DIR}")
         target_include_directories(asciichat-project-includes SYSTEM INTERFACE
-            ${KERNEL_HEADERS_DIR} ${LIBEXECINFO_INCLUDE_DIRS})
+            ${KERNEL_HEADERS_DIR})
         if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
             target_include_directories(asciichat-project-includes SYSTEM INTERFACE
                 "$<$<COMPILE_LANGUAGE:CXX>:${ALPINE_LIBCXX_INCLUDE_DIR}>")
@@ -136,7 +101,12 @@ function(configure_include_directories)
     # Dependency roots (including mimalloc's vcpkg root) may also contain an
     # older FFmpeg. Its public structs must match the selected libraries, so
     # use a normal include path before those roots, not a trailing SYSTEM path.
-    target_include_directories(asciichat-project-includes BEFORE INTERFACE ${FFMPEG_INCLUDE_DIRS})
+    if(TARGET asciichat-ffmpeg)
+        get_target_property(_ffmpeg_includes asciichat-ffmpeg INTERFACE_INCLUDE_DIRECTORIES)
+        if(_ffmpeg_includes)
+            target_include_directories(asciichat-project-includes BEFORE INTERFACE ${_ffmpeg_includes})
+        endif()
+    endif()
 endfunction()
 
 # Dependency variables are also consumed directly by lib/CMakeLists.txt after

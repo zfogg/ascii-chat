@@ -327,7 +327,7 @@ if(USE_MUSL)
         set(OPENSSL_TARGET "linux-generic64")
     endif()
     set(OPENSSL_LIBDIR "lib")
-    set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};version=${OPENSSL_VERSION};shared=OFF;quic=ON;zlib=OFF;cflags=${MUSL_KERNEL_CFLAGS}")
+    set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};version=${OPENSSL_VERSION};shared=OFF;quic=ON;zlib=OFF;async=OFF;cflags=${MUSL_KERNEL_CFLAGS}")
     set(OPENSSL_CONFIG_STAMP "${OPENSSL_BUILD_DIR}/.config-signature")
 
     # The musl release build does not provide zlib. Keep OpenSSL's optional
@@ -399,6 +399,7 @@ if(USE_MUSL)
                 no-shared
                 enable-quic
                 no-zlib
+                no-async
                 no-tests
                 no-ui-console
                 -fPIC

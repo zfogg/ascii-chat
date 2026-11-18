@@ -57,9 +57,8 @@ if(NOT EXISTS "${UTIL_LINUX_SOURCE}/configure")
 endif()
 
 set(_util_linux_cc "${ASCIICHAT_CLANG_EXECUTABLE}")
-set(_util_linux_cflags "-nostdlibinc -isystem ${MUSL_INCLUDE_DIR} ${MUSL_KERNEL_CFLAGS} --target=${MUSL_TARGET}")
-set(_util_linux_ldflags
-    "--target=${MUSL_TARGET} -fuse-ld=lld -static -nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o -lc -lm ${MUSL_LIBDIR}/crtn.o")
+set(_util_linux_cflags "-nostdlibinc -isystem ${MUSL_INCLUDE_DIR} ${MUSL_KERNEL_CFLAGS} ${ASCIICHAT_MUSL_TARGET_FLAG}")
+set(_util_linux_ldflags "${ASCIICHAT_MUSL_TARGET_FLAG} -fuse-ld=lld -static -L${MUSL_LIBDIR}")
 ExternalProject_Add(asciichat-util-linux-musl
     SOURCE_DIR "${UTIL_LINUX_SOURCE}"
     BINARY_DIR "${UTIL_LINUX_BUILD}"
@@ -102,9 +101,9 @@ endif()
 
 set(_systemd_cc "${ASCIICHAT_CLANG_EXECUTABLE}")
 set(_systemd_cxx "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
-set(_systemd_cflags "--target=${MUSL_TARGET} ${MUSL_KERNEL_CFLAGS}")
+set(_systemd_cflags "${ASCIICHAT_MUSL_TARGET_FLAG} ${MUSL_KERNEL_CFLAGS}")
 set(_systemd_cppflags "-I${UTIL_LINUX_PREFIX}/include")
-set(_systemd_ldflags "--target=${MUSL_TARGET} -fuse-ld=lld -static -L${UTIL_LINUX_PREFIX}/lib")
+set(_systemd_ldflags "${ASCIICHAT_MUSL_TARGET_FLAG} -fuse-ld=lld -static -L${UTIL_LINUX_PREFIX}/lib")
 
 ExternalProject_Add(asciichat-systemd-build
     SOURCE_DIR "${SYSTEMD_SOURCE}"
@@ -120,10 +119,11 @@ ExternalProject_Add(asciichat-systemd-build
         --prefix=${SYSTEMD_PREFIX} --libdir=lib --buildtype=release
         -Dmode=release -Dtests=false -Dman=false
         -Dstatic-libsystemd=pic
+        -Ddefault-library=static
         -Dstatic-libudev=false -Dnetworkd=false -Dresolve=false
         -Ddefault-hierarchy=unified
-    BUILD_COMMAND ${ASCIICHAT_MESON_EXECUTABLE} compile -C "${SYSTEMD_BUILD}" libsystemd
-    INSTALL_COMMAND ${ASCIICHAT_MESON_EXECUTABLE} install -C "${SYSTEMD_BUILD}"
+    BUILD_COMMAND ninja -C "${SYSTEMD_BUILD}" libsystemd.a
+    INSTALL_COMMAND ${ASCIICHAT_MESON_EXECUTABLE} install --no-rebuild --tags devel -C "${SYSTEMD_BUILD}"
     BUILD_BYPRODUCTS "${SYSTEMD_PREFIX}/lib/libsystemd.a"
     USES_TERMINAL_CONFIGURE TRUE USES_TERMINAL_BUILD TRUE USES_TERMINAL_INSTALL TRUE)
 

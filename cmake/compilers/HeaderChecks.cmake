@@ -19,8 +19,11 @@ include(CheckIncludeFile)
 # Available on: glibc (Linux), with libexecinfo (musl), macOS
 # Not available on: Windows, some embedded systems
 set(_saved_required_includes "${CMAKE_REQUIRED_INCLUDES}")
-if(USE_MUSL AND LIBEXECINFO_INCLUDE_DIRS)
-    list(APPEND CMAKE_REQUIRED_INCLUDES ${LIBEXECINFO_INCLUDE_DIRS})
+if(USE_MUSL AND TARGET asciichat-libexecinfo)
+    get_target_property(_libexecinfo_includes asciichat-libexecinfo INTERFACE_INCLUDE_DIRECTORIES)
+    if(_libexecinfo_includes)
+        list(APPEND CMAKE_REQUIRED_INCLUDES ${_libexecinfo_includes})
+    endif()
 endif()
 check_include_file(execinfo.h HAVE_EXECINFO_H)
 set(CMAKE_REQUIRED_INCLUDES "${_saved_required_includes}")

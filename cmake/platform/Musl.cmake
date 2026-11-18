@@ -27,6 +27,7 @@ function(configure_musl_pre_project BUILD_TYPE_PARAM)
     if(_host_arch STREQUAL "x86_64" AND BUILD_TYPE_PARAM MATCHES "^(Release|RelWithDebInfo)$")
         set(_default ON)
     endif()
+
     cmake_dependent_option(
         USE_MUSL
         "Build against musl libc with Clang"
@@ -47,6 +48,7 @@ endfunction()
 # =============================================================================
 
 function(configure_musl_post_project)
+    include("${CMAKE_SOURCE_DIR}/cmake/utils/MuslToolchainTarget.cmake")
     if(NOT USE_MUSL)
         return()
     endif()
@@ -81,21 +83,24 @@ function(configure_musl_post_project)
     # Using clang directly with musl for proper static-PIE support.
     # See: https://github.com/rust-lang/rust/issues/95926
 
-    # Ask the selected, target-aware Clang where compiler-rt actually lives.
-    # Debian's libclang-rt packages do not use one stable resource-dir layout
-    # across LLVM versions and architectures.
+    # Use Clang's compiler-rt builtins archive for the musl runtime.
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
+        set(_compiler_rt_arch "aarch64")
+    else()
+        set(_compiler_rt_arch "x86_64")
+    endif()
     execute_process(
-        COMMAND "${CMAKE_C_COMPILER}" "--target=${MUSL_TARGET}" -rtlib=compiler-rt -print-libgcc-file-name
-        OUTPUT_VARIABLE CLANG_BUILTINS_PATH
+        COMMAND "${CMAKE_C_COMPILER}" --print-resource-dir
+        OUTPUT_VARIABLE CLANG_RESOURCE_DIR
         OUTPUT_STRIP_TRAILING_WHITESPACE
-        RESULT_VARIABLE _clang_builtins_result
     )
-    if(NOT _clang_builtins_result EQUAL 0 OR NOT EXISTS "${CLANG_BUILTINS_PATH}")
-        message(FATAL_ERROR "Clang did not return an existing target compiler-rt builtins archive: '${CLANG_BUILTINS_PATH}'")
+    set(CLANG_BUILTINS_PATH "${CLANG_RESOURCE_DIR}/lib/linux/libclang_rt.builtins-${_compiler_rt_arch}.a")
+    if(NOT EXISTS "${CLANG_BUILTINS_PATH}")
+        message(FATAL_ERROR "Clang compiler-rt builtins archive was not found: ${CLANG_BUILTINS_PATH}")
     endif()
     set(MUSL_COMPILER_RT_PATH "${CLANG_BUILTINS_PATH}" CACHE FILEPATH "Clang compiler-rt builtins archive for musl static executables" FORCE)
 
-    if(NOT CMAKE_C_COMPILER MATCHES "musl-gcc" AND NOT CMAKE_C_COMPILER_TARGET STREQUAL MUSL_TARGET)
+    if(NOT CMAKE_C_COMPILER_TARGET STREQUAL MUSL_TARGET)
         message(FATAL_ERROR "The musl compiler toolchain was not loaded. Configure a fresh build tree with cmake --fresh.")
     endif()
     target_compile_definitions(asciichat-project-options INTERFACE USE_MUSL)
@@ -428,9 +433,10 @@ function(configure_musl_post_project)
         else()
             message(FATAL_ERROR "Unsupported architecture for Clang compiler-rt: ${CMAKE_SYSTEM_PROCESSOR}")
         endif()
-        set(ASCIICHAT_COMPILER_RT_BUILTINS "${MUSL_COMPILER_RT_PATH}")
+        set(ASCIICHAT_COMPILER_RT_BUILTINS
+            "${_asciichat_clang_resource_dir}/lib/linux/libclang_rt.builtins-${_asciichat_compiler_rt_arch}.a")
         if(NOT EXISTS "${ASCIICHAT_COMPILER_RT_BUILTINS}")
-            message(FATAL_ERROR "Clang compiler-rt builtins archive does not exist: ${ASCIICHAT_COMPILER_RT_BUILTINS}")
+            message(FATAL_ERROR "Clang compiler-rt builtins archive was not found under ${_asciichat_clang_resource_dir}/lib/linux")
         endif()
         set(CMAKE_C_STANDARD_LIBRARIES
             "\"${ASCIICHAT_COMPILER_RT_BUILTINS}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\""

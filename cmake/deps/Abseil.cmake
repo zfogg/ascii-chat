@@ -54,10 +54,17 @@ if(UNIX AND NOT APPLE)
             PATHS
                 "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/cmake"
                 "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/cmake/absl"
+                "/usr/lib/x86_64-linux-gnu/cmake/absl"
                 "/usr/lib/cmake"
                 "/usr/local/lib/cmake"
-            PATH_SUFFIXES absl
             NO_DEFAULT_PATH)
+        if(NOT absl_FOUND)
+            unset(_asciichat_absl_config CACHE)
+            if(EXISTS "/usr/lib/x86_64-linux-gnu/cmake/absl/abslConfig.cmake")
+                include("/usr/lib/x86_64-linux-gnu/cmake/absl/abslConfig.cmake")
+                set(absl_FOUND TRUE)
+            endif()
+        endif()
         if(NOT absl_FOUND)
             find_file(_asciichat_absl_config
                 NAMES abslConfig.cmake

@@ -39,7 +39,7 @@ _asciichat_wrap_target(asciichat-zstd zstd::libzstd zstd::zstd)
 _asciichat_wrap_target(asciichat-libsodium asciichat-libsodium unofficial-sodium::sodium sodium)
 
 foreach(_target IN ITEMS
-    asciichat-portaudio asciichat-opus asciichat-fftw asciichat-fftw-float
+    asciichat-libuv asciichat-portaudio asciichat-opus asciichat-fftw asciichat-fftw-float
     asciichat-zstd asciichat-libsodium asciichat-rnnoise)
     target_link_libraries(asciichat-core-dependencies INTERFACE "${_target}")
 endforeach()
@@ -54,26 +54,23 @@ if(NOT EMSCRIPTEN)
 endif()
 _asciichat_wrap_target(asciichat-utf8proc utf8proc)
 _asciichat_wrap_target(asciichat-yyjson yyjson::yyjson yyjson)
-_asciichat_wrap_target(asciichat-pcre2 ${PCRE2_LIBRARIES})
-_asciichat_wrap_target(asciichat-sqlite3 ${SQLITE3_LIBRARIES})
+_asciichat_wrap_target(asciichat-pcre2)
+_asciichat_wrap_target(asciichat-sqlite3)
 _asciichat_wrap_target(asciichat-libwebsockets libwebsockets::libwebsockets websockets websockets_shared)
 _asciichat_wrap_target(asciichat-libdatachannel libdatachannel)
-_asciichat_wrap_target(asciichat-miniupnpc ${MINIUPNPC_LIBRARIES})
-if(TARGET asciichat-miniupnpc AND MINIUPNPC_INCLUDE_DIRS)
-    target_include_directories(asciichat-miniupnpc INTERFACE "${MINIUPNPC_INCLUDE_DIRS}")
-endif()
-_asciichat_wrap_target(asciichat-freetype Freetype::Freetype freetype ${FREETYPE_LIBRARIES})
+_asciichat_wrap_target(asciichat-miniupnpc)
+_asciichat_wrap_target(asciichat-freetype Freetype::Freetype PkgConfig::FREETYPE freetype)
 if(NOT WIN32)
     _asciichat_wrap_target(asciichat-fontconfig PkgConfig::FONTCONFIG ${FONTCONFIG_LINK_LIBRARIES})
 endif()
 _asciichat_wrap_target(asciichat-vterm asciichat-vterm PkgConfig::VTERM vterm)
 _asciichat_wrap_target(asciichat-openssl OpenSSL::SSL OpenSSL::Crypto)
-_asciichat_wrap_target(asciichat-bearssl ${BEARSSL_LIBRARIES})
+_asciichat_wrap_target(asciichat-bearssl)
 if(PLATFORM_LINUX)
     _asciichat_wrap_target(asciichat-systemd asciichat-systemd)
 endif()
 _asciichat_wrap_target(asciichat-webrtc-aec3 webrtc_audio_processing)
-_asciichat_wrap_target(asciichat-ffmpeg asciichat-ffmpeg ${FFMPEG_LIBRARIES})
+_asciichat_wrap_target(asciichat-ffmpeg)
 _asciichat_wrap_target(asciichat-fftw asciichat-fftw)
 _asciichat_wrap_target(asciichat-fftw-float asciichat-fftw-float)
 _asciichat_wrap_target(asciichat-gotel gotel::gotel gotel)
@@ -89,6 +86,20 @@ if(NOT PLATFORM_IOS AND NOT EMSCRIPTEN)
 endif()
 _asciichat_wrap_target(asciichat-rnnoise asciichat-rnnoise)
 
+if(NOT TARGET asciichat-abseil)
+    add_library(asciichat-abseil INTERFACE)
+    foreach(_absl_target IN ITEMS absl::base absl::strings absl::synchronization)
+        if(TARGET "${_absl_target}")
+            target_link_libraries(asciichat-abseil INTERFACE "${_absl_target}")
+        endif()
+    endforeach()
+endif()
+
+if(NOT TARGET asciichat-openssl)
+    add_library(asciichat-openssl INTERFACE)
+    target_link_libraries(asciichat-openssl INTERFACE OpenSSL::SSL OpenSSL::Crypto)
+endif()
+
 # The aggregate is also the transitive closure for the executable.  Keep these
 # module-owned targets here so static consumers cannot accidentally drop a
 # dependency merely because its old *_LIBRARIES variable was empty.
@@ -100,8 +111,17 @@ foreach(_target IN ITEMS
     asciichat-utf8proc utf8proc libplatform-utf8proc
     asciichat-libflags libflags::flags
     asciichat-nghttp2 nghttp2::nghttp2 nghttp2 nghttp2_static asciichat-vcpkg-nghttp2
-    asciichat-webrtc-aec3 webrtc_audio_processing)
+    asciichat-webrtc-aec3 webrtc_audio_processing
+    asciichat-vterm asciichat-miniupnpc
+    asciichat-libdatachannel asciichat-libwebsockets asciichat-freetype
+    asciichat-fontconfig asciichat-openssl asciichat-bearssl
+    asciichat-sqlite3 asciichat-pcre2 asciichat-libsodium asciichat-zstd
+    asciichat-portaudio asciichat-opus asciichat-ffmpeg asciichat-mimalloc)
     if(TARGET "${_target}")
         target_link_libraries(asciichat-core-dependencies INTERFACE "${_target}")
     endif()
 endforeach()
+
+if(TARGET asciichat-libexecinfo)
+    target_link_libraries(asciichat-core-dependencies INTERFACE asciichat-libexecinfo)
+endif()

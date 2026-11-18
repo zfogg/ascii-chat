@@ -1,6 +1,11 @@
 # Native network I/O uses epoll, kqueue or IOCP through libuv. Browser transports
 # own their event loops and do not link this native dependency.
 function(configure_libuv)
+    # The selected provider is a target property, not a sticky cache result.
+    # Clear stale pkg-config selections so Homebrew's libuv cannot survive a
+    # reconfigure after the distro library becomes available.
+    unset(ASCIICHAT_LIBUV_TARGET)
+    unset(ASCIICHAT_LIBUV_TARGET CACHE)
     if(EMSCRIPTEN)
         return()
     endif()
@@ -80,24 +85,52 @@ function(configure_libuv)
         set(ASCIICHAT_LIBUV_INCLUDE_DIRS "${asciichat_libuv_SOURCE_DIR}/include")
         set(ASCIICHAT_LIBUV_TARGET uv_a)
     else()
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(ASCIICHAT_LIBUV REQUIRED IMPORTED_TARGET libuv)
-        # glibc development builds also produce a shared library; distro libuv
-        # archives are not necessarily PIC. Linux static releases use musl above.
-        if(NOT APPLE OR BUILD_SHARED_LIBS)
-            set(ASCIICHAT_LIBUV_TARGET PkgConfig::ASCIICHAT_LIBUV)
-        else()
-            find_library(ASCIICHAT_LIBUV_STATIC_ARCHIVE NAMES libuv.a
-                HINTS ${ASCIICHAT_LIBUV_LIBRARY_DIRS} REQUIRED)
-            set(_libuv_system_libraries ${ASCIICHAT_LIBUV_STATIC_LIBRARIES})
-            list(REMOVE_ITEM _libuv_system_libraries uv)
-            add_library(asciichat-libuv-static STATIC IMPORTED)
-            set_target_properties(asciichat-libuv-static PROPERTIES
-                IMPORTED_LOCATION "${ASCIICHAT_LIBUV_STATIC_ARCHIVE}"
-                INTERFACE_INCLUDE_DIRECTORIES "${ASCIICHAT_LIBUV_INCLUDE_DIRS}"
-                INTERFACE_COMPILE_OPTIONS "${ASCIICHAT_LIBUV_STATIC_CFLAGS_OTHER}"
-                INTERFACE_LINK_LIBRARIES "${_libuv_system_libraries}")
-            set(ASCIICHAT_LIBUV_TARGET asciichat-libuv-static)
+        # Prefer the distro libuv on Linux.  Homebrew can be earlier in
+        # PKG_CONFIG_PATH and may provide a shared object built against a
+        # newer glibc than the host; that is not a valid system dependency.
+        if(UNIX AND NOT APPLE)
+            unset(_asciichat_libuv_include CACHE)
+            unset(_asciichat_libuv_library CACHE)
+            find_path(_asciichat_libuv_include NAMES uv.h
+                PATHS /usr/include /usr/local/include NO_DEFAULT_PATH)
+            if(BUILD_SHARED_LIBS)
+                find_library(_asciichat_libuv_library NAMES uv
+                    PATHS /usr/lib/${CMAKE_LIBRARY_ARCHITECTURE} /usr/lib/x86_64-linux-gnu /usr/lib /usr/local/lib
+                    NO_DEFAULT_PATH)
+            else()
+                find_library(_asciichat_libuv_library NAMES uv_a uv
+                    PATHS /usr/lib/${CMAKE_LIBRARY_ARCHITECTURE} /usr/lib/x86_64-linux-gnu /usr/lib /usr/local/lib
+                    NO_DEFAULT_PATH)
+            endif()
+            if(_asciichat_libuv_include AND _asciichat_libuv_library)
+                add_library(asciichat-libuv UNKNOWN IMPORTED GLOBAL)
+                set_target_properties(asciichat-libuv PROPERTIES
+                    IMPORTED_LOCATION "${_asciichat_libuv_library}"
+                    INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_libuv_include}"
+                    INTERFACE_LINK_LIBRARIES "dl;pthread")
+                set(ASCIICHAT_LIBUV_TARGET asciichat-libuv)
+            endif()
+        endif()
+        if(NOT ASCIICHAT_LIBUV_TARGET)
+            find_package(PkgConfig REQUIRED)
+            pkg_check_modules(ASCIICHAT_LIBUV REQUIRED IMPORTED_TARGET libuv)
+            # glibc development builds also produce a shared library; distro libuv
+            # archives are not necessarily PIC. Linux static releases use musl above.
+            if(NOT APPLE OR BUILD_SHARED_LIBS)
+                set(ASCIICHAT_LIBUV_TARGET PkgConfig::ASCIICHAT_LIBUV)
+            else()
+                find_library(ASCIICHAT_LIBUV_STATIC_ARCHIVE NAMES libuv.a
+                    HINTS ${ASCIICHAT_LIBUV_LIBRARY_DIRS} REQUIRED)
+                set(_libuv_system_libraries ${ASCIICHAT_LIBUV_STATIC_LIBRARIES})
+                list(REMOVE_ITEM _libuv_system_libraries uv)
+                add_library(asciichat-libuv-static STATIC IMPORTED)
+                set_target_properties(asciichat-libuv-static PROPERTIES
+                    IMPORTED_LOCATION "${ASCIICHAT_LIBUV_STATIC_ARCHIVE}"
+                    INTERFACE_INCLUDE_DIRECTORIES "${ASCIICHAT_LIBUV_INCLUDE_DIRS}"
+                    INTERFACE_COMPILE_OPTIONS "${ASCIICHAT_LIBUV_STATIC_CFLAGS_OTHER}"
+                    INTERFACE_LINK_LIBRARIES "${_libuv_system_libraries}")
+                set(ASCIICHAT_LIBUV_TARGET asciichat-libuv-static)
+            endif()
         endif()
     endif()
 

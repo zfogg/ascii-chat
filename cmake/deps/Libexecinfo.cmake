@@ -33,7 +33,7 @@ if(USE_MUSL)
             CONFIGURE_COMMAND ""
             BUILD_COMMAND ${CMAKE_COMMAND} -E env
                 "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
-                "CFLAGS=--target=${MUSL_TARGET} -fPIC"
+                "CFLAGS=${ASCIICHAT_MUSL_TARGET_FLAG} -fPIC"
                 make -j -C <SOURCE_DIR>
             INSTALL_COMMAND env CC=${ASCIICHAT_CLANG_EXECUTABLE} make -C <SOURCE_DIR> install PREFIX=${LIBEXECINFO_PREFIX}
             BUILD_IN_SOURCE 1
@@ -49,8 +49,13 @@ if(USE_MUSL)
         add_custom_target(libexecinfo-musl)
     endif()
 
-    set(LIBEXECINFO_LIBRARIES "${LIBEXECINFO_PREFIX}/lib/libexecinfo.a")
-    set(LIBEXECINFO_INCLUDE_DIRS "${LIBEXECINFO_PREFIX}/include")
+    if(NOT TARGET asciichat-libexecinfo)
+        add_library(asciichat-libexecinfo INTERFACE)
+        target_link_libraries(asciichat-libexecinfo INTERFACE
+            "${LIBEXECINFO_PREFIX}/lib/libexecinfo.a")
+        target_include_directories(asciichat-libexecinfo INTERFACE
+            "${LIBEXECINFO_PREFIX}/include")
+    endif()
 
     return()
 endif()
@@ -59,20 +64,17 @@ endif()
 if(UNIX AND NOT APPLE)
     # Linux with glibc: execinfo.h is built-in
     message(STATUS "${BoldGreen}✓${ColorReset} libexecinfo: using glibc built-in (no separate library needed)")
-    set(LIBEXECINFO_LIBRARIES "")
-    set(LIBEXECINFO_INCLUDE_DIRS "")
+    add_library(asciichat-libexecinfo INTERFACE)
 
 elseif(APPLE)
     # macOS: Has execinfo.h in libc
     message(STATUS "${BoldGreen}✓${ColorReset} libexecinfo: using macOS libc built-in (no separate library needed)")
-    set(LIBEXECINFO_LIBRARIES "")
-    set(LIBEXECINFO_INCLUDE_DIRS "")
+    add_library(asciichat-libexecinfo INTERFACE)
 
 elseif(WIN32)
     # Windows: No execinfo.h equivalent
     message(STATUS "${BoldYellow}⚠${ColorReset} libexecinfo not needed on Windows")
-    set(LIBEXECINFO_LIBRARIES "")
-    set(LIBEXECINFO_INCLUDE_DIRS "")
+    add_library(asciichat-libexecinfo INTERFACE)
 
 else()
     message(FATAL_ERROR "Unsupported platform for libexecinfo")

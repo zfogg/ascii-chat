@@ -523,7 +523,10 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         if(ASCIICHAT_SUPPORTS_SPECTRE_MITIGATION)
             target_compile_options(asciichat-project-options INTERFACE /Qspectre)
         endif()
-    elseif(ASCIICHAT_SUPPORTS_PACK_REL_RELOCS)
+    # musl's rcrt1 startup relocates static PIEs itself; packed relative
+    # relocations are not processed by that startup path and leave init-array
+    # entries unrelocated.  Keep this hardening flag for normal ELF links only.
+    elseif(ASCIICHAT_SUPPORTS_PACK_REL_RELOCS AND NOT USE_MUSL AND NOT (UNIX AND NOT APPLE))
         target_link_options(asciichat-project-options INTERFACE -Wl,-z,pack-relative-relocs)
     endif()
 
