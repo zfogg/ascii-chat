@@ -137,7 +137,7 @@ typedef struct {
  * Values through RESET index into level_colors arrays; WHITE is resolved separately.
  * Order matches DEV, DEBUG, WARN, INFO, ERROR, FATAL, GREY, RESET.
  */
-typedef enum {
+typedef enum log_color_t {
   LOG_COLOR_DEV = 0,   /**< Blue - DEV messages */
   LOG_COLOR_DEBUG = 1, /**< Cyan - DEBUG messages */
   LOG_COLOR_INFO = 2,  /**< Green - INFO messages */

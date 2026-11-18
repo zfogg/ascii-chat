@@ -84,6 +84,7 @@ void debug_stats_poll(void) {
     debug_memory_report(GET_OPTION(color));
 #else
   (void)memory;
+  (void)requested_memory;
 #endif
 }
 #ifndef EMSCRIPTEN_BUILD
