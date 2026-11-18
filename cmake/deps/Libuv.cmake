@@ -2,14 +2,21 @@
 # own their event loops and do not link this native dependency.
 if(NOT EMSCRIPTEN)
     if(WIN32)
-        find_package(libuv CONFIG REQUIRED)
-        if(ASCIICHAT_SHARED_DEPS AND TARGET libuv::uv)
-            set(ASCIICHAT_LIBUV_TARGET libuv::uv)
-        elseif(TARGET libuv::uv_a)
-            set(ASCIICHAT_LIBUV_TARGET libuv::uv_a)
+        # vcpkg's libuv port does not provide a CMake package config. Discover
+        # the installed headers/archive directly and publish one project target.
+        find_path(ASCIICHAT_LIBUV_INCLUDE_DIR NAMES uv.h REQUIRED)
+        if(ASCIICHAT_SHARED_DEPS)
+            find_library(ASCIICHAT_LIBUV_LIBRARY NAMES uv REQUIRED)
         else()
-            set(ASCIICHAT_LIBUV_TARGET libuv::uv)
+            find_library(ASCIICHAT_LIBUV_LIBRARY NAMES uv_a uv REQUIRED)
         endif()
+        if(NOT TARGET asciichat-libuv)
+            add_library(asciichat-libuv UNKNOWN IMPORTED GLOBAL)
+            set_target_properties(asciichat-libuv PROPERTIES
+                IMPORTED_LOCATION "${ASCIICHAT_LIBUV_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${ASCIICHAT_LIBUV_INCLUDE_DIR}")
+        endif()
+        set(ASCIICHAT_LIBUV_TARGET asciichat-libuv)
     elseif(USE_MUSL)
         include(FetchContent)
         set(LIBUV_BUILD_TESTS OFF CACHE BOOL "" FORCE)
