@@ -349,6 +349,18 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
 }
 uv python install 3.15
 uv python pin 3.15
+Write-Host "  Installing Meson with uv" -ForegroundColor Gray
+uv tool install --upgrade meson
+if ($LASTEXITCODE -ne 0) { throw "Meson installation failed" }
+$UvToolBin = (& uv tool dir --bin).Trim()
+if (-not $UvToolBin -or -not (Test-Path -LiteralPath $UvToolBin)) {
+    throw "uv tool bin directory was not found after installing Meson"
+}
+$env:Path = "$UvToolBin;$env:Path"
+if (-not (Get-Command meson -ErrorAction SilentlyContinue)) {
+    throw "Meson was installed but is not on PATH"
+}
+Write-Host "  Found Meson: $((Get-Command meson).Source)" -ForegroundColor Green
 uv tool install --upgrade "yt-dlp[default]"
 uv sync --project "$PSScriptRoot\..\tests\ascii_chat_tests" --frozen --python 3.15 --managed-python
 if ($LASTEXITCODE -ne 0) { throw "Failed to sync the Python test project" }

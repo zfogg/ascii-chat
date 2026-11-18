@@ -24,6 +24,9 @@ set(SYSTEMD_SOURCE "${SYSTEMD_CACHE_DIR}/src")
 set(SYSTEMD_BUILD "${SYSTEMD_CACHE_DIR}/build")
 set(SYSTEMD_ARCHIVE "${SYSTEMD_CACHE_DIR}/systemd-${SYSTEMD_VERSION}.tar.gz")
 file(MAKE_DIRECTORY "${SYSTEMD_CACHE_DIR}")
+# Imported targets validate their interface include directories during CMake
+# generation. Meson creates this directory during install, so stage it up front.
+file(MAKE_DIRECTORY "${SYSTEMD_PREFIX}/include")
 
 if(NOT EXISTS "${SYSTEMD_ARCHIVE}")
     file(DOWNLOAD
@@ -53,9 +56,9 @@ ExternalProject_Add(asciichat-systemd-build
         LDFLAGS=${_systemd_ldflags}
         ${ASCIICHAT_MESON_EXECUTABLE} setup "${SYSTEMD_BUILD}" "${SYSTEMD_SOURCE}"
         --prefix=${SYSTEMD_PREFIX} --libdir=lib --buildtype=release
-        -Dmode=release -Dtests=false -Dman=false -Ddocs=false
-        -Dstatic-libsystemd=enabled -Dstatic-libsystemd-pic=enabled
-        -Dstatic-libudev=false -Dudev=false -Dnetworkd=false -Dresolve=false
+        -Dmode=release -Dtests=false -Dman=false
+        -Dstatic-libsystemd=pic
+        -Dstatic-libudev=false -Dnetworkd=false -Dresolve=false
         -Ddefault-hierarchy=unified
     BUILD_COMMAND ${ASCIICHAT_MESON_EXECUTABLE} compile -C "${SYSTEMD_BUILD}" libsystemd
     INSTALL_COMMAND ${ASCIICHAT_MESON_EXECUTABLE} install -C "${SYSTEMD_BUILD}"

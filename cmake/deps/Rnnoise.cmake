@@ -11,17 +11,7 @@ set(ASCIICHAT_RNNOISE_INSTALL_DIR "${CMAKE_BINARY_DIR}/rnnoise-install")
 # so create the empty staging directory up front as well.
 file(MAKE_DIRECTORY "${ASCIICHAT_RNNOISE_INSTALL_DIR}/include")
 
-find_program(ASCIICHAT_RNNOISE_SHELL NAMES bash sh
-    PATHS "C:/msys64/usr/bin" "C:/msys64/bin" NO_DEFAULT_PATH)
-if(NOT ASCIICHAT_RNNOISE_SHELL)
-    find_program(ASCIICHAT_RNNOISE_SHELL NAMES bash sh)
-endif()
-find_program(ASCIICHAT_RNNOISE_MAKE NAMES make gmake
-    PATHS "C:/msys64/usr/bin" "C:/msys64/bin" NO_DEFAULT_PATH)
-if(NOT ASCIICHAT_RNNOISE_MAKE)
-    find_program(ASCIICHAT_RNNOISE_MAKE NAMES make gmake)
-endif()
-if(NOT ASCIICHAT_RNNOISE_SHELL OR NOT ASCIICHAT_RNNOISE_MAKE)
+if(NOT ASCIICHAT_BASH_EXECUTABLE OR NOT ASCIICHAT_MAKE_EXECUTABLE)
     message(FATAL_ERROR "RNNoise requires bash/sh and make to follow its upstream autotools build")
 endif()
 
@@ -42,10 +32,10 @@ if(WIN32)
     set(_rnnoise_build_command
         "${CMAKE_COMMAND}" -E env
         "CFLAGS=-DM_PI=3.14159265358979323846"
-        "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
+        "${ASCIICHAT_MAKE_EXECUTABLE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
 else()
     set(_rnnoise_build_command
-        "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
+        "${ASCIICHAT_MAKE_EXECUTABLE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
 endif()
 
 ExternalProject_Add(asciichat-rnnoise-build
@@ -55,12 +45,12 @@ ExternalProject_Add(asciichat-rnnoise-build
         -DRNNOISE_SOURCE_DIR=${ASCIICHAT_RNNOISE_SOURCE_DIR}
         -DRNNOISE_BINARY_DIR=${ASCIICHAT_RNNOISE_BUILD_DIR}
         -DRNNOISE_INSTALL_DIR=${ASCIICHAT_RNNOISE_INSTALL_DIR}
-        -DRNNOISE_SHELL=${ASCIICHAT_RNNOISE_SHELL}
+        -DRNNOISE_SHELL=${ASCIICHAT_BASH_EXECUTABLE}
         -DRNNOISE_CC=${ASCIICHAT_CLANG_EXECUTABLE}
         -DRNNOISE_SHARED=OFF
         -P "${CMAKE_SOURCE_DIR}/cmake/utils/ConfigureRnnoise.cmake"
     BUILD_COMMAND ${_rnnoise_build_command}
-    INSTALL_COMMAND "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}" install
+    INSTALL_COMMAND "${ASCIICHAT_MAKE_EXECUTABLE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}" install
     BUILD_BYPRODUCTS "${_rnnoise_library}"
     BUILD_ALWAYS FALSE
     UPDATE_COMMAND ""
