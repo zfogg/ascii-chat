@@ -192,6 +192,7 @@ elseif(NOT BUILD_SHARED_LIBS OR USE_MUSL)
             ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB}
             crypt32
             Winmm
+            iphlpapi
         )
     endif()
 
@@ -211,6 +212,7 @@ elseif(BUILD_SHARED_LIBS AND NOT USE_MUSL)
             ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB}
             crypt32
             Winmm  # For timeBeginPeriod/timeEndPeriod
+            iphlpapi
             ${CORE_LIBS}
         )
         # Link BearSSL (required)

@@ -39,10 +39,14 @@ _asciichat_wrap_target(asciichat-zstd zstd::libzstd zstd::zstd)
 _asciichat_wrap_target(asciichat-libsodium asciichat-libsodium unofficial-sodium::sodium sodium)
 
 foreach(_target IN ITEMS
-    asciichat-libuv asciichat-alsa asciichat-portaudio asciichat-opus asciichat-fftw asciichat-fftw-float
+    asciichat-libuv asciichat-portaudio asciichat-opus asciichat-fftw asciichat-fftw-float
     asciichat-zstd asciichat-libsodium asciichat-rnnoise)
     target_link_libraries(asciichat-core-dependencies INTERFACE "${_target}")
 endforeach()
+
+if(TARGET asciichat-alsa)
+    target_link_libraries(asciichat-core-dependencies INTERFACE asciichat-alsa)
+endif()
 
 # Canonical dependency contract.  Each dependency module may use a native
 # imported target, a source-built target, or a package target internally; the

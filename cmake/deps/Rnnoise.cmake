@@ -17,6 +17,30 @@ endif()
 # so create the empty staging directory up front as well.
 file(MAKE_DIRECTORY "${ASCIICHAT_RNNOISE_INSTALL_DIR}/include")
 
+# The Windows development environment may provide Bash without the autotools
+# bootstrap tools (notably autoreconf). Build the vendored RNNoise sources
+# directly there; Unix/musl keeps the upstream autotools path below.
+if(WIN32)
+    set(_asciichat_rnnoise_sources
+        "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src/celt_lpc.c"
+        "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src/denoise.c"
+        "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src/kiss_fft.c"
+        "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src/pitch.c"
+        "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src/rnn.c"
+        "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src/rnn_data.c"
+        "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src/rnn_reader.c")
+    add_library(asciichat-rnnoise STATIC ${_asciichat_rnnoise_sources})
+    target_include_directories(asciichat-rnnoise PUBLIC
+        "${ASCIICHAT_RNNOISE_SOURCE_DIR}/include"
+        "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src")
+    target_compile_definitions(asciichat-rnnoise PRIVATE
+        RNNOISE_BUILD M_PI=3.14159265358979323846)
+    add_custom_target(ascii-chat-rnnoise-build)
+    add_dependencies(ascii-chat-rnnoise-build asciichat-rnnoise)
+    unset(_asciichat_rnnoise_sources)
+    return()
+endif()
+
 if(NOT ASCIICHAT_RNNOISE_SHELL)
     find_program(ASCIICHAT_RNNOISE_SHELL NAMES bash sh REQUIRED)
 endif()
