@@ -116,29 +116,20 @@ endif()
 # Determine if we should use shared library linking
 # - USE_MUSL: always static (musl requires static linking)
 # - Linux Release (non-musl): static FFmpeg .a can't link into shared lib (PIC issues on arm64)
-set(_use_shared_lib FALSE)
-if(NOT USE_MUSL)
-    if(BUILD_SHARED_LIBS OR CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
-        set(_use_shared_lib TRUE)
-    else()
-        set(_use_shared_lib FALSE)
-    endif()
-endif()
-
-if(NOT _use_shared_lib)
+if(NOT BUILD_SHARED_LIBS OR USE_MUSL)
     target_compile_definitions(ascii-chat PRIVATE BUILDING_STATIC_LIB)
 endif()
 
-if(NOT _use_shared_lib AND NOT USE_MUSL AND APPLE)
+if(NOT BUILD_SHARED_LIBS AND NOT USE_MUSL AND APPLE)
     # macOS Release executables statically link the project archive and its
     # dependencies. Keep ascii-chat-shared as a separate development artifact.
     add_dependencies(ascii-chat build-ascii-chat-static-lib generate_version)
     target_link_libraries(ascii-chat PRIVATE ascii-chat-static OpenSSL::SSL)
     set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
-elseif(NOT _use_shared_lib AND NOT USE_MUSL)
-    # Static release linking: link object libraries directly into executable
-    # Used on Linux Release non-musl (static FFmpeg .a can't go into .so)
-    # and Windows Release (fully static binary with all deps compiled in)
+elseif(NOT BUILD_SHARED_LIBS OR USE_MUSL)
+    # Static linking: link object libraries and the unified dependency
+    # interface directly into the executable. This covers Linux release,
+    # musl, and Windows release configurations.
     add_dependencies(ascii-chat generate_version)
     target_link_libraries(ascii-chat PRIVATE ascii-chat-runtime-objects)
     get_core_deps_libraries(CORE_LIBS)
@@ -203,7 +194,7 @@ elseif(NOT _use_shared_lib AND NOT USE_MUSL)
     endif()
 
     set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
-elseif(_use_shared_lib)
+elseif(BUILD_SHARED_LIBS AND NOT USE_MUSL)
     add_dependencies(ascii-chat ascii-chat-shared generate_version)
     target_link_libraries(ascii-chat PRIVATE ascii-chat-shared libplatform::libplatform libflags::flags)
 
@@ -653,7 +644,7 @@ if(WIN32)
 endif()
 # Check static linking for Release builds
 check_static_linking(ascii-chat)
-if((WIN32 OR APPLE) AND _use_shared_lib AND TARGET ascii-chat-shared)
+if((WIN32 OR APPLE) AND BUILD_SHARED_LIBS AND NOT USE_MUSL AND TARGET ascii-chat-shared)
     # The shared ABI library is shipped for developers; its third-party
     # dependencies must still be linked statically in a Release package.
     check_static_linking(ascii-chat-shared)
