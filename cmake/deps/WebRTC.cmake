@@ -4,8 +4,10 @@ if(EMSCRIPTEN)
 endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/SourceDependency.cmake)
+get_property(_asciichat_build_shared_libs CACHE BUILD_SHARED_LIBS PROPERTY VALUE)
 function(asciichat_build_aec3)
     asciichat_dependency_defaults()
+    set(BUILD_SHARED_LIBS "${_asciichat_build_shared_libs}")
     # The dependency patch and its child targets need the target architecture,
     # including Windows cross builds where the host processor is misleading.
     set(ASCIICHAT_TARGET_ARM64 OFF)
