@@ -104,7 +104,7 @@ endif()
 # module-owned targets here so static consumers cannot accidentally drop a
 # dependency merely because its old *_LIBRARIES variable was empty.
 foreach(_target IN ITEMS
-    asciichat-icu asciichat-ffmpeg asciichat-quic
+    asciichat-icu asciichat-ctoon asciichat-ffmpeg asciichat-quic
     asciichat-ngtcp2 ngtcp2 ngtcp2_static ngtcp2_crypto_ossl_static
     asciichat-nghttp3 nghttp3 asciichat-gotel
     gotel::gotel gotel asciichat-gotel-pcre2 asciichat-gotel-sqlite
