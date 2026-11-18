@@ -449,6 +449,7 @@ if(USE_MUSL)
 
     # Create a custom target for musl builds (libraries are pre-built/cached)
     add_custom_target(openssl-musl)
+    set(OPENSSL_FOUND TRUE)
 
     return()
 endif()
