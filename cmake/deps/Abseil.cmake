@@ -53,6 +53,7 @@ if(UNIX AND NOT APPLE)
         find_package(absl CONFIG QUIET
             PATHS
                 "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/cmake"
+                "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/cmake/absl"
                 "/usr/lib/cmake"
                 "/usr/local/lib/cmake"
             NO_DEFAULT_PATH)
