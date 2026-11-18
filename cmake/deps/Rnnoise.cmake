@@ -62,6 +62,9 @@ if(WIN32)
         "MSYS_NO_PATHCONV=1"
         "${ASCIICHAT_MAKE_EXECUTABLE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
 else()
+    if(NOT ASCIICHAT_RNNOISE_MAKE)
+        find_program(ASCIICHAT_RNNOISE_MAKE make REQUIRED)
+    endif()
     set(_rnnoise_build_command
         "${ASCIICHAT_MAKE_EXECUTABLE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
 endif()
