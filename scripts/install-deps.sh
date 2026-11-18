@@ -2,12 +2,11 @@
 # Install dependencies for ascii-chat
 #
 # This script handles platform-specific dependency installation:
-# - macOS: Uses Homebrew
+# - macOS: Uses Homebrew by default
 # - Linux: Uses apt-get, yum, or pacman
 # - Windows: Directs to install-deps.ps1
 #
-# Usage:
-#   ./install-deps.sh
+# Use --homebrew to use Homebrew on a non-macOS platform.
 
 set -e
 
@@ -31,15 +30,20 @@ run_git_as_user() {
 
 # Parse arguments
 DANGEROUSLY_DELETE_CONFLICTS=false
+USE_HOMEBREW=false
 for arg in "$@"; do
   case $arg in
     --dangerously-delete-conflicts)
       DANGEROUSLY_DELETE_CONFLICTS=true
       ;;
+    --homebrew)
+      USE_HOMEBREW=true
+      ;;
     --help|-h)
-      echo "Usage: $0 [--dangerously-delete-conflicts]"
+      echo "Usage: $0 [--homebrew] [--dangerously-delete-conflicts]"
       echo ""
       echo "Options:"
+      echo "  --homebrew                     Use Homebrew regardless of platform"
       echo "  --dangerously-delete-conflicts  Delete conflicting binaries in /usr/bin"
       echo "                                  (requires CI=true environment variable)"
       exit 0
@@ -119,15 +123,19 @@ verify_llvm_for_defer() {
   "$llvm_config" --libs support --system-libs >/dev/null
 }
 
-# macOS: Use Homebrew
-if [[ "$PLATFORM" == "macos" ]]; then
+# macOS: Use Homebrew by default; --homebrew enables it on other platforms.
+if [[ "$PLATFORM" == "macos" || "$USE_HOMEBREW" == "true" ]]; then
   if ! command -v brew &>/dev/null; then
     echo >&2 "ERROR: Homebrew not found"
     echo >&2 "Please install Homebrew from https://brew.sh"
     exit 1
   fi
 
-  echo "Installing dependencies via Homebrew..."
+  if [[ "$PLATFORM" == "macos" ]]; then
+    echo "Installing dependencies via Homebrew..."
+  else
+    echo "Installing dependencies via Homebrew (--homebrew)..."
+  fi
 
   # Install packages - completely ignore all errors since many are already installed
   # GitHub runners have pre-installed packages with version conflicts that can't be resolved
@@ -520,7 +528,7 @@ fi
 # go.mod. On older distributions, use Go's versioned toolchain launcher in
 # the configured GOBIN (or GOPATH/bin) without replacing the system Go.
 if ! command -v go >/dev/null 2>&1; then
-  if [[ "$PLATFORM" == "macos" ]]; then
+  if [[ "$PLATFORM" == "macos" || "$USE_HOMEBREW" == "true" ]]; then
     brew install go
   elif command -v apt-get >/dev/null 2>&1; then
     apt-get install -y golang-go
