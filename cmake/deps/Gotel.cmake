@@ -157,15 +157,40 @@ if(NOT USE_MUSL)
     # it when present; otherwise the gRPC subproject populates the pinned
     # source checkout below.
     find_package(nghttp2 CONFIG QUIET)
-    if(TARGET nghttp2::nghttp2)
-        set(GOTEL_NGHTTP2_TARGET nghttp2::nghttp2 CACHE STRING
-            "Existing nghttp2 target for gotel gRPC" FORCE)
-    elseif(TARGET nghttp2)
-        set(GOTEL_NGHTTP2_TARGET nghttp2 CACHE STRING
-            "Existing nghttp2 target for gotel gRPC" FORCE)
-    elseif(TARGET nghttp2_static)
-        set(GOTEL_NGHTTP2_TARGET nghttp2_static CACHE STRING
-            "Existing nghttp2 target for gotel gRPC" FORCE)
+    set(_asciichat_nghttp2_vcpkg_root
+        "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
+    if(NOT EXISTS "${_asciichat_nghttp2_vcpkg_root}")
+        set(_asciichat_nghttp2_vcpkg_root
+            "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
+    endif()
+    if(EXISTS "${_asciichat_nghttp2_vcpkg_root}")
+        unset(_asciichat_nghttp2_include_dir CACHE)
+        unset(_asciichat_nghttp2_release_library CACHE)
+        unset(_asciichat_nghttp2_debug_library CACHE)
+        find_path(_asciichat_nghttp2_include_dir NAMES nghttp2/nghttp2.h
+            PATHS "${_asciichat_nghttp2_vcpkg_root}/include" NO_DEFAULT_PATH)
+        find_library(_asciichat_nghttp2_release_library NAMES nghttp2
+            PATHS "${_asciichat_nghttp2_vcpkg_root}/lib" NO_DEFAULT_PATH)
+        find_library(_asciichat_nghttp2_debug_library NAMES nghttp2 nghttp2d
+            PATHS "${_asciichat_nghttp2_vcpkg_root}/debug/lib" NO_DEFAULT_PATH)
+        if(_asciichat_nghttp2_include_dir AND
+           _asciichat_nghttp2_release_library AND
+           _asciichat_nghttp2_debug_library)
+            if(NOT TARGET asciichat-vcpkg-nghttp2)
+                add_library(asciichat-vcpkg-nghttp2 UNKNOWN IMPORTED GLOBAL)
+                set_target_properties(asciichat-vcpkg-nghttp2 PROPERTIES
+                INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_nghttp2_include_dir}"
+                IMPORTED_CONFIGURATIONS "DEBUG;RELEASE"
+                MAP_IMPORTED_CONFIG_DEV DEBUG
+                MAP_IMPORTED_CONFIG_RELWITHDEBINFO RELEASE
+                IMPORTED_LOCATION_DEBUG "${_asciichat_nghttp2_debug_library}"
+                IMPORTED_LOCATION_RELEASE "${_asciichat_nghttp2_release_library}"
+                IMPORTED_IMPLIB_DEBUG "${_asciichat_nghttp2_debug_library}"
+                IMPORTED_IMPLIB_RELEASE "${_asciichat_nghttp2_release_library}")
+            endif()
+            set(GOTEL_NGHTTP2_TARGET asciichat-vcpkg-nghttp2 CACHE STRING
+                "Existing nghttp2 target for gotel gRPC" FORCE)
+        endif()
     endif()
 endif()
 
@@ -187,6 +212,8 @@ elseif(TARGET nghttp2)
     set(_asciichat_nghttp2_target nghttp2)
 elseif(TARGET nghttp2::nghttp2)
     set(_asciichat_nghttp2_target nghttp2::nghttp2)
+elseif(TARGET asciichat-vcpkg-nghttp2)
+    set(_asciichat_nghttp2_target asciichat-vcpkg-nghttp2)
 endif()
 if(NOT _asciichat_nghttp2_target)
     message(FATAL_ERROR "Gotel requires its cache-backed nghttp2 target")
