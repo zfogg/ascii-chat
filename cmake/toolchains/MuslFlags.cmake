@@ -7,6 +7,11 @@ set(ASCIICHAT_MUSL_TARGET_FLAG "--target=${MUSL_TARGET}" CACHE INTERNAL
 
 # Used by the toolchain and source dependencies after runtime/header staging.
 function(asciichat_musl_compile_flags c_flags cxx_flags)
+    set(_asciichat_alpine_libcxx_include "${ALPINE_LIBCXX_INCLUDE_DIR}")
+    if(NOT _asciichat_alpine_libcxx_include AND ASCIICHAT_DEPS_CACHE_DIR)
+        set(_asciichat_alpine_libcxx_include
+            "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libcxx/usr/include/c++/v1")
+    endif()
     set(_asciichat_kernel_headers_dir "${KERNEL_HEADERS_DIR}")
     if(NOT _asciichat_kernel_headers_dir AND ASCIICHAT_DEPS_CACHE_DIR)
         set(_asciichat_kernel_headers_dir "${ASCIICHAT_DEPS_CACHE_DIR}/musl/kernel-headers")
@@ -40,7 +45,7 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
     # Keep host glibc headers out of C++ dependency builds as well.  libc++
     # must see the staged musl headers exclusively; otherwise a host
     # __mbstate_t declaration can precede musl's and make x265 fail to compile.
-    set(_cxx "-nostdinc -fno-lto -ftls-model=global-dynamic -fPIC")
+    set(_cxx "-fno-lto -ftls-model=global-dynamic -fPIC")
     if(_asciichat_gcc_toolchain)
         string(APPEND _cxx " -nostdinc -nostdinc++"
             " -isystem ${MUSL_GCC_BUILTIN_INCLUDE_DIR}"
@@ -53,7 +58,6 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
         # Clang otherwise appends the host multiarch C headers after the
         # target triple's search path.  Keep libc++ headers enabled while
         # making musl the only C-library header provider.
-        string(APPEND _cxx " -nostdlibinc")
     endif()
     if(_asciichat_kernel_headers_dir)
         string(APPEND _cxx " -isystem ${_asciichat_kernel_headers_dir}")
@@ -63,10 +67,10 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
     # Keep libc++ selected for the project, but avoid noisy diagnostics from
     # those dependency compile commands.
     if(NOT _asciichat_gcc_toolchain)
-        string(APPEND _cxx " -stdlib=libc++ -nostdinc++ -Wno-unused-command-line-argument")
+        string(APPEND _cxx " -stdlib=libc++ -Wno-unused-command-line-argument")
     endif()
-    if(ALPINE_LIBCXX_INCLUDE_DIR AND NOT _asciichat_gcc_toolchain)
-        string(APPEND _cxx " -isystem ${ALPINE_LIBCXX_INCLUDE_DIR} -D_LIBCPP_HAS_MUSL_LIBC=1")
+    if(_asciichat_alpine_libcxx_include AND NOT _asciichat_gcc_toolchain)
+        string(APPEND _cxx " -isystem ${_asciichat_alpine_libcxx_include} -D_LIBCPP_HAS_MUSL_LIBC=1")
     else()
         # The musl platform setup supplies the Alpine libc++ headers after
         # the toolchain initializes. Never seed a musl command with the host
