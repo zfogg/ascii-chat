@@ -7,6 +7,10 @@ set(ASCIICHAT_MUSL_TARGET_FLAG "--target=${MUSL_TARGET}" CACHE INTERNAL
 
 # Used by the toolchain and source dependencies after runtime/header staging.
 function(asciichat_musl_compile_flags c_flags cxx_flags)
+    set(_asciichat_kernel_headers_dir "${KERNEL_HEADERS_DIR}")
+    if(NOT _asciichat_kernel_headers_dir AND ASCIICHAT_DEPS_CACHE_DIR)
+        set(_asciichat_kernel_headers_dir "${ASCIICHAT_DEPS_CACHE_DIR}/musl/kernel-headers")
+    endif()
     set(_c "-fno-lto -ftls-model=global-dynamic -fPIC")
     set(_asciichat_gcc_toolchain FALSE)
     if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
@@ -26,14 +30,17 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
         endif()
         string(APPEND _c " -nostdlibinc -isystem ${_asciichat_clang_resource_dir}/include -isystem ${MUSL_INCLUDE_DIR}")
     endif()
-    if(KERNEL_HEADERS_DIR)
-        string(APPEND _c " -isystem ${KERNEL_HEADERS_DIR}")
+    if(_asciichat_kernel_headers_dir)
+        string(APPEND _c " -isystem ${_asciichat_kernel_headers_dir}")
     endif()
     # C++ must retain the compiler's standard-library include directories. For
     # GCC, -nostdinc would hide libstdc++ headers such as <string>; only the C
     # compiler needs the strict musl header isolation above. Put musl headers
     # after the C++ implementation headers instead.
-    set(_cxx "-fno-lto -ftls-model=global-dynamic -fPIC")
+    # Keep host glibc headers out of C++ dependency builds as well.  libc++
+    # must see the staged musl headers exclusively; otherwise a host
+    # __mbstate_t declaration can precede musl's and make x265 fail to compile.
+    set(_cxx "-nostdinc -fno-lto -ftls-model=global-dynamic -fPIC")
     if(_asciichat_gcc_toolchain)
         string(APPEND _cxx " -nostdinc -nostdinc++"
             " -isystem ${MUSL_GCC_BUILTIN_INCLUDE_DIR}"
@@ -48,8 +55,8 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
         # making musl the only C-library header provider.
         string(APPEND _cxx " -nostdlibinc -isystem ${MUSL_INCLUDE_DIR}")
     endif()
-    if(KERNEL_HEADERS_DIR)
-        string(APPEND _cxx " -idirafter ${KERNEL_HEADERS_DIR}")
+    if(_asciichat_kernel_headers_dir)
+        string(APPEND _cxx " -isystem ${_asciichat_kernel_headers_dir}")
     endif()
     # Some third-party C++ targets inherit the musl flags while selecting a
     # non-libc++ standard library; Clang then reports -stdlib as unused.
@@ -59,7 +66,7 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
         string(APPEND _cxx " -stdlib=libc++ -nostdinc++ -Wno-unused-command-line-argument")
     endif()
     if(ALPINE_LIBCXX_INCLUDE_DIR AND NOT _asciichat_gcc_toolchain)
-        string(APPEND _cxx " -isystem ${ALPINE_LIBCXX_INCLUDE_DIR}")
+        string(APPEND _cxx " -isystem ${ALPINE_LIBCXX_INCLUDE_DIR} -D_LIBCPP_HAS_MUSL_LIBC=1")
     else()
         string(APPEND _cxx " -isystem /usr/include/c++/v1 -D_LIBCPP_HAS_MUSL_LIBC=1 -D_LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE=1")
     endif()

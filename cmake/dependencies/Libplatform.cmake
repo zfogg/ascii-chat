@@ -47,6 +47,9 @@ endif()
 # the target-only headers explicitly for musl and POSIX support files.
 foreach(_libplatform_compile_target IN ITEMS libplatform libplatform-objects)
     if(TARGET ${_libplatform_compile_target})
+        if(USE_MUSL)
+            target_compile_definitions(${_libplatform_compile_target} PRIVATE USE_MUSL=1)
+        endif()
         if(DEFINED KERNEL_HEADERS_DIR AND EXISTS "${KERNEL_HEADERS_DIR}")
             target_include_directories(${_libplatform_compile_target} PRIVATE
                 "${KERNEL_HEADERS_DIR}")

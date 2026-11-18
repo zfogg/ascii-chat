@@ -33,6 +33,12 @@ endif()
 # Kernel headers for musl (needed for ALSA, V4L2, etc.)
 # =============================================================================
 set(KERNEL_HEADERS_DIR "${MUSL_DEPS_DIR_STATIC}/kernel-headers")
+# The toolchain is loaded before this module, so dependency subprojects that
+# consume the global C/C++ flags would otherwise miss the staged kernel
+# headers.  Keep the explicit path in both language flag sets after the cache
+# location is known.
+string(APPEND CMAKE_C_FLAGS " -isystem ${KERNEL_HEADERS_DIR}")
+string(APPEND CMAKE_CXX_FLAGS " -isystem ${KERNEL_HEADERS_DIR}")
 
 # Find and copy kernel headers if needed
 set(_asciichat_kernel_header_found FALSE)
