@@ -38,6 +38,7 @@ endif()
 # =============================================================================
 if(USE_MUSL)
     message(STATUS "Configuring ${BoldBlue}x264${ColorReset} from source (musl)...")
+    include(ExternalProject)
 
     set(X264_PREFIX "${MUSL_DEPS_DIR_STATIC}/x264")
     set(X264_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/x264-build")
@@ -97,20 +98,17 @@ if(USE_MUSL)
             endif()
         endif()
 
-        # Build x264 with musl
-        message(STATUS "  Configuring x264...")
-
         include(ProcessorCount)
         ProcessorCount(NPROC)
         if(NPROC EQUAL 0)
             set(NPROC 4)
         endif()
 
-        # x264 uses autotools — pass the selected Clang target compiler
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} -E env
-                CC=${ASCIICHAT_CLANG_EXECUTABLE}
-                CFLAGS=${MUSL_KERNEL_CFLAGS}\ -fPIC
+        ExternalProject_Add(asciichat-x264-musl
+            SOURCE_DIR "${X264_SOURCE_DIR}"
+            CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env
+                "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
+                "CFLAGS=${MUSL_KERNEL_CFLAGS} -fPIC"
                 "${X264_SOURCE_DIR}/configure"
                 --prefix=${X264_PREFIX}
                 --enable-static
@@ -125,40 +123,13 @@ if(USE_MUSL)
                 --disable-ffms
                 --disable-gpac
                 --disable-lsmash
-            WORKING_DIRECTORY "${X264_SOURCE_DIR}"
-            RESULT_VARIABLE CONFIG_RESULT
-            OUTPUT_VARIABLE CONFIG_OUTPUT
-            ERROR_VARIABLE CONFIG_ERROR
-        )
-        if(NOT CONFIG_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to configure x264:\n${CONFIG_OUTPUT}\n${CONFIG_ERROR}")
-        endif()
-
-        message(STATUS "  Building x264...")
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} -E env CC=${ASCIICHAT_CLANG_EXECUTABLE} make -j${NPROC}
-            WORKING_DIRECTORY "${X264_SOURCE_DIR}"
-            RESULT_VARIABLE BUILD_RESULT
-            OUTPUT_VARIABLE BUILD_OUTPUT
-            ERROR_VARIABLE BUILD_ERROR
-        )
-        if(NOT BUILD_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to build x264:\n${BUILD_OUTPUT}\n${BUILD_ERROR}")
-        endif()
-
-        message(STATUS "  Installing x264...")
-        execute_process(
-            COMMAND make install
-            WORKING_DIRECTORY "${X264_SOURCE_DIR}"
-            RESULT_VARIABLE INSTALL_RESULT
-            OUTPUT_VARIABLE INSTALL_OUTPUT
-            ERROR_VARIABLE INSTALL_ERROR
-        )
-        if(NOT INSTALL_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to install x264:\n${INSTALL_ERROR}")
-        endif()
-
-        message(STATUS "  ${BoldGreen}x264${ColorReset} built and installed successfully")
+            BUILD_COMMAND ${CMAKE_COMMAND} -E env
+                "CC=${ASCIICHAT_CLANG_EXECUTABLE}" make -j${NPROC}
+            INSTALL_COMMAND make install
+            BUILD_BYPRODUCTS "${X264_PREFIX}/lib/libx264.a"
+            LOG_CONFIGURE TRUE LOG_BUILD TRUE LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE)
+        message(STATUS "  ${BoldGreen}x264${ColorReset} build scheduled through ExternalProject")
     else()
         message(STATUS "  ${BoldGreen}x264${ColorReset} library found in cache: ${BoldMagenta}${X264_PREFIX}/lib/libx264.a${ColorReset}")
     endif()
@@ -171,6 +142,9 @@ if(USE_MUSL)
             IMPORTED_LOCATION "${X264_PREFIX}/lib/libx264.a"
             INTERFACE_INCLUDE_DIRECTORIES "${X264_PREFIX}/include"
         )
+    endif()
+    if(TARGET asciichat-x264-musl)
+        add_dependencies(x264::x264 asciichat-x264-musl)
     endif()
 
     if(NOT TARGET asciichat-x264)
