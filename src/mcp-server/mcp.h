@@ -96,6 +96,7 @@ yyjson_mut_doc *mcp_dispatch(mcp_server_t *server, yyjson_doc *message, void *co
 yyjson_mut_doc *mcp_error(yyjson_val *id, int code, const char *message);
 void mcp_jobs_reap(mcp_server_t *server, bool all);
 void mcp_stdio_send(mcp_server_t *server, yyjson_mut_doc *response);
+char *mcp_response_encode_toon(yyjson_mut_doc *response, size_t *length);
 asciichat_error_t mcp_stdio_run(mcp_server_t *server);
 asciichat_error_t mcp_http_run(mcp_server_t *server);
 void mcp_http_wake(mcp_server_t *server);

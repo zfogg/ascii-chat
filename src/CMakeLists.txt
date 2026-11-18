@@ -77,7 +77,7 @@ endif()
 if(WIN32)
     target_link_libraries(ascii-chat PRIVATE shell32)
 endif()
-target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LIBUV_TARGET} ${YYJSON_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
+target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LIBUV_TARGET} ${YYJSON_LIBRARIES} ${CTOON_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} ${LIBSODIUM_LIBRARIES})
 target_link_libraries(ascii-chat PRIVATE libflags::flags)
 target_link_libraries(ascii-chat PRIVATE asciichat-rnnoise)
 target_include_directories(ascii-chat PRIVATE ${YYJSON_INCLUDE_DIRS})
@@ -523,6 +523,15 @@ if(USE_MIMALLOC)
     endif()
     if(TARGET mimalloc-shared)
         add_dependencies(ascii-chat mimalloc-shared)
+    endif()
+
+    # Static mimalloc must appear after the object/static libraries that use
+    # it.  The dependency graph can otherwise place the archive first and
+    # lld will discard it before seeing the mi_* references.
+    if(NOT MIMALLOC_IS_SHARED_LIB AND MIMALLOC_LIBRARIES)
+        target_link_libraries(ascii-chat PRIVATE
+            "$<LINK_GROUP:RESCAN,${MIMALLOC_LIBRARIES}>"
+        )
     endif()
 endif()
 

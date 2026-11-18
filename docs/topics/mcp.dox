@@ -6,7 +6,7 @@
  *
  * # MCP rendering server
  *
- * `ascii-chat mcp-server` exposes four rendering tools over newline-delimited JSON-RPC on stdio. It runs through the ordinary application initialization, options, logging, error-stack and diagnostic workers. Both transports automatically skip startup update checks. Protocol stdout is reserved before initialization; incidental terminal diagnostics go to stderr.
+ * `ascii-chat mcp-server` exposes four rendering tools over newline-delimited JSON-RPC on stdio. Requests remain JSON-RPC, while responses are serialized as UTF-8 TOON. It runs through the ordinary application initialization, options, logging, error-stack and diagnostic workers. Both transports automatically skip startup update checks. Protocol stdout is reserved before initialization; incidental terminal diagnostics go to stderr.
  *
  * `ascii-chat mcp-server --transport http` serves all five tools at `/mcp` using MCP Streamable HTTP and libwebsockets. The default listener is `127.0.0.1:27228`, following the native TCP and WebSocket defaults (27224–27227). Override it with `--port`, `ASCII_CHAT_PORT`, `--address`, `--address6`, or the existing zero-to-two positional IPv4/IPv6 bind addresses. For service installation on Linux, see @ref systemd_mcp. Examples:
  *
@@ -18,7 +18,7 @@
  *
  * The shared `--tls-cert`, `--tls-key`, and `--tls-key-password` options configure HTTPS for this HTTP listener too. `--port-forwarding` maps the HTTP port with the existing UPnP implementation. Concurrent render jobs default to the number of CPUs available to the process; `--max-clients` can set a lower limit. HTTP status uses the shared terminal controller and log viewer, including error popups and debug controls. Debug builds retain `--sync-state`, `--backtrace`, and memory diagnostics. Stdio does not consume terminal keys: stdin is the protocol stream.
  *
- * For mcp.ascii-chat.com, terminate HTTPS and enforce rate/body/concurrency limits at a reverse proxy. The configured browser Origin defaults to `https://mcp.ascii-chat.com`; change it with `--http-origin`. Requests without Origin are accepted for native MCP clients. The implementation uses stateless JSON responses; POST to `/mcp` handles requests and notifications, while GET/DELETE on `/mcp` return 405. In restricted HTTP mode, GET `/downloads/<name>` serves temporary exports. It supports MCP versions 2025-03-26, 2025-06-18, and 2025-11-25. Clients send Accept including application/json and text/event-stream.
+ * For mcp.ascii-chat.com, terminate HTTPS and enforce rate/body/concurrency limits at a reverse proxy. The configured browser Origin defaults to `https://mcp.ascii-chat.com`; change it with `--http-origin`. Requests without Origin are accepted for native MCP clients. POST to `/mcp` handles JSON-RPC requests and notifications, while GET/DELETE on `/mcp` return 405. HTTP responses use `Content-Type: text/toon; charset=utf-8`; clients send JSON requests and Accept including `text/toon` and `text/event-stream`. In restricted HTTP mode, GET `/downloads/<name>` serves temporary exports. It supports MCP versions 2025-03-26, 2025-06-18, and 2025-11-25.
  *
  * ## Tools
  *

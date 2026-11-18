@@ -62,7 +62,7 @@ static void shared_http_wakeup(void *user_data) {
       yyjson_mut_obj_add_val(j->response, root, "error", error);
     }
     size_t length = 0;
-    char *body = yyjson_mut_write(j->response, 0, &length);
+    char *body = mcp_response_encode_toon(j->response, &length);
     if (body) {
       (void)http_response_set_status(response, 200);
       (void)http_response_write(response, body, length);
@@ -145,13 +145,17 @@ static void shared_http_request(http_request_t *request, http_response_t *respon
     shared_http_finish(response, 405);
     return;
   }
+  if (http_response_set_header(response, "Content-Type", "text/toon; charset=utf-8") != ASCIICHAT_OK) {
+    shared_http_finish(response, 500);
+    return;
+  }
   const char *type = shared_header(info, "content-type");
   if (!type || strncmp(type, "application/json", sizeof("application/json") - 1)) {
     shared_http_finish(response, 415);
     return;
   }
   const char *accept = shared_header(info, "accept");
-  if (!accept || !strstr(accept, "application/json") || !strstr(accept, "text/event-stream")) {
+  if (!accept || !strstr(accept, "text/toon") || !strstr(accept, "text/event-stream")) {
     shared_http_finish(response, 406);
     return;
   }
@@ -165,7 +169,7 @@ static void shared_http_request(http_request_t *request, http_response_t *respon
   yyjson_doc *doc = body ? yyjson_read(body, length, 0) : NULL;
   if (!doc) {
     yyjson_mut_doc *error = mcp_error(NULL, -32700, "Parse error");
-    char *encoded = yyjson_mut_write(error, 0, &length);
+    char *encoded = mcp_response_encode_toon(error, &length);
     yyjson_mut_doc_free(error);
     if (encoded) {
       (void)http_response_write(response, encoded, length);
@@ -215,7 +219,7 @@ static void shared_http_request(http_request_t *request, http_response_t *respon
   }
   size_t encoded_length = 0;
   bool has_reply = reply != NULL;
-  char *encoded = reply ? yyjson_mut_write(reply, 0, &encoded_length) : NULL;
+  char *encoded = reply ? mcp_response_encode_toon(reply, &encoded_length) : NULL;
   if (reply)
     yyjson_mut_doc_free(reply);
   if (encoded) {

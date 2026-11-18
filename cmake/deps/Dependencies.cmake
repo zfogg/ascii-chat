@@ -111,6 +111,9 @@ configure_mdns()
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Yyjson.cmake)
 configure_yyjson()
 
+# CToon - TOON response serialization for the MCP transports
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Ctoon.cmake)
+
 # Configure the shared libplatform target before libflags.  libflags must
 # reuse this target rather than creating a second copy of libplatform inside
 # its FetchContent build tree.

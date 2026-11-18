@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctoon.h>
 
 static int protocol_fd = -1;
 asciichat_error_t mcp_stdio_reserve(void) {
@@ -16,15 +17,29 @@ void mcp_stdio_release(void) {
     protocol_fd = -1;
   }
 }
-void mcp_stdio_send(mcp_server_t *s, yyjson_mut_doc *response) {
-  size_t size;
-  char *json = yyjson_mut_write(response, 0, &size);
+char *mcp_response_encode_toon(yyjson_mut_doc *response, size_t *length) {
+  size_t json_length = 0;
+  char *json = yyjson_mut_write(response, 0, &json_length);
   if (!json)
+    return NULL;
+  ctoon_doc *doc = ctoon_read_json_const(json, json_length, CTOON_READ_NOFLAG);
+  free(json);
+  if (!doc)
+    return NULL;
+  char *toon = ctoon_write(doc, length);
+  ctoon_doc_free(doc);
+  return toon;
+}
+
+void mcp_stdio_send(mcp_server_t *s, yyjson_mut_doc *response) {
+  size_t size = 0;
+  char *toon = mcp_response_encode_toon(response, &size);
+  if (!toon)
     return;
   mutex_lock(&s->output_mutex);
-  bool ok = platform_write_all(protocol_fd, json, size) == size && platform_write_all(protocol_fd, "\n", 1) == 1;
+  bool ok = platform_write_all(protocol_fd, toon, size) == size && platform_write_all(protocol_fd, "\n", 1) == 1;
   mutex_unlock(&s->output_mutex);
-  free(json); // yyjson owns allocations made by its default allocator.
+  free(toon);
   if (!ok)
     atomic_store_bool(&s->stopping, true);
 }
