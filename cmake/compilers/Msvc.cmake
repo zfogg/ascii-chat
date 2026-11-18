@@ -2,6 +2,17 @@ include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/Common.cmake")
 
 function(configure_msvc_pre_project)
+    if(CMAKE_GENERATOR_PLATFORM MATCHES "^(ARM64|arm64)$")
+        set(_msvc_target_arch arm64)
+    elseif(CMAKE_GENERATOR_PLATFORM MATCHES "^(ARM|arm)$")
+        set(_msvc_target_arch arm)
+    elseif(CMAKE_GENERATOR_PLATFORM MATCHES "^(Win32|x86)$")
+        set(_msvc_target_arch x86)
+    else()
+        set(_msvc_target_arch x64)
+    endif()
+    set(_msvc_host_arch x64)
+
     # Keep the application and static third-party libraries on the same CRT.
     # The x64-windows-static dependency graph uses the static CRT, so use /MT
     # for every native MSVC configuration as well.
@@ -28,7 +39,9 @@ function(configure_msvc_pre_project)
     if(_vswhere)
         execute_process(COMMAND "${_vswhere}" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath OUTPUT_VARIABLE _vs_root OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
     endif()
-    file(GLOB _cl_candidates "C:/Program Files/Microsoft Visual Studio/*/*/VC/Tools/MSVC/*/bin/Hostx64/x64/cl.exe" "C:/Program Files (x86)/Microsoft Visual Studio/*/*/VC/Tools/MSVC/*/bin/Hostx64/x64/cl.exe")
+    file(GLOB _cl_candidates
+        "C:/Program Files/Microsoft Visual Studio/*/*/VC/Tools/MSVC/*/bin/Host${_msvc_host_arch}/${_msvc_target_arch}/cl.exe"
+        "C:/Program Files (x86)/Microsoft Visual Studio/*/*/VC/Tools/MSVC/*/bin/Host${_msvc_host_arch}/${_msvc_target_arch}/cl.exe")
     if(NOT _cl_candidates)
         message(FATAL_ERROR "MSVC was selected but cl.exe was not found. Install the Visual C++ workload.")
     endif()
@@ -60,8 +73,8 @@ function(configure_msvc_pre_project)
     if(NOT EXISTS "${_vcvarsall}")
         message(FATAL_ERROR "MSVC installation was found, but vcvarsall.bat is missing: ${_vcvarsall}")
     endif()
-    file(GLOB _kits_lib "C:/Program Files (x86)/Windows Kits/10/Lib/*/um/x64")
-    file(GLOB _kits_ucrt "C:/Program Files (x86)/Windows Kits/10/Lib/*/ucrt/x64")
+    file(GLOB _kits_lib "C:/Program Files (x86)/Windows Kits/10/Lib/*/um/${_msvc_target_arch}")
+    file(GLOB _kits_ucrt "C:/Program Files (x86)/Windows Kits/10/Lib/*/ucrt/${_msvc_target_arch}")
     file(GLOB _kits_include "C:/Program Files (x86)/Windows Kits/10/Include/*")
     list(SORT _kits_lib COMPARE NATURAL ORDER DESCENDING)
     list(SORT _kits_ucrt COMPARE NATURAL ORDER DESCENDING)
@@ -81,7 +94,7 @@ function(configure_msvc_pre_project)
         "${_kit_include}/cppwinrt"
         CACHE INTERNAL "MSVC and Windows SDK include directories")
     set(ASCIICHAT_MSVC_LIBRARY_DIRS
-        "${_msvc_version}/lib/x64" "${_kit_ucrt}" "${_kit_um}"
+        "${_msvc_version}/lib/${_msvc_target_arch}" "${_kit_ucrt}" "${_kit_um}"
         CACHE INTERNAL "MSVC and Windows SDK library directories")
     message(STATUS "Using MSVC toolchain: ${CMAKE_C_COMPILER}")
 endfunction()
