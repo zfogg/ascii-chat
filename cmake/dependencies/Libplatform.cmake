@@ -49,6 +49,12 @@ if(NOT TARGET libplatform)
         EXCLUDE_FROM_ALL)
 endif()
 
+if(NOT TARGET libplatform::libplatform)
+    message(FATAL_ERROR "libplatform did not provide its required libplatform::libplatform target")
+endif()
+set(ASCIICHAT_LIBPLATFORM_TARGET libplatform::libplatform CACHE INTERNAL
+    "Imported libplatform target used by ascii-chat")
+
 unset(_ascii_chat_libplatform_shared)
 unset(_ascii_chat_libplatform_source)
 unset(_ascii_chat_libplatform_build)

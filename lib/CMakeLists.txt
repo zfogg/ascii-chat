@@ -405,7 +405,7 @@ list(FILTER _runtime_sources INCLUDE REGEX "${_core_runtime_regex}")
 list(APPEND _runtime_sources ${LIB_DIR}/video/ascii/palette.c)
 create_ascii_chat_module(ascii-chat-runtime "${_runtime_sources}")
 
-target_link_libraries(ascii-chat-runtime INTERFACE libplatform::libplatform)
+target_link_libraries(ascii-chat-runtime INTERFACE ${ASCIICHAT_LIBPLATFORM_TARGET})
 target_include_directories(ascii-chat-runtime INTERFACE
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/lib
@@ -1057,7 +1057,7 @@ add_library(ascii-chat-shared SHARED
     )
     # Consumers of the shared object also call platform APIs directly (tests,
     # tooling, and small probes), so keep libplatform transitively visible.
-    target_link_libraries(ascii-chat-shared PUBLIC libplatform::libplatform)
+target_link_libraries(ascii-chat-shared PUBLIC ${ASCIICHAT_LIBPLATFORM_TARGET})
     if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
     endif()
@@ -1712,7 +1712,7 @@ add_dependencies(ascii-chat-static-lib build-ascii-chat-static-lib)
 # Create an INTERFACE library for dependency propagation
 # (IMPORTED libraries can't have INTERFACE_LINK_LIBRARIES in older CMake)
 add_library(ascii-chat-static INTERFACE)
-target_link_libraries(ascii-chat-static INTERFACE libplatform::libplatform ${UTF8PROC_LIBRARIES} asciichat-icu ascii-chat-rnnoise)
+target_link_libraries(ascii-chat-static INTERFACE ${ASCIICHAT_LIBPLATFORM_TARGET} ${UTF8PROC_LIBRARIES} asciichat-icu ascii-chat-rnnoise)
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-static INTERFACE asciichat-quic)
 endif()

@@ -196,7 +196,7 @@ elseif(NOT BUILD_SHARED_LIBS OR USE_MUSL)
     set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
 elseif(BUILD_SHARED_LIBS AND NOT USE_MUSL)
     add_dependencies(ascii-chat ascii-chat-shared generate_version)
-    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared libplatform::libplatform libflags::flags)
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-shared ${ASCIICHAT_LIBPLATFORM_TARGET} libflags::flags)
 
     # Explicitly add system libraries when using shared library
     # The executable needs to link against the same dependencies as the shared library
@@ -693,7 +693,7 @@ if(BUILD_WEB AND BUILD_EXECUTABLES)
     # For dynamic builds, it points to .so/.dylib
     target_link_libraries(ascii-chat-strings PRIVATE ${LIBSODIUM_LIBRARIES})
     if(WIN32)
-        target_link_libraries(ascii-chat-strings PRIVATE libplatform::libplatform)
+        target_link_libraries(ascii-chat-strings PRIVATE ${ASCIICHAT_LIBPLATFORM_TARGET})
     endif()
 
     # Static linking for release builds (musl on Linux only)

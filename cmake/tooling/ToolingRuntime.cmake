@@ -88,7 +88,7 @@ function(ascii_build_tooling_runtime)
         # The report tool calls platform/debug helpers directly.  libplatform is
         # a private dependency of the shared object, so link it explicitly here
         # instead of relying on transitive shared-library lookup.
-    target_link_libraries(ascii-panic-report PRIVATE libplatform::libplatform)
+    target_link_libraries(ascii-panic-report PRIVATE ${ASCIICHAT_LIBPLATFORM_TARGET})
         apply_sanitizers_to_target(ascii-panic-report)
         # Link mimalloc explicitly - shared library links it PRIVATE so symbols don't propagate
         if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
