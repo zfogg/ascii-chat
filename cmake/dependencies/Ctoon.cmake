@@ -21,6 +21,9 @@ endif()
 if(NOT TARGET ctoon::ctoon)
     message(FATAL_ERROR "CToon did not provide the ctoon::ctoon target")
 endif()
+if(TARGET ctoon_cli)
+    set_target_properties(ctoon_cli PROPERTIES EXCLUDE_FROM_ALL TRUE)
+endif()
 
 # CToon is a normal C library. Its target follows BUILD_SHARED_LIBS, including
 # static linkage required by the musl toolchain.
