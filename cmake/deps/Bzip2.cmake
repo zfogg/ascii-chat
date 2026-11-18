@@ -154,12 +154,14 @@ if(NOT BZIP2_FOUND)
     include(FindPkgConfig)
     pkg_check_modules(BZIP2 REQUIRED bzip2)
 
-    # Create imported target for compatibility
-    if(NOT TARGET BZip2::BZip2)
-        add_library(BZip2::BZip2 INTERFACE IMPORTED)
-        target_include_directories(BZip2::BZip2 SYSTEM INTERFACE ${BZIP2_INCLUDE_DIRS})
-        target_link_libraries(BZip2::BZip2 INTERFACE ${BZIP2_LIBRARIES})
-    endif()
+endif()
+
+# Some distro BZip2 config files report success without publishing the
+# conventional target.  Normalize both discovery paths to one target.
+if(NOT TARGET BZip2::BZip2)
+    add_library(BZip2::BZip2 INTERFACE IMPORTED)
+    target_include_directories(BZip2::BZip2 SYSTEM INTERFACE ${BZIP2_INCLUDE_DIRS})
+    target_link_libraries(BZip2::BZip2 INTERFACE ${BZIP2_LIBRARIES})
 endif()
 
 message(STATUS "${BoldGreen}✓${ColorReset} bzip2 found")

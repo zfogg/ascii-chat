@@ -19,8 +19,7 @@ set(GOTEL_UTF8PROC_TARGET utf8proc CACHE STRING
     "Use ascii-chat's utf8proc target" FORCE)
 
 add_library(asciichat-gotel-pcre2 INTERFACE)
-target_include_directories(asciichat-gotel-pcre2 INTERFACE ${PCRE2_INCLUDE_DIRS})
-target_link_libraries(asciichat-gotel-pcre2 INTERFACE ${PCRE2_LIBRARIES})
+target_link_libraries(asciichat-gotel-pcre2 INTERFACE asciichat-pcre2)
 set(GOTEL_PCRE2_TARGET asciichat-gotel-pcre2 CACHE STRING
     "Use ascii-chat's PCRE2 dependency" FORCE)
 

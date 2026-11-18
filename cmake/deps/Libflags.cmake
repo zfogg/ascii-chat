@@ -9,7 +9,11 @@ set(LIBFLAGS_LIBPLATFORM_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/li
 # Do not pass the host libc include root into a musl target.  libflags adds
 # these paths as private compile includes, so an explicit /usr/include would
 # otherwise reintroduce glibc headers after -nostdinc.
-set(_asciichat_libflags_pcre2_include_dirs "${PCRE2_INCLUDE_DIRS}")
+get_target_property(_asciichat_libflags_pcre2_include_dirs
+    asciichat-pcre2 INTERFACE_INCLUDE_DIRECTORIES)
+if(_asciichat_libflags_pcre2_include_dirs STREQUAL "_asciichat_libflags_pcre2_include_dirs-NOTFOUND")
+    set(_asciichat_libflags_pcre2_include_dirs)
+endif()
 if(USE_MUSL)
     list(FILTER _asciichat_libflags_pcre2_include_dirs EXCLUDE REGEX "^/usr/include(/|$)")
 endif()
@@ -24,7 +28,7 @@ if(USE_MUSL)
     set(LIBFLAGS_PCRE2_LIBRARIES pcre2-8-static CACHE STRING
         "PCRE2 target shared with ascii-chat" FORCE)
 endif()
-set(LIBFLAGS_PCRE2_LIBRARIES "${PCRE2_LIBRARIES}" CACHE STRING
+set(LIBFLAGS_PCRE2_LIBRARIES asciichat-pcre2 CACHE STRING
     "PCRE2 target shared with ascii-chat" FORCE)
 set(LIBFLAGS_YYJSON_INCLUDE_DIRS "${YYJSON_INCLUDE_DIRS}" CACHE STRING
     "yyjson headers shared with ascii-chat" FORCE)
