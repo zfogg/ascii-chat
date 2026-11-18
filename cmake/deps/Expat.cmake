@@ -15,9 +15,11 @@ function(asciichat_build_expat)
         URL https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE EXCLUDE_FROM_ALL)
     FetchContent_MakeAvailable(asciichat_expat)
-    add_custom_target(asciichat-expat-stage
-        COMMAND "${CMAKE_COMMAND}" --install "${asciichat_expat_BINARY_DIR}" --prefix "${_prefix}"
-        DEPENDS expat VERBATIM)
+    if(NOT TARGET asciichat-expat-stage)
+        add_custom_target(asciichat-expat-stage
+            COMMAND "${CMAKE_COMMAND}" --install "${asciichat_expat_BINARY_DIR}" --prefix "${_prefix}"
+            DEPENDS expat VERBATIM)
+    endif()
     set(EXPAT_PREFIX "${_prefix}" PARENT_SCOPE)
     set(EXPAT_INCLUDE_DIRS "${asciichat_expat_SOURCE_DIR}/lib;${asciichat_expat_BINARY_DIR}" PARENT_SCOPE)
 endfunction()

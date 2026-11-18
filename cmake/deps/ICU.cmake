@@ -21,10 +21,9 @@ if(EMSCRIPTEN)
 elseif(USE_MUSL OR PLATFORM_IOS)
     include(ExternalProject)
     include(${CMAKE_CURRENT_LIST_DIR}/../toolchains/MuslFlags.cmake)
+    include(${CMAKE_CURRENT_LIST_DIR}/../utils/HostTools.cmake)
     find_program(_icu_make NAMES gmake make REQUIRED)
-    find_program(_icu_host_cc NAMES clang NO_CMAKE_FIND_ROOT_PATH REQUIRED)
-    find_program(_icu_host_cxx NAMES clang++ NO_CMAKE_FIND_ROOT_PATH REQUIRED)
-    find_program(_icu_musl_cxx NAMES clang++ NO_CMAKE_FIND_ROOT_PATH REQUIRED)
+    asciichat_host_toolchain(_icu_host_cc _icu_host_cxx _icu_host_cache)
     if(USE_MUSL)
         # The musl C++ include contract changed from -idirafter to strict
         # libc++/musl isolation; keep that configure state separate from the
