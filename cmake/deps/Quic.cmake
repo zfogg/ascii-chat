@@ -176,6 +176,13 @@ function(asciichat_configure_quic)
     else()
         set(_quic_openssl_cache_args)
     endif()
+    if(WIN32)
+        # ngtcp2's OpenSSL::SSL target does not always carry the paired
+        # crypto import library through its child-project interface on Clang.
+        # Pass the selected vcpkg crypto library explicitly to its DLL link.
+        list(APPEND _quic_common_args
+            "-DCMAKE_SHARED_LINKER_FLAGS:STRING=${CMAKE_SHARED_LINKER_FLAGS} ${_quic_crypto_file}")
+    endif()
 
     set(_ngtcp2_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/ngtcp2")
     set(_nghttp3_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/nghttp3")
