@@ -178,15 +178,23 @@ if(USE_MUSL AND NOT TARGET nghttp2_static)
     set(ENABLE_EXAMPLES OFF CACHE BOOL "Disable nghttp2 examples" FORCE)
     set(ENABLE_DOC OFF CACHE BOOL "Disable nghttp2 documentation" FORCE)
     set(BUILD_TESTING OFF CACHE BOOL "Disable nghttp2 tests" FORCE)
-    # nghttp2 probes optional application/example dependencies before it
-    # applies ENABLE_LIB_ONLY.  Disable those probes explicitly: ascii-chat
-    # consumes the library target only, while QUIC builds ngtcp2/nghttp3 in
-    # their own dependency module.
-    foreach(_asciichat_nghttp2_optional_package
-            Libngtcp2 Libnghttp3 Systemd Jansson Libevent LibXml2 Jemalloc)
-        set("CMAKE_DISABLE_FIND_PACKAGE_${_asciichat_nghttp2_optional_package}"
-            TRUE CACHE BOOL "Do not discover unused nghttp2 optional package" FORCE)
-    endforeach()
+    # nghttp2 probes these libraries before applying ENABLE_LIB_ONLY. Give its
+    # find modules the same cached artifacts used by the parent dependency
+    # graph, rather than allowing them to fall through to host discovery.
+    if(USE_MUSL)
+        set(LIBNGTCP2_LIBRARY "${ASCIICHAT_NGTCP2_LIBRARY}" CACHE FILEPATH
+            "Cached ngtcp2 library for nghttp2 discovery" FORCE)
+        set(LIBNGTCP2_INCLUDE_DIR "${ASCIICHAT_NGTCP2_INCLUDE_DIR}" CACHE PATH
+            "Cached ngtcp2 headers for nghttp2 discovery" FORCE)
+        set(LIBNGHTTP3_LIBRARY "${ASCIICHAT_NGHTTP3_LIBRARY}" CACHE FILEPATH
+            "Cached nghttp3 library for nghttp2 discovery" FORCE)
+        set(LIBNGHTTP3_INCLUDE_DIR "${ASCIICHAT_NGHTTP3_INCLUDE_DIR}" CACHE PATH
+            "Cached nghttp3 headers for nghttp2 discovery" FORCE)
+        set(SYSTEMD_LIBRARIES "${SYSTEMD_PREFIX}/lib/libsystemd.a" CACHE FILEPATH
+            "Cached systemd library for nghttp2 discovery" FORCE)
+        set(SYSTEMD_INCLUDE_DIRS "${SYSTEMD_PREFIX}/include" CACHE PATH
+            "Cached systemd headers for nghttp2 discovery" FORCE)
+    endif()
     FetchContent_Declare(asciichat_nghttp2
         GIT_REPOSITORY https://github.com/nghttp2/nghttp2.git
         GIT_TAG 43b29f991403b5419dd0bea2840581078ead9bf8)

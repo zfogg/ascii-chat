@@ -215,6 +215,16 @@ function(asciichat_configure_quic)
     set(_ngtcp2_library "${_ngtcp2_build}/lib/${_quic_library_prefix}ngtcp2${_quic_library_suffix}")
     set(_ngtcp2_crypto_library "${_ngtcp2_build}/crypto/ossl/${_quic_library_prefix}ngtcp2_crypto_ossl${_quic_library_suffix}")
     set(_nghttp3_library "${_nghttp3_build}/lib/${_quic_library_prefix}nghttp3${_quic_library_suffix}")
+    set(ASCIICHAT_NGTCP2_LIBRARY "${_ngtcp2_library}" CACHE FILEPATH
+        "Selected ngtcp2 library" FORCE)
+    set(ASCIICHAT_NGTCP2_INCLUDE_DIR
+        "${_ngtcp2_source}/lib/includes;${_ngtcp2_build}/lib/includes" CACHE STRING
+        "Selected ngtcp2 headers" FORCE)
+    set(ASCIICHAT_NGHTTP3_LIBRARY "${_nghttp3_library}" CACHE FILEPATH
+        "Selected nghttp3 library" FORCE)
+    set(ASCIICHAT_NGHTTP3_INCLUDE_DIR
+        "${_nghttp3_source}/lib/includes;${_nghttp3_build}/lib/includes" CACHE STRING
+        "Selected nghttp3 headers" FORCE)
     if(WIN32 AND _quic_shared)
         set(_ngtcp2_import_library "${_ngtcp2_build}/lib/ngtcp2.lib")
         set(_ngtcp2_crypto_import_library "${_ngtcp2_build}/crypto/ossl/ngtcp2_crypto_ossl.lib")
