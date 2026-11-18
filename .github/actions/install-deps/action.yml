@@ -506,9 +506,13 @@ runs:
         # doxygen is needed for generating documentation included in installers.
         # GitHub's AMD64 image has Chocolatey and its packages resolve much
         # faster than Scoop; ARM64 retains the Scoop path.
-        $basePackages = @('ninja', 'ccache') | Where-Object {
+        # sccache is provisioned by mozilla-actions/sccache-action above;
+        # do not ask Scoop for the obsolete ccache package. Keep the pipeline
+        # wrapped so a single missing package still remains an array before
+        # appending MSYS2.
+        $basePackages = @(@('ninja') | Where-Object {
           $null -eq (Get-Command $_ -ErrorAction SilentlyContinue)
-        }
+        })
         if (-not $existingMsys2) { $basePackages += 'msys2' }
 
         $extra = @()
