@@ -68,7 +68,10 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
     if(ALPINE_LIBCXX_INCLUDE_DIR AND NOT _asciichat_gcc_toolchain)
         string(APPEND _cxx " -isystem ${ALPINE_LIBCXX_INCLUDE_DIR} -D_LIBCPP_HAS_MUSL_LIBC=1")
     else()
-        string(APPEND _cxx " -isystem /usr/include/c++/v1 -D_LIBCPP_HAS_MUSL_LIBC=1 -D_LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE=1")
+        # The musl platform setup supplies the Alpine libc++ headers after
+        # the toolchain initializes. Never seed a musl command with the host
+        # glibc libc++ tree.
+        string(APPEND _cxx " -D_LIBCPP_HAS_MUSL_LIBC=1 -D_LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE=1")
     endif()
     if(NOT _asciichat_gcc_toolchain)
         # Clang's resource headers include a stddef.h of their own.  Keep
