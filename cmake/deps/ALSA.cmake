@@ -27,7 +27,7 @@ if(USE_MUSL)
     # Only add external project if library doesn't exist
     if(NOT EXISTS "${ALSA_PREFIX}/lib/libasound.a")
         message(STATUS "  ALSA library not found in cache, will build from source")
-        ExternalProject_Add(alsa-lib-musl
+        ExternalProject_Add(asciichat-alsa-musl
             URL https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.12.tar.bz2
             URL_HASH SHA256=4868cd908627279da5a634f468701625be8cc251d84262c7e5b6a218391ad0d2
             DOWNLOAD_EXTRACT_TIMESTAMP TRUE
@@ -56,7 +56,7 @@ if(USE_MUSL)
     else()
         message(STATUS "  ${BoldBlue}ALSA${ColorReset} library found in cache: ${BoldMagenta}${ALSA_PREFIX}/lib/libasound.a${ColorReset}")
         # Create a dummy target so dependencies can reference it
-        add_custom_target(alsa-lib-musl)
+        add_custom_target(asciichat-alsa-musl)
     endif()
 
     # Set ALSA variables for PortAudio to find

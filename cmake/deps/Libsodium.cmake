@@ -42,7 +42,7 @@ if(PLATFORM_IOS)
     if(NOT EXISTS "${LIBSODIUM_PREFIX}/lib/libsodium.a")
         message(STATUS "  libsodium library not found in cache, will build from source")
 
-        ExternalProject_Add(libsodium-ios
+        ExternalProject_Add(asciichat-libsodium-ios
             URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
             URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
             DOWNLOAD_EXTRACT_TIMESTAMP TRUE
@@ -72,18 +72,18 @@ if(PLATFORM_IOS)
         )
     else()
         message(STATUS "  ${BoldBlue}libsodium${ColorReset} library found in cache: ${BoldMagenta}${LIBSODIUM_PREFIX}/lib/libsodium.a${ColorReset}")
-        add_custom_target(libsodium-ios)
+        add_custom_target(asciichat-libsodium-ios)
     endif()
 
     set(_asciichat_libsodium_link "${LIBSODIUM_PREFIX}/lib/libsodium.a")
     set(_asciichat_libsodium_include "${LIBSODIUM_PREFIX}/include")
-    set(LIBSODIUM_BUILD_TARGET libsodium-ios)
+    set(LIBSODIUM_BUILD_TARGET asciichat-libsodium-ios)
     file(MAKE_DIRECTORY "${_asciichat_libsodium_include}")
     add_library(asciichat-libsodium STATIC IMPORTED GLOBAL)
     set_target_properties(asciichat-libsodium PROPERTIES
         IMPORTED_LOCATION "${_asciichat_libsodium_link}"
         INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_libsodium_include}")
-    add_dependencies(asciichat-libsodium libsodium-ios)
+    add_dependencies(asciichat-libsodium asciichat-libsodium-ios)
     set(_asciichat_libsodium_found TRUE)
     return()
 endif()
@@ -153,7 +153,7 @@ if(DEFINED EMSCRIPTEN)
     set(LIBSODIUM_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/libsodium")
     set(LIBSODIUM_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/libsodium-build")
 
-    ExternalProject_Add(libsodium-wasm
+        ExternalProject_Add(asciichat-libsodium-wasm
         SOURCE_DIR ${libsodium-wasm-src_SOURCE_DIR}
         BINARY_DIR ${LIBSODIUM_BUILD_DIR}
         PREFIX ${LIBSODIUM_BUILD_DIR}
@@ -186,12 +186,12 @@ if(DEFINED EMSCRIPTEN)
     set_target_properties(asciichat-libsodium PROPERTIES
         IMPORTED_LOCATION "${LIBSODIUM_PREFIX}/lib/libsodium.a"
         INTERFACE_INCLUDE_DIRECTORIES "${LIBSODIUM_PREFIX}/include")
-    add_dependencies(asciichat-libsodium libsodium-wasm)
+    add_dependencies(asciichat-libsodium asciichat-libsodium-wasm)
 
     set(_asciichat_libsodium_found TRUE)
     set(_asciichat_libsodium_link asciichat-libsodium)
     set(_asciichat_libsodium_include "${LIBSODIUM_PREFIX}/include")
-    set(LIBSODIUM_BUILD_TARGET libsodium-wasm)
+    set(LIBSODIUM_BUILD_TARGET asciichat-libsodium-wasm)
 
     message(STATUS "${BoldGreen}✓${ColorReset} libsodium (WASM): ${BoldCyan}libsodium${ColorReset}")
     return()
@@ -206,7 +206,7 @@ if(USE_MUSL)
 
     # Always rebuild libsodium to ensure -fPIC compilation for shared library linking
     # (ExternalProject cache check happens regardless, but this forces rebuild of external project)
-    ExternalProject_Add(libsodium-musl
+    ExternalProject_Add(asciichat-libsodium-musl
         URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
         URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
@@ -235,13 +235,13 @@ if(USE_MUSL)
 
     set(_asciichat_libsodium_link "${LIBSODIUM_PREFIX}/lib/libsodium.a")
     set(_asciichat_libsodium_include "${LIBSODIUM_PREFIX}/include")
-    set(LIBSODIUM_BUILD_TARGET libsodium-musl)
+    set(LIBSODIUM_BUILD_TARGET asciichat-libsodium-musl)
     file(MAKE_DIRECTORY "${LIBSODIUM_PREFIX}/include")
     add_library(asciichat-libsodium STATIC IMPORTED GLOBAL)
     set_target_properties(asciichat-libsodium PROPERTIES
         IMPORTED_LOCATION "${LIBSODIUM_PREFIX}/lib/libsodium.a"
         INTERFACE_INCLUDE_DIRECTORIES "${LIBSODIUM_PREFIX}/include")
-    add_dependencies(asciichat-libsodium libsodium-musl)
+    add_dependencies(asciichat-libsodium asciichat-libsodium-musl)
     set(_asciichat_libsodium_link asciichat-libsodium)
     set(_asciichat_libsodium_found TRUE)
     return()
@@ -259,7 +259,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE AND NOT USE_MUSL A
     if(NOT EXISTS "${LIBSODIUM_PREFIX}/lib/libsodium.a")
         message(STATUS "  libsodium library not found in cache, will build from source")
 
-        ExternalProject_Add(libsodium-linux
+        ExternalProject_Add(asciichat-libsodium-linux
             URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
             URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
             DOWNLOAD_EXTRACT_TIMESTAMP TRUE
@@ -278,19 +278,19 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE AND NOT USE_MUSL A
         )
     else()
         message(STATUS "  ${BoldBlue}libsodium${ColorReset} library found in cache: ${BoldMagenta}${LIBSODIUM_PREFIX}/lib/libsodium.a${ColorReset}")
-        add_custom_target(libsodium-linux)
+        add_custom_target(asciichat-libsodium-linux)
     endif()
 
     set(_asciichat_libsodium_found TRUE)
     set(_asciichat_libsodium_link "${LIBSODIUM_PREFIX}/lib/libsodium.a")
     set(_asciichat_libsodium_include "${LIBSODIUM_PREFIX}/include")
-    set(LIBSODIUM_BUILD_TARGET libsodium-linux)
+    set(LIBSODIUM_BUILD_TARGET asciichat-libsodium-linux)
     file(MAKE_DIRECTORY "${LIBSODIUM_PREFIX}/include")
     add_library(asciichat-libsodium STATIC IMPORTED GLOBAL)
     set_target_properties(asciichat-libsodium PROPERTIES
         IMPORTED_LOCATION "${LIBSODIUM_PREFIX}/lib/libsodium.a"
         INTERFACE_INCLUDE_DIRECTORIES "${LIBSODIUM_PREFIX}/include")
-    add_dependencies(asciichat-libsodium libsodium-linux)
+    add_dependencies(asciichat-libsodium asciichat-libsodium-linux)
     set(_asciichat_libsodium_link asciichat-libsodium)
     return()
 endif()

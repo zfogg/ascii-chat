@@ -35,8 +35,8 @@ if(WIN32)
         "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src")
     target_compile_definitions(asciichat-rnnoise PRIVATE
         RNNOISE_BUILD M_PI=3.14159265358979323846)
-    add_custom_target(ascii-chat-rnnoise-build)
-    add_dependencies(ascii-chat-rnnoise-build asciichat-rnnoise)
+    add_custom_target(asciichat-rnnoise-build)
+    add_dependencies(asciichat-rnnoise-build asciichat-rnnoise)
     unset(_asciichat_rnnoise_sources)
     return()
 endif()
@@ -93,7 +93,7 @@ else()
         "${ASCIICHAT_MAKE_EXECUTABLE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
 endif()
 
-ExternalProject_Add(ascii-chat-rnnoise-build
+ExternalProject_Add(asciichat-rnnoise-build
     SOURCE_DIR "${ASCIICHAT_RNNOISE_SOURCE_DIR}"
     BINARY_DIR "${ASCIICHAT_RNNOISE_BUILD_DIR}"
     CONFIGURE_COMMAND "${CMAKE_COMMAND}"

@@ -23,7 +23,7 @@ if(USE_MUSL)
     # Only add external project if library doesn't exist
     if(NOT EXISTS "${LIBEXECINFO_PREFIX}/lib/libexecinfo.a")
         message(STATUS "  libexecinfo library not found in cache, will build from source")
-        ExternalProject_Add(libexecinfo-musl
+        ExternalProject_Add(asciichat-libexecinfo-musl
             GIT_REPOSITORY https://github.com/mikroskeem/libexecinfo.git
             GIT_TAG master
             PREFIX ${LIBEXECINFO_BUILD_DIR}
@@ -46,7 +46,7 @@ if(USE_MUSL)
     else()
         message(STATUS "  ${BoldBlue}libexecinfo${ColorReset} library found in cache: ${BoldMagenta}${LIBEXECINFO_PREFIX}/lib/libexecinfo.a${ColorReset}")
         # Create a dummy target so dependencies can reference it
-        add_custom_target(libexecinfo-musl)
+        add_custom_target(asciichat-libexecinfo-musl)
     endif()
 
     if(NOT TARGET asciichat-libexecinfo)

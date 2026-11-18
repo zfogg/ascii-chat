@@ -55,7 +55,7 @@ if(PLATFORM_IOS)
             message(FATAL_ERROR "Failed to extract bzip2")
         endif()
 
-        ExternalProject_Add(bzip2-ios
+        ExternalProject_Add(asciichat-bzip2-ios
             SOURCE_DIR "${BZIP2_BUILD_DIR}/bzip2-1.0.8"
             CONFIGURE_COMMAND ""
             BUILD_COMMAND ${CMAKE_COMMAND} -E env
@@ -82,8 +82,8 @@ if(PLATFORM_IOS)
             INTERFACE_INCLUDE_DIRECTORIES "${BZIP2_INCLUDE_DIR}"
         )
     endif()
-    if(TARGET bzip2-ios)
-        add_dependencies(BZip2::BZip2 bzip2-ios)
+    if(TARGET asciichat-bzip2-ios)
+        add_dependencies(BZip2::BZip2 asciichat-bzip2-ios)
     endif()
     if(NOT TARGET asciichat-bzip2)
         add_library(asciichat-bzip2 INTERFACE)
@@ -108,7 +108,7 @@ if(USE_MUSL)
     set(BZIP2_INCLUDE_DIR "${BZIP2_PREFIX}/include")
 
     if(NOT EXISTS "${BZIP2_LIBRARY}")
-        ExternalProject_Add(bzip2-musl
+        ExternalProject_Add(asciichat-bzip2-musl
             URL https://www.sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz
             URL_HASH SHA256=ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269
             DOWNLOAD_EXTRACT_TIMESTAMP TRUE
@@ -126,7 +126,7 @@ if(USE_MUSL)
         )
     else()
         message(STATUS "  ${BoldBlue}bzip2${ColorReset} library found in cache: ${BoldMagenta}${BZIP2_LIBRARY}${ColorReset}")
-        add_custom_target(bzip2-musl)
+        add_custom_target(asciichat-bzip2-musl)
     endif()
 
     # Create imported target for bzip2 to match system find_package behavior

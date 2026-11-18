@@ -42,7 +42,7 @@ if(PLATFORM_IOS)
 
         message(STATUS "  FFmpeg libraries not found in cache, will build from source")
 
-        ExternalProject_Add(ffmpeg-ios
+        ExternalProject_Add(asciichat-ffmpeg-ios
             URL https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz
             URL_HASH SHA256=${FFMPEG_HASH}
             DOWNLOAD_EXTRACT_TIMESTAMP TRUE
@@ -94,7 +94,7 @@ if(PLATFORM_IOS)
         )
     else()
         message(STATUS "  ${BoldBlue}FFmpeg${ColorReset} libraries found in cache: ${BoldMagenta}${FFMPEG_PREFIX}/lib/libavformat.a${ColorReset}")
-        add_custom_target(ffmpeg-ios)
+        add_custom_target(asciichat-ffmpeg-ios)
     endif()
 
     set(FFMPEG_FOUND TRUE)
@@ -160,7 +160,7 @@ if(USE_MUSL)
     set(_ffmpeg_env "${CMAKE_COMMAND}" -E env
         "PKG_CONFIG_PATH=${X264_PREFIX}/lib/pkgconfig:${X265_PREFIX}/lib/pkgconfig"
         "PKG_CONFIG_LIBDIR=${X264_PREFIX}/lib/pkgconfig:${X265_PREFIX}/lib/pkgconfig" --)
-    ExternalProject_Add(ffmpeg-musl
+    ExternalProject_Add(asciichat-ffmpeg-musl
         URL "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
         URL_HASH "SHA256=${FFMPEG_HASH}" DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/ffmpeg"
@@ -186,7 +186,7 @@ if(USE_MUSL)
         # FFmpeg's static archives have mutual dependencies.  A rescan group
         # is required for the musl release link to resolve all av* symbols.
         INTERFACE_LINK_LIBRARIES "-Wl,--start-group;${_ffmpeg_archives};${_ffmpeg_codec_link_targets};-Wl,--end-group")
-    add_dependencies(asciichat-ffmpeg ffmpeg-musl)
+    add_dependencies(asciichat-ffmpeg asciichat-ffmpeg-musl)
     set(FFMPEG_LIBRARIES asciichat-ffmpeg)
     set(FFMPEG_FOUND TRUE)
     return()
@@ -341,7 +341,7 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT BUILD_SHARED_LIB
         # so we use standard optimizations instead. The main binary still uses LTO.
         set(FFMPEG_CFLAGS "-fPIC -O3")
 
-        ExternalProject_Add(ffmpeg-release
+            ExternalProject_Add(asciichat-ffmpeg-release
             SOURCE_DIR "${FFMPEG_SOURCE_DIR}"
             CONFIGURE_COMMAND "${FFMPEG_SOURCE_DIR}/configure"
                 --prefix=${FFMPEG_PREFIX}
@@ -529,8 +529,8 @@ if(FFMPEG_FOUND AND NOT TARGET asciichat-ffmpeg)
         target_link_directories(asciichat-ffmpeg INTERFACE ${FFMPEG_LIBRARY_DIRS})
     endif()
 endif()
-if(TARGET ffmpeg-release AND TARGET asciichat-ffmpeg)
-    add_dependencies(asciichat-ffmpeg ffmpeg-release)
+if(TARGET asciichat-ffmpeg-release AND TARGET asciichat-ffmpeg)
+    add_dependencies(asciichat-ffmpeg asciichat-ffmpeg-release)
 endif()
 endfunction()
 
