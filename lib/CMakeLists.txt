@@ -601,7 +601,7 @@ endif()
 # Now create the module with WebRTC includes in scope
 create_ascii_chat_module(ascii-chat-audio "${AUDIO_SRCS}")
 target_link_libraries(ascii-chat-audio PRIVATE asciichat-rnnoise)
-add_dependencies(ascii-chat-audio ascii-chat-rnnoise-build)
+add_dependencies(ascii-chat-audio asciichat-rnnoise-build)
 
 # For OBJECT libs, link external deps only
 target_link_libraries(ascii-chat-audio PRIVATE
@@ -693,7 +693,7 @@ if(LIBWEBSOCKETS_BUILD_TARGET)
     add_dependencies(ascii-chat-discovery ${LIBWEBSOCKETS_BUILD_TARGET})
 endif()
 if(USE_MUSL)
-    add_dependencies(ascii-chat-runtime libexecinfo-musl)
+    add_dependencies(ascii-chat-runtime asciichat-libexecinfo-musl)
 endif()
 
 # yyjson - Fast JSON library for structured logging and JSON parsing
@@ -1522,8 +1522,8 @@ set_target_properties(ascii-chat-static-lib PROPERTIES
 # For musl builds, ensure all musl dependency targets are built first
 set(MUSL_DEPS "")
 if(USE_MUSL)
-    if(TARGET ffmpeg-musl)
-        list(APPEND MUSL_DEPS ffmpeg-musl)
+    if(TARGET asciichat-ffmpeg-musl)
+        list(APPEND MUSL_DEPS asciichat-ffmpeg-musl)
     endif()
     if(TARGET openssl-musl)
         list(APPEND MUSL_DEPS openssl-musl)

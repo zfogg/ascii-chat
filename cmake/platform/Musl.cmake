@@ -494,6 +494,6 @@ function(configure_musl_post_project)
     endif()
     message(STATUS "Using compiler for ${BoldBlue}musl${ColorReset} dependencies: ${BoldCyan}${MUSL_CC}${ColorReset}")
 
-    # Note: zstd-musl, libsodium-musl, alsa-lib-musl, portaudio-musl, and libexecinfo-musl are now built in MuslDependencies.cmake
+    # Musl dependency ordering is provided by the canonical asciichat-* targets.
 endfunction()
 

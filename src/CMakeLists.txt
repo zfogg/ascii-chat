@@ -395,7 +395,7 @@ endif()
 if(USE_MUSL)
     # Add dependencies on all musl libraries (they'll build automatically)
     # Note: Do NOT add ascii-chat-shared as a dependency - we'll link OBJECT libraries directly
-    add_dependencies(ascii-chat alsa-lib-musl libsodium-musl libexecinfo-musl)
+    add_dependencies(ascii-chat asciichat-alsa-musl asciichat-libsodium-musl asciichat-libexecinfo-musl)
 
     # Link against musl-built static libraries from individual dependency directories
     target_link_directories(ascii-chat PRIVATE
