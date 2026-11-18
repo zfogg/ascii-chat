@@ -43,6 +43,12 @@
 #include <stdint.h>
 #include <stdlib.h> // For malloc/free in ALLOC_* macros
 
+/* Keep statement-like macros warning-free under MSVC and source transformation.
+ * The condition remains non-constant while the block still executes once. */
+static inline bool asciichat_macro_block_continue(void) {
+  return false;
+}
+
 /** @brief Application name for key comments ("ascii-chat") */
 #define ASCII_CHAT_APP_NAME "ascii-chat"
 
