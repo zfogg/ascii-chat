@@ -11,6 +11,11 @@ if(NOT USE_MUSL)
     return()
 endif()
 
+if(USE_MUSL AND NOT EXISTS "${MUSL_INCLUDE_DIR}/sys/capability.h")
+    message(WARNING "Skipping systemd for musl: sys/capability.h is unavailable")
+    return()
+endif()
+
 include(ExternalProject)
 find_program(ASCIICHAT_MESON_EXECUTABLE meson REQUIRED)
 find_program(ASCIICHAT_MAKE_EXECUTABLE make REQUIRED)
