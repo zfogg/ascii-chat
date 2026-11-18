@@ -49,6 +49,7 @@ endif()
 # =============================================================================
 if(USE_MUSL)
     message(STATUS "Configuring ${BoldBlue}SQLite3${ColorReset} from source...")
+    include(ExternalProject)
 
     set(SQLITE3_PREFIX "${MUSL_DEPS_DIR_STATIC}/sqlite3")
     set(SQLITE3_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/sqlite3-build")
@@ -124,9 +125,8 @@ if(USE_MUSL)
             file(RENAME "${SQLITE3_BUILD_DIR}/sqlite-amalgamation-3480000" "${SQLITE3_SOURCE_DIR}")
         endif()
 
-        # Compile SQLite3 to static library
-        message(STATUS "  Building SQLite3...")
-        file(REMOVE "${SQLITE3_BUILD_DIR}/sqlite3.o")
+        # Prepare the wrapper during configure; compilation and archiving are
+        # owned by Ninja through ExternalProject_Add below.
         file(READ "${SQLITE3_SOURCE_DIR}/sqlite3.c" _sqlite3_source)
         string(REPLACE
             "#if defined(__GNUC__) && !defined(_GNU_SOURCE)"
@@ -140,63 +140,27 @@ if(USE_MUSL)
         set(_sqlite3_musl_wrapper "${SQLITE3_BUILD_DIR}/sqlite3-musl.c")
         file(WRITE "${_sqlite3_musl_wrapper}"
             "#define fcntl64 fcntl\n#include \"${SQLITE3_SOURCE_DIR}/sqlite3.c\"\n")
-        file(MAKE_DIRECTORY "${SQLITE3_PREFIX}/lib")
-        file(MAKE_DIRECTORY "${SQLITE3_PREFIX}/include")
-
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} -E env
-                CC=${ASCIICHAT_CLANG_EXECUTABLE}
-                CFLAGS=${MUSL_KERNEL_CFLAGS}
-                ${ASCIICHAT_CLANG_EXECUTABLE} ${ASCIICHAT_MUSL_TARGET_FLAG} -c
-                -U_GNU_SOURCE
-                -DSQLITE_THREADSAFE=1
-                -DSQLITE_ENABLE_FTS5
-                -DSQLITE_ENABLE_RTREE
-                -DSQLITE_ENABLE_JSON1
-                -Ufcntl64
-                -Dfcntl64=fcntl
-                -O3
-                -fPIC
-                "${_sqlite3_musl_wrapper}"
-                -o "${SQLITE3_BUILD_DIR}/sqlite3.o"
-            RESULT_VARIABLE COMPILE_RESULT
-            OUTPUT_VARIABLE COMPILE_OUTPUT
-            ERROR_VARIABLE COMPILE_ERROR
-        )
-        if(NOT COMPILE_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to compile SQLite3:\n${COMPILE_ERROR}")
-        endif()
-
-        # Normalize the one large-file spelling that can still be emitted by
-        # SQLite's generated syscall table.  This changes only the undefined
-        # symbol in the musl archive; it does not introduce a glibc object or
-        # runtime dependency.
-        find_program(_asciichat_sqlite3_objcopy NAMES llvm-objcopy objcopy REQUIRED)
-        execute_process(
-            COMMAND "${_asciichat_sqlite3_objcopy}" --redefine-sym fcntl64=fcntl
-                    "${SQLITE3_BUILD_DIR}/sqlite3.o"
-            RESULT_VARIABLE OBJCOPY_RESULT
-            ERROR_VARIABLE OBJCOPY_ERROR)
-        if(NOT OBJCOPY_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to normalize SQLite3 musl symbols:\n${OBJCOPY_ERROR}")
-        endif()
-
-        # Create static library
-        execute_process(
-            COMMAND ${CMAKE_AR} rcs "${SQLITE3_PREFIX}/lib/libsqlite3.a" "${SQLITE3_BUILD_DIR}/sqlite3.o"
-            RESULT_VARIABLE AR_RESULT
-            OUTPUT_VARIABLE AR_OUTPUT
-            ERROR_VARIABLE AR_ERROR
-        )
-        if(NOT AR_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to create SQLite3 static library:\n${AR_ERROR}")
-        endif()
-
-        # Copy headers
-        file(COPY "${SQLITE3_SOURCE_DIR}/sqlite3.h" DESTINATION "${SQLITE3_PREFIX}/include")
-        file(COPY "${SQLITE3_SOURCE_DIR}/sqlite3ext.h" DESTINATION "${SQLITE3_PREFIX}/include")
-
-        message(STATUS "  ${BoldGreen}SQLite3${ColorReset} built and cached successfully")
+        ExternalProject_Add(asciichat-sqlite3-musl
+            SOURCE_DIR "${SQLITE3_SOURCE_DIR}"
+            CONFIGURE_COMMAND ""
+            BUILD_COMMAND ${CMAKE_COMMAND}
+                "-DSQLITE3_CC:FILEPATH=${ASCIICHAT_CLANG_EXECUTABLE}"
+                "-DSQLITE3_AR:FILEPATH=${CMAKE_AR}"
+                "-DSQLITE3_TARGET_FLAG:STRING=${ASCIICHAT_MUSL_TARGET_FLAG}"
+                "-DSQLITE3_CFLAGS:STRING=${MUSL_KERNEL_CFLAGS}"
+                "-DSQLITE3_WRAPPER:FILEPATH=${_sqlite3_musl_wrapper}"
+                "-DSQLITE3_OBJECT:FILEPATH=${SQLITE3_BUILD_DIR}/sqlite3.o"
+                "-DSQLITE3_ARCHIVE:FILEPATH=${SQLITE3_PREFIX}/lib/libsqlite3.a"
+                "-DSQLITE3_SOURCE_DIR:PATH=${SQLITE3_SOURCE_DIR}"
+                "-DSQLITE3_PREFIX:PATH=${SQLITE3_PREFIX}"
+                "-DSQLITE3_SIGNATURE_FILE:FILEPATH=${_sqlite3_signature_file}"
+                "-DSQLITE3_SIGNATURE:STRING=${_sqlite3_signature}"
+                -P "${CMAKE_SOURCE_DIR}/cmake/deps/BuildSQLite3Musl.cmake"
+            INSTALL_COMMAND ""
+            BUILD_BYPRODUCTS "${SQLITE3_PREFIX}/lib/libsqlite3.a"
+            LOG_BUILD TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE)
+        message(STATUS "  ${BoldGreen}SQLite3${ColorReset} build scheduled through ExternalProject")
     else()
         message(STATUS "  ${BoldBlue}SQLite3${ColorReset} library found in cache: ${BoldMagenta}${SQLITE3_PREFIX}/lib/libsqlite3.a${ColorReset}")
     endif()
@@ -206,6 +170,9 @@ if(USE_MUSL)
         set_target_properties(asciichat-sqlite3 PROPERTIES
             IMPORTED_LOCATION "${SQLITE3_PREFIX}/lib/libsqlite3.a"
             INTERFACE_INCLUDE_DIRECTORIES "${SQLITE3_PREFIX}/include")
+    endif()
+    if(TARGET asciichat-sqlite3-musl)
+        add_dependencies(asciichat-sqlite3 asciichat-sqlite3-musl)
     endif()
     set(_asciichat_sqlite3_found TRUE)
     set(_asciichat_sqlite3_link asciichat-sqlite3)
