@@ -889,7 +889,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   client_like_state_t state = {0};
   asciichat_error_t result = ASCIICHAT_OK;
   {
-    ASCII_OTEL_SCOPE(SESSION_INITIALIZE);
+    ASCII_OTEL_SCOPE_AS(otel_initialize_scope, SESSION_INITIALIZE);
     client_like_setup_terminal_logging();
     result = client_like_setup_keepawake();
     if (result != ASCIICHAT_OK) {

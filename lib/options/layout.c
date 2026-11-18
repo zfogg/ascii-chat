@@ -137,7 +137,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
     // Check for explicit newline
     if (*p == '\n') {
       // Print everything up to the newline
-      int text_len = p - line_start;
+      int text_len = (int)(p - line_start);
       if (text_len > 0) {
         char seg[BUFFER_SIZE_MEDIUM];
         layout_copy_segment(seg, sizeof(seg), line_start, (size_t)text_len);
@@ -194,12 +194,12 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
     p += char_bytes;
 
     // Calculate actual display width from line_start to current position (excluding ANSI codes)
-    int actual_width = calculate_segment_display_width(line_start, (size_t)(p - line_start));
+    int actual_width = (int)calculate_segment_display_width(line_start, p - line_start);
 
     // Check if we need to wrap
     if (actual_width >= available_width && last_space && last_space > line_start) {
       // Print text up to break point with colors applied
-      int text_len = last_space - line_start;
+      int text_len = (int)(last_space - line_start);
       char seg[BUFFER_SIZE_MEDIUM];
       layout_copy_segment(seg, sizeof(seg), line_start, (size_t)text_len);
       layout_print_colored_segment(stream, seg);
@@ -220,7 +220,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
   // Print remaining text
   if (p > line_start) {
     char seg[BUFFER_SIZE_MEDIUM];
-    int text_len = p - line_start;
+    int text_len = (int)(p - line_start);
     layout_copy_segment(seg, sizeof(seg), line_start, (size_t)text_len);
     layout_print_colored_segment(stream, seg);
   }
