@@ -448,8 +448,42 @@ function(configure_musl_post_project)
     endfunction()
 
     # Search the target runtime after all application and dependency archives.
-    set(CMAKE_C_STANDARD_LIBRARIES "\"${MUSL_LIBGCC_PATH}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\"" PARENT_SCOPE)
-    set(CMAKE_CXX_STANDARD_LIBRARIES "\"${MUSL_LIBGCC_PATH}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\"" PARENT_SCOPE)
+    # GCC uses libgcc.a; Clang uses compiler-rt builtins and must never inherit
+    # GCC's runtime archive or the dynamically named gcc_s unwinder.
+    if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+        execute_process(
+            COMMAND "${CMAKE_C_COMPILER}" --print-resource-dir
+            OUTPUT_VARIABLE _asciichat_clang_resource_dir
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            RESULT_VARIABLE _asciichat_clang_resource_result)
+        if(NOT _asciichat_clang_resource_result EQUAL 0)
+            message(FATAL_ERROR "Unable to locate Clang's compiler-rt resource directory")
+        endif()
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
+            set(_asciichat_compiler_rt_arch "x86_64")
+        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
+            set(_asciichat_compiler_rt_arch "aarch64")
+        else()
+            message(FATAL_ERROR "Unsupported architecture for Clang compiler-rt: ${CMAKE_SYSTEM_PROCESSOR}")
+        endif()
+        find_file(ASCIICHAT_COMPILER_RT_BUILTINS
+            NAMES "libclang_rt.builtins-${_asciichat_compiler_rt_arch}.a"
+            PATHS "${_asciichat_clang_resource_dir}/lib/linux"
+            NO_DEFAULT_PATH)
+        if(NOT ASCIICHAT_COMPILER_RT_BUILTINS)
+            message(FATAL_ERROR "Clang compiler-rt builtins archive was not found under ${_asciichat_clang_resource_dir}/lib/linux")
+        endif()
+        set(CMAKE_C_STANDARD_LIBRARIES
+            "\"${ASCIICHAT_COMPILER_RT_BUILTINS}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\""
+            PARENT_SCOPE)
+        set(CMAKE_CXX_STANDARD_LIBRARIES
+            "\"${ASCIICHAT_COMPILER_RT_BUILTINS}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\""
+            PARENT_SCOPE)
+        message(STATUS "Using Clang compiler-rt builtins: ${ASCIICHAT_COMPILER_RT_BUILTINS}")
+    else()
+        set(CMAKE_C_STANDARD_LIBRARIES "\"${MUSL_LIBGCC_PATH}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\"" PARENT_SCOPE)
+        set(CMAKE_CXX_STANDARD_LIBRARIES "\"${MUSL_LIBGCC_PATH}\" -lc -lm \"${MUSL_LIBDIR}/crtn.o\"" PARENT_SCOPE)
+    endif()
 
     # Disable fortify source for our code (musl doesn't support it)
     # Note: We now use Alpine's musl-native libc++ which doesn't have fortify calls

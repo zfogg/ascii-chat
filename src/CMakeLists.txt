@@ -88,7 +88,7 @@ if(UNIX AND NOT APPLE)
     if(ASCIICHAT_LLVM_LIBUNWIND)
         target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LLVM_LIBUNWIND})
     endif()
-    if(NOT USE_MUSL)
+    if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND NOT USE_MUSL)
         # Arch ships the GCC unwinder as libgcc_s.so.1 without an unversioned
         # development symlink, so find_library cannot discover it by filename.
         target_link_libraries(ascii-chat PRIVATE gcc_s)
