@@ -291,7 +291,7 @@ endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/../utils/FindDependency.cmake)
 
-find_dependency_library(
+asciichat_find_dependency_target(
     NAME LIBSODIUM
     VCPKG_NAMES libsodium sodium
     HEADER sodium.h
@@ -299,8 +299,5 @@ find_dependency_library(
     HOMEBREW_PKG libsodium
     STATIC_LIB_NAME libsodium.a
     STATIC_DEFINE SODIUM_STATIC
+    REQUIRED
 )
-
-if(NOT LIBSODIUM_FOUND)
-    message(FATAL_ERROR "libsodium is required for native builds")
-endif()
