@@ -166,11 +166,9 @@ elseif(WIN32)
     add_library(asciichat-freetype UNKNOWN IMPORTED GLOBAL)
     set_target_properties(asciichat-freetype PROPERTIES
         IMPORTED_LOCATION "${_asciichat_freetype_library}"
-        INTERFACE_INCLUDE_DIRECTORIES
-            "${_asciichat_freetype_include};${_asciichat_freetype_include}/freetype2")
+        INTERFACE_INCLUDE_DIRECTORIES "${_asciichat_freetype_include}")
     set(FREETYPE_LIBRARIES asciichat-freetype)
-    set(FREETYPE_INCLUDE_DIRS
-        "${_asciichat_freetype_include};${_asciichat_freetype_include}/freetype2")
+    set(FREETYPE_INCLUDE_DIRS "${_asciichat_freetype_include}")
 
     message(STATUS "${BoldGreen}✓${ColorReset} FreeType2: vcpkg")
 
