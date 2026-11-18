@@ -56,6 +56,7 @@ if(UNIX AND NOT APPLE)
                 "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/cmake/absl"
                 "/usr/lib/cmake"
                 "/usr/local/lib/cmake"
+            PATH_SUFFIXES absl
             NO_DEFAULT_PATH)
         if(absl_FOUND)
             set(ABSEIL_LIBRARIES absl::base absl::strings)
