@@ -8,11 +8,8 @@
 #   - Linux/macOS (non-musl): Uses pkg-config for system packages
 #   - Windows: Uses vcpkg
 #
-# Outputs:
-#   - BZIP2_FOUND - Whether bzip2 was found/configured
-#   - BZIP2_LIBRARY - Library path
-#   - BZIP2_INCLUDE_DIR - Include directory
-#   - BZip2::BZip2 - Imported target (if created)
+# Output:
+#   - asciichat-bzip2 / asciichat::bzip2 - canonical consumer targets
 # =============================================================================
 
 # =============================================================================
@@ -87,6 +84,13 @@ if(PLATFORM_IOS)
             INTERFACE_INCLUDE_DIRECTORIES "${BZIP2_INCLUDE_DIR}"
         )
     endif()
+    if(NOT TARGET asciichat-bzip2)
+        add_library(asciichat-bzip2 INTERFACE)
+        target_link_libraries(asciichat-bzip2 INTERFACE BZip2::BZip2)
+    endif()
+    if(NOT TARGET asciichat::bzip2)
+        add_library(asciichat::bzip2 ALIAS asciichat-bzip2)
+    endif()
 
     message(STATUS "${BoldGreen}✓${ColorReset} bzip2 (iOS): ${BZIP2_LIBRARY}")
     return()
@@ -134,6 +138,13 @@ if(USE_MUSL)
             INTERFACE_INCLUDE_DIRECTORIES "${BZIP2_INCLUDE_DIR}"
         )
     endif()
+    if(NOT TARGET asciichat-bzip2)
+        add_library(asciichat-bzip2 INTERFACE)
+        target_link_libraries(asciichat-bzip2 INTERFACE BZip2::BZip2)
+    endif()
+    if(NOT TARGET asciichat::bzip2)
+        add_library(asciichat::bzip2 ALIAS asciichat-bzip2)
+    endif()
 
     # Create placeholder directories so CMake validation doesn't fail at configure time
     file(MAKE_DIRECTORY "${BZIP2_INCLUDE_DIR}")
@@ -162,6 +173,13 @@ if(NOT TARGET BZip2::BZip2)
     add_library(BZip2::BZip2 INTERFACE IMPORTED)
     target_include_directories(BZip2::BZip2 SYSTEM INTERFACE ${BZIP2_INCLUDE_DIRS})
     target_link_libraries(BZip2::BZip2 INTERFACE ${BZIP2_LIBRARIES})
+endif()
+if(NOT TARGET asciichat-bzip2)
+    add_library(asciichat-bzip2 INTERFACE)
+    target_link_libraries(asciichat-bzip2 INTERFACE BZip2::BZip2)
+endif()
+if(NOT TARGET asciichat::bzip2)
+    add_library(asciichat::bzip2 ALIAS asciichat-bzip2)
 endif()
 
 message(STATUS "${BoldGreen}✓${ColorReset} bzip2 found")
