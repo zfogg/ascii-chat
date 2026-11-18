@@ -63,6 +63,11 @@ if(USE_MUSL)
     # Set ALSA variables for PortAudio to find
     set(ALSA_LIBRARIES "${ALSA_PREFIX}/lib/libasound.a")
     set(ALSA_INCLUDE_DIRS "${ALSA_PREFIX}/include")
+    if(NOT TARGET asciichat-alsa)
+        add_library(asciichat-alsa INTERFACE)
+        target_link_libraries(asciichat-alsa INTERFACE "${ALSA_PREFIX}/lib/libasound.a")
+        target_include_directories(asciichat-alsa INTERFACE "${ALSA_PREFIX}/include")
+    endif()
 
     return()
 endif()
@@ -75,6 +80,11 @@ if(UNIX AND NOT APPLE AND NOT EMSCRIPTEN)
 
     set(ALSA_LIBRARIES ${ALSA_LDFLAGS})
     set(ALSA_INCLUDE_DIRS ${ALSA_INCLUDE_DIRS})
+    if(NOT TARGET asciichat-alsa)
+        add_library(asciichat-alsa INTERFACE)
+        target_link_libraries(asciichat-alsa INTERFACE ${ALSA_LDFLAGS})
+        target_include_directories(asciichat-alsa INTERFACE ${ALSA_INCLUDE_DIRS})
+    endif()
 
     message(STATUS "${BoldGreen}✓${ColorReset} ALSA: ${ALSA_LDFLAGS}")
 

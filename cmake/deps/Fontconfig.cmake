@@ -58,7 +58,7 @@ if(PLATFORM_IOS OR USE_MUSL)
     set_target_properties(fontconfig PROPERTIES
         IMPORTED_LOCATION "${FONTCONFIG_PREFIX}/lib/libfontconfig.a"
         INTERFACE_INCLUDE_DIRECTORIES "${FONTCONFIG_INCLUDE_DIRS}"
-        INTERFACE_LINK_LIBRARIES "expat;${FREETYPE_LIBRARIES}")
+        INTERFACE_LINK_LIBRARIES "asciichat-expat;asciichat-freetype")
     add_dependencies(fontconfig asciichat-fontconfig-musl)
     add_library(asciichat-fontconfig INTERFACE)
     target_link_libraries(asciichat-fontconfig INTERFACE fontconfig)

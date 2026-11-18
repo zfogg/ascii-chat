@@ -39,7 +39,7 @@ _asciichat_wrap_target(asciichat-zstd zstd::libzstd zstd::zstd)
 _asciichat_wrap_target(asciichat-libsodium asciichat-libsodium unofficial-sodium::sodium sodium)
 
 foreach(_target IN ITEMS
-    asciichat-libuv asciichat-portaudio asciichat-opus asciichat-fftw asciichat-fftw-float
+    asciichat-libuv asciichat-alsa asciichat-portaudio asciichat-opus asciichat-fftw asciichat-fftw-float
     asciichat-zstd asciichat-libsodium asciichat-rnnoise)
     target_link_libraries(asciichat-core-dependencies INTERFACE "${_target}")
 endforeach()
@@ -71,6 +71,10 @@ if(PLATFORM_LINUX)
 endif()
 _asciichat_wrap_target(asciichat-webrtc-aec3 webrtc_audio_processing)
 _asciichat_wrap_target(asciichat-ffmpeg)
+_asciichat_wrap_target(asciichat-x264 x264::x264)
+_asciichat_wrap_target(asciichat-x265 x265::x265)
+_asciichat_wrap_target(asciichat-bzip2 BZip2::BZip2)
+_asciichat_wrap_target(asciichat-expat EXPAT::EXPAT expat)
 _asciichat_wrap_target(asciichat-fftw asciichat-fftw)
 _asciichat_wrap_target(asciichat-fftw-float asciichat-fftw-float)
 _asciichat_wrap_target(asciichat-gotel gotel::gotel gotel)

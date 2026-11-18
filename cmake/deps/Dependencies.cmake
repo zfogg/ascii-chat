@@ -133,6 +133,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/deps/Gotel.cmake)
 
 # x264 - H.264/AVC encoder (needed by FFmpeg for libx264 support)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/X264.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Bzip2.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Expat.cmake)
 
 # x265 - HEVC encoder (needed by FFmpeg for libx265 support)
 include(${CMAKE_SOURCE_DIR}/cmake/deps/X265.cmake)
