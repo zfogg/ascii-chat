@@ -42,6 +42,21 @@ if(NOT TARGET libplatform::libplatform)
     message(FATAL_ERROR "libplatform did not provide its required libplatform::libplatform target")
 endif()
 
+if(USE_MUSL AND TARGET libplatform)
+    # The upstream standalone project discovers the host pkg-config
+    # fontconfig target on Linux. That would append glibc's -lfontconfig to a
+    # musl link even though ascii-chat has its own musl-built archive.
+    get_target_property(_libplatform_interface_links libplatform
+        INTERFACE_LINK_LIBRARIES)
+    if(_libplatform_interface_links)
+        list(REMOVE_ITEM _libplatform_interface_links
+            PkgConfig::LIBPLATFORM_FONTCONFIG)
+        set_property(TARGET libplatform PROPERTY INTERFACE_LINK_LIBRARIES
+            "${_libplatform_interface_links}")
+    endif()
+    unset(_libplatform_interface_links)
+endif()
+
 # libplatform-objects is compiled as a separate object library and therefore
 # does not inherit the final library target's usage requirements.  Propagate
 # the target-only headers explicitly for musl and POSIX support files.
