@@ -53,7 +53,7 @@ set(_ASCIICHAT_FIND_DEPENDENCY_INCLUDED TRUE)
 # =============================================================================
 macro(find_dependency_library)
     # Parse arguments
-    set(_options REQUIRED OPTIONAL TARGET_ONLY)
+    set(_options REQUIRED OPTIONAL)
     set(_one_value_args NAME HEADER PKG_CONFIG HOMEBREW_PKG STATIC_LIB_NAME STATIC_DEFINE)
     set(_multi_value_args VCPKG_NAMES)
     cmake_parse_arguments(_DEP "${_options}" "${_one_value_args}" "${_multi_value_args}" ${ARGN})
@@ -199,17 +199,4 @@ macro(find_dependency_library)
         endif()
     endif()
 
-    # Callers that consume only the canonical interface must not inherit the
-    # historical discovery-variable surface.  The provider variables above
-    # are intentionally local implementation state for this macro invocation.
-    if(_DEP_TARGET_ONLY)
-        unset(${_DEP_NAME}_FOUND)
-        unset(${_DEP_NAME}_LIBRARIES)
-        unset(${_DEP_NAME}_INCLUDE_DIRS)
-        unset(${_DEP_NAME}_INCLUDE_DIR)
-        unset(${_DEP_NAME}_LIBRARY_RELEASE)
-        unset(${_DEP_NAME}_LIBRARY_DEBUG)
-        unset(${_DEP_NAME}_STATIC_LIBRARY)
-        unset(${_DEP_NAME}_LIBRARY_DIRS)
-    endif()
 endmacro()

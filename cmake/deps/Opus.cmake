@@ -72,30 +72,26 @@ find_dependency_library(
 )
 
 # Match the header layout exported by Opus::opus and pkg-config.
-if(PkgConfig_FOUND)
-    pkg_get_variable(OPUS_PKG_INCLUDE_DIR opus includedir)
+get_target_property(_opus_interface_includes asciichat-opus INTERFACE_INCLUDE_DIRECTORIES)
+if(NOT _opus_interface_includes OR _opus_interface_includes STREQUAL "_opus_interface_includes-NOTFOUND")
+    set(_opus_interface_includes)
 endif()
-unset(OPUS_HEADER_INCLUDE_DIR CACHE)
 foreach(_opus_include_candidate IN ITEMS
-    ${OPUS_INCLUDE_DIRS} ${OPUS_INCLUDE_DIR} ${OPUS_PKG_INCLUDE_DIR}
+    ${_opus_interface_includes}
     /usr/include /usr/include/opus /usr/local/include /usr/local/include/opus)
     if(EXISTS "${_opus_include_candidate}/opus.h")
-        set(OPUS_HEADER_INCLUDE_DIR "${_opus_include_candidate}")
+        set(_opus_header_include_dir "${_opus_include_candidate}")
         break()
     elseif(EXISTS "${_opus_include_candidate}/opus/opus.h")
-        set(OPUS_HEADER_INCLUDE_DIR "${_opus_include_candidate}/opus")
+        set(_opus_header_include_dir "${_opus_include_candidate}/opus")
         break()
     endif()
 endforeach()
-if(NOT OPUS_HEADER_INCLUDE_DIR)
-    find_path(OPUS_HEADER_INCLUDE_DIR NAMES opus.h
-        HINTS ${OPUS_INCLUDE_DIRS} ${OPUS_PKG_INCLUDE_DIR}
+if(NOT _opus_header_include_dir)
+    find_path(_opus_header_include_dir NAMES opus.h
+        HINTS ${_opus_interface_includes}
         PATH_SUFFIXES opus REQUIRED)
 endif()
-set(OPUS_INCLUDE_DIRS "${OPUS_HEADER_INCLUDE_DIR}")
-
-if(NOT TARGET asciichat-opus)
-    add_library(asciichat-opus INTERFACE)
-    target_link_libraries(asciichat-opus INTERFACE ${OPUS_LIBRARIES})
+if(_opus_header_include_dir)
+    target_include_directories(asciichat-opus INTERFACE "${_opus_header_include_dir}")
 endif()
-target_include_directories(asciichat-opus INTERFACE "${OPUS_INCLUDE_DIRS}")
