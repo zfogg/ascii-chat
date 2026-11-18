@@ -302,7 +302,7 @@ if(absl_FOUND)
     message(STATUS "WebRTC AEC3: Using system Abseil")
 
     # Build base library WITHOUT bundled Abseil sources
-    add_library(base
+    add_library(base STATIC
             rtc_base/checks.cc
             rtc_base/time_utils.cc
             rtc_base/logging.cc
@@ -336,7 +336,7 @@ else()
     include_directories("${PROJECT_SOURCE_DIR}/base/abseil")
 
     # Build base library WITH bundled Abseil sources
-    add_library(base
+    add_library(base STATIC
             rtc_base/checks.cc
             rtc_base/time_utils.cc
             rtc_base/logging.cc
@@ -356,6 +356,9 @@ else()
             abseil/absl/strings/internal/memutil.cc
             abseil/absl/strings/ascii.cc
             )
+endif()
+if(WIN32)
+    target_link_libraries(base PUBLIC winmm)
 endif()
 ]=])
 

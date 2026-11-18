@@ -72,16 +72,13 @@ endif()
 # tree so the shared Debug dependency build does not depend on the parent
 # application's binary directory.
 string(REGEX REPLACE "[^A-Za-z0-9_.-]" "-" _asciichat_gotel_generator_cache "${CMAKE_GENERATOR}")
-set(_asciichat_gotel_cache_dir
-    "${ASCIICHAT_DEPS_CACHE_DIR}/gotel-${_asciichat_gotel_generator_cache}")
-file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
-
-set(_asciichat_parent_shared_libs ${BUILD_SHARED_LIBS})
-if(USE_MUSL)
-    set(BUILD_SHARED_LIBS OFF)
+string(REGEX REPLACE "[^A-Za-z0-9_.-]" "-" _asciichat_gotel_compiler_cache "${CMAKE_C_COMPILER_ID}")
+if(NOT _asciichat_gotel_compiler_cache)
+    set(_asciichat_gotel_compiler_cache default)
 endif()
-set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS} CACHE BOOL
-    "Build gotel and its public dependencies as shared libraries" FORCE)
+set(_asciichat_gotel_cache_dir
+    "${ASCIICHAT_DEPS_CACHE_DIR}/gotel-${_asciichat_gotel_compiler_cache}-${_asciichat_gotel_generator_cache}")
+file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 
 # Gotel's gRPC adapter accepts an existing nghttp2 target. Prefer the target
 # supplied by vcpkg so its embedded FetchContent project does not define a
@@ -155,10 +152,13 @@ if(DEFINED FETCHCONTENT_BASE_DIR)
     set(_asciichat_fetchcontent_base_dir_was_defined TRUE)
     set(_asciichat_parent_fetchcontent_base_dir "${FETCHCONTENT_BASE_DIR}")
 endif()
-# Child dependencies are siblings in the shared dependency cache.  Using the
-# Gotel directory as FetchContent's global root incorrectly nests unrelated
-# projects such as mimalloc below `gotel/`.
-set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}" CACHE PATH
+# Child dependencies are siblings in the compiler/generator-specific
+# FetchContent cache. Using the unqualified build-type root lets incompatible
+# MSVC and Clang subbuilds reuse the same CMake cache.
+if(NOT _asciichat_parent_fetchcontent_base_dir)
+    set(_asciichat_parent_fetchcontent_base_dir "${ASCIICHAT_DEPS_CACHE_DIR}")
+endif()
+set(FETCHCONTENT_BASE_DIR "${_asciichat_parent_fetchcontent_base_dir}" CACHE PATH
     "Persistent dependency source/build cache" FORCE)
 
 if(USE_MUSL AND NOT TARGET nghttp2_static)
@@ -308,7 +308,6 @@ list(FILTER _otel_sources EXCLUDE REGEX "(^|/)exporter\\.c$")
 set_property(TARGET otlp_c PROPERTY SOURCES "${_otel_sources}")
 target_sources(otlp_c PRIVATE "${_asciichat_gotel_cache_dir}/generated/otlp_exporter.c")
 
-set(BUILD_SHARED_LIBS ${_asciichat_parent_shared_libs})
 set(FETCHCONTENT_UPDATES_DISCONNECTED
     ${_asciichat_parent_fetchcontent_updates_disconnected})
 set(FETCHCONTENT_FULLY_DISCONNECTED

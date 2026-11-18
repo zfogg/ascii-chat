@@ -48,8 +48,7 @@
 #include <stdio.h>
 #include <ascii-chat/asciichat_errno.h>
 
-/* Defined by log/log.h; forward-declared here to avoid a logging/string cycle. */
-typedef enum log_color_t log_color_t;
+#include <ascii-chat/log/color.h>
 
 #ifdef _WIN32
 #include <BaseTsd.h>

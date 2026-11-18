@@ -26,6 +26,7 @@
 #define ASCII_CHAT_LOG_LOG_H
 
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/log/color.h>
 
 #include <stdarg.h>
 #include <libplatform/atomic.h>
@@ -129,25 +130,6 @@ typedef struct {
 } log_buffer_entry_t;
 
 /* Implementation details (g_log struct, color arrays) are in logging.c */
-
-/**
- * @brief Color enum for logging - indexes into color arrays
- * @ingroup logging
- *
- * Values through RESET index into level_colors arrays; WHITE is resolved separately.
- * Order matches DEV, DEBUG, WARN, INFO, ERROR, FATAL, GREY, RESET.
- */
-typedef enum log_color_t {
-  LOG_COLOR_DEV = 0,   /**< Blue - DEV messages */
-  LOG_COLOR_DEBUG = 1, /**< Cyan - DEBUG messages */
-  LOG_COLOR_INFO = 2,  /**< Green - INFO messages */
-  LOG_COLOR_WARN = 3,  /**< Yellow - WARN messages */
-  LOG_COLOR_ERROR = 4, /**< Red - ERROR messages */
-  LOG_COLOR_FATAL = 5, /**< Magenta - FATAL messages */
-  LOG_COLOR_GREY = 6,  /**< Grey - for neutral messages or labels */
-  LOG_COLOR_RESET = 7, /**< Reset to default */
-  LOG_COLOR_WHITE = 8  /**< White text, independent of the accent palette */
-} log_color_t;
 
 #ifdef __cplusplus
 extern "C" {

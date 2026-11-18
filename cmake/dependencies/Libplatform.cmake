@@ -10,18 +10,6 @@
 # root.
 get_filename_component(_ascii_chat_repo_root "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 
-if(USE_MUSL OR NOT BUILD_SHARED_LIBS)
-    set(_ascii_chat_libplatform_shared OFF)
-elseif(BUILD_SHARED_LIBS)
-    set(_ascii_chat_libplatform_shared ON)
-elseif(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
-    set(_ascii_chat_libplatform_shared ON)
-else()
-    set(_ascii_chat_libplatform_shared OFF)
-endif()
-
-set(LIBPLATFORM_BUILD_SHARED "${_ascii_chat_libplatform_shared}" CACHE BOOL
-    "Build libplatform as a shared library" FORCE)
 set(LIBPLATFORM_BUILD_TESTS OFF CACHE BOOL
     "Disable standalone libplatform tests in ascii-chat" FORCE)
 
@@ -55,7 +43,6 @@ endif()
 set(ASCIICHAT_LIBPLATFORM_TARGET libplatform::libplatform CACHE INTERNAL
     "Imported libplatform target used by ascii-chat")
 
-unset(_ascii_chat_libplatform_shared)
 unset(_ascii_chat_libplatform_source)
 unset(_ascii_chat_libplatform_build)
 unset(_ascii_chat_repo_root)

@@ -51,6 +51,19 @@ endif()
 set(ASCIICHAT_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}" CACHE PATH
     "Dependency cache for current build type" FORCE)
 string(REGEX REPLACE "[^A-Za-z0-9_.-]" "-" _asciichat_generator_cache "${CMAKE_GENERATOR}")
-set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/fetchcontent-${_asciichat_generator_cache}"
+set(_asciichat_compiler_cache "${CMAKE_C_COMPILER_ID}")
+if(NOT _asciichat_compiler_cache)
+    if(CMAKE_C_COMPILER MATCHES "(^|[/\\\\])clang(-cl)?(\.exe)?$")
+        set(_asciichat_compiler_cache "Clang")
+    elseif(CMAKE_C_COMPILER MATCHES "(^|[/\\\\])(gcc|cc)(-[0-9]+)?(\.exe)?$")
+        set(_asciichat_compiler_cache "GCC")
+    elseif(CMAKE_C_COMPILER MATCHES "(^|[/\\\\])cl(\.exe)?$")
+        set(_asciichat_compiler_cache "MSVC")
+    else()
+        set(_asciichat_compiler_cache "default")
+    endif()
+endif()
+string(REGEX REPLACE "[^A-Za-z0-9_.-]" "-" _asciichat_compiler_cache "${_asciichat_compiler_cache}")
+set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/fetchcontent-${_asciichat_compiler_cache}-${_asciichat_generator_cache}"
     CACHE PATH
     "FetchContent source/build cache for current build type" FORCE)
