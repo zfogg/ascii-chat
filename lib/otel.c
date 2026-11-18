@@ -394,6 +394,13 @@ void ascii_otel_scope_parent(ascii_otel_scope_t *s, ascii_otel_operation_t op, c
     current_scope = s;
   }
 }
+/* Keep the stack-scope lifetime boundary visible to the cleanup caller.  If
+ * GCC inlines this helper, its dangling-pointer analysis treats the deliberate
+ * thread-local scope stack as an escaped local even though cleanup restores it
+ * before return. */
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((noinline))
+#endif
 static bool scope_retained(ascii_otel_scope_t *s, ascii_otel_operation_t op, const gotel_context_t *parent) {
   gotel_host_t *h = retain();
   if (!h)
