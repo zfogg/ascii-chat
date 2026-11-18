@@ -81,5 +81,6 @@ find_dependency_library(
     HOMEBREW_PKG pcre2
     STATIC_LIB_NAME libpcre2-8.a
     STATIC_DEFINE PCRE2_STATIC
+    TARGET_ONLY
     REQUIRED
 )
