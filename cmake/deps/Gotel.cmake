@@ -153,6 +153,16 @@ endif()
 if(NOT USE_MUSL)
     unset(GOTEL_NGHTTP2_TARGET CACHE)
     unset(GOTEL_NGHTTP2_TARGET)
+    # A package-manager target is already configured on Windows/vcpkg. Reuse
+    # it when present; otherwise the gRPC subproject populates the pinned
+    # source checkout below.
+    if(TARGET nghttp2::nghttp2)
+        set(GOTEL_NGHTTP2_TARGET nghttp2::nghttp2)
+    elseif(TARGET nghttp2)
+        set(GOTEL_NGHTTP2_TARGET nghttp2)
+    elseif(TARGET nghttp2_static)
+        set(GOTEL_NGHTTP2_TARGET nghttp2_static)
+    endif()
 endif()
 
 set(_asciichat_gotel_parent_c_flags "${CMAKE_C_FLAGS}")
