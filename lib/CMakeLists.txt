@@ -585,8 +585,8 @@ target_link_libraries(ascii-chat-video PRIVATE asciichat-pcre2)
 # -----------------------------------------------------------------------------
 # Module 6: Audio Processing (depends on: util, platform, data-structures)
 # Add WebRTC AEC3 include directories BEFORE creating the module
-if(TARGET webrtc_audio_processing)
-    get_target_property(WEBRTC_INCLUDES webrtc_audio_processing INTERFACE_INCLUDE_DIRECTORIES)
+if(TARGET asciichat-webrtc-aec3)
+    get_target_property(WEBRTC_INCLUDES asciichat-webrtc-aec3 INTERFACE_INCLUDE_DIRECTORIES)
     if(WEBRTC_INCLUDES)
         # Set globally so they apply during compilation
         include_directories(${WEBRTC_INCLUDES})
@@ -607,7 +607,7 @@ add_dependencies(ascii-chat-audio ascii-chat-rnnoise-build)
 
 # For OBJECT libs, link external deps only
 target_link_libraries(ascii-chat-audio PRIVATE
-    asciichat-portaudio asciichat-opus webrtc_audio_processing)
+    asciichat-portaudio asciichat-opus asciichat-webrtc-aec3)
 
 # Link platform-specific audio libraries
 # macOS: CoreAudio, AudioUnit, AudioToolbox (required for static portaudio)
@@ -1308,8 +1308,8 @@ endif()
 # - Debug builds: linking OBJECT libraries
 # - Release builds: compilation and linking of source files that #include their headers
 # The linker automatically deduplicates any multiple references
-if(TARGET webrtc_audio_processing)
-    target_link_libraries(ascii-chat-shared PRIVATE webrtc_audio_processing)
+if(TARGET asciichat-webrtc-aec3)
+    target_link_libraries(ascii-chat-shared PRIVATE asciichat-webrtc-aec3)
 endif()
 
 # Link libdatachannel for WebRTC P2P connections
@@ -1585,7 +1585,7 @@ target_link_libraries(ascii-chat-static INTERFACE
     asciichat-portaudio
     asciichat-opus
     asciichat-sqlite3
-    webrtc_audio_processing
+    asciichat-webrtc-aec3
     asciichat-freetype
     asciichat-vterm
     asciichat-libdatachannel

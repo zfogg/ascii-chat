@@ -168,7 +168,7 @@ if(NOT EMSCRIPTEN)
         asciichat-libdatachannel asciichat-libsodium asciichat-libwebsockets
         asciichat-miniupnpc asciichat-openssl asciichat-opus asciichat-pcre2
         asciichat-portaudio asciichat-sqlite3 asciichat-zlib asciichat-zstd
-        OpenSSL::SSL OpenSSL::Crypto webrtc_audio_processing)
+        OpenSSL::SSL OpenSSL::Crypto asciichat-webrtc-aec3)
         if(NOT TARGET ${_required_target})
             message(FATAL_ERROR "Required dependency target is missing: ${_required_target}")
         endif()
