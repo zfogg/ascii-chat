@@ -53,7 +53,7 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
         # Clang otherwise appends the host multiarch C headers after the
         # target triple's search path.  Keep libc++ headers enabled while
         # making musl the only C-library header provider.
-        string(APPEND _cxx " -nostdlibinc -isystem ${MUSL_INCLUDE_DIR}")
+        string(APPEND _cxx " -nostdlibinc")
     endif()
     if(_asciichat_kernel_headers_dir)
         string(APPEND _cxx " -isystem ${_asciichat_kernel_headers_dir}")
@@ -75,6 +75,7 @@ function(asciichat_musl_compile_flags c_flags cxx_flags)
         # libc++'s wrapper ahead of that directory so include_next reaches
         # the musl wrapper and defines nullptr_t correctly.
         string(APPEND _cxx " -isystem ${_asciichat_clang_resource_dir}/include")
+        string(APPEND _cxx " -isystem ${MUSL_INCLUDE_DIR}")
     endif()
     # Clang diagnoses precedence and duplicate-platform-macro patterns in the
     # external musl headers; keep these diagnostics out of project output.
