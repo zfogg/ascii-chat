@@ -143,6 +143,10 @@ function(asciichat_build_libwebsockets)
             "${asciichat_libwebsockets_SOURCE_DIR}/include"
             "${asciichat_libwebsockets_BINARY_DIR}")
     endif()
+    if(TARGET asciichat-project-options)
+        target_include_directories(asciichat-project-options INTERFACE
+            "${asciichat_libwebsockets_BINARY_DIR}")
+    endif()
 endfunction()
 asciichat_build_libwebsockets()
 if(TARGET asciichat-project-options)
