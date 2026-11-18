@@ -388,14 +388,6 @@ if(RECAST_BACKEND STREQUAL "NATIVE")
   # build graph.
   include("${CMAKE_SOURCE_DIR}/cmake/dependencies/Recast.cmake")
 endif()
-# A musl build provisions the host transformer through an ExternalProject.
-# Expose that imported target as `recast` so recast_targets() can depend on it
-# without requiring its build-time output to exist during configure.
-if(TARGET recast-native AND NOT TARGET recast)
-  set(_asciichat_recast_native_binary "${RECAST_NATIVE_BINARY}")
-  add_executable(recast ALIAS recast-native)
-  set(RECAST_NATIVE_BINARY "" CACHE FILEPATH "Recast host executable" FORCE)
-endif()
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Query.cmake)
 ascii_panic_prepare()
@@ -483,7 +475,7 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE)
             -DASCIICHAT_DEPS_CACHE_DIR=${WEB_DEPS_CACHE_DIR}
             -DPARENT_CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
             "-DRECAST_SOURCE_ROOT=${CMAKE_SOURCE_DIR}"
-            "-DRECAST_NATIVE_BINARY=${_asciichat_recast_native_binary}"
+            "-DRECAST_NATIVE_BINARY=${RECAST_NATIVE_BINARY}"
         )
         if(ASCIICHAT_MSYS2_ROOT)
             list(APPEND WASM_CMAKE_ARGS "-DASCIICHAT_MSYS2_ROOT=${ASCIICHAT_MSYS2_ROOT}")
