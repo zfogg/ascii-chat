@@ -390,62 +390,25 @@ if(USE_MUSL)
             file(RENAME "${OPENSSL_BUILD_DIR}/openssl-${OPENSSL_VERSION}" "${OPENSSL_SOURCE_DIR}")
         endif()
 
-        # Configure OpenSSL
-        message(STATUS "  Configuring OpenSSL for ${OPENSSL_TARGET}...")
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} -E env
-                CC=${ASCIICHAT_CLANG_EXECUTABLE}
-                CFLAGS=${MUSL_KERNEL_CFLAGS}
-                "${OPENSSL_SOURCE_DIR}/Configure"
-                ${OPENSSL_TARGET}
-                --prefix=${OPENSSL_PREFIX}
-                --libdir=lib
-                no-shared
-                no-module
-                no-apps
-                enable-quic
-                no-zlib
-                no-async
-                no-tests
-                no-ui-console
-                -fPIC
-            WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
-            RESULT_VARIABLE CONFIG_RESULT
-            OUTPUT_VARIABLE CONFIG_OUTPUT
-            ERROR_VARIABLE CONFIG_ERROR
-        )
-        if(NOT CONFIG_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to configure OpenSSL:\n${CONFIG_ERROR}")
-        endif()
-
-        message(STATUS "  Building OpenSSL (this takes a few minutes)...")
-        execute_process(
-            COMMAND ${CMAKE_COMMAND} -E env make -j${ASCIICHAT_OPENSSL_BUILD_JOBS}
-            WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
-            RESULT_VARIABLE BUILD_RESULT
-            OUTPUT_VARIABLE BUILD_OUTPUT
-            ERROR_VARIABLE BUILD_ERROR
-        )
-        if(NOT BUILD_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to build OpenSSL:\n${BUILD_ERROR}")
-        endif()
-
-        # Install OpenSSL
-        message(STATUS "  Installing OpenSSL...")
-        execute_process(
-            COMMAND make install_sw
-            WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
-            RESULT_VARIABLE INSTALL_RESULT
-            OUTPUT_VARIABLE INSTALL_OUTPUT
-            ERROR_VARIABLE INSTALL_ERROR
-        )
-        if(NOT INSTALL_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to install OpenSSL:\n${INSTALL_ERROR}")
-        endif()
-
-        file(WRITE "${OPENSSL_CONFIG_STAMP}" "${OPENSSL_CONFIG_SIGNATURE}\n")
-
-        message(STATUS "  ${BoldGreen}OpenSSL${ColorReset} built and cached successfully")
+        include(ExternalProject)
+        ExternalProject_Add(asciichat-openssl-musl
+            SOURCE_DIR "${OPENSSL_SOURCE_DIR}"
+            CONFIGURE_COMMAND ""
+            BUILD_COMMAND ${CMAKE_COMMAND} -DOPENSSL_SOURCE_DIR:PATH=${OPENSSL_SOURCE_DIR}
+                -DOPENSSL_TARGET:STRING=${OPENSSL_TARGET}
+                -DOPENSSL_PREFIX:PATH=${OPENSSL_PREFIX}
+                -DOPENSSL_CC:FILEPATH=${ASCIICHAT_CLANG_EXECUTABLE}
+                -DOPENSSL_CFLAGS:STRING=${MUSL_KERNEL_CFLAGS}
+                -DOPENSSL_JOBS:STRING=${ASCIICHAT_OPENSSL_BUILD_JOBS}
+                -DOPENSSL_CONFIG_STAMP:FILEPATH=${OPENSSL_CONFIG_STAMP}
+                -DOPENSSL_SIGNATURE:STRING=${OPENSSL_CONFIG_SIGNATURE}
+                -P "${CMAKE_SOURCE_DIR}/cmake/deps/BuildOpenSSLMusl.cmake"
+            INSTALL_COMMAND ""
+            BUILD_BYPRODUCTS
+                "${OPENSSL_PREFIX}/lib/libssl.a"
+                "${OPENSSL_PREFIX}/lib/libcrypto.a"
+            LOG_BUILD TRUE LOG_OUTPUT_ON_FAILURE TRUE)
+        message(STATUS "  ${BoldGreen}OpenSSL${ColorReset} build scheduled through ExternalProject")
     else()
         message(STATUS "  ${BoldBlue}OpenSSL${ColorReset} library found in cache: ${BoldMagenta}${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a${ColorReset}")
     endif()
@@ -474,8 +437,12 @@ if(USE_MUSL)
         )
     endif()
 
-    # Create a custom target for musl builds (libraries are pre-built/cached)
-    add_custom_target(openssl-musl)
+    if(TARGET asciichat-openssl-musl)
+        add_dependencies(OpenSSL::Crypto asciichat-openssl-musl)
+        add_dependencies(OpenSSL::SSL asciichat-openssl-musl)
+    else()
+        add_custom_target(openssl-musl)
+    endif()
     set(OPENSSL_FOUND TRUE)
 
     return()
