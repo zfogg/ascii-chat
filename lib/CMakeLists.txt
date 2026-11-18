@@ -1789,12 +1789,6 @@ target_link_libraries(ascii-chat-lib INTERFACE
 # FFTW symbols are used unconditionally by the native audio module.
 target_link_libraries(ascii-chat-audio PRIVATE asciichat-fftw)
 target_link_libraries(ascii-chat-audio PRIVATE asciichat-fftw-float)
-if(ASCIICHAT_FFTW_INCLUDE_DIR)
-    target_include_directories(ascii-chat-audio PRIVATE "${ASCIICHAT_FFTW_INCLUDE_DIR}")
-endif()
-if(FFTW_INCLUDE_DIRS)
-    target_include_directories(ascii-chat-audio PRIVATE ${FFTW_INCLUDE_DIRS})
-endif()
 if(TARGET ascii-chat-shared)
     target_link_libraries(ascii-chat-shared PRIVATE asciichat-fftw)
     target_link_libraries(ascii-chat-shared PRIVATE asciichat-fftw-float)
