@@ -28,12 +28,6 @@ macro(_yyjson_build_from_submodule source_dir label)
     set(YYJSON_BUILD_FUZZER OFF)
     set(YYJSON_BUILD_MISC OFF)
     set(YYJSON_BUILD_DOC OFF)
-    if(BUILD_SHARED_LIBS AND NOT USE_MUSL AND NOT PLATFORM_IOS AND NOT EMSCRIPTEN)
-        set(BUILD_SHARED_LIBS ON)
-    else()
-        set(BUILD_SHARED_LIBS OFF)
-    endif()
-
     set(YYJSON_BUILD_DIR "${CMAKE_BINARY_DIR}/_deps/yyjson")
 
     add_subdirectory(

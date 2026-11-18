@@ -88,13 +88,6 @@ endif()
 set(_asciichat_gotel_cache_dir "${ASCIICHAT_DEPS_CACHE_DIR}/gotel")
 file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
 
-set(_asciichat_parent_shared_libs ${BUILD_SHARED_LIBS})
-if(USE_MUSL)
-    set(BUILD_SHARED_LIBS OFF)
-endif()
-set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS} CACHE BOOL
-    "Build gotel and its public dependencies as shared libraries" FORCE)
-
 # Gotel's gRPC adapter accepts an existing nghttp2 target. Prefer the target
 # supplied by vcpkg so its embedded FetchContent project does not define a
 # second target with the same name.
@@ -320,7 +313,6 @@ list(FILTER _otel_sources EXCLUDE REGEX "(^|/)exporter\\.c$")
 set_property(TARGET otlp_c PROPERTY SOURCES "${_otel_sources}")
 target_sources(otlp_c PRIVATE "${_asciichat_gotel_cache_dir}/generated/otlp_exporter.c")
 
-set(BUILD_SHARED_LIBS ${_asciichat_parent_shared_libs})
 set(FETCHCONTENT_UPDATES_DISCONNECTED
     ${_asciichat_parent_fetchcontent_updates_disconnected})
 set(FETCHCONTENT_FULLY_DISCONNECTED
