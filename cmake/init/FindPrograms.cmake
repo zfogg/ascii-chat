@@ -409,6 +409,16 @@ _find_llvm_tool(ASCIICHAT_LLVM_STRIP_EXECUTABLE llvm-strip)
 _find_llvm_tool(ASCIICHAT_LLVM_AR_EXECUTABLE llvm-ar)
 _find_llvm_tool(ASCIICHAT_LLVM_RANLIB_EXECUTABLE llvm-ranlib)
 _find_llvm_tool(ASCIICHAT_LLVM_NM_EXECUTABLE llvm-nm)
+if(WIN32 AND NOT ASCIICHAT_LLVM_NM_EXECUTABLE)
+    unset(ASCIICHAT_LLVM_NM_EXECUTABLE CACHE)
+    find_program(ASCIICHAT_LLVM_NM_EXECUTABLE
+        NAMES llvm-nm llvm-nm.exe
+        PATHS
+            "$ENV{USERPROFILE}/scoop/apps/llvm/current/bin"
+            "C:/LLVM/bin"
+        NO_DEFAULT_PATH
+        DOC "LLVM symbol table viewer")
+endif()
 _find_llvm_tool(ASCIICHAT_LLVM_READELF_EXECUTABLE llvm-readelf)
 _find_llvm_tool(ASCIICHAT_LLVM_READOBJ_EXECUTABLE llvm-readobj)
 _find_llvm_tool(ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE llvm-objdump)
