@@ -152,8 +152,7 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client, bo
     }
     debug_memory_ensure_init();
     static const char *const ascii_chat_libraries[] = {"libasciichat", NULL};
-    symbol_cache_set_project_modules("ascii-chat", ascii_chat_libraries);
-    symbol_cache_init();
+    symbol_cache_init("ascii-chat", ascii_chat_libraries);
 #endif
 
     // 2. LOGGING - Initialize system state first, then user-level logging
