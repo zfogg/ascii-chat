@@ -335,6 +335,10 @@ static int receive_header(nghttp3_conn *conn, int64_t stream_id, int32_t token, 
       stream_field = &state->request_path;
     else if (equal_bytes(key, "origin"))
       stream_field = &state->request_origin;
+    if (!stream_field) {
+      state->malformed = true;
+      return 0;
+    }
     if (*stream_field || !valid)
       state->malformed = true;
     *stream_field = true;

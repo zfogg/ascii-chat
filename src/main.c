@@ -65,6 +65,7 @@
 #include <ascii-chat/util/env.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/string.h>
+#include <libplatform/util/string.h>
 
 // Common headers for version info and initialization
 #include <libplatform/atomic.h>
