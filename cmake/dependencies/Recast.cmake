@@ -16,6 +16,7 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
         set(_recast_host_build "${_recast_host_cache}/recast-llvm23-v2")
         set(_recast_host_link_flags)
         if(UNIX AND NOT APPLE)
+            unset(_recast_host_lld CACHE)
             find_program(_recast_host_lld NAMES ld.lld
                 PATHS /usr/lib/llvm-23/bin /usr/bin NO_DEFAULT_PATH)
             if(_recast_host_lld)
@@ -33,6 +34,7 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
                 /usr/lib /lib)
             foreach(_recast_host_link_library IN ITEMS
                 ffi z3 z zstd xml2 tinfo icuuc icudata)
+                unset(_recast_host_link_path CACHE)
                 find_library(_recast_host_link_path
                     NAMES "${_recast_host_link_library}"
                     PATHS ${_recast_host_system_library_paths}
@@ -41,7 +43,6 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
                     string(APPEND _recast_host_link_flags
                         " ${_recast_host_link_path}")
                 endif()
-                unset(_recast_host_link_path CACHE)
             endforeach()
             foreach(_recast_host_library IN ITEMS
                 /lib/x86_64-linux-gnu/libedit.so.2
