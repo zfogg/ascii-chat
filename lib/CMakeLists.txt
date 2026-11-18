@@ -776,6 +776,10 @@ foreach(_core_target IN LISTS _CORE_MODULE_TARGETS)
     endif()
 endforeach()
 
+if(TARGET ascii-chat-logging AND TARGET OpenSSL::SSL)
+    target_link_libraries(ascii-chat-logging PRIVATE OpenSSL::SSL)
+endif()
+
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-runtime PRIVATE ${ASCIICHAT_LIBUV_TARGET})
 endif()
