@@ -2,7 +2,13 @@
 set -euo pipefail
 
 build_dir="${1:-build-ios-sim}"
-sim_arch="${IOS_SIM_ARCH:-x86_64}"
+host_arch="$(uname -m)"
+case "$host_arch" in
+  arm64|aarch64) default_sim_arch="arm64" ;;
+  x86_64|amd64) default_sim_arch="x86_64" ;;
+  *) default_sim_arch="x86_64" ;;
+esac
+sim_arch="${IOS_SIM_ARCH:-$default_sim_arch}"
 case "$sim_arch" in
   x86_64|arm64) ;;
   *) echo "IOS_SIM_ARCH must be x86_64 or arm64" >&2; exit 2 ;;

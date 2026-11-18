@@ -21,7 +21,7 @@ set(LIBFLAGS_UTF8PROC_TARGET utf8proc CACHE STRING
 set(_ascii_chat_libflags_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src-${CMAKE_BUILD_TYPE}")
 FetchContent_Declare(libflags
     GIT_REPOSITORY https://github.com/zfogg/libflags.git
-  GIT_TAG 1c325f77c4e096d450cd04c3e9949ab92bb0b40c
+  GIT_TAG b260d97d3f63070f6322285ac6971b0f1d9d0bde
     SOURCE_DIR "${_ascii_chat_libflags_source}")
 FetchContent_MakeAvailable(libflags)
 unset(_ascii_chat_libflags_source)

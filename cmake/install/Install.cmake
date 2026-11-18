@@ -215,7 +215,7 @@ if(WIN32)
         PATTERN "*/private/*" EXCLUDE
         PATTERN "*/posix/*" EXCLUDE
         PATTERN "*/linux/*" EXCLUDE
-        PATTERN "*/macos/*" EXCLUDE
+        PATTERN "*/apple/*" EXCLUDE
     )
 elseif(APPLE)
     # macOS: Install all headers except Windows and Linux-specific ones
@@ -241,7 +241,7 @@ else()
         PATTERN "*/internal/*" EXCLUDE
         PATTERN "*/private/*" EXCLUDE
         PATTERN "*/windows/*" EXCLUDE
-        PATTERN "*/macos/*" EXCLUDE
+        PATTERN "*/apple/*" EXCLUDE
     )
 endif()
 

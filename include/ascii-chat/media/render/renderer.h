@@ -50,6 +50,18 @@ typedef struct {
    */
 } term_renderer_config_t;
 
+/**
+ * @brief Calculate a renderer grid for a pixel surface.
+ *
+ * A zero configured dimension derives the cell count from the target surface
+ * and font size. Non-zero dimensions are preserved exactly, which lets live
+ * options override only one axis without duplicating terminal-cell geometry
+ * in platform UI code.
+ */
+asciichat_error_t term_renderer_calculate_surface_grid(int pixel_width, int pixel_height, double font_size_pt,
+                                                       int configured_cols, int configured_rows, int *out_cols,
+                                                       int *out_rows);
+
 // Implemented in lib/media/render/terminal.c using FreeType on all platforms.
 asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, terminal_renderer_t **out);
 /** Enable raster Zalgo (1-10), or disable with zero. */

@@ -473,6 +473,9 @@ else()
     endif()
 endif()
 
+if(PLATFORM_IOS)
+    target_compile_definitions(ascii-chat-platform INTERFACE PLATFORM_IOS=1)
+endif()
 # -----------------------------------------------------------------------------
 # Module 3: Cryptography (depends on: util, platform)
 # -----------------------------------------------------------------------------

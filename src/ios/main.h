@@ -15,4 +15,5 @@ int asciichat_ios_mode_available(asciichat_ios_mode_t mode);
 const char *asciichat_ios_mode_name(asciichat_ios_mode_t mode);
 int asciichat_ios_is_running(void);
 int asciichat_ios_last_result(void);
+const char *asciichat_ios_last_error(void);
 void asciichat_ios_request_stop(void);

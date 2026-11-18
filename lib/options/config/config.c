@@ -29,6 +29,7 @@
 #include <libplatform/terminal.h>
 #include <libplatform/system.h>
 #include <libplatform/question.h>
+#include <ascii-chat/os/frame_flush.h>
 #include <sys/stat.h>
 #include <libplatform/filesystem.h>
 #include <ascii-chat/crypto/crypto.h>

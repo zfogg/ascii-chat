@@ -16,9 +16,11 @@
 #include <string.h>
 #include <ascii-chat/tui/render_progress.h>
 #include <ascii-chat/tui/controller.h>
+#include <ascii-chat/tui/too_small.h>
 #include <ascii-chat/audio/recording.h>
 #include <ascii-chat/media/kitty/image.h>
-#include <ascii-chat/font.h>
+#include <limits.h>
+#include <math.h>
 
 #define RENDER_AUTO_FONT_SIZE_PT 12.0
 #define RENDER_AUTO_VIDEO_MAX_DIMENSION 1280
@@ -50,11 +52,42 @@ struct render_file_ctx_s {
   int audio_buf_size;    // Size of audio_read_buf
 };
 
-asciichat_error_t render_file_create(const char *output_path, int cols, int rows, int fps, int theme, render_file_ctx_t **out) {
+asciichat_error_t term_renderer_calculate_surface_grid(int pixel_width, int pixel_height, double font_size_pt,
+                                                       int configured_cols, int configured_rows, int *out_cols,
+                                                       int *out_rows) {
+  if (pixel_width <= 0 || pixel_height <= 0 || !isfinite(font_size_pt) || font_size_pt <= 0.0 || configured_cols < 0 ||
+      configured_rows < 0 || !out_cols || !out_rows)
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid render surface grid parameters");
+
+  const double derived_cols = ceil((double)pixel_width / (font_size_pt * 0.8333));
+  if (configured_cols == 0 && (!isfinite(derived_cols) || derived_cols < 1.0 || derived_cols > (double)INT_MAX))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Derived render surface width is outside the supported range");
+  *out_cols = configured_cols > 0 ? configured_cols : (int)derived_cols;
+  /* Keep automatically derived surfaces valid for the shared option parser.
+   * This matters for native high-DPI displays: a deliberately large readable
+   * font can otherwise produce fewer than UI_MEDIA_MIN_COLS columns, causing
+   * the mode dispatcher to reject the dimensions it just calculated. */
+  if (configured_cols == 0 && *out_cols < UI_MEDIA_MIN_COLS)
+    *out_cols = UI_MEDIA_MIN_COLS;
+
+  const double derived_rows = ceil((double)(*out_cols) * (double)pixel_height / (double)pixel_width * 0.5);
+  if (configured_rows == 0 && (!isfinite(derived_rows) || derived_rows < 1.0 || derived_rows > (double)INT_MAX))
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Derived render surface height is outside the supported range");
+  *out_rows = configured_rows > 0 ? configured_rows : (int)derived_rows;
+  if (configured_rows == 0 && *out_rows < UI_MEDIA_MIN_ROWS)
+    *out_rows = UI_MEDIA_MIN_ROWS;
+  if (*out_cols <= 0 || *out_rows <= 0)
+    return SET_ERRNO(ERROR_INVALID_STATE, "Calculated render surface grid is empty");
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t render_file_create(const char *output_path, int cols, int rows, int fps, int theme,
+                                     render_file_ctx_t **out) {
   if (!output_path || !out || cols <= 0 || rows <= 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing render output, grid, or context");
   *out = NULL;
-  log_info("output_path=%s, cols=%d, rows=%d, fps=%d, theme=%d, out=%p", output_path ? output_path : "(null)", cols, rows, fps, theme, (void *)out);
+  log_info("output_path=%s, cols=%d, rows=%d, fps=%d, theme=%d, out=%p", output_path ? output_path : "(null)", cols,
+           rows, fps, theme, (void *)out);
   render_file_ctx_t *ctx = SAFE_CALLOC(1, sizeof(*ctx), render_file_ctx_t *);
   if (strcmp(output_path, "/dev/null") == 0) {
     ctx->discard = true;
@@ -73,9 +106,11 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
     return SET_ERRNO(ERROR_INVALID_PARAM, "Kitty graphics and binary media cannot share stdout");
   }
   const char *term = SAFE_GETENV("TERM");
-  if (ctx->kitty && terminal_is_stdout_tty() && (!term || strcmp(term, "dumb") == 0 || strcmp(term, "linux") == 0 || strcmp(term, "vt100") == 0)) {
+  if (ctx->kitty && terminal_is_stdout_tty() &&
+      (!term || strcmp(term, "dumb") == 0 || strcmp(term, "linux") == 0 || strcmp(term, "vt100") == 0)) {
     SAFE_FREE(ctx);
-    return SET_ERRNO(ERROR_NOT_SUPPORTED, "Kitty graphics require a capable terminal; redirect stdout to export the protocol");
+    return SET_ERRNO(ERROR_NOT_SUPPORTED,
+                     "Kitty graphics require a capable terminal; redirect stdout to export the protocol");
   }
 
   // Resolve font spec → platform-appropriate file path, family name, or bundled data.
@@ -86,8 +121,8 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   const char *raw_font = GET_OPTION(render_font);
 
   // Log the font option value from GET_OPTION (for WASM font debugging)
-  log_info("[WASM_FONT_GETTER] GET_OPTION(render_font) returned: '%s' (empty=%d), GET_OPTION(matrix_rain)=%d", raw_font ? raw_font : "(null)", (!raw_font || raw_font[0] == '\0') ? 1 : 0,
-           GET_OPTION(matrix_rain));
+  log_info("[WASM_FONT_GETTER] GET_OPTION(render_font) returned: '%s' (empty=%d), GET_OPTION(matrix_rain)=%d",
+           raw_font ? raw_font : "(null)", (!raw_font || raw_font[0] == '\0') ? 1 : 0, GET_OPTION(matrix_rain));
 
   // Auto-select matrix font when --matrix flag is set, unless user explicitly overrides with --render-font
   log_debug("raw_font=%s, matrix_rain=%d", raw_font, GET_OPTION(matrix_rain));
@@ -99,7 +134,8 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   platform_font_register("matrix", g_font_matrix_resurrected, g_font_matrix_resurrected_size);
   platform_font_register("default", g_font_default, g_font_default_size);
   platform_font_register("DejaVu Sans Mono", g_font_default, g_font_default_size);
-  asciichat_error_t fe = platform_font_resolve(raw_font, font_spec, sizeof(font_spec), &font_is_path, &font_data, &font_data_size);
+  asciichat_error_t fe =
+      platform_font_resolve(raw_font, font_spec, sizeof(font_spec), &font_is_path, &font_data, &font_data_size);
   if (fe != ASCIICHAT_OK) {
     if (raw_font && raw_font[0]) {
       SAFE_FREE(ctx);
@@ -113,13 +149,16 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
     }
   }
 
-  log_debug("Font resolved: font_spec='%s', font_is_path=%d, font_data=%p (size=%zu)", font_spec, font_is_path, (void *)font_data, font_data_size);
+  log_debug("Font resolved: font_spec='%s', font_is_path=%d, font_data=%p (size=%zu)", font_spec, font_is_path,
+            (void *)font_data, font_data_size);
 
   // A zero size selects a compact default for video; explicit font sizes keep
   // their exact dimensions. Images and Kitty snapshots retain the 12 pt default.
   double font_size_pt = GET_OPTION(render_font_size);
   const char *extension = strrchr(output_path, '.');
-  bool is_image = extension && (!strcmp(extension, ".png") || !strcmp(extension, ".jpg") || !strcmp(extension, ".jpeg") || !strcmp(extension, ".bmp") || !strcmp(extension, ".webp"));
+  bool is_image =
+      extension && (!strcmp(extension, ".png") || !strcmp(extension, ".jpg") || !strcmp(extension, ".jpeg") ||
+                    !strcmp(extension, ".bmp") || !strcmp(extension, ".webp"));
   bool automatic_video_size = font_size_pt == 0.0 && !is_image && !ctx->kitty;
   if (font_size_pt == 0.0) {
     font_size_pt = RENDER_AUTO_FONT_SIZE_PT;
@@ -135,7 +174,8 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   }
   term_renderer_theme_t resolved_theme = (term_renderer_theme_t)theme;
   if (resolved_theme == TERM_RENDERER_THEME_AUTO) {
-    resolved_theme = colorscheme_current_background() == TERM_BACKGROUND_DARK ? TERM_RENDERER_THEME_DARK : TERM_RENDERER_THEME_LIGHT;
+    resolved_theme =
+        colorscheme_current_background() == TERM_BACKGROUND_DARK ? TERM_RENDERER_THEME_DARK : TERM_RENDERER_THEME_LIGHT;
     log_debug("auto theme resolved to %s", resolved_theme == TERM_RENDERER_THEME_DARK ? "dark" : "light");
   }
 
@@ -161,7 +201,9 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   // Hinting and font metrics vary. Recalculate once if the initial estimate
   // exceeds the target, retaining the original renderer if a bitmap font
   // cannot be scaled down.
-  if (automatic_video_size && (actual_width_px > RENDER_AUTO_VIDEO_MAX_DIMENSION || actual_height_px > RENDER_AUTO_VIDEO_MAX_DIMENSION) && font_size_pt > RENDER_AUTO_MIN_FONT_SIZE_PT) {
+  if (automatic_video_size &&
+      (actual_width_px > RENDER_AUTO_VIDEO_MAX_DIMENSION || actual_height_px > RENDER_AUTO_VIDEO_MAX_DIMENSION) &&
+      font_size_pt > RENDER_AUTO_MIN_FONT_SIZE_PT) {
     double width_scale = (double)RENDER_AUTO_VIDEO_MAX_DIMENSION / actual_width_px;
     double height_scale = (double)RENDER_AUTO_VIDEO_MAX_DIMENSION / actual_height_px;
     double scale = width_scale < height_scale ? width_scale : height_scale;
@@ -174,7 +216,8 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
     if (err == ASCIICHAT_OK) {
       int candidate_width = term_renderer_width_px(candidate);
       int candidate_height = term_renderer_height_px(candidate);
-      if (candidate_width <= actual_width_px && candidate_height <= actual_height_px && (candidate_width < actual_width_px || candidate_height < actual_height_px)) {
+      if (candidate_width <= actual_width_px && candidate_height <= actual_height_px &&
+          (candidate_width < actual_width_px || candidate_height < actual_height_px)) {
         term_renderer_destroy(ctx->renderer);
         ctx->renderer = candidate;
         actual_width_px = candidate_width;
@@ -201,7 +244,8 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   }
   int output_width_px = actual_width_px;
   int output_height_px = actual_height_px;
-  if (automatic_video_size && (output_width_px > RENDER_AUTO_VIDEO_MAX_DIMENSION || output_height_px > RENDER_AUTO_VIDEO_MAX_DIMENSION)) {
+  if (automatic_video_size &&
+      (output_width_px > RENDER_AUTO_VIDEO_MAX_DIMENSION || output_height_px > RENDER_AUTO_VIDEO_MAX_DIMENSION)) {
     double scale_x = (double)RENDER_AUTO_VIDEO_MAX_DIMENSION / output_width_px;
     double scale_y = (double)RENDER_AUTO_VIDEO_MAX_DIMENSION / output_height_px;
     double scale = scale_x < scale_y ? scale_x : scale_y;
@@ -212,7 +256,8 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
     if (output_height_px < 2)
       output_height_px = 2;
   }
-  err = ffmpeg_encoder_create_scaled(output_path, actual_width_px, actual_height_px, output_width_px, output_height_px, fps, &ctx->encoder);
+  err = ffmpeg_encoder_create_scaled(output_path, actual_width_px, actual_height_px, output_width_px, output_height_px,
+                                     fps, &ctx->encoder);
   if (err != ASCIICHAT_OK) {
     log_error("ffmpeg_encoder_create failed: %s", asciichat_error_format(NULL, err));
     term_renderer_destroy(ctx->renderer);
@@ -257,7 +302,8 @@ void render_file_set_live_timing(render_file_ctx_t *ctx) {
   }
 }
 
-static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx, const char *ansi_frame, uint64_t captured_ns) {
+static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx, const char *ansi_frame,
+                                                          uint64_t captured_ns) {
 
   if (!ctx) {
     log_warn("ctx is NULL");
@@ -296,7 +342,8 @@ static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx
   // next call, so copying the entire RGBA frame is unnecessary.
   err = ffmpeg_encoder_write_frame(ctx->encoder, pixels, pitch, captured_ns);
   uint64_t encoded_ns = time_get_ns();
-  log_debug_every(US_PER_SEC_INT, "RECORD_STAGE: raster_ms=%.2f encode_ms=%.2f bytes=%zu", (double)(rasterized_ns - render_started_ns) / NS_PER_MS_INT,
+  log_debug_every(US_PER_SEC_INT, "RECORD_STAGE: raster_ms=%.2f encode_ms=%.2f bytes=%zu",
+                  (double)(rasterized_ns - render_started_ns) / NS_PER_MS_INT,
                   (double)(encoded_ns - rasterized_ns) / NS_PER_MS_INT, frame_len);
   if (err != ASCIICHAT_OK) {
     log_warn("ffmpeg_encoder_write_frame failed: %s", asciichat_error_format(NULL, err));
@@ -309,12 +356,15 @@ static asciichat_error_t render_file_write_frame_internal(render_file_ctx_t *ctx
     }
     ctx->frames_written++;
     ctx->last_frame_index = frame_index;
-    uint64_t target = ((ctx->live_timing ? frame_index + 1 : ctx->frames_written) * ctx->audio_sample_rate / ctx->fps) * 2;
+    uint64_t target =
+        ((ctx->live_timing ? frame_index + 1 : ctx->frames_written) * ctx->audio_sample_rate / ctx->fps) * 2;
     ctx->audio_target = target;
     /* Keep 100 ms pending so audio callbacks can deliver samples before encoding. */
     uint64_t ready = target > 9600 ? target - 9600 : 0;
     while (ctx->audio_samples_written < ready) {
-      int count = (int)((ready - ctx->audio_samples_written) > (uint64_t)ctx->audio_buf_size ? (uint64_t)ctx->audio_buf_size : ready - ctx->audio_samples_written);
+      int count = (int)((ready - ctx->audio_samples_written) > (uint64_t)ctx->audio_buf_size
+                            ? (uint64_t)ctx->audio_buf_size
+                            : ready - ctx->audio_samples_written);
       audio_recording_read(ctx->recording, ctx->audio_read_buf, count);
       err = ffmpeg_encoder_write_audio(ctx->encoder, ctx->audio_read_buf, count);
       if (err != ASCIICHAT_OK)
@@ -366,7 +416,9 @@ asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
   uint64_t target = ctx->audio_target;
   asciichat_error_t err = ASCIICHAT_OK;
   while (ctx->audio_samples_written < target) {
-    int count = (int)((target - ctx->audio_samples_written) > (uint64_t)ctx->audio_buf_size ? (uint64_t)ctx->audio_buf_size : target - ctx->audio_samples_written);
+    int count = (int)((target - ctx->audio_samples_written) > (uint64_t)ctx->audio_buf_size
+                          ? (uint64_t)ctx->audio_buf_size
+                          : target - ctx->audio_samples_written);
     audio_recording_read(ctx->recording, ctx->audio_read_buf, count);
     err = ffmpeg_encoder_write_audio(ctx->encoder, ctx->audio_read_buf, count);
     if (err != ASCIICHAT_OK)
@@ -383,7 +435,8 @@ asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
   if (err == ASCIICHAT_OK && ctx->kitty && ctx->frames_written == 0)
     err = SET_ERRNO(ERROR_MEDIA_INIT, "No snapshot was rendered for Kitty output");
   if (err == ASCIICHAT_OK && ctx->kitty && ctx->frames_written > 0)
-    err = kitty_image_write(stdout, term_renderer_pixels(ctx->renderer), term_renderer_width_px(ctx->renderer), term_renderer_height_px(ctx->renderer), term_renderer_pitch(ctx->renderer));
+    err = kitty_image_write(stdout, term_renderer_pixels(ctx->renderer), term_renderer_width_px(ctx->renderer),
+                            term_renderer_height_px(ctx->renderer), term_renderer_pitch(ctx->renderer));
   ui_controller_title_render(err == ASCIICHAT_OK ? UI_TITLE_IDLE : UI_TITLE_FAILED);
   term_renderer_destroy(ctx->renderer);
   SAFE_FREE(ctx->audio_read_buf);

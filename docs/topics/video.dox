@@ -58,6 +58,17 @@
  * - Automatic scaling to maintain proper aspect ratio
  * - Prevents stretched/squished video
  *
+ * **Shared surface sizing**:
+ * - `term_renderer_calculate_surface_grid()` is the shared C contract for
+ *   deriving a cell grid from a pixel surface and font size.
+ * - Native iOS and browser-facing adapters should call this helper rather than
+ *   reimplementing terminal-cell geometry in platform UI code.
+ * - The iOS native surface uses a 112-point automatic baseline for its
+ *   high-density display and exposes an explicit 0-160 point live setting;
+ *   if a selected font cannot initialize, the bridge falls back to the
+ *   bundled default instead of leaving the native surface blank.
+ *   zero restores the automatic baseline without changing the shared renderer.
+ *
  * **Face tracking and stabilization**:
  * - The optional face-follow path detects faces on a small working image instead
  *   of spending detector time on the full camera frame.

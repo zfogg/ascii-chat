@@ -33,7 +33,7 @@ set(VIDEO_SRCS
 if(WIN32)
     list(APPEND VIDEO_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/webcam/windows/webcam_mediafoundation.c)
 elseif(APPLE)
-    list(APPEND VIDEO_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/webcam/macos/webcam_avfoundation.m)
+    list(APPEND VIDEO_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/webcam/apple/webcam_avfoundation.m)
 elseif(UNIX)
     list(APPEND VIDEO_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/webcam/linux/webcam_v4l2.c)
 endif()

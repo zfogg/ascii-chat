@@ -2,8 +2,8 @@
 
 # ascii-chat iOS Client - Implementation Plan (WIP)
 
-> **Status**: Simulator app, shared render bridge, mode selector, live native settings, camera/audio routing, bundled CA roots, TLS/QUIC dependency wiring, native mirror/client/discovery dispatch, session-string sharing, FPS-aware display scheduling, and device/XCFramework packaging are implemented; physical-device camera/audio validation and successful live host/ACDS sessions remain open
-> **Last Updated**: 2026-11-09
+> **Status**: Simulator app, shared render bridge, mode selector, live native settings, camera/audio routing, bundled CA roots, TLS/QUIC dependency wiring, native mirror/client/discovery dispatch, session-string sharing, FPS-aware display scheduling, and architecture-validated device/XCFramework packaging are implemented; physical-device camera/audio validation and live ACDS sessions remain open
+> **Last Updated**: 2026-11-10
 > **Goal**: Native iOS app in Swift that uses libasciichat (compiled for iOS) to support server, client, mirror, and discovery modes.
 
 ---
@@ -130,6 +130,7 @@ RGB24 pixel buffer, and a registered Swift callback receives it every frame.
 - [x] Feed shared webcam frames into the SwiftUI preview.
 - [x] Start camera capture after asynchronous permission approval.
 - [x] Configure iOS audio for video-chat routing and speaker output.
+- [x] Re-enumerate audio routes on AVAudioSession changes and refresh Swift device controls on the main thread.
 - [x] Make unavailable modes non-selectable, not merely non-startable.
 - [x] Add VoiceOver labels and hints to startup controls.
 - [x] Reset the shared render bridge before starting a new native session.
@@ -144,10 +145,16 @@ RGB24 pixel buffer, and a registered Swift callback receives it every frame.
 - [x] Validate simulator architecture and device SDK inputs in build helpers.
 - [x] Expose canonical native mode names from the C entry-point API.
 - [x] Keep native mode execution alive after startup and report C lifecycle errors to SwiftUI.
+- [x] Surface shared C error context for failed native sessions instead of exposing only numeric result codes.
+- [x] Apply the shared platform font resolver to the iOS render bridge so `render_font` (including bundled fonts) is honored.
+- [x] Reconfigure the active shared render surface when persisted font or cell dimensions change in Settings.
 - [x] Replace the PortAudio compatibility surface with an AVAudioEngine-backed stream.
 - [x] Recover AVAudioEngine streams after iOS audio interruptions.
 - [x] Handle foreground/background transitions for active native sessions.
 - [x] Produce and validate an arm64 device archive and XCFramework.
+- [x] Validate device/simulator archive architectures before XCFramework packaging.
+- [x] Connect the simulator client to a locally running native server and verify live shared ASCII frames.
+- [x] Expose the simulator client smoke test as a CMake target with a native server fixture.
 
 ### 1. Compile libasciichat for iOS
 
@@ -216,12 +223,10 @@ Usage:
 
 ```bash
 # iOS device
-cmake --preset default -B build-ios -DBUILD_IOS=ON
-cmake --build build-ios
+./scripts/build-ios-device.sh build-ios-device
 
 # iOS simulator
-cmake --preset default -B build-ios-sim -DBUILD_IOS_SIM=ON
-cmake --build build-ios-sim
+./scripts/build-ios-simulator.sh build-ios-sim
 ```
 
 #### 1c. Platform detection
@@ -259,7 +264,7 @@ endif()
 
 ```bash
 xcodebuild -create-xcframework \
-  -library build-ios/lib/libasciichat.a -headers include/ \
+  -library build-ios-device/lib/libasciichat.a -headers include/ \
   -library build-ios-sim/lib/libasciichat.a -headers include/ \
   -output libasciichat.xcframework
 ```
@@ -1415,7 +1420,7 @@ Intentionally minimal. The C library does the heavy lifting.
     - [x] `lib/options/registry/ios_mode_defaults.c` — superseded by unified dispatcher defaults and persisted Swift options
 - [x] Add `include/ascii-chat/platform/frame_flush.h` and `lib/platform/frame_flush.c` (desktop default)
 - [x] Refactor all render paths to call `platform_frame_flush()` instead of `terminal_flush()` directly
-- [ ] Rename `lib/video/webcam/macos/` → `lib/video/webcam/apple/`
+- [x] Rename `lib/video/webcam/macos/` → `lib/video/webcam/apple/`
 - [x] Write PortAudio → AVAudioEngine shim (`lib/audio/ios/portaudio_shim.m`)
 - [x] Cross-compile the currently selected dependency set for the iOS simulator
 - [x] Link and validate the Swift iOS simulator app bundle (`ascii-chat-ios-app.app`)
@@ -1440,9 +1445,13 @@ produces pixels on screen.
 - [x] `MirrorView.swift` — superseded by the unified mode selector and renderer
 - [x] Implement the C render bridge and Swift frame polling bridge
 - [x] Verify bridge output is visible in the iOS simulator
+- [x] Derive native surface grids through the shared C renderer sizing API
 - [x] Keep native mode startup behind an explicit SwiftUI control
 - [x] Verify: mirror mode shows simulator ASCII output from the shared synthetic source
+- [x] Add a repeatable simulator mirror smoke test that installs the app, waits for a non-black shared render frame, and captures a native-resolution screenshot
+- [x] Expose that smoke test as the opt-in `ascii-chat-ios-simulator-smoke` CMake target
 - [x] Settings UI: color mode, palette, render mode, dimensions, and live C options snapshot/apply
+- [x] Add a repeatable simulator settings smoke test for the native SwiftUI options surface
 - [x] Shared TUI rendering: Help and native TUI controls remain visible over the Metal ASCII surface
       after activation, with simulator screenshot verification through `simctl`
 
@@ -1515,22 +1524,17 @@ calls `asciichat_main()` with different argv. The display is the same ModeView.
 ### 13. Build & Run (Target)
 
 ```bash
-# Build library for iOS device
-cmake --preset default -B build-ios -DBUILD_IOS=ON
-cmake --build build-ios
+# Build app and library for iOS device
+./scripts/build-ios-device.sh build-ios-device
 
-# Build library for iOS simulator
-cmake --preset default -B build-ios-sim -DBUILD_IOS_SIM=ON
-cmake --build build-ios-sim
+# Build app and library for iOS simulator
+./scripts/build-ios-simulator.sh build-ios-sim
 
 # Create XCFramework
-xcodebuild -create-xcframework \
-  -library build-ios/lib/libasciichat.a -headers include/ \
-  -library build-ios-sim/lib/libasciichat.a -headers include/ \
-  -output ios/libasciichat.xcframework
-
-# Open Xcode project
-open src/ios/AsciiChat.xcodeproj
+./scripts/package-ios-xcframework.sh \
+  build-ios-device/lib/libasciichat.a \
+  build-ios-sim/lib/libasciichat.a \
+  build/asciichat.xcframework
 ````
 
 ---

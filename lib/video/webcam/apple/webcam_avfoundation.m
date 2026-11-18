@@ -1,5 +1,5 @@
 /**
- * @file video/webcam/macos/webcam_avfoundation.m
+ * @file video/webcam/apple/webcam_avfoundation.m
  * @ingroup webcam
  * @brief 📷 macOS AVFoundation webcam capture implementation with hardware acceleration
  */

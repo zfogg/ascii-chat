@@ -21,7 +21,7 @@ lib/video/webcam/
 ├── webcam.c               # Common webcam abstraction layer
 ├── linux/                 # Linux-specific implementations
 │   └── webcam_v4l2.c      # Video4Linux2 webcam implementation
-├── macos/                 # macOS-specific implementations
+├── apple/                 # Shared macOS/iOS AVFoundation implementation
 │   └── webcam_avfoundation.m  # AVFoundation webcam implementation
 └── windows/               # Windows-specific implementations
     └── webcam_mediafoundation.c  # Media Foundation webcam implementation
@@ -48,7 +48,7 @@ lib/video/webcam/
   - Memory-mapped I/O for efficient frame capture
   - Device capability querying
 
-**macOS Implementation (macos/)**
+**Apple Implementation (apple/)**
 
 - **webcam_avfoundation.m**: Uses AVFoundation framework
   - Objective-C implementation for native macOS support
@@ -157,7 +157,7 @@ The OS abstraction layer is integrated into the CMake build system:
 ```cmake
 # Platform-specific webcam sources are automatically selected
 if(APPLE)
-    set(WEBCAM_SOURCES lib/video/webcam/macos/webcam_avfoundation.m)
+    set(WEBCAM_SOURCES lib/video/webcam/apple/webcam_avfoundation.m)
 elseif(UNIX)
     set(WEBCAM_SOURCES lib/video/webcam/linux/webcam_v4l2.c)
 elseif(WIN32)
@@ -273,7 +273,7 @@ When migrating code to use the OS abstraction:
 When adding new webcam platform implementations:
 
 1. Define the interface in the appropriate header file
-2. Implement platform-specific versions in `linux/`, `macos/`, `windows/`
+2. Implement platform-specific versions in `linux/`, `apple/`, `windows/`
 3. Add fallback implementations for unsupported platforms
 4. Write tests for all platforms
 5. Update this README with new functionality

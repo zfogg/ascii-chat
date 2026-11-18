@@ -7,6 +7,13 @@ import MetalKit
 import SwiftUI
 import UIKit
 
+// iPhone displays have substantially more physical pixels than a terminal
+// window.  Keep the automatic grid legible instead of packing thousands of
+// tiny glyphs into the Metal surface; users can still select a smaller value
+// explicitly in Settings.
+private let iosAutomaticRenderFontSize: Double = 112.0
+private let iosMaximumRenderFontSize: Double = 160.0
+
 private extension Notification.Name {
     static let iosStopSession = Notification.Name("ascii-chat.ios.stop-session")
     static let iosSessionStarted = Notification.Name("ascii-chat.ios.session-started")
@@ -14,6 +21,7 @@ private extension Notification.Name {
     static let iosRenderFontSizeChanged = Notification.Name("ascii-chat.ios.render-font-size-changed")
     static let iosRenderFPSChanged = Notification.Name("ascii-chat.ios.render-fps-changed")
     static let iosOptionsChanged = Notification.Name("ascii-chat.ios.options-changed")
+    static let iosAudioDevicesChanged = Notification.Name("ascii-chat.ios.audio-devices-changed")
 }
 
 @_silgen_name("asciichat_ios_test_frame")
@@ -42,6 +50,8 @@ private func asciichat_ios_is_running() -> Int32
 
 @_silgen_name("asciichat_ios_last_result")
 private func asciichat_ios_last_result() -> Int32
+@_silgen_name("asciichat_ios_last_error")
+private func asciichat_ios_last_error() -> UnsafePointer<CChar>?
 
 @_silgen_name("asciichat_ios_request_stop")
 private func asciichat_ios_request_stop()
@@ -75,6 +85,15 @@ private func ios_render_bridge_reset()
 
 @_silgen_name("ios_render_bridge_configure")
 private func ios_render_bridge_configure(_ cols: Int32, _ rows: Int32, _ fontSizePt: Double)
+@_silgen_name("ios_render_bridge_configure_font")
+private func ios_render_bridge_configure_font(_ cols: Int32, _ rows: Int32, _ fontSizePt: Double,
+                                             _ fontSpec: UnsafePointer<CChar>?)
+
+@_silgen_name("term_renderer_calculate_surface_grid")
+private func term_renderer_calculate_surface_grid(_ pixelWidth: Int32, _ pixelHeight: Int32, _ fontSizePt: Double,
+                                                  _ configuredCols: Int32, _ configuredRows: Int32,
+                                                  _ outCols: UnsafeMutablePointer<Int32>,
+                                                  _ outRows: UnsafeMutablePointer<Int32>) -> Int32
 
 @_silgen_name("ios_render_bridge_sequence")
 private func ios_render_bridge_sequence() -> UInt64
@@ -326,7 +345,10 @@ private final class CRenderView: MTKView {
         // The bundled terminal font is rendered at 96 DPI. Match the OS
         // display scale so the C bitmap is generated at native pixel density.
         let configuredFontSize = UserDefaults.standard.object(forKey: "ascii-chat.ios.render-font-size") as? Double ?? 0
-        let fontSizePt = configuredFontSize > 0 ? configuredFontSize : 6.0
+        // The iOS display is much denser than a terminal. Use the top of the
+        // native readable range by default so glyphs have real visual weight;
+        // users can still reduce this through the live settings slider.
+        let fontSizePt = configuredFontSize > 0 ? configuredFontSize : iosAutomaticRenderFontSize
         // The terminal renderer uses a cell height of approximately twice its
         // glyph advance. Choose rows from the drawable aspect ratio so the C
         // bitmap is scaled uniformly by Metal instead of squeezing glyphs.
@@ -337,13 +359,14 @@ private final class CRenderView: MTKView {
             .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
         let configuredWidth = (persisted["width"] as? NSNumber)?.intValue ?? 0
         let configuredHeight = (persisted["height"] as? NSNumber)?.intValue ?? 0
-        let cols = configuredWidth > 0
-            ? configuredWidth
-            : max(1, Int(ceil(Double(pixelWidth) / (fontSizePt * 0.8333))))
-        let rows = configuredHeight > 0
-            ? configuredHeight
-            : max(1, Int(ceil(Double(cols) * Double(pixelHeight) / Double(pixelWidth) * 0.5)))
-        ios_render_bridge_configure(Int32(cols), Int32(rows), fontSizePt)
+        var cols: Int32 = 0
+        var rows: Int32 = 0
+        guard term_renderer_calculate_surface_grid(Int32(pixelWidth), Int32(pixelHeight), fontSizePt,
+                                                   Int32(configuredWidth), Int32(configuredHeight), &cols, &rows) == 0 else {
+            return
+        }
+        let fontSpec = (persisted["render_font"] as? String) ?? ""
+        fontSpec.withCString { ios_render_bridge_configure_font(cols, rows, fontSizePt, $0) }
         layer.contentsScale = scale
     }
 
@@ -360,7 +383,13 @@ private final class CRenderView: MTKView {
             ios_render_bridge_read_frame(buffer.baseAddress!, capacity, &width, &height, &pitch)
         }
         guard emitted != 0, width > 0, height > 0, pitch >= width * 4 else { return }
-        guard let drawable = currentDrawable,
+        // This view is driven by our own CADisplayLink rather than MTKView's
+        // draw loop. Acquire a fresh layer drawable for each submitted frame;
+        // MTKView.currentDrawable may still refer to the drawable presented
+        // by the previous tick, which makes Core Animation reject subsequent
+        // presents and leaves the remote client screen black.
+        guard let metalLayer = layer as? CAMetalLayer,
+              let drawable = metalLayer.nextDrawable(),
               let commandBuffer = commandQueue?.makeCommandBuffer(),
               let metalDevice = device else { return }
 
@@ -378,8 +407,11 @@ private final class CRenderView: MTKView {
         // The counter is reset for reporting once per second; using it here
         // can reuse a texture while Metal is still sampling it.
         guard let sourceTexture = (textureFrameIndex % 2 == 0 ? sourceTexture : sourceTextureReady) else { return }
-        sourceTexture.replace(region: MTLRegionMake2D(0, 0, Int(width), Int(height)),
-                              mipmapLevel: 0, withBytes: renderPixels, bytesPerRow: Int(pitch))
+        renderPixels.withUnsafeBytes { rawPixels in
+            guard let baseAddress = rawPixels.baseAddress else { return }
+            sourceTexture.replace(region: MTLRegionMake2D(0, 0, Int(width), Int(height)),
+                                  mipmapLevel: 0, withBytes: baseAddress, bytesPerRow: Int(pitch))
+        }
 
         guard let renderPipeline, let sampler,
               let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: {
@@ -618,8 +650,8 @@ private struct IOSSettingsView: View {
                             }
                     }
                     VStack(alignment: .leading) {
-                        Text(renderFontSize <= 0 ? "Font size: Auto" : String(format: "Font size: %.1f pt", renderFontSize))
-                        Slider(value: $renderFontSize, in: 0...18, step: 0.5)
+                        Text(renderFontSize <= 0 ? "Font size: Auto (112 pt on iOS)" : String(format: "Font size: %.1f pt", renderFontSize))
+                        Slider(value: $renderFontSize, in: 0...iosMaximumRenderFontSize, step: 0.5)
                             .onChange(of: renderFontSize) { _, value in
                                 applyJSON(["render_font_size": value])
                                 renderFontSizeChanged(value)
@@ -1000,7 +1032,7 @@ private struct IOSAllOptionsView: View {
         case "height": return (20, 240, 1)
         case "zalgo": return (1, 10, 1)
         case "fps": return (0, 144, 1)
-        case "render_font_size": return (0, 18, 0.5)
+        case "render_font_size": return (0, iosMaximumRenderFontSize, 0.5)
         case "snapshot_delay": return (0, 60, 0.5)
         case "microphone_channels": return (1, 2, 1)
         case "microphone_channel": return (-1, 63, 1)
@@ -1047,7 +1079,7 @@ private struct IOSAllOptionsView: View {
 
     private static func enumValues(for key: String) -> [String]? {
         switch key {
-        case "palette": return ["standard", "blocks", "digital", "minimal", "cool", "custom"]
+        case "palette", "palette_type": return ["standard", "blocks", "digital", "minimal", "cool", "custom"]
         case "color_filter": return ["none", "black", "white", "green", "magenta", "fuchsia", "orange", "teal", "cyan", "pink", "red", "yellow", "rainbow"]
         case "render_mode": return ["foreground", "background", "half-block"]
         case "color_mode": return ["none", "16", "256", "truecolor"]
@@ -1233,10 +1265,12 @@ struct ContentView: View {
     @State private var didStart = false
     @State private var sessionStarted = false
     @State private var sessionStopping = false
+    @State private var sessionEndPublished = false
     @State private var lifecycleTick = 0
     @State private var audioDevices: [String] = []
     @State private var selectedAudioDevice: Int32 = 0
     @State private var commandLine = ""
+    @FocusState private var commandFieldFocused: Bool
     @State private var showSettings = false
     @State private var showTUISwitcher = false
     @State private var activeTUI: TUISwitcherItem?
@@ -1258,6 +1292,15 @@ struct ContentView: View {
             return
         }
         UserDefaults.standard.set(persistedData, forKey: "ascii-chat.ios.options.patch")
+        if let renderFontSize = merged["render_font_size"] as? NSNumber {
+            UserDefaults.standard.set(renderFontSize.doubleValue, forKey: "ascii-chat.ios.render-font-size")
+        }
+        if values["render_font"] != nil || values["render_font_size"] != nil || values["width"] != nil ||
+            values["height"] != nil {
+            let fontSize = UserDefaults.standard.object(forKey: "ascii-chat.ios.render-font-size") as? Double
+                ?? iosAutomaticRenderFontSize
+            configureRenderBridge(fontSize: fontSize)
+        }
         NotificationCenter.default.post(name: .iosOptionsChanged, object: nil)
         if values["fps"] != nil {
             NotificationCenter.default.post(name: .iosRenderFPSChanged, object: nil)
@@ -1269,17 +1312,28 @@ struct ContentView: View {
         let scale = screen.nativeScale
         let width = max(1, Int(ceil(screen.bounds.width * scale)))
         let height = max(1, Int(ceil(screen.bounds.height * scale)))
-        let effectiveFontSize = fontSize > 0 ? fontSize : 6.0
-        let cols = max(1, Int(ceil(Double(width) / (effectiveFontSize * 0.8333))))
-        let rows = max(1, Int(ceil(Double(cols) * Double(height) / Double(width) * 0.5)))
-        ios_render_bridge_configure(Int32(cols), Int32(rows), effectiveFontSize)
+        // Keep the native surface readable even when an older or malformed
+        // persisted options value is missing. Match the automatic 96pt iOS
+        // 112pt baseline used by the bridge.
+        let effectiveFontSize = fontSize > 0 ? fontSize : iosAutomaticRenderFontSize
+        var cols: Int32 = 0
+        var rows: Int32 = 0
+        guard term_renderer_calculate_surface_grid(Int32(width), Int32(height), effectiveFontSize, 0, 0, &cols, &rows) == 0 else {
+            return
+        }
+        let persisted = UserDefaults.standard.data(forKey: "ascii-chat.ios.options.patch")
+            .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+        let fontSpec = (persisted["render_font"] as? String) ?? ""
+        fontSpec.withCString { ios_render_bridge_configure_font(cols, rows, effectiveFontSize, $0) }
     }
 
     private func startSelectedSession() {
         if ProcessInfo.processInfo.arguments.contains("--auto-start-mirror") {
             // Automated simulator runs use the synthetic mirror and must not
-            // inherit a previously persisted device audio setting.
-            UserDefaults.standard.removeObject(forKey: "ascii-chat.ios.options.patch")
+            // inherit a previously persisted device audio setting. Preserve
+            // the rest of the options patch so persisted render settings are
+            // still exercised by the same startup path.
+            UserDefaults.standard.removeObject(forKey: "ascii-chat.ios.audio-device-index")
         }
 #if targetEnvironment(simulator)
         // Automated simulator sessions cannot interact with the shared terminal
@@ -1290,7 +1344,7 @@ struct ContentView: View {
             setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1", 1)
         }
 #endif
-        let fontSizePt = UserDefaults.standard.object(forKey: "ascii-chat.ios.render-font-size") as? Double ?? 0
+        let fontSizePt = UserDefaults.standard.object(forKey: "ascii-chat.ios.render-font-size") as? Double ?? iosAutomaticRenderFontSize
         configureRenderBridge(fontSize: fontSizePt)
         #if targetEnvironment(simulator)
         // The simulator cannot always resolve the Mac's loopback interface as
@@ -1349,14 +1403,28 @@ struct ContentView: View {
         didStart = true
         sessionStarted = true
         sessionStopping = false
+        sessionEndPublished = false
         ios_render_bridge_reset()
         _ = platform_enable_keepawake()
         DispatchQueue.global(qos: .userInitiated).async {
             let result = asciichat_ios_main(selectedMode.rawValue)
             DispatchQueue.main.async {
+                // A finished native mode must not leave its last frame in the
+                // shared Metal bridge while the selector/settings view is
+                // visible or when the next mode is launched.
+                ios_render_bridge_reset()
                 sessionModel.finish(result: Int32(result))
-                NotificationCenter.default.post(name: .iosSessionEnded, object: nil)
-                launchMessage = result == 0 ? "Session ended" : "Session failed (\(result))"
+                if !sessionEndPublished {
+                    sessionEndPublished = true
+                    NotificationCenter.default.post(name: .iosSessionEnded, object: nil)
+                }
+                if result == 0 {
+                    launchMessage = "Session ended"
+                } else if let error = asciichat_ios_last_error() {
+                    launchMessage = String(cString: error)
+                } else {
+                    launchMessage = "Session failed (\(result))"
+                }
                 sessionStarted = false
             }
         }
@@ -1505,6 +1573,9 @@ struct ContentView: View {
                 Text(launchMessage)
                     .font(.caption)
                     .foregroundStyle(IOSTheme.muted)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(4)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 10)
             }
             if didStart {
@@ -1532,6 +1603,29 @@ struct ContentView: View {
         _ = asciichat_ios_audio_select_device(nextIndex)
     }
 
+    private var commandBar: some View {
+        HStack(spacing: 10) {
+            TextField("Send command or answer", text: $commandLine)
+                .textFieldStyle(.roundedBorder)
+                .focused($commandFieldFocused)
+                .submitLabel(.send)
+                .onSubmit(sendCommand)
+            Button("Send", action: sendCommand)
+                .buttonStyle(.borderedProminent)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial)
+    }
+
+    private func sendCommand() {
+        let text = commandLine + "\n"
+        text.withCString { pointer in
+            _ = ios_stdin_bridge_push(pointer, text.utf8.count)
+        }
+        commandLine = ""
+    }
+
     var body: some View {
         GeometryReader { proxy in
             ZStack {
@@ -1541,26 +1635,23 @@ struct ContentView: View {
                     } else {
                         settingsView
                     }
-                if sessionStarted && !sessionStopping && (activeTUI == nil || activeTUI == .media) {
-                        HStack {
-                            TextField("Send command or answer", text: $commandLine)
-                                .textFieldStyle(.roundedBorder)
-                            Button("Send") {
-                                let text = commandLine + "\n"
-                                text.withCString { pointer in
-                                    _ = ios_stdin_bridge_push(pointer, text.utf8.count)
-                                }
-                                commandLine = ""
-            }
-                    }
                 }
-            }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
         .ignoresSafeArea()
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if sessionStarted && !sessionStopping && activeTUI == .media {
+                commandBar
+            }
+        }
         .onAppear {
             if ProcessInfo.processInfo.arguments.contains("--auto-open-settings") {
-                showSettings = true
+                // Present after the root view has entered a window. Setting a
+                // sheet binding synchronously from onAppear can be dropped by
+                // SwiftUI before the presentation host exists.
+                DispatchQueue.main.async {
+                    showSettings = true
+                }
             }
             if ProcessInfo.processInfo.arguments.contains("--auto-start-mirror") && !didStart {
                 selectedMode = .mirror
@@ -1617,11 +1708,17 @@ struct ContentView: View {
                 sessionStarted = false
                 didStart = false
                 launchMessage = ""
-                NotificationCenter.default.post(name: .iosSessionEnded, object: nil)
+                if !sessionEndPublished {
+                    sessionEndPublished = true
+                    NotificationCenter.default.post(name: .iosSessionEnded, object: nil)
+                }
             } else if sessionStarted && asciichat_ios_is_running() == 0 {
                 sessionStarted = false
                 launchMessage = "Session ended"
-                NotificationCenter.default.post(name: .iosSessionEnded, object: nil)
+                if !sessionEndPublished {
+                    sessionEndPublished = true
+                    NotificationCenter.default.post(name: .iosSessionEnded, object: nil)
+                }
             }
         }
         .onChange(of: scenePhase) { _, phase in
@@ -1640,6 +1737,9 @@ struct ContentView: View {
         .preferredColorScheme(.dark)
         .onReceive(NotificationCenter.default.publisher(for: .iosStopSession)) { _ in
             stopSelectedSession()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .iosAudioDevicesChanged)) { _ in
+            refreshAudioDevices()
         }
         .overlay(alignment: .topLeading) {
             HStack(spacing: 4) {

@@ -181,7 +181,7 @@
  *
  * A device build requires the iPhoneOS SDK and a fresh build directory:
  * @code{.bash}
- * ./scripts/build-ios-device.sh build-ios
+ * ./scripts/build-ios-device.sh build-ios-device
  * @endcode
  *
  * The helper checks `xcrun --sdk iphoneos --show-sdk-path` and rejects a directory
@@ -192,15 +192,39 @@
  * Build both archives and package them with public headers:
  * @code{.bash}
  * ./scripts/build-ios-simulator.sh build-ios-sim
- * ./scripts/build-ios-device.sh build-ios
+ * cmake --build build-ios-sim --target ascii-chat-ios-simulator-smoke
+ * # With a native ascii-chat server listening on 27224:
+ * IOS_SIM_CLIENT_ADDRESS=127.0.0.1 \
+ *   tests/manual/test_ios_simulator_client.sh \
+ *   build-ios-sim/bin/ascii-chat-ios-app.app
+ * ./scripts/build-ios-device.sh build-ios-device
  * ./scripts/package-ios-xcframework.sh \
- *   build-ios/lib/libasciichat.a \
+ *   build-ios-device/lib/libasciichat.a \
  *   build-ios-sim/lib/libasciichat.a \
  *   build/asciichat.xcframework
  * @endcode
  *
- * The packager refuses to overwrite an existing output, stages public headers plus
+ * The simulator helper and packager choose `arm64` on Apple Silicon and `x86_64`
+ * on Intel by default; set `IOS_SIM_ARCH` explicitly when selecting another
+ * simulator slice. The packager validates the device and simulator archive slices before invoking `xcodebuild`,
+ * refuses to overwrite an existing output, stages public headers plus
  * the required Sokol headers, and invokes `xcodebuild -create-xcframework`.
+ * Validate the generated application bundle for both SDKs with:
+ * @code{.bash}
+ * cmake --build build-ios-sim --target ascii-chat-ios-bundle-check
+ * cmake --build build-ios-device --target ascii-chat-ios-bundle-check
+ * @endcode
+ *
+ * This check verifies the bundle identifier, executable architecture, launch
+ * storyboard, non-empty PEM CA roots, and the 1024x1024 app icon. It does not sign the app;
+ * App Store/TestFlight distribution still requires an Apple signing identity
+ * and provisioning profile.
+ *
+ * The client smoke script requires a server fixture because it exercises the
+ * real client dispatcher and ACIP connection. Simulator-only runs add
+ * `--no-auth` and `--no-encrypt` to the native client argv so the fixture is
+ * deterministic; device builds retain the normal authentication and encryption
+ * defaults.
  *
  * @section build_targets Useful targets
  *
@@ -209,6 +233,11 @@
  * | `ascii-chat` | Desktop executable |
  * | `ascii-chat-static-lib` | Static native library |
  * | `ascii-chat-ios-app` | SwiftUI iOS prototype app |
+ * | `ascii-chat-ios-simulator-smoke` | Opt-in simulator mirror smoke test |
+ * | `ascii-chat-ios-simulator-client-smoke` | Validate a simulator client against a local server |
+ * | `tests/manual/test_ios_simulator_client.sh` | Validate a simulator client against a local server |
+ * | `ascii-chat-ios-settings-smoke` | Validate the native simulator settings screen |
+ * | `ascii-chat-ios-bundle-check` | Validate iOS bundle resources and metadata |
  * | `tests` | Native test aggregation target |
  * | `docs-html` | Generate HTML documentation |
  * | `docs-open` | Generate docs and print the local index path |

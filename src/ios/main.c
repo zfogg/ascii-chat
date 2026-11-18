@@ -1,6 +1,6 @@
 #include "main.h"
 
-#include <ascii-chat/platform/ios/render_bridge.h>
+#include <ascii-chat/os/ios/render_bridge.h>
 #include "../main.h"
 #include <ascii-chat/platform/ios/stdin_bridge.h>
 #include <ascii-chat/tui/keyboard_help.h>

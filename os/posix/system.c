@@ -15,7 +15,7 @@
 #include <ascii-chat/otel.h>
 #include <ascii-chat/platform/api.h>
 #if defined(PLATFORM_IOS) && defined(__IPHONE_OS_VERSION_MIN_REQUIRED)
-#include <ascii-chat/platform/ios/render_bridge.h>
+#include <ascii-chat/os/ios/render_bridge.h>
 #include <ascii-chat/platform/ios/stdin_bridge.h>
 #endif
 #include <ascii-chat/platform/terminal.h>
