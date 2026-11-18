@@ -217,8 +217,8 @@ const char *extract_project_relative_path(const char *file, const char *const *o
     static const char *project_roots[] = {"src", "lib", "tests", "include"};
     for (size_t root_index = 0; root_index < sizeof(project_roots) / sizeof(project_roots[0]); root_index++) {
       const char *project_root = project_roots[root_index];
-      size_t root_length = strlen(project_root);
-      if (_strnicmp(relative, project_root, root_length) == 0 && (relative[root_length] == '/' || relative[root_length] == '\\')) {
+      size_t project_root_length = strlen(project_root);
+      if (_strnicmp(relative, project_root, project_root_length) == 0 && (relative[project_root_length] == '/' || relative[project_root_length] == '\\')) {
         return relative;
       }
     }

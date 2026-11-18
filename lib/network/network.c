@@ -360,7 +360,7 @@ asciichat_error_t set_socket_timeout(socket_t sockfd, uint64_t timeout_ns) {
 
   // Set both receive and send timeouts using struct timeval
   struct timeval tv;
-  tv.tv_sec = (time_t)(timeout_ms / 1000);
+  tv.tv_sec = (long)(timeout_ms / 1000);
   tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
 
   // Set receive timeout
