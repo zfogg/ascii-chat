@@ -69,6 +69,13 @@ static uint64_t session_get_current_time_ms(void) {
   return APP_CALLBACK_UINT64(platform_get_monotonic_time_us) / 1000;
 }
 
+static void discovery_sleep_ns(int64_t timeout_ns) {
+  if (timeout_ns <= 0)
+    return;
+  const uint64_t timeout_us = (uint64_t)timeout_ns / 1000U;
+  platform_sleep_us(timeout_us > UINT_MAX ? UINT_MAX : (unsigned int)timeout_us);
+}
+
 discovery_session_t *discovery_session_create(const discovery_config_t *config) {
   if (!config) {
     SET_ERRNO(ERROR_INVALID_PARAM, "config is NULL");
@@ -300,9 +307,9 @@ asciichat_error_t discovery_session_destroy(discovery_session_t *session) {
 
   // Destroy host context if active
   if (session->host_ctx) {
-    asciichat_error_t result = session_host_destroy(session->host_ctx);
-    if (result != ASCIICHAT_OK)
-      return result;
+    asciichat_error_t host_result = session_host_destroy(session->host_ctx);
+    if (host_result != ASCIICHAT_OK)
+      return host_result;
     session->host_ctx = NULL;
   }
 
@@ -608,7 +615,7 @@ static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[SE
   memcpy(sdp_msg->sender_id, session->participant_id, SESSION_ID_SIZE);
   memcpy(sdp_msg->recipient_id, recipient_id, SESSION_ID_SIZE);
   sdp_msg->sdp_type = (strcmp(sdp_type, "offer") == 0) ? 0 : 1;
-  sdp_msg->sdp_len = HOST_TO_NET_U16(sdp_len);
+  sdp_msg->sdp_len = HOST_TO_NET_U16((uint16_t)sdp_len);
   // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - binary packet data
   memcpy(packet_data + sizeof(acip_webrtc_sdp_t), sdp, sdp_len);
 
@@ -1517,9 +1524,9 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
     return result;
   } else {
     log_info("Calling join_session - participant_ctx before=%p", session->participant_ctx);
-    asciichat_error_t result = join_session(session);
-    log_info("join_session returned - participant_ctx after=%p, state=%d, result=%d", session->participant_ctx, session->state, result);
-    return result;
+    asciichat_error_t join_result = join_session(session);
+    log_info("join_session returned - participant_ctx after=%p, state=%d, result=%d", session->participant_ctx, session->state, join_result);
+    return join_result;
   }
 }
 
@@ -1574,7 +1581,7 @@ static asciichat_error_t discovery_session_wait_for_peer(discovery_session_t *se
     }
   } else {
     // Fallback to sleep if no timeout or invalid transport
-    platform_sleep_us(timeout_ns / 1000);
+    discovery_sleep_ns(timeout_ns);
   }
   return ASCIICHAT_OK;
 }
@@ -1722,7 +1729,7 @@ static asciichat_error_t discovery_session_start_host(discovery_session_t *sessi
   memcpy(announcement.session_id, session->session_id, sizeof(announcement.session_id));
   memcpy(announcement.host_id, session->host_id, sizeof(announcement.host_id));
   SAFE_STRNCPY(announcement.host_address, session->host_address, sizeof(announcement.host_address));
-  announcement.host_port = host_port;
+  announcement.host_port = (uint16_t)host_port;
   announcement.connection_type = ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
   announcement.generation = HOST_TO_NET_U32(session->handoff_generation);
   announcement.sequence = HOST_TO_NET_U32(session->host_authority_sequence);
@@ -1965,7 +1972,7 @@ static asciichat_error_t discovery_session_process_active(discovery_session_t *s
       discovery_session_handle_host_disconnect(session, 1);
     }
   }
-  platform_sleep_us(timeout_ns / 1000);
+  discovery_sleep_ns(timeout_ns);
   return ASCIICHAT_OK;
 }
 
@@ -1989,7 +1996,7 @@ static asciichat_error_t discovery_session_process_migration(discovery_session_t
   if (session_get_current_time_ms() - session->host_loss_detected_ms > 30 * MS_PER_SEC_INT) {
     set_error(session, ERROR_NETWORK_TIMEOUT, "Timed out waiting for ACDS host recovery");
   }
-  platform_sleep_us(timeout_ns / 1000);
+  discovery_sleep_ns(timeout_ns);
   return ASCIICHAT_OK;
 }
 
@@ -2045,7 +2052,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int64_
     // These states are handled during discovery_session_start(), not in the process loop
     // If we reach here, something went wrong - sleep and wait
     log_debug("State %d should be handled by discovery_session_start", session->state);
-    platform_sleep_us(timeout_ns / 1000);
+  discovery_sleep_ns(timeout_ns);
     break;
 
   default:
