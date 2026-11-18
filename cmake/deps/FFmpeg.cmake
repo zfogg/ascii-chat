@@ -197,7 +197,9 @@ if(WIN32)
         add_library(asciichat-ffmpeg INTERFACE IMPORTED GLOBAL)
         set_target_properties(asciichat-ffmpeg PROPERTIES
             INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INCLUDE_DIR}"
-            INTERFACE_LINK_LIBRARIES "${_ffmpeg_windows_libs}")
+            # vcpkg's static FFmpeg enables the Windows Schannel backend.
+            # Keep its system closure on the imported target.
+            INTERFACE_LINK_LIBRARIES "${_ffmpeg_windows_libs};secur32;strmiids")
     endif()
     set(FFMPEG_INCLUDE_DIRS "${FFMPEG_INCLUDE_DIR}")
     set(FFMPEG_LIBRARIES asciichat-ffmpeg)

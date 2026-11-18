@@ -11,11 +11,14 @@ if(NOT EMSCRIPTEN)
         else()
             find_library(ASCIICHAT_LIBUV_LIBRARY NAMES uv_a uv PATHS "${VCPKG_LIB_PATH}" REQUIRED)
         endif()
+        # vcpkg's archive does not carry its Windows system closure when it is
+        # imported directly (uv__getpwuid_r uses Userenv.dll).
         if(NOT TARGET asciichat-libuv)
             add_library(asciichat-libuv UNKNOWN IMPORTED GLOBAL)
             set_target_properties(asciichat-libuv PROPERTIES
                 IMPORTED_LOCATION "${ASCIICHAT_LIBUV_LIBRARY}"
-                INTERFACE_INCLUDE_DIRECTORIES "${ASCIICHAT_LIBUV_INCLUDE_DIR}")
+                INTERFACE_INCLUDE_DIRECTORIES "${ASCIICHAT_LIBUV_INCLUDE_DIR}"
+                INTERFACE_LINK_LIBRARIES userenv)
         endif()
         set(ASCIICHAT_LIBUV_TARGET asciichat-libuv)
     elseif(USE_MUSL)

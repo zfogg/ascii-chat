@@ -135,8 +135,11 @@ if(DEFINED FETCHCONTENT_BASE_DIR)
     set(_asciichat_fetchcontent_base_dir_was_defined TRUE)
     set(_asciichat_parent_fetchcontent_base_dir "${FETCHCONTENT_BASE_DIR}")
 endif()
-set(FETCHCONTENT_BASE_DIR "${_asciichat_gotel_cache_dir}" CACHE PATH
-    "Persistent Gotel dependency source/build cache" FORCE)
+# Child dependencies are siblings in the shared dependency cache.  Using the
+# Gotel directory as FetchContent's global root incorrectly nests unrelated
+# projects such as mimalloc below `gotel/`.
+set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}" CACHE PATH
+    "Persistent dependency source/build cache" FORCE)
 
 if(USE_MUSL AND NOT TARGET nghttp2_static)
     # The musl application links its native HTTP/2 server against a static
@@ -164,6 +167,19 @@ endif()
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c
                  "${_asciichat_gotel_cache_dir}/build"
                  EXCLUDE_FROM_ALL)
+
+# Keep the produced libraries beside the cached Gotel build, rather than in
+# the parent application's build tree. This makes the cache self-contained
+# and lets Ninja reuse valid archives across parent reconfigures.
+file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}/lib")
+foreach(_asciichat_gotel_target gotel otlp_c sequel)
+    if(TARGET ${_asciichat_gotel_target})
+        set_target_properties(${_asciichat_gotel_target} PROPERTIES
+            ARCHIVE_OUTPUT_DIRECTORY "${_asciichat_gotel_cache_dir}/lib"
+            LIBRARY_OUTPUT_DIRECTORY "${_asciichat_gotel_cache_dir}/lib"
+            RUNTIME_OUTPUT_DIRECTORY "${_asciichat_gotel_cache_dir}/bin")
+    endif()
+endforeach()
 
 # The vendored Gotel shared target calls its TLS selection helper directly,
 # while some Apple linkers do not export that helper from the separately built

@@ -35,6 +35,19 @@ else()
   set(_rnnoise_library "${ASCIICHAT_RNNOISE_INSTALL_DIR}/lib/librnnoise.a")
 endif()
 
+if(WIN32)
+    # Do not add the ELF-only -fPIC flag to the native Windows autotools build,
+    # and prevent a stale process-level CFLAGS value from being forwarded.
+    set(ENV{CFLAGS} "")
+    set(_rnnoise_build_command
+        "${CMAKE_COMMAND}" -E env
+        "CFLAGS=-DM_PI=3.14159265358979323846"
+        "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
+else()
+    set(_rnnoise_build_command
+        "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}")
+endif()
+
 ExternalProject_Add(asciichat-rnnoise-build
     SOURCE_DIR "${ASCIICHAT_RNNOISE_SOURCE_DIR}"
     BINARY_DIR "${ASCIICHAT_RNNOISE_BUILD_DIR}"
@@ -46,8 +59,7 @@ ExternalProject_Add(asciichat-rnnoise-build
         -DRNNOISE_CC=${ASCIICHAT_CLANG_EXECUTABLE}
         -DRNNOISE_SHARED=OFF
         -P "${CMAKE_SOURCE_DIR}/cmake/utils/ConfigureRnnoise.cmake"
-    BUILD_COMMAND "${ASCIICHAT_RNNOISE_MAKE}" -B -C "${ASCIICHAT_RNNOISE_BUILD_DIR}"
-        CFLAGS=-DM_PI=3.14159265358979323846\ -fPIC
+    BUILD_COMMAND ${_rnnoise_build_command}
     INSTALL_COMMAND "${ASCIICHAT_RNNOISE_MAKE}" -C "${ASCIICHAT_RNNOISE_BUILD_DIR}" install
     BUILD_BYPRODUCTS "${_rnnoise_library}"
     BUILD_ALWAYS FALSE
@@ -69,3 +81,4 @@ add_dependencies(asciichat-rnnoise asciichat-rnnoise-build)
 unset(_rnnoise_library_type)
 unset(_rnnoise_library)
 unset(_rnnoise_import_library)
+unset(_rnnoise_build_command)
