@@ -60,7 +60,12 @@ function(asciichat_build_aec3)
     else()
         target_compile_definitions(AudioProcess PUBLIC WEBRTC_POSIX)
     endif()
-    set_target_properties(AudioProcess aec3 api base PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    # Windows object files are position-independent by default; Clang's
+    # Windows driver rejects the ELF-only -fPIC flag emitted by CMake for this
+    # property. Keep PIC for ELF/Mach-O targets only.
+    if(NOT WIN32)
+        set_target_properties(AudioProcess aec3 api base PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    endif()
     # MSVC's C++ container annotations must match the consuming ASan objects.
     if(WIN32 AND "-fsanitize=address" IN_LIST ASCIICHAT_SANITIZER_COMPILE_FLAGS)
         foreach(_target AudioProcess aec3 api base)
