@@ -401,7 +401,7 @@ if(BUILD_TESTS AND CATCH2_FOUND)
     endif()
 
     # Use mimalloc include directories from Mimalloc.cmake
-    set(_ascii_tests_mimalloc_include "${MIMALLOC_INCLUDE_DIRS}")
+    set(_ascii_tests_mimalloc_include "")
 
     # Find test files (excluding problematic ones, matches Makefile)
     file(GLOB_RECURSE TEST_SRCS_ALL CONFIGURE_DEPENDS
@@ -486,9 +486,9 @@ if(BUILD_TESTS AND CATCH2_FOUND)
     target_link_libraries(unit_tests PRIVATE
         ${TEST_LDFLAGS} ${_ascii_gotel_testing_target}
         libplatform
-        ${LIBSODIUM_LIBRARIES} asciichat-zstd ${OPUS_LIBRARIES}
-        ${SQLITE3_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} libdatachannel
-        OpenSSL::Crypto ${FFMPEG_LIBRARIES} asciichat-portaudio libflags::flags)
+        asciichat-libsodium asciichat-zstd asciichat-opus
+        asciichat-sqlite3 asciichat-libwebsockets asciichat-libdatachannel
+        OpenSSL::Crypto asciichat-ffmpeg asciichat-portaudio libflags::flags)
 add_dependencies(unit_tests ${ASCII_CHAT_UNIFIED_BUILD_TARGET})
 target_link_libraries(unit_tests PRIVATE
     ascii-chat-static
@@ -575,9 +575,9 @@ endif()
     endif()
     target_link_libraries(benchmarks PRIVATE
         ${TEST_LDFLAGS} ${_ascii_gotel_testing_target}
-        ${LIBSODIUM_LIBRARIES} asciichat-zstd ${OPUS_LIBRARIES}
-        ${SQLITE3_LIBRARIES} ${LIBWEBSOCKETS_LIBRARIES} libdatachannel
-        OpenSSL::Crypto ${FFMPEG_LIBRARIES} asciichat-portaudio libflags::flags)
+        asciichat-libsodium asciichat-zstd asciichat-opus
+        asciichat-sqlite3 asciichat-libwebsockets asciichat-libdatachannel
+        OpenSSL::Crypto asciichat-ffmpeg asciichat-portaudio libflags::flags)
 add_dependencies(benchmarks ${ASCII_CHAT_UNIFIED_BUILD_TARGET})
 target_link_libraries(benchmarks PRIVATE
     ascii-chat-static
@@ -740,7 +740,7 @@ endif()
         endif()
 
         if(USE_MIMALLOC)
-            target_link_libraries(${test_exe_name} ${MIMALLOC_LIBRARIES})
+            target_link_libraries(${test_exe_name} asciichat-mimalloc)
         endif()
 
         # Coverage builds need the profile runtime linked into test executables
@@ -794,16 +794,16 @@ endif()
 
         # External dependencies needed because shared library has them as undefined symbols
         # (normal for dylibs - symbols resolved at runtime)
-        target_link_libraries(${test_exe_name}
-            ${LIBSODIUM_LIBRARIES}
+            target_link_libraries(${test_exe_name}
+            asciichat-libsodium
             asciichat-zstd
-            ${OPUS_LIBRARIES}
-            ${SQLITE3_LIBRARIES}
-            ${LIBWEBSOCKETS_LIBRARIES}
+            asciichat-opus
+            asciichat-sqlite3
+            asciichat-libwebsockets
             ZLIB::ZLIB  # zlib needed for libwebsockets compression support
-            libdatachannel
+            asciichat-libdatachannel
             OpenSSL::Crypto
-            ${FFMPEG_LIBRARIES}
+            asciichat-ffmpeg
         )
         if(UNIX AND NOT APPLE)
             target_link_libraries(${test_exe_name} PRIVATE c++)
@@ -824,9 +824,8 @@ endif()
         else()
             target_link_libraries(${test_exe_name} asciichat-portaudio)
         endif()
-        if(MINIUPNPC_FOUND)
-            target_include_directories(${test_exe_name} PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
-            target_link_libraries(${test_exe_name} ${MINIUPNPC_LIBRARIES})
+        if(TARGET asciichat-miniupnpc)
+            target_link_libraries(${test_exe_name} asciichat-miniupnpc)
             if(NATPMP_LIBRARY)
                 target_include_directories(${test_exe_name} PRIVATE ${NATPMP_INCLUDE_DIR})
                 target_link_libraries(${test_exe_name} ${NATPMP_LIBRARY})
