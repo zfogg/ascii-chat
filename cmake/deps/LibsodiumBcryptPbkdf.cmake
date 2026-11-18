@@ -60,12 +60,15 @@ if(PLATFORM_IOS)
     endif()
 
     # Create imported target for iOS
-    if(NOT TARGET libsodium_bcrypt_pbkdf::libsodium_bcrypt_pbkdf)
-        add_library(libsodium_bcrypt_pbkdf::libsodium_bcrypt_pbkdf STATIC IMPORTED GLOBAL)
-        set_target_properties(libsodium_bcrypt_pbkdf::libsodium_bcrypt_pbkdf PROPERTIES
+    if(NOT TARGET asciichat-libsodium-bcrypt-pbkdf)
+        add_library(asciichat-libsodium-bcrypt-pbkdf STATIC IMPORTED GLOBAL)
+        set_target_properties(asciichat-libsodium-bcrypt-pbkdf PROPERTIES
             IMPORTED_LOCATION "${LIBSODIUM_BCRYPT_PBKDF_LIBRARY}"
             INTERFACE_INCLUDE_DIRECTORIES "${LIBSODIUM_BCRYPT_PBKDF_INCLUDE_DIR}"
         )
+    endif()
+    if(NOT TARGET asciichat::libsodium-bcrypt-pbkdf)
+        add_library(asciichat::libsodium-bcrypt-pbkdf ALIAS asciichat-libsodium-bcrypt-pbkdf)
     endif()
 
     message(STATUS "${BoldGreen}✓${ColorReset} libsodium-bcrypt-pbkdf (iOS): ${LIBSODIUM_BCRYPT_PBKDF_LIBRARY}")
