@@ -48,7 +48,7 @@ endforeach()
 # imported target, a source-built target, or a package target internally; the
 # rest of ascii-chat consumes only these stable names.
 _asciichat_wrap_target(asciichat-libplatform libplatform::libplatform)
-_asciichat_wrap_target(asciichat-libflags libflags::flags)
+_asciichat_wrap_target(asciichat-libflags ${ASCIICHAT_LIBFLAGS_TARGET})
 if(NOT EMSCRIPTEN)
     _asciichat_wrap_target(asciichat-libuv)
 endif()
