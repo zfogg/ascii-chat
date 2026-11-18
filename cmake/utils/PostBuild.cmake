@@ -52,7 +52,6 @@ function(copy_windows_dlls TARGET_NAME)
                         COMMAND ${CMAKE_COMMAND} -E copy_if_different
                             "$<TARGET_PDB_FILE:${_source_runtime_target}>"
                             "$<TARGET_FILE_DIR:${TARGET_NAME}>"
-                        DEPENDS ${_source_runtime_target}
                         COMMENT "Staging ${_source_runtime_target} PDB"
                         VERBATIM)
                 endif()
