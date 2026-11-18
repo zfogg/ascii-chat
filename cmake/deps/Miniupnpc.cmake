@@ -53,7 +53,6 @@ if(PLATFORM_IOS OR USE_MUSL OR ASCIICHAT_BUILD_DEPS_FROM_SOURCE)
             URL https://github.com/miniupnp/miniupnp/archive/refs/tags/miniupnpc_2_2_7.tar.gz
             SOURCE_SUBDIR miniupnpc DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
         FetchContent_MakeAvailable(asciichat_miniupnpc)
-        set(_asciichat_miniupnpc_include "${asciichat_miniupnpc_SOURCE_DIR}/miniupnpc/include" PARENT_SCOPE)
     endfunction()
     asciichat_build_miniupnpc()
     set(_asciichat_miniupnpc_found TRUE)
