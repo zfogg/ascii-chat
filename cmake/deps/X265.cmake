@@ -77,7 +77,6 @@ if(USE_MUSL)
             COMMAND "${CMAKE_COMMAND}" "-DPREFIX=${_prefix}"
                 -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../scripts/FixX265PkgConfig.cmake"
             DEPENDS x265-static VERBATIM)
-        set(X265_PREFIX "${_prefix}" PARENT_SCOPE)
     endfunction()
     asciichat_build_x265()
     if(NOT TARGET asciichat-x265)

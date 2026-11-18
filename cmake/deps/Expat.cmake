@@ -20,7 +20,6 @@ function(asciichat_build_expat)
             COMMAND "${CMAKE_COMMAND}" --install "${asciichat_expat_BINARY_DIR}" --prefix "${_prefix}"
             DEPENDS expat VERBATIM)
     endif()
-    set(EXPAT_PREFIX "${_prefix}" PARENT_SCOPE)
 endfunction()
 asciichat_build_expat()
 if(NOT TARGET asciichat-expat)
