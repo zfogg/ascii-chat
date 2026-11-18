@@ -120,26 +120,6 @@ void teardown_webrtc_e2e_tests(void) {
 // Process Management Utilities
 // =============================================================================
 
-<<<<<<< HEAD:tests/integration/discovery/webrtc_discovery_e2e_test.c
-static pid_t spawn_process_with_log(const char *binary_path, char *const argv[], const char *name, const char *log_path) {
-  pid_t pid = fork();
-  if (pid == 0) {
-    // Child: redirect output to log file
-    FILE *log_file = fopen(log_path, "w");
-    if (log_file) {
-      (void)platform_dup2(fileno(log_file), STDOUT_FILENO);
-      (void)platform_dup2(fileno(log_file), STDERR_FILENO);
-      fclose(log_file);
-    }
-
-    execv(binary_path, argv);
-    fprintf(stderr, "execv(%s) failed: %s\n", binary_path, strerror(errno));
-    exit(127);
-  }
-
-  if (pid > 0 && process_count < MAX_PROCESSES) {
-    tracked_processes[process_count].pid = pid;
-=======
 static platform_process_t *spawn_process_with_log(const char *binary_path, const char *const argv[], const char *name, const char *log_path) {
   int log_fd = platform_open("webrtc-e2e-log", log_path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC | PLATFORM_O_BINARY, 0600);
   if (log_fd < 0)
@@ -149,7 +129,6 @@ static platform_process_t *spawn_process_with_log(const char *binary_path, const
   platform_close(log_fd);
   if (result == ASCIICHAT_OK && process && process_count < MAX_PROCESSES) {
     tracked_processes[process_count].process = process;
->>>>>>> origin/master:tests/integration/discovery/webrtc_discovery_e2e_test.cpp
     tracked_processes[process_count].name = name;
     SAFE_STRNCPY(tracked_processes[process_count].log_path, log_path, sizeof(tracked_processes[process_count].log_path));
     tracked_processes[process_count].running = true;

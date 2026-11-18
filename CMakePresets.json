@@ -154,7 +154,6 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "cl",
         "CMAKE_CXX_COMPILER": "cl",
-        "ASCIICHAT_SHARED_DEPS": "OFF",
         "ASCIICHAT_ENFORCE_STATIC_RELEASE": "ON",
         "USE_MUSL": "OFF"
       },

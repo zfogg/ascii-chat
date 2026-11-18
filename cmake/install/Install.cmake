@@ -519,18 +519,14 @@ if(BUILD_EXECUTABLES AND WIN32)
             "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
             "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii_chat"
             "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
-        COMMAND ${CMAKE_COMMAND} -E env "ASCII_CHAT_QUESTION_PROMPT_RESPONSE=y"
-            "$<TARGET_FILE:ascii-chat>" --completions bash
-            "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
-        COMMAND ${CMAKE_COMMAND} -E env "ASCII_CHAT_QUESTION_PROMPT_RESPONSE=y"
-            "$<TARGET_FILE:ascii-chat>" --completions fish
-            "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
-        COMMAND ${CMAKE_COMMAND} -E env "ASCII_CHAT_QUESTION_PROMPT_RESPONSE=y"
-            "$<TARGET_FILE:ascii-chat>" --completions zsh
-            "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii_chat"
-        COMMAND ${CMAKE_COMMAND} -E env "ASCII_CHAT_QUESTION_PROMPT_RESPONSE=y"
-            "$<TARGET_FILE:ascii-chat>" --completions powershell
-            "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
+        COMMAND powershell -NoProfile -Command
+            "$env:ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'; & '$<TARGET_FILE:ascii-chat>' --completions bash '${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat'" > NUL 2>&1
+        COMMAND powershell -NoProfile -Command
+            "$env:ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'; & '$<TARGET_FILE:ascii-chat>' --completions fish '${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish'" > NUL 2>&1
+        COMMAND powershell -NoProfile -Command
+            "$env:ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'; & '$<TARGET_FILE:ascii-chat>' --completions zsh '${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii_chat'" > NUL 2>&1
+        COMMAND powershell -NoProfile -Command
+            "$env:ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'; & '$<TARGET_FILE:ascii-chat>' --completions powershell '${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1'" > NUL 2>&1
         DEPENDS $<TARGET_FILE:ascii-chat>
         COMMENT "Building shell completions"
         VERBATIM
@@ -571,7 +567,7 @@ elseif(BUILD_EXECUTABLES)
 endif()
 
 if(BUILD_EXECUTABLES)
-    if(ASCIICHAT_SKIP_RUNTIME_GENERATED_DOCS OR WIN32)
+    if(ASCIICHAT_SKIP_RUNTIME_GENERATED_DOCS)
         add_custom_target(completions
             DEPENDS
                 "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"

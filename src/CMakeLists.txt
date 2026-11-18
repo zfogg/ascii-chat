@@ -88,12 +88,9 @@ if(UNIX AND NOT APPLE)
     if(ASCIICHAT_LLVM_LIBUNWIND)
         target_link_libraries(ascii-chat PRIVATE ${ASCIICHAT_LLVM_LIBUNWIND})
     endif()
-    # GCC musl links its static runtime archive explicitly from the musl
-    # toolchain. It has no libgcc_s shared runtime to link. Host Clang builds
-    # still need the platform unwinder when static C++ dependencies require it.
-    if(NOT USE_MUSL)
-        target_link_libraries(ascii-chat PRIVATE gcc_s)
-    endif()
+    # Arch ships the GCC unwinder as libgcc_s.so.1 without an unversioned
+    # development symlink, so find_library cannot discover it by filename.
+    target_link_libraries(ascii-chat PRIVATE gcc_s)
 endif()
 
 # The executable's mode sources call FFmpeg directly. pkg-config can return
@@ -118,13 +115,8 @@ endif()
 # - USE_MUSL: always static (musl requires static linking)
 # - Linux Release (non-musl): static FFmpeg .a can't link into shared lib (PIC issues on arm64)
 set(_use_shared_lib FALSE)
-<<<<<<< HEAD
-if(NOT USE_MUSL AND NOT (WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "MSVC"))
-    if(ASCIICHAT_SHARED_DEPS OR CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
-=======
 if(NOT USE_MUSL)
     if(BUILD_SHARED_LIBS OR CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
->>>>>>> origin/master
         set(_use_shared_lib TRUE)
     else()
         set(_use_shared_lib FALSE)
@@ -146,24 +138,7 @@ elseif(NOT _use_shared_lib AND NOT USE_MUSL)
     # Used on Linux Release non-musl (static FFmpeg .a can't go into .so)
     # and Windows Release (fully static binary with all deps compiled in)
     add_dependencies(ascii-chat generate_version)
-<<<<<<< HEAD
-    target_link_libraries(ascii-chat PRIVATE
-        ascii-chat-util
-        ascii-chat-data-structures
-        ascii-chat-crypto
-        ascii-chat-simd
-        ascii-chat-video
-        ascii-chat-audio
-        ascii-chat-network
-        ascii-chat-core
-        ascii-chat-panic
-        # Keep the mapped libplatform target explicit for static/object-library
-        # link branches; its symbols are not carried by the object targets.
-        libplatform
-    )
-=======
     target_link_libraries(ascii-chat PRIVATE ascii-chat-runtime-objects)
->>>>>>> origin/master
     get_core_deps_libraries(CORE_LIBS)
     target_link_libraries(ascii-chat PRIVATE ${CORE_LIBS} ${BEARSSL_LIBRARIES})
     if(FFMPEG_LIBRARIES)
@@ -534,13 +509,8 @@ if(NOT WIN32 AND CMAKE_C_LINK_PIE_SUPPORTED)
     endif()
 endif()
 
-# Enable dead code elimination for optimal binary size using the native
-# compiler spelling.
-if(MSVC)
-    target_compile_options(ascii-chat PRIVATE /Gy /Gw)
-else()
-    target_compile_options(ascii-chat PRIVATE -ffunction-sections -fdata-sections)
-endif()
+# Enable dead code elimination for optimal binary size
+target_compile_options(ascii-chat PRIVATE -ffunction-sections -fdata-sections)
 
 # Release-specific optimizations for executable
 if(CMAKE_BUILD_TYPE STREQUAL "Release")

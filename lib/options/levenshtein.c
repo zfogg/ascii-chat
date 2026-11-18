@@ -15,12 +15,7 @@
 #include <ascii-chat/options/levenshtein.h>
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/common.h>
-<<<<<<< HEAD
-#include <recast/closure.h>
-#include <recast/defer.h>
-=======
 #include <defer.h>
->>>>>>> origin/master
 
 // Returns a size_t, depicting the difference between `a` and `b`.
 // See <https://en.wikipedia.org/wiki/Levenshtein_distance> for more information.
@@ -147,25 +142,12 @@ const char *levenshtein_find_similar(const char *unknown, const char *const *can
   const char *best_match = NULL;
   size_t best_distance = SIZE_MAX;
 
-<<<<<<< HEAD
-  recast_closure(consider_candidate, void, (const char *candidate), (copy(unknown), ref(best_match), ref(best_distance)), {
-    const size_t distance = levenshtein(unknown, candidate);
-    if (distance < best_distance) {
-      best_distance = distance;
-      best_match = candidate;
-    }
-  });
-
-  for (int i = 0; candidates[i] != NULL; i++) {
-    recast_call(consider_candidate, candidates[i]);
-=======
   for (int i = 0; candidates[i] != NULL; i++) {
     size_t dist = levenshtein(unknown, candidates[i]);
     if (dist < best_distance) {
       best_distance = dist;
       best_match = candidates[i];
     }
->>>>>>> origin/master
   }
 
   // Only suggest if the distance is within our threshold

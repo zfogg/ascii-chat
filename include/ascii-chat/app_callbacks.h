@@ -12,15 +12,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-<<<<<<< HEAD
-static inline bool app_callback_macro_continue(void) {
-  return false;
-}
-=======
 #ifdef __cplusplus
 extern "C" {
 #endif
->>>>>>> origin/master
 
 typedef void (*app_debug_write_fn)(const char *text, void *context);
 
@@ -70,27 +64,27 @@ const app_callbacks_t *app_callbacks_get(void);
     if (__cb && __cb->callback_name) {                 \
       __cb->callback_name();                           \
     }                                                  \
-  } while (app_callback_macro_continue())
+  } while (0)
 
 /**
  * Call a void(void) callback and return bool
  * Usage: bool result = APP_CALLBACK_BOOL(should_exit)
  */
-static inline bool app_callback_should_exit(void) {
-  const app_callbacks_t *cb = app_callbacks_get();
-  return cb && cb->should_exit ? cb->should_exit() : false;
-}
-#define APP_CALLBACK_BOOL(callback_name) app_callback_##callback_name()
+#define APP_CALLBACK_BOOL(callback_name)                           \
+  ({                                                               \
+    const app_callbacks_t *__cb = app_callbacks_get();             \
+    (__cb && __cb->callback_name) ? __cb->callback_name() : false; \
+  })
 
 /**
  * Call a uint64_t(void) callback
  * Usage: uint64_t now = APP_CALLBACK_UINT64(platform_get_monotonic_time_us)
  */
-static inline uint64_t app_callback_platform_get_monotonic_time_us(void) {
-  const app_callbacks_t *cb = app_callbacks_get();
-  return cb && cb->platform_get_monotonic_time_us ? cb->platform_get_monotonic_time_us() : 0ULL;
-}
-#define APP_CALLBACK_UINT64(callback_name) app_callback_##callback_name()
+#define APP_CALLBACK_UINT64(callback_name)                        \
+  ({                                                              \
+    const app_callbacks_t *__cb = app_callbacks_get();            \
+    (__cb && __cb->callback_name) ? __cb->callback_name() : 0ULL; \
+  })
 
 /**
  * Call a void(unsigned int) callback
@@ -102,7 +96,7 @@ static inline uint64_t app_callback_platform_get_monotonic_time_us(void) {
     if (__cb && __cb->callback_name) {                 \
       __cb->callback_name(value);                      \
     }                                                  \
-  } while (app_callback_macro_continue())
+  } while (0)
 
 #endif
 

@@ -9,23 +9,6 @@ endif()
 # Store lib directory since this file may be included() from parent scope
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 
-if(NOT TARGET utf8proc)
-    add_library(utf8proc STATIC
-        ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/utf8proc/utf8proc.c)
-    target_include_directories(utf8proc PUBLIC
-        ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/utf8proc)
-    target_compile_definitions(utf8proc PUBLIC UTF8PROC_STATIC=1)
-    set_target_properties(utf8proc PROPERTIES POSITION_INDEPENDENT_CODE ON)
-endif()
-add_library(ascii-chat-libplatform-utf8proc STATIC
-    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/utf8proc/utf8proc.c)
-target_include_directories(ascii-chat-libplatform-utf8proc PUBLIC
-    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/utf8proc)
-target_compile_definitions(ascii-chat-libplatform-utf8proc PUBLIC UTF8PROC_STATIC=1)
-set_target_properties(ascii-chat-libplatform-utf8proc PROPERTIES POSITION_INDEPENDENT_CODE ON)
-set(LIBPLATFORM_UTF8PROC_TARGET ascii-chat-libplatform-utf8proc CACHE STRING
-    "utf8proc target supplied by ascii-chat" FORCE)
-
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libplatform.cmake)
 target_include_directories(asciichat-project-includes INTERFACE
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include)
@@ -414,11 +397,6 @@ target_link_libraries(ascii-chat-data-structures PRIVATE ascii-chat-util)
 # Module 3: Platform Abstraction (depends on: util, data-structures)
 # -----------------------------------------------------------------------------
 
-<<<<<<< HEAD
-add_library(ascii-chat-platform INTERFACE)
-target_link_libraries(ascii-chat-platform INTERFACE libplatform)
-target_include_directories(ascii-chat-platform INTERFACE
-=======
 # Runtime is created before the dependency interface below because the
 # platform dependency bundle is now attached directly to the runtime module.
 set(_core_runtime_regex "[/\\\\]lib[/\\\\](event|common|otel|asciichat_errno|app_callbacks|version)[.]c$|[/\\\\]lib[/\\\\]util[/\\\\]utf8[.]c$|[/\\\\]src[/\\\\]common[/\\\\]http_renderer[.]c$|[/\\\\]lib[/\\\\]stats[/\\\\].*[.]c$|[/\\\\]lib[/\\\\]media[/\\\\](input|playlist)[.]c$|[/\\\\]lib[/\\\\]debug[/\\\\](stats|errno)[.]c$")
@@ -429,7 +407,6 @@ create_ascii_chat_module(ascii-chat-runtime "${_runtime_sources}")
 
 target_link_libraries(ascii-chat-runtime INTERFACE libplatform::libplatform)
 target_include_directories(ascii-chat-runtime INTERFACE
->>>>>>> origin/master
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/lib
 )
@@ -606,7 +583,7 @@ create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
 # search path explicit instead of relying only on the project interface target.
 target_include_directories(ascii-chat-video BEFORE PRIVATE ${FFMPEG_INCLUDE_DIRS})
 if(USE_MUSL)
-    set(_musl_ffmpeg_include_dir "${ASCIICHAT_DEPS_CACHE_DIR}/installed/ffmpeg/include")
+    set(_musl_ffmpeg_include_dir "${CMAKE_BINARY_DIR}/_deps/installed/ffmpeg/include")
     target_include_directories(ascii-chat-video BEFORE PRIVATE "${_musl_ffmpeg_include_dir}")
     # Defer copies source properties to transformed sources; target-only include
     # directories are not present when defer parses the original compilation DB.
@@ -799,6 +776,10 @@ foreach(_core_target IN LISTS _CORE_MODULE_TARGETS)
     endif()
 endforeach()
 
+if(TARGET ascii-chat-logging AND TARGET OpenSSL::SSL)
+    target_link_libraries(ascii-chat-logging PRIVATE OpenSSL::SSL)
+endif()
+
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-runtime PRIVATE ${ASCIICHAT_LIBUV_TARGET})
 endif()
@@ -869,11 +850,6 @@ endif()
 # search as a fallback for distro/Homebrew installs that do not ship a CMake
 # package file.
 find_package(nghttp2 CONFIG QUIET)
-if(WIN32)
-    # The bundled nghttp2 archive is static.  Avoid __declspec(dllimport)
-    # declarations from system/vcpkg headers when compiling the HTTP/2 object.
-    target_compile_definitions(ascii-chat-network PRIVATE NGHTTP2_STATICLIB)
-endif()
 if(TARGET nghttp2_static)
     set(ASCIICHAT_NGHTTP2_TARGET nghttp2_static)
     get_target_property(_asciichat_nghttp2_includes nghttp2_static INTERFACE_INCLUDE_DIRECTORIES)
@@ -897,12 +873,6 @@ elseif(TARGET nghttp2::nghttp2)
     set(ASCIICHAT_NGHTTP2_TARGET nghttp2::nghttp2)
 elseif(TARGET nghttp2::nghttp2_static)
     set(ASCIICHAT_NGHTTP2_TARGET nghttp2::nghttp2_static)
-elseif(TARGET nghttp2_static)
-    # gotel builds nghttp2 as a private dependency of otlp-c.  ascii-chat's
-    # object-based shared library also contains HTTP/2 objects, so it must
-    # link the archive explicitly when gotel's private dependency is not
-    # transitive.
-    set(ASCIICHAT_NGHTTP2_TARGET nghttp2_static)
 else()
     find_path(ASCIICHAT_NGHTTP2_INCLUDE_DIR nghttp2/nghttp2.h NO_CMAKE_FIND_ROOT_PATH)
     find_library(ASCIICHAT_NGHTTP2_LIBRARY NAMES nghttp2 nghttp2_static NO_CMAKE_FIND_ROOT_PATH)
@@ -930,11 +900,9 @@ else()
     set(ASCIICHAT_NGHTTP2_TARGET ${ASCIICHAT_NGHTTP2_LIBRARY})
     target_include_directories(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_INCLUDE_DIR})
 endif()
-# The network module is an object library, so gotel's private nghttp2
-# dependency cannot reach the final executable through normal transitive
-# linking. Link the one selected target here; this is also required when the
-# application is linked statically for release builds.
-target_link_libraries(ascii-chat-network PRIVATE ${ASCIICHAT_NGHTTP2_TARGET})
+# nghttp2 is already propagated by the gotel transport dependency.  Adding
+# the separately discovered package here creates two incompatible Windows
+# libraries on the final link line.
 if(ASCIICHAT_LIBUV_TARGET)
     target_link_libraries(ascii-chat-network PRIVATE ${ASCIICHAT_LIBUV_TARGET})
 endif()
@@ -1092,7 +1060,7 @@ add_library(ascii-chat-shared SHARED
     )
     # Consumers of the shared object also call platform APIs directly (tests,
     # tooling, and small probes), so keep libplatform transitively visible.
-    target_link_libraries(ascii-chat-shared PUBLIC libplatform)
+    target_link_libraries(ascii-chat-shared PUBLIC libplatform::libplatform)
     if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE asciichat-quic)
     endif()
@@ -1115,7 +1083,7 @@ add_library(ascii-chat-shared SHARED
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}  # DLL goes in bin/
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}  # .so goes in lib/
         ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}  # Import .lib goes in lib/
-        WINDOWS_EXPORT_ALL_SYMBOLS FALSE  # Use generated .def file except for native MSVC
+        WINDOWS_EXPORT_ALL_SYMBOLS TRUE
         # Windows: VERSION/SOVERSION embed version info in PE header (no symlinks)
         # Library version is from lib/v* tags, separate from app version
         VERSION ${ASCIICHAT_LIB_VERSION}
@@ -1124,14 +1092,6 @@ add_library(ascii-chat-shared SHARED
         MACOSX_RPATH TRUE
         INSTALL_NAME_DIR "@rpath"
     )
-    if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
-        # MSVC /GL produces anonymous LTCG .obj files. CMake's native export
-        # scanner correctly handles ordinary COFF objects, so keep automatic
-        # exports enabled and disable IPO only for this DLL target.
-        set_property(TARGET ascii-chat-shared PROPERTY
-            WINDOWS_EXPORT_ALL_SYMBOLS TRUE
-            INTERPROCEDURAL_OPTIMIZATION FALSE)
-    endif()
     if(WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT CMAKE_C_COMPILER MATCHES "clang-cl")
         # The GNU-style Clang driver targets the MSVC ABI here. Match CMake's
         # generated import-library path to the .lib path passed to lld-link.
@@ -1210,7 +1170,7 @@ add_library(ascii-chat-shared SHARED
         # Both clang-cl and clang --target=...-windows-msvc produce MSVC
         # compatible import libraries. The GNU-style clang driver used by the
         # LLVM toolchain still needs the .lib name consumed by the executable.
-        if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER_ID STREQUAL "MSVC" OR CMAKE_C_COMPILER MATCHES "clang-cl")
+        if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER MATCHES "clang-cl")
             set(ASCIICHAT_WINDOWS_IMPORT_LIBRARY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
         else()
             set(ASCIICHAT_WINDOWS_IMPORT_LIBRARY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.dll.a")
@@ -1239,58 +1199,6 @@ add_library(ascii-chat-shared SHARED
         ascii-chat-panic
     )
 
-    # Generate the .def file using a custom command
-    # Windows: Auto-generate .def file for symbol export
-    if(WIN32 AND NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
-        if(CMAKE_NM)
-            set(_export_nm "${CMAKE_NM}")
-        elseif(ASCIICHAT_LLVM_NM_EXECUTABLE)
-            set(_export_nm "${ASCIICHAT_LLVM_NM_EXECUTABLE}")
-        else()
-            message(FATAL_ERROR "llvm-nm is required to generate Windows DLL exports")
-        endif()
-        # Convert list to string for passing to script
-        string(REPLACE ";" "," MODULE_TARGETS_STR "${MODULE_TARGETS}")
-
-        set(_export_object_dependencies)
-        foreach(_module IN LISTS MODULE_TARGETS)
-            list(APPEND _export_object_dependencies $<TARGET_OBJECTS:${_module}>)
-        endforeach()
-
-        set(_export_object_manifest "${CMAKE_CURRENT_BINARY_DIR}/asciichat-export-objects-$<CONFIG>.txt")
-        file(GENERATE OUTPUT "${_export_object_manifest}" CONTENT "$<JOIN:${_export_object_dependencies},\n>\n")
-
-        add_custom_command(
-            OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
-            COMMAND ${CMAKE_COMMAND}
-                -DNM_TOOL=${_export_nm}
-                -DOBJECT_LIST_FILE=${_export_object_manifest}
-                -DOUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
-                -DLIBRARY_NAME=asciichat
-                -P ${CMAKE_SOURCE_DIR}/cmake/tools/GenerateDefFile.cmake
-            DEPENDS ${MODULE_TARGETS} ${_export_object_dependencies} ${_export_object_manifest} ${CMAKE_SOURCE_DIR}/cmake/tools/GenerateDefFile.cmake
-            COMMENT "Generating Windows .def file from object files"
-            VERBATIM
-        )
-
-        # Create a target for the .def file generation
-        add_custom_target(generate-def-file DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def)
-
-        # Make the DLL depend on the .def file generation
-        add_dependencies(ascii-chat-shared generate-def-file)
-
-        # Use the generated .def file for linking
-        target_link_options(ascii-chat-shared PRIVATE
-            "LINKER:/DEF:${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def"
-        )
-        # The .def file is part of the link input. Track it explicitly so a
-        # changed object list or export set relinks the DLL and refreshes its
-        # import library before consumers link against it.
-        set_property(TARGET ascii-chat-shared APPEND PROPERTY LINK_DEPENDS
-            "${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def"
-        )
-    endif()
-
     # Ensure all object library targets are built before linking the shared library
     # This prevents parallel build race conditions where the linker tries to use
     # object files that haven't finished compiling yet
@@ -1316,9 +1224,6 @@ add_library(ascii-chat-shared SHARED
     # Add include directories needed by the OBJECT libraries
     target_include_directories(ascii-chat-shared PRIVATE
         $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/include>
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libplatform/lib>
     )
 
     if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
@@ -1361,16 +1266,12 @@ add_library(ascii-chat-shared SHARED
         add_dependencies(ascii-chat-shared ${LIBSODIUM_BUILD_TARGET})
     endif()
 
-    # ascii-chat-shared is built from object libraries, so gotel's private
-    # otlp-c -> nghttp2 dependency must be linked explicitly here.
-    set(_asciichat_nghttp2_shared_link ${ASCIICHAT_NGHTTP2_TARGET})
-
     # Link external dependencies (libsodium, zstd, opus, etc.)
     # These are needed because shared library is created from OBJECT files,
     # which don't automatically bring in their module dependencies
     target_link_libraries(ascii-chat-shared PRIVATE
         asciichat-icu
-        ${_asciichat_nghttp2_shared_link}
+        ${ASCIICHAT_NGHTTP2_TARGET}
         ${LIBSODIUM_LIBRARIES}
         zstd::libzstd
         ${OPUS_LIBRARIES}
@@ -1378,7 +1279,6 @@ add_library(ascii-chat-shared SHARED
         ${PCRE2_LIBRARIES}
         ${YYJSON_LIBRARIES}
     )
-    unset(_asciichat_nghttp2_shared_link)
 
     # Coverage instrumentation is propagated through the shared target's
     # compile and link options. Do not link the compiler's profile runtime
@@ -1672,7 +1572,7 @@ else()
     set(ASCIICHAT_SYMBOL_NM_EXECUTABLE "${ASCIICHAT_LLVM_NM_EXECUTABLE}")
 endif()
 
-if(ASCIICHAT_SYMBOL_NM_EXECUTABLE AND NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
     # On Windows, check the import library (.lib) since DLLs don't expose symbols to llvm-nm
     # On Unix, check the shared object directly
     if(WIN32)
@@ -1814,13 +1714,8 @@ add_dependencies(ascii-chat-static-lib build-ascii-chat-static-lib)
 
 # Create an INTERFACE library for dependency propagation
 # (IMPORTED libraries can't have INTERFACE_LINK_LIBRARIES in older CMake)
-<<<<<<< HEAD
-add_library(ascii-chat-static-lib-deps INTERFACE)
-target_link_libraries(ascii-chat-static-lib-deps INTERFACE libplatform ${UTF8PROC_LIBRARIES} asciichat-icu)
-=======
 add_library(ascii-chat-static INTERFACE)
 target_link_libraries(ascii-chat-static INTERFACE libplatform::libplatform ${UTF8PROC_LIBRARIES} asciichat-icu ascii-chat-rnnoise)
->>>>>>> origin/master
 if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-static INTERFACE asciichat-quic)
 endif()
@@ -1834,6 +1729,10 @@ if(NOT EMSCRIPTEN)
         target_link_libraries(ascii-chat-shared PRIVATE ${ASCIICHAT_LIBUV_TARGET})
     endif()
     target_link_libraries(ascii-chat-static INTERFACE ${ASCIICHAT_LIBUV_TARGET})
+    if(NOT ASCIICHAT_NGHTTP2_TARGET)
+        message(FATAL_ERROR "ascii-chat-static requires an nghttp2 provider")
+    endif()
+    target_link_libraries(ascii-chat-static INTERFACE ${ASCIICHAT_NGHTTP2_TARGET})
 endif()
 if(WEBRTC_AEC3_LIBRARIES)
     target_link_libraries(ascii-chat-static INTERFACE ${WEBRTC_AEC3_LIBRARIES})
@@ -2088,11 +1987,6 @@ if(NOT EMSCRIPTEN)
     target_link_libraries(ascii-chat-runtime PRIVATE ${ASCIICHAT_GOTEL_TARGET})
     if(TARGET ascii-chat-shared)
         target_link_libraries(ascii-chat-shared PRIVATE ${ASCIICHAT_GOTEL_TARGET})
-        # ascii-chat-shared is assembled from object libraries, so keep gotel's
-        # OTLP implementation explicit at the final shared-library link.
-        if(TARGET otlp-c::otlp_c)
-            target_link_libraries(ascii-chat-shared PRIVATE otlp-c::otlp_c)
-        endif()
     endif()
     target_link_libraries(ascii-chat-static INTERFACE ${ASCIICHAT_GOTEL_TARGET})
 endif()

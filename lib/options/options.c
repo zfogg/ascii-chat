@@ -1486,117 +1486,6 @@ static asciichat_error_t handle_fallback_actions(options_t *opts, const binary_a
 }
 
 static asciichat_error_t build_mode_argv(int argc, char **argv, int mode_index, mode_arguments_t *args) {
-<<<<<<< HEAD:lib/options/core.c
-  if (mode_index == -1) {
-    // No explicit mode - filter binary-level options from entire argv
-    int max_mode_argc = argc; // Worst case: no binary opts skipped
-
-    if (max_mode_argc > 256) {
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Too many arguments: %d", max_mode_argc);
-    }
-
-    char **new_mode_argv = SAFE_MALLOC((size_t)(max_mode_argc + 1) * sizeof(char *), char **);
-    if (!new_mode_argv) {
-      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate mode_argv");
-    }
-    args->allocated = new_mode_argv;
-
-    new_mode_argv[0] = argv[0]; // Copy program name
-
-    // Copy all args except binary-level options
-    int new_argv_idx = 1;
-    for (int i = 1; i < argc; i++) {
-      bool takes_arg = false;
-      bool takes_optional_arg = false;
-
-      // Check if this is a binary-level option
-      if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
-        // Skip argument if needed
-        // NOLINTNEXTLINE(bugprone-branch-clone)
-        if (takes_arg && i + 1 < argc) {
-          i++; // Skip required argument
-        } else if (takes_optional_arg && i + 1 < argc && argv[i + 1][0] != '-') {
-          i++; // Skip optional argument
-        }
-        continue;
-      }
-      // Not a binary option, copy to mode_argv
-      new_mode_argv[new_argv_idx++] = argv[i];
-    }
-
-    args->argc = new_argv_idx;
-    new_mode_argv[args->argc] = NULL;
-    args->argv = new_mode_argv;
-  } else if (mode_index != -1) {
-    // Mode found at position mode_index
-    // Build new argv: [program_name, args_before_mode (no binary opts)..., args_after_mode...]
-    // Binary-level options are not passed to mode-specific parsers
-
-    int args_after_mode = argc - mode_index - 1;
-    // We'll calculate final argc after skipping binary options
-    int max_mode_argc = 1 + (mode_index - 1) + args_after_mode; // Worst case: no binary opts skipped
-
-    if (max_mode_argc > 256) {
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Too many arguments: %d", max_mode_argc);
-    }
-
-    // Allocate max_mode_argc+1 to accommodate NULL terminator
-    char **new_mode_argv = SAFE_MALLOC((size_t)(max_mode_argc + 1) * sizeof(char *), char **);
-    if (!new_mode_argv) {
-      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate mode_argv");
-    }
-    args->allocated = new_mode_argv; // Track allocation for cleanup
-
-    // Copy: [program_name, args_before_mode (excluding binary opts)..., args_after_mode...]
-    if (mode_index == 0) {
-      // Mode is at argv[0], use "ascii-chat" as program name
-      static char program_name[] = "ascii-chat";
-      new_mode_argv[0] = program_name;
-    } else {
-      new_mode_argv[0] = argv[0];
-    }
-
-    // Copy args before mode, skipping binary-level options
-    int new_argv_idx = 1;
-    for (int i = 1; i < mode_index; i++) {
-      bool takes_arg = false;
-      bool takes_optional_arg = false;
-
-      // Check if this is a binary-level option
-      if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
-        // Skip argument if needed
-        if (!strchr(argv[i], '=') && i + 1 < mode_index && (takes_arg || (takes_optional_arg && argv[i + 1][0] != '-'))) {
-          i++; // Skip argument
-        }
-        continue;
-      }
-      // Not a binary option, copy to mode_argv
-      new_mode_argv[new_argv_idx++] = argv[i];
-    }
-    // Copy args after mode, filtering out any binary-level options (they shouldn't appear here)
-    int args_after_mode_idx = 0;
-    for (int i = mode_index + 1; i < argc; i++) {
-      bool takes_arg = false;
-      bool takes_optional_arg = false;
-
-      // Check if this is a binary-level option (shouldn't appear after mode)
-      if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
-        // Skip binary-level option and its argument if needed
-        if (!strchr(argv[i], '=') && i + 1 < argc && (takes_arg || (takes_optional_arg && argv[i + 1][0] != '-'))) {
-          i++; // Skip argument
-        }
-        continue; // Skip this option
-      }
-      // Not a binary option, copy to mode_argv
-      new_mode_argv[new_argv_idx + args_after_mode_idx++] = argv[i];
-    }
-    // Calculate actual argc (program + filtered args before + filtered args after)
-    args->argc = new_argv_idx + args_after_mode_idx;
-    new_mode_argv[args->argc] = NULL;
-
-    args->argv = new_mode_argv;
-  }
-=======
   if (argc > 256)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Too many arguments: %d", argc);
   int filtered_argc = 0;
@@ -1606,7 +1495,6 @@ static asciichat_error_t build_mode_argv(int argc, char **argv, int mode_index, 
   args->argc = filtered_argc;
   args->argv = filtered_argv;
   args->allocated = filtered_argv;
->>>>>>> origin/master:lib/options/options.c
   return ASCIICHAT_OK;
 }
 

@@ -1324,23 +1324,6 @@ const terminal_options_t *options_terminal_settings_ptr(void);
  *
  * @ingroup options
  */
-<<<<<<< HEAD:lib/options/options.h
-void options_warn_uninitialized(void);
-
-static inline const options_t *options_get_or_default(void) {
-  const options_t *opts = options_get();
-  if (!opts)
-    options_warn_uninitialized();
-#ifdef __cplusplus
-  static const options_t default_options = {};
-#else
-  static const options_t default_options = {0};
-#endif
-  return opts ? opts : &default_options;
-}
-
-#define GET_OPTION(field) (options_get_or_default()->field)
-=======
 #ifdef __cplusplus
 #define ASCIICHAT_OPTION_FIELD_TYPE(field) decltype(((options_t *)0)->field)
 #else
@@ -1356,7 +1339,6 @@ static inline const options_t *options_get_or_default(void) {
     static ASCIICHAT_OPTION_FIELD_TYPE(field) _default = {0};                \
     (_opts ? (_opts->field) : _default);                                     \
   })
->>>>>>> origin/master:include/ascii-chat/options/options.h
 
 /**
  * @brief Check if an option was explicitly set via command-line

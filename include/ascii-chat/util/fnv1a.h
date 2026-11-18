@@ -55,7 +55,7 @@ extern "C" {
 #define FNV1A_32_HASH(hash, byte)                                            \
   do {                                                                       \
     (hash) = (((hash) ^ (uint64_t)(byte)) * FNV1A_32_PRIME) & FNV1A_32_MASK; \
-  } while (asciichat_macro_block_continue())
+  } while (0)
 
 /* ============================================================================
  * FNV-1a Hash Functions
@@ -162,10 +162,7 @@ static inline uint32_t fnv1a_hash_uint64(uint64_t value) {
 }
 
 /** @} */
-<<<<<<< HEAD
-=======
 
 #ifdef __cplusplus
 }
 #endif
->>>>>>> origin/master

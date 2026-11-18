@@ -39,12 +39,6 @@
 
 /* Feature test macros for POSIX functions */
 #include <stdbool.h>
-
-/* A non-constant loop condition keeps statement-like macros warning-free under
- * MSVC while retaining their single-execution semantics. */
-static inline bool asciichat_macro_block_continue(void) {
-  return false;
-}
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h> // For malloc/free in ALLOC_* macros
@@ -231,11 +225,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
       }                                                           \
       /* else: in throttle period, do nothing */                  \
     }                                                             \
-<<<<<<< HEAD
-  } while (asciichat_macro_block_continue())
-=======
   } while (0)
->>>>>>> origin/master
 
 /* ============================================================================
  * Memory Allocation with mimalloc Support
@@ -270,36 +260,6 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  */
 
 /* Safe memory allocation with error checking - returns allocated pointer */
-<<<<<<< HEAD
-#if defined(_MSC_VER) && defined(__cplusplus)
-#define SAFE_MALLOC(size, cast)                                                   \
-  ([&]() {                                                                        \
-    cast _ptr = (cast)ALLOC_MALLOC(size);                                         \
-    if (!_ptr)                                                                    \
-      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", (size_t)(size)); \
-    return _ptr;                                                                  \
-  }())
-#define SAFE_CALLOC(count, size, cast)                                                                            \
-  ([&]() {                                                                                                        \
-    cast _ptr = (cast)ALLOC_CALLOC((count), (size));                                                              \
-    if (!_ptr)                                                                                                    \
-      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu elements x %zu bytes", (size_t)(count), (size_t)(size)); \
-    return _ptr;                                                                                                  \
-  }())
-#define SAFE_REALLOC(ptr, size, cast)                                               \
-  ([&]() {                                                                          \
-    void *tmp_ptr = ALLOC_REALLOC((ptr), (size));                                   \
-    if (!tmp_ptr)                                                                   \
-      FATAL(ERROR_MEMORY, "Memory reallocation failed: %zu bytes", (size_t)(size)); \
-    return (cast)(tmp_ptr);                                                         \
-  }())
-#elif defined(_MSC_VER)
-#define SAFE_MALLOC(size, cast) ((cast)ALLOC_MALLOC(size))
-#define SAFE_CALLOC(count, size, cast) ((cast)ALLOC_CALLOC((count), (size)))
-#define SAFE_REALLOC(ptr, size, cast) ((cast)ALLOC_REALLOC((ptr), (size)))
-#else
-=======
->>>>>>> origin/master
 #define SAFE_MALLOC(size, cast)                                                   \
   ({                                                                              \
     cast _ptr = (cast)ALLOC_MALLOC(size);                                         \
@@ -328,7 +288,6 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
     }                                                                               \
     (cast)(tmp_ptr);                                                                \
   })
-#endif
 
 /* Helper macro to track aligned allocations when DEBUG_MEMORY is enabled */
 #if defined(DEBUG_MEMORY) && !defined(MI_MALLOC_OVERRIDE)
@@ -415,11 +374,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
       ALLOC_FREE((void *)(ptr)); \
       (ptr) = NULL;              \
     }                            \
-<<<<<<< HEAD
-  } while (asciichat_macro_block_continue())
-=======
   } while (0)
->>>>>>> origin/master
 
 /* These block declarations require the defer header and source transformer. */
 #define SAFE_MALLOC_DEFER_FREE(name, size, cast) \
@@ -437,11 +392,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
       fclose(fp);       \
       (fp) = NULL;      \
     }                   \
-<<<<<<< HEAD
-  } while (asciichat_macro_block_continue())
-=======
   } while (0)
->>>>>>> origin/master
 
 /* Untracked malloc/free - bypass memory tracking for special cases like mode_argv */
 /* These use raw malloc/free to avoid appearing in leak reports */
@@ -460,11 +411,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
       free((void *)(ptr));  \
       (ptr) = NULL;         \
     }                       \
-<<<<<<< HEAD
-  } while (asciichat_macro_block_continue())
-=======
   } while (0)
->>>>>>> origin/master
 
 /* Safe string copy */
 #define SAFE_STRNCPY(dst, src, size)                                                    \
@@ -473,11 +420,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
     if (_safe_strncpy_size > 0) {                                                       \
       (void)platform_strncpy((dst), _safe_strncpy_size, (src), _safe_strncpy_size - 1); \
     }                                                                                   \
-<<<<<<< HEAD
-  } while (asciichat_macro_block_continue())
-=======
   } while (0)
->>>>>>> origin/master
 
 #include "asciichat_errno.h"
 /* Safe string duplication with memory tracking */
@@ -494,11 +437,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
     } else {                                                                 \
       (dst) = NULL;                                                          \
     }                                                                        \
-<<<<<<< HEAD
-  } while (asciichat_macro_block_continue())
-=======
   } while (0)
->>>>>>> origin/master
 
 /* Platform-safe environment variable access */
 #define SAFE_GETENV(name) platform_getenv(name)
@@ -594,11 +533,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
       log_error("Failed to create thread: %s", #func);           \
       return -1;                                                 \
     }                                                            \
-<<<<<<< HEAD
-  } while (asciichat_macro_block_continue())
-=======
   } while (0)
->>>>>>> origin/master
 
 /**
  * @brief Initialize a mutex or log error and return
@@ -618,11 +553,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
       log_error("Failed to initialize mutex: %s", #m); \
       return -1;                                       \
     }                                                  \
-<<<<<<< HEAD
-  } while (asciichat_macro_block_continue())
-=======
   } while (0)
->>>>>>> origin/master
 
 /* Include logging.h to provide logging macros to all files that include common.h */
 #include "log/log.h" // IWYU pragma: keep
@@ -715,11 +646,7 @@ void asciichat_shared_destroy(void);
       log_error(msg, ##__VA_ARGS__);                      \
       return (expr);                                      \
     }                                                     \
-<<<<<<< HEAD
-  } while (asciichat_macro_block_continue())
-=======
   } while (0)
->>>>>>> origin/master
 
 /* ============================================================================
  * Global Variables for Early Argv Inspection and Color Flag Detection
