@@ -205,7 +205,16 @@ void asciichat_error_stats_record(asciichat_error_t code);
 void asciichat_error_stats_print(void);
 void asciichat_error_stats_reset(void);
 asciichat_error_stats_t asciichat_error_stats_get(void);
-void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int line, const char *function, const char *format, ...);
+#ifndef ASCIICHAT_NORETURN
+#if defined(_MSC_VER)
+#define ASCIICHAT_NORETURN __declspec(noreturn)
+#elif defined(__cplusplus)
+#define ASCIICHAT_NORETURN [[noreturn]]
+#else
+#define ASCIICHAT_NORETURN _Noreturn
+#endif
+#endif
+ASCIICHAT_NORETURN void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int line, const char *function, const char *format, ...);
 void asciichat_print_error_context(const asciichat_error_context_t *context);
 
 #define HAS_ERRNO(context) errno_has(context)

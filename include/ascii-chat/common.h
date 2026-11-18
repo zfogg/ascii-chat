@@ -124,8 +124,19 @@ typedef unsigned long long uint64_t;
 extern "C" {
 #endif
 
-/* Forward declaration for asciichat_fatal_with_context - now after asciichat_error_t is defined */
-void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int line, const char *function, const char *format, ...);
+/* Fatal handling terminates the process. Tell each compiler so cleanup
+ * lowering does not generate unreachable-path diagnostics after FATAL(). */
+#ifndef ASCIICHAT_NORETURN
+#if defined(_MSC_VER)
+#define ASCIICHAT_NORETURN __declspec(noreturn)
+#elif defined(__cplusplus)
+#define ASCIICHAT_NORETURN [[noreturn]]
+#else
+#define ASCIICHAT_NORETURN _Noreturn
+#endif
+#endif
+
+ASCIICHAT_NORETURN void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int line, const char *function, const char *format, ...);
 
 #ifdef __cplusplus
 }
