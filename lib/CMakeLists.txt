@@ -605,30 +605,8 @@ add_dependencies(ascii-chat-audio asciichat-rnnoise-build)
 
 # For OBJECT libs, link external deps only
 target_link_libraries(ascii-chat-audio PRIVATE
-    asciichat-portaudio asciichat-opus asciichat-webrtc-aec3)
-
-# Link platform-specific audio libraries
-# macOS: CoreAudio, AudioUnit, AudioToolbox (required for static portaudio)
-# Linux: ALSA + JACK (vcpkg's PortAudio includes JACK support, so we must link it)
-# Windows: WASAPI/DirectSound (handled by platform module)
-# Note: vcpkg PortAudio builds include JACK support, so we link libjack if available
-if(APPLE)
-    target_link_libraries(ascii-chat-audio PRIVATE
-        ${COREAUDIO_FRAMEWORK}
-        ${AUDIOUNIT_FRAMEWORK}
-        ${AUDIOTOOLBOX_FRAMEWORK}
-        ${CORESERVICES_FRAMEWORK}
-    )
-elseif(PLATFORM_LINUX AND JACK_LIB AND NOT USE_MUSL)
-    # Link JACK on Linux if available (required by vcpkg's PortAudio build)
-    # Skip for musl: musl PortAudio is built with ALSA only, system libjack.so is glibc-linked
-    target_link_libraries(ascii-chat-audio PRIVATE ${JACK_LIB})
-endif()
-
-# Add build dependency for PortAudio from-source builds (non-musl Linux/macOS)
-if(DEFINED PORTAUDIO_BUILD_TARGET AND TARGET ${PORTAUDIO_BUILD_TARGET})
-    add_dependencies(ascii-chat-audio ${PORTAUDIO_BUILD_TARGET})
-endif()
+    asciichat-portaudio asciichat-opus asciichat-webrtc-aec3
+    asciichat-platform)
 
 # -----------------------------------------------------------------------------
 # Application infrastructure modules
