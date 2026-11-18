@@ -59,6 +59,12 @@ dependencies:
     cache: "${ASCIICHAT_DEPS_CACHE_DIR}/portaudio"
     target: asciichat-portaudio
     role: target
+  alsa:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/alsa"
+    target: asciichat-alsa
+    role: target
   opus:
     source: system-or-cache
     version: module-defined
@@ -155,6 +161,12 @@ dependencies:
     cache: "${ASCIICHAT_DEPS_CACHE_DIR}/libexecinfo"
     target: asciichat-libexecinfo
     role: target
+  bzip2:
+    source: system-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/bzip2"
+    target: asciichat-bzip2
+    role: target
   expat:
     source: source-or-cache
     version: module-defined
@@ -233,3 +245,27 @@ dependencies:
     cache: "${ASCIICHAT_DEPS_CACHE_DIR}/build/x265"
     target: asciichat-x265
     role: target
+  mdns:
+    source: source-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/mdns"
+    target: asciichat-mdns
+    role: target
+  ctoon:
+    source: source-or-cache
+    version: module-defined
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/ctoon"
+    target: asciichat-ctoon
+    role: target
+  tomlc17:
+    source: submodule-or-cache
+    version: submodule
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/tomlc17"
+    target: asciichat-tomlc17
+    role: target
+  catch2:
+    source: package-or-cache
+    version: v3.12.0
+    cache: "${ASCIICHAT_DEPS_CACHE_DIR}/catch2"
+    target: Catch2::Catch2
+    role: test
