@@ -30,9 +30,9 @@ if(USE_MUSL)
 endif()
 set(LIBFLAGS_PCRE2_LIBRARIES asciichat-pcre2 CACHE STRING
     "PCRE2 target shared with ascii-chat" FORCE)
-set(LIBFLAGS_YYJSON_INCLUDE_DIRS "${YYJSON_INCLUDE_DIRS}" CACHE STRING
+set(LIBFLAGS_YYJSON_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/yyjson/src" CACHE STRING
     "yyjson headers shared with ascii-chat" FORCE)
-set(LIBFLAGS_YYJSON_LIBRARIES "${YYJSON_LIBRARIES}" CACHE STRING
+set(LIBFLAGS_YYJSON_LIBRARIES asciichat-yyjson CACHE STRING
     "yyjson target shared with ascii-chat" FORCE)
 set(LIBFLAGS_TOMLC17_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17" CACHE PATH
     "tomlc17 source shared with ascii-chat" FORCE)
