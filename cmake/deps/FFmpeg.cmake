@@ -185,10 +185,12 @@ if(WIN32)
     # The vcpkg FFmpeg port does not ship an FFMPEGConfig.cmake package. Find
     # its headers and libraries directly and expose the canonical project
     # target instead of asking CMake's package search to invent a config.
-    find_path(FFMPEG_INCLUDE_DIR NAMES libavformat/avformat.h REQUIRED)
+    find_path(FFMPEG_INCLUDE_DIR NAMES libavformat/avformat.h
+        PATHS "${VCPKG_INCLUDE_PATH}" REQUIRED)
     set(_ffmpeg_windows_libs)
     foreach(_ffmpeg_lib avformat avcodec avutil swscale swresample)
-        find_library(_ffmpeg_${_ffmpeg_lib}_library NAMES ${_ffmpeg_lib} REQUIRED)
+        find_library(_ffmpeg_${_ffmpeg_lib}_library NAMES ${_ffmpeg_lib}
+            PATHS "${VCPKG_LIB_PATH}" REQUIRED)
         list(APPEND _ffmpeg_windows_libs "${_ffmpeg_${_ffmpeg_lib}_library}")
     endforeach()
     if(NOT TARGET asciichat-ffmpeg)
