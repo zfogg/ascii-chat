@@ -323,6 +323,27 @@ macro(_find_llvm_tool VAR_NAME)
             DOC "LLVM tool"
         )
     endif()
+    # Some Windows package shims expose the executable only with its .exe
+    # suffix, while find_program's cached search can retain an earlier miss.
+    # Probe the selected LLVM directories directly as the final shared fallback.
+    if(NOT ${VAR_NAME})
+        foreach(_llvm_tool_dir IN LISTS ASCIICHAT_LLVM_TOOL_SEARCH_PATHS)
+            foreach(_llvm_tool_name IN LISTS _tool_names)
+                if(EXISTS "${_llvm_tool_dir}/${_llvm_tool_name}")
+                    set(${VAR_NAME} "${_llvm_tool_dir}/${_llvm_tool_name}" CACHE FILEPATH
+                        "LLVM tool" FORCE)
+                    break()
+                elseif(WIN32 AND EXISTS "${_llvm_tool_dir}/${_llvm_tool_name}.exe")
+                    set(${VAR_NAME} "${_llvm_tool_dir}/${_llvm_tool_name}.exe" CACHE FILEPATH
+                        "LLVM tool" FORCE)
+                    break()
+                endif()
+            endforeach()
+            if(${VAR_NAME})
+                break()
+            endif()
+        endforeach()
+    endif()
     unset(_tool_names)
 endmacro()
 
@@ -409,16 +430,6 @@ _find_llvm_tool(ASCIICHAT_LLVM_STRIP_EXECUTABLE llvm-strip)
 _find_llvm_tool(ASCIICHAT_LLVM_AR_EXECUTABLE llvm-ar)
 _find_llvm_tool(ASCIICHAT_LLVM_RANLIB_EXECUTABLE llvm-ranlib)
 _find_llvm_tool(ASCIICHAT_LLVM_NM_EXECUTABLE llvm-nm)
-if(WIN32 AND NOT ASCIICHAT_LLVM_NM_EXECUTABLE)
-    unset(ASCIICHAT_LLVM_NM_EXECUTABLE CACHE)
-    find_program(ASCIICHAT_LLVM_NM_EXECUTABLE
-        NAMES llvm-nm llvm-nm.exe
-        PATHS
-            "$ENV{USERPROFILE}/scoop/apps/llvm/current/bin"
-            "C:/LLVM/bin"
-        NO_DEFAULT_PATH
-        DOC "LLVM symbol table viewer")
-endif()
 _find_llvm_tool(ASCIICHAT_LLVM_READELF_EXECUTABLE llvm-readelf)
 _find_llvm_tool(ASCIICHAT_LLVM_READOBJ_EXECUTABLE llvm-readobj)
 _find_llvm_tool(ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE llvm-objdump)
