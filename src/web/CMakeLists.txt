@@ -28,8 +28,8 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(EMSCRIPTEN)
-    find_program(ASCIICHAT_CCACHE_EXECUTABLE NAMES ccache)
-    include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/compilers/CCache.cmake")
+    include("${CMAKE_CURRENT_LIST_DIR}/../../deps/cmake-utils/CacheLauncher.cmake")
+    cmake_utils_configure_cache_launcher()
 endif()
 
 # Required for Emscripten
