@@ -42,6 +42,9 @@ function(configure_libuv)
         include(FetchContent)
         set(LIBUV_BUILD_TESTS OFF CACHE BOOL "" FORCE)
         set(LIBUV_BUILD_BENCH OFF CACHE BOOL "" FORCE)
+        # libuv selects its shared/static target from this option, not from
+        # BUILD_SHARED_LIBS.  Force the musl provider to expose uv_a even when
+        # a prior native configure left LIBUV_BUILD_SHARED cached as ON.
         set(LIBUV_BUILD_SHARED OFF CACHE BOOL "" FORCE)
         asciichat_fetchcontent_declare(asciichat_libuv
             BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/libuv"
@@ -49,6 +52,18 @@ function(configure_libuv)
             GIT_REPOSITORY https://github.com/libuv/libuv.git
             GIT_TAG v1.51.0
             GIT_SHALLOW TRUE)
+        FetchContent_Populate(asciichat_libuv)
+        # libuv's exported-target selector incorrectly keys off the parent
+        # BUILD_SHARED_LIBS value, although its build options use
+        # LIBUV_BUILD_SHARED.  Keep that provider-local choice consistent so
+        # musl never attempts to alias a shared target it did not create.
+        set(_asciichat_libuv_cmake "${asciichat_libuv_SOURCE_DIR}/CMakeLists.txt")
+        file(READ "${_asciichat_libuv_cmake}" _asciichat_libuv_cmake_text)
+        string(REPLACE
+            "if(BUILD_SHARED_LIBS)\n  set(LIB_SELECTED uv)"
+            "if(LIBUV_BUILD_SHARED)\n  set(LIB_SELECTED uv)"
+            _asciichat_libuv_cmake_text "${_asciichat_libuv_cmake_text}")
+        file(WRITE "${_asciichat_libuv_cmake}" "${_asciichat_libuv_cmake_text}")
         FetchContent_MakeAvailable(asciichat_libuv)
         # musl does not provide the glibc three-argument pthread name APIs.
         # Keep libuv's optional thread-name helpers buildable and let callers
