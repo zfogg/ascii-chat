@@ -18,7 +18,9 @@ if(USE_MUSL)
     include(ExternalProject)
 
     set(ALSA_PREFIX "${MUSL_DEPS_DIR_STATIC}/alsa-lib")
-    set(ALSA_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/alsa-lib-build")
+    # Bump the build directory when configure flags change so stale glibc
+    # configure results cannot be reused by a musl release build.
+    set(ALSA_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/alsa-lib-build-musl-v2")
 
     # Only add external project if library doesn't exist
     if(NOT EXISTS "${ALSA_PREFIX}/lib/libasound.a")
@@ -33,12 +35,12 @@ if(USE_MUSL)
             BUILD_ALWAYS 0
             CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env
                 "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
-                "CFLAGS=${MUSL_KERNEL_CFLAGS} --target=${MUSL_TARGET} -fPIC"
+                "CFLAGS=-nostdlibinc -isystem ${MUSL_INCLUDE_DIR} ${MUSL_KERNEL_CFLAGS} --target=${MUSL_TARGET}"
                 "LDFLAGS=--target=${MUSL_TARGET} -fuse-ld=lld -static -L${MUSL_LIBDIR}"
                 <SOURCE_DIR>/configure --host=${MUSL_TARGET} --prefix=${ALSA_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
             BUILD_COMMAND ${CMAKE_COMMAND} -E env
                 "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
-                "CFLAGS=${MUSL_KERNEL_CFLAGS} --target=${MUSL_TARGET} -fPIC"
+                "CFLAGS=-nostdlibinc -isystem ${MUSL_INCLUDE_DIR} ${MUSL_KERNEL_CFLAGS} --target=${MUSL_TARGET}"
                 "LDFLAGS=--target=${MUSL_TARGET} -fuse-ld=lld -static -L${MUSL_LIBDIR}"
                 make -j
             INSTALL_COMMAND make install

@@ -437,6 +437,9 @@ jobs:
           echo "=== ALSA and Fontconfig configure logs ==="
           find .deps-cache/Release/musl -type f \( -path '*/alsa*/config.log' -o -path '*/fontconfig*/config.log' \) -print -exec tail -n 220 {} \; 2>/dev/null || echo "No ALSA/Fontconfig configure logs"
           echo ""
+          echo "=== util-linux configure logs ==="
+          find .deps-cache/Release/musl -path '*/util-linux*/config.log' -type f -print -exec tail -n 220 {} \; 2>/dev/null || echo "No util-linux configure logs"
+          echo ""
           echo "=== Musl toolchain/link flags ==="
           grep -E 'CMAKE_(C|EXE_LINKER)_FLAGS|CMAKE_SYSROOT|CMAKE_C_COMPILER' build_release/CMakeCache.txt 2>/dev/null || true
 
