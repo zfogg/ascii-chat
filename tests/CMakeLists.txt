@@ -2373,7 +2373,7 @@ endif()
 # Owned plaintext admission, real backend saturation, and codec recovery.
 if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
     add_executable(test-transport-metrics EXCLUDE_FROM_ALL standalone/network/transport_metrics.c)
-    target_link_libraries(test-transport-metrics PRIVATE ascii-chat-static libdatachannel ${MIMALLOC_LIBRARIES})
+    target_link_libraries(test-transport-metrics PRIVATE ascii-chat-static asciichat-libdatachannel ${MIMALLOC_LIBRARIES})
     target_include_directories(test-transport-metrics PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
     if(WIN32)
         target_link_libraries(test-transport-metrics PRIVATE ws2_32)
@@ -2434,7 +2434,7 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
             endif()
         endforeach()
     endforeach()
-    target_link_libraries(test-backpressure-live PRIVATE libdatachannel ${LIBWEBSOCKETS_LIBRARIES}
+    target_link_libraries(test-backpressure-live PRIVATE asciichat-libdatachannel ${LIBWEBSOCKETS_LIBRARIES}
         ${LWS_OPENSSL_SSL_LIBRARY} ${LWS_OPENSSL_CRYPTO_LIBRARY} ${FFMPEG_LIBRARIES})
     if(APPLE)
         target_link_libraries(test-backpressure-live PRIVATE "-framework CoreFoundation" "-framework SystemConfiguration")

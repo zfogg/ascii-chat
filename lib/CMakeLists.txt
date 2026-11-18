@@ -1313,8 +1313,8 @@ if(TARGET webrtc_audio_processing)
 endif()
 
 # Link libdatachannel for WebRTC P2P connections
-if(TARGET libdatachannel)
-    target_link_libraries(ascii-chat-shared PRIVATE libdatachannel)
+if(TARGET asciichat-libdatachannel)
+    target_link_libraries(ascii-chat-shared PRIVATE asciichat-libdatachannel)
 endif()
 
 # Link FFmpeg for media file streaming
@@ -1677,8 +1677,8 @@ endif()
 
 # Link libdatachannel for WebRTC P2P connections (static library)
 # The libdatachannel INTERFACE target's dependencies propagate to ascii-chat-static-lib
-if(TARGET libdatachannel)
-    target_link_libraries(ascii-chat-static INTERFACE libdatachannel)
+if(TARGET asciichat-libdatachannel)
+    target_link_libraries(ascii-chat-static INTERFACE asciichat-libdatachannel)
 endif()
 
 # Link OpenSSL for TURN credentials (required by network module)

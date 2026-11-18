@@ -169,7 +169,7 @@ elseif(NOT BUILD_SHARED_LIBS OR USE_MUSL)
         # WebRTC audio processing (safe to link directly in Release - no ASan conflict)
         target_link_libraries(ascii-chat PRIVATE webrtc_audio_processing)
         # libdatachannel and its dependencies (static linking)
-        target_link_libraries(ascii-chat PRIVATE libdatachannel)
+        target_link_libraries(ascii-chat PRIVATE asciichat-libdatachannel)
         target_link_libraries(ascii-chat PRIVATE OpenSSL::SSL OpenSSL::Crypto)
         # libwebsockets
         target_link_libraries(ascii-chat PRIVATE asciichat-libwebsockets)
@@ -452,9 +452,9 @@ if(USE_MUSL)
     # libdatachannel and its dependencies (must be linked explicitly for static builds)
     # The libdatachannel INTERFACE target's dependencies don't propagate through
     # the combined static library, so we link them directly here
-    if(TARGET libdatachannel)
+    if(TARGET asciichat-libdatachannel)
         target_link_libraries(ascii-chat PRIVATE
-            libdatachannel
+            asciichat-libdatachannel
         )
         # OpenSSL for libdatachannel TURN credentials (musl-built)
         if(OPENSSL_SSL_LIBRARY AND OPENSSL_CRYPTO_LIBRARY)
