@@ -283,7 +283,7 @@ function(asciichat_configure_quic)
             "-DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${_quic_crypto_file}"
             ${_quic_openssl_args}
             "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
-        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ${_quic_ngtcp2_crypto_target} -- --quiet
+        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ${_quic_ngtcp2_crypto_target}
         BUILD_BYPRODUCTS ${_ngtcp2_byproducts}
         EXCLUDE_FROM_ALL TRUE)
 
@@ -294,7 +294,7 @@ function(asciichat_configure_quic)
         TMP_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/quic-nghttp3-tmp"
         DOWNLOAD_COMMAND "" UPDATE_COMMAND "" CONFIGURE_COMMAND "${CMAKE_COMMAND}" -E true INSTALL_COMMAND ""
         CMAKE_ARGS ${_quic_common_args} "-DVCPKG_MANIFEST_INSTALL:BOOL=OFF"
-        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ${_quic_nghttp3_target} -- --quiet
+        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target ${_quic_nghttp3_target}
         BUILD_BYPRODUCTS ${_nghttp3_byproducts}
         EXCLUDE_FROM_ALL TRUE)
 
