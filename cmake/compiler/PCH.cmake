@@ -85,13 +85,12 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
                     get_target_property(_pch_launcher ${_pch_target} ${_language}_COMPILER_LAUNCHER)
                     # A reused build tree can retain a target-local ccache
                     # launcher after the project selects sccache globally.
-                    if(_pch_launcher MATCHES "ccache" AND
-                       CMAKE_${_language}_COMPILER_LAUNCHER MATCHES "sccache")
+                    if(CMAKE_${_language}_COMPILER_LAUNCHER MATCHES "sccache")
                         set_property(TARGET ${_pch_target} PROPERTY ${_language}_COMPILER_LAUNCHER
                             ${CMAKE_${_language}_COMPILER_LAUNCHER})
                         set(_pch_launcher ${CMAKE_${_language}_COMPILER_LAUNCHER})
-                    endif()
-                    if(_pch_launcher MATCHES "ccache|sccache" AND CMAKE_${_language}_COMPILER_ID MATCHES "Clang")
+                        set(_pch_cache_launcher_enabled TRUE)
+                    elseif(_pch_launcher MATCHES "ccache" AND CMAKE_${_language}_COMPILER_ID MATCHES "Clang")
                         # ccache cannot inspect macro definitions or time macros in a PCH.
                         # Keep this relaxation local to targets that actually use PCH.
                         if(_pch_launcher MATCHES "ccache")
@@ -105,11 +104,6 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
                                     "${CMAKE_COMMAND}" -E env "CCACHE_SLOPPINESS=pch_defines,time_macros"
                                     ${_pch_launcher})
                             endif()
-                        else()
-                            # sccache has no ccache sloppiness setting; keep
-                            # the selected launcher and only stabilize PCHs.
-                            set_property(TARGET ${_pch_target} PROPERTY ${_language}_COMPILER_LAUNCHER
-                                ${_pch_launcher})
                         endif()
                         set(_pch_cache_launcher_enabled TRUE)
                     endif()
