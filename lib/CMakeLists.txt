@@ -674,7 +674,7 @@ endforeach()
 # The UI partition contains lib/tui/update_banner.c, which includes <uv.h>
 # directly. Apply the selected libuv target's include paths while compiling it.
 if(NOT EMSCRIPTEN)
-    target_link_libraries(ascii-chat-ui PRIVATE asciichat-libuv)
+    target_link_libraries(ascii-chat-ui PRIVATE ${ASCIICHAT_LIBUV_TARGET})
 endif()
 
 target_link_libraries(ascii-chat-logging PRIVATE OpenSSL::SSL)

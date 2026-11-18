@@ -33,11 +33,13 @@ if(USE_MUSL)
             BUILD_ALWAYS 0
             CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env
                 "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
-                "CFLAGS=--target=${MUSL_TARGET} -fPIC"
+                "CFLAGS=${MUSL_KERNEL_CFLAGS} --target=${MUSL_TARGET} -fPIC"
+                "LDFLAGS=--target=${MUSL_TARGET} -fuse-ld=lld -static -L${MUSL_LIBDIR}"
                 <SOURCE_DIR>/configure --host=${MUSL_TARGET} --prefix=${ALSA_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
             BUILD_COMMAND ${CMAKE_COMMAND} -E env
                 "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
-                "CFLAGS=--target=${MUSL_TARGET} -fPIC"
+                "CFLAGS=${MUSL_KERNEL_CFLAGS} --target=${MUSL_TARGET} -fPIC"
+                "LDFLAGS=--target=${MUSL_TARGET} -fuse-ld=lld -static -L${MUSL_LIBDIR}"
                 make -j
             INSTALL_COMMAND make install
             BUILD_BYPRODUCTS ${ALSA_PREFIX}/lib/libasound.a
