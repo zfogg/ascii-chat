@@ -8,7 +8,7 @@ file(COPY "${RNNOISE_SOURCE_DIR}/" DESTINATION "${RNNOISE_BINARY_DIR}")
 if(DEFINED RNNOISE_CC)
     set(ENV{CC} "${RNNOISE_CC}")
 endif()
-set(ENV{CFLAGS} "$ENV{CFLAGS} -DM_PI=3.14159265358979323846")
+set(ENV{CFLAGS} "$ENV{CFLAGS} -DM_PI=3.14159265358979323846 -fPIC")
 
 if(RNNOISE_SHARED)
     set(_rnnoise_link_flags "--disable-static --enable-shared")
