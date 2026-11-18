@@ -404,6 +404,43 @@ runs:
       run: |
         $ErrorActionPreference = 'Stop'
 
+        function Find-UsableMsys2 {
+          $candidates = @()
+          if (-not [string]::IsNullOrWhiteSpace($env:MSYS2_ROOT)) { $candidates += $env:MSYS2_ROOT }
+          $candidates += @('C:\msys64', 'C:\msys64\ucrt64',
+            (Join-Path $env:USERPROFILE 'scoop\apps\msys2\current'),
+            'C:\ProgramData\scoop\apps\msys2\current')
+          foreach ($candidate in $candidates | Select-Object -Unique) {
+            if (-not [string]::IsNullOrWhiteSpace($candidate) -and
+                (Test-Path -LiteralPath (Join-Path $candidate 'usr\bin\bash.exe')) -and
+                (Test-Path -LiteralPath (Join-Path $candidate 'usr\bin\make.exe'))) {
+              return (Resolve-Path -LiteralPath $candidate).Path
+            }
+          }
+          return $null
+        }
+
+        # Reuse a complete installation when present; this avoids Scoop trying
+        # to extract its x86-64 archive on ARM64 runners.
+        $existingMsys2 = Find-UsableMsys2
+        if ($existingMsys2) {
+          Write-Host "Using existing MSYS2 installation: $existingMsys2"
+          Add-Content -Path $env:GITHUB_ENV -Value "MSYS2_ROOT=$existingMsys2"
+        }
+        elseif (-not (Get-Command 7z -ErrorAction SilentlyContinue) -and
+                -not (Get-Command 7zz -ErrorAction SilentlyContinue) -and
+                -not (Get-Command tar -ErrorAction SilentlyContinue)) {
+          winget install --id 7zip.7zip --exact --scope machine --silent --accept-package-agreements --accept-source-agreements
+          if ($LASTEXITCODE -ne 0) { throw '7-Zip provisioning failed' }
+          foreach ($path in @('C:\Program Files\7-Zip', 'C:\Program Files (x86)\7-Zip')) {
+            if (Test-Path -LiteralPath $path) { Add-Content -Path $env:GITHUB_PATH -Value $path }
+          }
+          if (-not (Get-Command 7z -ErrorAction SilentlyContinue) -and
+              -not (Get-Command 7zz -ErrorAction SilentlyContinue)) {
+            throw '7-Zip was installed but no usable extractor was found on PATH'
+          }
+        }
+
         function Ensure-Scoop {
           if (Get-Command scoop -ErrorAction SilentlyContinue) {
             Write-Host "Scoop already installed"
@@ -469,9 +506,10 @@ runs:
         # doxygen is needed for generating documentation included in installers.
         # GitHub's AMD64 image has Chocolatey and its packages resolve much
         # faster than Scoop; ARM64 retains the Scoop path.
-        $basePackages = @('ninja', 'ccache', 'msys2') | Where-Object {
+        $basePackages = @('ninja', 'ccache') | Where-Object {
           $null -eq (Get-Command $_ -ErrorAction SilentlyContinue)
         }
+        if (-not $existingMsys2) { $basePackages += 'msys2' }
 
         $extra = @()
         if (-not [string]::IsNullOrWhiteSpace('${{ inputs.extra-packages }}')) {
@@ -489,7 +527,7 @@ runs:
         # RNNoise runs autogen.sh through the MSYS2 installation that CMake
         # selects. Install autotools into that same installation and verify
         # autoreconf from its login shell before configuration starts.
-        $msys2Root = (scoop prefix msys2).Trim()
+        $msys2Root = if ($existingMsys2) { $existingMsys2 } else { (scoop prefix msys2).Trim() }
         if ([string]::IsNullOrWhiteSpace($msys2Root) -or -not (Test-Path "$msys2Root\usr\bin\bash.exe")) {
           throw "Scoop MSYS2 installation was not found"
         }
