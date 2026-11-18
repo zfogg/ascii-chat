@@ -1153,19 +1153,6 @@ target_link_libraries(ascii-chat-shared PUBLIC ${ASCIICHAT_LIBPLATFORM_TARGET})
         endif()
     endif()
 
-    # Windows: Explicitly set import library location for Windows
-    if(WIN32)
-        # Both clang-cl and clang --target=...-windows-msvc produce MSVC
-        # compatible import libraries. The GNU-style clang driver used by the
-        # LLVM toolchain still needs the .lib name consumed by the executable.
-        if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER MATCHES "clang-cl")
-            set(ASCIICHAT_WINDOWS_IMPORT_LIBRARY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
-        else()
-            set(ASCIICHAT_WINDOWS_IMPORT_LIBRARY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.dll.a")
-        endif()
-        target_link_options(ascii-chat-shared PRIVATE "LINKER:/implib:${ASCIICHAT_WINDOWS_IMPORT_LIBRARY}")
-    endif()
-
     # Auto-generate .def file from OBJECT libraries
     # Use a wrapper script to collect object files and generate .def
     # Object files are in CMakeFiles/<target>.dir/ directories
@@ -1568,7 +1555,7 @@ if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
     # Build the validation command with optional internal symbols
     set(_VALIDATE_CMD
         ${CMAKE_COMMAND}
-        -DLLVM_NM=${ASCIICHAT_SYMBOL_NM_EXECUTABLE}
+        -DSYMBOL_TOOL=${ASCIICHAT_SYMBOL_NM_EXECUTABLE}
         -DLIBRARY=${SHARED_LIB_TO_VALIDATE}
         -DSYMBOLS=${ASCIICHAT_SYMBOLS_CSV}
     )
@@ -1856,7 +1843,7 @@ if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
     add_custom_command(
         OUTPUT ${STATIC_LIB_OUTPUT}.validated
         COMMAND ${CMAKE_COMMAND}
-            -DLLVM_NM=${ASCIICHAT_SYMBOL_NM_EXECUTABLE}
+            -DSYMBOL_TOOL=${ASCIICHAT_SYMBOL_NM_EXECUTABLE}
             -DLIBRARY=${STATIC_LIB_OUTPUT}
             -DSYMBOLS=${ASCIICHAT_SYMBOLS_CSV}
             -P ${CMAKE_SOURCE_DIR}/cmake/utils/ValidateSymbols.cmake
@@ -1872,7 +1859,7 @@ if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
         VERBATIM
     )
 else()
-    message(STATUS "Symbol validation: ${BoldYellow}disabled${ColorReset} (llvm-nm not found)")
+    message(STATUS "Symbol validation: ${BoldYellow}disabled${ColorReset} (selected symbol tool not found)")
     # User-friendly 'static-lib' target - builds the static library (no validation)
     add_custom_target(static-lib
         DEPENDS ${STATIC_LIB_OUTPUT}
