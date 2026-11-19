@@ -72,6 +72,15 @@ function(find_dependency_library)
     set(_dep_libraries "")
     set(_dep_include_dirs "")
 
+    # These helper names are intentionally shared by every invocation, but
+    # find_library()/find_path() cache their results. Clear the cache entries
+    # before each lookup so a later dependency cannot inherit an earlier
+    # dependency's release, debug, or include path.
+    unset(_dep_library_release CACHE)
+    unset(_dep_library_debug CACHE)
+    unset(_dep_include_dir CACHE)
+    unset(_dep_static_library CACHE)
+
     # =================================================================
     # Try vcpkg first if USE_VCPKG is enabled (all platforms)
     # =================================================================
