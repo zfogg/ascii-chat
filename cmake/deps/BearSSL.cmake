@@ -322,7 +322,9 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
             message(STATUS "${BoldGreen}BearSSL${ColorReset} library found in cache: ${BoldCyan}${BEARSSL_LIB}${ColorReset}")
         endif()
 
-            add_custom_target(asciichat-bearssl-build)
+            if(NOT TARGET asciichat-bearssl-build)
+                add_custom_target(asciichat-bearssl-build)
+            endif()
     endif()
 
     # Create an imported library that links to the custom command output

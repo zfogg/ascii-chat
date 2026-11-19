@@ -279,7 +279,7 @@ include(CheckCSourceCompiles)
 set(CMAKE_REQUIRED_INCLUDES "${OPENSSL_INCLUDE_DIR}")
 set(CMAKE_REQUIRED_LIBRARIES "${OPENSSL_SSL_LIBRARY};${OPENSSL_CRYPTO_LIBRARY};${CMAKE_DL_LIBS}")
 check_c_source_compiles("#include <openssl/ssl.h>
-int main(void) { SSL_set_quic_tls_cbs((SSL *)0, (SSL_QUIC_TLS *)0); return 0; }
+int main(void) { SSL_set_quic_tls_cbs(NULL, NULL, NULL); return 0; }
 " ASCIICHAT_OPENSSL_QUIC_TLS_LINKS)
 if(NOT ASCIICHAT_OPENSSL_QUIC_TLS_LINKS)
   message(FATAL_ERROR "QUIC requires a linkable SSL_set_quic_tls_cbs in staged musl OpenSSL")
