@@ -29,8 +29,7 @@
  * though the runtime supports the attribute. Keep the GUID local to this
  * translation unit instead of requiring a newer MinGW header package. */
 #if defined(__GNUC__) && !defined(_MSC_VER)
-static const GUID asciichat_mf_sample_extension_device_timestamp =
-    {0x8f3e35e7, 0x2dcd, 0x4887, {0x86, 0x22, 0x2a, 0x58, 0xba, 0xa6, 0x52, 0xb0}};
+static const GUID asciichat_mf_sample_extension_device_timestamp = {0x8f3e35e7, 0x2dcd, 0x4887, {0x86, 0x22, 0x2a, 0x58, 0xba, 0xa6, 0x52, 0xb0}};
 #define MFSampleExtension_DeviceTimestamp asciichat_mf_sample_extension_device_timestamp
 #endif
 
