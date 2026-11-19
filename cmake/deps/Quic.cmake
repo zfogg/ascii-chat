@@ -265,6 +265,43 @@ function(asciichat_configure_quic)
     # across Ninja and Visual Studio generators.
     set(_quic_build_tail)
 
+    if(USE_MUSL AND ASCIICHAT_OPENSSL_MUSL_BUILD_REQUIRED)
+        # OpenSSL is an ExternalProject on a cold musl cache.  Run the real
+        # header-and-link probe in a child configure after that target installs,
+        # but before ngtcp2 configures against the staged prefix.
+        set(_quic_probe_source "${ASCIICHAT_DEPS_CACHE_DIR}/quic-tls-probe")
+        set(_quic_probe_build "${_quic_probe_source}-build")
+        file(MAKE_DIRECTORY "${_quic_probe_source}")
+        file(WRITE "${_quic_probe_source}/CMakeLists.txt" [=[
+cmake_minimum_required(VERSION 3.25)
+project(asciichat_quic_tls_probe LANGUAGES C)
+include(CheckCSourceCompiles)
+set(CMAKE_REQUIRED_INCLUDES "${OPENSSL_INCLUDE_DIR}")
+set(CMAKE_REQUIRED_LIBRARIES "${OPENSSL_SSL_LIBRARY};${OPENSSL_CRYPTO_LIBRARY};${CMAKE_DL_LIBS}")
+check_c_source_compiles("#include <openssl/ssl.h>
+int main(void) { SSL_set_quic_tls_cbs((SSL *)0, (SSL_QUIC_TLS *)0); return 0; }
+" ASCIICHAT_OPENSSL_QUIC_TLS_LINKS)
+if(NOT ASCIICHAT_OPENSSL_QUIC_TLS_LINKS)
+  message(FATAL_ERROR "QUIC requires a linkable SSL_set_quic_tls_cbs in staged musl OpenSSL")
+endif()
+]=])
+        ExternalProject_Add(asciichat-quic-tls-check
+            SOURCE_DIR "${_quic_probe_source}"
+            BINARY_DIR "${_quic_probe_build}"
+            DOWNLOAD_COMMAND "" UPDATE_COMMAND "" BUILD_COMMAND "" INSTALL_COMMAND ""
+            CMAKE_ARGS
+                "-DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}"
+                "-DCMAKE_C_FLAGS:STRING=${CMAKE_C_FLAGS}"
+                "-DCMAKE_EXE_LINKER_FLAGS:STRING=${CMAKE_EXE_LINKER_FLAGS}"
+                "-DOPENSSL_INCLUDE_DIR:PATH=${OPENSSL_INCLUDE_DIR}"
+                "-DOPENSSL_SSL_LIBRARY:FILEPATH=${OPENSSL_SSL_LIBRARY}"
+                "-DOPENSSL_CRYPTO_LIBRARY:FILEPATH=${OPENSSL_CRYPTO_LIBRARY}")
+        add_dependencies(asciichat-quic-tls-check asciichat-openssl-musl)
+    else()
+        # Cached OpenSSL is already installed, so retain the immediate probe.
+        asciichat_check_quic_tls()
+    endif()
+
     ExternalProject_Add(asciichat-ngtcp2-build
         SOURCE_DIR "${_ngtcp2_source}"
         BINARY_DIR "${_ngtcp2_build}"
@@ -283,6 +320,9 @@ function(asciichat_configure_quic)
         BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> ${_quic_config_args} --target ${_quic_ngtcp2_crypto_target} ${_quic_build_tail}
         BUILD_BYPRODUCTS ${_ngtcp2_byproducts}
         EXCLUDE_FROM_ALL TRUE)
+    if(TARGET asciichat-quic-tls-check)
+        add_dependencies(asciichat-ngtcp2-build asciichat-quic-tls-check)
+    endif()
 
     ExternalProject_Add(asciichat-nghttp3-build
         SOURCE_DIR "${_nghttp3_source}"
@@ -322,8 +362,4 @@ function(asciichat_configure_quic)
         target_link_libraries(asciichat-quic INTERFACE ws2_32 bcrypt crypt32)
     endif()
 
-    # Run the real header-and-link probe only after the selected OpenSSL
-    # installation has completed.  Musl OpenSSL is built synchronously during
-    # dependency setup; probing before that can see an empty staged prefix.
-    asciichat_check_quic_tls()
 endfunction()

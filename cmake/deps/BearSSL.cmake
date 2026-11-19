@@ -276,7 +276,9 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
         else()
             message(STATUS "${BoldGreen}BearSSL${ColorReset} library found in cache: ${BoldCyan}${BEARSSL_LIB}${ColorReset}")
             # Create a dummy target so dependencies work
-            add_custom_target(asciichat-bearssl-build)
+            if(NOT TARGET asciichat-bearssl-build)
+                add_custom_target(asciichat-bearssl-build)
+            endif()
         endif()
 
     else()

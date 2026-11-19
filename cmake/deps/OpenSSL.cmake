@@ -346,12 +346,16 @@ if(USE_MUSL)
             set(_OPENSSL_RECONFIGURE_REQUIRED FALSE)
         endif()
     endif()
+    set(ASCIICHAT_OPENSSL_MUSL_BUILD_REQUIRED FALSE CACHE INTERNAL
+        "Whether musl OpenSSL must be built before dependent probes" FORCE)
     if(_OPENSSL_RECONFIGURE_REQUIRED)
         file(REMOVE_RECURSE "${OPENSSL_SOURCE_DIR}" "${OPENSSL_PREFIX}")
     endif()
 
     # Build OpenSSL synchronously at configure time if not cached
     if(NOT EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a" OR NOT EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a")
+        set(ASCIICHAT_OPENSSL_MUSL_BUILD_REQUIRED TRUE CACHE INTERNAL
+            "Whether musl OpenSSL must be built before dependent probes" FORCE)
         message(STATUS "  OpenSSL library not found in cache, will build from source")
         message(STATUS "  This may take a few minutes on first build...")
 
