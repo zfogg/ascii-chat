@@ -193,18 +193,14 @@ function(asciichat_configure_quic)
             ${_quic_openssl_cache_args})
     endif()
     if(WIN32)
-        # ngtcp2's OpenSSL::SSL target does not always carry the paired
-        # crypto import library through its child-project interface on Clang.
-        # Pass the selected vcpkg crypto library explicitly to every
-        # configuration-specific DLL link.  CMake's configuration-specific
-        # flags replace the generic shared linker flags in the child project.
-        set(_quic_windows_shared_link_flags
-            "${_quic_windows_system_link_flags} ${_quic_crypto_file}")
+        # Keep the Windows system libraries in the child linker flags.  The
+        # OpenSSL::SSL -> OpenSSL::Crypto relationship is established by
+        # QuicExternalSetup.cmake so CMake places crypto after the objects.
         list(APPEND _quic_common_args
-            "-DCMAKE_SHARED_LINKER_FLAGS_RELEASE:STRING=${_quic_windows_shared_link_flags}"
-            "-DCMAKE_SHARED_LINKER_FLAGS_DEBUG:STRING=${_quic_windows_shared_link_flags}"
-            "-DCMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO:STRING=${_quic_windows_shared_link_flags}"
-            "-DCMAKE_SHARED_LINKER_FLAGS_MINSIZEREL:STRING=${_quic_windows_shared_link_flags}")
+            "-DCMAKE_SHARED_LINKER_FLAGS_RELEASE:STRING=${_quic_windows_system_link_flags}"
+            "-DCMAKE_SHARED_LINKER_FLAGS_DEBUG:STRING=${_quic_windows_system_link_flags}"
+            "-DCMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO:STRING=${_quic_windows_system_link_flags}"
+            "-DCMAKE_SHARED_LINKER_FLAGS_MINSIZEREL:STRING=${_quic_windows_system_link_flags}")
     endif()
 
     set(_ngtcp2_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/ngtcp2")
