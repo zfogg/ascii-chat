@@ -156,15 +156,38 @@ endif()
 # Non-musl: Use system package or pkg-config
 # =============================================================================
 
-# Try to find bzip2 via CMake config first, then fall back to pkg-config
-find_package(BZip2 QUIET CONFIG)
+# Windows vcpkg provides the authoritative static package.  Use CMake's
+# module finder against that staged triplet; Strawberry Perl's pkg-config is
+# not a usable fallback on the Windows runners.
+if(WIN32)
+    set(_asciichat_bzip2_vcpkg_root
+        "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
+    if(NOT EXISTS "${_asciichat_bzip2_vcpkg_root}")
+        set(_asciichat_bzip2_vcpkg_root
+            "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
+    endif()
+    if(NOT EXISTS "${_asciichat_bzip2_vcpkg_root}/include/bzlib.h")
+        message(FATAL_ERROR "Windows BZip2 vcpkg triplet is missing bzlib.h: ${_asciichat_bzip2_vcpkg_root}")
+    endif()
+    list(PREPEND CMAKE_PREFIX_PATH "${_asciichat_bzip2_vcpkg_root}")
+    find_package(BZip2 MODULE REQUIRED)
+    if(NOT TARGET BZip2::BZip2)
+        message(FATAL_ERROR "Windows BZip2 module did not provide BZip2::BZip2")
+    endif()
+    string(FIND "${BZIP2_INCLUDE_DIR}" "${_asciichat_bzip2_vcpkg_root}" _asciichat_bzip2_include_match)
+    if(_asciichat_bzip2_include_match LESS 0)
+        message(FATAL_ERROR "Windows BZip2 resolved outside the staged vcpkg triplet: ${BZIP2_INCLUDE_DIR}")
+    endif()
+else()
+    # Try to find bzip2 via CMake config first, then fall back to pkg-config.
+    find_package(BZip2 QUIET CONFIG)
 
-if(NOT TARGET BZip2::BZip2)
-    # Fall back to pkg-config if CMake config not found
-    include(FindPkgConfig)
-    pkg_check_modules(_asciichat_bzip2 REQUIRED IMPORTED_TARGET bzip2)
-    add_library(BZip2::BZip2 INTERFACE IMPORTED)
-    target_link_libraries(BZip2::BZip2 INTERFACE PkgConfig::_asciichat_bzip2)
+    if(NOT TARGET BZip2::BZip2)
+        include(FindPkgConfig)
+        pkg_check_modules(_asciichat_bzip2 REQUIRED IMPORTED_TARGET bzip2)
+        add_library(BZip2::BZip2 INTERFACE IMPORTED)
+        target_link_libraries(BZip2::BZip2 INTERFACE PkgConfig::_asciichat_bzip2)
+    endif()
 
 endif()
 
