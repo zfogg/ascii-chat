@@ -89,8 +89,7 @@
       "description": "Debug build using GCC and GNU binutils",
       "inherits": "default",
       "cacheVariables": { "CMAKE_C_COMPILER": "gcc", "CMAKE_CXX_COMPILER": "g++" },
-      "binaryDir": "${sourceDir}/build/${presetName}",
-      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
       "name": "default-msvc",
@@ -117,8 +116,7 @@
       "description": "Fast developer build using GCC",
       "inherits": "dev",
       "cacheVariables": { "CMAKE_C_COMPILER": "gcc", "CMAKE_CXX_COMPILER": "g++" },
-      "binaryDir": "${sourceDir}/build/${presetName}",
-      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
       "name": "dev-msvc",
