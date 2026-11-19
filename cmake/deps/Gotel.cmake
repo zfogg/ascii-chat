@@ -158,27 +158,21 @@ if(USE_MUSL AND NOT TARGET nghttp2_static)
     set(ENABLE_EXAMPLES OFF CACHE BOOL "Disable nghttp2 examples" FORCE)
     set(ENABLE_DOC OFF CACHE BOOL "Disable nghttp2 documentation" FORCE)
     set(BUILD_TESTING OFF CACHE BOOL "Disable nghttp2 tests" FORCE)
-    # nghttp2 probes these libraries before applying ENABLE_LIB_ONLY. Give its
-    # find modules the same cached artifacts used by the parent dependency
-    # graph, rather than allowing them to fall through to host discovery.
-    if(USE_MUSL)
-        set(LIBNGTCP2_LIBRARY "${ASCIICHAT_NGTCP2_LIBRARY}" CACHE FILEPATH
-            "Cached ngtcp2 library for nghttp2 discovery" FORCE)
-        set(LIBNGTCP2_INCLUDE_DIR "${ASCIICHAT_NGTCP2_BUILD_INCLUDE_DIR}" CACHE PATH
-            "Cached ngtcp2 headers for nghttp2 discovery" FORCE)
-        set(LIBNGHTTP3_LIBRARY "${ASCIICHAT_NGHTTP3_LIBRARY}" CACHE FILEPATH
-            "Cached nghttp3 library for nghttp2 discovery" FORCE)
-        set(LIBNGHTTP3_INCLUDE_DIR "${ASCIICHAT_NGHTTP3_BUILD_INCLUDE_DIR}" CACHE PATH
-            "Cached nghttp3 headers for nghttp2 discovery" FORCE)
-        set(SYSTEMD_LIBRARIES "${SYSTEMD_PREFIX}/lib/libsystemd.a" CACHE FILEPATH
-            "Cached systemd library for nghttp2 discovery" FORCE)
-        set(SYSTEMD_INCLUDE_DIRS "${SYSTEMD_PREFIX}/include" CACHE PATH
-            "Cached systemd headers for nghttp2 discovery" FORCE)
-    endif()
+    # This is an HTTP/2-only build. Do not let nghttp2 probe optional QUIC
+    # packages whose generated headers are produced later by ExternalProject.
+    set(_asciichat_saved_nghttp2_disable_packages)
+    foreach(_package Libngtcp2 Libnghttp3 Systemd Jansson Libevent LibXml2 Jemalloc OpenSSL)
+        set(_asciichat_saved_${_package}_disable "${CMAKE_DISABLE_FIND_PACKAGE_${_package}}")
+        set(CMAKE_DISABLE_FIND_PACKAGE_${_package} TRUE)
+    endforeach()
     asciichat_fetchcontent_declare(asciichat_nghttp2
         GIT_REPOSITORY https://github.com/nghttp2/nghttp2.git
         GIT_TAG 43b29f991403b5419dd0bea2840581078ead9bf8)
     FetchContent_MakeAvailable(asciichat_nghttp2)
+    foreach(_package Libngtcp2 Libnghttp3 Systemd Jansson Libevent LibXml2 Jemalloc OpenSSL)
+        set(CMAKE_DISABLE_FIND_PACKAGE_${_package} "${_asciichat_saved_${_package}_disable}")
+    endforeach()
+    unset(_asciichat_saved_nghttp2_disable_packages)
     if(TARGET nghttp2_static)
         set_target_properties(nghttp2_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
         set(GOTEL_NGHTTP2_TARGET nghttp2_static CACHE STRING

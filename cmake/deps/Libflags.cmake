@@ -55,7 +55,7 @@ else()
         GIT_TAG main
         SOURCE_DIR "${_ascii_chat_libflags_source}")
 endif()
-if(USE_MUSL)
+if(USE_MUSL OR APPLE)
     # libflags is embedded in the musl application build. Its standalone
     # install export cannot export ascii-chat-owned dependency wrapper targets
     # supplied through the embedding interface, so suppress only libflags'
