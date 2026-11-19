@@ -86,12 +86,18 @@ function(asciichat_configure_quic)
     if(WIN32)
         # The isolated ngtcp2 project links its OpenSSL-backed DLL directly;
         # unlike the parent target it does not inherit the Windows system
-        # libraries from asciichat-quic's interface link requirements.
-        list(APPEND _quic_common_args
-            "-DCMAKE_SHARED_LINKER_FLAGS_RELEASE:STRING=-Xlinker /DEFAULTLIB:ws2_32.lib -Xlinker /DEFAULTLIB:crypt32.lib"
-            "-DCMAKE_SHARED_LINKER_FLAGS_DEBUG:STRING=-Xlinker /DEFAULTLIB:ws2_32.lib -Xlinker /DEFAULTLIB:crypt32.lib"
-            "-DCMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO:STRING=-Xlinker /DEFAULTLIB:ws2_32.lib -Xlinker /DEFAULTLIB:crypt32.lib"
-            "-DCMAKE_SHARED_LINKER_FLAGS_MINSIZEREL:STRING=-Xlinker /DEFAULTLIB:ws2_32.lib -Xlinker /DEFAULTLIB:crypt32.lib")
+        # libraries from asciichat-quic's interface link requirements.  Keep
+        # the linker syntax native to the selected compiler: GNU linkers
+        # consume MinGW import libraries as -l names, while MSVC linkers need
+        # /DEFAULTLIB directives.
+        if(CMAKE_C_COMPILER_ID STREQUAL "MSVC"
+                OR CMAKE_C_SIMULATE_ID STREQUAL "MSVC"
+                OR CMAKE_C_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+            set(_quic_windows_system_link_flags
+                "-Xlinker /DEFAULTLIB:ws2_32.lib -Xlinker /DEFAULTLIB:crypt32.lib")
+        else()
+            set(_quic_windows_system_link_flags "-lws2_32 -lcrypt32")
+        endif()
     endif()
     # The parent vcpkg toolchain must not be inherited by these isolated
     # projects: it can redirect them to VCPKG_ROOT/installed and ignore the
@@ -189,9 +195,16 @@ function(asciichat_configure_quic)
     if(WIN32)
         # ngtcp2's OpenSSL::SSL target does not always carry the paired
         # crypto import library through its child-project interface on Clang.
-        # Pass the selected vcpkg crypto library explicitly to its DLL link.
+        # Pass the selected vcpkg crypto library explicitly to every
+        # configuration-specific DLL link.  CMake's configuration-specific
+        # flags replace the generic shared linker flags in the child project.
+        set(_quic_windows_shared_link_flags
+            "${_quic_windows_system_link_flags} ${_quic_crypto_file}")
         list(APPEND _quic_common_args
-            "-DCMAKE_SHARED_LINKER_FLAGS:STRING=${CMAKE_SHARED_LINKER_FLAGS} ${_quic_crypto_file}")
+            "-DCMAKE_SHARED_LINKER_FLAGS_RELEASE:STRING=${_quic_windows_shared_link_flags}"
+            "-DCMAKE_SHARED_LINKER_FLAGS_DEBUG:STRING=${_quic_windows_shared_link_flags}"
+            "-DCMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO:STRING=${_quic_windows_shared_link_flags}"
+            "-DCMAKE_SHARED_LINKER_FLAGS_MINSIZEREL:STRING=${_quic_windows_shared_link_flags}")
     endif()
 
     set(_ngtcp2_source "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/ngtcp2")
