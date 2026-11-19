@@ -39,38 +39,6 @@ endif()
 # cache checkout here so reconfiguring another parent build directory does not
 # clone Sequel again.
 include(FetchContent)
-set(_asciichat_sequel_source "${ASCIICHAT_DEPS_CACHE_DIR}/sequel-src")
-if(EXISTS "${_asciichat_sequel_source}/CMakeLists.txt")
-    asciichat_fetchcontent_declare(sequel SOURCE_DIR "${_asciichat_sequel_source}")
-else()
-    asciichat_fetchcontent_declare(sequel
-        GIT_REPOSITORY https://github.com/zfogg/sequel.git
-        GIT_TAG f0865335e0c90b872ad2d4b40d2590509439f1fe
-        SOURCE_DIR "${_asciichat_sequel_source}")
-endif()
-set(_asciichat_otlp_c_source "${ASCIICHAT_DEPS_CACHE_DIR}/otlp_c-src")
-if(EXISTS "${_asciichat_otlp_c_source}/CMakeLists.txt")
-    asciichat_fetchcontent_declare(otlp_c SOURCE_DIR "${_asciichat_otlp_c_source}")
-else()
-    asciichat_fetchcontent_declare(otlp_c
-        GIT_REPOSITORY https://github.com/riboseinc/otlp-c.git
-        GIT_TAG 0798449d66331c3953b8ba9354164cfbf2f3bdaf
-        SOURCE_DIR "${_asciichat_otlp_c_source}")
-endif()
-set(_asciichat_gotel_nghttp2_source "${ASCIICHAT_DEPS_CACHE_DIR}/gotel_nghttp2-src")
-if(EXISTS "${_asciichat_gotel_nghttp2_source}/CMakeLists.txt")
-    asciichat_fetchcontent_declare(gotel_nghttp2 SOURCE_DIR "${_asciichat_gotel_nghttp2_source}")
-else()
-    asciichat_fetchcontent_declare(gotel_nghttp2
-        GIT_REPOSITORY https://github.com/nghttp2/nghttp2.git
-        GIT_TAG 43b29f991403b5419dd0bea2840581078ead9bf8
-        SOURCE_DIR "${_asciichat_gotel_nghttp2_source}")
-endif()
-
-# Keep Gotel and its fetched otlp-c/Sequel build trees in the persistent
-# dependency cache. Generated Gotel sources are emitted into this same stable
-# tree so the shared Debug dependency build does not depend on the parent
-# application's binary directory.
 string(REGEX REPLACE "[^A-Za-z0-9_.-]" "-" _asciichat_gotel_generator_cache "${CMAKE_GENERATOR}")
 string(REGEX REPLACE "[^A-Za-z0-9_.-]" "-" _asciichat_gotel_compiler_cache "${CMAKE_C_COMPILER_ID}")
 if(NOT _asciichat_gotel_compiler_cache)
@@ -79,7 +47,47 @@ endif()
 set(_asciichat_gotel_cache_dir
     "${ASCIICHAT_DEPS_CACHE_DIR}/gotel-${_asciichat_gotel_compiler_cache}-${_asciichat_gotel_generator_cache}")
 file(MAKE_DIRECTORY "${_asciichat_gotel_cache_dir}")
+set(_asciichat_sequel_source "${ASCIICHAT_DEPS_CACHE_DIR}/sequel-src")
+if(EXISTS "${_asciichat_sequel_source}/CMakeLists.txt")
+    asciichat_fetchcontent_declare(sequel
+        SOURCE_DIR "${_asciichat_sequel_source}"
+        BINARY_DIR "${_asciichat_gotel_cache_dir}/sequel-build")
+else()
+    asciichat_fetchcontent_declare(sequel
+        GIT_REPOSITORY https://github.com/zfogg/sequel.git
+        GIT_TAG f0865335e0c90b872ad2d4b40d2590509439f1fe
+        SOURCE_DIR "${_asciichat_sequel_source}"
+        BINARY_DIR "${_asciichat_gotel_cache_dir}/sequel-build")
+endif()
+set(_asciichat_otlp_c_source "${ASCIICHAT_DEPS_CACHE_DIR}/otlp_c-src")
+if(EXISTS "${_asciichat_otlp_c_source}/CMakeLists.txt")
+    asciichat_fetchcontent_declare(otlp_c
+        SOURCE_DIR "${_asciichat_otlp_c_source}"
+        BINARY_DIR "${_asciichat_gotel_cache_dir}/otlp_c-build")
+else()
+    asciichat_fetchcontent_declare(otlp_c
+        GIT_REPOSITORY https://github.com/riboseinc/otlp-c.git
+        GIT_TAG 0798449d66331c3953b8ba9354164cfbf2f3bdaf
+        SOURCE_DIR "${_asciichat_otlp_c_source}"
+        BINARY_DIR "${_asciichat_gotel_cache_dir}/otlp_c-build")
+endif()
+set(_asciichat_gotel_nghttp2_source "${ASCIICHAT_DEPS_CACHE_DIR}/gotel_nghttp2-src")
+if(EXISTS "${_asciichat_gotel_nghttp2_source}/CMakeLists.txt")
+    asciichat_fetchcontent_declare(gotel_nghttp2
+        SOURCE_DIR "${_asciichat_gotel_nghttp2_source}"
+        BINARY_DIR "${_asciichat_gotel_cache_dir}/gotel_nghttp2-build")
+else()
+    asciichat_fetchcontent_declare(gotel_nghttp2
+        GIT_REPOSITORY https://github.com/nghttp2/nghttp2.git
+        GIT_TAG 43b29f991403b5419dd0bea2840581078ead9bf8
+        SOURCE_DIR "${_asciichat_gotel_nghttp2_source}"
+        BINARY_DIR "${_asciichat_gotel_cache_dir}/gotel_nghttp2-build")
+endif()
 
+# Keep Gotel and its fetched otlp-c/Sequel build trees in the persistent
+# dependency cache. Generated Gotel sources are emitted into this same stable
+# tree so the shared Debug dependency build does not depend on the parent
+# application's binary directory.
 # Gotel's gRPC adapter requires the pinned nghttp2 API used by grpc.c. Do not
 # substitute an older system package; the child project uses the cache-backed
 # source checkout when no compatible target is preconfigured.
@@ -101,14 +109,32 @@ if(DEFINED FETCHCONTENT_BASE_DIR)
     set(_asciichat_fetchcontent_base_dir_was_defined TRUE)
     set(_asciichat_parent_fetchcontent_base_dir "${FETCHCONTENT_BASE_DIR}")
 endif()
-# Child dependencies are siblings in the compiler/generator-specific
-# FetchContent cache. Using the unqualified build-type root lets incompatible
-# MSVC and Clang subbuilds reuse the same CMake cache.
-if(NOT _asciichat_parent_fetchcontent_base_dir)
-    set(_asciichat_parent_fetchcontent_base_dir "${ASCIICHAT_DEPS_CACHE_DIR}")
-endif()
+# Child dependencies need compiler/generator-specific FetchContent binary
+# trees. Reusing the unqualified dependency root lets Ninja, MSYS Makefiles,
+# and Visual Studio overwrite one another's generated build metadata. The
+# source checkouts remain explicitly pinned above and are still shared by all
+# configurations; only generated child build files are isolated here.
+set(_asciichat_parent_fetchcontent_base_dir
+    "${_asciichat_gotel_cache_dir}/fetch")
 set(FETCHCONTENT_BASE_DIR "${_asciichat_parent_fetchcontent_base_dir}" CACHE PATH
     "Persistent dependency source/build cache" FORCE)
+# A prior parent configure may have cached child binary directories under the
+# old unqualified base.  Keep the source checkouts, but let FetchContent
+# regenerate each child build tree under the selected compiler/generator.
+foreach(_asciichat_fetchcontent_name IN ITEMS sequel otlp_c gotel_nghttp2)
+    unset(${_asciichat_fetchcontent_name}_BINARY_DIR CACHE)
+    unset(${_asciichat_fetchcontent_name}_BINARY_DIR)
+endforeach()
+set(sequel_BINARY_DIR "${_asciichat_parent_fetchcontent_base_dir}/sequel-build"
+    CACHE PATH "Sequel FetchContent build directory" FORCE)
+set(otlp_c_BINARY_DIR "${_asciichat_parent_fetchcontent_base_dir}/otlp_c-build"
+    CACHE PATH "otlp-c FetchContent build directory" FORCE)
+set(gotel_nghttp2_BINARY_DIR "${_asciichat_parent_fetchcontent_base_dir}/gotel_nghttp2-build"
+    CACHE PATH "Gotel nghttp2 FetchContent build directory" FORCE)
+set(FETCHCONTENT_SOURCE_DIR_SEQUEL "${_asciichat_sequel_source}"
+    CACHE PATH "Sequel FetchContent source directory" FORCE)
+set(FETCHCONTENT_SOURCE_DIR_OTLP_C "${_asciichat_otlp_c_source}"
+    CACHE PATH "otlp-c FetchContent source directory" FORCE)
 
 if(USE_MUSL AND NOT TARGET nghttp2_static)
     # The musl application links its native HTTP/2 server against a static
