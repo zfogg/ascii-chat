@@ -2,11 +2,6 @@ include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/Common.cmake")
 
 function(configure_gcc_pre_project)
-    if(WIN32)
-        message(FATAL_ERROR
-            "GCC is not supported as a native Windows toolchain yet; use a Linux/WSL host for GCC. "
-            "The Windows GCC dependency graph currently cannot bootstrap the repository's ICU host tools.")
-    endif()
     find_program(_gcc gcc REQUIRED)
     find_program(_gxx g++ REQUIRED)
     find_program(_ar ar REQUIRED)
@@ -24,18 +19,27 @@ function(configure_gcc_pre_project)
     # and uses its own binutils below; only source transformation is delegated
     # to libclang, as it is for MSVC.
     find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
-    find_program(_gcc_llvm_config NAMES llvm-config llvm-config-20 llvm-config-19 llvm-config-18 REQUIRED)
-    execute_process(
-        COMMAND "${_gcc_llvm_config}" --libdir
-        OUTPUT_VARIABLE _gcc_llvm_libdir
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        RESULT_VARIABLE _gcc_llvm_config_result
-    )
-    if(NOT _gcc_llvm_config_result EQUAL 0 OR NOT _gcc_llvm_libdir)
-        message(FATAL_ERROR "llvm-config could not report the libclang directory for GCC defer transformations")
+    if(WIN32)
+        find_program(_gcc_clang NAMES clang clang-cl REQUIRED)
+        get_filename_component(_gcc_llvm_bin "${_gcc_clang}" DIRECTORY)
+        find_file(_gcc_libclang NAMES libclang.dll libclang.lib
+            PATHS "${_gcc_llvm_bin}" "$ENV{LLVM_ROOT}/bin"
+                  "$ENV{ProgramFiles}/LLVM/bin"
+            NO_DEFAULT_PATH REQUIRED)
+    else()
+        find_program(_gcc_llvm_config NAMES llvm-config llvm-config-20 llvm-config-19 llvm-config-18 REQUIRED)
+        execute_process(
+            COMMAND "${_gcc_llvm_config}" --libdir
+            OUTPUT_VARIABLE _gcc_llvm_libdir
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            RESULT_VARIABLE _gcc_llvm_config_result
+        )
+        if(NOT _gcc_llvm_config_result EQUAL 0 OR NOT _gcc_llvm_libdir)
+            message(FATAL_ERROR "llvm-config could not report the libclang directory for GCC defer transformations")
+        endif()
+        find_file(_gcc_libclang NAMES libclang.so libclang.so.1
+            PATHS "${_gcc_llvm_libdir}" NO_DEFAULT_PATH REQUIRED)
     endif()
-    find_file(_gcc_libclang NAMES libclang.so libclang.so.1
-        PATHS "${_gcc_llvm_libdir}" NO_DEFAULT_PATH REQUIRED)
     set(RECAST_BACKEND NATIVE CACHE STRING "Recast transformer backend" FORCE)
     set(RECAST_TOOL_ROOT "${CMAKE_SOURCE_DIR}/deps/recast" CACHE PATH "Recast source tree" FORCE)
     set(RECAST_PYTHON_COMMAND "${Python3_EXECUTABLE}" CACHE FILEPATH "Recast Python interpreter" FORCE)
