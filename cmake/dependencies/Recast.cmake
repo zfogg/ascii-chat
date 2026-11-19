@@ -12,8 +12,12 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
         # Use the same LLVM installation as the main build for the host tool.
         # Do not let PATH select an older clang++ or GCC.
         asciichat_host_toolchain(_recast_host_cc _recast_host_cxx _recast_host_cache)
-        # Keep the host-tool cache separate from older GCC/LLVM configurations.
-        set(_recast_host_build "${_recast_host_cache}/recast-llvm23-v3")
+        # Keep host-tool caches separate across generators. CMake refuses to
+        # reuse a build directory configured by a different generator, and
+        # developers commonly keep both Visual Studio and Ninja MSVC builds.
+        string(MAKE_C_IDENTIFIER "${CMAKE_GENERATOR}" _recast_host_generator)
+        set(_recast_host_build
+            "${_recast_host_cache}/recast-llvm23-v3-${_recast_host_generator}")
         set(_recast_host_link_flags)
         if(UNIX AND NOT APPLE)
             set(_recast_host_link_flags)
@@ -60,7 +64,15 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
                 endif()
             endforeach()
         endif()
-        set(_recast_host_binary "${_recast_host_build}/bin/recast${CMAKE_EXECUTABLE_SUFFIX}")
+        set(_recast_host_build_command
+            "${CMAKE_COMMAND}" --build "<BINARY_DIR>" --target recast)
+        if(CMAKE_CONFIGURATION_TYPES AND CMAKE_BUILD_TYPE)
+            list(APPEND _recast_host_build_command --config "${CMAKE_BUILD_TYPE}")
+            set(_recast_host_binary
+                "${_recast_host_build}/bin/${CMAKE_BUILD_TYPE}/recast${CMAKE_EXECUTABLE_SUFFIX}")
+        else()
+            set(_recast_host_binary "${_recast_host_build}/bin/recast${CMAKE_EXECUTABLE_SUFFIX}")
+        endif()
         ExternalProject_Add(asciichat-recast-host
             SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/recast"
             BINARY_DIR "${_recast_host_build}"
@@ -74,7 +86,7 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
                 -DASCIICHAT_RECAST_HOST_LINK_REV=4
                 -DRECAST_BUILD_DOCS=OFF -DBUILD_TESTING=OFF
                 -DRECAST_STATIC_LIBCLANG=OFF
-            BUILD_COMMAND "${CMAKE_COMMAND}" --build <BINARY_DIR> --target recast
+            BUILD_COMMAND ${_recast_host_build_command}
             INSTALL_COMMAND ""
             BUILD_BYPRODUCTS "${_recast_host_binary}"
             USES_TERMINAL_CONFIGURE USES_TERMINAL_BUILD)

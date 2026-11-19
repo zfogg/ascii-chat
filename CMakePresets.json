@@ -96,11 +96,10 @@
       "displayName": "Default (MSVC)",
       "description": "Debug build using MSVC and the Visual C++ tools",
       "inherits": ["default", "base-vcpkg"],
-      "generator": "Visual Studio 17 2022",
-      "architecture": "x64",
+      "generator": "Ninja Multi-Config",
       "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
-      "binaryDir": "${sourceDir}/build/${presetName}"
+      "binaryDir": "${sourceDir}/build/${presetName}-ninja"
     },
     {
       "name": "dev-clang",

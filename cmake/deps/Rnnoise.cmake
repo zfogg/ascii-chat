@@ -21,6 +21,50 @@ file(MAKE_DIRECTORY "${ASCIICHAT_RNNOISE_INSTALL_DIR}/include")
 # bootstrap tools (notably autoreconf). Build the vendored RNNoise sources
 # directly there; Unix/musl keeps the upstream autotools path below.
 if(WIN32)
+    if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+        # RNNoise's upstream C sources use five C99 variable-length arrays.
+        # MSVC intentionally does not implement VLAs, so compile generated
+        # private copies with _alloca while leaving the vendored checkout
+        # untouched.  The allocation sizes and storage duration are identical
+        # to the original automatic arrays.
+        set(_asciichat_rnnoise_msvc_source_dir
+            "${CMAKE_CURRENT_BINARY_DIR}/rnnoise-msvc-src")
+        file(MAKE_DIRECTORY "${_asciichat_rnnoise_msvc_source_dir}")
+
+        foreach(_rnnoise_source_name IN ITEMS celt_lpc.c pitch.c)
+            file(READ
+                "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src/${_rnnoise_source_name}"
+                _rnnoise_source_contents)
+            string(PREPEND _rnnoise_source_contents
+                "#include <malloc.h>\n")
+            string(REPLACE
+                "opus_val16 xx[n];"
+                "opus_val16 *xx = (opus_val16 *)_alloca((size_t)n * sizeof(*xx));"
+                _rnnoise_source_contents "${_rnnoise_source_contents}")
+            string(REPLACE
+                "opus_val16 x_lp4[len>>2];"
+                "opus_val16 *x_lp4 = (opus_val16 *)_alloca((size_t)(len >> 2) * sizeof(*x_lp4));"
+                _rnnoise_source_contents "${_rnnoise_source_contents}")
+            string(REPLACE
+                "opus_val16 y_lp4[lag>>2];"
+                "opus_val16 *y_lp4 = (opus_val16 *)_alloca((size_t)(lag >> 2) * sizeof(*y_lp4));"
+                _rnnoise_source_contents "${_rnnoise_source_contents}")
+            string(REPLACE
+                "opus_val32 xcorr[max_pitch>>1];"
+                "opus_val32 *xcorr = (opus_val32 *)_alloca((size_t)(max_pitch >> 1) * sizeof(*xcorr));"
+                _rnnoise_source_contents "${_rnnoise_source_contents}")
+            string(REPLACE
+                "opus_val32 yy_lookup[maxperiod+1];"
+                "opus_val32 *yy_lookup = (opus_val32 *)_alloca((size_t)(maxperiod + 1) * sizeof(*yy_lookup));"
+                _rnnoise_source_contents "${_rnnoise_source_contents}")
+            file(WRITE
+                "${_asciichat_rnnoise_msvc_source_dir}/${_rnnoise_source_name}"
+                "${_rnnoise_source_contents}")
+            list(APPEND _asciichat_rnnoise_msvc_sources
+                "${_asciichat_rnnoise_msvc_source_dir}/${_rnnoise_source_name}")
+        endforeach()
+    endif()
+
     set(_asciichat_rnnoise_sources
         "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src/celt_lpc.c"
         "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src/denoise.c"
@@ -29,6 +73,13 @@ if(WIN32)
         "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src/rnn.c"
         "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src/rnn_data.c"
         "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src/rnn_reader.c")
+    if(_asciichat_rnnoise_msvc_sources)
+        list(REMOVE_ITEM _asciichat_rnnoise_sources
+            "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src/celt_lpc.c"
+            "${ASCIICHAT_RNNOISE_SOURCE_DIR}/src/pitch.c")
+        list(APPEND _asciichat_rnnoise_sources
+            ${_asciichat_rnnoise_msvc_sources})
+    endif()
     add_library(asciichat-rnnoise STATIC ${_asciichat_rnnoise_sources})
     target_include_directories(asciichat-rnnoise PUBLIC
         "${ASCIICHAT_RNNOISE_SOURCE_DIR}/include"
@@ -38,6 +89,8 @@ if(WIN32)
     add_custom_target(asciichat-rnnoise-build)
     add_dependencies(asciichat-rnnoise-build asciichat-rnnoise)
     unset(_asciichat_rnnoise_sources)
+    unset(_asciichat_rnnoise_msvc_sources)
+    unset(_asciichat_rnnoise_msvc_source_dir)
     return()
 endif()
 

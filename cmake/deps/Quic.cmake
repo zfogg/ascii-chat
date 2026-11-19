@@ -219,7 +219,11 @@ function(asciichat_configure_quic)
     endif()
     set(_ngtcp2_build "${ASCIICHAT_DEPS_CACHE_DIR}/asciichat-ngtcp2-${_quic_generator_cache}")
     set(_nghttp3_build "${ASCIICHAT_DEPS_CACHE_DIR}/asciichat-nghttp3-${_quic_generator_cache}")
-    if(CMAKE_GENERATOR MATCHES "^Visual Studio")
+    # Multi-config generators place each library and import library beneath
+    # its configuration directory.  This includes Ninja Multi-Config, which
+    # is the native MSVC preset; treating only Visual Studio as multi-config
+    # makes the imported target point at the wrong (configuration-less) path.
+    if(CMAKE_CONFIGURATION_TYPES)
         if(CMAKE_BUILD_TYPE STREQUAL "Release")
             set(_quic_config_name Release)
         else()
