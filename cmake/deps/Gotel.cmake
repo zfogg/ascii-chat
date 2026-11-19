@@ -131,10 +131,20 @@ set(otlp_c_BINARY_DIR "${_asciichat_parent_fetchcontent_base_dir}/otlp_c-build"
     CACHE PATH "otlp-c FetchContent build directory" FORCE)
 set(gotel_nghttp2_BINARY_DIR "${_asciichat_parent_fetchcontent_base_dir}/gotel_nghttp2-build"
     CACHE PATH "Gotel nghttp2 FetchContent build directory" FORCE)
-set(FETCHCONTENT_SOURCE_DIR_SEQUEL "${_asciichat_sequel_source}"
-    CACHE PATH "Sequel FetchContent source directory" FORCE)
-set(FETCHCONTENT_SOURCE_DIR_OTLP_C "${_asciichat_otlp_c_source}"
-    CACHE PATH "otlp-c FetchContent source directory" FORCE)
+if(EXISTS "${_asciichat_sequel_source}/CMakeLists.txt")
+    set(FETCHCONTENT_SOURCE_DIR_SEQUEL "${_asciichat_sequel_source}"
+        CACHE PATH "Sequel FetchContent source directory" FORCE)
+else()
+    unset(FETCHCONTENT_SOURCE_DIR_SEQUEL CACHE)
+    unset(FETCHCONTENT_SOURCE_DIR_SEQUEL)
+endif()
+if(EXISTS "${_asciichat_otlp_c_source}/CMakeLists.txt")
+    set(FETCHCONTENT_SOURCE_DIR_OTLP_C "${_asciichat_otlp_c_source}"
+        CACHE PATH "otlp-c FetchContent source directory" FORCE)
+else()
+    unset(FETCHCONTENT_SOURCE_DIR_OTLP_C CACHE)
+    unset(FETCHCONTENT_SOURCE_DIR_OTLP_C)
+endif()
 
 if(USE_MUSL AND NOT TARGET nghttp2_static)
     # The musl application links its native HTTP/2 server against a static
