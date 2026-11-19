@@ -30,8 +30,6 @@ function(asciichat_check_quic_tls)
 endfunction()
 
 function(asciichat_configure_quic)
-    asciichat_check_quic_tls()
-
     # The two upstream projects both define a global `check` target. Configure
     # them in separate CMake builds so their target names and options cannot collide
     # with each other or with the parent project.
@@ -323,4 +321,9 @@ function(asciichat_configure_quic)
     if(WIN32)
         target_link_libraries(asciichat-quic INTERFACE ws2_32 bcrypt crypt32)
     endif()
+
+    # Run the real header-and-link probe only after the selected OpenSSL
+    # installation has completed.  Musl OpenSSL is built synchronously during
+    # dependency setup; probing before that can see an empty staged prefix.
+    asciichat_check_quic_tls()
 endfunction()
