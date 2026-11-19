@@ -591,6 +591,8 @@ find_program(ASCIICHAT_PYTHON3_EXECUTABLE
 # =============================================================================
 if(WIN32)
     set(_NINJA_HINTS
+        "$ENV{USERPROFILE}/scoop/apps/ninja/current"
+        "$ENV{ProgramData}/scoop/apps/ninja/current"
         "$ENV{USERPROFILE}/scoop/shims"
         "$ENV{LOCALAPPDATA}/Programs/Ninja"
         "$ENV{ProgramFiles}/Ninja"
