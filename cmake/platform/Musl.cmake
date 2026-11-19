@@ -104,7 +104,8 @@ function(configure_musl_post_project)
             "Clang compiler-rt builtins archive for musl static executables" FORCE)
     endif()
 
-    if(NOT CMAKE_C_COMPILER_TARGET STREQUAL MUSL_TARGET)
+    if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND
+       NOT CMAKE_C_COMPILER_TARGET STREQUAL MUSL_TARGET)
         message(FATAL_ERROR "The musl compiler toolchain was not loaded. Configure a fresh build tree with cmake --fresh.")
     endif()
     target_compile_definitions(asciichat-project-options INTERFACE USE_MUSL)
