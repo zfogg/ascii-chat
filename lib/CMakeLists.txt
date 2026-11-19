@@ -720,6 +720,12 @@ endif()
 # Module 10: Network (depends on: util, platform, crypto)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
+if(WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    set_source_files_properties(
+        "${LIB_DIR}/network/webrtc/ice_selected_pair.cpp"
+        PROPERTIES COMPILE_OPTIONS
+        "-include;${CMAKE_BINARY_DIR}/generated/compilers/mingw/pthread.h")
+endif()
 target_link_libraries(ascii-chat-network PRIVATE asciichat-libuv)
 target_link_libraries(ascii-chat-network PRIVATE asciichat-mdns)
 if(TARGET asciichat-miniupnpc)
@@ -900,6 +906,13 @@ target_link_libraries(ascii-chat-shared PRIVATE asciichat-utf8proc asciichat-lib
         MACOSX_RPATH TRUE
         INSTALL_NAME_DIR "@rpath"
     )
+    if(WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        # CMake's Windows export scanner does not see sources supplied through
+        # OBJECT libraries. Ask MinGW ld to export the linked public symbols;
+        # this is the GNU equivalent of WINDOWS_EXPORT_ALL_SYMBOLS.
+        target_link_options(ascii-chat-shared PRIVATE
+            "LINKER:--export-all-symbols")
+    endif()
     if(WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT CMAKE_C_COMPILER MATCHES "clang-cl")
         # The GNU-style Clang driver targets the MSVC ABI here. Match CMake's
         # generated import-library path to the .lib path passed to lld-link.
@@ -1125,7 +1138,7 @@ target_link_libraries(ascii-chat-shared PRIVATE asciichat-utf8proc asciichat-lib
     # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
     if(APPLE)
         target_link_options(ascii-chat-shared PRIVATE "-Wl,-w")
-    elseif(WIN32)
+    elseif(WIN32 AND CMAKE_C_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
         # Delay-load datachannel.dll to avoid loading it for simple commands like --help/--version.
         # Note: We cannot delay-load MSVCP140D.dll because it breaks CRT initialization.
         target_link_options(ascii-chat-shared PRIVATE
@@ -1163,10 +1176,12 @@ target_link_libraries(ascii-chat-shared PRIVATE asciichat-utf8proc asciichat-lib
     endif()
     # Delay-load datachannel.dll to avoid loading it for simple commands like --help/--version.
     # Note: We cannot delay-load MSVCP140D.dll because it breaks CRT initialization.
-    target_link_options(ascii-chat-shared PRIVATE
-        "LINKER:/DELAYLOAD:datachannel.dll"
-    )
-    target_link_libraries(ascii-chat-shared PRIVATE delayimp)
+    if(CMAKE_C_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+        target_link_options(ascii-chat-shared PRIVATE
+            "LINKER:/DELAYLOAD:datachannel.dll"
+        )
+        target_link_libraries(ascii-chat-shared PRIVATE delayimp)
+    endif()
 else()
     # Non-musl builds use normal dependencies
     # Note: Core dependencies are PkgConfig::* IMPORTED targets that include library paths automatically
@@ -1315,11 +1330,9 @@ else()
 endif()
 
 if(ASCIICHAT_SYMBOL_NM_EXECUTABLE)
-    # LLVM's nm reports the exported symbols from the Windows import library,
-    # while a PE DLL itself is not an object-symbol table. Keep the generated
-    # export definition and validate the import library with the selected
-    # compiler family's tool suite.
-    if(WIN32)
+    # MSVC-family tools validate the generated import library. GNU nm can read
+    # the PE export table directly, so validate the actual DLL for MinGW.
+    if(WIN32 AND NOT CMAKE_C_COMPILER_ID STREQUAL "GNU")
         set(SHARED_LIB_TO_VALIDATE "$<TARGET_LINKER_FILE:ascii-chat-shared>")
     else()
         set(SHARED_LIB_TO_VALIDATE "$<TARGET_FILE:ascii-chat-shared>")

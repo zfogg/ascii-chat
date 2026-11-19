@@ -92,7 +92,7 @@ endif()
 # PortAudio's static WDM-KS backend and the Windows SDK strmiids library both
 # provide the same COM GUID constants. Keep strmiids because FFmpeg requires
 # IID_ICodecAPI, and let lld resolve the equivalent duplicate definitions.
-if(WIN32 AND NOT BUILD_SHARED_LIBS)
+if(WIN32 AND NOT BUILD_SHARED_LIBS AND CMAKE_C_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
     target_link_options(ascii-chat PRIVATE "LINKER:/force:multiple")
 endif()
 if(WIN32)
@@ -233,10 +233,12 @@ elseif(BUILD_SHARED_LIBS AND NOT USE_MUSL)
         # Note: We cannot delay-load asciichat.dll because the executable accesses
         # global variables (g_argc, g_argv) defined in the DLL, and delay-loading
         # only works for function calls, not variable access.
-        target_link_options(ascii-chat PRIVATE
-            "LINKER:/DELAYLOAD:datachannel.dll"
-        )
-        target_link_libraries(ascii-chat PRIVATE delayimp)
+        if(CMAKE_C_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+            target_link_options(ascii-chat PRIVATE
+                "LINKER:/DELAYLOAD:datachannel.dll"
+            )
+            target_link_libraries(ascii-chat PRIVATE delayimp)
+        endif()
     else()
         # Unix: Also need explicit dependencies when linking against shared library
         set(CORE_LIBS asciichat-core-dependencies)

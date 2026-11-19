@@ -81,6 +81,39 @@ endfunction()
 function(configure_compiler_post_project)
     asciichat_validate_selected_compiler()
     asciichat_configure_common_tools()
+    if(WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        # vcpkg's pthreads port can provide a POSIX compatibility header ahead
+        # of MinGW's native pthread.h. Consumers that include C++ threading
+        # headers add this directory before dependency include directories.
+        execute_process(
+            COMMAND "${CMAKE_C_COMPILER}" -dumpmachine
+            OUTPUT_VARIABLE _asciichat_gcc_target
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET)
+        get_filename_component(_asciichat_gcc_bin "${CMAKE_C_COMPILER}" DIRECTORY)
+        get_filename_component(_asciichat_gcc_root "${_asciichat_gcc_bin}/.." ABSOLUTE)
+        set(_asciichat_gcc_target_include
+            "${_asciichat_gcc_root}/${_asciichat_gcc_target}/include")
+        if(EXISTS "${_asciichat_gcc_target_include}/pthread.h")
+            set(ASCIICHAT_GCC_TARGET_INCLUDE_DIR "${_asciichat_gcc_target_include}"
+                CACHE INTERNAL "MinGW target headers for native GCC C++ targets")
+            set(ASCIICHAT_GCC_TARGET_INCLUDE_DIR "${_asciichat_gcc_target_include}"
+                PARENT_SCOPE)
+            set(_asciichat_gcc_pthread_compat_dir
+                "${CMAKE_BINARY_DIR}/generated/compilers/mingw")
+            file(MAKE_DIRECTORY "${_asciichat_gcc_pthread_compat_dir}")
+            file(WRITE "${_asciichat_gcc_pthread_compat_dir}/pthread.h"
+                "#pragma once\n"
+                "#include \"${_asciichat_gcc_target_include}/pthread.h\"\n"
+                "#define PTHREAD_H 1\n"
+                "#ifndef _POSIX_SEM_VALUE_MAX\n"
+                "#define _POSIX_SEM_VALUE_MAX 32767\n"
+                "#endif\n")
+            set(ASCIICHAT_GCC_PTHREAD_COMPAT_DIR
+                "${_asciichat_gcc_pthread_compat_dir}"
+                CACHE INTERNAL "Generated MinGW pthread compatibility header")
+        endif()
+    endif()
     # Use CMake's launcher interface for every native compiler family.  This
     # keeps ccache in the compile path without wrapping the compiler name and
     # lets each preset retain its native compiler/tool suite.
@@ -111,4 +144,24 @@ function(configure_compiler_post_project)
         set(CMAKE_CXX_ARCHIVE_APPEND "<CMAKE_AR> q <TARGET> <LINK_FLAGS> <OBJECTS>" PARENT_SCOPE)
         set(CMAKE_CXX_ARCHIVE_FINISH "<CMAKE_RANLIB> <TARGET>" PARENT_SCOPE)
     endif()
+endfunction()
+
+function(asciichat_sanitize_gnu_imported_link_options)
+    if(NOT WIN32 OR NOT CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        return()
+    endif()
+
+    get_property(_asciichat_imported_targets DIRECTORY PROPERTY IMPORTED_TARGETS)
+    foreach(_asciichat_imported_target IN LISTS _asciichat_imported_targets)
+        if(NOT TARGET "${_asciichat_imported_target}")
+            continue()
+        endif()
+        get_target_property(_asciichat_link_libraries
+            "${_asciichat_imported_target}" INTERFACE_LINK_LIBRARIES)
+        if(_asciichat_link_libraries)
+            list(FILTER _asciichat_link_libraries EXCLUDE REGEX "^-ignore:4221$")
+            set_property(TARGET "${_asciichat_imported_target}"
+                PROPERTY INTERFACE_LINK_LIBRARIES "${_asciichat_link_libraries}")
+        endif()
+    endforeach()
 endfunction()

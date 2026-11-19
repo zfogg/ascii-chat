@@ -60,6 +60,48 @@ function(asciichat_build_aec3)
         file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${_aec3_cmake}")
         set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
     endif()
+    if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        # MinGW GCC does not implement MSVC's __try/__except syntax used by
+        # WebRTC's legacy debugger thread-name fallback. Use the native
+        # Windows 10 thread-description API when it is available instead;
+        # resolve it dynamically so older Windows SDKs remain buildable.
+        set(_aec3_thread_types "${WEBRTC_AEC3_SOURCE_DIR}/base/rtc_base/platform_thread_types.cc")
+        file(READ "${_aec3_thread_types}" _aec3_thread_types_source)
+        string(FIND "${_aec3_thread_types_source}" "ascii-chat MinGW thread description" _aec3_mingw_patch)
+        if(_aec3_mingw_patch EQUAL -1)
+            string(REPLACE [=[#pragma warning(push)
+#pragma warning(disable : 6320 6322)
+  __try {
+    ::RaiseException(0x406D1388, 0, sizeof(threadname_info) / sizeof(ULONG_PTR),
+                     reinterpret_cast<ULONG_PTR*>(&threadname_info));
+  } __except (EXCEPTION_EXECUTE_HANDLER) {  // NOLINT
+  }
+#pragma warning(pop)]=]
+                [=[// ascii-chat MinGW thread description: GCC has no MSVC SEH syntax.
+#if defined(__GNUC__)
+  wchar_t wide_name[256] = {};
+  if (::MultiByteToWideChar(CP_UTF8, 0, name, -1, wide_name,
+                            static_cast<int>(sizeof(wide_name) / sizeof(wide_name[0]))) > 0) {
+    using set_thread_description_fn = HRESULT(WINAPI *)(HANDLE, PCWSTR);
+    auto set_thread_description = reinterpret_cast<set_thread_description_fn>(
+        ::GetProcAddress(::GetModuleHandleW(L"kernel32.dll"), "SetThreadDescription"));
+    if (set_thread_description)
+      (void)set_thread_description(::GetCurrentThread(), wide_name);
+  }
+#else
+#pragma warning(push)
+#pragma warning(disable : 6320 6322)
+  __try {
+    ::RaiseException(0x406D1388, 0, sizeof(threadname_info) / sizeof(ULONG_PTR),
+                     reinterpret_cast<ULONG_PTR*>(&threadname_info));
+  } __except (EXCEPTION_EXECUTE_HANDLER) {  // NOLINT
+  }
+#pragma warning(pop)
+#endif]=]
+                _aec3_thread_types_source "${_aec3_thread_types_source}")
+            file(WRITE "${_aec3_thread_types}" "${_aec3_thread_types_source}")
+        endif()
+    endif()
     add_subdirectory("${webrtc_aec3_SOURCE_DIR}" "${webrtc_aec3_BINARY_DIR}")
     # Upstream uses private directory includes; publish the public audio API.
     target_include_directories(AudioProcess PUBLIC

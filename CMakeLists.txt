@@ -276,6 +276,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslDep.cmake)
 # All dependencies are now modularized into individual .cmake files in cmake/deps/
 # Dependencies.cmake orchestrates including them all
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Dependencies.cmake)
+asciichat_sanitize_gnu_imported_link_options()
 include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslValidation.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/deps/Tomlc17.cmake)

@@ -55,8 +55,6 @@
 #include <regex.h>
 #else
 #define ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX 0
-// Windows doesn't have mode_t
-typedef int mode_t;
 #endif
 
 #ifdef _WIN32

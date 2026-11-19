@@ -186,7 +186,47 @@ if(BEARSSL_SYSTEM_LIB AND BEARSSL_SYSTEM_INC)
 elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
     set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
 
-    if(WIN32)
+    if(WIN32 AND CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        # MinGW must link a GNU archive. The Windows cache may also contain
+        # bearssls.lib from the MSVC/clang-cl build, which GNU ld cannot use.
+        # Keep the compiler-specific artifact in its own cache directory.
+        find_program(BEARSSL_MAKE_EXECUTABLE NAMES mingw32-make make REQUIRED)
+        set(BEARSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/bearssl-GNU-${CMAKE_C_COMPILER_VERSION}")
+        set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
+        file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
+
+        if(NOT EXISTS "${BEARSSL_LIB}")
+            include(ExternalProject)
+            ExternalProject_Add(asciichat-bearssl-build
+                SOURCE_DIR "${BEARSSL_SOURCE_DIR}"
+                BUILD_IN_SOURCE 1
+                CONFIGURE_COMMAND ""
+                BUILD_COMMAND "${BEARSSL_MAKE_EXECUTABLE}" clean
+                    COMMAND "${BEARSSL_MAKE_EXECUTABLE}" -j${NPROC} lib
+                        "CC=${CMAKE_C_COMPILER}" "AR=${CMAKE_AR}"
+                        "CFLAGS=-fPIC"
+                INSTALL_COMMAND ${CMAKE_COMMAND} -E make_directory "${BEARSSL_BUILD_DIR}"
+                    COMMAND ${CMAKE_COMMAND} -E copy
+                        "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" "${BEARSSL_LIB}"
+                BUILD_BYPRODUCTS "${BEARSSL_LIB}"
+                LOG_BUILD TRUE LOG_INSTALL TRUE LOG_OUTPUT_ON_FAILURE TRUE)
+        else()
+            add_custom_target(asciichat-bearssl-build)
+        endif()
+
+        add_library(asciichat-bearssl-archive STATIC IMPORTED GLOBAL)
+        set_target_properties(asciichat-bearssl-archive PROPERTIES
+            IMPORTED_LOCATION "${BEARSSL_LIB}")
+        target_include_directories(asciichat-bearssl-archive INTERFACE
+            "${BEARSSL_SOURCE_DIR}/inc")
+        add_library(asciichat-bearssl INTERFACE)
+        target_link_libraries(asciichat-bearssl INTERFACE asciichat-bearssl-archive)
+        target_include_directories(asciichat-bearssl INTERFACE
+            "${BEARSSL_SOURCE_DIR}/inc")
+        add_dependencies(asciichat-bearssl-archive asciichat-bearssl-build)
+        message(STATUS "${BoldGreen}BearSSL${ColorReset} configured for GNU Windows: ${BEARSSL_LIB}")
+        return()
+    elseif(WIN32)
         # Windows: Build to cache directory (ASCIICHAT_DEPS_CACHE_DIR already includes build type)
         set(BEARSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/bearssl")
         set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/bearssls.lib")
