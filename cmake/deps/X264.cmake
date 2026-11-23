@@ -109,6 +109,7 @@ if(USE_MUSL)
             CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env
                 "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
                 "CFLAGS=${MUSL_KERNEL_CFLAGS} -fPIC"
+                "LDFLAGS=${CMAKE_EXE_LINKER_FLAGS} ${CMAKE_C_STANDARD_LIBRARIES}"
                 "${X264_SOURCE_DIR}/configure"
                 --prefix=${X264_PREFIX}
                 --enable-static

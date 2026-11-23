@@ -348,6 +348,7 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
 
             ExternalProject_Add(asciichat-bearssl-build
                 SOURCE_DIR "${BEARSSL_SOURCE_DIR}"
+                BUILD_IN_SOURCE 1
                 CONFIGURE_COMMAND ""
                 BUILD_COMMAND make -j${NPROC} lib
                     "CC=${BEARSSL_CC}" "AR=${CMAKE_AR}"
