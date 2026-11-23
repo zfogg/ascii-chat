@@ -423,6 +423,10 @@ if(USE_MUSL)
     set(OPENSSL_SSL_LIBRARY "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a" CACHE FILEPATH "OpenSSL SSL library" FORCE)
     set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a" CACHE FILEPATH "OpenSSL Crypto library" FORCE)
 
+    # ExternalProject populates the prefix at build time, but CMake validates
+    # imported target include directories during generation.
+    file(MAKE_DIRECTORY "${OPENSSL_PREFIX}/include")
+
     # Create imported targets that match what find_package(OpenSSL) would create
     if(NOT TARGET OpenSSL::Crypto)
         add_library(OpenSSL::Crypto STATIC IMPORTED GLOBAL)
@@ -724,12 +728,6 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
     set(OPENSSL_INCLUDE_DIR "${OPENSSL_PREFIX}/include" CACHE PATH "OpenSSL include directory" FORCE)
     set(OPENSSL_SSL_LIBRARY "${OPENSSL_SSL_LIBRARY}" CACHE FILEPATH "OpenSSL SSL library" FORCE)
     set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_CRYPTO_LIBRARY}" CACHE FILEPATH "OpenSSL Crypto library" FORCE)
-
-    # The OpenSSL archives may be produced by the ExternalProject above, so
-    # the install prefix is not guaranteed to exist during configure.  Imported
-    # targets require advertised include directories to exist immediately;
-    # create the staged directory now and let the build step populate it.
-    file(MAKE_DIRECTORY "${OPENSSL_PREFIX}/include")
 
     # Create imported targets for OpenSSL ${OPENSSL_VERSION}
     if(NOT TARGET OpenSSL::Crypto)
