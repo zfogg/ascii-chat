@@ -56,15 +56,11 @@ else()
         SOURCE_DIR "${_ascii_chat_libflags_source}")
 endif()
 if(USE_MUSL OR APPLE)
-    # libflags is embedded in the musl application build. Its standalone
-    # install export cannot export ascii-chat-owned dependency wrapper targets
-    # supplied through the embedding interface, so suppress only libflags'
-    # install rules while configuring the embedded project.
-    set(_asciichat_saved_skip_install_rules "${CMAKE_SKIP_INSTALL_RULES}")
-    set(CMAKE_SKIP_INSTALL_RULES TRUE)
+    # libflags is embedded in the application package. Disable only libflags'
+    # own install rules; the parent project's install rules remain enabled.
+    set(LIBFLAGS_ENABLE_INSTALL OFF CACHE BOOL
+        "Disable standalone libflags install rules when embedded" FORCE)
     FetchContent_MakeAvailable(libflags)
-    set(CMAKE_SKIP_INSTALL_RULES "${_asciichat_saved_skip_install_rules}")
-    unset(_asciichat_saved_skip_install_rules)
 else()
     FetchContent_MakeAvailable(libflags)
 endif()
