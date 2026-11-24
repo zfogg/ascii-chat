@@ -46,13 +46,27 @@ set(LIBFLAGS_UTF8PROC_SOURCE_DIR "" CACHE PATH
 # target instead of creating a second copy in the embedded dependency.
 set(LIBPLATFORM_UTF8PROC_TARGET utf8proc CACHE STRING
     "utf8proc target supplied by ascii-chat" FORCE)
+set(_asciichat_libflags_revision c51e165b CACHE INTERNAL
+    "Pinned libflags revision" FORCE)
 set(_ascii_chat_libflags_source "${ASCIICHAT_DEPS_CACHE_ROOT}/libflags-src-${CMAKE_BUILD_TYPE}")
 if(EXISTS "${_ascii_chat_libflags_source}/CMakeLists.txt")
+    execute_process(
+        COMMAND git -C "${_ascii_chat_libflags_source}" rev-parse HEAD
+        OUTPUT_VARIABLE _asciichat_cached_libflags_revision
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+        RESULT_VARIABLE _asciichat_cached_libflags_result)
+    if(NOT _asciichat_cached_libflags_result EQUAL 0
+            OR NOT _asciichat_cached_libflags_revision MATCHES "^${_asciichat_libflags_revision}($|[[:space:]])")
+        message(FATAL_ERROR
+            "Cached libflags checkout at ${_ascii_chat_libflags_source} is not ${_asciichat_libflags_revision}; "
+            "clear that cache entry so FetchContent can restore the pinned revision.")
+    endif()
     asciichat_fetchcontent_declare(libflags SOURCE_DIR "${_ascii_chat_libflags_source}")
 else()
     asciichat_fetchcontent_declare(libflags
         GIT_REPOSITORY https://github.com/zfogg/libflags.git
-        GIT_TAG main
+        GIT_TAG c51e165b
         SOURCE_DIR "${_ascii_chat_libflags_source}")
 endif()
 FetchContent_MakeAvailable(libflags)
@@ -97,4 +111,7 @@ set_target_properties(${_asciichat_libflags_real_target}
 unset(_libflags_interface_links)
 unset(_asciichat_libflags_real_target)
 unset(_ascii_chat_libflags_source)
+unset(_asciichat_cached_libflags_revision)
+unset(_asciichat_cached_libflags_result)
+unset(_asciichat_libflags_revision)
 unset(_asciichat_libflags_pcre2_include_dirs)

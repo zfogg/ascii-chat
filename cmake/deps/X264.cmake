@@ -105,14 +105,21 @@ if(USE_MUSL)
         endif()
         string(REPLACE ";" " " _x264_standard_libraries "${CMAKE_C_STANDARD_LIBRARIES}")
         set(_x264_ldflags "${CMAKE_EXE_LINKER_FLAGS} ${_x264_standard_libraries}")
+        set(_x264_configure_wrapper "${X264_BUILD_DIR}/configure-wrapper.sh")
+        file(WRITE "${_x264_configure_wrapper}"
+            "#!/bin/sh\n"
+            "set -eu\n"
+            "export CC='${ASCIICHAT_CLANG_EXECUTABLE}'\n"
+            "export CFLAGS='${MUSL_KERNEL_CFLAGS} -fPIC'\n"
+            "export LDFLAGS='${_x264_ldflags}'\n"
+            "exec '${X264_SOURCE_DIR}/configure' \"$@\"\n")
+        file(CHMOD "${_x264_configure_wrapper}"
+            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
+            WORLD_READ WORLD_EXECUTE)
 
         ExternalProject_Add(asciichat-x264-musl
             SOURCE_DIR "${X264_SOURCE_DIR}"
-            CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env
-                "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
-                "CFLAGS=${MUSL_KERNEL_CFLAGS} -fPIC"
-                "LDFLAGS=${_x264_ldflags}"
-                "${X264_SOURCE_DIR}/configure"
+            CONFIGURE_COMMAND "${_x264_configure_wrapper}"
                 --prefix=${X264_PREFIX}
                 --enable-static
                 --disable-shared
@@ -134,6 +141,7 @@ if(USE_MUSL)
             LOG_OUTPUT_ON_FAILURE TRUE)
         unset(_x264_ldflags)
         unset(_x264_standard_libraries)
+        unset(_x264_configure_wrapper)
         message(STATUS "  ${BoldGreen}x264${ColorReset} build scheduled through ExternalProject")
     else()
         message(STATUS "  ${BoldGreen}x264${ColorReset} library found in cache: ${BoldMagenta}${X264_PREFIX}/lib/libx264.a${ColorReset}")
