@@ -17,26 +17,6 @@ function(configure_msvc_pre_project)
     # The x64-windows-static dependency graph uses the static CRT, so use /MT
     # for every native MSVC configuration as well.
     set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreaded CACHE STRING "MSVC runtime library" FORCE)
-    # Native cl.exe cannot parse the repository's defer marker syntax. Use the
-    # standalone Python/libclang transformer for C sources, then compile the
-    # generated sources with cl.exe as usual.
-    find_program(_msvc_python python3 python)
-    find_file(_msvc_libclang libclang.dll
-        PATHS "$ENV{USERPROFILE}/scoop/apps/llvm/current/bin" "C:/Program Files/LLVM/bin")
-    if(NOT _msvc_python OR NOT _msvc_libclang)
-        message(FATAL_ERROR "MSVC builds require Python and LLVM libclang.dll for defer source transformation")
-    endif()
-    set(RECAST_BACKEND NATIVE CACHE STRING "Recast transformer backend" FORCE)
-    if(ASCIICHAT_LLVM_DEV_ROOT)
-        set(RECAST_LLVM_DEV_ROOT "${ASCIICHAT_LLVM_DEV_ROOT}" CACHE PATH
-            "LLVM development root for the native Recast host" FORCE)
-    else()
-        set(RECAST_LLVM_DEV_ROOT "${ASCIICHAT_DEPS_CACHE_ROOT}/llvm-dev-23.1.3" CACHE PATH
-            "LLVM development root for the native Recast host" FORCE)
-    endif()
-    set(RECAST_TOOL_ROOT "${CMAKE_SOURCE_DIR}/deps/recast" CACHE PATH "Recast source tree" FORCE)
-    set(RECAST_PYTHON_COMMAND "${_msvc_python}" CACHE FILEPATH "Recast Python interpreter" FORCE)
-    set(RECAST_LIBCLANG_PATH "${_msvc_libclang}" CACHE FILEPATH "libclang shared library" FORCE)
     # Native cl.exe rejects the generated PCH path form used by the project's
     # cross-compiler PCH helper. MSVC builds remain fully supported without it.
     set(ASCIICHAT_USE_PCH OFF CACHE BOOL "Use precompiled headers" FORCE)

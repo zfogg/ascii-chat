@@ -6,6 +6,30 @@ include("${CMAKE_SOURCE_DIR}/deps/recast/Recast.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/utils/HostTools.cmake")
 include(ExternalProject)
 
+if(MSVC)
+    # Native MSVC uses Recast for defer transformation. Keep all Recast
+    # discovery and tool paths in this dependency module, not the compiler
+    # module; compiler setup should only configure MSVC itself.
+    find_program(_recast_python python3 python REQUIRED)
+    find_file(_recast_libclang libclang.dll
+        PATHS "$ENV{USERPROFILE}/scoop/apps/llvm/current/bin" "C:/Program Files/LLVM/bin"
+        REQUIRED)
+    set(RECAST_BACKEND NATIVE CACHE STRING "Recast transformer backend" FORCE)
+    if(ASCIICHAT_LLVM_DEV_ROOT)
+        set(RECAST_LLVM_DEV_ROOT "${ASCIICHAT_LLVM_DEV_ROOT}" CACHE PATH
+            "LLVM development root for the native Recast host" FORCE)
+    else()
+        set(RECAST_LLVM_DEV_ROOT "${ASCIICHAT_DEPS_CACHE_ROOT}/llvm-dev-23.1.3" CACHE PATH
+            "LLVM development root for the native Recast host" FORCE)
+    endif()
+    set(RECAST_TOOL_ROOT "${CMAKE_SOURCE_DIR}/deps/recast" CACHE PATH
+        "Recast source tree" FORCE)
+    set(RECAST_PYTHON_COMMAND "${_recast_python}" CACHE FILEPATH
+        "Recast Python interpreter" FORCE)
+    set(RECAST_LIBCLANG_PATH "${_recast_libclang}" CACHE FILEPATH
+        "libclang shared library" FORCE)
+endif()
+
 # Musl is a target toolchain. Recast itself is a host-side source transformer
 # and must be built with the runner's native compiler and shared libclang.
 if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
