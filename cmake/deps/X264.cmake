@@ -104,6 +104,7 @@ if(USE_MUSL)
             set(NPROC 4)
         endif()
         string(REPLACE ";" " " _x264_standard_libraries "${CMAKE_C_STANDARD_LIBRARIES}")
+        string(REPLACE "\"" "" _x264_standard_libraries "${_x264_standard_libraries}")
         set(_x264_ldflags "${CMAKE_EXE_LINKER_FLAGS} ${_x264_standard_libraries}")
         set(_x264_configure_wrapper "${X264_BUILD_DIR}/configure-wrapper.sh")
         file(WRITE "${_x264_configure_wrapper}"
