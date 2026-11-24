@@ -274,7 +274,7 @@ endforeach()
 if(APPLE AND TARGET gotel)
     target_sources(gotel PRIVATE
         "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/gotel/c/src/tls.c")
-    target_link_libraries(gotel PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+    target_link_libraries(gotel PRIVATE OpenSSL::SSL OpenSSL::Crypto "-framework CoreFoundation")
 endif()
 
 # gotel's gRPC adapter uses one private URL bit to distinguish its HTTP/2

@@ -26,26 +26,49 @@ if(PLATFORM_IOS OR USE_MUSL)
     set(FONTCONFIG_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/installed/fontconfig")
     set(_asciichat_fontconfig_include_dirs "${FONTCONFIG_PREFIX}/include")
     file(MAKE_DIRECTORY "${_asciichat_fontconfig_include_dirs}")
-    set(_fontconfig_cflags "-fPIC -I${EXPAT_PREFIX}/include -I${ASCIICHAT_FREETYPE_PREFIX}/include/freetype2")
+    set(_expat_prefix "${ASCIICHAT_DEPS_CACHE_DIR}/build/installed/expat")
+    set(_fontconfig_cflags "-fPIC -I${_expat_prefix}/include -I${ASCIICHAT_FREETYPE_PREFIX}/include/freetype2")
     set(_fontconfig_host)
     if(PLATFORM_IOS)
         set(_fontconfig_cc "${CMAKE_C_COMPILER}")
         string(APPEND _fontconfig_cflags " -isysroot ${CMAKE_OSX_SYSROOT} -arch ${CMAKE_OSX_ARCHITECTURES} -miphoneos-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
         set(_fontconfig_host --host=aarch64-apple-darwin)
     else()
-        set(_fontconfig_cc "${ASCIICHAT_CLANG_EXECUTABLE} ${ASCIICHAT_MUSL_TARGET_FLAG}")
+        set(_fontconfig_cc "${ASCIICHAT_CLANG_EXECUTABLE}")
+        string(APPEND _fontconfig_cflags " ${ASCIICHAT_MUSL_TARGET_FLAG}")
     endif()
-    set(_fontconfig_env "${CMAKE_COMMAND}" -E env "CC=${_fontconfig_cc}"
-        "GPERF=${GPERF_EXECUTABLE}"
-        "CFLAGS=${_fontconfig_cflags}"
-        "LDFLAGS=-L${EXPAT_PREFIX}/lib -L${ASCIICHAT_FREETYPE_PREFIX}/lib"
-        "PKG_CONFIG_PATH=${EXPAT_PREFIX}/lib/pkgconfig:${ASCIICHAT_FREETYPE_PREFIX}/lib/pkgconfig"
-        "PKG_CONFIG_LIBDIR=${EXPAT_PREFIX}/lib/pkgconfig:${ASCIICHAT_FREETYPE_PREFIX}/lib/pkgconfig" --)
+    set(_fontconfig_ldflags "-L${_expat_prefix}/lib -L${ASCIICHAT_FREETYPE_PREFIX}/lib")
+    if(USE_MUSL)
+        string(REPLACE ";" " " _fontconfig_standard_libraries "${CMAKE_C_STANDARD_LIBRARIES}")
+        string(REPLACE "\"" "" _fontconfig_standard_libraries "${_fontconfig_standard_libraries}")
+        string(APPEND _fontconfig_ldflags " ${CMAKE_EXE_LINKER_FLAGS} ${_fontconfig_standard_libraries}")
+    endif()
+    if(USE_MUSL)
+        set(_fontconfig_configure_wrapper "${ASCIICHAT_DEPS_CACHE_DIR}/build/fontconfig/configure-wrapper.sh")
+        file(WRITE "${_fontconfig_configure_wrapper}"
+            "#!/bin/sh\n"
+            "set -eu\n"
+            "export CC='${_fontconfig_cc}'\n"
+            "export CFLAGS='${_fontconfig_cflags}'\n"
+            "export LDFLAGS='${_fontconfig_ldflags}'\n"
+            "exec '${ASCIICHAT_DEPS_CACHE_DIR}/build/fontconfig/src/asciichat-fontconfig-musl/configure' \"$@\"\n")
+        file(CHMOD "${_fontconfig_configure_wrapper}"
+            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
+            WORLD_READ WORLD_EXECUTE)
+        set(_fontconfig_configure_command "${_fontconfig_configure_wrapper}")
+    else()
+        set(_fontconfig_configure_command "${CMAKE_COMMAND}" -E env "CC=${_fontconfig_cc}"
+            "GPERF=${GPERF_EXECUTABLE}" "CFLAGS=${_fontconfig_cflags}"
+            "LDFLAGS=${_fontconfig_ldflags}")
+    endif()
+    set(_fontconfig_env "${CMAKE_COMMAND}" -E env "GPERF=${GPERF_EXECUTABLE}"
+        "PKG_CONFIG_PATH=${_expat_prefix}/lib/pkgconfig:${ASCIICHAT_FREETYPE_PREFIX}/lib/pkgconfig"
+        "PKG_CONFIG_LIBDIR=${_expat_prefix}/lib/pkgconfig:${ASCIICHAT_FREETYPE_PREFIX}/lib/pkgconfig" --)
     ExternalProject_Add(asciichat-fontconfig-musl
         URL https://www.freedesktop.org/software/fontconfig/release/fontconfig-2.14.2.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/fontconfig"
-        CONFIGURE_COMMAND ${_fontconfig_env} <SOURCE_DIR>/configure
+        CONFIGURE_COMMAND ${_fontconfig_env} "${_fontconfig_configure_command}"
             --prefix=${FONTCONFIG_PREFIX} --disable-docs --disable-cache-build
             --enable-static --disable-shared
             --with-baseconfigdir=${FONTCONFIG_PREFIX}/etc/fonts ${_fontconfig_host}
