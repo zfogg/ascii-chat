@@ -113,6 +113,7 @@ if(USE_MUSL)
             file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
             ExternalProject_Add(asciichat-bearssl-musl
                 SOURCE_DIR "${BEARSSL_SOURCE_DIR}"
+                BUILD_IN_SOURCE 1
                 CONFIGURE_COMMAND ""
                 BUILD_COMMAND make -j lib
                     "CC=${ASCIICHAT_CLANG_EXECUTABLE}"

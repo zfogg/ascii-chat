@@ -449,6 +449,13 @@ jobs:
           find .deps-cache/Release/musl -path '*/ffbuild/config.log' -type f -print -exec tail -n 160 {} \; 2>/dev/null || echo "No FFmpeg configure log"
           echo ""
           echo "=== ALSA and Fontconfig configure logs ==="
+          echo "--- Fontconfig compiler probe ---"
+          fontconfig_log=".deps-cache/Release/build/fontconfig/src/asciichat-fontconfig-musl-build/config.log"
+          if [[ -f "$fontconfig_log" ]]; then
+            cat "$fontconfig_log"
+          else
+            echo "Fontconfig log not found: $fontconfig_log"
+          fi
           find .deps-cache/Release/musl -type f \( -path '*/alsa*/config.log' -o -path '*/fontconfig*/config.log' \) -print -exec tail -n 220 {} \; 2>/dev/null || echo "No ALSA/Fontconfig configure logs"
           echo ""
           echo "=== util-linux configure logs ==="

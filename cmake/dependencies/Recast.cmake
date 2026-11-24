@@ -66,6 +66,11 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
         endif()
         set(_recast_host_build_command
             "${CMAKE_COMMAND}" --build "<BINARY_DIR>" --target recast)
+        set(_recast_llvm_args)
+        if(RECAST_LLVM_DEV_ROOT)
+            list(APPEND _recast_llvm_args
+                "-DRECAST_LLVM_DEV_ROOT:PATH=${RECAST_LLVM_DEV_ROOT}")
+        endif()
         if(CMAKE_CONFIGURATION_TYPES AND CMAKE_BUILD_TYPE)
             list(APPEND _recast_host_build_command --config "${CMAKE_BUILD_TYPE}")
             set(_recast_host_binary
@@ -83,6 +88,7 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
                 "-DCMAKE_C_COMPILER=${_recast_host_cc}"
                 "-DCMAKE_CXX_COMPILER=${_recast_host_cxx}"
                 "-DCMAKE_EXE_LINKER_FLAGS=${_recast_host_link_flags}"
+                ${_recast_llvm_args}
                 -DASCIICHAT_RECAST_HOST_LINK_REV=4
                 -DRECAST_BUILD_DOCS=OFF -DBUILD_TESTING=OFF
                 -DRECAST_STATIC_LIBCLANG=OFF
@@ -90,6 +96,11 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
             INSTALL_COMMAND ""
             BUILD_BYPRODUCTS "${_recast_host_binary}"
             USES_TERMINAL_CONFIGURE USES_TERMINAL_BUILD)
+        ExternalProject_Add_Step(asciichat-recast-host verify-version
+            COMMAND "${_recast_host_binary}" --version
+            DEPENDEES build
+            ALWAYS TRUE
+            USES_TERMINAL)
         set(RECAST_NATIVE_BINARY "${_recast_host_binary}" CACHE FILEPATH
             "Native host Recast executable used for musl source transformation" FORCE)
 endif()
