@@ -103,13 +103,15 @@ if(USE_MUSL)
         if(NPROC EQUAL 0)
             set(NPROC 4)
         endif()
+        string(REPLACE ";" " " _x264_standard_libraries "${CMAKE_C_STANDARD_LIBRARIES}")
+        set(_x264_ldflags "${CMAKE_EXE_LINKER_FLAGS} ${_x264_standard_libraries}")
 
         ExternalProject_Add(asciichat-x264-musl
             SOURCE_DIR "${X264_SOURCE_DIR}"
             CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env
                 "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
                 "CFLAGS=${MUSL_KERNEL_CFLAGS} -fPIC"
-                "LDFLAGS=${CMAKE_EXE_LINKER_FLAGS} ${CMAKE_C_STANDARD_LIBRARIES}"
+                "LDFLAGS=${_x264_ldflags}"
                 "${X264_SOURCE_DIR}/configure"
                 --prefix=${X264_PREFIX}
                 --enable-static
@@ -130,6 +132,8 @@ if(USE_MUSL)
             BUILD_BYPRODUCTS "${X264_PREFIX}/lib/libx264.a"
             LOG_CONFIGURE TRUE LOG_BUILD TRUE LOG_INSTALL TRUE
             LOG_OUTPUT_ON_FAILURE TRUE)
+        unset(_x264_ldflags)
+        unset(_x264_standard_libraries)
         message(STATUS "  ${BoldGreen}x264${ColorReset} build scheduled through ExternalProject")
     else()
         message(STATUS "  ${BoldGreen}x264${ColorReset} library found in cache: ${BoldMagenta}${X264_PREFIX}/lib/libx264.a${ColorReset}")

@@ -55,15 +55,12 @@ else()
         GIT_TAG main
         SOURCE_DIR "${_ascii_chat_libflags_source}")
 endif()
-if(USE_MUSL OR APPLE)
-    # libflags is embedded in the application package. Disable only libflags'
-    # own install rules; the parent project's install rules remain enabled.
-    set(LIBFLAGS_ENABLE_INSTALL OFF CACHE BOOL
-        "Disable standalone libflags install rules when embedded" FORCE)
-    FetchContent_MakeAvailable(libflags)
-else()
-    FetchContent_MakeAvailable(libflags)
-endif()
+# libflags is embedded in the application package on every native platform.
+# Disable only libflags' own install rules; the parent project's install rules
+# remain enabled.
+set(LIBFLAGS_ENABLE_INSTALL OFF CACHE BOOL
+    "Disable standalone libflags install rules when embedded" FORCE)
+FetchContent_MakeAvailable(libflags)
 if(TARGET libflags::libflags)
     set(ASCIICHAT_LIBFLAGS_TARGET libflags::libflags CACHE INTERNAL
         "libflags target selected by ascii-chat" FORCE)
