@@ -58,10 +58,14 @@ if(EXISTS "${_ascii_chat_libflags_source}/CMakeLists.txt")
         RESULT_VARIABLE _asciichat_cached_libflags_result)
     if(NOT _asciichat_cached_libflags_result EQUAL 0
             OR NOT _asciichat_cached_libflags_revision MATCHES "^${_asciichat_libflags_revision}($|[[:space:]])")
-        message(FATAL_ERROR
-            "Cached libflags checkout at ${_ascii_chat_libflags_source} is not ${_asciichat_libflags_revision}; "
-            "clear that cache entry so FetchContent can restore the pinned revision.")
+        message(STATUS
+            "Rejecting stale libflags checkout at ${_ascii_chat_libflags_source}; "
+            "restoring ${_asciichat_libflags_revision}.")
+        file(REMOVE_RECURSE "${_ascii_chat_libflags_source}")
+        set(_asciichat_cached_libflags_revision)
     endif()
+endif()
+if(EXISTS "${_ascii_chat_libflags_source}/CMakeLists.txt")
     asciichat_fetchcontent_declare(libflags SOURCE_DIR "${_ascii_chat_libflags_source}")
 else()
     asciichat_fetchcontent_declare(libflags
