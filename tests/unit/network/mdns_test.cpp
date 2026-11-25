@@ -246,4 +246,3 @@ TEST_CASE("mdns/disappearing_bonjour_records_do_not_abort_other_discoveries", "[
   }
 }
 #endif
-
