@@ -71,6 +71,9 @@ elseif(USE_MUSL OR PLATFORM_IOS)
         else()
             set(_icu_libs "${ALPINE_LIBCXX_STATIC} ${ALPINE_LIBCXXABI_STATIC} ${ALPINE_LIBUNWIND_STATIC} ${MUSL_LIBGCC_PATH} -lc -lm ${MUSL_LIBDIR}/crtn.o")
         endif()
+        # Cross compilation cannot execute ICU's wchar_t probe on the target;
+        # musl defines wchar_t as a four-byte type.
+        set(_icu_cache_variables ac_cv_sizeof_wchar_t=4 ac_cv_type_wchar_t=yes)
         get_filename_component(_icu_libcxx_libdir "${ALPINE_LIBCXX_STATIC}" DIRECTORY)
         set(_icu_libcxx_include "${_icu_libcxx_libdir}/../include/c++/v1")
         if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
@@ -91,6 +94,7 @@ elseif(USE_MUSL OR PLATFORM_IOS)
         PREFIX "${_icu_cache}/cross"
         CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env "CC=${_icu_cc}" "CXX=${_icu_cxx}"
             "CFLAGS=${_icu_cflags}" "CXXFLAGS=${_icu_cxxflags}" "LDFLAGS=${_icu_ldflags}" "LIBS=${_icu_libs}"
+            ${_icu_cache_variables}
             <SOURCE_DIR>/source/configure ${_icu_options} --host=${_icu_host}
             --with-cross-build=${_icu_host_build} --prefix=${_icu_prefix}
         BUILD_COMMAND ${_icu_make} -j8 INSTALL_COMMAND ${_icu_make} install
