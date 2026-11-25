@@ -690,6 +690,22 @@ runs:
         & (Join-Path $build 'ascii-llvm-dev-probe.exe') --check
         if ($LASTEXITCODE -ne 0) { throw 'LLVM development probe failed to run' }
 
+    - name: Verify Recast uses the staged LLVM bundle (Windows ARM64)
+      if: inputs.os == 'windows' && runner.arch == 'ARM64'
+      shell: pwsh
+      run: |
+        $build = Join-Path $env:RUNNER_TEMP 'recast-llvm-dev-probe'
+        cmake -S deps/recast -B $build -G Ninja `
+          "-DRECAST_LLVM_DEV_ROOT:PATH=$env:ASCIICHAT_LLVM_DEV_ROOT" `
+          "-DRECAST_HOST_CXX=$env:CXX" `
+          "-DCMAKE_CXX_COMPILER=$env:CXX" `
+          '-DRECAST_BUILD_DOCS=OFF' '-DBUILD_TESTING=OFF' '-DRECAST_STATIC_LIBCLANG=OFF'
+        if ($LASTEXITCODE -ne 0) { throw 'Recast ARM64 configure failed' }
+        cmake --build $build --target recast
+        if ($LASTEXITCODE -ne 0) { throw 'Recast ARM64 build failed' }
+        & (Join-Path $build 'bin/recast.exe') --version
+        if ($LASTEXITCODE -ne 0) { throw 'Recast ARM64 version probe failed' }
+
     - name: Verify LLVM development libraries (Unix)
       if: inputs.os == 'ubuntu' || inputs.os == 'macos'
       shell: bash

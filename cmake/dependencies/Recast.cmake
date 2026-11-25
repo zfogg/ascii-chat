@@ -9,6 +9,11 @@ include(ExternalProject)
 if(NOT ASCIICHAT_LLVM_DEV_ROOT AND DEFINED ENV{ASCIICHAT_LLVM_DEV_ROOT})
     set(ASCIICHAT_LLVM_DEV_ROOT "$ENV{ASCIICHAT_LLVM_DEV_ROOT}")
 endif()
+if(NOT ASCIICHAT_LLVM_DEV_ROOT)
+    set(ASCIICHAT_LLVM_DEV_ROOT "${ASCIICHAT_DEPS_CACHE_ROOT}/llvm-dev-23.1.3")
+endif()
+set(RECAST_LLVM_DEV_ROOT "${ASCIICHAT_LLVM_DEV_ROOT}" CACHE PATH
+    "LLVM development root for the native Recast host" FORCE)
 
 if(MSVC)
     # Native MSVC uses Recast for defer transformation. Keep all Recast
@@ -19,13 +24,6 @@ if(MSVC)
         PATHS "$ENV{USERPROFILE}/scoop/apps/llvm/current/bin" "C:/Program Files/LLVM/bin"
         REQUIRED)
     set(RECAST_BACKEND NATIVE CACHE STRING "Recast transformer backend" FORCE)
-    if(ASCIICHAT_LLVM_DEV_ROOT)
-        set(RECAST_LLVM_DEV_ROOT "${ASCIICHAT_LLVM_DEV_ROOT}" CACHE PATH
-            "LLVM development root for the native Recast host" FORCE)
-    else()
-        set(RECAST_LLVM_DEV_ROOT "${ASCIICHAT_DEPS_CACHE_ROOT}/llvm-dev-23.1.3" CACHE PATH
-            "LLVM development root for the native Recast host" FORCE)
-    endif()
     set(RECAST_TOOL_ROOT "${CMAKE_SOURCE_DIR}/deps/recast" CACHE PATH
         "Recast source tree" FORCE)
     set(RECAST_PYTHON_COMMAND "${_recast_python}" CACHE FILEPATH

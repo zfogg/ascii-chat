@@ -215,7 +215,11 @@ function(asciichat_add_contract_test name target)
 endfunction()
 
 # Catch2 test framework setup
-if(BUILD_TESTS AND CATCH2_FOUND)
+if(BUILD_TESTS AND BUILD_CATCH2_TESTS)
+    if(NOT TARGET Catch2::Catch2WithMain)
+        message(FATAL_ERROR
+            "BUILD_CATCH2_TESTS=ON but Catch2::Catch2WithMain was not registered")
+    endif()
     # Catch2 is third-party code. On Windows, keep its locally built static
     # libraries out of the project's sanitizer instrumentation so Catch2's
     # intentional unsigned hash arithmetic does not turn every skipped test
