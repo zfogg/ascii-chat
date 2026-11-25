@@ -9,16 +9,15 @@ include(ExternalProject)
 if(NOT ASCIICHAT_LLVM_DEV_ROOT AND DEFINED ENV{ASCIICHAT_LLVM_DEV_ROOT})
     set(ASCIICHAT_LLVM_DEV_ROOT "$ENV{ASCIICHAT_LLVM_DEV_ROOT}")
 endif()
-if(NOT ASCIICHAT_LLVM_DEV_ROOT)
-    set(ASCIICHAT_LLVM_DEV_ROOT "${ASCIICHAT_DEPS_CACHE_ROOT}/llvm-dev-23.1.3")
-endif()
-set(RECAST_LLVM_DEV_ROOT "${ASCIICHAT_LLVM_DEV_ROOT}" CACHE PATH
-    "LLVM development root for the native Recast host" FORCE)
-
 if(MSVC)
     # Native MSVC uses Recast for defer transformation. Keep all Recast
     # discovery and tool paths in this dependency module, not the compiler
     # module; compiler setup should only configure MSVC itself.
+    if(NOT ASCIICHAT_LLVM_DEV_ROOT)
+        set(ASCIICHAT_LLVM_DEV_ROOT "${ASCIICHAT_DEPS_CACHE_ROOT}/llvm-dev-23.1.3")
+    endif()
+    set(RECAST_LLVM_DEV_ROOT "${ASCIICHAT_LLVM_DEV_ROOT}" CACHE PATH
+        "LLVM development root for the native Recast host" FORCE)
     find_program(_recast_python python3 python REQUIRED)
     find_file(_recast_libclang libclang.dll
         PATHS "$ENV{USERPROFILE}/scoop/apps/llvm/current/bin" "C:/Program Files/LLVM/bin"
@@ -30,6 +29,11 @@ if(MSVC)
         "Recast Python interpreter" FORCE)
     set(RECAST_LIBCLANG_PATH "${_recast_libclang}" CACHE FILEPATH
         "libclang shared library" FORCE)
+elseif(NOT ASCIICHAT_LLVM_DEV_ROOT)
+    # Do not retain the Windows fallback in a Unix build tree; Recast must use
+    # its normal host LLVM discovery unless an explicit root was supplied.
+    unset(RECAST_LLVM_DEV_ROOT CACHE)
+    unset(RECAST_LLVM_DEV_ROOT)
 endif()
 
 # Musl is a target toolchain. Recast itself is a host-side source transformer
