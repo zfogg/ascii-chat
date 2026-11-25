@@ -217,14 +217,13 @@ static int mock_poll(struct pollfd *, nfds_t, int64_t);
 #define DNSServiceRefSockFD mock_descriptor
 #define DNSServiceRefDeallocate mock_deallocate
 #define socket_poll mock_poll
-#define asciichat_mdns_init contract_mdns_init
-#define asciichat_mdns_destroy contract_mdns_destroy
-#define asciichat_mdns_advertise contract_mdns_advertise
-#define asciichat_mdns_unadvertise contract_mdns_unadvertise
-#define asciichat_mdns_query contract_mdns_query
-#define asciichat_mdns_update contract_mdns_update
-#define asciichat_mdns_get_socket contract_mdns_get_socket
-#include "../../../lib/network/mdns/mdns.c"
+#define contract_mdns_init asciichat_mdns_init
+#define contract_mdns_destroy asciichat_mdns_destroy
+#define contract_mdns_advertise asciichat_mdns_advertise
+#define contract_mdns_unadvertise asciichat_mdns_unadvertise
+#define contract_mdns_query asciichat_mdns_query
+#define contract_mdns_update asciichat_mdns_update
+#define contract_mdns_get_socket asciichat_mdns_get_socket
 #undef socket_poll
 
 typedef struct {

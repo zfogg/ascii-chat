@@ -28,7 +28,7 @@ elseif(USE_MUSL OR PLATFORM_IOS)
         # The musl C++ include contract changed from -idirafter to strict
         # libc++/musl isolation; keep that configure state separate from the
         # older host-contaminated cache.
-        set(_icu_cache "${ASCIICHAT_DEPS_CACHE_DIR}/build/icu-musl-v3")
+        set(_icu_cache "${ASCIICHAT_DEPS_CACHE_DIR}/build/icu-musl-v4")
     else()
         set(_icu_cache "${ASCIICHAT_DEPS_CACHE_DIR}/build/icu")
     endif()
@@ -69,7 +69,7 @@ elseif(USE_MUSL OR PLATFORM_IOS)
         if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
             set(_icu_libs "${MUSL_LIBSTDCPP_PATH} ${MUSL_LIBSUPCXX_PATH} ${ALPINE_LIBUNWIND_STATIC} ${MUSL_LIBGCC_PATH} -lc -lm ${MUSL_LIBDIR}/crtn.o")
         else()
-            set(_icu_libs "${ALPINE_LIBCXX_STATIC} ${ALPINE_LIBCXXABI_STATIC} ${ALPINE_LIBUNWIND_STATIC} ${MUSL_LIBGCC_PATH} -lc -lm ${MUSL_LIBDIR}/crtn.o")
+            set(_icu_libs "${ALPINE_LIBCXX_STATIC} ${ALPINE_LIBCXXABI_STATIC} ${ALPINE_LIBUNWIND_STATIC} ${MUSL_COMPILER_RT_PATH} -lc -lm ${MUSL_LIBDIR}/crtn.o")
         endif()
         # Cross compilation cannot execute ICU's wchar_t probe on the target;
         # musl defines wchar_t as a four-byte type.

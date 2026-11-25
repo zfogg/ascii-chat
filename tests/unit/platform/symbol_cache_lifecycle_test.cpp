@@ -8,6 +8,9 @@
 #include <libplatform/system.h>
 #include <ascii-chat/util/pcre2.h>
 #include <stdlib.h>
+
+static const char *const symbol_cache_test_libraries[] = {"libasciichat", NULL};
+
 #ifndef _WIN32
 static char fallback_directory[PLATFORM_MAX_PATH_LENGTH];
 static char *fallback_old_env[3];
@@ -55,7 +58,7 @@ static void fallback_setup(void) {
   REQUIRE((platform_setenv("ADDR2LINE_PATH", script)) == (0));
 }
 TEST_CASE("symbol_cache_fallback/addr2line_handles_mixed_resolution_and_caches_owned_results", "[symbol_cache_fallback] [unit]") {
-  REQUIRE((symbol_cache_init()) == (ASCIICHAT_OK));
+  REQUIRE((symbol_cache_init("ascii-chat", symbol_cache_test_libraries)) == (ASCIICHAT_OK));
   void *addresses[] = {(void *)0x1111, (void *)0x2222, (void *)0x3333, (void *)0x4444};
   char **symbols = symbol_cache_resolve_batch(addresses, 4, NULL);
   REQUIRE((symbols) != nullptr);
@@ -81,7 +84,7 @@ TEST_CASE("symbol_cache_lifecycle/batch_resolution_identifies_exported_functions
   SUCCEED("Windows resolves native symbols through the platform debugger API rather than the POSIX symbolizer names tested here");
   return;
 #endif
-  REQUIRE((symbol_cache_init()) == (ASCIICHAT_OK));
+  REQUIRE((symbol_cache_init("ascii-chat", symbol_cache_test_libraries)) == (ASCIICHAT_OK));
   void *addresses[] = {(void *)symbol_cache_init, (void *)symbol_cache_destroy, (void *)symbol_cache_insert};
   char **first = symbol_cache_resolve_batch(addresses, 3, NULL);
   REQUIRE((first) != nullptr);
@@ -98,7 +101,7 @@ TEST_CASE("symbol_cache_lifecycle/batch_resolution_identifies_exported_functions
 }
 
 TEST_CASE("symbol_cache_lifecycle/cached_names_are_copied_and_updates_do_not_invalidate_previous_results", "[symbol_cache_lifecycle] [unit]") {
-  REQUIRE((symbol_cache_init()) == (ASCIICHAT_OK));
+  REQUIRE((symbol_cache_init("ascii-chat", symbol_cache_test_libraries)) == (ASCIICHAT_OK));
   int key, absent;
   REQUIRE((symbol_cache_lookup(&absent)) == nullptr);
   char name[] = "original_symbol";
