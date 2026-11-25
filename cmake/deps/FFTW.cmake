@@ -76,25 +76,28 @@ find_dependency_library(
 find_library(_asciichat_fftw_float_library NAMES fftw3f)
 if(NOT _asciichat_fftw_float_library)
     include(FetchContent)
-    set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
-    set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-    set(BUILD_TESTS OFF)
-    set(ENABLE_THREADS OFF)
-    set(ENABLE_OPENMP OFF)
-    set(ENABLE_FLOAT ON CACHE BOOL "Build the FFTW single-precision library" FORCE)
-    set(ENABLE_LONG_DOUBLE OFF)
-    set(DISABLE_FORTRAN ON)
-    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-    asciichat_fetchcontent_declare(asciichat_fftw_float
-        SOURCE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/fftw-float-src"
-        BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/fftw-float-build"
-        EXCLUDE_FROM_ALL
-        URL https://www.fftw.org/fftw-3.3.10.tar.gz
-        URL_HASH SHA256=56c932549852cddcfafdab3820b0200c7742675be92179e59e6215b340e26467
-    )
-    FetchContent_MakeAvailable(asciichat_fftw_float)
-    set(_asciichat_fftw_float_library fftw3f)
-    set(_asciichat_fftw_include "${asciichat_fftw_float_SOURCE_DIR}/api")
+    function(asciichat_build_fftw_float)
+        set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+        set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+        set(BUILD_TESTS OFF)
+        set(ENABLE_THREADS OFF)
+        set(ENABLE_OPENMP OFF)
+        set(ENABLE_FLOAT ON CACHE BOOL "Build the FFTW single-precision library" FORCE)
+        set(ENABLE_LONG_DOUBLE OFF)
+        set(DISABLE_FORTRAN ON)
+        set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+        asciichat_fetchcontent_declare(asciichat_fftw_float
+            SOURCE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/fftw-float-src"
+            BINARY_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/build/fftw-float-build"
+            EXCLUDE_FROM_ALL
+            URL https://www.fftw.org/fftw-3.3.10.tar.gz
+            URL_HASH SHA256=56c932549852cddcfafdab3820b0200c7742675be92179e59e6215b340e26467
+        )
+        FetchContent_MakeAvailable(asciichat_fftw_float)
+        set(_asciichat_fftw_float_library fftw3f PARENT_SCOPE)
+        set(_asciichat_fftw_include "${asciichat_fftw_float_SOURCE_DIR}/api" PARENT_SCOPE)
+    endfunction()
+    asciichat_build_fftw_float()
 endif()
 
 # The pkg-config result can include the float library as a bare `fftw3f` item.

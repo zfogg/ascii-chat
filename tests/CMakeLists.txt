@@ -448,6 +448,10 @@ if(BUILD_TESTS)
         ${CMAKE_SOURCE_DIR}/lib/tests/common.c
         ${CMAKE_SOURCE_DIR}/lib/tests/globals.c
         ${CMAKE_SOURCE_DIR}/lib/tests/logging.c)
+    if(APPLE)
+        target_sources(unit_tests PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/unit/network/mdns_fixture.c)
+    endif()
     set_target_properties(unit_tests PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
         SKIP_PRECOMPILE_HEADERS ON
