@@ -6,19 +6,15 @@ set(ASCIICHAT_TEST_FRAMEWORKS "catch2" CACHE STRING
     "Semicolon-separated native test frameworks to enable")
 
 if(NOT BUILD_TESTS)
-    set(BUILD_CATCH2_TESTS OFF)
     return()
 endif()
 
 if(NOT "catch2" IN_LIST ASCIICHAT_TEST_FRAMEWORKS)
-    set(BUILD_CATCH2_TESTS OFF)
     message(STATUS "Catch2 adapter disabled by ASCIICHAT_TEST_FRAMEWORKS=${ASCIICHAT_TEST_FRAMEWORKS}")
     return()
 endif()
 
-set(BUILD_CATCH2_TESTS ON)
-
-if(BUILD_CATCH2_TESTS)
+if(BUILD_TESTS)
     # Windows obtains the pinned package from the vcpkg manifest. Linux and
     # macOS use the same pinned Catch2 release through FetchContent when a
     # system package is not available, so the test contract is identical on

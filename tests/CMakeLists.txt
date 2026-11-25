@@ -215,10 +215,10 @@ function(asciichat_add_contract_test name target)
 endfunction()
 
 # Catch2 test framework setup
-if(BUILD_TESTS AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS)
     if(NOT TARGET Catch2::Catch2WithMain)
         message(FATAL_ERROR
-            "BUILD_CATCH2_TESTS=ON but Catch2::Catch2WithMain was not registered")
+            "BUILD_TESTS=ON but Catch2::Catch2WithMain was not registered")
     endif()
     # Catch2 is third-party code. On Windows, keep its locally built static
     # libraries out of the project's sanitizer instrumentation so Catch2's
@@ -1223,7 +1223,7 @@ endif()
 
 # Available when shared library is built (skipped for musl and Linux Release non-musl)
 if(TARGET ascii-chat-shared)
-if(BUILD_TESTS AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND BUILD_TESTS)
         add_executable(test-source-paths EXCLUDE_FROM_ALL integration/source_paths.cpp)
         asciichat_configure_contract(test-source-paths)
         target_link_libraries(test-source-paths PRIVATE ascii-chat-shared)
@@ -1408,7 +1408,7 @@ if(TARGET ascii-chat-static)
 endif()
 
 # Catch2 buffer ownership, queue, budget, and concurrency contracts.
-if(TARGET ascii-chat-static AND BUILD_TESTS AND BUILD_CATCH2_TESTS)
+if(TARGET ascii-chat-static AND BUILD_TESTS AND BUILD_TESTS)
     add_executable(test-buffer-ownership EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/contracts/buffer/buffer_test.cpp)
     asciichat_configure_contract(test-buffer-ownership)
     target_link_libraries(test-buffer-ownership PRIVATE ascii-chat-static asciichat-mimalloc
@@ -1535,7 +1535,7 @@ if(BUILD_TESTS)
 endif()
 
 # Exercises the production discovery state machine without external services.
-if(BUILD_TESTS AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND BUILD_TESTS)
     add_executable(test-discovery-session-process
         contracts/discovery/session_process_test.cpp
         ${CMAKE_SOURCE_DIR}/src/discovery-service/server.c
@@ -1610,7 +1610,7 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
 endif()
 
 if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
-if(BUILD_TESTS AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND BUILD_TESTS)
         add_executable(test-webrtc-security EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/contracts/network/webrtc_security_test.cpp)
         asciichat_configure_contract(test-webrtc-security)
         target_link_libraries(test-webrtc-security PRIVATE ascii-chat-static asciichat-mimalloc asciichat-libsodium)
@@ -1634,7 +1634,7 @@ if(BUILD_TESTS AND BUILD_CATCH2_TESTS)
             endif()
         endif()
     endif()
-if(BUILD_TESTS AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND BUILD_TESTS)
     add_executable(bench-acip-prepare EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/benchmarks/acip_prepare.c)
     set_source_files_properties(${CMAKE_SOURCE_DIR}/tests/benchmarks/acip_prepare.c PROPERTIES LANGUAGE CXX)
     target_link_libraries(bench-acip-prepare PRIVATE Catch2::Catch2WithMain ascii-chat-static asciichat-mimalloc)
@@ -1644,7 +1644,7 @@ if(BUILD_TESTS AND BUILD_CATCH2_TESTS)
     apply_sanitizers_to_target(bench-acip-prepare)
     target_include_directories(bench-acip-prepare PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
     set_target_properties(bench-acip-prepare PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-if(BUILD_TESTS AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND BUILD_TESTS)
         add_test(NAME bench-acip-prepare
             COMMAND bench-acip-prepare --reporter junit::out=${TEST_XML_DIR}/bench-acip-prepare.xml)
         set_tests_properties(bench-acip-prepare PROPERTIES LABELS "benchmarks;acip_prepare" RUN_SERIAL TRUE)
@@ -1673,7 +1673,7 @@ if(BUILD_TESTS AND BUILD_CATCH2_TESTS)
             add_dependencies(tests test-acip-prepare)
         endif()
     endif()
-if(BUILD_TESTS AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND BUILD_TESTS)
         add_executable(test-network-events EXCLUDE_FROM_ALL
             ${CMAKE_SOURCE_DIR}/tests/contracts/network/event_test.cpp
             ${CMAKE_SOURCE_DIR}/tests/contracts/network/accepted_start_test.cpp)
@@ -1850,7 +1850,7 @@ if(TARGET ascii-chat-static)
     endif()
 endif()
 
-if(TARGET ascii-chat-static AND BUILD_TESTS AND BUILD_CATCH2_TESTS)
+if(TARGET ascii-chat-static AND BUILD_TESTS AND BUILD_TESTS)
     add_executable(test-crypto-policy EXCLUDE_FROM_ALL contracts/crypto/policy_test.cpp)
     asciichat_configure_contract(test-crypto-policy)
     target_link_libraries(test-crypto-policy PRIVATE ascii-chat-static asciichat-mimalloc)
@@ -1873,7 +1873,7 @@ if(TARGET ascii-chat-static AND BUILD_TESTS AND BUILD_CATCH2_TESTS)
 endif()
 
 # Exercise the event-driven loop with real conversion and captured terminal output.
-if(BUILD_TESTS AND TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_TESTS)
     add_executable(test-render-loop contracts/session/render_loop_test.cpp)
     asciichat_configure_contract(test-render-loop)
     # The white-box copy defines render globals; use one static copy rather than
@@ -1888,7 +1888,7 @@ if(BUILD_TESTS AND TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CATCH2_
     set_tests_properties(render-loop PROPERTIES LABELS "unit" TIMEOUT 30)
 endif()
 # White-box discovery NAT refresh checks mock only worker/network boundaries.
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_TESTS)
     add_executable(test-nat-refresh contracts/discovery/nat_refresh_test.cpp)
     asciichat_configure_contract(test-nat-refresh)
     target_link_libraries(test-nat-refresh PRIVATE ascii-chat-static asciichat-mimalloc asciichat-libsodium)
@@ -1903,7 +1903,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
 endif()
 
 # Shared discovery host rendering, including builds without the optional test targets.
-if(TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
+if(TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_TESTS)
     add_executable(test-host-render EXCLUDE_FROM_ALL contracts/session/host_render_test.cpp)
     asciichat_configure_contract(test-host-render)
     target_link_libraries(test-host-render PRIVATE ascii-chat-static asciichat-mimalloc)
@@ -1934,7 +1934,7 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
 endif()
 
 # Fault injection around real participant workers; runs on Windows too.
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_TESTS)
     add_executable(test-review-findings contracts/review_findings_test.cpp)
     asciichat_configure_contract(test-review-findings)
     target_link_libraries(test-review-findings PRIVATE ascii-chat-static asciichat-mimalloc)
@@ -1967,7 +1967,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
     set_tests_properties(runtime-settings PROPERTIES LABELS "unit" TIMEOUT 60)
 endif()
 
-if(BUILD_TESTS AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND BUILD_TESTS)
     add_executable(test-participant-media contracts/session/participant_media_test.cpp)
     asciichat_configure_contract(test-participant-media)
     target_link_libraries(test-participant-media PRIVATE ascii-chat-static asciichat-mimalloc asciichat-libsodium)
@@ -2004,7 +2004,7 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
 endif()
 
 # Server handlers linked with their real media pipeline and fixture-owned application state.
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_TESTS)
     add_executable(test-signaling contracts/network/signaling_test.cpp
         ${CMAKE_SOURCE_DIR}/src/client/webrtc.c)
     asciichat_configure_contract(test-signaling)
@@ -2264,7 +2264,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
 endif()
 
 # Audio device selection and callbacks with a deterministic PortAudio boundary.
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_TESTS)
     add_executable(test-audio-device contracts/audio/device_test.cpp)
     asciichat_configure_contract(test-audio-device)
     # Bind device calls to the executable's deterministic PortAudio boundary.
@@ -2281,7 +2281,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
 endif()
 
 # Discovery host ranking and local wire probes use the production mode implementation.
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_TESTS)
     add_executable(test-nat-quality contracts/discovery/nat_quality_test.cpp
         ${CMAKE_SOURCE_DIR}/src/discovery/nat.c)
     asciichat_configure_contract(test-nat-quality)
@@ -2296,7 +2296,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
 endif()
 
 # Catch2 connection owner tests with real blocked TCP workers.
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_TESTS)
     add_executable(test-session-connections contracts/session/connection_test.cpp contracts/session/protocol_test.cpp
         contracts/session/establish_test.cpp)
     asciichat_configure_contract(test-session-connections)
@@ -2318,7 +2318,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
     set_tests_properties(session-connections PROPERTIES LABELS "integration" TIMEOUT 30)
 endif()
 
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_TESTS)
     add_executable(test-peer-ready contracts/network/peer_ready_test.cpp)
     asciichat_configure_contract(test-peer-ready)
     if(WIN32)
@@ -2359,7 +2359,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND TARGET ascii-chat-static)
         set_tests_properties(terminal-pty PROPERTIES LABELS "integration" TIMEOUT 45)
     endif()
 endif()
-if(BUILD_TESTS AND WIN32 AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND WIN32 AND BUILD_TESTS)
     add_executable(test-terminal-resize standalone/session/terminal_resize_test.cpp)
     target_link_libraries(test-terminal-resize PRIVATE Catch2::Catch2WithMain ascii-chat-static asciichat-mimalloc ws2_32)
     target_include_directories(test-terminal-resize PRIVATE ${CMAKE_BINARY_DIR}/generated ${_asciichat_mimalloc_include})
@@ -2401,7 +2401,7 @@ endif()
 
 if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
     foreach(outbound_fixture backpressure backpressure-live)
-        if(outbound_fixture STREQUAL "backpressure" AND NOT (BUILD_TESTS AND BUILD_CATCH2_TESTS))
+        if(outbound_fixture STREQUAL "backpressure" AND NOT (BUILD_TESTS AND BUILD_TESTS))
             continue()
         endif()
         string(REPLACE "-" "_" outbound_source "${outbound_fixture}")
@@ -2474,7 +2474,7 @@ if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
 endif()
 
 # Catch2 parser and UI paste collector tests; no camera or clipboard mutation.
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_TESTS)
     add_executable(test-media-input contracts/media/input_test.cpp)
     asciichat_configure_contract(test-media-input)
     target_link_libraries(test-media-input PRIVATE ascii-chat-static asciichat-mimalloc asciichat-libsodium)
@@ -2488,7 +2488,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
     endif()
 endif()
 
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_TESTS)
     add_executable(test-media-capture-pacing standalone/media/capture_pacing_test.cpp)
     target_link_libraries(test-media-capture-pacing PRIVATE Catch2::Catch2WithMain)
     target_include_directories(test-media-capture-pacing PRIVATE ${CMAKE_SOURCE_DIR}/src/common)
@@ -2512,7 +2512,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN)
     endif()
 endif()
 
-if(BUILD_TESTS AND WIN32 AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND WIN32 AND BUILD_TESTS)
     add_executable(test-media-clipboard standalone/media/clipboard_windows_test.c)
     target_link_libraries(test-media-clipboard PRIVATE ascii-chat-static asciichat-mimalloc)
     target_include_directories(test-media-clipboard PRIVATE ${CMAKE_BINARY_DIR}/generated)
@@ -2525,7 +2525,7 @@ if(BUILD_TESTS AND WIN32 AND BUILD_CATCH2_TESTS)
     endif()
 endif()
 
-if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_TESTS)
     add_executable(test-media-pipeline contracts/media/pipeline_latest_test.cpp)
     asciichat_configure_contract(test-media-pipeline)
     target_link_libraries(test-media-pipeline PRIVATE ascii-chat-static asciichat-mimalloc asciichat-libsodium)
@@ -2539,7 +2539,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_CATCH2_TESTS)
     endif()
 endif()
 
-if(BUILD_TESTS AND WIN32 AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND WIN32 AND BUILD_TESTS)
     add_executable(test-audio-priority standalone/media/audio_priority_test.cpp)
     target_link_libraries(test-audio-priority PRIVATE Catch2::Catch2WithMain ascii-chat-static asciichat-mimalloc)
     target_include_directories(test-audio-priority PRIVATE ${CMAKE_BINARY_DIR}/generated)
@@ -2552,7 +2552,7 @@ if(BUILD_TESTS AND WIN32 AND BUILD_CATCH2_TESTS)
     endif()
 endif()
 
-if(BUILD_TESTS AND BUILD_CATCH2_TESTS AND TARGET ascii-chat-static)
+if(BUILD_TESTS AND BUILD_TESTS AND TARGET ascii-chat-static)
     foreach(contract errno prepare vectored)
         if(contract STREQUAL "errno")
             set(contract_dir errno)
@@ -2579,7 +2579,7 @@ endif()
 if(BUILD_TESTS AND TARGET ascii-chat)
     # The Catch2 client-transport contract covers this on all native platforms.
     # Keep the standalone variant where its process boundary is required.
-    if(NOT BUILD_TESTS OR NOT BUILD_CATCH2_TESTS)
+    if(NOT BUILD_TESTS OR NOT BUILD_TESTS)
     add_executable(test-client-ping-sentinel standalone/network/client_ping_test.c)
     target_link_libraries(test-client-ping-sentinel PRIVATE ascii-chat-static asciichat-mimalloc)
     target_include_directories(test-client-ping-sentinel PRIVATE ${CMAKE_SOURCE_DIR}/src
@@ -2628,7 +2628,7 @@ if(BUILD_TESTS AND UNIX AND TARGET ascii-chat)
 endif()
 
 # Replace only the Argon2 boundary to observe real shared-handle interleavings.
-if(BUILD_TESTS AND BUILD_CATCH2_TESTS AND TARGET ascii-chat-static)
+if(BUILD_TESTS AND BUILD_TESTS AND TARGET ascii-chat-static)
     add_executable(test-discovery-password-lock contracts/discovery/password_lock_test.cpp)
     target_link_libraries(test-discovery-password-lock PRIVATE ascii-chat-static asciichat-mimalloc
         asciichat-libsodium asciichat-sqlite3)
@@ -2769,7 +2769,7 @@ if(BUILD_TESTS AND TARGET gotel)
     target_include_directories(test-otel-contract PRIVATE ${CMAKE_BINARY_DIR}/generated)
     apply_sanitizers_to_target(test-otel-contract)
     set_target_properties(test-otel-contract PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-if(BUILD_TESTS AND BUILD_CATCH2_TESTS)
+if(BUILD_TESTS AND BUILD_TESTS)
         add_executable(test-otel-adapter-contract contracts/otel/adapter_test.cpp)
         target_sources(test-otel-adapter-contract PRIVATE ${_ascii_gotel_contract_testing_sources})
         asciichat_configure_contract(test-otel-adapter-contract)
