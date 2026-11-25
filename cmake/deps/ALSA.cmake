@@ -29,7 +29,7 @@ if(USE_MUSL)
         message(STATUS "  ALSA library not found in cache, will build from source")
         string(REPLACE ";" " " _alsa_standard_libraries "${CMAKE_C_STANDARD_LIBRARIES}")
         string(REPLACE "\"" "" _alsa_standard_libraries "${_alsa_standard_libraries}")
-        set(_alsa_ldflags "${ASCIICHAT_MUSL_TARGET_FLAG} -fuse-ld=lld -static -L${MUSL_LIBDIR} ${_alsa_standard_libraries}")
+        set(_alsa_ldflags "${CMAKE_EXE_LINKER_FLAGS} ${_alsa_standard_libraries}")
         ExternalProject_Add(asciichat-alsa-musl
             URL https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.12.tar.bz2
             URL_HASH SHA256=4868cd908627279da5a634f468701625be8cc251d84262c7e5b6a218391ad0d2

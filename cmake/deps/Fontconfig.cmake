@@ -24,6 +24,7 @@ if(PLATFORM_IOS OR USE_MUSL)
     include(${CMAKE_CURRENT_LIST_DIR}/Expat.cmake)
     include(ExternalProject)
     set(FONTCONFIG_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/installed/fontconfig")
+    set(_fontconfig_build_prefix "${ASCIICHAT_DEPS_CACHE_DIR}/build/fontconfig-musl-v2")
     set(_asciichat_fontconfig_include_dirs "${FONTCONFIG_PREFIX}/include")
     file(MAKE_DIRECTORY "${_asciichat_fontconfig_include_dirs}")
     set(_expat_prefix "${ASCIICHAT_DEPS_CACHE_DIR}/build/installed/expat")
@@ -35,7 +36,7 @@ if(PLATFORM_IOS OR USE_MUSL)
         set(_fontconfig_host --host=aarch64-apple-darwin)
     else()
         set(_fontconfig_cc "${ASCIICHAT_CLANG_EXECUTABLE}")
-        string(APPEND _fontconfig_cflags " ${ASCIICHAT_MUSL_TARGET_FLAG}")
+        string(APPEND _fontconfig_cflags " ${MUSL_KERNEL_CFLAGS} ${ASCIICHAT_MUSL_TARGET_FLAG}")
     endif()
     set(_fontconfig_ldflags "-L${_expat_prefix}/lib -L${ASCIICHAT_FREETYPE_PREFIX}/lib")
     if(USE_MUSL)
@@ -44,14 +45,15 @@ if(PLATFORM_IOS OR USE_MUSL)
         string(APPEND _fontconfig_ldflags " ${CMAKE_EXE_LINKER_FLAGS} ${_fontconfig_standard_libraries}")
     endif()
     if(USE_MUSL)
-        set(_fontconfig_configure_wrapper "${ASCIICHAT_DEPS_CACHE_DIR}/build/fontconfig/configure-wrapper.sh")
+        set(_fontconfig_configure_wrapper "${_fontconfig_build_prefix}/configure-wrapper.sh")
+        file(MAKE_DIRECTORY "${_fontconfig_build_prefix}")
         file(WRITE "${_fontconfig_configure_wrapper}"
             "#!/bin/sh\n"
             "set -eu\n"
             "export CC='${_fontconfig_cc}'\n"
             "export CFLAGS='${_fontconfig_cflags}'\n"
             "export LDFLAGS='${_fontconfig_ldflags}'\n"
-            "exec '${ASCIICHAT_DEPS_CACHE_DIR}/build/fontconfig/src/asciichat-fontconfig-musl/configure' \"$@\"\n")
+            "exec '${_fontconfig_build_prefix}/src/asciichat-fontconfig-musl/configure' \"$@\"\n")
         file(CHMOD "${_fontconfig_configure_wrapper}"
             PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
             WORLD_READ WORLD_EXECUTE)
@@ -67,7 +69,7 @@ if(PLATFORM_IOS OR USE_MUSL)
     ExternalProject_Add(asciichat-fontconfig-musl
         URL https://www.freedesktop.org/software/fontconfig/release/fontconfig-2.14.2.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/build/fontconfig"
+        PREFIX "${_fontconfig_build_prefix}"
         CONFIGURE_COMMAND ${_fontconfig_env} "${_fontconfig_configure_command}"
             --prefix=${FONTCONFIG_PREFIX} --disable-docs --disable-cache-build
             --enable-static --disable-shared
