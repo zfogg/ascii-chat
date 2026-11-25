@@ -202,7 +202,10 @@ if(USE_MUSL)
     message(STATUS "Configuring ${BoldBlue}libsodium${ColorReset} from source...")
 
     set(LIBSODIUM_PREFIX "${MUSL_DEPS_DIR_STATIC}/libsodium")
-    set(LIBSODIUM_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/libsodium-build")
+    set(LIBSODIUM_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/libsodium-build-v2")
+    string(REPLACE ";" " " _libsodium_standard_libraries "${CMAKE_C_STANDARD_LIBRARIES}")
+    string(REPLACE "\"" "" _libsodium_standard_libraries "${_libsodium_standard_libraries}")
+    set(_libsodium_ldflags "${CMAKE_EXE_LINKER_FLAGS} ${_libsodium_standard_libraries}")
 
     # Always rebuild libsodium to ensure -fPIC compilation for shared library linking
     # (ExternalProject cache check happens regardless, but this forces rebuild of external project)
@@ -218,11 +221,13 @@ if(USE_MUSL)
         # Use --with-pic to force position-independent code generation.
         CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env
             "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
-            "CFLAGS=${ASCIICHAT_MUSL_TARGET_FLAG} -fPIC"
-            <SOURCE_DIR>/configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared --with-pic
+            "CFLAGS=${MUSL_KERNEL_CFLAGS} ${ASCIICHAT_MUSL_TARGET_FLAG} -fPIC"
+            "LDFLAGS=${_libsodium_ldflags}"
+            <SOURCE_DIR>/configure --host=${MUSL_TARGET} --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared --with-pic
         BUILD_COMMAND ${CMAKE_COMMAND} -E env
             "CC=${ASCIICHAT_CLANG_EXECUTABLE}"
-            "CFLAGS=${ASCIICHAT_MUSL_TARGET_FLAG} -fPIC"
+            "CFLAGS=${MUSL_KERNEL_CFLAGS} ${ASCIICHAT_MUSL_TARGET_FLAG} -fPIC"
+            "LDFLAGS=${_libsodium_ldflags}"
             make -j
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a

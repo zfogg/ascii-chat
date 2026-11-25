@@ -13,10 +13,10 @@ def cases():
     yield ["--version"], True, "ascii-chat v", {}
     for mode in ("client", "server"):
         for address in ("127.0.0.1", "::1", ""):
-            yield [mode, "--webrtc-bind-address", address, "--show-capabilities"], True, "Terminal Capabilities:", {}
-        yield [mode, "--show-capabilities"], True, "Terminal Capabilities:", {"ASCII_CHAT_WEBRTC_BIND_ADDRESS": "::1"}
+            yield ["--webrtc-bind-address", address, "--show-capabilities", mode], True, "Terminal Capabilities:", {}
+        yield ["--show-capabilities", mode], True, "Terminal Capabilities:", {"ASCII_CHAT_WEBRTC_BIND_ADDRESS": "::1"}
         for address in ("localhost", "[::1]", "127.0.0.1:5000", "256.0.0.1"):
-            yield [mode, "--webrtc-bind-address", address, "--show-capabilities"], False, "webrtc-bind-address", {}
+            yield ["--webrtc-bind-address", address, "--show-capabilities", mode], False, "webrtc-bind-address", {}
     for address in ("localhost", "[::1]", "127.0.0.1:5000", "256.0.0.1"):
         yield ["--webrtc-bind-address", address, "--test-pattern", "--audio=false"], False, "webrtc-bind-address", {}
     yield ["--test-pattern", "--audio=false"], False, "webrtc-bind-address", {"ASCII_CHAT_WEBRTC_BIND_ADDRESS": "localhost"}
@@ -49,9 +49,9 @@ def cases():
             yield [*mode, "--test-pattern", visual], False, "--test-pattern cannot be used with --waveform or --fft", {}
     yield ["--show-capabilities"], True, "Terminal Capabilities:", {}
     for mode in ("mirror", "client"):
-        yield [mode, "--width", "100", "--height", "30", "--show-capabilities"], True, "Terminal Size: 100x30", {}
+            yield ["--width", "100", "--height", "30", "--show-capabilities", mode], True, "Terminal Size: 100x30", {}
     for mode in ("server", "discovery-service"):
-        yield [mode, "--show-capabilities"], True, "Terminal Capabilities:", {}
+            yield ["--show-capabilities", mode], True, "Terminal Capabilities:", {}
     for prefix in (["--no-check-update"], ["--quiet", "--verbose", "2"], ["--color=false"], ["--log-level", "error"]):
         yield [*prefix, "mirror", "--width", "100", "--height", "30", "--show-capabilities"], True, "Terminal Size: 100x30", {}
     yield ["mirror", "--width", "100", "--height", "30", "--show-capabilities"], True, "Terminal Size: 100x30", {"ASCII_CHAT_WIDTH": "80", "ASCII_CHAT_HEIGHT": "24"}

@@ -6,6 +6,10 @@ include("${CMAKE_SOURCE_DIR}/deps/recast/Recast.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/utils/HostTools.cmake")
 include(ExternalProject)
 
+if(NOT ASCIICHAT_LLVM_DEV_ROOT AND DEFINED ENV{ASCIICHAT_LLVM_DEV_ROOT})
+    set(ASCIICHAT_LLVM_DEV_ROOT "$ENV{ASCIICHAT_LLVM_DEV_ROOT}")
+endif()
+
 if(MSVC)
     # Native MSVC uses Recast for defer transformation. Keep all Recast
     # discovery and tool paths in this dependency module, not the compiler

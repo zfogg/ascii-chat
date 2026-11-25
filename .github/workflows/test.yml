@@ -974,7 +974,7 @@ jobs:
           ./build/bin/ascii-chat server --help
           ./build/bin/ascii-chat client --help
           # Test basic server startup (short timeout)
-          timeout 2s ./build/bin/ascii-chat server --log-file /tmp/server_test.log || true
+          timeout 2s ./build/bin/ascii-chat --log-file /tmp/server_test.log server || true
           echo "Binary help and mode tests passed"
 
       - name: Test client capabilities
@@ -982,7 +982,7 @@ jobs:
           TERM: xterm-256color
         run: |
           # Test client capabilities detection
-          ./build/bin/ascii-chat client --show-capabilities
+          ./build/bin/ascii-chat --show-capabilities client
           echo "✅ Client capability detection test passed"
 
       - name: Save build cache (functional-tests)
