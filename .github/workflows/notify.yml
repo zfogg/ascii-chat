@@ -27,9 +27,22 @@ jobs:
           PUSHOVER_TITLE: ${{ inputs.subject }}
           PUSHOVER_MESSAGE: ${{ inputs.body }}
         run: |
-          curl --fail --silent --show-error --request POST \
-            --form-string "token=$PUSHOVER_TOKEN" \
-            --form-string "user=$PUSHOVER_USER" \
-            --form-string "title=$PUSHOVER_TITLE" \
-            --form-string "message=$PUSHOVER_MESSAGE" \
-            https://api.pushover.net/1/messages.json
+          if [[ -z "$PUSHOVER_TOKEN" || -z "$PUSHOVER_USER" ]]; then
+            echo "Pushover credentials were not passed to the reusable workflow" >&2
+            exit 1
+          fi
+          response=$(mktemp)
+          trap 'rm -f "$response"' EXIT
+          status=$(curl --silent --show-error --retry 3 --retry-all-errors \
+            --output "$response" --write-out '%{http_code}' --request POST \
+            --data-urlencode "token=$PUSHOVER_TOKEN" \
+            --data-urlencode "user=$PUSHOVER_USER" \
+            --data-urlencode "title=$PUSHOVER_TITLE" \
+            --data-urlencode "message=$PUSHOVER_MESSAGE" \
+            https://api.pushover.net/1/messages.json)
+          if [[ "$status" != 2* ]]; then
+            echo "Pushover API returned HTTP $status:" >&2
+            sed 's/"token"[[:space:]]*:[[:space:]]*"[^"]*"/"token":"[redacted]"/g; s/"user"[[:space:]]*:[[:space:]]*"[^"]*"/"user":"[redacted]"/g' "$response" >&2
+            exit 1
+          fi
+          cat "$response"
