@@ -573,8 +573,8 @@ if ! command -v vp >/dev/null 2>&1; then
   run_as_user bash -c 'curl -fsSL https://vite.plus | bash'
 fi
 if run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; command -v vp >/dev/null 2>&1' 2>/dev/null; then
-  run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; cd "$1" && vp install --ignore-scripts' bash "$PROJECT_ROOT"
-  run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; cd "$1" && vp install --ignore-scripts' bash "$PROJECT_ROOT/web"
+  # The workspace has one lockfile at its root; do not resolve web/ again.
+  run_as_user bash -lc 'if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/vite-plus/env"; fi; cd "$1" && vp install --frozen-lockfile --ignore-scripts' bash "$PROJECT_ROOT"
 else
   echo >&2 "Vite+ installed; open a new shell and run vp install in the repository and web directories."
 fi

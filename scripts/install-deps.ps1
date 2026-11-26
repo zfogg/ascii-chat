@@ -414,13 +414,8 @@ if (Get-Command vp -ErrorAction SilentlyContinue) {
     $RepoRoot = Split-Path $PSScriptRoot -Parent
     Push-Location $RepoRoot
     try {
-        & vp install --ignore-scripts
+        & vp install --frozen-lockfile --ignore-scripts
         if ($LASTEXITCODE -ne 0) { throw 'Root Vite+ install failed' }
-        Push-Location web
-        try {
-            & vp install --ignore-scripts
-            if ($LASTEXITCODE -ne 0) { throw 'Web Vite+ install failed' }
-        } finally { Pop-Location }
     } finally { Pop-Location }
 } else {
     Write-Warning 'Open a new shell and run vp install in the repository and web directories.'
