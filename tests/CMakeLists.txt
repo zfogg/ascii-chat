@@ -734,7 +734,7 @@ endif()
         endif()
 
         # Link against shared library which contains all code
-        target_link_libraries(${test_exe_name}
+        target_link_libraries(${test_exe_name} PRIVATE
             ${_ascii_tests_library}
             asciichat-project-includes
             ascii-chat-runtime
@@ -744,11 +744,11 @@ endif()
 
         if(test_exe_name STREQUAL "test_unit_log_json")
             target_include_directories(${test_exe_name} PRIVATE )
-            target_link_libraries(${test_exe_name} asciichat-yyjson)
+            target_link_libraries(${test_exe_name} PRIVATE asciichat-yyjson)
         endif()
 
         if(USE_MIMALLOC)
-            target_link_libraries(${test_exe_name} asciichat-mimalloc)
+            target_link_libraries(${test_exe_name} PRIVATE asciichat-mimalloc)
         endif()
 
         # Coverage builds need the profile runtime linked into test executables
@@ -784,25 +784,25 @@ endif()
                 endif()
             endif()
             if(_CLANG_PROFILE_LIB)
-                target_link_libraries(${test_exe_name} "${_CLANG_PROFILE_LIB}")
+                target_link_libraries(${test_exe_name} PRIVATE "${_CLANG_PROFILE_LIB}")
             endif()
         endif()
 
         if(test_exe_name STREQUAL "test_unit_otel_otel")
-            target_link_libraries(${test_exe_name} gotel::testing)
+            target_link_libraries(${test_exe_name} PRIVATE gotel::testing)
         endif()
 
         # The regex fixtures call PCRE2 directly to prepare and inspect native patterns.
         if(test_exe_name MATCHES "^test_unit_util_regex_(fallback|match)$")
             target_include_directories(${test_exe_name} PRIVATE )
-            target_link_libraries(${test_exe_name} asciichat-pcre2)
+            target_link_libraries(${test_exe_name} PRIVATE asciichat-pcre2)
         endif()
 
         target_link_directories(${test_exe_name} PRIVATE )
 
         # External dependencies needed because shared library has them as undefined symbols
         # (normal for dylibs - symbols resolved at runtime)
-            target_link_libraries(${test_exe_name}
+            target_link_libraries(${test_exe_name} PRIVATE
             asciichat-libsodium
             asciichat-zstd
             asciichat-opus
@@ -817,7 +817,7 @@ endif()
             target_link_libraries(${test_exe_name} PRIVATE c++)
         endif()
         if(APPLE)
-            target_link_libraries(${test_exe_name}
+            target_link_libraries(${test_exe_name} PRIVATE
                 asciichat-portaudio
                 ${COREAUDIO_FRAMEWORK}
                 ${AUDIOUNIT_FRAMEWORK}
@@ -825,27 +825,27 @@ endif()
                 ${CORESERVICES_FRAMEWORK}
             )
         elseif(PLATFORM_LINUX AND JACK_LIB)
-            target_link_libraries(${test_exe_name}
+            target_link_libraries(${test_exe_name} PRIVATE
                 asciichat-portaudio
                 ${JACK_LIB}
             )
         else()
-            target_link_libraries(${test_exe_name} asciichat-portaudio)
+            target_link_libraries(${test_exe_name} PRIVATE asciichat-portaudio)
         endif()
         if(TARGET asciichat-miniupnpc)
-            target_link_libraries(${test_exe_name} asciichat-miniupnpc)
+            target_link_libraries(${test_exe_name} PRIVATE asciichat-miniupnpc)
             if(NATPMP_LIBRARY)
                 target_include_directories(${test_exe_name} PRIVATE ${NATPMP_INCLUDE_DIR})
-                target_link_libraries(${test_exe_name} ${NATPMP_LIBRARY})
+                target_link_libraries(${test_exe_name} PRIVATE ${NATPMP_LIBRARY})
             endif()
         endif()
         if(TARGET asciichat-bearssl)
-            target_link_libraries(${test_exe_name} asciichat-bearssl)
+            target_link_libraries(${test_exe_name} PRIVATE asciichat-bearssl)
         endif()
 
         # Add query runtime library if available
         if(TARGET ascii-query-runtime)
-            target_link_libraries(${test_exe_name} ascii-query-runtime)
+            target_link_libraries(${test_exe_name} PRIVATE ascii-query-runtime)
         endif()
 
         # Catch2's prebuilt Windows libraries are intentionally unsanitized;
@@ -1227,7 +1227,7 @@ endif()
 
 # Available when shared library is built (skipped for musl and Linux Release non-musl)
 if(TARGET ascii-chat-shared)
-if(BUILD_TESTS AND BUILD_TESTS)
+if(BUILD_TESTS)
         add_executable(test-source-paths EXCLUDE_FROM_ALL integration/source_paths.cpp)
         asciichat_configure_contract(test-source-paths)
         target_link_libraries(test-source-paths PRIVATE ascii-chat-shared)
@@ -1412,7 +1412,7 @@ if(TARGET ascii-chat-static)
 endif()
 
 # Catch2 buffer ownership, queue, budget, and concurrency contracts.
-if(TARGET ascii-chat-static AND BUILD_TESTS AND BUILD_TESTS)
+if(TARGET ascii-chat-static AND BUILD_TESTS)
     add_executable(test-buffer-ownership EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/contracts/buffer/buffer_test.cpp)
     asciichat_configure_contract(test-buffer-ownership)
     target_link_libraries(test-buffer-ownership PRIVATE ascii-chat-static asciichat-mimalloc
@@ -1539,7 +1539,7 @@ if(BUILD_TESTS)
 endif()
 
 # Exercises the production discovery state machine without external services.
-if(BUILD_TESTS AND BUILD_TESTS)
+if(BUILD_TESTS)
     add_executable(test-discovery-session-process
         contracts/discovery/session_process_test.cpp
         ${CMAKE_SOURCE_DIR}/src/discovery-service/server.c
@@ -1614,7 +1614,7 @@ if(BUILD_TESTS AND TARGET ascii-chat AND NOT EMSCRIPTEN)
 endif()
 
 if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
-if(BUILD_TESTS AND BUILD_TESTS)
+if(BUILD_TESTS)
         add_executable(test-webrtc-security EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/contracts/network/webrtc_security_test.cpp)
         asciichat_configure_contract(test-webrtc-security)
         target_link_libraries(test-webrtc-security PRIVATE ascii-chat-static asciichat-mimalloc asciichat-libsodium)
@@ -1638,7 +1638,7 @@ if(BUILD_TESTS AND BUILD_TESTS)
             endif()
         endif()
     endif()
-if(BUILD_TESTS AND BUILD_TESTS)
+if(BUILD_TESTS)
     add_executable(bench-acip-prepare EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/tests/benchmarks/acip_prepare.c)
     set_source_files_properties(${CMAKE_SOURCE_DIR}/tests/benchmarks/acip_prepare.c PROPERTIES LANGUAGE CXX)
     target_link_libraries(bench-acip-prepare PRIVATE Catch2::Catch2WithMain ascii-chat-static asciichat-mimalloc)
@@ -1648,7 +1648,7 @@ if(BUILD_TESTS AND BUILD_TESTS)
     apply_sanitizers_to_target(bench-acip-prepare)
     target_include_directories(bench-acip-prepare PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/generated)
     set_target_properties(bench-acip-prepare PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-if(BUILD_TESTS AND BUILD_TESTS)
+if(BUILD_TESTS)
         add_test(NAME bench-acip-prepare
             COMMAND bench-acip-prepare --reporter junit::out=${TEST_XML_DIR}/bench-acip-prepare.xml)
         set_tests_properties(bench-acip-prepare PROPERTIES LABELS "benchmarks;acip_prepare" RUN_SERIAL TRUE)
@@ -1677,7 +1677,7 @@ if(BUILD_TESTS AND BUILD_TESTS)
             add_dependencies(tests test-acip-prepare)
         endif()
     endif()
-if(BUILD_TESTS AND BUILD_TESTS)
+if(BUILD_TESTS)
         add_executable(test-network-events EXCLUDE_FROM_ALL
             ${CMAKE_SOURCE_DIR}/tests/contracts/network/event_test.cpp
             ${CMAKE_SOURCE_DIR}/tests/contracts/network/accepted_start_test.cpp)
@@ -1854,7 +1854,7 @@ if(TARGET ascii-chat-static)
     endif()
 endif()
 
-if(TARGET ascii-chat-static AND BUILD_TESTS AND BUILD_TESTS)
+if(TARGET ascii-chat-static AND BUILD_TESTS)
     add_executable(test-crypto-policy EXCLUDE_FROM_ALL contracts/crypto/policy_test.cpp)
     asciichat_configure_contract(test-crypto-policy)
     target_link_libraries(test-crypto-policy PRIVATE ascii-chat-static asciichat-mimalloc)
@@ -1971,7 +1971,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN AND BUILD_TESTS)
     set_tests_properties(runtime-settings PROPERTIES LABELS "unit" TIMEOUT 60)
 endif()
 
-if(BUILD_TESTS AND BUILD_TESTS)
+if(BUILD_TESTS)
     add_executable(test-participant-media contracts/session/participant_media_test.cpp)
     asciichat_configure_contract(test-participant-media)
     target_link_libraries(test-participant-media PRIVATE ascii-chat-static asciichat-mimalloc asciichat-libsodium)
@@ -2405,7 +2405,7 @@ endif()
 
 if(TARGET ascii-chat-static AND NOT EMSCRIPTEN)
     foreach(outbound_fixture backpressure backpressure-live)
-        if(outbound_fixture STREQUAL "backpressure" AND NOT (BUILD_TESTS AND BUILD_TESTS))
+        if(outbound_fixture STREQUAL "backpressure" AND NOT (BUILD_TESTS))
             continue()
         endif()
         string(REPLACE "-" "_" outbound_source "${outbound_fixture}")
@@ -2556,7 +2556,7 @@ if(BUILD_TESTS AND WIN32 AND BUILD_TESTS)
     endif()
 endif()
 
-if(BUILD_TESTS AND BUILD_TESTS AND TARGET ascii-chat-static)
+if(BUILD_TESTS AND TARGET ascii-chat-static)
     foreach(contract errno prepare vectored)
         if(contract STREQUAL "errno")
             set(contract_dir errno)
@@ -2632,7 +2632,7 @@ if(BUILD_TESTS AND UNIX AND TARGET ascii-chat)
 endif()
 
 # Replace only the Argon2 boundary to observe real shared-handle interleavings.
-if(BUILD_TESTS AND BUILD_TESTS AND TARGET ascii-chat-static)
+if(BUILD_TESTS AND TARGET ascii-chat-static)
     add_executable(test-discovery-password-lock contracts/discovery/password_lock_test.cpp)
     target_link_libraries(test-discovery-password-lock PRIVATE ascii-chat-static asciichat-mimalloc
         asciichat-libsodium asciichat-sqlite3)
@@ -2773,7 +2773,7 @@ if(BUILD_TESTS AND TARGET gotel)
     target_include_directories(test-otel-contract PRIVATE ${CMAKE_BINARY_DIR}/generated)
     apply_sanitizers_to_target(test-otel-contract)
     set_target_properties(test-otel-contract PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-if(BUILD_TESTS AND BUILD_TESTS)
+if(BUILD_TESTS)
         add_executable(test-otel-adapter-contract contracts/otel/adapter_test.cpp)
         target_sources(test-otel-adapter-contract PRIVATE ${_ascii_gotel_contract_testing_sources})
         asciichat_configure_contract(test-otel-adapter-contract)
