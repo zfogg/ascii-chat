@@ -1086,9 +1086,21 @@ jobs:
           fi
           source_sha256="$(sha256sum "$source_tarball" | cut -d' ' -f1)"
           generated_notes="$(gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$RELEASE_TAG")"
+          previous_tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD^ 2>/dev/null || true)"
+          if [[ -z "$previous_tag" ]]; then
+            previous_tag="initial release"
+          fi
           {
+            printf 'Video chat in your terminal.\n\n'
+            printf '## Downloads\n\n'
+            printf 'Choose `amd64` for x86-64 computers or `arm64` for ARM64 computers. Runtime packages contain the executable, shell completions, and the `ascii-chat(1)` and `ascii-chat(5)` manuals; `libasciichat` packages contain development files.\n\n'
+            printf '%s\n\n' '- **Linux:** choose the `.deb`, `.rpm`, `.tar.gz`, or self-extracting `.sh` runtime package for your architecture. Linux executables are statically linked with musl and do not require third-party shared libraries.'
+            printf '%s\n\n' '- **macOS:** choose the `.pkg`, `.tar.gz`, or `.sh` runtime package for your architecture. Only Apple system libraries are permitted.'
+            printf '%s\n\n' '- **Windows:** choose the `.zip` runtime package for your architecture, or the amd64 `.msi` installer. Windows ARM64 ships as ZIP because WiX v3 cannot produce an ARM64 MSI.'
+            printf 'For example, install Debian/Ubuntu with `sudo dpkg -i ascii-chat-%s-amd64.deb`, install macOS with the matching `.pkg`, or extract the archive for your platform and run `ascii-chat --help`. Linux and macOS self-extracting installers accept `--prefix=/usr/local`.\n\n' "${RELEASE_TAG#v}"
+            printf '## Improvements breakdown: %s -> %s\n\n' "$previous_tag" "$RELEASE_TAG"
             jq -r '.body' <<<"$generated_notes"
-            printf '\n## Source Tarball\n\n- `%s`\n- SHA256: `%s`\n' "${source_tarball##*/}" "$source_sha256"
+            printf '\n## Source Tarball\n\nFor package maintainers (Homebrew, AUR, etc.):\n- `%s`\n- SHA256: `%s`\n' "${source_tarball##*/}" "$source_sha256"
           } > release-notes.md
           gh release create "$RELEASE_TAG" "${assets[@]}" \
             --repo "$GITHUB_REPOSITORY" \
