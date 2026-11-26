@@ -103,9 +103,12 @@ submit_pr() {
     gh pr edit "$pr" --repo "$upstream" --title "$title" --body "Automated update for ascii-chat $VERSION."
   else
     if ! output="$(gh pr create --repo "$upstream" --head "$head" --base master --title "$title" --body "Automated update for ascii-chat $VERSION" 2>&1)"; then
-      if [[ "$output" != *"already exists"* ]]; then
+      if [[ "$output" != *"already exists"* && "$output" != *"No commits between"* ]]; then
         echo "$output" >&2
         exit 1
+      fi
+      if [[ "$output" == *"No commits between"* ]]; then
+        echo "No $TARGET PR needed for $VERSION; the branch already matches the base."
       fi
     fi
   fi
@@ -153,9 +156,12 @@ case "$TARGET" in
       gh pr edit "$pr" --repo microsoft/winget-pkgs --title "$title" --body "Automated update for ascii-chat $VERSION."
     else
       if ! output="$(gh pr create --repo microsoft/winget-pkgs --head "$head" --base master --title "$title" --body "Automated update for ascii-chat $VERSION" 2>&1)"; then
-        if [[ "$output" != *"already exists"* ]]; then
+        if [[ "$output" != *"already exists"* && "$output" != *"No commits between"* ]]; then
           echo "$output" >&2
           exit 1
+        fi
+        if [[ "$output" == *"No commits between"* ]]; then
+          echo "No winget PR needed for $VERSION; the branch already matches the base."
         fi
       fi
     fi
