@@ -1086,7 +1086,8 @@ jobs:
           fi
           source_sha256="$(sha256sum "$source_tarball" | cut -d' ' -f1)"
           generated_notes="$(gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$RELEASE_TAG")"
-          previous_tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD^ 2>/dev/null || true)"
+          previous_tag="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,isDraft,isPrerelease,publishedAt |
+            jq -r 'map(select(.isDraft == false and .isPrerelease == false)) | sort_by(.publishedAt) | last.tagName // empty')"
           if [[ -z "$previous_tag" ]]; then
             previous_tag="initial release"
           fi
@@ -1099,6 +1100,25 @@ jobs:
             printf '%s\n\n' '- **Windows:** choose the `.zip` runtime package for your architecture, or the amd64 `.msi` installer. Windows ARM64 ships as ZIP because WiX v3 cannot produce an ARM64 MSI.'
             printf 'For example, install Debian/Ubuntu with `sudo dpkg -i ascii-chat-%s-amd64.deb`, install macOS with the matching `.pkg`, or extract the archive for your platform and run `ascii-chat --help`. Linux and macOS self-extracting installers accept `--prefix=/usr/local`.\n\n' "${RELEASE_TAG#v}"
             printf '## Improvements breakdown: %s -> %s\n\n' "$previous_tag" "$RELEASE_TAG"
+            if [[ "$previous_tag" != "initial release" ]]; then
+              for section in \
+                'Features|^(feat|feature)(\([^)]*\))?:' \
+                'Bug Fixes|^(fix|bugfix)(\([^)]*\))?:' \
+                'Build System and Dependencies|(^|: )(cmake|build|musl|deps?|dependency|release|package)' \
+                'Testing|^(test|tests)(\([^)]*\))?:' \
+                'Documentation|^(docs?|documentation)(\([^)]*\))?:'; do
+                section_name="${section%%|*}"
+                section_pattern="${section#*|}"
+                changes="$(git log --format='- %s' "$previous_tag"..HEAD --grep="$section_pattern" -E || true)"
+                if [[ -n "$changes" ]]; then
+                  printf '### %s\n\n%s\n\n' "$section_name" "$changes"
+                fi
+              done
+              other_changes="$(git log --format='- %s' "$previous_tag"..HEAD --invert-grep --grep='^(feat|feature|fix|bugfix|test|tests|docs?|documentation)(\([^)]*\))?:' -E --grep='(^|: )(cmake|build|musl|deps?|dependency|release|package)' -E || true)"
+              if [[ -n "$other_changes" ]]; then
+                printf '### Other Changes\n\n%s\n\n' "$other_changes"
+              fi
+            fi
             jq -r '.body' <<<"$generated_notes"
             printf '\n## Source Tarball\n\nFor package maintainers (Homebrew, AUR, etc.):\n- `%s`\n- SHA256: `%s`\n' "${source_tarball##*/}" "$source_sha256"
           } > release-notes.md
