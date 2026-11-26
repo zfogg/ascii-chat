@@ -80,7 +80,11 @@ render_template() {
 submit_pr() {
   local fork="$1" upstream="$2" branch="$3" title="$4" directory="$5"
   git clone --depth 1 "https://x-access-token:$TOKEN@github.com/$fork.git" "$WORK_DIR/repo"
-  git -C "$WORK_DIR/repo" checkout -B "$branch"
+  if git -C "$WORK_DIR/repo" fetch --quiet origin "refs/heads/$branch:refs/remotes/origin/$branch" 2>/dev/null; then
+    git -C "$WORK_DIR/repo" checkout -B "$branch" "origin/$branch"
+  else
+    git -C "$WORK_DIR/repo" checkout -B "$branch"
+  fi
   if [[ "$TARGET" == "chocolatey" ]]; then
     rm -rf "$WORK_DIR/repo/automatic/ascii-chat" "$WORK_DIR/repo/automatic/libasciichat"
   else
