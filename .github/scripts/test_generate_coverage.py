@@ -145,12 +145,18 @@ class CoverageReportTests(unittest.TestCase):
         names = {"avcodec-62.dll", "avformat-62.dll", "avutil-60.dll", "swresample-6.dll", "swscale-9.dll"}
         for name in names:
             (dll_dir / name).write_text(name)
-        script = self.root / "copy.cmake"
-        script.write_text(
-            f'set(CMAKE_SOURCE_DIR "{repository.as_posix()}")\n'
-            f'set(ASCIICHAT_DEPS_CACHE_DIR "{(self.root / "deps").as_posix()}")\n'
-            f'set(FFMPEG_LIBRARY_DIRS "{(dll_dir.parent / "lib").as_posix()}")\n'
+        utils_dir = self.root / "cmake" / "utils"
+        utils_dir.mkdir(parents=True)
+        shutil.copy2(repository / "cmake/utils/CopyDLL.cmake", utils_dir / "CopyDLL.cmake")
+        shutil.copy2(repository / "cmake/utils/PostBuild.cmake", utils_dir / "PostBuild.cmake")
+        project = self.root / "CMakeLists.txt"
+        project.write_text(
+            'cmake_minimum_required(VERSION 3.30)\nproject(ffmpeg_fixture C)\n'
+            'add_executable(fixture main.c)\n'
+            'add_library(asciichat-ffmpeg INTERFACE)\n'
+            f'target_link_directories(asciichat-ffmpeg INTERFACE "{(dll_dir.parent / "lib").as_posix()}")\n'
             'set(WIN32 TRUE)\nunset(ENV{VCPKG_ROOT})\n'
+            f'set(ASCIICHAT_DEPS_CACHE_DIR "{(self.root / "deps").as_posix()}")\n'
             'include("${CMAKE_SOURCE_DIR}/cmake/utils/CopyDLL.cmake")\n'
             'include("${CMAKE_SOURCE_DIR}/cmake/utils/PostBuild.cmake")\n'
             'function(stage_dlls_for_target)\n'
@@ -159,7 +165,9 @@ class CoverageReportTests(unittest.TestCase):
             f'    file(COPY "${{ARG_SOURCE_DIR}}/${{name}}" DESTINATION "{(self.root / "staged").as_posix()}")\n'
             '  endforeach()\nendfunction()\ncopy_windows_dlls(fixture)\n'
         )
-        subprocess.run(["cmake", "-P", str(script)], check=True, capture_output=True)
+        (self.root / "main.c").write_text("int main(void) { return 0; }\n")
+        build = self.root / "build"
+        subprocess.run(["cmake", "-S", str(self.root), "-B", str(build), "-G", "Ninja"], check=True, capture_output=True)
         self.assertEqual({item.name for item in (self.root / "staged").iterdir()}, names)
         for name in names:
             self.assertEqual((self.root / "staged" / name).read_text(), name)

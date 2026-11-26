@@ -23,14 +23,12 @@ jobs:
           fetch-depth: 1
           submodules: false
 
-      - name: Install latest LLVM tools
+      - name: Install pinned LLVM tools
         run: |
-          # Official installer from https://apt.llvm.org/
-          wget -O llvm.sh https://apt.llvm.org/llvm.sh
-          sudo bash llvm.sh
           sudo apt-get update
-          sudo apt-get install --yes cmake ninja-build clang-format
-          rm -f llvm.sh
+          sudo apt-get install --yes cmake ninja-build python3-pip
+          python3 -m pip install --user --break-system-packages clang-format==23.1.5
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Format authored C sources
         shell: bash

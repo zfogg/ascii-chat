@@ -201,25 +201,35 @@ TEST_CASE("mdns/unadvertise_service_null_context_fails", "[mdns] [unit]") {
 
 #ifdef __APPLE__
 extern "C" {
-  typedef struct { int ready; int closed; void *context; } mdns_fixture_ref_t;
-  extern mdns_fixture_ref_t mdns_fixture_refs[3];
-  extern unsigned mdns_fixture_fault, mdns_fixture_callbacks, mdns_fixture_closed_refs;
-  void mdns_fixture_reset(void);
-  void *mdns_fixture_context_create(void);
-  asciichat_error_t mdns_fixture_query(asciichat_mdns_t *, const char *, asciichat_mdns_discovery_callback_fn, void *);
-  asciichat_error_t mdns_fixture_update(asciichat_mdns_t *, int);
-  void mdns_fixture_destroy(asciichat_mdns_t *);
-  int mdns_fixture_get_socket(asciichat_mdns_t *);
+typedef struct {
+  int ready;
+  int closed;
+  void *context;
+} mdns_fixture_ref_t;
+extern mdns_fixture_ref_t mdns_fixture_refs[3];
+extern unsigned mdns_fixture_fault, mdns_fixture_callbacks, mdns_fixture_closed_refs;
+void mdns_fixture_reset(void);
+void *mdns_fixture_context_create(void);
+asciichat_error_t mdns_fixture_query(asciichat_mdns_t *, const char *, asciichat_mdns_discovery_callback_fn, void *);
+asciichat_error_t mdns_fixture_update(asciichat_mdns_t *, int);
+void mdns_fixture_destroy(asciichat_mdns_t *);
+int mdns_fixture_get_socket(asciichat_mdns_t *);
 }
 static asciichat_mdns_discovery_t received;
-static void capture_bonjour(const asciichat_mdns_discovery_t *found, void *context) { received = *found; ++mdns_fixture_callbacks; REQUIRE(context == &received); }
+static void capture_bonjour(const asciichat_mdns_discovery_t *found, void *context) {
+  received = *found;
+  ++mdns_fixture_callbacks;
+  REQUIRE(context == &received);
+}
 TEST_CASE("mdns/bonjour_browse_resolves_address_metadata_and_closes_every_handle", "[mdns] [unit]") {
-  mdns_fixture_reset(); mdns_fixture_fault = 0;
+  mdns_fixture_reset();
+  mdns_fixture_fault = 0;
   auto *context = static_cast<asciichat_mdns_t *>(mdns_fixture_context_create());
   REQUIRE(context != nullptr);
   REQUIRE(mdns_fixture_query(context, "_ascii-chat._tcp.local.", capture_bonjour, &received) == ASCIICHAT_OK);
   REQUIRE(mdns_fixture_get_socket(context) == 10);
-  for (unsigned i = 0; i < 4; ++i) REQUIRE(mdns_fixture_update(context, 10) == ASCIICHAT_OK);
+  for (unsigned i = 0; i < 4; ++i)
+    REQUIRE(mdns_fixture_update(context, 10) == ASCIICHAT_OK);
   REQUIRE(mdns_fixture_callbacks == 1);
   REQUIRE(std::strcmp(received.name, "fixture-27224") == 0);
   REQUIRE(std::strcmp(received.host, "fixture.local.") == 0);
@@ -231,8 +241,10 @@ TEST_CASE("mdns/bonjour_failures_preserve_context_and_release_partial_queries", 
     auto *context = static_cast<asciichat_mdns_t *>(mdns_fixture_context_create());
     REQUIRE(context != nullptr);
     auto result = mdns_fixture_query(context, "_ascii-chat._tcp.local", capture_bonjour, &received);
-    for (unsigned i = 0; i < 4 && result == ASCIICHAT_OK; ++i) result = mdns_fixture_update(context, 10);
-    REQUIRE(result == ERROR_NETWORK); mdns_fixture_destroy(context);
+    for (unsigned i = 0; i < 4 && result == ASCIICHAT_OK; ++i)
+      result = mdns_fixture_update(context, 10);
+    REQUIRE(result == ERROR_NETWORK);
+    mdns_fixture_destroy(context);
   }
 }
 TEST_CASE("mdns/disappearing_bonjour_records_do_not_abort_other_discoveries", "[mdns] [unit]") {
@@ -241,7 +253,8 @@ TEST_CASE("mdns/disappearing_bonjour_records_do_not_abort_other_discoveries", "[
     auto *context = static_cast<asciichat_mdns_t *>(mdns_fixture_context_create());
     REQUIRE(context != nullptr);
     REQUIRE(mdns_fixture_query(context, "_ascii-chat._tcp.local", capture_bonjour, &received) == ASCIICHAT_OK);
-    for (unsigned i = 0; i < 4; ++i) REQUIRE(mdns_fixture_update(context, 10) == ASCIICHAT_OK);
+    for (unsigned i = 0; i < 4; ++i)
+      REQUIRE(mdns_fixture_update(context, 10) == ASCIICHAT_OK);
     mdns_fixture_destroy(context);
   }
 }
