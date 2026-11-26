@@ -118,6 +118,8 @@ if(NOT RECAST_NATIVE_BINARY OR NOT EXISTS "${RECAST_NATIVE_BINARY}")
                 "-DCMAKE_C_COMPILER=${_recast_host_cc}"
                 "-DCMAKE_CXX_COMPILER=${_recast_host_cxx}"
                 "-DCMAKE_EXE_LINKER_FLAGS=${_recast_host_link_flags}"
+                "-DRECAST_DEPS_CACHE_DIR:PATH=${ASCIICHAT_DEPS_CACHE_ROOT}"
+                "-DRECAST_LLVM_DEV_ROOT:PATH=${ASCIICHAT_LLVM_DEV_ROOT}"
                 ${_recast_llvm_args}
                 -DASCIICHAT_RECAST_HOST_LINK_REV=4
                 -DRECAST_BUILD_DOCS=OFF -DBUILD_TESTING=OFF
