@@ -39,13 +39,20 @@ jobs:
           RUN_SHA: ${{ github.event.workflow_run.head_sha }}
           REPOSITORY: ${{ github.repository }}
         run: |
+          git init source
+          git -C source remote add origin "https://github.com/$REPOSITORY.git"
           if [[ -n "$MANUAL_TAG" ]]; then tag="$MANUAL_TAG"; else
-            git init source
-            git -C source remote add origin "https://github.com/$REPOSITORY.git"
+            [[ -n "$RUN_SHA" ]] || { echo "Release workflow SHA is missing" >&2; exit 1; }
             git -C source fetch --quiet --depth=1 origin "$RUN_SHA"
             tag="$(git -C source tag --points-at FETCH_HEAD --list 'v*' | head -n 1)"
           fi
           [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid release tag: $tag" >&2; exit 1; }
+          git -C source fetch --quiet --depth=1 origin "refs/tags/$tag:refs/tags/$tag"
+          tag_sha="$(git -C source rev-list -n 1 "$tag")"
+          if [[ -n "$RUN_SHA" && "$tag_sha" != "$RUN_SHA" ]]; then
+            echo "Release tag $tag points to $tag_sha, not triggering commit $RUN_SHA" >&2
+            exit 1
+          fi
           if [[ "$MANUAL_TARGET" == "all" || -z "$MANUAL_TARGET" || "$MANUAL_TARGET" == "${{ matrix.target }}" ]]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
