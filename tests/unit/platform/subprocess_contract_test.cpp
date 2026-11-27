@@ -7,7 +7,7 @@ static void setup(void) {
   log_init(NULL, LOG_FATAL, false, false);
 }
 #ifndef _WIN32
-#include <posix/terminal.h>
+#include <libplatform/terminal.h>
 #include <signal.h>
 #include <unistd.h>
 

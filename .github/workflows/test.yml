@@ -158,6 +158,7 @@ jobs:
           build-cache-key: ${{ matrix.build_type }}
 
       - name: Clean test executables and libraries only
+        shell: bash
         run: |
           rm -f build/coverage.xml build/Testing/ctest-results.xml
           rm -rf build/Testing/xml
@@ -200,6 +201,7 @@ jobs:
             -DASCIICHAT_ENABLE_ANALYZERS=OFF
             -DASCIICHAT_ENABLE_COVERAGE=${{ matrix.build_type == 'sanitizers' && 'OFF' || 'ON' }}
             -DASCIICHAT_ENABLE_SANITIZERS=${{ matrix.build_type == 'sanitizers' && 'ON' || 'OFF' }}
+            -DASCIICHAT_USE_PCH=${{ startsWith(matrix.os, 'ubuntu') && matrix.build_type != 'sanitizers' && 'OFF' || 'ON' }}
             -DCMAKE_C_COMPILER="${CLANG_BIN}"
             -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}"
             -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
@@ -386,6 +388,7 @@ jobs:
           cache-version: v7-${{ matrix.instrumentation }}
 
       - name: Clean test executables and libraries only
+        shell: bash
         run: |
           # Only clean test executables and old libraries
           # Keep CMakeCache.txt and CMakeFiles to preserve configure cache
@@ -587,6 +590,7 @@ jobs:
           rm -rf build/lib/*.a
 
       - name: Configure Benchmark Tests with coverage
+        shell: bash
         run: |
           # Configure Benchmark Tests with Release mode + coverage for accurate benchmarks
           # Use Homebrew LLVM on macOS for better standards support
@@ -648,15 +652,18 @@ jobs:
           ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
       - name: Clear cached coverage counters
+        shell: bash
         run: find build -name '*.gcda' -type f -delete
 
       - name: Build Benchmark Tests
+        shell: bash
         run: |
           cmake --build build --target benchmarks ascii-chat bench-acip-prepare
           echo "Benchmarks test executables built:"
           ls -la build/bin/benchmarks 2>/dev/null || echo "No Catch2 benchmark executable found"
 
       - name: Run Benchmark Tests
+        shell: bash
         run: |
           echo "Running Benchmark Tests..."
 

@@ -247,6 +247,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       yt-dlp \
       libwebsockets-dev libuv1-dev libicu-dev libnghttp2-dev  \
       libvterm-dev libfreetype6-dev libfontconfig1-dev \
+      libkrb5-dev \
       curl unzip \
       || true
     # Keep the shared HTTP/2 server dependency independent from the optional
