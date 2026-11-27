@@ -1,11 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/benchmark/catch_benchmark.hpp>
-/** Isolated preparation benchmark; no sockets, queue copies, or kernel time.
- * Legacy allocation/copy order matches bf4415dd8a20c8f5423c98c44524cc1b3f42b2c1.
- * Compile the production helper with local instrumentation, leaving release code
- * and the timed crypto implementation untouched.
- */
-#define ASCIICHAT_ACIP_PREPARE_STATIC
+/** Isolated preparation benchmark; no sockets, queue copies, or kernel time. */
 #include <ascii-chat/network/acip/prepare.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/endian.h>
@@ -13,18 +8,6 @@
 #include <string.h>
 
 #define CHECK(expr) REQUIRE(expr)
-static size_t allocations, copies;
-static void *measured_alloc(buffer_domain_t *domain, size_t size) {
-  ++allocations;
-  return buffer_alloc(domain, size);
-}
-static void *measured_copy(void *to, const void *from, size_t size) {
-  copies += size;
-  return memcpy(to, from, size);
-}
-#define buffer_alloc measured_alloc
-#define memcpy measured_copy
-#include "../../lib/network/acip/prepare.c"
 
 static void prepare(crypto_context_t *crypto, const socket_buffer_t *slices, size_t count, size_t size, int transport, bool legacy) {
   // 0: synchronous TCP, 1: async TCP, 2: WebSocket (already contiguous).
@@ -101,14 +84,12 @@ TEST_CASE("acip_prepare/legacy_and_planned_paths", "[acip_prepare] [benchmark]")
           for (int encrypted = 0; encrypted < 2; ++encrypted) {
             for (int order = 0; order < 2; ++order) {
               bool legacy = (order + repeat) % 2 == 0;
-              allocations = copies = 0;
               uint64_t start = time_get_ns();
               for (size_t i = 0; i < iterations; ++i)
                 prepare(encrypted ? &crypto : NULL, vector ? slices : &contiguous, vector ? 2 : 1, size, transport, legacy);
               uint64_t elapsed = time_get_ns() - start;
-              log_warn("prepare-bench run=%d transport=%d vectors=%d encrypted=%d legacy=%d allocs=%.0f copy_bytes=%.0f "
-                       "MiB/s=%.2f",
-                       repeat, transport, vector, encrypted, legacy, (double)allocations / iterations, (double)copies / iterations, (double)size * iterations * 1e9 / elapsed / 1048576.0);
+              log_warn("prepare-bench run=%d transport=%d vectors=%d encrypted=%d legacy=%d MiB/s=%.2f",
+                       repeat, transport, vector, encrypted, legacy, (double)size * iterations * 1e9 / elapsed / 1048576.0);
             }
           }
         }
