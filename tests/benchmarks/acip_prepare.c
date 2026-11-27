@@ -88,8 +88,8 @@ TEST_CASE("acip_prepare/legacy_and_planned_paths", "[acip_prepare] [benchmark]")
               for (size_t i = 0; i < iterations; ++i)
                 prepare(encrypted ? &crypto : NULL, vector ? slices : &contiguous, vector ? 2 : 1, size, transport, legacy);
               uint64_t elapsed = time_get_ns() - start;
-              log_warn("prepare-bench run=%d transport=%d vectors=%d encrypted=%d legacy=%d MiB/s=%.2f",
-                       repeat, transport, vector, encrypted, legacy, (double)size * iterations * 1e9 / elapsed / 1048576.0);
+              log_warn("prepare-bench run=%d transport=%d vectors=%d encrypted=%d legacy=%d MiB/s=%.2f", repeat, transport, vector, encrypted, legacy,
+                       (double)size * iterations * 1e9 / elapsed / 1048576.0);
             }
           }
         }
