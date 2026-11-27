@@ -201,7 +201,7 @@ jobs:
             -DASCIICHAT_ENABLE_ANALYZERS=OFF
             -DASCIICHAT_ENABLE_COVERAGE=${{ matrix.build_type == 'sanitizers' && 'OFF' || 'ON' }}
             -DASCIICHAT_ENABLE_SANITIZERS=${{ matrix.build_type == 'sanitizers' && 'ON' || 'OFF' }}
-            -DASCIICHAT_USE_PCH=${{ startsWith(matrix.os, 'ubuntu') && matrix.build_type != 'sanitizers' && 'OFF' || 'ON' }}
+            -DASCIICHAT_USE_PCH=${{ (startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'windows')) && matrix.build_type != 'sanitizers' && 'OFF' || 'ON' }}
             -DCMAKE_C_COMPILER="${CLANG_BIN}"
             -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}"
             -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
