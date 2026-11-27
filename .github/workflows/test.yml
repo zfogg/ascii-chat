@@ -430,6 +430,7 @@ jobs:
             -DPython3_EXECUTABLE="${{ startsWith(matrix.os, 'windows') && format('{0}/.venv/Scripts/python.exe', github.workspace) || format('{0}/.venv/bin/python', github.workspace) }}" \
             -DASCIICHAT_ENABLE_COVERAGE=${{ matrix.instrumentation == 'coverage' && 'ON' || 'OFF' }} \
             -DASCIICHAT_ENABLE_SANITIZERS=${{ matrix.instrumentation == 'sanitizers' && 'ON' || 'OFF' }} \
+            -DASCIICHAT_USE_PCH=${{ startsWith(matrix.os, 'ubuntu') && matrix.instrumentation == 'coverage' && 'OFF' || 'ON' }} \
             -DBUILD_TESTS=ON \
             -DUSE_MUSL=OFF \
             -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF \
@@ -616,6 +617,7 @@ jobs:
             -DBUILD_TESTS=ON
             -DASCIICHAT_ENABLE_COVERAGE=ON
             -DASCIICHAT_ENABLE_SANITIZERS=OFF
+            -DASCIICHAT_USE_PCH=${{ startsWith(matrix.os, 'ubuntu') && 'OFF' || 'ON' }}
             -DCMAKE_C_FLAGS="-std=c2x -O3"
             -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF
             -DUSE_MUSL=OFF
@@ -650,7 +652,7 @@ jobs:
 
       - name: Build Benchmark Tests
         run: |
-          cmake --build build --target benchmarks
+          cmake --build build --target benchmarks ascii-chat bench-acip-prepare
           echo "Benchmarks test executables built:"
           ls -la build/bin/benchmarks 2>/dev/null || echo "No Catch2 benchmark executable found"
 
