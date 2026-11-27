@@ -6,7 +6,7 @@
 
 _Static_assert(ACIP_TRAFFIC_CONTROL == CRYPTO_RECORD_CONTROL_CHANNEL, "Control channel IDs must match");
 
-asciichat_error_t acip_packet_plan(crypto_context_t *crypto, const socket_buffer_t *buffers, size_t count, acip_packet_plan_t *plan) {
+ASCIICHAT_ACIP_PREPARE_API asciichat_error_t acip_packet_plan(crypto_context_t *crypto, const socket_buffer_t *buffers, size_t count, acip_packet_plan_t *plan) {
   if (!plan)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing ACIP packet plan");
   *plan = (acip_packet_plan_t){0};
@@ -50,7 +50,7 @@ asciichat_error_t acip_packet_plan(crypto_context_t *crypto, const socket_buffer
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_packet_encrypt(crypto_context_t *crypto, const acip_packet_plan_t *plan, buffer_domain_t *domain, void *ciphertext, size_t capacity, packet_header_t *header, size_t *length) {
+ASCIICHAT_ACIP_PREPARE_API asciichat_error_t acip_packet_encrypt(crypto_context_t *crypto, const acip_packet_plan_t *plan, buffer_domain_t *domain, void *ciphertext, size_t capacity, packet_header_t *header, size_t *length) {
   if (length)
     *length = 0;
   if (!crypto || !plan || !plan->encrypt || !plan->buffers || !plan->count || !ciphertext || !header || !length)
@@ -105,7 +105,7 @@ static asciichat_error_t validate_record_packet(void *context, unsigned flow, un
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_packet_seal(crypto_record_t *records, acip_traffic_class_t flow, acip_delivery_t delivery, const void *packet, size_t length, uint8_t **output, size_t *written) {
+ASCIICHAT_ACIP_PREPARE_API asciichat_error_t acip_packet_seal(crypto_record_t *records, acip_traffic_class_t flow, acip_delivery_t delivery, const void *packet, size_t length, uint8_t **output, size_t *written) {
   if (!output || !written || !records || !records->crypto)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid packet encryption arguments");
   *output = NULL;
@@ -142,7 +142,7 @@ asciichat_error_t acip_packet_seal(crypto_record_t *records, acip_traffic_class_
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acip_packet_open_sequence(crypto_record_t *records, acip_traffic_class_t flow, acip_delivery_t delivery, const void *packet, size_t length, uint8_t **output, size_t *written,
+ASCIICHAT_ACIP_PREPARE_API asciichat_error_t acip_packet_open_sequence(crypto_record_t *records, acip_traffic_class_t flow, acip_delivery_t delivery, const void *packet, size_t length, uint8_t **output, size_t *written,
                                             uint64_t *sequence) {
   if (!output || !written)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing decrypted packet output");
@@ -157,10 +157,10 @@ asciichat_error_t acip_packet_open_sequence(crypto_record_t *records, acip_traff
   return acip_packet_decrypt_payload(records, flow, delivery, (const uint8_t *)packet + sizeof(header), length - sizeof(header), output, written, sequence);
 }
 
-asciichat_error_t acip_packet_open(crypto_record_t *records, acip_traffic_class_t flow, acip_delivery_t delivery, const void *packet, size_t length, uint8_t **output, size_t *written) {
+ASCIICHAT_ACIP_PREPARE_API asciichat_error_t acip_packet_open(crypto_record_t *records, acip_traffic_class_t flow, acip_delivery_t delivery, const void *packet, size_t length, uint8_t **output, size_t *written) {
   return acip_packet_open_sequence(records, flow, delivery, packet, length, output, written, NULL);
 }
 
-asciichat_error_t acip_packet_decrypt_payload(crypto_record_t *records, unsigned flow, unsigned delivery, const void *payload, size_t length, uint8_t **output, size_t *written, uint64_t *sequence) {
+ASCIICHAT_ACIP_PREPARE_API asciichat_error_t acip_packet_decrypt_payload(crypto_record_t *records, unsigned flow, unsigned delivery, const void *payload, size_t length, uint8_t **output, size_t *written, uint64_t *sequence) {
   return crypto_record_open_sequence(records, flow, delivery, payload, length, output, written, sequence, validate_record_packet, NULL);
 }

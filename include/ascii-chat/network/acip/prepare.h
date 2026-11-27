@@ -11,6 +11,12 @@
 extern "C" {
 #endif
 
+#ifdef ASCIICHAT_ACIP_PREPARE_STATIC
+#define ASCIICHAT_ACIP_PREPARE_API static
+#else
+#define ASCIICHAT_ACIP_PREPARE_API
+#endif
+
 /**
  * A borrowed packet description. Neither the vector array nor its bytes are owned.
  * Keep both alive and immutable through encryption or synchronous delivery. Async
@@ -30,7 +36,7 @@ typedef struct {
 } acip_packet_plan_t;
 
 /** Validate sizes and decide eligibility without allocating or advancing crypto state. */
-asciichat_error_t acip_packet_plan(crypto_context_t *crypto, const socket_buffer_t *buffers, size_t count, acip_packet_plan_t *plan);
+ASCIICHAT_ACIP_PREPARE_API asciichat_error_t acip_packet_plan(crypto_context_t *crypto, const socket_buffer_t *buffers, size_t count, acip_packet_plan_t *plan);
 
 /**
  * @brief The useful part of acip packet plan is in `buffers`, `count`, `plaintext_size`, `ciphertext_capacity`:
@@ -40,13 +46,13 @@ asciichat_error_t acip_packet_plan(crypto_context_t *crypto, const socket_buffer
  * after delivery has consumed/copied it. This helper owns and releases only its temporary gather buffer, allocated from
  * domain. Output length is zero on failure; no output may be sent on failure.
  */
-asciichat_error_t acip_packet_encrypt(crypto_context_t *crypto, const acip_packet_plan_t *plan, buffer_domain_t *domain, void *ciphertext, size_t capacity, packet_header_t *header, size_t *length);
+ASCIICHAT_ACIP_PREPARE_API asciichat_error_t acip_packet_encrypt(crypto_context_t *crypto, const acip_packet_plan_t *plan, buffer_domain_t *domain, void *ciphertext, size_t capacity, packet_header_t *header, size_t *length);
 
-asciichat_error_t acip_packet_seal(crypto_record_t *, acip_traffic_class_t, acip_delivery_t, const void *, size_t, uint8_t **, size_t *);
-asciichat_error_t acip_packet_open_sequence(crypto_record_t *, acip_traffic_class_t, acip_delivery_t, const void *, size_t, uint8_t **, size_t *, uint64_t *);
-asciichat_error_t acip_packet_open(crypto_record_t *, acip_traffic_class_t, acip_delivery_t, const void *, size_t, uint8_t **, size_t *);
+ASCIICHAT_ACIP_PREPARE_API asciichat_error_t acip_packet_seal(crypto_record_t *, acip_traffic_class_t, acip_delivery_t, const void *, size_t, uint8_t **, size_t *);
+ASCIICHAT_ACIP_PREPARE_API asciichat_error_t acip_packet_open_sequence(crypto_record_t *, acip_traffic_class_t, acip_delivery_t, const void *, size_t, uint8_t **, size_t *, uint64_t *);
+ASCIICHAT_ACIP_PREPARE_API asciichat_error_t acip_packet_open(crypto_record_t *, acip_traffic_class_t, acip_delivery_t, const void *, size_t, uint8_t **, size_t *);
 
-asciichat_error_t acip_packet_decrypt_payload(crypto_record_t *, unsigned channel, unsigned delivery, const void *, size_t, uint8_t **, size_t *, uint64_t *);
+ASCIICHAT_ACIP_PREPARE_API asciichat_error_t acip_packet_decrypt_payload(crypto_record_t *, unsigned channel, unsigned delivery, const void *, size_t, uint8_t **, size_t *, uint64_t *);
 
 #ifdef __cplusplus
 }

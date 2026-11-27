@@ -5,6 +5,7 @@
  * Compile the production helper with local instrumentation, leaving release code
  * and the timed crypto implementation untouched.
  */
+#define ASCIICHAT_ACIP_PREPARE_STATIC
 #include <ascii-chat/network/acip/prepare.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/util/endian.h>
@@ -23,12 +24,6 @@ static void *measured_copy(void *to, const void *from, size_t size) {
 }
 #define buffer_alloc measured_alloc
 #define memcpy measured_copy
-#define acip_packet_plan measured_plan
-#define acip_packet_encrypt measured_encrypt
-#define acip_packet_seal measured_seal
-#define acip_packet_open_sequence measured_open_sequence
-#define acip_packet_decrypt_payload measured_decrypt_payload
-#define acip_packet_open measured_open
 #include "../../lib/network/acip/prepare.c"
 
 static void prepare(crypto_context_t *crypto, const socket_buffer_t *slices, size_t count, size_t size, int transport, bool legacy) {
