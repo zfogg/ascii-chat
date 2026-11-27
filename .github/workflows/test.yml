@@ -581,6 +581,7 @@ jobs:
           cache-version: v7
 
       - name: Clean test executables and libraries only
+        shell: bash
         run: |
           rm -f build/coverage.xml build/Testing/ctest-results.xml
           rm -rf build/Testing/xml
